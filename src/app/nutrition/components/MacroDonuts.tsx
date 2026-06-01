@@ -48,7 +48,7 @@ export default function MacroDonuts({ kcal, prot, gluc, lip, size = 56 }: Props)
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
       <div style={{ textAlign: 'center', minWidth: 44 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: '#00c8e0', fontFamily: 'Syne,sans-serif', lineHeight: 1 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#06B6D4', fontFamily: 'Syne,sans-serif', lineHeight: 1 }}>
           {kcal}
         </div>
         <div style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>kcal</div>

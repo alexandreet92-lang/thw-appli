@@ -138,7 +138,7 @@ const APPS: AppDef[] = [
 
   // Biométrie & Capteurs
   { id: 'stryd',        name: 'Stryd',                 category: 'biometrics', provider: null,        color: '#FF5722', logoInitial: 'SY', logo: 'stryd',         description: 'Puissance de course running' },
-  { id: 'core',         name: 'Core',                  category: 'biometrics', provider: null,        color: '#00C8E0', logoInitial: 'CR', logo: 'core',          description: 'Température corporelle core' },
+  { id: 'core',         name: 'Core',                  category: 'biometrics', provider: null,        color: '#06B6D4', logoInitial: 'CR', logo: 'core',          description: 'Température corporelle core' },
   { id: 'supersapiens', name: 'Supersapiens',          category: 'biometrics', provider: null,        color: '#00E5B4', logoInitial: 'SS', logo: 'supersapiens',  description: 'Glucose sanguin en continu' },
   { id: 'levels',       name: 'Levels',                category: 'biometrics', provider: null,        color: '#111827', logoInitial: 'LV', logo: 'levels',        description: 'Métabolisme & énergie' },
   { id: 'dexcom',       name: 'Dexcom',                category: 'biometrics', provider: null,        color: '#00A4E0', logoInitial: 'DX', logo: 'dexcom',        description: 'Capteur glucose G7' },

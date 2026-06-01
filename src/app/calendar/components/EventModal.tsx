@@ -248,7 +248,7 @@ export default function EventModal({ mode = 'create', initialData, onClose, onSa
             Annuler
           </button>
           <button onClick={handleSave} disabled={saving || !name.trim() || !startDate || !endDate}
-            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:saving?'wait':'pointer',opacity:(!name.trim()||!startDate||!endDate)?0.5:1 }}>
+            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:saving?'wait':'pointer',opacity:(!name.trim()||!startDate||!endDate)?0.5:1 }}>
             {saving ? '…' : isEdit ? 'Enregistrer' : '+ Ajouter'}
           </button>
         </div>

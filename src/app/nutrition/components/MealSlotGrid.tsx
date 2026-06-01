@@ -44,7 +44,7 @@ const SLOT_ICONS: Record<MealSlotKey, ReactElement> = {
 // ── Daily summary bar ─────────────────────────────────────────────
 function DailySummaryBar({ kcal, prot, gluc, lip }: { kcal: number; prot: number; gluc: number; lip: number }) {
   const items = [
-    { label: 'Kcal',   val: kcal, color: '#00c8e0', unit: '' },
+    { label: 'Kcal',   val: kcal, color: '#06B6D4', unit: '' },
     { label: 'Prot',   val: prot, color: '#3B82F6', unit: 'g' },
     { label: 'Gluc',   val: gluc, color: '#F97316', unit: 'g' },
     { label: 'Lip',    val: lip,  color: '#8B5CF6', unit: 'g' },
@@ -75,7 +75,7 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
   if (!entry) {
     return (
       <div style={base} onClick={onAdd}
-        onMouseEnter={e => (e.currentTarget.style.borderColor = '#00c8e0')}
+        onMouseEnter={e => (e.currentTarget.style.borderColor = '#06B6D4')}
         onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
         <div style={{ color: 'var(--text-dim)', opacity: 0.6 }}>{SLOT_ICONS[slot]}</div>
         <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif', textAlign: 'center' }}>
@@ -109,7 +109,7 @@ function SlotCard({ slot, entry, onAdd, onEdit }: {
         </span>
       )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-        {entry.actual_kcal != null && <span style={{ fontSize: 10, color: '#00c8e0', fontFamily: 'DM Mono,monospace', fontWeight: 700 }}>{entry.actual_kcal} kcal</span>}
+        {entry.actual_kcal != null && <span style={{ fontSize: 10, color: '#06B6D4', fontFamily: 'DM Mono,monospace', fontWeight: 700 }}>{entry.actual_kcal} kcal</span>}
         {entry.actual_prot != null && <span style={{ fontSize: 10, color: '#3B82F6', fontFamily: 'DM Mono,monospace' }}>P {entry.actual_prot}g</span>}
         {entry.actual_gluc != null && <span style={{ fontSize: 10, color: '#F97316', fontFamily: 'DM Mono,monospace' }}>G {entry.actual_gluc}g</span>}
         {entry.actual_lip  != null && <span style={{ fontSize: 10, color: '#8B5CF6', fontFamily: 'DM Mono,monospace' }}>L {entry.actual_lip}g</span>}

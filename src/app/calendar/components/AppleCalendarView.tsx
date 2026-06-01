@@ -130,8 +130,8 @@ export default function AppleCalendarView({ races, stages, year, onDayClick, onR
                         cursor: 'pointer',
                         display: 'flex', flexDirection: 'column', gap: 2,
                         borderRadius: 7,
-                        background: hasEvents ? 'rgba(0,200,224,0.03)' : 'transparent',
-                        border: `1px solid ${hasEvents ? 'rgba(0,200,224,0.12)' : 'transparent'}`,
+                        background: hasEvents ? 'rgba(6,182,212,0.03)' : 'transparent',
+                        border: `1px solid ${hasEvents ? 'rgba(6,182,212,0.12)' : 'transparent'}`,
                       }}
                     >
                       {/* Day number */}

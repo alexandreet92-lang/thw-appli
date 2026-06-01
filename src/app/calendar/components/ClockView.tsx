@@ -20,7 +20,7 @@ const SIZE   = 620
 const CX     = SIZE / 2
 const CY     = SIZE / 2
 const R      = Math.round(SIZE * 0.40) // 248
-const ACCENT = '#00c8e0'
+const ACCENT = '#06B6D4'
 const CLUSTER_DEG = 8   // dots closer than this are stacked radially
 const DOT_STEP    = 18  // radial step per stacked dot (px)
 

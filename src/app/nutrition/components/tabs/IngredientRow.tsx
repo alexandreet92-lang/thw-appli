@@ -25,7 +25,7 @@ export default function IngredientRow({ ingredient, onRemove }: Props) {
         </div>
         <div style={{ fontSize: 10, color: 'var(--text-dim)', display: 'flex', gap: 8, marginTop: 1 }}>
           <span>{qty}g</span>
-          <span style={{ color: '#00c8e0' }}>{m.kcal} kcal</span>
+          <span style={{ color: '#06B6D4' }}>{m.kcal} kcal</span>
           <span>P{m.prot}</span>
           <span>G{m.gluc}</span>
           <span>L{m.lip}</span>

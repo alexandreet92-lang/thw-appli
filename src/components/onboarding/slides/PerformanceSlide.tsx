@@ -32,25 +32,25 @@ function ChartMockup() {
         {kpis.map(k => (
           <div key={k.l} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '8px 10px' }}>
             <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', margin: '0 0 2px', textTransform: 'uppercase', fontFamily: 'DM Sans, sans-serif' }}>{k.l}</p>
-            <p style={{ fontSize: 20, fontWeight: 700, color: '#00c8e0', margin: 0, fontFamily: 'DM Mono, monospace' }}>{k.v}</p>
+            <p style={{ fontSize: 20, fontWeight: 700, color: '#06B6D4', margin: 0, fontFamily: 'DM Mono, monospace' }}>{k.v}</p>
           </div>
         ))}
       </div>
       <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
         <defs>
           <linearGradient id="obGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#00c8e0" stopOpacity={0.28} />
-            <stop offset="100%" stopColor="#00c8e0" stopOpacity={0} />
+            <stop offset="0%" stopColor="#06B6D4" stopOpacity={0.28} />
+            <stop offset="100%" stopColor="#06B6D4" stopOpacity={0} />
           </linearGradient>
         </defs>
         <path d={AREA} fill="url(#obGrad)" />
-        <path d={LINE} fill="none" stroke="#00c8e0" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
+        <path d={LINE} fill="none" stroke="#06B6D4" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
           strokeDasharray={PATH_LEN} strokeDashoffset={PATH_LEN * (1 - prog / 100)}
           style={{ transition: 'stroke-dashoffset 0.04s linear' }} />
         {PTS.map((v, i) => {
           const threshold = (i / (PTS.length - 1)) * 100
           return prog >= threshold ? (
-            <circle key={i} cx={px(i)} cy={py(v)} r={4} fill="#00c8e0" stroke="#0A0A0F" strokeWidth={2} />
+            <circle key={i} cx={px(i)} cy={py(v)} r={4} fill="#06B6D4" stroke="#0A0A0F" strokeWidth={2} />
           ) : null
         })}
       </svg>

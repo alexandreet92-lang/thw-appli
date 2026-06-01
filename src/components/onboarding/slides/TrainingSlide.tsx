@@ -35,9 +35,9 @@ function CalendarMockup() {
       <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
         <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.38)', margin: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}>Charge</p>
         <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)' }}>
-          <div style={{ width: '68%', height: '100%', borderRadius: 2, background: 'linear-gradient(90deg,#00c8e0,#2563EB)', animation: 'fade-in 0.6s 0.4s both' }} />
+          <div style={{ width: '68%', height: '100%', borderRadius: 2, background: 'linear-gradient(90deg,#06B6D4,#2563EB)', animation: 'fade-in 0.6s 0.4s both' }} />
         </div>
-        <p style={{ fontSize: 9, color: '#00c8e0', margin: 0, fontFamily: 'DM Mono, monospace' }}>68%</p>
+        <p style={{ fontSize: 9, color: '#06B6D4', margin: 0, fontFamily: 'DM Mono, monospace' }}>68%</p>
       </div>
     </div>
   )

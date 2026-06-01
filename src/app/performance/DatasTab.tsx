@@ -29,7 +29,7 @@ interface Props {
 const Z_COLORS = ['#9ca3af', '#22c55e', '#eab308', '#f97316', '#ef4444', '#991B1B', '#6B21A8']
 
 const YEAR_COLORS: Record<string, string> = {
-  '2024': '#00c8e0',
+  '2024': '#06B6D4',
   '2023': '#5b6fff',
   '2022': '#22c55e',
   '2021': '#f97316',
@@ -1125,8 +1125,8 @@ function RecordRow({ label, rec24, rec23, sub, onSelect, selected, actions }: {
       onClick={rec24 !== '—' ? onSelect : undefined}
       style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 9,
-        background: selected ? 'rgba(0,200,224,0.06)' : 'var(--bg-card2)',
-        border: `1px solid ${selected ? '#00c8e0' : 'var(--border)'}`,
+        background: selected ? 'rgba(6,182,212,0.06)' : 'var(--bg-card2)',
+        border: `1px solid ${selected ? '#06B6D4' : 'var(--border)'}`,
         marginBottom: 5,
         cursor: (onSelect && rec24 !== '—') ? 'pointer' : undefined,
         transition: 'border-color 0.15s, background 0.15s',
@@ -1136,8 +1136,8 @@ function RecordRow({ label, rec24, rec23, sub, onSelect, selected, actions }: {
       <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-mid)', minWidth: 72, flexShrink: 0 }}>{label}</span>
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 13, fontWeight: 700, color: '#00c8e0' }}>{rec24}</span>
-          {isPR && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'rgba(0,200,224,0.15)', color: '#00c8e0', fontWeight: 700 }}>PR</span>}
+          <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 13, fontWeight: 700, color: '#06B6D4' }}>{rec24}</span>
+          {isPR && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'rgba(6,182,212,0.15)', color: '#06B6D4', fontWeight: 700 }}>PR</span>}
           {sub && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{sub}</span>}
         </div>
         {rec23 && rec23 !== '—' && (
@@ -2172,7 +2172,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <SectionHeader label="Puissance / Allure" gradient="linear-gradient(180deg,#00c8e0,#5b6fff)" />
+      <SectionHeader label="Puissance / Allure" gradient="linear-gradient(180deg,#06B6D4,#5b6fff)" />
 
       {/* Bouton Estimer via IA — global, toutes zones */}
       {onOpenAI && (
@@ -2276,7 +2276,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 <button
                   onClick={() => { void handleSaveZones('bike') }}
                   disabled={saving2}
-                  style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#00c8e0', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}
+                  style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}
                 >
                   {saving2 ? 'Enregistrement…' : 'Enregistrer'}
                 </button>
@@ -2299,7 +2299,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                 <button onClick={resetBike} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>Réinitialiser</button>
                 {isDirty && (
-                  <button onClick={() => { void handleSaveZones('bike') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#00c8e0', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  <button onClick={() => { void handleSaveZones('bike') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                     {saving2 ? 'Enregistrement…' : 'Enregistrer'}
                   </button>
                 )}
@@ -2350,7 +2350,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 editSaving={sbSaving}
               />
               {isRunDirty && (
-                <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#00c8e0', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                   {saving2 ? 'Enregistrement…' : 'Enregistrer'}
                 </button>
               )}
@@ -2372,7 +2372,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                 <button onClick={resetRun} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>Réinitialiser</button>
                 {isRunDirty && (
-                  <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#00c8e0', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  <button onClick={() => { void handleSaveZones('run') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                     {saving2 ? 'Enregistrement…' : 'Enregistrer'}
                   </button>
                 )}
@@ -2389,7 +2389,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
             <div>
               <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>Aviron</h3>
               <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>
-                Split seuil : <strong style={{ fontFamily: 'DM Mono,monospace', color: '#00c8e0' }}>{localRowSplit}/500m</strong>
+                Split seuil : <strong style={{ fontFamily: 'DM Mono,monospace', color: '#06B6D4' }}>{localRowSplit}/500m</strong>
                 {time2000mInput && <span style={{ color: '#8b5cf6', marginLeft: 6 }}>(issu du 2000m)</span>}
               </p>
             </div>
@@ -2409,10 +2409,10 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input type="text" value={rowThreshSplit} onChange={e => { setRowThreshSplit(e.target.value); setIsDirty(true) }}
                   style={{ width: 56, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 11, outline: 'none' }} />
-                <button onClick={() => setEditRowThresh(false)} style={{ padding: '3px 8px', borderRadius: 5, border: 'none', background: '#00c8e0', color: '#fff', fontSize: 10, cursor: 'pointer' }}>OK</button>
+                <button onClick={() => setEditRowThresh(false)} style={{ padding: '3px 8px', borderRadius: 5, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 10, cursor: 'pointer' }}>OK</button>
               </div>
             ) : (
-              <button onClick={() => setEditRowThresh(true)} style={{ padding: '2px 8px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#00c8e0', fontFamily: 'DM Mono,monospace', fontSize: 11, cursor: 'pointer' }}>
+              <button onClick={() => setEditRowThresh(true)} style={{ padding: '2px 8px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: '#06B6D4', fontFamily: 'DM Mono,monospace', fontSize: 11, cursor: 'pointer' }}>
                 {rowThreshSplit}/500m
               </button>
             )}
@@ -2433,7 +2433,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 editSaving={sbSaving}
               />
               {isDirty && (
-                <button onClick={() => { void handleSaveZones('rowing') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#00c8e0', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                <button onClick={() => { void handleSaveZones('rowing') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                   {saving2 ? 'Enregistrement…' : 'Enregistrer'}
                 </button>
               )}
@@ -2455,7 +2455,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                 <button onClick={resetRow} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>Réinitialiser</button>
                 {isDirty && (
-                  <button onClick={() => { void handleSaveZones('rowing') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#00c8e0', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  <button onClick={() => { void handleSaveZones('rowing') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                     {saving2 ? 'Enregistrement…' : 'Enregistrer'}
                   </button>
                 )}
@@ -2472,7 +2472,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
             <div>
               <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>Natation</h3>
               <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>
-                CSS : <strong style={{ fontFamily: 'DM Mono,monospace', color: '#00c8e0' }}>{localCSS}/100m</strong>
+                CSS : <strong style={{ fontFamily: 'DM Mono,monospace', color: '#06B6D4' }}>{localCSS}/100m</strong>
                 {time400mInput && <span style={{ color: '#8b5cf6', marginLeft: 6 }}>(issu du 400m)</span>}
               </p>
             </div>
@@ -2505,7 +2505,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
                 editSaving={sbSaving}
               />
               {isDirty && (
-                <button onClick={() => { void handleSaveZones('swim') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#00c8e0', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                <button onClick={() => { void handleSaveZones('swim') }} disabled={saving2} style={{ marginTop: 10, padding: '6px 16px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                   {saving2 ? 'Enregistrement…' : 'Enregistrer'}
                 </button>
               )}
@@ -2527,7 +2527,7 @@ function ZonesSubTab({ profile, onSelect, selectedDatum, onOpenAI }: {
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                 <button onClick={resetSwim} style={{ padding: '5px 12px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>Réinitialiser</button>
                 {isDirty && (
-                  <button onClick={() => { void handleSaveZones('swim') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#00c8e0', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
+                  <button onClick={() => { void handleSaveZones('swim') }} disabled={saving2} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 11, fontWeight: 700, cursor: saving2 ? 'not-allowed' : 'pointer', opacity: saving2 ? 0.7 : 1 }}>
                     {saving2 ? 'Enregistrement…' : 'Enregistrer'}
                   </button>
                 )}
@@ -2785,8 +2785,8 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
           })}
           {selectedYear === 'All Time' && (
             <linearGradient id="pcg-alltime" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#00c8e0" stopOpacity="0.20" />
-              <stop offset="100%" stopColor="#00c8e0" stopOpacity="0.02" />
+              <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.20" />
+              <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.02" />
             </linearGradient>
           )}
         </defs>
@@ -3790,7 +3790,7 @@ function mapStravaSport(stravaType: string): string {
 const YD_SPORTS: { id: YDSportId; label: string; color: string; keys: string[] }[] = [
   { id: 'running',  label: 'Running',  color: '#22c55e', keys: ['run', 'running', 'virtualrun', 'walk'] },
   { id: 'trail',    label: 'Trail',    color: '#84cc16', keys: ['trail_run', 'trail', 'trail_running', 'trailrun', 'hike'] },
-  { id: 'cycling',  label: 'Cyclisme', color: '#00c8e0', keys: ['bike', 'virtual_bike', 'cycling', 'ride', 'virtual_ride', 'road_cycling', 'gravelride', 'mountainbikeride', 'ebikeride'] },
+  { id: 'cycling',  label: 'Cyclisme', color: '#06B6D4', keys: ['bike', 'virtual_bike', 'cycling', 'ride', 'virtual_ride', 'road_cycling', 'gravelride', 'mountainbikeride', 'ebikeride'] },
   { id: 'swimming', label: 'Natation', color: '#38bdf8', keys: ['swim', 'swimming', 'open_water_swim', 'open_water_swimming', 'openwatersim'] },
   { id: 'rowing',   label: 'Aviron',   color: '#14b8a6', keys: ['rowing', 'virtualrow', 'canoeing', 'kayaking'] },
   { id: 'hyrox',    label: 'Hyrox',    color: '#ef4444', keys: ['hyrox'] },
@@ -3837,7 +3837,7 @@ const C1_CMP_COLORS: Record<string, string> = {
   '2023': '#f97316',
   '2024': '#eab308',
   '2025': '#3b82f6',
-  '2026': '#00c8e0',
+  '2026': '#06B6D4',
 }
 
 /** Numéro de semaine ISO 8601 (1-53) depuis une date ISO string */
@@ -5509,7 +5509,7 @@ function YearDatasSubTab() {
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {([
-              { key: 'heures'     as const, label: 'Heures',        color: '#00c8e0', max: Math.max(1, ...c3Stats.map(s => s.heures)),     fmt: (v: number) => `${v.toFixed(0)}h`  },
+              { key: 'heures'     as const, label: 'Heures',        color: '#06B6D4', max: Math.max(1, ...c3Stats.map(s => s.heures)),     fmt: (v: number) => `${v.toFixed(0)}h`  },
               { key: 'nb_sorties' as const, label: 'Sorties',       color: '#f97316', max: Math.max(1, ...c3Stats.map(s => s.nb_sorties)), fmt: (v: number) => `${v}`              },
               { key: 'km'         as const, label: 'Distance (km)', color: '#3b82f6', max: Math.max(1, ...c3Stats.map(s => s.km)),         fmt: (v: number) => `${v}km`             },
             ]).map(({ key, label, color, max, fmt }) => (
@@ -5654,7 +5654,7 @@ export default function DatasTab({ onSelect, selectedDatum, profile, onOpenAI, o
   const [subTab, setSubTab] = useState<SubTab>('zones')
 
   const SUB_TABS: { id: SubTab; label: string; color: string; bg: string }[] = [
-    { id: 'zones',    label: 'Zones',      color: '#00c8e0', bg: 'rgba(0,200,224,0.10)' },
+    { id: 'zones',    label: 'Zones',      color: '#06B6D4', bg: 'rgba(6,182,212,0.10)' },
     { id: 'records',  label: 'Records',    color: '#f97316', bg: 'rgba(249,115,22,0.10)' },
     { id: 'yeardata', label: 'Year Datas', color: '#a855f7', bg: 'rgba(168,85,247,0.10)' },
   ]

@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, ArrowLeft, Zap, ArrowUp, AlertTriangle } from 'lucide-react'
+import { X, Zap, ArrowUp, AlertTriangle, Target, ClipboardList, Sliders, MessageSquare } from 'lucide-react'
 import type { CompetenceWithUserState } from '@/types/competences'
-import { sportIcon, SPORT_LABELS, CATEGORY_LABELS, type SportFilter } from '../constants'
+import { SPORT_LABELS, CATEGORY_LABELS, type SportFilter } from '../constants'
 import { streamCompetenceAI, type AIChatMsg } from '../lib/streamCompetenceAI'
 import MicButton from '@/components/ai-coach/MicButton'
 
@@ -17,6 +17,26 @@ interface Props {
 }
 
 interface ChatMessage { role: 'user' | 'assistant'; content: string }
+
+// ── Parsing du prompt_base structuré en 4 blocs ──
+type PromptBlocks = { philosophie: string; regles: string; exclusions: string; adaptations: string }
+
+function parsePrompt(promptBase: string): PromptBlocks {
+  const extract = (label: string, nextLabel?: string) => {
+    const startTag = `[${label}]`
+    const startIdx = promptBase.indexOf(startTag)
+    if (startIdx === -1) return ''
+    const contentStart = startIdx + startTag.length
+    const endIdx = nextLabel ? promptBase.indexOf(`[${nextLabel}]`, contentStart) : promptBase.length
+    return promptBase.substring(contentStart, endIdx === -1 ? promptBase.length : endIdx).trim()
+  }
+  return {
+    philosophie: extract('Philosophie', 'Règles'),
+    regles:      extract('Règles', 'Exclusions'),
+    exclusions:  extract('Exclusions', 'Adaptations'),
+    adaptations: extract('Adaptations'),
+  }
+}
 
 function extractProposed(text: string): string | null {
   const m = text.match(/<prompt>([\s\S]*?)<\/prompt>/i)
@@ -33,6 +53,7 @@ export default function CompetenceDetailModal({ competence, conflicts, isOpen, o
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [shown, setShown] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
   const [isDesktop, setIsDesktop] = useState(true)
   const busyRef = useRef(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -49,6 +70,7 @@ export default function CompetenceDetailModal({ competence, conflicts, isOpen, o
       setCurrentPrompt(competence.user_state?.prompt_custom ?? competence.prompt_base)
       setMessages([])
       setInput('')
+      setIsClosing(false)
       const raf = requestAnimationFrame(() => setShown(true))
       return () => cancelAnimationFrame(raf)
     }
@@ -56,6 +78,12 @@ export default function CompetenceDetailModal({ competence, conflicts, isOpen, o
   }, [isOpen, competence])
 
   const dirty = currentPrompt !== basePrompt
+
+  // Fermeture animée (mobile slide-down)
+  const handleClose = useCallback(() => {
+    setIsClosing(true)
+    setTimeout(() => { setIsClosing(false); onClose() }, 300)
+  }, [onClose])
 
   const send = useCallback(async () => {
     const text = input.trim()
@@ -103,23 +131,79 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
   if (!isOpen) return null
 
   const isCustom = !competence.is_predefined
+  const isActive = !!competence.user_state?.active
+  const blocks = parsePrompt(currentPrompt)
+  const sections = [
+    { key: 'philosophie', cls: 'section-philosophie', label: 'PHILOSOPHIE', Icon: Target,        text: blocks.philosophie },
+    { key: 'regles',      cls: 'section-regles',      label: 'RÈGLES',      Icon: ClipboardList,  text: blocks.regles },
+    { key: 'exclusions',  cls: 'section-exclusions',  label: 'EXCLUSIONS',  Icon: AlertTriangle,  text: blocks.exclusions },
+    { key: 'adaptations', cls: 'section-adaptations', label: 'ADAPTATIONS', Icon: Sliders,        text: blocks.adaptations },
+  ]
+  const hasStructured = sections.some(s => s.text)
 
-  // ── Body partagé ──
-  const body = (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px' }}>
-      {/* Prompt actuel */}
-      <div style={labelStyle}>Prompt actuel</div>
-      <div style={{
-        background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 10,
-        padding: '14px 16px', fontSize: 11.5, fontFamily: 'DM Mono, monospace',
-        lineHeight: 1.7, color: 'var(--text-mid)', whiteSpace: 'pre-wrap', marginBottom: 18,
-      }}>
-        {currentPrompt}
+  const subtitle = `${competence.sports.map(s => SPORT_LABELS[s as SportFilter] ?? s).join(' / ')} · ${CATEGORY_LABELS[competence.categorie]}`
+
+  // ── Header (badge + titre + sous-titre + badges + X) ──
+  const headerNode = (closeFn: () => void) => (
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '20px 24px', borderBottom: '0.5px solid var(--border)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 12, minWidth: 0 }}>
+        <div style={{ width: 24, height: 24, borderRadius: 8, background: 'rgba(6,182,212,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+          <Zap size={14} color="#06B6D4" />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>{competence.nom}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-mid)', marginTop: 2 }}>{subtitle}</div>
+          {(isActive || conflicts.length > 0) && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 7 }}>
+              {isActive && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: '#06B6D4', background: 'rgba(6,182,212,0.12)', border: '0.5px solid rgba(6,182,212,0.3)', borderRadius: 5, padding: '2px 8px' }}>Active</span>
+              )}
+              {conflicts.map(c => (
+                <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'rgba(239,68,68,0.9)', border: '0.5px solid rgba(239,68,68,0.35)', borderRadius: 5, padding: '2px 8px' }}>
+                  <AlertTriangle size={10} strokeWidth={1.8} /> {c.nom}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+      <button
+        onClick={closeFn}
+        aria-label="Fermer"
+        style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-hover)', border: '0.5px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 150ms' }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+      >
+        <X size={16} color="var(--text)" />
+      </button>
+    </div>
+  )
+
+  // ── Body : 4 sections colorées + Remodeler ──
+  const body = (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+      {hasStructured ? (
+        sections.filter(s => s.text).map(s => (
+          <div key={s.key} className={`cmp-section ${s.cls}`}>
+            <div className="cmp-section-head">
+              <span className="cmp-section-icon"><s.Icon size={14} /></span>
+              <span className="cmp-section-label">{s.label}</span>
+            </div>
+            <div className="cmp-section-content">{s.text}</div>
+          </div>
+        ))
+      ) : (
+        <div className="cmp-section cmp-section-remodeler" style={{ marginBottom: 14 }}>
+          <div className="cmp-section-content" style={{ color: 'var(--text)' }}>{currentPrompt}</div>
+        </div>
+      )}
 
       {/* Remodeler */}
-      <div style={labelStyle}>Remodeler</div>
-      <div style={{ background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: 10, padding: 14 }}>
+      <div className="cmp-section cmp-section-remodeler" style={{ marginBottom: 0 }}>
+        <div className="cmp-section-head">
+          <span className="cmp-section-icon" style={{ color: 'var(--text-mid)' }}><MessageSquare size={14} /></span>
+          <span className="cmp-section-label" style={{ color: 'var(--text-mid)' }}>REMODELER</span>
+        </div>
         <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Modifier cette compétence</div>
         <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, marginBottom: 12 }}>
           Décris ce que tu veux changer, l&apos;IA mettra à jour le prompt
@@ -149,7 +233,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
                 </div>
                 {proposed && (
                   <div style={{ marginTop: 8, background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 8, padding: 12 }}>
-                    <div style={{ fontSize: 11.5, fontFamily: 'DM Mono, monospace', lineHeight: 1.7, color: 'var(--text-mid)', whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+                    <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-mid)', whiteSpace: 'pre-wrap', marginBottom: 8, fontFamily: "'Inter', system-ui, sans-serif" }}>
                       {proposed}
                     </div>
                     <button
@@ -193,34 +277,16 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
     </div>
   )
 
-  // ── Tags header ──
-  const tags = (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-      {competence.sports.map(s => (
-        <span key={s} style={tagStyle}>{sportIcon(s as SportFilter, 11)}{SPORT_LABELS[s as SportFilter] ?? s}</span>
-      ))}
-      <span style={{ ...tagStyle, color: 'var(--text-mid)', borderColor: 'var(--border)' }}>{CATEGORY_LABELS[competence.categorie]}</span>
-      {conflicts.map(c => (
-        <span key={c.id} style={{ ...tagStyle, color: 'rgba(239,68,68,0.85)', borderColor: 'rgba(239,68,68,0.35)' }}>
-          <AlertTriangle size={11} strokeWidth={1.8} /> {c.nom}
-        </span>
-      ))}
-    </div>
-  )
-
-  const footer = (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '14px 22px', borderTop: '0.5px solid var(--border)', flexShrink: 0 }}>
-      {/* Gauche : Supprimer (custom uniquement) sinon spacer */}
+  const footer = (closeFn: () => void) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '14px 24px', borderTop: '0.5px solid var(--border)', flexShrink: 0 }}>
       {isCustom ? (
         <button
           onClick={() => { if (confirm('Supprimer définitivement cette compétence ?')) onDelete() }}
           style={{ background: 'transparent', color: '#EF4444', border: '0.5px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
         >Supprimer</button>
       ) : <span />}
-
-      {/* Droite : Fermer + Enregistrer */}
       <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={onClose} style={{ background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}>Fermer</button>
+        <button onClick={closeFn} style={{ background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}>Fermer</button>
         <button
           onClick={() => onSave(currentPrompt)}
           disabled={!dirty}
@@ -230,22 +296,32 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
     </div>
   )
 
-  // ── MOBILE : plein écran ──
+  // ── MOBILE : bottom sheet animé (iOS style) ──
   if (!isDesktop) {
     return (
-      <div className="comp-modal-fullscreen" style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '16px 18px', borderBottom: '0.5px solid var(--border)', flexShrink: 0 }}>
-          <button onClick={onClose} aria-label="Retour" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', marginTop: 2 }}>
-            <ArrowLeft size={18} color="var(--text-mid)" />
-          </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{competence.nom}</div>
-            {tags}
-          </div>
+      <>
+        <div
+          onClick={handleClose}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.5)',
+            animation: `${isClosing ? 'fadeOutOverlay' : 'fadeInOverlay'} 320ms ease-out`,
+          }}
+        />
+        <div
+          className="comp-modal-fullscreen"
+          style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0, height: '92vh', zIndex: 1000,
+            borderRadius: '16px 16px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            animation: `${isClosing ? 'slideDownMobile' : 'slideUpMobile'} 320ms cubic-bezier(0.32,0.72,0,1)`,
+          }}
+        >
+          {/* Handle */}
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(0,0,0,0.20)', margin: '8px auto 0', flexShrink: 0 }} />
+          {headerNode(handleClose)}
+          {body}
+          {footer(handleClose)}
         </div>
-        {body}
-        {footer}
-      </div>
+      </>
     )
   }
 
@@ -262,43 +338,21 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          width: 620, maxHeight: 580, background: 'var(--bg-card)',
+          width: 620, maxHeight: 620, background: 'var(--bg-card)',
           border: '0.5px solid var(--border-mid)', borderRadius: 14,
           boxShadow: '0 20px 60px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden',
           transform: shown ? 'scale(1)' : 'scale(0.95)', transition: 'transform 250ms cubic-bezier(0.2,0.9,0.3,1)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '18px 22px', borderBottom: '0.5px solid var(--border)', flexShrink: 0 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{competence.nom}</div>
-            {tags}
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Fermer"
-            style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-hover)', border: '0.5px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 150ms' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-          >
-            <X size={16} color="var(--text)" />
-          </button>
-        </div>
+        {headerNode(onClose)}
         {body}
-        {footer}
+        {footer(onClose)}
       </div>
     </div>
   )
 }
 
-const labelStyle: React.CSSProperties = {
-  fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
-  color: 'var(--text-dim)', marginBottom: 8,
-}
 const avatarStyle: React.CSSProperties = {
   width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: 'rgba(6,182,212,0.12)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 2,
-}
-const tagStyle: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10,
-  color: 'rgba(6,182,212,0.85)', border: '0.5px solid rgba(6,182,212,0.25)', borderRadius: 5, padding: '2px 8px',
 }

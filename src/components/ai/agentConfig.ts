@@ -157,7 +157,7 @@ export const AGENT_CONFIGS: Record<PageAgent, AgentConfig> = {
     id: 'sessionBuilder',
     name: 'Coach Séances',
     subtitle: 'Crée des séances sur-mesure',
-    accent: '#00c8e0',
+    accent: '#06B6D4',
     quickActions: [
       {
         label: 'Séance endurance',

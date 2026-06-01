@@ -7,13 +7,13 @@
 // ─── Couleurs brand ───────────────────────────────────────────────
 export const color = {
   // Brand
-  brand:    '#00c8e0',   // cyan principal
+  brand:    '#06B6D4',   // cyan principal
   brandAlt: '#5b6fff',   // indigo accent
 
   // Sports
   sport: {
     running:  '#f97316',   // orange vif
-    cycling:  '#00c8e0',   // cyan
+    cycling:  '#06B6D4',   // cyan
     hyrox:    '#a855f7',   // violet
     gym:      '#22c55e',   // vert
   },
@@ -25,7 +25,7 @@ export const color = {
   info:     '#5b6fff',
 
   // Métriques charge
-  ctl:      '#00c8e0',   // forme — cyan
+  ctl:      '#06B6D4',   // forme — cyan
   atl:      '#ef4444',   // fatigue — rouge
   tsb:      '#5b6fff',   // forme nette — indigo
   volume:   '#f59e0b',   // volume — ambre

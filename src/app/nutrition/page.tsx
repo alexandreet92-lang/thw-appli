@@ -99,7 +99,7 @@ function KcalGauge({ consumed, objective }: { consumed: number; objective: numbe
   const stroke = 8
   const circ = 2 * Math.PI * r
   const dash = pct * circ
-  const color = pct > 1.05 ? '#ef4444' : pct > 0.9 ? '#22c55e' : '#00c8e0'
+  const color = pct > 1.05 ? '#ef4444' : pct > 0.9 ? '#22c55e' : '#06B6D4'
   return (
     <svg width={130} height={130} viewBox="0 0 130 130">
       <circle cx={65} cy={65} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
@@ -189,7 +189,7 @@ function KcalHistoryChart({ logs, range, activePlan }: { logs: DailyLog[]; range
             {/* Consumed (filled) */}
             <rect
               x={x} y={chartH - consumedH} width={barW} height={consumedH}
-              fill="#00c8e0" rx={2}
+              fill="#06B6D4" rx={2}
               opacity={0.85}
             />
             <text x={x + barW / 2} y={chartH + 16} textAnchor="middle" fill="var(--text-dim)" fontSize={9} fontFamily="DM Sans,sans-serif">
@@ -344,12 +344,12 @@ function WeightChart({ logs, metric }: { logs: WeightLog[]; metric: WeightMetric
           </g>
         )
       })}
-      {points && <polyline points={points} fill="none" stroke="#00c8e0" strokeWidth={2} strokeLinejoin="round" />}
+      {points && <polyline points={points} fill="none" stroke="#06B6D4" strokeWidth={2} strokeLinejoin="round" />}
       {sorted.map((_, i) => {
         const v = vals[i]
         if (v === null) return null
         return (
-          <circle key={i} cx={toX(i)} cy={toY(v)} r={4} fill="#00c8e0" stroke="var(--bg-card)" strokeWidth={2} />
+          <circle key={i} cx={toX(i)} cy={toY(v)} r={4} fill="#06B6D4" stroke="var(--bg-card)" strokeWidth={2} />
         )
       })}
       {sorted.map((entry, i) => {
@@ -485,7 +485,7 @@ function TemplateForm({
           disabled={saving || !form.nom.trim()}
           style={{
             flex: 1, padding: '8px', borderRadius: 8, border: 'none',
-            background: form.nom.trim() ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--border)',
+            background: form.nom.trim() ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--border)',
             color: '#fff', fontSize: 12, fontWeight: 700,
             cursor: form.nom.trim() && !saving ? 'pointer' : 'not-allowed',
             fontFamily: 'DM Sans,sans-serif',
@@ -1123,9 +1123,9 @@ export default function NutritionPage() {
 
       {/* Code scanné — feedback visible */}
       {scannedBarcode && (
-        <div style={{ margin: '12px 20px 0', padding: '10px 14px', borderRadius: 10, background: 'rgba(0,200,224,0.08)', border: '1px solid rgba(0,200,224,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ margin: '12px 20px 0', padding: '10px 14px', borderRadius: 10, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <div>
-            <p style={{ fontSize: 11, color: '#00c8e0', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Code scanne</p>
+            <p style={{ fontSize: 11, color: '#06B6D4', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Code scanne</p>
             <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{scannedBarcode}</p>
           </div>
           <button
@@ -1169,7 +1169,7 @@ export default function NutritionPage() {
               consumed={todayMealTotals.kcal}
               objective={todayKcalObj}
               unit="kcal"
-              color="#00c8e0"
+              color="#06B6D4"
               size={96}
             />
             <MacroDonut
@@ -1227,14 +1227,14 @@ export default function NutritionPage() {
                   width: 36,
                   height: 36,
                   borderRadius: 8,
-                  background: 'rgba(0,200,224,0.12)',
+                  background: 'rgba(6,182,212,0.12)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontFamily: 'Syne,sans-serif',
                   fontWeight: 700,
                   fontSize: 11,
-                  color: '#00c8e0',
+                  color: '#06B6D4',
                   flexShrink: 0,
                 }}>
                   {s.sport.slice(0, 3).toUpperCase()}
@@ -1274,7 +1274,7 @@ export default function NutritionPage() {
                 gap: 10,
                 padding: '12px 18px',
                 borderRadius: 12,
-                background: 'linear-gradient(135deg,rgba(0,200,224,0.12),rgba(91,111,255,0.18))',
+                background: 'linear-gradient(135deg,rgba(6,182,212,0.12),rgba(91,111,255,0.18))',
                 border: '1px solid rgba(91,111,255,0.35)',
                 color: 'var(--text)',
                 fontFamily: 'DM Sans,sans-serif',
@@ -1350,7 +1350,7 @@ export default function NutritionPage() {
                       {daySessions.length > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2 }}>
                           {daySessions.map(s => (
-                            <div key={s.id} style={{ width: 4, height: 4, borderRadius: '50%', background: '#00c8e0' }} />
+                            <div key={s.id} style={{ width: 4, height: 4, borderRadius: '50%', background: '#06B6D4' }} />
                           ))}
                         </div>
                       )}
@@ -1391,8 +1391,8 @@ export default function NutritionPage() {
                     padding: '5px 14px',
                     borderRadius: 8,
                     border: '1px solid var(--border)',
-                    background: planVariant === v ? 'rgba(0,200,224,0.12)' : 'var(--bg-card2)',
-                    color: planVariant === v ? '#00c8e0' : 'var(--text-dim)',
+                    background: planVariant === v ? 'rgba(6,182,212,0.12)' : 'var(--bg-card2)',
+                    color: planVariant === v ? '#06B6D4' : 'var(--text-dim)',
                     fontWeight: planVariant === v ? 700 : 400,
                     fontSize: 12,
                     fontFamily: 'Syne,sans-serif',
@@ -1528,8 +1528,8 @@ export default function NutritionPage() {
                 style={{
                   padding: '5px 12px', borderRadius: 8,
                   border: '1px solid var(--border)',
-                  background: histRange === r ? 'rgba(0,200,224,0.12)' : 'var(--bg-card2)',
-                  color: histRange === r ? '#00c8e0' : 'var(--text-dim)',
+                  background: histRange === r ? 'rgba(6,182,212,0.12)' : 'var(--bg-card2)',
+                  color: histRange === r ? '#06B6D4' : 'var(--text-dim)',
                   fontWeight: histRange === r ? 700 : 400,
                   fontSize: 12, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
                 }}
@@ -1557,7 +1557,7 @@ export default function NutritionPage() {
             )}
             <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 12, height: 8, borderRadius: 2, background: '#00c8e0' }} />
+                <div style={{ width: 12, height: 8, borderRadius: 2, background: '#06B6D4' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Consomme</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -1597,8 +1597,8 @@ export default function NutritionPage() {
                 style={{
                   padding: '5px 12px', borderRadius: 8,
                   border: '1px solid var(--border)',
-                  background: weightMetric === key ? 'rgba(0,200,224,0.12)' : 'var(--bg-card2)',
-                  color: weightMetric === key ? '#00c8e0' : 'var(--text-dim)',
+                  background: weightMetric === key ? 'rgba(6,182,212,0.12)' : 'var(--bg-card2)',
+                  color: weightMetric === key ? '#06B6D4' : 'var(--text-dim)',
                   fontWeight: weightMetric === key ? 700 : 400,
                   fontSize: 11, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
                 }}
@@ -1767,7 +1767,7 @@ export default function NutritionPage() {
               borderRadius: 12, border: '1px solid var(--border)',
               marginBottom: 16,
             }}>
-              <MacroDonut label="Calories"  consumed={modalTotals.kcal} objective={dayDetailOpen.kcal}      unit="kcal" color="#00c8e0" size={72} />
+              <MacroDonut label="Calories"  consumed={modalTotals.kcal} objective={dayDetailOpen.kcal}      unit="kcal" color="#06B6D4" size={72} />
               <MacroDonut label="Proteines" consumed={modalTotals.prot} objective={dayDetailOpen.proteines} unit="g"    color="#22c55e" size={72} />
               <MacroDonut label="Glucides"  consumed={modalTotals.gluc} objective={dayDetailOpen.glucides}  unit="g"    color="#eab308" size={72} />
               <MacroDonut label="Lipides"   consumed={modalTotals.lip}  objective={dayDetailOpen.lipides}   unit="g"    color="#f97316" size={72} />
@@ -1782,8 +1782,8 @@ export default function NutritionPage() {
                   style={{
                     padding: '5px 14px', borderRadius: 8,
                     border: '1px solid var(--border)',
-                    background: planVariant === v ? 'rgba(0,200,224,0.12)' : 'var(--bg-card2)',
-                    color: planVariant === v ? '#00c8e0' : 'var(--text-dim)',
+                    background: planVariant === v ? 'rgba(6,182,212,0.12)' : 'var(--bg-card2)',
+                    color: planVariant === v ? '#06B6D4' : 'var(--text-dim)',
                     fontWeight: planVariant === v ? 700 : 400,
                     fontSize: 12, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
                   }}
@@ -1975,8 +1975,8 @@ export default function NutritionPage() {
                           }}
                           style={{
                             flex: 1, padding: '7px 0', borderRadius: 8,
-                            background: 'rgba(0,200,224,0.15)', border: '1px solid rgba(0,200,224,0.35)',
-                            color: '#00c8e0', fontFamily: 'Syne,sans-serif', fontWeight: 700,
+                            background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)',
+                            color: '#06B6D4', fontFamily: 'Syne,sans-serif', fontWeight: 700,
                             fontSize: 12, cursor: 'pointer',
                           }}
                         >

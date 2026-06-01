@@ -84,7 +84,7 @@ function fmtDuration(min: number): string {
 
 function readinessStatus(score: number): { label: string; color: string; bg: string; desc: string } {
   if (score >= 85) return { label: 'Optimal',  color: '#22c55e', bg: 'rgba(34,197,94,0.12)',  desc: 'Prêt pour un effort intense. Profite de cette forme.' }
-  if (score >= 70) return { label: 'Correct',  color: '#00c8e0', bg: 'rgba(0,200,224,0.12)',  desc: 'Bonne forme générale. Intensité modérée à élevée possible.' }
+  if (score >= 70) return { label: 'Correct',  color: '#06B6D4', bg: 'rgba(6,182,212,0.12)',  desc: 'Bonne forme générale. Intensité modérée à élevée possible.' }
   if (score >= 55) return { label: 'Prudence', color: '#f97316', bg: 'rgba(249,115,22,0.12)', desc: 'Récupération incomplète. Préfère une séance légère.' }
   return              { label: 'Faible',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)',  desc: 'Corps fatigué. Privilégie le repos actif ou la récupération.' }
 }
@@ -259,7 +259,7 @@ function CheckInModal({ onClose, onSave }: { onClose: () => void; onSave: (d: Ch
             Annuler
           </button>
           <button onClick={() => { onSave(data); onClose() }}
-            style={{ flex:2, padding:'10px', borderRadius:11, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+            style={{ flex:2, padding:'10px', borderRadius:11, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer' }}>
             Enregistrer
           </button>
         </div>
@@ -327,7 +327,7 @@ function SectionToday({ data, onCheckIn, onAIAnalysis, aiLoading }: {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
             {[
               { label:'FC repos', value:`${data.restingHr}`, unit:'bpm', color:'#ef4444', show: data.restingHr != null },
-              { label:'HRV',      value:`${data.hrv}`,       unit:'ms',  color:'#00c8e0', show: data.hrv != null },
+              { label:'HRV',      value:`${data.hrv}`,       unit:'ms',  color:'#06B6D4', show: data.hrv != null },
               { label:'Sommeil',  value:fmtDuration(data.sleep.durationMin), unit:'', color:'#a855f7', show: data.sleep.durationMin != null },
             ].filter(m => m.show).map(m => (
               <div key={m.label} style={{ padding:'10px 12px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', textAlign:'center' }}>
@@ -370,7 +370,7 @@ function SectionSleep({ sleep }: { sleep: typeof MOCK.sleep }) {
   const hasAdvanced = sleep.nightHr != null || sleep.spo2 != null || sleep.respRate != null
 
   // Couleur qualité sommeil
-  const qualityColor = sleep.quality >= 8 ? '#22c55e' : sleep.quality >= 6 ? '#00c8e0' : sleep.quality >= 4 ? '#f97316' : '#ef4444'
+  const qualityColor = sleep.quality >= 8 ? '#22c55e' : sleep.quality >= 6 ? '#06B6D4' : sleep.quality >= 4 ? '#f97316' : '#ef4444'
 
   return (
     <div className="card-enter card-enter-1" style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24, boxShadow:'var(--shadow-card)', marginBottom:16 }}>
@@ -382,7 +382,7 @@ function SectionSleep({ sleep }: { sleep: typeof MOCK.sleep }) {
         </div>
         {hasAdvanced && (
           <button onClick={() => setShowDetail(!showDetail)}
-            style={{ padding:'6px 14px', borderRadius:9, background:showDetail?'rgba(0,200,224,0.10)':'var(--bg-card2)', border:`1px solid ${showDetail?'#00c8e0':'var(--border)'}`, color:showDetail?'#00c8e0':'var(--text-mid)', fontSize:11, cursor:'pointer' }}>
+            style={{ padding:'6px 14px', borderRadius:9, background:showDetail?'rgba(6,182,212,0.10)':'var(--bg-card2)', border:`1px solid ${showDetail?'#06B6D4':'var(--border)'}`, color:showDetail?'#06B6D4':'var(--text-mid)', fontSize:11, cursor:'pointer' }}>
             {showDetail ? 'Résumé' : 'Voir détail'}
           </button>
         )}
@@ -393,7 +393,7 @@ function SectionSleep({ sleep }: { sleep: typeof MOCK.sleep }) {
         {[
           { label:'Durée',     value: fmtDuration(sleep.durationMin),    color:'#a855f7' },
           { label:'Coucher',   value: sleep.bedtime,                      color:'#5b6fff' },
-          { label:'Lever',     value: sleep.wakeTime,                     color:'#00c8e0' },
+          { label:'Lever',     value: sleep.wakeTime,                     color:'#06B6D4' },
           { label:'Moyenne',   value: fmtDuration(sleep.avgDurationMin),  color:'#6b7280' },
           { label:'Qualité',   value: `${sleep.quality}/10`,              color: qualityColor },
         ].map(m => (
@@ -410,13 +410,13 @@ function SectionSleep({ sleep }: { sleep: typeof MOCK.sleep }) {
           <p style={{ fontSize:11, fontWeight:600, color:'var(--text-mid)', margin:'0 0 8px' }}>Phases de sommeil</p>
           <div style={{ display:'flex', borderRadius:8, overflow:'hidden', height:16 }}>
             <div style={{ width:`${(sleep.deepMin!/totalPhases)*100}%`, background:'#5b6fff', transition:'width 0.5s' }}/>
-            <div style={{ width:`${(sleep.remMin!/totalPhases)*100}%`,  background:'#00c8e0', transition:'width 0.5s' }}/>
+            <div style={{ width:`${(sleep.remMin!/totalPhases)*100}%`,  background:'#06B6D4', transition:'width 0.5s' }}/>
             <div style={{ width:`${(sleep.lightMin!/totalPhases)*100}%`,background:'rgba(168,85,247,0.35)', transition:'width 0.5s' }}/>
           </div>
           <div style={{ display:'flex', gap:14, marginTop:8, flexWrap:'wrap' }}>
             {[
               { label:'Profond', value: fmtDuration(sleep.deepMin!),  color:'#5b6fff' },
-              { label:'REM',     value: fmtDuration(sleep.remMin!),   color:'#00c8e0' },
+              { label:'REM',     value: fmtDuration(sleep.remMin!),   color:'#06B6D4' },
               { label:'Léger',   value: fmtDuration(sleep.lightMin!), color:'rgba(168,85,247,0.7)' },
             ].map(p => (
               <div key={p.label} style={{ display:'flex', alignItems:'center', gap:5 }}>
@@ -458,7 +458,7 @@ function SectionSleep({ sleep }: { sleep: typeof MOCK.sleep }) {
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(110px, 1fr))', gap:8 }}>
             {[
               { label:'FC nocturne', value: sleep.nightHr   != null ? `${sleep.nightHr} bpm` : null,  color:'#ef4444' },
-              { label:'HRV nuit',    value: sleep.nightHrv  != null ? `${sleep.nightHrv} ms`  : null,  color:'#00c8e0' },
+              { label:'HRV nuit',    value: sleep.nightHrv  != null ? `${sleep.nightHrv} ms`  : null,  color:'#06B6D4' },
               { label:'SpO2',        value: sleep.spo2      != null ? `${sleep.spo2}%`         : null,  color:'#22c55e' },
               { label:'Respiration', value: sleep.respRate  != null ? `${sleep.respRate} rpm`  : null,  color:'#a855f7' },
               { label:'Température', value: sleep.tempDeviation != null ? `${sleep.tempDeviation > 0 ? '+' : ''}${sleep.tempDeviation}°C` : null, color:'#f97316' },
@@ -499,11 +499,11 @@ function SectionTrends({ data }: { data: typeof MOCK }) {
   const reco = data.readiness >= 80
     ? { text:'Conditions optimales pour un effort intense. Profite de cette fenêtre.', color:'#22c55e' }
     : data.readiness >= 65
-    ? { text:'Intensité modérée recommandée. Évite les séances maximales.', color:'#00c8e0' }
+    ? { text:'Intensité modérée recommandée. Évite les séances maximales.', color:'#06B6D4' }
     : { text:'Privilégie la récupération active ou le repos complet aujourd\'hui.', color:'#f97316' }
 
   const CHARTS = [
-    { label:'HRV', unit:'ms', values:t.hrv, color:'#00c8e0', baseline: Math.round(avgHrv) },
+    { label:'HRV', unit:'ms', values:t.hrv, color:'#06B6D4', baseline: Math.round(avgHrv) },
     { label:'FC repos', unit:'bpm', values:t.hr, color:'#ef4444', baseline: Math.round(avgHr) },
     { label:'Readiness', unit:'', values:t.readiness, color:status.color, baseline: null },
     { label:'Fatigue', unit:'/10', values:t.fatigue, color:'#f97316', baseline: null },
@@ -521,7 +521,7 @@ function SectionTrends({ data }: { data: typeof MOCK }) {
         {/* Range toggle — 14/30 jours à brancher */}
         <div style={{ display:'flex', gap:4 }}>
           {[['7','7 jours']].map(([v, l]) => (
-            <button key={v} style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #00c8e0', background:'rgba(0,200,224,0.10)', color:'#00c8e0', fontSize:10, fontWeight:600, cursor:'pointer' }}>
+            <button key={v} style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #06B6D4', background:'rgba(6,182,212,0.10)', color:'#06B6D4', fontSize:10, fontWeight:600, cursor:'pointer' }}>
               {l}
             </button>
           ))}
@@ -771,14 +771,14 @@ export default function RecoveryPage() {
             <div style={{ display:'flex', alignItems:'center', gap:14 }}>
               <div style={{ textAlign:'center' as const }}>
                 <p style={{ fontFamily:'Syne,sans-serif', fontSize:32, fontWeight:800, margin:0, lineHeight:1,
-                  color: aiResult.score >= 80 ? '#22c55e' : aiResult.score >= 60 ? '#00c8e0' : aiResult.score >= 40 ? '#f97316' : '#ef4444' }}>
+                  color: aiResult.score >= 80 ? '#22c55e' : aiResult.score >= 60 ? '#06B6D4' : aiResult.score >= 40 ? '#f97316' : '#ef4444' }}>
                   {aiResult.score}
                 </p>
                 <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0' }}>/ 100</p>
               </div>
               <div style={{ padding:'6px 14px', borderRadius:99, fontSize:12, fontWeight:700,
-                background: aiResult.readinessLevel === 'excellent' ? 'rgba(34,197,94,0.12)' : aiResult.readinessLevel === 'good' ? 'rgba(0,200,224,0.12)' : aiResult.readinessLevel === 'moderate' ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)',
-                color: aiResult.readinessLevel === 'excellent' ? '#22c55e' : aiResult.readinessLevel === 'good' ? '#00c8e0' : aiResult.readinessLevel === 'moderate' ? '#f97316' : '#ef4444',
+                background: aiResult.readinessLevel === 'excellent' ? 'rgba(34,197,94,0.12)' : aiResult.readinessLevel === 'good' ? 'rgba(6,182,212,0.12)' : aiResult.readinessLevel === 'moderate' ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)',
+                color: aiResult.readinessLevel === 'excellent' ? '#22c55e' : aiResult.readinessLevel === 'good' ? '#06B6D4' : aiResult.readinessLevel === 'moderate' ? '#f97316' : '#ef4444',
                 border: '1px solid currentColor' }}>
                 {{ low:'Faible', moderate:'Modéré', good:'Bonne forme', excellent:'Optimal' }[aiResult.readinessLevel]}
               </div>
@@ -788,11 +788,11 @@ export default function RecoveryPage() {
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {/* Charge recommandée */}
             <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderRadius:12,
-              background: aiResult.trainingLoad === 'reduce' ? 'rgba(239,68,68,0.07)' : aiResult.trainingLoad === 'increase' ? 'rgba(34,197,94,0.07)' : 'rgba(0,200,224,0.07)',
-              border: `1px solid ${aiResult.trainingLoad === 'reduce' ? 'rgba(239,68,68,0.25)' : aiResult.trainingLoad === 'increase' ? 'rgba(34,197,94,0.25)' : 'rgba(0,200,224,0.25)'}` }}>
+              background: aiResult.trainingLoad === 'reduce' ? 'rgba(239,68,68,0.07)' : aiResult.trainingLoad === 'increase' ? 'rgba(34,197,94,0.07)' : 'rgba(6,182,212,0.07)',
+              border: `1px solid ${aiResult.trainingLoad === 'reduce' ? 'rgba(239,68,68,0.25)' : aiResult.trainingLoad === 'increase' ? 'rgba(34,197,94,0.25)' : 'rgba(6,182,212,0.25)'}` }}>
               <span style={{ fontSize:20 }}>{ aiResult.trainingLoad === 'reduce' ? '🔽' : aiResult.trainingLoad === 'increase' ? '🔼' : '➡️' }</span>
               <div>
-                <p style={{ fontSize:11, fontWeight:700, margin:0, color: aiResult.trainingLoad === 'reduce' ? '#ef4444' : aiResult.trainingLoad === 'increase' ? '#22c55e' : '#00c8e0' }}>
+                <p style={{ fontSize:11, fontWeight:700, margin:0, color: aiResult.trainingLoad === 'reduce' ? '#ef4444' : aiResult.trainingLoad === 'increase' ? '#22c55e' : '#06B6D4' }}>
                   Charge : { aiResult.trainingLoad === 'reduce' ? 'Réduire' : aiResult.trainingLoad === 'increase' ? 'Augmenter' : 'Maintenir' }
                 </p>
                 <p style={{ fontSize:11, color:'var(--text-mid)', margin:'2px 0 0' }}>{aiResult.recommendation}</p>

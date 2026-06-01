@@ -25,7 +25,7 @@ function MuscleMesh({ zone, injuries, hovered, zoomLevel, onHover, onClick }: {
   const zoomOrder: ZoomLevel[] = ['far', 'mid', 'close']
   const isVisible = zoomOrder.indexOf(zoomLevel) >= zoomOrder.indexOf(zone.minZoom)
   const injColor = hasInj ? new THREE.Color(iColor(inj!.intensity)) : new THREE.Color(zone.color)
-  const emissiveColor = isHov ? new THREE.Color('#00c8e0') : hasInj ? new THREE.Color(iColor(inj!.intensity)) : new THREE.Color(zone.color).multiplyScalar(0.3)
+  const emissiveColor = isHov ? new THREE.Color('#06B6D4') : hasInj ? new THREE.Color(iColor(inj!.intensity)) : new THREE.Color(zone.color).multiplyScalar(0.3)
 
   useFrame(() => {
     if (!meshRef.current) return
@@ -56,7 +56,7 @@ function MuscleMesh({ zone, injuries, hovered, zoomLevel, onHover, onClick }: {
       <meshStandardMaterial color={injColor} emissive={emissiveColor} emissiveIntensity={0.05} roughness={0.45} metalness={0.15} transparent opacity={0}/>
       {(isHov || hasInj) && (
         <Html position={[0, zone.scale[1] + 0.08, 0]} distanceFactor={8} style={{ pointerEvents:'none' }}>
-          <div style={{ background:'rgba(4,8,16,0.92)', border:`1px solid ${hasInj?iColor(inj!.intensity):'rgba(0,200,224,0.5)'}`, borderRadius:8, padding:'4px 10px', fontSize:10, fontWeight:600, color:hasInj?iColor(inj!.intensity):'#00c8e0', whiteSpace:'nowrap', backdropFilter:'blur(8px)', fontFamily:'DM Sans,sans-serif', transform:'translateY(-8px)' }}>
+          <div style={{ background:'rgba(4,8,16,0.92)', border:`1px solid ${hasInj?iColor(inj!.intensity):'rgba(6,182,212,0.5)'}`, borderRadius:8, padding:'4px 10px', fontSize:10, fontWeight:600, color:hasInj?iColor(inj!.intensity):'#06B6D4', whiteSpace:'nowrap', backdropFilter:'blur(8px)', fontFamily:'DM Sans,sans-serif', transform:'translateY(-8px)' }}>
             {zone.label}{hasInj&&<span style={{ marginLeft:6, opacity:0.8 }}>{inj!.intensity}/10</span>}
           </div>
         </Html>
@@ -126,7 +126,7 @@ export default function Body3DCanvas({ injuries, hovered, zoomLevel, onHover, on
       <ambientLight intensity={0.6}/>
       <directionalLight position={[3,5,3]} intensity={1.4} castShadow/>
       <directionalLight position={[-3,3,-2]} intensity={0.5} color="#80b0ff"/>
-      <pointLight position={[0,3,2]} intensity={0.8} color="#00c8e0" distance={8}/>
+      <pointLight position={[0,3,2]} intensity={0.8} color="#06B6D4" distance={8}/>
       <pointLight position={[0,0,-3]} intensity={0.3} color="#4060a0" distance={6}/>
       <CameraTracker onZoomChange={onZoomChange}/>
       <group position={[0,-0.1,0]}>

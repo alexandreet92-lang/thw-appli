@@ -120,7 +120,7 @@ export default function CheckInModal({ existing, onClose, onSaved }: Props) {
         <div style={{ display:'flex',gap:8,marginTop:20 }}>
           <button onClick={onClose} style={{ flex:1,padding:'10px',borderRadius:11,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
           <button onClick={save} disabled={saving}
-            style={{ flex:2,padding:'10px',borderRadius:11,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:saving?'default':'pointer',opacity:saving?0.7:1 }}>
+            style={{ flex:2,padding:'10px',borderRadius:11,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:saving?'default':'pointer',opacity:saving?0.7:1 }}>
             {saving ? 'Enregistrement…' : 'Enregistrer'}
           </button>
         </div>

@@ -15,7 +15,7 @@ const ATHLETES = [
     ctlColor: 'bg-brand',
     next: 'Natation 06h00',
     online: true,
-    avatarColor: 'bg-[rgba(0,200,224,0.15)] text-brand',
+    avatarColor: 'bg-[rgba(6,182,212,0.15)] text-brand',
   },
   {
     initial: 'A',

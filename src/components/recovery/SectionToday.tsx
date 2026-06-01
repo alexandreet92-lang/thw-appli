@@ -24,7 +24,7 @@ export default function SectionToday({ checkin, onCheckIn }: Props) {
           <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'3px 0 0' }}>État du jour</h2>
         </div>
         <button onClick={onCheckIn}
-          style={{ padding:'8px 16px',borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer',whiteSpace:'nowrap' as const }}>
+          style={{ padding:'8px 16px',borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer',whiteSpace:'nowrap' as const }}>
           {hasData ? 'Modifier le check-in' : 'Check-in du matin'}
         </button>
       </div>
@@ -53,7 +53,7 @@ export default function SectionToday({ checkin, onCheckIn }: Props) {
           <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10 }}>
             {[
               { label:'FC REPOS', value:'—', sub:'Garmin, Polar ou Whoop', color:'#ef4444' },
-              { label:'HRV',      value:'—', sub:'Garmin, Whoop ou Oura',  color:'#00c8e0' },
+              { label:'HRV',      value:'—', sub:'Garmin, Whoop ou Oura',  color:'#06B6D4' },
               { label:'SOMMEIL',
                 value: checkin?.sleep_hours ? fmtHoursDecimal(checkin.sleep_hours) : '—',
                 sub: checkin?.sleep_hours ? 'Estimé via check-in' : 'Estimé via check-in',

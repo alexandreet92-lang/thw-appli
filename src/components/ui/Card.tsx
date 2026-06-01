@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 type ColorVariant = 'brand' | 'blue' | 'red' | 'orange' | 'green' | 'default'
 
 const topBarColors: Record<ColorVariant, string> = {
-  brand:   'from-[#00c8e0] to-transparent',
+  brand:   'from-[#06B6D4] to-transparent',
   blue:    'from-[#5b6fff] to-transparent',
   red:     'from-[#ff5f5f] to-transparent',
   orange:  'from-[#ffb340] to-transparent',
@@ -12,7 +12,7 @@ const topBarColors: Record<ColorVariant, string> = {
 }
 
 const valueColors: Record<ColorVariant, string> = {
-  brand:   'text-[#00c8e0]',
+  brand:   'text-[#06B6D4]',
   blue:    'text-[#5b6fff]',
   red:     'text-[#ff5f5f]',
   orange:  'text-[#ffb340]',

@@ -89,13 +89,13 @@ export default function MealModalTemplates({ slot, onSelect }: Props) {
           {filtered.map(t => (
             <button key={t.id} onClick={() => onSelect(t)}
               style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', textAlign: 'left', cursor: 'pointer', transition: 'border-color 0.15s' }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = '#00c8e0')}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = '#06B6D4')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 5, fontFamily: 'Syne,sans-serif' }}>
                 {t.nom}
               </div>
               <div style={{ display: 'flex', gap: 10, fontSize: 10, fontFamily: 'DM Mono,monospace', flexWrap: 'wrap' }}>
-                {t.kcal      != null && <span style={{ color: '#00c8e0' }}>{t.kcal} kcal</span>}
+                {t.kcal      != null && <span style={{ color: '#06B6D4' }}>{t.kcal} kcal</span>}
                 {t.proteines != null && <span style={{ color: '#3B82F6' }}>P {t.proteines}g</span>}
                 {t.glucides  != null && <span style={{ color: '#F97316' }}>G {t.glucides}g</span>}
                 {t.lipides   != null && <span style={{ color: '#8B5CF6' }}>L {t.lipides}g</span>}

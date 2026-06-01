@@ -177,12 +177,12 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
                 onClick={() => onDayClick?.(ds)}
                 style={{
                   minHeight:72,borderRadius:7,background:'var(--bg-card2)',
-                  border:`1px solid ${isToday ? '#00c8e0' : 'var(--border)'}`,
+                  border:`1px solid ${isToday ? '#06B6D4' : 'var(--border)'}`,
                   padding:'3px 4px',display:'flex',flexDirection:'column' as const,gap:1,
                   cursor: onDayClick ? 'pointer' : 'default',
                 }}
               >
-                <p style={{ fontSize:10,fontWeight:isToday?700:500,color:isToday?'#00c8e0':'var(--text-mid)',margin:0,textAlign:'right' as const }}>
+                <p style={{ fontSize:10,fontWeight:isToday?700:500,color:isToday?'#06B6D4':'var(--text-mid)',margin:0,textAlign:'right' as const }}>
                   {day}
                 </p>
 

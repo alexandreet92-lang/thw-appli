@@ -27,7 +27,7 @@ export interface ScoreStatus {
 export function scoreStatus(score: number): ScoreStatus {
   if (score >= 91) return { label:'Excellent', color:'#16a34a', bg:'rgba(22,163,74,0.12)',   desc:'Forme optimale. Séance intensive possible.' }
   if (score >= 81) return { label:'Bon',       color:'#22c55e', bg:'rgba(34,197,94,0.12)',   desc:'Bonne récupération. Entraîne-toi pleinement.' }
-  if (score >= 61) return { label:'Correct',   color:'#00c8e0', bg:'rgba(0,200,224,0.12)',   desc:'Récupération correcte. Intensité modérée.' }
+  if (score >= 61) return { label:'Correct',   color:'#06B6D4', bg:'rgba(6,182,212,0.12)',   desc:'Récupération correcte. Intensité modérée.' }
   if (score >= 41) return { label:'Moyen',     color:'#f97316', bg:'rgba(249,115,22,0.12)',  desc:'Récupération partielle. Préfère une séance légère.' }
   return              { label:'Faible',    color:'#ef4444', bg:'rgba(239,68,68,0.12)',   desc:'Corps fatigué. Repos actif recommandé.' }
 }

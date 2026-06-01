@@ -138,7 +138,7 @@ export default function FoodSearch({ onAdd, onBarcode }: Props) {
             <button onClick={() => setQty(q => q + 10)} style={btnBase}>+</button>
           </div>
           <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-dim)', marginBottom: 10 }}>
-            <span style={{ color: '#00c8e0', fontWeight: 700 }}>{macros.kcal} kcal</span>
+            <span style={{ color: '#06B6D4', fontWeight: 700 }}>{macros.kcal} kcal</span>
             <span>P {macros.prot}g</span><span>G {macros.gluc}g</span><span>L {macros.lip}g</span>
           </div>
           <button onClick={add}

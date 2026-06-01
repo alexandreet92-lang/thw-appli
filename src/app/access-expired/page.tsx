@@ -80,7 +80,7 @@ export default function AccessExpiredPage() {
             display: 'inline-block',
             padding: '13px 28px',
             borderRadius: 10,
-            background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
+            background: 'linear-gradient(135deg, #06B6D4, #5b6fff)',
             color: '#fff',
             fontFamily: 'Syne, sans-serif',
             fontSize: 14,

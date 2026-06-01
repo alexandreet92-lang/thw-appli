@@ -116,7 +116,7 @@ export default function CalendarView({ targetKcal, onDayClick }: Props) {
                 background: bg, color,
                 cursor: isFuture ? 'default' : 'pointer',
                 opacity: isFuture ? 0.3 : 1,
-                outline: isToday ? '1.5px solid #00c8e0' : 'none',
+                outline: isToday ? '1.5px solid #06B6D4' : 'none',
                 transition: 'background 0.12s',
               }}
               onMouseEnter={e => { if (!isFuture) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-card2)' }}

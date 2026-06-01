@@ -19,7 +19,7 @@ import { PageLoader } from '@/components/ui/PageLoader'
 
 // ── Marketing constants ────────────────────────────────────────
 const MKT_PILLAR_COLORS: Record<string, string> = {
-  athlete: '#00c8e0',
+  athlete: '#06B6D4',
   expert:  '#5b6fff',
   builder: '#f59e0b',
 }
@@ -718,7 +718,7 @@ export default function BriefingPage() {
                     padding: '10px 12px',
                     borderRadius: 8,
                     background: 'var(--bg2, rgba(0,0,0,0.03))',
-                    borderLeft: '3px solid #00c8e0',
+                    borderLeft: '3px solid #06B6D4',
                   }}>
                     <p style={{
                       margin: 0,
@@ -761,7 +761,7 @@ export default function BriefingPage() {
                     style={{
                       marginTop: 3,
                       width: 16, height: 16,
-                      accentColor: '#00c8e0',
+                      accentColor: '#06B6D4',
                       cursor: 'pointer',
                       flexShrink: 0,
                     }}
@@ -849,8 +849,8 @@ export default function BriefingPage() {
               {(briefing.content.a_retenir?.length ?? 0) > 0 && (
                 <div style={{
                   ...card,
-                  background: 'linear-gradient(135deg, rgba(0,200,224,0.08), rgba(91,111,255,0.06))',
-                  border: '1px solid rgba(0,200,224,0.22)',
+                  background: 'linear-gradient(135deg, rgba(6,182,212,0.08), rgba(91,111,255,0.06))',
+                  border: '1px solid rgba(6,182,212,0.22)',
                   padding: 20,
                   marginBottom: 16,
                 }}>
@@ -859,7 +859,7 @@ export default function BriefingPage() {
                     fontFamily: 'Syne, sans-serif',
                     fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
                     textTransform: 'uppercase',
-                    color: '#00c8e0',
+                    color: '#06B6D4',
                   }}>
                     À retenir
                   </p>
@@ -872,7 +872,7 @@ export default function BriefingPage() {
                         <span style={{
                           flexShrink: 0, marginTop: 7,
                           width: 6, height: 6, borderRadius: '50%',
-                          background: '#00c8e0',
+                          background: '#06B6D4',
                         }} />
                         <span>{b}</span>
                       </li>
@@ -901,8 +901,8 @@ export default function BriefingPage() {
                         fontFamily: 'DM Sans, sans-serif',
                         fontSize: 13,
                         fontWeight: active ? 700 : 500,
-                        color: active ? '#00c8e0' : 'var(--text-mid)',
-                        borderBottom: `2px solid ${active ? '#00c8e0' : 'transparent'}`,
+                        color: active ? '#06B6D4' : 'var(--text-mid)',
+                        borderBottom: `2px solid ${active ? '#06B6D4' : 'transparent'}`,
                         transition: 'color 0.14s, border-color 0.14s',
                         display: 'flex', alignItems: 'center', gap: 6,
                       }}
@@ -912,8 +912,8 @@ export default function BriefingPage() {
                         <span style={{
                           fontSize: 11, fontWeight: 600,
                           padding: '1px 7px', borderRadius: 99,
-                          background: active ? 'rgba(0,200,224,0.14)' : 'var(--bg2, rgba(0,0,0,0.05))',
-                          color: active ? '#00c8e0' : 'var(--text-dim)',
+                          background: active ? 'rgba(6,182,212,0.14)' : 'var(--bg2, rgba(0,0,0,0.05))',
+                          color: active ? '#06B6D4' : 'var(--text-dim)',
                         }}>
                           {count}
                         </span>
@@ -944,10 +944,10 @@ export default function BriefingPage() {
                           fontSize: 12,
                           fontWeight: active ? 700 : 500,
                           border: active
-                            ? '1px solid #00c8e0'
+                            ? '1px solid #06B6D4'
                             : '1px solid var(--border, rgba(0,0,0,0.08))',
-                          background: active ? 'rgba(0,200,224,0.10)' : 'transparent',
-                          color: active ? '#00c8e0' : 'var(--text-mid)',
+                          background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
+                          color: active ? '#06B6D4' : 'var(--text-mid)',
                           display: 'flex', alignItems: 'center', gap: 6,
                           transition: 'all 0.14s',
                         }}
@@ -957,8 +957,8 @@ export default function BriefingPage() {
                           fontSize: 10, fontWeight: 600,
                           padding: '0 6px', borderRadius: 99, minWidth: 16,
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          background: active ? 'rgba(0,200,224,0.18)' : 'var(--bg2, rgba(0,0,0,0.05))',
-                          color: active ? '#00c8e0' : 'var(--text-dim)',
+                          background: active ? 'rgba(6,182,212,0.18)' : 'var(--bg2, rgba(0,0,0,0.05))',
+                          color: active ? '#06B6D4' : 'var(--text-dim)',
                         }}>
                           {st.articles.length}
                         </span>
@@ -1620,5 +1620,5 @@ const sectionLabel: React.CSSProperties = {
   fontFamily: 'Syne, sans-serif',
   fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
   textTransform: 'uppercase',
-  color: '#00c8e0',
+  color: '#06B6D4',
 }

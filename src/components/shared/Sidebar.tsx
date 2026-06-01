@@ -198,7 +198,7 @@ function Avatar({ url, name, size = 40 }: { url: string | null; name: string | n
           borderRadius: '50%',
           objectFit: 'cover',
           flexShrink: 0,
-          border: '2px solid rgba(0,200,224,0.3)',
+          border: '2px solid rgba(6,182,212,0.3)',
         }}
       />
     )
@@ -209,7 +209,7 @@ function Avatar({ url, name, size = 40 }: { url: string | null; name: string | n
       width: size, height: size,
       borderRadius: '50%',
       flexShrink: 0,
-      background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
+      background: 'linear-gradient(135deg, #06B6D4, #5b6fff)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: 'Syne, sans-serif',
       fontWeight: 700,
@@ -250,14 +250,14 @@ function NavItem({
         fontFamily: 'DM Sans, sans-serif',
         fontSize: 13,
         fontWeight: active ? 600 : 400,
-        color: active ? '#00c8e0' : 'var(--text-mid)',
-        background: active ? 'rgba(0,200,224,0.10)' : 'transparent',
-        borderLeft: `3px solid ${active ? '#00c8e0' : 'transparent'}`,
+        color: active ? '#06B6D4' : 'var(--text-mid)',
+        background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
+        borderLeft: `3px solid ${active ? '#06B6D4' : 'transparent'}`,
         transition: 'background 0.14s, color 0.14s, transform 0.12s ease, opacity 0.12s ease',
       }}
       onMouseEnter={e => {
         if (!active) {
-          (e.currentTarget as HTMLElement).style.background = 'rgba(0,200,224,0.06)'
+          (e.currentTarget as HTMLElement).style.background = 'rgba(6,182,212,0.06)'
           ;(e.currentTarget as HTMLElement).style.color = 'var(--text)'
         }
       }}
@@ -309,7 +309,7 @@ function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?
           flexShrink: 0,
           transition: 'background 0.14s, transform 0.12s ease, opacity 0.12s ease',
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,200,224,0.05)' }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(6,182,212,0.05)' }}
         onMouseLeave={e => {
           (e.currentTarget as HTMLElement).style.background = 'transparent'
           ;(e.currentTarget as HTMLElement).style.transform = 'scale(1)'
@@ -424,14 +424,14 @@ function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?
             fontFamily: 'DM Sans, sans-serif',
             fontSize: 13,
             fontWeight: briefingActive ? 600 : 400,
-            color: briefingActive ? '#00c8e0' : 'var(--text-mid)',
-            background: briefingActive ? 'rgba(0,200,224,0.10)' : 'transparent',
-            borderLeft: `3px solid ${briefingActive ? '#00c8e0' : 'transparent'}`,
+            color: briefingActive ? '#06B6D4' : 'var(--text-mid)',
+            background: briefingActive ? 'rgba(6,182,212,0.10)' : 'transparent',
+            borderLeft: `3px solid ${briefingActive ? '#06B6D4' : 'transparent'}`,
             transition: 'background 0.14s, color 0.14s',
           }}
           onMouseEnter={e => {
             if (!briefingActive) {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(0,200,224,0.06)'
+              (e.currentTarget as HTMLElement).style.background = 'rgba(6,182,212,0.06)'
               ;(e.currentTarget as HTMLElement).style.color = 'var(--text)'
             }
           }}
@@ -481,7 +481,7 @@ function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?
               width: '100%', textAlign: 'left',
               transition: 'background 0.14s, opacity 0.15s',
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,200,224,0.06)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(6,182,212,0.06)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -492,7 +492,7 @@ function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?
             />
             <span style={{
               fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 400,
-              background: 'linear-gradient(90deg,#00c8e0,#5b6fff)',
+              background: 'linear-gradient(90deg,#06B6D4,#5b6fff)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}>
@@ -512,7 +512,7 @@ function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?
             textAlign: 'left',
             transition: 'background 0.14s',
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,200,224,0.06)' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(6,182,212,0.06)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
         >
           <span style={{ flexShrink: 0, opacity: 0.6, display: 'flex' }}>
@@ -634,7 +634,9 @@ export function Sidebar() {
           MOBILE — top bar fixe 56px + drawer avec transition
           ════════════════════════════════════════════════════ */}
 
-      {/* Top bar — hamburger | logo | spacer | logo IA | avatar */}
+      {/* Top bar — hamburger | logo | spacer | logo IA | avatar
+          (masqué sur /competences : la page a son propre header dédié) */}
+      {!pathname?.startsWith('/competences') && (
       <div
         data-app-header=""
         className="md:hidden"
@@ -707,6 +709,7 @@ export function Sidebar() {
           />
         </Link>
       </div>
+      )}
 
       {/* Overlay */}
       <div

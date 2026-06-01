@@ -1552,7 +1552,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
     if (gateLoading) {
       return (
         <div style={{ padding: '40px 0', textAlign: 'center' }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(0,200,224,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(6,182,212,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
           <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Chargement de tes données…</p>
         </div>
       )
@@ -1676,7 +1676,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
   if (phase === 'generating') {
     return (
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(0,200,224,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(6,182,212,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
           Analyse en cours…
         </p>
@@ -3100,7 +3100,7 @@ FORMATAGE OBLIGATOIRE :
                 <button key={d} onClick={() => setEstimatedDuration(d)} style={{
                   padding: '7px 8px', borderRadius: 7, fontSize: 10,
                   border: `1px solid ${estimatedDuration === d ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
-                  background: estimatedDuration === d ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+                  background: estimatedDuration === d ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
                   color: estimatedDuration === d ? 'var(--ai-accent)' : 'var(--ai-mid)', cursor: 'pointer',
                 }}>
                   {d}
@@ -3325,8 +3325,8 @@ FORMATAGE OBLIGATOIRE :
               onClick={() => { void generateRechargePDF() }}
               style={{
                 flex: 1, padding: '9px', borderRadius: 9,
-                border: '1px solid rgba(0,200,224,0.4)', background: 'rgba(0,200,224,0.06)',
-                color: 'var(--ai-accent, #00c8e0)', fontSize: 12, fontWeight: 600,
+                border: '1px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.06)',
+                color: 'var(--ai-accent, #06B6D4)', fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
               }}
             >
@@ -3830,7 +3830,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
           </div>
         </div>
 
-        <div style={{ padding: '12px 14px', borderRadius: 10, background: 'linear-gradient(135deg, rgba(91,111,255,0.06) 0%, rgba(0,200,224,0.04) 100%)', border: '1px solid rgba(91,111,255,0.15)', marginBottom: 10 }}>
+        <div style={{ padding: '12px 14px', borderRadius: 10, background: 'linear-gradient(135deg, rgba(91,111,255,0.06) 0%, rgba(6,182,212,0.04) 100%)', border: '1px solid rgba(91,111,255,0.15)', marginBottom: 10 }}>
           <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--ai-accent)', fontFamily: 'Syne,sans-serif', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {report.interpretation.niveau}
           </p>
@@ -4277,7 +4277,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
               onClick={() => { setCompareMode(p => !p); setCompareAct(null) }}
               style={{
                 width: 28, height: 16, borderRadius: 8,
-                background: compareMode ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+                background: compareMode ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--ai-border)',
                 position: 'relative', cursor: 'pointer', transition: 'background 0.15s',
               }}
             >
@@ -4314,8 +4314,8 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
                 onClick={() => handleSelectActivity(a)}
                 style={{
                   padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
-                  border: `1px solid ${isMain ? '#5b6fff' : isCmp ? '#00c8e0' : 'var(--ai-border)'}`,
-                  background: isMain ? 'rgba(91,111,255,0.08)' : isCmp ? 'rgba(0,200,224,0.08)' : 'var(--ai-bg2)',
+                  border: `1px solid ${isMain ? '#5b6fff' : isCmp ? '#06B6D4' : 'var(--ai-border)'}`,
+                  background: isMain ? 'rgba(91,111,255,0.08)' : isCmp ? 'rgba(6,182,212,0.08)' : 'var(--ai-bg2)',
                   transition: 'all 0.1s',
                 }}
               >
@@ -4323,7 +4323,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
                   <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
                     {AE_SPORT_LABELS[a.sport_type] ?? a.sport_type}
                     {isMain && <span style={{ marginLeft: 6, fontSize: 10, color: '#5b6fff', fontWeight: 700 }}>PRINCIPAL</span>}
-                    {isCmp && <span style={{ marginLeft: 6, fontSize: 10, color: '#00c8e0', fontWeight: 700 }}>COMPARE</span>}
+                    {isCmp && <span style={{ marginLeft: 6, fontSize: 10, color: '#06B6D4', fontWeight: 700 }}>COMPARE</span>}
                   </span>
                   <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{dateStr}</span>
                 </div>
@@ -4681,7 +4681,7 @@ function StreamProfileChart({ streams, zones, sport }: {
             <div style={{
               position: 'absolute', top: 0, bottom: 0,
               left: `${x1}%`, width: `${x2 - x1}%`,
-              background: 'rgba(0,200,224,0.15)',
+              background: 'rgba(6,182,212,0.15)',
               pointerEvents: 'none', zIndex: 9,
             }} />
           )
@@ -4936,7 +4936,7 @@ function sportColor(sport: string): string {
   const s = sport.toLowerCase()
   if (s.includes('run') || s.includes('trail')) return '#22c55e'
   if (s.includes('bike') || s.includes('cycl') || s.includes('virtual')) return '#5b6fff'
-  if (s.includes('swim') || s.includes('nata')) return '#00c8e0'
+  if (s.includes('swim') || s.includes('nata')) return '#06B6D4'
   if (s.includes('hyrox')) return '#f97316'
   if (s.includes('gym') || s.includes('weight') || s.includes('strength')) return '#8b5cf6'
   return '#6b7280'
@@ -5734,7 +5734,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             <button key={opt.id} onClick={() => setAnalysisType(opt.id)} style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10,
               border: `1px solid ${analysisType === opt.id ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
-              background: analysisType === opt.id ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+              background: analysisType === opt.id ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
               cursor: 'pointer', textAlign: 'left' as const, width: '100%',
             }}>
               <span style={{ fontSize: 18 }}>{opt.icon}</span>
@@ -5754,7 +5754,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
                 <button key={m} onClick={() => setCompareMode(m === 'compare')} style={{
                   flex: 1, padding: '8px', borderRadius: 8, fontSize: 11,
                   border: `1px solid ${(m === 'compare') === compareMode ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
-                  background: (m === 'compare') === compareMode ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+                  background: (m === 'compare') === compareMode ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
                   color: (m === 'compare') === compareMode ? 'var(--ai-accent)' : 'var(--ai-mid)',
                   cursor: 'pointer', fontWeight: (m === 'compare') === compareMode ? 700 : 400,
                 }}>
@@ -5935,7 +5935,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
           style={{
             width: '100%', padding: '11px', borderRadius: 10, border: 'none',
             background: (selected.length > 0 && (!compareMode || selected.length === 2))
-              ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+              ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--ai-border)',
             color: (selected.length > 0 && (!compareMode || selected.length === 2)) ? '#fff' : 'var(--ai-dim)',
             fontSize: 13, fontWeight: 700, cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
             fontFamily: 'Syne,sans-serif', marginBottom: 6,
@@ -6057,9 +6057,9 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         ))}
 
         {report.comparison && (
-          <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(0,200,224,0.2)', background: 'rgba(0,200,224,0.04)', marginBottom: 10 }}>
+          <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(6,182,212,0.04)', marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#00c8e0', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comparaison</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comparaison</p>
               <span style={{ fontSize: 11, fontWeight: 700, color: report.comparison.progression === 'progression' ? '#22c55e' : report.comparison.progression === 'regression' ? '#ef4444' : 'var(--ai-mid)' }}>
                 {report.comparison.progression === 'progression' ? '↑ Progression' : report.comparison.progression === 'regression' ? '↓ Régression' : '= Stable'}
               </span>
@@ -6113,7 +6113,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
                   key={i}
                   onClick={() => handleFollowUp(action)}
                   style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, cursor: 'pointer', fontWeight: 500, fontFamily: 'DM Sans, sans-serif', transition: 'border-color 0.15s, background 0.15s' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,200,224,0.5)'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,200,224,0.06)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(6,182,212,0.5)'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(6,182,212,0.06)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                 >
                   {action.label} →
@@ -6157,7 +6157,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             <button key={s.label} onClick={() => setPeriod1(s)} style={{
               padding: '5px 10px', borderRadius: 6, fontSize: 10,
               border: `1px solid ${period1?.label === s.label ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
-              background: period1?.label === s.label ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+              background: period1?.label === s.label ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
               color: period1?.label === s.label ? 'var(--ai-accent)' : 'var(--ai-mid)', cursor: 'pointer',
             }}>{s.label}</button>
           ))}
@@ -6235,7 +6235,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             <button key={y} onClick={() => setYear1(y)} style={{
               padding: '8px 14px', borderRadius: 8, fontSize: 12,
               border: `1px solid ${year1 === y ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
-              background: year1 === y ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+              background: year1 === y ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
               color: year1 === y ? 'var(--ai-accent)' : 'var(--ai-mid)',
               cursor: 'pointer', fontWeight: year1 === y ? 700 : 400, fontFamily: 'DM Mono,monospace',
             }}>{y}</button>
@@ -6483,9 +6483,9 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
 
       {/* Tableau de comparaison */}
       {report.comparison && (
-        <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(0,200,224,0.2)', background: 'rgba(0,200,224,0.04)', marginBottom: 10 }}>
+        <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(6,182,212,0.04)', marginBottom: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#00c8e0', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comparaison</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comparaison</p>
             <span style={{ fontSize: 11, fontWeight: 700, color: report.comparison.progression === 'progression' ? '#22c55e' : report.comparison.progression === 'regression' ? '#ef4444' : 'var(--ai-mid)' }}>
               {report.comparison.progression === 'progression' ? '↑ Progression' : report.comparison.progression === 'regression' ? '↓ Régression' : '= Stable'}
             </span>
@@ -6580,7 +6580,7 @@ const LEVEL_LABEL: Record<GoalRace['level'], string> = {
   gty: 'GTY', main: 'Principal', important: 'Important', secondary: 'Secondaire',
 }
 const LEVEL_COLOR: Record<GoalRace['level'], string> = {
-  gty: '#DC2626', main: '#EA580C', important: '#00c8e0', secondary: '#6b7280',
+  gty: '#DC2626', main: '#EA580C', important: '#06B6D4', secondary: '#6b7280',
 }
 
 // ── Triathlon time helpers ─────────────────────────────────────
@@ -8227,10 +8227,10 @@ function TrainingPlanFlow({
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {(program.points_cles ?? []).map((pt, i) => (
                 <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: 'var(--ai-mid)', lineHeight: 1.6 }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#00c8e0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 3 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 3 }}>
                     <circle cx="12" cy="12" r="10" />
                     <circle cx="12" cy="12" r="6" />
-                    <circle cx="12" cy="12" r="2" fill="#00c8e0" />
+                    <circle cx="12" cy="12" r="2" fill="#06B6D4" />
                   </svg>
                   <span>{pt}</span>
                 </li>
@@ -8821,7 +8821,7 @@ function TrainingPlanFlow({
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                             <span style={{ fontSize: 11, color: '#6b7280', width: 90, flexShrink: 0 }}>Total</span>
-                            <span style={{ fontSize: 12, color: '#00c8e0', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{secToHHMMSS(total)}</span>
+                            <span style={{ fontSize: 12, color: '#06B6D4', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{secToHHMMSS(total)}</span>
                           </div>
                         )
                       })()}
@@ -9107,7 +9107,7 @@ function TrainingPlanFlow({
               <div>
                 <span style={tpLabelStyle()}>
                   Séances par discipline — Triathlon
-                  <span style={{ marginLeft: 8, fontWeight: 400, color: '#00c8e0', fontSize: 12 }}>
+                  <span style={{ marginLeft: 8, fontWeight: 400, color: '#06B6D4', fontSize: 12 }}>
                     Total : {total} séance{total > 1 ? 's' : ''}
                   </span>
                 </span>
@@ -9138,7 +9138,7 @@ function TrainingPlanFlow({
               <div>
                 <span style={tpLabelStyle()}>
                   Séances par discipline — Hyrox
-                  <span style={{ marginLeft: 8, fontWeight: 400, color: '#00c8e0', fontSize: 12 }}>
+                  <span style={{ marginLeft: 8, fontWeight: 400, color: '#06B6D4', fontSize: 12 }}>
                     Total : {total} séance{total > 1 ? 's' : ''}
                   </span>
                 </span>
@@ -10066,7 +10066,7 @@ const SB_SPORTS: { id: string; label: string; color: string }[] = [
   { id: 'muscu',     label: 'Muscu / Renfo',      color: '#5b6fff' },
   { id: 'running',   label: 'Running',             color: '#22c55e' },
   { id: 'velo',      label: 'Vélo / Home trainer', color: '#f97316' },
-  { id: 'natation',  label: 'Natation',            color: '#00c8e0' },
+  { id: 'natation',  label: 'Natation',            color: '#06B6D4' },
   { id: 'hyrox',     label: 'Hyrox',               color: '#ef4444' },
   { id: 'aviron',    label: 'Aviron',              color: '#14b8a6' },
   { id: 'triathlon', label: 'Triathlon',           color: '#a855f7' },
@@ -12866,7 +12866,7 @@ Sports : ${sports} | Objectif : ${goal}`
         disabled={selected.length === 0}
         style={{
           width: '100%', padding: '11px', borderRadius: 10,
-          background: selected.length > 0 ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--ai-border)',
+          background: selected.length > 0 ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--ai-border)',
           border: 'none', color: selected.length > 0 ? '#fff' : 'var(--ai-dim)',
           fontSize: 13, fontWeight: 700, cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
           fontFamily: 'Syne,sans-serif',
@@ -13196,7 +13196,7 @@ function RuleHelperFlow({ category, onPrepare, onCancel }: {
           disabled={description.trim().length < 5}
           style={{
             flex: 2, padding: '9px', borderRadius: 9, border: 'none',
-            background: description.trim().length >= 5 ? 'linear-gradient(135deg, #00c8e0, #5b6fff)' : 'var(--ai-bg2)',
+            background: description.trim().length >= 5 ? 'linear-gradient(135deg, #06B6D4, #5b6fff)' : 'var(--ai-bg2)',
             color: description.trim().length >= 5 ? '#fff' : 'var(--ai-dim)',
             fontSize: 12, fontWeight: 600,
             cursor: description.trim().length >= 5 ? 'pointer' : 'not-allowed',
@@ -13551,7 +13551,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
         </p>
         {loadingSports ? (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(0,200,224,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto' }} />
+            <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(6,182,212,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto' }} />
           </div>
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
@@ -13581,7 +13581,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
     if (loadingGate) {
       return (
         <div style={{ padding: '40px 0', textAlign: 'center' }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(0,200,224,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(6,182,212,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
           <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Chargement de tes données…</p>
         </div>
       )
@@ -13653,7 +13653,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
   if (phase === 'generating') {
     return (
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(0,200,224,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(6,182,212,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
           Estimation en cours…
         </p>
@@ -14010,7 +14010,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 8px', fontWeight: 600 }}>Sports</p>
         {loadingSports ? (
           <div style={{ textAlign: 'center', padding: '10px 0' }}>
-            <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(0,200,224,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto' }} />
+            <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(6,182,212,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto' }} />
           </div>
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
@@ -14073,7 +14073,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
   if (phase === 'generating') {
     return (
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(0,200,224,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(6,182,212,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
           Analyse de progression…
         </p>
@@ -15061,7 +15061,7 @@ Séances 48h: ${next48h.map((p: any) => `${p.sport} ${p.title ?? ''} ${p.duratio
               </p>
             </div>
             <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: '#00c8e0', margin: 0 }}>TSB</p>
+              <p style={{ fontSize: 8, color: '#06B6D4', margin: 0 }}>TSB</p>
               <p style={{ fontSize: 14, fontWeight: 700, color: d.tsbFinal < -10 ? '#ef4444' : d.tsbFinal > 5 ? '#22c55e' : 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.tsbFinal}</p>
             </div>
             <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
@@ -15656,7 +15656,7 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
             <button key={opt.id} onClick={() => setWeekChoice(opt.id)} style={{
               flex: 1, padding: '10px 8px', borderRadius: 10, textAlign: 'left' as const,
               border: `1px solid ${weekChoice === opt.id ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
-              background: weekChoice === opt.id ? 'rgba(0,200,224,0.06)' : 'var(--ai-bg2)',
+              background: weekChoice === opt.id ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
               cursor: 'pointer',
             }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: weekChoice === opt.id ? 'var(--ai-accent)' : 'var(--ai-text)', margin: 0 }}>{opt.label}</p>
@@ -15727,7 +15727,7 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
             <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpis.atlFinal}</p>
           </div>
           <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-            <p style={{ fontSize: 8, color: '#00c8e0', margin: 0 }}>TSB</p>
+            <p style={{ fontSize: 8, color: '#06B6D4', margin: 0 }}>TSB</p>
             <p style={{ fontSize: 13, fontWeight: 700, color: kpis.tsbFinal < -10 ? '#ef4444' : kpis.tsbFinal > 5 ? '#22c55e' : 'var(--ai-text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{kpis.tsbFinal}</p>
           </div>
           <div style={{ padding: '7px 4px', borderRadius: 8, border: `1px solid ${riskColor}`, background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
@@ -15838,8 +15838,8 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
               }}
               style={{
                 flex: 1, padding: '9px', borderRadius: 9,
-                border: '1px solid rgba(0,200,224,0.4)', background: 'rgba(0,200,224,0.06)',
-                color: 'var(--ai-accent, #00c8e0)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                border: '1px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.06)',
+                color: 'var(--ai-accent, #06B6D4)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}
             >
               Télécharger PDF
@@ -17163,7 +17163,7 @@ FORMAT JSON STRICT :
 
         {loadingRaces ? (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(0,200,224,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto' }} />
+            <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid rgba(6,182,212,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto' }} />
           </div>
         ) : (
           <>
@@ -17256,8 +17256,8 @@ FORMAT JSON STRICT :
                   disabled={uploadingFile}
                   style={{
                     width: '100%', padding: '10px', borderRadius: 8,
-                    border: `1px dashed ${courseProfile ? 'rgba(0,200,224,0.5)' : 'var(--ai-border)'}`,
-                    background: courseProfile ? 'rgba(0,200,224,0.04)' : 'var(--ai-bg2)',
+                    border: `1px dashed ${courseProfile ? 'rgba(6,182,212,0.5)' : 'var(--ai-border)'}`,
+                    background: courseProfile ? 'rgba(6,182,212,0.04)' : 'var(--ai-bg2)',
                     color: courseProfile ? 'var(--ai-accent)' : 'var(--ai-mid)',
                     fontSize: 11, cursor: uploadingFile ? 'default' : 'pointer',
                     fontFamily: 'DM Sans,sans-serif',
@@ -17640,7 +17640,7 @@ FORMAT JSON STRICT :
     if (loadingContext || contextData == null) {
       return (
         <div style={{ padding: '40px 0', textAlign: 'center' }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(0,200,224,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(6,182,212,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
           <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Chargement du contexte…</p>
         </div>
       )
@@ -17717,7 +17717,7 @@ FORMAT JSON STRICT :
   if (phase === 'generating') {
     return (
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(0,200,224,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(6,182,212,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
           Génération de la stratégie…
         </p>
@@ -18013,8 +18013,8 @@ FORMAT JSON STRICT :
           }}
           style={{
             flex: 1, padding: '9px 12px', borderRadius: 9,
-            border: '1px solid rgba(0,200,224,0.4)',
-            background: 'rgba(0,200,224,0.06)',
+            border: '1px solid rgba(6,182,212,0.4)',
+            background: 'rgba(6,182,212,0.06)',
             color: 'var(--ai-accent)', fontSize: 12, fontWeight: 600,
             cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -18183,7 +18183,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
           }}
           style={{
             width: '100%', padding: '8px 12px', borderRadius: 9,
-            border: '1px solid rgba(0,200,224,0.4)', background: 'rgba(0,200,224,0.06)',
+            border: '1px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.06)',
             color: 'var(--ai-accent)', fontSize: 11, fontWeight: 600,
             cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
@@ -19304,11 +19304,11 @@ export default function AIPanel({
           --ai-text:        var(--text);
           --ai-mid:         var(--text-mid);
           --ai-dim:         var(--text-dim);
-          --ai-accent:      #00c8e0;
-          --ai-accent-dim:  rgba(0,200,224,0.12);
-          --ai-accent-soft: rgba(0,200,224,0.06);
-          --ai-accent-line: rgba(0,200,224,0.40);
-          --ai-gradient:    linear-gradient(135deg,#00c8e0,#5b6fff);
+          --ai-accent:      #06B6D4;
+          --ai-accent-dim:  rgba(6,182,212,0.12);
+          --ai-accent-soft: rgba(6,182,212,0.06);
+          --ai-accent-line: rgba(6,182,212,0.40);
+          --ai-gradient:    linear-gradient(135deg,#06B6D4,#5b6fff);
         }
 
         /* Panneau */
@@ -19738,7 +19738,7 @@ export default function AIPanel({
                           onMouseEnter={e => { if (!loading) {
                             const el = e.currentTarget as HTMLButtonElement
                             el.style.borderColor = 'var(--primary)'
-                            el.style.boxShadow = '0 4px 16px rgba(0,200,224,0.10)'
+                            el.style.boxShadow = '0 4px 16px rgba(6,182,212,0.10)'
                             el.style.transform = 'translateY(-1px)'
                           }}}
                           onMouseLeave={e => {
@@ -20216,7 +20216,7 @@ export default function AIPanel({
                               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.atlFinal}</p>
                             </div>
                             <div style={{ padding: '5px 3px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-                              <p style={{ fontSize: 7, color: '#00c8e0', margin: 0 }}>TSB</p>
+                              <p style={{ fontSize: 7, color: '#06B6D4', margin: 0 }}>TSB</p>
                               <p style={{ fontSize: 12, fontWeight: 700, color: d.tsbFinal < -10 ? '#ef4444' : d.tsbFinal > 5 ? '#22c55e' : 'var(--ai-text)', margin: '1px 0 0', fontFamily: 'DM Mono,monospace' }}>{d.tsbFinal}</p>
                             </div>
                             <div style={{ padding: '5px 3px', borderRadius: 6, border: `1px solid ${rC}`, background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
@@ -20424,15 +20424,15 @@ export default function AIPanel({
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '8px 12px',
-                  background: 'rgba(0,200,224,0.07)',
-                  borderBottom: '1px solid rgba(0,200,224,0.15)',
+                  background: 'rgba(6,182,212,0.07)',
+                  borderBottom: '1px solid rgba(6,182,212,0.15)',
                 }}>
                   {/* Lightning icon */}
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="#00c8e0" stroke="none">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="#06B6D4" stroke="none">
                     <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                   </svg>
                   <span style={{
-                    flex: 1, fontSize: 11, fontWeight: 600, color: '#00c8e0',
+                    flex: 1, fontSize: 11, fontWeight: 600, color: '#06B6D4',
                     fontFamily: 'DM Sans, sans-serif',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
@@ -20443,7 +20443,7 @@ export default function AIPanel({
                     title="Annuler"
                     style={{
                       width: 18, height: 18, borderRadius: '50%', border: 'none',
-                      background: 'rgba(0,200,224,0.15)', color: '#00c8e0',
+                      background: 'rgba(6,182,212,0.15)', color: '#06B6D4',
                       cursor: 'pointer', fontSize: 13, flexShrink: 0,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       lineHeight: 1,
@@ -20501,7 +20501,7 @@ export default function AIPanel({
                       {String(Math.floor(recSecs/60)).padStart(2,'0')}:{String(recSecs%60).padStart(2,'0')}
                     </span>
                     {/* Confirm ✓ — transfère la transcription */}
-                    <button onClick={confirmVoice} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#00c8e0', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>✓</button>
+                    <button onClick={confirmVoice} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#06B6D4', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>✓</button>
                   </div>
                   {/* Transcription temps réel */}
                   <div style={{ marginTop: 6, maxHeight: 60, overflowY: 'auto', padding: '4px 0' }}>
@@ -20569,7 +20569,7 @@ export default function AIPanel({
                     className="aip-icon-btn"
                     style={{
                       width: 28, height: 28, borderRadius: 6, flexShrink: 0,
-                      color: recording ? '#00c8e0' : 'var(--ai-dim)',
+                      color: recording ? '#06B6D4' : 'var(--ai-dim)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                   >

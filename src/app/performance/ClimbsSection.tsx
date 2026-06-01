@@ -68,7 +68,7 @@ const PRE_LABELS: Record<string, string> = {
 const INTENSITY_LABELS: Record<number, string> = {
   5: 'À fond', 4: 'Très dur', 3: 'Contrôle', 2: 'Facile', 1: 'Très facile',
 }
-const YEAR_PAL = ['#00c8e0','#5b6fff','#f97316','#a855f7','#f43f5e','#14b8a6','#eab308','#818cf8']
+const YEAR_PAL = ['#06B6D4','#5b6fff','#f97316','#a855f7','#f43f5e','#14b8a6','#eab308','#818cf8']
 function yearColor(yr: string, all: string[]) {
   return YEAR_PAL[[...all].sort().indexOf(yr) % YEAR_PAL.length] ?? '#9ca3af'
 }
@@ -196,7 +196,7 @@ function calcScore(c: ClimbRecord): number {
 interface Level { label: string; color: string; min: number; max: number }
 const LEVELS: Level[] = [
   { label: 'Alien',              color: '#00FF87', min: 95, max: 100 },
-  { label: 'Pro top intl.',      color: '#00C8E0', min: 90, max:  94 },
+  { label: 'Pro top intl.',      color: '#06B6D4', min: 90, max:  94 },
   { label: 'Pro',                color: '#5B6FFF', min: 80, max:  89 },
   { label: 'Amateur haut niv.',  color: '#FFD700', min: 65, max:  79 },
   { label: 'Bon amateur',        color: '#FF9500', min: 50, max:  64 },

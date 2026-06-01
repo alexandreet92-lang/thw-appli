@@ -65,9 +65,9 @@ export default function GpxFullView({ fileUrl, height = 320 }: { fileUrl: string
         const m = L.map(mapDivRef.current, { zoomControl: false, attributionControl: false, scrollWheelZoom: false })
         leafMap = m
         L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${process.env.NEXT_PUBLIC_MAPBOX ?? ''}`, { tileSize: 512, zoomOffset: -1, maxZoom: 20, attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(m)
-        const poly = L.polyline(parsed.map(p => [p.lat, p.lon] as [number, number]), { color: '#00c8e0', weight: 3, opacity: 0.9 }).addTo(m)
+        const poly = L.polyline(parsed.map(p => [p.lat, p.lon] as [number, number]), { color: '#06B6D4', weight: 3, opacity: 0.9 }).addTo(m)
         m.fitBounds(poly.getBounds(), { padding: [10, 10] })
-        const mk = L.circleMarker([parsed[0].lat, parsed[0].lon], { radius: 5, color: '#fff', fillColor: '#00c8e0', fillOpacity: 0, opacity: 0, weight: 2 }).addTo(m)
+        const mk = L.circleMarker([parsed[0].lat, parsed[0].lon], { radius: 5, color: '#fff', fillColor: '#06B6D4', fillOpacity: 0, opacity: 0, weight: 2 }).addTo(m)
         syncRef.current = (idx) => {
           if (idx === null) { mk.setStyle({ fillOpacity: 0, opacity: 0 }); return }
           mk.setLatLng([parsed[idx].lat, parsed[idx].lon])
@@ -137,8 +137,8 @@ export default function GpxFullView({ fileUrl, height = 320 }: { fileUrl: string
             onMouseLeave={() => setHoverIdx(null)}
             style={{ cursor: 'crosshair', display: 'block' }}
           >
-            <polygon points={areaPts} fill="rgba(0,200,224,0.12)" />
-            <polyline points={linePts} fill="none" stroke="#00c8e0" strokeWidth="1.5" />
+            <polygon points={areaPts} fill="rgba(6,182,212,0.12)" />
+            <polyline points={linePts} fill="none" stroke="#06B6D4" strokeWidth="1.5" />
 
             {hp && (
               <>
@@ -146,7 +146,7 @@ export default function GpxFullView({ fileUrl, height = 320 }: { fileUrl: string
                   x1={px(hp.dist)} y1={PT} x2={px(hp.dist)} y2={PT + cH}
                   stroke="rgba(255,255,255,0.35)" strokeWidth="1" strokeDasharray="3,3"
                 />
-                <circle cx={px(hp.dist)} cy={py(hp.ele)} r="3.5" fill="#00c8e0" stroke="#fff" strokeWidth="1.5" />
+                <circle cx={px(hp.dist)} cy={py(hp.ele)} r="3.5" fill="#06B6D4" stroke="#fff" strokeWidth="1.5" />
                 <rect
                   x={Math.min(px(hp.dist) + 5, W - 64)} y={Math.max(py(hp.ele) - 18, PT)}
                   width={60} height={14} rx={3} fill="rgba(0,0,0,0.8)"

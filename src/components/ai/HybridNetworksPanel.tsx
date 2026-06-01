@@ -83,7 +83,7 @@ function isAdminEmail(email: string | undefined | null): boolean {
 }
 
 const PILLAR_COLORS: Record<string, string> = {
-  athlete: '#00c8e0',
+  athlete: '#06B6D4',
   expert:  '#5b6fff',
   builder: '#f59e0b',
 }

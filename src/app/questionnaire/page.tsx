@@ -50,7 +50,7 @@ interface Questionnaire {
 // ── Config ─────────────────────────────────────────────────────────
 
 const STATUTS: Record<Statut, { label: string; color: string; bg: string }> = {
-  nouveau:  { label: 'Nouveau',  color: '#00c8e0', bg: 'rgba(0,200,224,0.12)'  },
+  nouveau:  { label: 'Nouveau',  color: '#06B6D4', bg: 'rgba(6,182,212,0.12)'  },
   en_cours: { label: 'En cours', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
   accepte:  { label: 'Accepté',  color: '#22c55e', bg: 'rgba(34,197,94,0.12)'  },
   refuse:   { label: 'Refusé',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)'  },
@@ -335,7 +335,7 @@ function DetailPanel({
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                   {q.jours_disponibles.map(j => (
-                    <span key={j} style={{ padding: '3px 9px', borderRadius: 6, background: 'rgba(0,200,224,0.1)', color: '#00c8e0', fontSize: 11, fontWeight: 600, fontFamily: 'DM Sans, sans-serif', border: '1px solid rgba(0,200,224,0.2)' }}>
+                    <span key={j} style={{ padding: '3px 9px', borderRadius: 6, background: 'rgba(6,182,212,0.1)', color: '#06B6D4', fontSize: 11, fontWeight: 600, fontFamily: 'DM Sans, sans-serif', border: '1px solid rgba(6,182,212,0.2)' }}>
                       {j}
                     </span>
                   ))}
@@ -394,7 +394,7 @@ function DetailPanel({
                 resize: 'vertical', outline: 'none', boxSizing: 'border-box', lineHeight: 1.6,
                 transition: 'border-color 0.14s',
               }}
-              onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(0,200,224,0.5)' }}
+              onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(6,182,212,0.5)' }}
               onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--border)' }}
             />
             <button
@@ -402,7 +402,7 @@ function DetailPanel({
               disabled={saving}
               style={{
                 marginTop: 8, padding: '8px 18px', borderRadius: 8,
-                background: saving ? 'var(--bg-card2)' : '#00c8e0',
+                background: saving ? 'var(--bg-card2)' : '#06B6D4',
                 color: saving ? 'var(--text-dim)' : '#000',
                 border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
                 fontSize: 12, fontWeight: 700, fontFamily: 'DM Sans, sans-serif',
@@ -517,9 +517,9 @@ export default function QuestionnairePage() {
           {countNouveau > 0 && (
             <span style={{
               padding: '4px 11px', borderRadius: 99, marginBottom: 3,
-              background: 'rgba(0,200,224,0.12)', color: '#00c8e0',
+              background: 'rgba(6,182,212,0.12)', color: '#06B6D4',
               fontSize: 12, fontWeight: 700,
-              border: '1px solid rgba(0,200,224,0.3)',
+              border: '1px solid rgba(6,182,212,0.3)',
             }}>
               {countNouveau} nouveau{countNouveau > 1 ? 'x' : ''}
             </span>
@@ -627,11 +627,11 @@ export default function QuestionnairePage() {
                 display: 'grid', gridTemplateColumns: COL, gap: 12,
                 padding: '12px 16px', borderBottom: '1px solid var(--border)',
                 alignItems: 'center', cursor: 'pointer',
-                background: selectedId === q.id ? 'rgba(0,200,224,0.06)' : 'transparent',
+                background: selectedId === q.id ? 'rgba(6,182,212,0.06)' : 'transparent',
                 transition: 'background 0.12s',
-                borderLeft: `3px solid ${selectedId === q.id ? '#00c8e0' : 'transparent'}`,
+                borderLeft: `3px solid ${selectedId === q.id ? '#06B6D4' : 'transparent'}`,
               }}
-              onMouseEnter={e => { if (selectedId !== q.id) (e.currentTarget as HTMLElement).style.background = 'rgba(0,200,224,0.04)' }}
+              onMouseEnter={e => { if (selectedId !== q.id) (e.currentTarget as HTMLElement).style.background = 'rgba(6,182,212,0.04)' }}
               onMouseLeave={e => { if (selectedId !== q.id) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
             >
               {/* Athlète */}

@@ -21,7 +21,7 @@ export default function SectionTrainingLoad({ data }: Props) {
       {/* KPIs */}
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:10,marginBottom:20 }}>
         <div style={{ padding:'12px',borderRadius:12,background:'var(--bg-card2)',border:'1px solid var(--border)',textAlign:'center' as const }}>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:800,color:'#00c8e0',margin:0,lineHeight:1 }}>{data.thisWeekCount}</p>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:800,color:'#06B6D4',margin:0,lineHeight:1 }}>{data.thisWeekCount}</p>
           <p style={{ fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',textTransform:'uppercase' as const,letterSpacing:'0.06em' }}>Activités</p>
           <p style={{ fontSize:9,color:'var(--text-dim)',margin:'2px 0 0',opacity:0.7 }}>cette semaine</p>
         </div>

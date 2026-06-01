@@ -70,14 +70,14 @@ export default function RaceModal({ race, initialDate, onClose, onSave }: Props)
           onDrop={e => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files, setter, list) }}
           onClick={() => fRef.current?.click()}
           style={{
-            border: `2px dashed ${dragOver ? '#00c8e0' : 'var(--border)'}`,
+            border: `2px dashed ${dragOver ? '#06B6D4' : 'var(--border)'}`,
             borderRadius: 10, padding: '14px', textAlign: 'center', cursor: 'pointer',
-            background: dragOver ? 'rgba(0,200,224,0.05)' : 'var(--bg-card2)',
+            background: dragOver ? 'rgba(6,182,212,0.05)' : 'var(--bg-card2)',
             transition: 'border-color 0.15s',
           }}
         >
           <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>
-            Glisser-déposer ou <span style={{ color:'#00c8e0' }}>Parcourir</span>
+            Glisser-déposer ou <span style={{ color:'#06B6D4' }}>Parcourir</span>
           </p>
           <input ref={fRef} type="file" multiple style={{ display:'none' }}
             onChange={e => addFiles(e.target.files, setter, list)} />
@@ -188,7 +188,7 @@ export default function RaceModal({ race, initialDate, onClose, onSave }: Props)
             Annuler
           </button>
           <button onClick={handleSave} disabled={saving || !name.trim()}
-            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:saving?'wait':'pointer',opacity:!name.trim()?0.5:1 }}>
+            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:saving?'wait':'pointer',opacity:!name.trim()?0.5:1 }}>
             {saving ? '…' : isEdit ? 'Enregistrer' : '+ Ajouter'}
           </button>
         </div>

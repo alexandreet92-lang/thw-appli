@@ -110,7 +110,7 @@ export default function MealModalManual({ initialName = '', initialKcal = 0, ini
             />
           ))}
           <div style={{ display: 'flex', gap: 14, padding: '8px 0', fontSize: 12, fontWeight: 700 }}>
-            <span style={{ color: '#00c8e0' }}>{totals.kcal} kcal</span>
+            <span style={{ color: '#06B6D4' }}>{totals.kcal} kcal</span>
             <span style={{ color: 'var(--text-dim)' }}>P {totals.prot}g</span>
             <span style={{ color: 'var(--text-dim)' }}>G {totals.gluc}g</span>
             <span style={{ color: 'var(--text-dim)' }}>L {totals.lip}g</span>

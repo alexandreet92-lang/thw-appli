@@ -44,7 +44,7 @@ export default function GpxRouteMap({ fileUrl, height = 220 }: Props) {
         L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${process.env.NEXT_PUBLIC_MAPBOX ?? ''}`, { tileSize: 512, zoomOffset: -1, maxZoom: 20, attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(m)
         const poly = L.polyline(
           trace.map(p => [p.lat, p.lon] as [number, number]),
-          { color: '#00c8e0', weight: 3, opacity: 0.9 },
+          { color: '#06B6D4', weight: 3, opacity: 0.9 },
         ).addTo(m)
         m.fitBounds(poly.getBounds(), { padding: [10, 10] })
         setStatus('ok')

@@ -43,8 +43,8 @@
   --zone-5: #ef4444; /* VO2max       */
 
   /* ── Brand ────────────────────────────────────── */
-  --primary:      #00c8e0;
-  --primary-dim:  rgba(0,200,224,0.12);
+  --primary:      #06B6D4;
+  --primary-dim:  rgba(6,182,212,0.12);
   --ai-accent:    #9D7DFF;
   --ai-accent-dim:rgba(157,125,255,0.12);
 
@@ -145,6 +145,55 @@ main:has(.competences-mobile-root) { margin-top: 0 !important; height: 100vh !im
    thémé en sombre. (Le bug venait de var(--bg) = gris bleuté en clair.) */
 .comp-modal-fullscreen { background: #FFFFFF; }
 html.dark .comp-modal-fullscreen { background: var(--bg-card); }
+
+/* ── Modal détail compétence : sections colorées ── */
+.cmp-section { border-radius: 12px; padding: 16px 20px; margin-bottom: 14px; border: 0.5px solid transparent; }
+.cmp-section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.cmp-section-icon { display: flex; align-items: center; }
+.cmp-section-label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; }
+.cmp-section-content {
+  font-size: 14px; line-height: 1.65; font-weight: 400; letter-spacing: -0.01em;
+  white-space: pre-wrap;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.section-philosophie { background: #FEF2F2; border-color: #FECACA; }
+.section-philosophie .cmp-section-icon, .section-philosophie .cmp-section-label { color: #DC2626; }
+.section-philosophie .cmp-section-content { color: #1F2937; }
+html.dark .section-philosophie { background: rgba(220,38,38,0.10); border-color: rgba(220,38,38,0.25); }
+html.dark .section-philosophie .cmp-section-icon, html.dark .section-philosophie .cmp-section-label { color: #F87171; }
+html.dark .section-philosophie .cmp-section-content { color: var(--text); }
+
+.section-regles { background: #EFF6FF; border-color: #BFDBFE; }
+.section-regles .cmp-section-icon, .section-regles .cmp-section-label { color: #2563EB; }
+.section-regles .cmp-section-content { color: #1F2937; }
+html.dark .section-regles { background: rgba(37,99,235,0.10); border-color: rgba(37,99,235,0.25); }
+html.dark .section-regles .cmp-section-icon, html.dark .section-regles .cmp-section-label { color: #60A5FA; }
+html.dark .section-regles .cmp-section-content { color: var(--text); }
+
+.section-exclusions { background: #FEF2F2; border-color: #FCA5A5; }
+.section-exclusions .cmp-section-icon, .section-exclusions .cmp-section-label { color: #DC2626; }
+.section-exclusions .cmp-section-content { color: #1F2937; }
+html.dark .section-exclusions { background: rgba(220,38,38,0.10); border-color: rgba(220,38,38,0.30); }
+html.dark .section-exclusions .cmp-section-icon, html.dark .section-exclusions .cmp-section-label { color: #F87171; }
+html.dark .section-exclusions .cmp-section-content { color: var(--text); }
+
+.section-adaptations { background: #F0FDF4; border-color: #BBF7D0; }
+.section-adaptations .cmp-section-icon, .section-adaptations .cmp-section-label { color: #059669; }
+.section-adaptations .cmp-section-content { color: #1F2937; }
+html.dark .section-adaptations { background: rgba(5,150,105,0.10); border-color: rgba(5,150,105,0.25); }
+html.dark .section-adaptations .cmp-section-icon, html.dark .section-adaptations .cmp-section-label { color: #34D399; }
+html.dark .section-adaptations .cmp-section-content { color: var(--text); }
+
+/* Remodeler / fallback neutre */
+.cmp-section-remodeler { background: #FFFFFF; border-color: var(--border); }
+html.dark .cmp-section-remodeler { background: var(--bg-card); }
+
+/* ── Modal détail compétence : animations bottom-sheet (mobile) ── */
+@keyframes slideUpMobile   { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes slideDownMobile { from { transform: translateY(0); } to { transform: translateY(100%); } }
+@keyframes fadeInOverlay   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOutOverlay  { from { opacity: 1; } to { opacity: 0; } }
 
 /* Dictée vocale — pulse rouge pendant l'écoute */
 @keyframes micPulse {

@@ -512,7 +512,7 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
         <div style={{ display:'flex',gap:8 }}>
           <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
           <button onClick={() => onSave({ name:name||'Course',sport,date,level,goal:goalTime||undefined,runDistance:sport==='run'?runDist:undefined,triDistance:sport==='triathlon'?triDist:undefined,hyroxCategory:hyroxCat||undefined,hyroxLevel:hyroxLvl||undefined,hyroxGender:hyroxGen||undefined,goalTime:goalTime||undefined,goalSwimTime:goalSwim||undefined,goalBikeTime:goalBike||undefined,goalRunTime:goalRun||undefined })}
-            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
+            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
             + Ajouter
           </button>
         </div>
@@ -567,7 +567,7 @@ function RaceEditModal({ race, onClose, onSave }: { race: Race; onClose: () => v
         <div style={{ display:'flex',gap:8 }}>
           <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
           <button onClick={() => onSave(form)}
-            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
+            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
             Sauvegarder
           </button>
         </div>
@@ -764,9 +764,9 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
                     style={{
                       padding:'6px 14px',borderRadius:8,border:'1px solid',cursor:'pointer',
                       fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:y===selectedYear?700:400,
-                      borderColor:y===selectedYear?'#00c8e0':'transparent',
-                      background:y===selectedYear?'rgba(0,200,224,0.10)':'transparent',
-                      color:y===selectedYear?'#00c8e0':'var(--text)',textAlign:'left' as const,
+                      borderColor:y===selectedYear?'#06B6D4':'transparent',
+                      background:y===selectedYear?'rgba(6,182,212,0.10)':'transparent',
+                      color:y===selectedYear?'#06B6D4':'var(--text)',textAlign:'left' as const,
                     }}
                   >
                     {y}
@@ -781,9 +781,9 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
             {(['year','month'] as CalView[]).map(v => (
               <button key={v} onClick={() => setCalView(v)} style={{
                 padding:'6px 12px',borderRadius:9,border:'1px solid',fontSize:11,cursor:'pointer',fontWeight:calView===v?600:400,
-                borderColor:calView===v?'#00c8e0':'var(--border)',
-                background:calView===v?'rgba(0,200,224,0.10)':'var(--bg-card)',
-                color:calView===v?'#00c8e0':'var(--text-mid)',
+                borderColor:calView===v?'#06B6D4':'var(--border)',
+                background:calView===v?'rgba(6,182,212,0.10)':'var(--bg-card)',
+                color:calView===v?'#06B6D4':'var(--text-mid)',
               }}>
                 {v === 'year' ? 'Vue annuelle' : 'Vue mensuelle'}
               </button>
@@ -800,7 +800,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
             Événement
           </button>
           <button onClick={() => openNewRace()} style={{
-            padding:'6px 12px',borderRadius:9,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',
+            padding:'6px 12px',borderRadius:9,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',
             border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer',
           }}>
             + Course
@@ -840,7 +840,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
         <div style={{ padding:'32px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
           <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>Aucune course planifiée en {selectedYear}</p>
           <button onClick={() => openNewRace()} style={{
-            padding:'9px 20px',borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',
+            padding:'9px 20px',borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',
             border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer',
           }}>
             + Ajouter une course
@@ -1254,9 +1254,9 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
           <button key={v} onClick={() => setView(v)} style={{
             padding: '6px 13px', borderRadius: 9, border: '1px solid', fontSize: 11, cursor: 'pointer',
             fontWeight: view === v ? 600 : 400,
-            borderColor: view === v ? '#00c8e0' : 'var(--border)',
-            background: view === v ? 'rgba(0,200,224,0.10)' : 'var(--bg-card)',
-            color: view === v ? '#00c8e0' : 'var(--text-mid)',
+            borderColor: view === v ? '#06B6D4' : 'var(--border)',
+            background: view === v ? 'rgba(6,182,212,0.10)' : 'var(--bg-card)',
+            color: view === v ? '#06B6D4' : 'var(--text-mid)',
           }}>
             {l}
           </button>
@@ -1450,7 +1450,7 @@ export default function CalendarPage() {
     { id:'race',  label:'Race',  short:'Race',  color:'#ef4444', bg:'rgba(239,68,68,0.10)'  },
     { id:'pro',   label:'Pro',   short:'Pro',   color:'#3b82f6', bg:'rgba(59,130,246,0.10)' },
     { id:'perso', label:'Perso', short:'Perso', color:'#a855f7', bg:'rgba(168,85,247,0.10)' },
-    { id:'all',   label:'All',   short:'All',   color:'#00c8e0', bg:'rgba(0,200,224,0.10)'  },
+    { id:'all',   label:'All',   short:'All',   color:'#06B6D4', bg:'rgba(6,182,212,0.10)'  },
   ]
 
   const aiContext = {

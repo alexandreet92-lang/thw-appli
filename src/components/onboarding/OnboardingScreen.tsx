@@ -85,7 +85,7 @@ export default function OnboardingScreen({ onComplete }: Props) {
           {/* Dots */}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
             {SLIDES.map((_, i) => (
-              <button key={i} onClick={() => goTo(i)} style={{ width: i === current ? 24 : 8, height: 8, borderRadius: 4, background: i === current ? '#00c8e0' : 'rgba(255,255,255,0.28)', border: 'none', cursor: 'pointer', padding: 0, transition: 'all 300ms cubic-bezier(0.16,1,0.3,1)' }} />
+              <button key={i} onClick={() => goTo(i)} style={{ width: i === current ? 24 : 8, height: 8, borderRadius: 4, background: i === current ? '#06B6D4' : 'rgba(255,255,255,0.28)', border: 'none', cursor: 'pointer', padding: 0, transition: 'all 300ms cubic-bezier(0.16,1,0.3,1)' }} />
             ))}
           </div>
 
@@ -96,7 +96,7 @@ export default function OnboardingScreen({ onComplete }: Props) {
                 Retour
               </button>
             )}
-            <button onClick={next} style={{ flex: 1, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#00c8e0,#2563EB)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', boxShadow: '0 4px 20px rgba(0,200,224,0.30)' }}>
+            <button onClick={next} style={{ flex: 1, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', boxShadow: '0 4px 20px rgba(6,182,212,0.30)' }}>
               {current === SLIDES.length - 1 ? 'Configurer mon profil' : 'Suivant'}
             </button>
           </div>

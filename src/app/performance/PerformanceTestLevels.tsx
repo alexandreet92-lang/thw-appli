@@ -4,7 +4,7 @@ import React from 'react'
 // ─── 7-Level system ───────────────────────────────────────────────────────────
 export const TEST_LEVELS = [
   { label: 'Alien',    score: 10, color: '#00FF87' },
-  { label: 'Élite',   score: 9,  color: '#00C8E0' },
+  { label: 'Élite',   score: 9,  color: '#06B6D4' },
   { label: 'AHN',     score: 8,  color: '#5B6FFF' },
   { label: 'TBA',     score: 7,  color: '#FFD700' },
   { label: 'BA',      score: 6,  color: '#FF9500' },

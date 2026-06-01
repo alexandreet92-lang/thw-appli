@@ -295,7 +295,7 @@ function intensityColor(i: Intensity) {
 }
 
 function sportColor(s: Sport): string {
-  return SPORTS.find(x => x.id===s)?.color ?? '#00c8e0'
+  return SPORTS.find(x => x.id===s)?.color ?? '#06B6D4'
 }
 function sportLabel(s: Sport): string {
   return SPORTS.find(x => x.id===s)?.label ?? s
@@ -991,7 +991,7 @@ function NatationBuilder({ data, onChange }: { data: NatationSession; onChange:(
       ))}
 
       <button onClick={addSet}
-        style={{ width:'100%', padding:'11px', borderRadius:12, border:'1px dashed #00c8e0', background:'rgba(0,200,224,0.05)', color:'#00c8e0', fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+        style={{ width:'100%', padding:'11px', borderRadius:12, border:'1px dashed #06B6D4', background:'rgba(6,182,212,0.05)', color:'#06B6D4', fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer' }}>
         + Ajouter une serie
       </button>
 
@@ -1125,7 +1125,7 @@ function ExecuteMuscu({ template, onExit }: { template: SessionTemplate; onExit:
           {allExercises.length} exercices · {circuits.length} circuits
         </p>
         <button onClick={onExit}
-          style={{ padding:'12px 32px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#00c8e0)', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+          style={{ padding:'12px 32px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#06B6D4)', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, cursor:'pointer' }}>
           Terminer
         </button>
       </div>
@@ -1745,7 +1745,7 @@ function BuildMode({ initial, onSave, onCancel }: {
             setTimeout(() => setPlanSuccess(false), 3000)
           }}
           style={{ width:'100%', padding:'11px', borderRadius:12, border:'none',
-            background: planDate ? 'linear-gradient(135deg,#22c55e,#00c8e0)' : 'var(--bg-card2)',
+            background: planDate ? 'linear-gradient(135deg,#22c55e,#06B6D4)' : 'var(--bg-card2)',
             color: planDate ? '#fff' : 'var(--text-dim)',
             fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700,
             cursor: planDate ? 'pointer' : 'not-allowed',
@@ -1921,7 +1921,7 @@ function LibraryMode({ templates, onNew, onEdit, onStart, onDelete }: {
             </button>
           ) : (
             <button onClick={onNew}
-              style={{ padding:'11px 28px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#00c8e0)',
+              style={{ padding:'11px 28px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#06B6D4)',
                 color:'#fff', fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, cursor:'pointer' }}>
               Créer une séance
             </button>

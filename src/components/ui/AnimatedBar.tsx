@@ -12,11 +12,11 @@ export function AnimatedBar({
 }: {
   pct: number
   color?: string
-  gradient?: string       // ex: "linear-gradient(90deg,#00c8e0bb,#00c8e0)"
+  gradient?: string       // ex: "linear-gradient(90deg,#06B6D4bb,#06B6D4)"
   height?: number
   className?: string
 }) {
-  const bg = gradient ?? color ?? '#00c8e0'
+  const bg = gradient ?? color ?? '#06B6D4'
 
   return (
     <div

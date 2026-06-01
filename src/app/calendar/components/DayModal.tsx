@@ -361,7 +361,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
           <button
             onClick={handleSave}
             disabled={isSaving || !hasId}
-            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#00c8e0,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:isSaving?'wait':'pointer',opacity:!hasId?0.4:1 }}>
+            style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:isSaving?'wait':'pointer',opacity:!hasId?0.4:1 }}>
             {isSaving ? 'Enregistrement…' : 'Enregistrer'}
           </button>
         </div>

@@ -234,9 +234,9 @@ export default function MealModalPhotoAI({ onSave }: Props) {
             }}
             onClick={() => galleryRef.current?.click()}
             style={{
-              border: `2px dashed ${dragging ? '#00c8e0' : 'var(--border)'}`,
+              border: `2px dashed ${dragging ? '#06B6D4' : 'var(--border)'}`,
               borderRadius: 12, padding: 32, textAlign: 'center', cursor: 'pointer',
-              background: dragging ? 'rgba(0,200,224,0.05)' : 'var(--bg-card2)',
+              background: dragging ? 'rgba(6,182,212,0.05)' : 'var(--bg-card2)',
               transition: 'border-color 0.15s, background 0.15s',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
             }}>
@@ -334,14 +334,14 @@ export default function MealModalPhotoAI({ onSave }: Props) {
               <span style={{ fontSize: 9, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{it.unit}</span>
             </div>
             <input type="number" value={it.kcal} min={0} onChange={e => updateItemKcal(i, Number(e.target.value))}
-              style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 7px', fontSize: 11, color: '#00c8e0', outline: 'none', fontFamily: 'DM Mono,monospace', textAlign: 'center' }} />
+              style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 7px', fontSize: 11, color: '#06B6D4', outline: 'none', fontFamily: 'DM Mono,monospace', textAlign: 'center' }} />
           </div>
         ))}
         {/* Totals row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 64px 54px', gap: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>Total</span>
           <span />
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#00c8e0', fontFamily: 'DM Mono,monospace', textAlign: 'center' }}>{totalKcal}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', fontFamily: 'DM Mono,monospace', textAlign: 'center' }}>{totalKcal}</span>
         </div>
         <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', paddingLeft: 2 }}>
           <span>P {Math.round(result.totals.prot * ratio)}g</span>

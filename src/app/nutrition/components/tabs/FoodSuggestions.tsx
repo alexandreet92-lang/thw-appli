@@ -63,7 +63,7 @@ export default function FoodSuggestions({ slot, onSelect }: Props) {
         {meals.map(meal => (
           <button key={meal.meal_name} onClick={() => onSelect(meal)}
             style={{ flexShrink: 0, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 12px', cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.15s' }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = '#00c8e0')}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = '#06B6D4')}
             onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
             <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', whiteSpace: 'nowrap' }}>
               {meal.meal_name}

@@ -3,7 +3,7 @@ import { cn } from '../../lib/utils'
 type ColorVariant = 'brand' | 'blue' | 'red' | 'orange' | 'green' | 'default'
 
 const styles: Record<ColorVariant, string> = {
-  brand:   'bg-[rgba(0,200,224,0.10)] text-brand border-[rgba(0,200,224,0.20)]',
+  brand:   'bg-[rgba(6,182,212,0.10)] text-brand border-[rgba(6,182,212,0.20)]',
   blue:    'bg-[rgba(91,111,255,0.10)] text-[#5b6fff] border-[rgba(91,111,255,0.20)]',
   red:     'bg-[rgba(255,95,95,0.10)] text-[#ff5f5f] border-[rgba(255,95,95,0.20)]',
   orange:  'bg-[rgba(255,179,64,0.10)] text-[#ffb340] border-[rgba(255,179,64,0.20)]',

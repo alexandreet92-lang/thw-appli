@@ -28,7 +28,7 @@ function ChatMockup() {
       </div>
       {MESSAGES.slice(0, visible).map((m, i) => (
         <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', animation: 'fade-in-up 0.28s ease' }}>
-          <div style={{ maxWidth: '82%', padding: '8px 12px', borderRadius: m.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px', background: m.role === 'user' ? 'rgba(0,200,224,0.22)' : 'rgba(139,92,246,0.18)', border: `1px solid ${m.role === 'user' ? 'rgba(0,200,224,0.3)' : 'rgba(139,92,246,0.3)'}`, fontSize: 12, color: '#fff', lineHeight: 1.55, fontFamily: 'DM Sans, sans-serif' }}>
+          <div style={{ maxWidth: '82%', padding: '8px 12px', borderRadius: m.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px', background: m.role === 'user' ? 'rgba(6,182,212,0.22)' : 'rgba(139,92,246,0.18)', border: `1px solid ${m.role === 'user' ? 'rgba(6,182,212,0.3)' : 'rgba(139,92,246,0.3)'}`, fontSize: 12, color: '#fff', lineHeight: 1.55, fontFamily: 'DM Sans, sans-serif' }}>
             {m.text}
           </div>
         </div>

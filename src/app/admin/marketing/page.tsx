@@ -13,7 +13,7 @@ function isAdminEmail(email: string | undefined | null): boolean {
 }
 
 const PILLAR_COLORS: Record<string, string> = {
-  athlete: "#00c8e0",
+  athlete: "#06B6D4",
   expert: "#5b6fff",
   builder: "#f59e0b",
 };
@@ -227,7 +227,7 @@ export default function MarketingAdminPage() {
           onClick={generateBrief}
           disabled={loading}
           style={{
-            background: "linear-gradient(135deg, #00c8e0 0%, #5b6fff 100%)",
+            background: "linear-gradient(135deg, #06B6D4 0%, #5b6fff 100%)",
             color: "white",
             border: "none",
             padding: "12px 24px",

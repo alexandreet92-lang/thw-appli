@@ -28,7 +28,7 @@ function MockupPhone() {
         ))}
       </div>
       <div style={{ margin: '10px 12px 0', height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: '62%', background: 'linear-gradient(90deg,#00c8e0,#2563EB)', borderRadius: 2 }} />
+        <div style={{ height: '100%', width: '62%', background: 'linear-gradient(90deg,#06B6D4,#2563EB)', borderRadius: 2 }} />
       </div>
     </div>
   )

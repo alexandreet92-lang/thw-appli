@@ -166,7 +166,7 @@ function LazyCanvas({ injuries, hovered, zoomLevel, onHover, onZoneClick, onZoom
     return (
       <div style={{ width:'100%', height:'100%', minHeight:520, display:'flex', alignItems:'center', justifyContent:'center' }}>
         <div style={{ textAlign:'center' as const }}>
-          <div style={{ width:40, height:40, border:'3px solid rgba(0,200,224,0.3)', borderTop:'3px solid #00c8e0', borderRadius:'50%', margin:'0 auto 12px', animation:'spin 1s linear infinite' }}/>
+          <div style={{ width:40, height:40, border:'3px solid rgba(6,182,212,0.3)', borderTop:'3px solid #06B6D4', borderRadius:'50%', margin:'0 auto 12px', animation:'spin 1s linear infinite' }}/>
           <p style={{ color:'rgba(255,255,255,0.4)', fontSize:12, fontFamily:'DM Sans,sans-serif', margin:0 }}>Chargement 3D...</p>
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
@@ -207,7 +207,7 @@ function AddInjuryModal({ zone, onClose, onSave }: { zone:MuscleZone; onClose:()
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
           <div>
             <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, margin:0 }}>Nouvelle blessure</h3>
-            <p style={{ fontSize:12, color:'#00c8e0', margin:'3px 0 0', fontWeight:600 }}>{zone.label}</p>
+            <p style={{ fontSize:12, color:'#06B6D4', margin:'3px 0 0', fontWeight:600 }}>{zone.label}</p>
           </div>
           <button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:9, padding:'5px 10px', cursor:'pointer', color:'var(--text-dim)', fontSize:18 }}>x</button>
         </div>
@@ -296,8 +296,8 @@ function InjuryPanel({ injury, onClose, onUpdate }: { injury:Injury; onClose:()=
           )})}
         </div>
       </div>
-      <div style={{ padding:'11px 13px', borderRadius:11, background:'rgba(0,200,224,0.06)', border:'1px solid rgba(0,200,224,0.18)' }}>
-        <p style={{ fontSize:11, fontWeight:700, color:'#00c8e0', margin:'0 0 6px' }}>Analyse IA</p>
+      <div style={{ padding:'11px 13px', borderRadius:11, background:'rgba(6,182,212,0.06)', border:'1px solid rgba(6,182,212,0.18)' }}>
+        <p style={{ fontSize:11, fontWeight:700, color:'#06B6D4', margin:'0 0 6px' }}>Analyse IA</p>
         <p style={{ fontSize:11, color:'var(--text-mid)', lineHeight:1.65, margin:0, whiteSpace:'pre-line' as const }}>{injury.aiAnalysis}</p>
       </div>
       <div style={{ display:'flex', gap:6 }}>
@@ -359,7 +359,7 @@ export default function BlessuresPage() {
           <p style={{ fontSize:12, color:'var(--text-dim)', margin:'3px 0 0' }}>Corps 3D · Drag tourner · Scroll zoomer</p>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <span style={{ padding:'4px 10px', borderRadius:20, background:'rgba(0,200,224,0.08)', border:'1px solid rgba(0,200,224,0.2)', color:'#00c8e0', fontSize:10, fontWeight:600 }}>{zoomLabels[zoomLevel]}</span>
+          <span style={{ padding:'4px 10px', borderRadius:20, background:'rgba(6,182,212,0.08)', border:'1px solid rgba(6,182,212,0.2)', color:'#06B6D4', fontSize:10, fontWeight:600 }}>{zoomLabels[zoomLevel]}</span>
           <span style={{ padding:'5px 12px', borderRadius:20, background:globalCfg.bg, border:`1px solid ${globalCfg.color}55`, color:globalCfg.color, fontSize:11, fontWeight:700 }}>{globalCfg.label}</span>
         </div>
       </div>
@@ -378,13 +378,13 @@ export default function BlessuresPage() {
       <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:14, minHeight:520 }} className="md:grid-cols-[1fr_320px]">
         <div style={{ background:'#040810', borderRadius:18, overflow:'hidden', position:'relative', minHeight:520, boxShadow:'0 8px 40px rgba(0,0,0,0.6)' }}>
           <div style={{ position:'absolute', top:14, left:14, zIndex:10 }}>
-            <div style={{ padding:'4px 10px', borderRadius:20, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(8px)', border:'1px solid rgba(0,200,224,0.2)', fontSize:9, color:'rgba(255,255,255,0.5)' }}>
+            <div style={{ padding:'4px 10px', borderRadius:20, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(8px)', border:'1px solid rgba(6,182,212,0.2)', fontSize:9, color:'rgba(255,255,255,0.5)' }}>
               Drag tourner · Scroll zoomer · Clic selectionner
             </div>
           </div>
           <div style={{ position:'absolute', bottom:14, left:14, zIndex:10, display:'flex', gap:5, alignItems:'center' }}>
             {(['far','mid','close'] as ZoomLevel[]).map(z=>(
-              <div key={z} style={{ width:7, height:7, borderRadius:'50%', background:zoomLevel===z?'#00c8e0':'rgba(255,255,255,0.2)', transition:'background 0.3s' }}/>
+              <div key={z} style={{ width:7, height:7, borderRadius:'50%', background:zoomLevel===z?'#06B6D4':'rgba(255,255,255,0.2)', transition:'background 0.3s' }}/>
             ))}
             <span style={{ fontSize:9, color:'rgba(255,255,255,0.4)', marginLeft:4 }}>
               {zoomLevel==='far'?'Gros muscles':zoomLevel==='mid'?'Muscles specifiques':'Muscles profonds'}

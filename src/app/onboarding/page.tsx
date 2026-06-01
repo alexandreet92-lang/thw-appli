@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 const PLANS = [
   {
     id:'premium', label:'Premium', monthly:'15€/mois', annual:'129€/an', save:'28%',
-    color:'#00c8e0', gradient:'linear-gradient(135deg,#00c8e0,#38bdf8)',
+    color:'#06B6D4', gradient:'linear-gradient(135deg,#06B6D4,#38bdf8)',
     features:['Suivi entraînements complet','Zones personnalisées','Connexions apps (5)','Export PDF','Historique 1 an'],
   },
   {
@@ -29,7 +29,7 @@ export default function SelectPlanPage() {
 
       {/* Logo */}
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:32 }}>
-        <div style={{ width:40, height:40, borderRadius:12, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:12, color:'#fff' }}>THW</div>
+        <div style={{ width:40, height:40, borderRadius:12, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:12, color:'#fff' }}>THW</div>
         <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:16 }}>THW Coaching</span>
       </div>
 

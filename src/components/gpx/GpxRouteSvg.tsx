@@ -10,7 +10,7 @@ interface Props {
 }
 
 /** Lightweight non-interactive SVG route preview — no Leaflet dependency. */
-export default function GpxRouteSvg({ trace, width = 200, height = 110, color = '#00c8e0' }: Props) {
+export default function GpxRouteSvg({ trace, width = 200, height = 110, color = '#06B6D4' }: Props) {
   if (trace.length < 2) return null
 
   const lats = trace.map(p => p.lat)

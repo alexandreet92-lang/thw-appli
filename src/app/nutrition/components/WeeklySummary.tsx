@@ -59,11 +59,11 @@ export default function WeeklySummary({ weekData, planType }: Props) {
     <div style={{ background: 'var(--bg-card2)', borderRadius: 12, border: '1px solid var(--border)', padding: '14px 16px', marginTop: 16 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <span style={{ color: '#00c8e0' }}><HermesIcon /></span>
+        <span style={{ color: '#06B6D4' }}><HermesIcon /></span>
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>
           Analyse de la semaine
         </span>
-        <span style={{ marginLeft: 4, padding: '2px 8px', borderRadius: 20, background: 'linear-gradient(90deg,rgba(6,182,212,0.15),rgba(59,130,246,0.15))', border: '1px solid rgba(6,182,212,0.3)', fontSize: 10, color: '#00c8e0', fontFamily: 'Syne,sans-serif', fontWeight: 700 }}>
+        <span style={{ marginLeft: 4, padding: '2px 8px', borderRadius: 20, background: 'linear-gradient(90deg,rgba(6,182,212,0.15),rgba(59,130,246,0.15))', border: '1px solid rgba(6,182,212,0.3)', fontSize: 10, color: '#06B6D4', fontFamily: 'Syne,sans-serif', fontWeight: 700 }}>
           Hermes
         </span>
       </div>

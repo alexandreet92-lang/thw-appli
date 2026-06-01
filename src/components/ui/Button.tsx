@@ -13,8 +13,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 const variants = {
   primary: cn(
     'bg-[var(--primary)] text-white border-none',
-    'shadow-[0_2px_12px_rgba(0,200,224,0.25)]',
-    'hover:brightness-110 hover:shadow-[0_4px_20px_rgba(0,200,224,0.35)] hover:-translate-y-px',
+    'shadow-[0_2px_12px_rgba(6,182,212,0.25)]',
+    'hover:brightness-110 hover:shadow-[0_4px_20px_rgba(6,182,212,0.35)] hover:-translate-y-px',
     'active:translate-y-0'
   ),
   secondary: cn(

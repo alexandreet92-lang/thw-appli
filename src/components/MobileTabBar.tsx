@@ -18,7 +18,7 @@ const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 
 type Mode = 'main' | 'plan' | 'stats' | 'plus'
 
-const ACCENT = '#00c8e0'
+const ACCENT = '#06B6D4'
 const DIM    = '#9CA3AF'
 
 const ROUTE_TO_TAB: Record<string, Exclude<Mode, 'main'>> = {
@@ -220,7 +220,7 @@ const RECORD_BTN: React.CSSProperties = {
   transform: 'translateX(-50%)',
   width: 56, height: 56,
   borderRadius: '50%',
-  background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
+  background: 'linear-gradient(135deg, #06B6D4, #5b6fff)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
   textDecoration: 'none',

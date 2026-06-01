@@ -33,7 +33,7 @@ export default function WelcomeSlide() {
           <circle
             key={i}
             cx={`${p.x}%`} cy={`${p.y}%`} r={p.r}
-            fill="#00c8e0" opacity={p.op}
+            fill="#06B6D4" opacity={p.op}
             style={{ animation: `ob-float ${p.dur}s ${p.delay}s ease-in-out infinite` }}
           />
         ))}

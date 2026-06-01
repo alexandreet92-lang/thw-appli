@@ -122,7 +122,7 @@ function SectionLabel({ children }: { children:React.ReactNode }) {
   return <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.08em', margin:'0 0 10px' }}>{children}</p>
 }
 function Toggle({ value, onChange }: { value:boolean; onChange:(v:boolean)=>void }) {
-  return <button onClick={()=>onChange(!value)} style={{ width:38, height:21, borderRadius:11, background:value?'#00c8e0':'rgba(120,120,140,0.3)', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}><div style={{ width:15, height:15, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:value?20:3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }}/></button>
+  return <button onClick={()=>onChange(!value)} style={{ width:38, height:21, borderRadius:11, background:value?'#06B6D4':'rgba(120,120,140,0.3)', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}><div style={{ width:15, height:15, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:value?20:3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }}/></button>
 }
 function InfoModal({ title, content, onClose }: { title:string; content:React.ReactNode; onClose:()=>void }) {
   return <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}><div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:24, maxWidth:420, width:'100%' }}><div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}><h3 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>{title}</h3><button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button></div><div style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.7 }}>{content}</div></div></div>
@@ -135,7 +135,7 @@ function Toast({ msg, ok }: { msg:string; ok:boolean }) {
   return <div style={{ position:'fixed', top:20, right:20, zIndex:999, padding:'12px 18px', borderRadius:12, background:ok?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.15)', border:`1px solid ${ok?'rgba(34,197,94,0.4)':'rgba(239,68,68,0.4)'}`, color:ok?'#22c55e':'#ef4444', fontSize:13, fontWeight:600, backdropFilter:'blur(8px)' }}>{msg}</div>
 }
 function SaveBtn({ saving, onClick }: { saving:boolean; onClick:()=>void }) {
-  return <button onClick={onClick} disabled={saving} style={{ padding:'7px 16px', borderRadius:10, background:saving?'var(--border)':'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, cursor:saving?'not-allowed':'pointer', fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>{saving?'Sauvegarde...':'Sauvegarder ✓'}</button>
+  return <button onClick={onClick} disabled={saving} style={{ padding:'7px 16px', borderRadius:10, background:saving?'var(--border)':'linear-gradient(135deg,#06B6D4,#5b6fff)', border:'none', color:'#fff', fontSize:12, cursor:saving?'not-allowed':'pointer', fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>{saving?'Sauvegarde...':'Sauvegarder ✓'}</button>
 }
 
 // Bottom-sheet overlay
@@ -415,7 +415,7 @@ function ProfilBloc() {
           {/* Edit/Save */}
           {editing
             ? <SaveBtn saving={savingProfile} onClick={handleSave}/>
-            : <button onClick={()=>setEditing(true)} style={{ padding:'7px 16px', borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:6 }}>
+            : <button onClick={()=>setEditing(true)} style={{ padding:'7px 16px', borderRadius:10, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Modifier
               </button>
@@ -433,8 +433,8 @@ function ProfilBloc() {
             <div key={f.label} style={{ padding:'13px 14px', borderRadius:14, background:'var(--bg-card2)', border:'1px solid var(--border)', textAlign:'center' as const }}>
               <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.09em', color:'var(--text-dim)', margin:'0 0 7px' }}>{f.label}</p>
               {editing && !f.readonly
-                ? <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:800, background:'transparent', border:'none', color:'#00c8e0', outline:'none', width:'100%', textAlign:'center' as const }}/>
-                : <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:800, color:'#00c8e0', margin:0 }}>{f.val||'—'}</p>
+                ? <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:800, background:'transparent', border:'none', color:'#06B6D4', outline:'none', width:'100%', textAlign:'center' as const }}/>
+                : <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:800, color:'#06B6D4', margin:0 }}>{f.val||'—'}</p>
               }
               {f.unit && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'3px 0 0' }}>{f.unit}</p>}
             </div>
@@ -479,7 +479,7 @@ function ProfilBloc() {
             {Object.entries(SPORT_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}
           </select>
           <input type="date" value={newSince} onChange={e=>setNewSince(e.target.value)} style={{ padding:'9px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none' }}/>
-          <button onClick={()=>{ if(newSport) addSport(newSport, newSince) }} style={{ padding:'9px 16px', borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>+ Ajouter</button>
+          <button onClick={()=>{ if(newSport) addSport(newSport, newSince) }} style={{ padding:'9px 16px', borderRadius:10, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>+ Ajouter</button>
         </div>
       </Card>
 
@@ -501,8 +501,8 @@ function ProfilBloc() {
                 {c.connected && c.lastSync && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>Dernière sync : {c.lastSync}</p>}
               </div>
               <div style={{ display:'flex', gap:5, flexShrink:0 }}>
-                {c.connected && <button onClick={()=>sync(c)} disabled={c.loading} style={{ padding:'5px 10px', borderRadius:8, background:'rgba(0,200,224,0.08)', border:'1px solid rgba(0,200,224,0.2)', color:'#00c8e0', fontSize:11, fontWeight:600, cursor:'pointer' }}>↻</button>}
-                <button onClick={()=>c.connected?disconnect(c):connect(c)} disabled={c.loading} style={{ padding:'5px 12px', borderRadius:8, background:c.connected?'rgba(239,68,68,0.07)':'rgba(0,200,224,0.08)', border:`1px solid ${c.connected?'rgba(239,68,68,0.2)':'rgba(0,200,224,0.2)'}`, color:c.connected?'#ef4444':'#00c8e0', fontSize:11, fontWeight:600, cursor:'pointer', opacity:c.loading?0.5:1 }}>
+                {c.connected && <button onClick={()=>sync(c)} disabled={c.loading} style={{ padding:'5px 10px', borderRadius:8, background:'rgba(6,182,212,0.08)', border:'1px solid rgba(6,182,212,0.2)', color:'#06B6D4', fontSize:11, fontWeight:600, cursor:'pointer' }}>↻</button>}
+                <button onClick={()=>c.connected?disconnect(c):connect(c)} disabled={c.loading} style={{ padding:'5px 12px', borderRadius:8, background:c.connected?'rgba(239,68,68,0.07)':'rgba(6,182,212,0.08)', border:`1px solid ${c.connected?'rgba(239,68,68,0.2)':'rgba(6,182,212,0.2)'}`, color:c.connected?'#ef4444':'#06B6D4', fontSize:11, fontWeight:600, cursor:'pointer', opacity:c.loading?0.5:1 }}>
                   {c.loading?'...' : c.connected?'Déconnecter':'Connecter'}
                 </button>
               </div>
@@ -553,7 +553,7 @@ function NotificationsBloc() {
     items: { key: NotifKey; label: string; sub: string }[]
   }[] = [
     {
-      label:'Entraînement', color:'#00c8e0',
+      label:'Entraînement', color:'#06B6D4',
       icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
       items:[
         { key:'sessionRemind',    label:'Rappel séance',     sub:'Notification avant ta séance planifiée' },
@@ -648,7 +648,7 @@ function NotificationsBloc() {
 // ══════════════════════════════════════════════════
 
 const PLANS = [
-  { id:'premium', label:'Premium', monthly:'15€/mois', annual:'129€/an', save:'28%', color:'#00c8e0', features:['Toutes les fonctionnalités','Connexions apps (5)','Export PDF','Historique 1 an'] },
+  { id:'premium', label:'Premium', monthly:'15€/mois', annual:'129€/an', save:'28%', color:'#06B6D4', features:['Toutes les fonctionnalités','Connexions apps (5)','Export PDF','Historique 1 an'] },
   { id:'pro',     label:'Pro',     monthly:'29€/mois', annual:'199€/an', save:'43%', color:'#a855f7', features:['Tout Premium','Connexions illimitées','Coach IA','Historique illimité'] },
   { id:'expert',  label:'Expert',  monthly:'49€/mois', annual:'349€/an', save:'41%', color:'#f97316', features:['Tout Pro','Multi-athlètes','Dashboard coach','API accès'] },
 ]
@@ -821,7 +821,7 @@ function RuleCreator({ addRule, onClose }: {
             <button
               onClick={() => void callRuleHelper(userInput)}
               disabled={!ready || loading}
-              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:10, background: ready ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--bg-card2)', color: ready ? '#fff' : 'var(--text-dim)', fontWeight:700, fontSize:13, fontFamily:'Syne,sans-serif', cursor: ready && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}
+              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:10, background: ready ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--bg-card2)', color: ready ? '#fff' : 'var(--text-dim)', fontWeight:700, fontSize:13, fontFamily:'Syne,sans-serif', cursor: ready && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}
             >{loading ? 'L\'IA réfléchit…' : 'Envoyer à l\'IA →'}</button>
 
             {/* Direct save */}
@@ -861,7 +861,7 @@ function RuleCreator({ addRule, onClose }: {
             <button
               onClick={() => void handleValidate()}
               disabled={saving}
-              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:8, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', color:'#fff', fontWeight:700, fontSize:13, fontFamily:'Syne,sans-serif', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}
+              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:8, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', color:'#fff', fontWeight:700, fontSize:13, fontFamily:'Syne,sans-serif', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}
             >{saving ? 'Enregistrement…' : '✓ Valider cette règle'}</button>
 
             {/* Modify */}
@@ -929,7 +929,7 @@ function RulesCard() {
           <CardTitle icon={<svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="1" width="10" height="14" rx="2"/><path d="M6 1v1a2 2 0 004 0V1M6 7h4M6 10h3"/></svg>}>Mes règles</CardTitle>
           <button
             onClick={() => setShowModal(true)}
-            style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}
+            style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}
           >
             <span style={{ fontSize:16, lineHeight:1 }}>+</span> Ajouter
           </button>
@@ -1105,7 +1105,7 @@ function IASettingsBloc() {
               <p style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:0, color:'var(--text)' }}>Version Premium</p>
               <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>Accès complet pendant l'essai</p>
             </div>
-            <button onClick={()=>{ setSubOpen(false); setUpgradeOpen(true) }} style={{ padding:'9px 16px', borderRadius:10, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>Upgrade</button>
+            <button onClick={()=>{ setSubOpen(false); setUpgradeOpen(true) }} style={{ padding:'9px 16px', borderRadius:10, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>Upgrade</button>
           </div>
           <div style={{ height:6, borderRadius:999, background:'rgba(255,179,64,0.15)', overflow:'hidden' }}>
             <div style={{ height:'100%', width:`${(trialLeft/trialDays)*100}%`, background:'linear-gradient(90deg,#ffb340,#f97316)', borderRadius:999 }}/>
@@ -1120,7 +1120,7 @@ function IASettingsBloc() {
         <SectionLabel>Utilisation des crédits IA</SectionLabel>
         <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:14 }}>
           {([
-            { label:'Journalière',    used:dailyUsed, max:dailyMax, color:'#00c8e0', period:'jour' },
+            { label:'Journalière',    used:dailyUsed, max:dailyMax, color:'#06B6D4', period:'jour' },
             { label:'Hebdomadaire', used:weekUsed,  max:weekMax,  color:'#5b6fff', period:'semaine' },
           ] as const).map(g=>{
             const pct = Math.min(100, Math.round((g.used/g.max)*100))

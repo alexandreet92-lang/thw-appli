@@ -37,7 +37,7 @@ export default function SectionTrends({ history }: Props) {
   const dayLabels  = items.map(c => { const d=new Date(c.date+'T12:00:00'); return ['D','L','M','M','J','V','S'][d.getDay()] })
 
   const todayScore = scores[scores.length-1]
-  const scoreColor = todayScore >= 81 ? '#22c55e' : todayScore >= 61 ? '#00c8e0' : todayScore >= 41 ? '#f97316' : '#ef4444'
+  const scoreColor = todayScore >= 81 ? '#22c55e' : todayScore >= 61 ? '#06B6D4' : todayScore >= 41 ? '#f97316' : '#ef4444'
 
   const CHARTS = [
     { key:'score',   label:'Score',   unit:'',    values:scores,   color:scoreColor,  today:todayScore, avgFn:avg, higher:true },
@@ -50,7 +50,7 @@ export default function SectionTrends({ history }: Props) {
   const reco = todayScore >= 80
     ? { text:'Conditions optimales pour un effort intense.', color:'#22c55e' }
     : todayScore >= 61
-    ? { text:'Intensité modérée recommandée.', color:'#00c8e0' }
+    ? { text:'Intensité modérée recommandée.', color:'#06B6D4' }
     : { text:'Privilégie la récupération active ou le repos.', color:'#f97316' }
 
   return (
@@ -63,7 +63,7 @@ export default function SectionTrends({ history }: Props) {
         <div style={{ display:'flex',gap:4 }}>
           {([7,30] as const).map(v=>(
             <button key={v} onClick={()=>setRange(v)}
-              style={{ padding:'5px 12px',borderRadius:8,border:`1px solid ${range===v?'#00c8e0':'var(--border)'}`,background:range===v?'rgba(0,200,224,0.10)':'var(--bg-card2)',color:range===v?'#00c8e0':'var(--text-dim)',fontSize:10,fontWeight:600,cursor:'pointer' }}>
+              style={{ padding:'5px 12px',borderRadius:8,border:`1px solid ${range===v?'#06B6D4':'var(--border)'}`,background:range===v?'rgba(6,182,212,0.10)':'var(--bg-card2)',color:range===v?'#06B6D4':'var(--text-dim)',fontSize:10,fontWeight:600,cursor:'pointer' }}>
               {v} jours
             </button>
           ))}

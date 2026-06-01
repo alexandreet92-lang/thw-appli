@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 // ─── Levels ──────────────────────────────────────────────────────────────────
 const LEVELS = [
   { label: 'Alien', score: 10, color: '#00FF87', pct: '>99%'   },
-  { label: 'Élite', score: 9,  color: '#00C8E0', pct: 'Top 1%' },
+  { label: 'Élite', score: 9,  color: '#06B6D4', pct: 'Top 1%' },
   { label: 'AHN',   score: 8,  color: '#5B6FFF', pct: 'Top 5%' },
   { label: 'TBA',   score: 7,  color: '#FFD700', pct: 'Top 15%'},
   { label: 'BA',    score: 6,  color: '#FF9500', pct: 'Top 30%'},
@@ -17,7 +17,7 @@ type LevelEntry = typeof LEVELS[number]
 // 7-level table (adds Débutant below Amateur) — used in BenchmarkModal
 const BENCH_LEVELS = [
   { label: 'Alien',    score: '10',  color: '#00FF87' },
-  { label: 'Élite',   score: '9',   color: '#00C8E0' },
+  { label: 'Élite',   score: '9',   color: '#06B6D4' },
   { label: 'AHN',     score: '8',   color: '#5B6FFF' },
   { label: 'TBA',     score: '7',   color: '#FFD700' },
   { label: 'BA',      score: '6',   color: '#FF9500' },

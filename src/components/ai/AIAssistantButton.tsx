@@ -41,10 +41,10 @@ export default function AIAssistantButton({ agent, context }: Props) {
             ? 'rgba(91,111,255,0.35)'
             : 'rgba(91,111,255,0.18)',
           background: open
-            ? 'linear-gradient(135deg,rgba(0,200,224,0.15),rgba(91,111,255,0.20))'
+            ? 'linear-gradient(135deg,rgba(6,182,212,0.15),rgba(91,111,255,0.20))'
             : hovered
-            ? 'linear-gradient(135deg,rgba(0,200,224,0.08),rgba(91,111,255,0.12))'
-            : 'linear-gradient(135deg,rgba(0,200,224,0.04),rgba(91,111,255,0.06))',
+            ? 'linear-gradient(135deg,rgba(6,182,212,0.08),rgba(91,111,255,0.12))'
+            : 'linear-gradient(135deg,rgba(6,182,212,0.04),rgba(91,111,255,0.06))',
           cursor: 'pointer',
           flexShrink: 0,
           transition: 'all 0.16s',
@@ -70,7 +70,7 @@ export default function AIAssistantButton({ agent, context }: Props) {
           fontFamily: 'DM Sans, sans-serif',
           fontSize: 12,
           fontWeight: 600,
-          background: 'linear-gradient(90deg,#00c8e0,#5b6fff)',
+          background: 'linear-gradient(90deg,#06B6D4,#5b6fff)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           whiteSpace: 'nowrap' as const,

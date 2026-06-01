@@ -68,7 +68,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:28 }}>
-          <div style={{ width:40, height:40, borderRadius:12, background:'linear-gradient(135deg,#00c8e0,#5b6fff)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:12, color:'#fff', boxShadow:'0 0 16px rgba(0,200,224,0.3)' }}>
+          <div style={{ width:40, height:40, borderRadius:12, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:12, color:'#fff', boxShadow:'0 0 16px rgba(6,182,212,0.3)' }}>
             THW
           </div>
           <div>

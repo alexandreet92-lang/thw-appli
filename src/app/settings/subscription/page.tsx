@@ -70,7 +70,7 @@ const PLANS: PlanDef[] = [
     monthlyPrice:  14,
     yearlyPrice:   132,
     yearlyMonthly: 11,
-    accent:        'rgba(0,200,224,0.15)',
+    accent:        'rgba(6,182,212,0.15)',
   },
   {
     tier:          'pro',
@@ -79,7 +79,7 @@ const PLANS: PlanDef[] = [
     monthlyPrice:  26,
     yearlyPrice:   249,
     yearlyMonthly: 20.75,
-    accent:        'rgba(0,200,224,0.22)',
+    accent:        'rgba(6,182,212,0.22)',
   },
   {
     tier:          'expert',
@@ -88,7 +88,7 @@ const PLANS: PlanDef[] = [
     monthlyPrice:  49,
     yearlyPrice:   468,
     yearlyMonthly: 39,
-    accent:        'rgba(0,200,224,0.30)',
+    accent:        'rgba(6,182,212,0.30)',
   },
 ]
 
@@ -127,7 +127,7 @@ function UsageBar({ used, limit, label, resetAt }: {
 }) {
   const pct      = limit === Infinity ? 0 : Math.min(100, (used / limit) * 100)
   const isHigh   = pct >= 85
-  const barColor = isHigh ? '#ef4444' : '#00c8e0'
+  const barColor = isHigh ? '#ef4444' : '#06B6D4'
   const limitStr = limit === Infinity ? '∞' : String(limit)
   const resetStr = new Date(resetAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 
@@ -158,7 +158,7 @@ function UsageBar({ used, limit, label, resetAt }: {
 // ── Feature row value ──────────────────────────────────────────
 
 function FeatureValue({ value }: { value: string | boolean }) {
-  if (value === true)  return <span style={{ color: '#00c8e0', fontSize: 14 }}>✓</span>
+  if (value === true)  return <span style={{ color: '#06B6D4', fontSize: 14 }}>✓</span>
   if (value === false) return <span style={{ color: 'var(--text-dim)', fontSize: 14, opacity: 0.4 }}>–</span>
   return <span style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif' }}>{value}</span>
 }
@@ -285,8 +285,8 @@ export default function SubscriptionPage() {
           background: var(--bg-card);
         }
         .plan-card.active {
-          border-color: #00c8e0;
-          box-shadow: 0 0 0 1px rgba(0,200,224,0.2);
+          border-color: #06B6D4;
+          box-shadow: 0 0 0 1px rgba(6,182,212,0.2);
         }
         .toggle-pill {
           display: inline-flex;
@@ -308,7 +308,7 @@ export default function SubscriptionPage() {
           min-height: 38px;
         }
         .toggle-option.selected {
-          background: #00c8e0;
+          background: #06B6D4;
           color: #0a0a0a;
           font-weight: 700;
         }
@@ -336,9 +336,9 @@ export default function SubscriptionPage() {
             padding:      '12px 16px',
             borderRadius: 8,
             marginBottom: 24,
-            background:   banner.type === 'success' ? 'rgba(0,200,224,0.12)' : 'rgba(239,68,68,0.12)',
-            border:       `1px solid ${banner.type === 'success' ? 'rgba(0,200,224,0.4)' : 'rgba(239,68,68,0.4)'}`,
-            color:        banner.type === 'success' ? '#00c8e0' : '#ef4444',
+            background:   banner.type === 'success' ? 'rgba(6,182,212,0.12)' : 'rgba(239,68,68,0.12)',
+            border:       `1px solid ${banner.type === 'success' ? 'rgba(6,182,212,0.4)' : 'rgba(239,68,68,0.4)'}`,
+            color:        banner.type === 'success' ? '#06B6D4' : '#ef4444',
             fontFamily:   'DM Sans, sans-serif',
             fontSize:     14,
             display:      'flex',
@@ -401,8 +401,8 @@ export default function SubscriptionPage() {
                       padding:      '2px 8px',
                       borderRadius: 4,
                       fontFamily:   'DM Sans, sans-serif',
-                      background:   'rgba(0,200,224,0.12)',
-                      color:        '#00c8e0',
+                      background:   'rgba(6,182,212,0.12)',
+                      color:        '#06B6D4',
                     }}>
                       Illimité
                     </span>
@@ -415,9 +415,9 @@ export default function SubscriptionPage() {
                       borderRadius: 4,
                       fontFamily:   'DM Sans, sans-serif',
                       background:   subStatus === 'active' || subStatus === 'trialing'
-                        ? 'rgba(0,200,224,0.12)' : 'rgba(239,68,68,0.12)',
+                        ? 'rgba(6,182,212,0.12)' : 'rgba(239,68,68,0.12)',
                       color:        subStatus === 'active' || subStatus === 'trialing'
-                        ? '#00c8e0' : '#ef4444',
+                        ? '#06B6D4' : '#ef4444',
                     }}>
                       {subStatus === 'active'   ? 'Actif'
                        : subStatus === 'trialing' ? 'Essai'
@@ -547,8 +547,8 @@ export default function SubscriptionPage() {
                           fontWeight:   700,
                           padding:      '2px 8px',
                           borderRadius: 4,
-                          background:   'rgba(0,200,224,0.12)',
-                          color:        '#00c8e0',
+                          background:   'rgba(6,182,212,0.12)',
+                          color:        '#06B6D4',
                           fontFamily:   'DM Sans, sans-serif',
                         }}>
                           Plan actuel
@@ -560,8 +560,8 @@ export default function SubscriptionPage() {
                           fontWeight:   700,
                           padding:      '2px 8px',
                           borderRadius: 4,
-                          background:   'rgba(0,200,224,0.08)',
-                          color:        '#00c8e0',
+                          background:   'rgba(6,182,212,0.08)',
+                          color:        '#06B6D4',
                           fontFamily:   'DM Sans, sans-serif',
                         }}>
                           Recommandé
@@ -617,7 +617,7 @@ export default function SubscriptionPage() {
                       onClick={() => void handleCheckout(plan.tier)}
                       disabled={ctaLoading !== null}
                       style={{
-                        background: '#00c8e0',
+                        background: '#06B6D4',
                         color:      '#0a0a0a',
                         width:      '100%',
                       }}

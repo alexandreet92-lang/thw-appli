@@ -77,17 +77,17 @@ function StatBox({ label, value, unit, sub, color, onSelect, selected }: {
       className="card-enter"
       onClick={onSelect}
       style={{
-        background: selected ? 'rgba(0,200,224,0.08)' : 'var(--bg-card2)',
-        border: `1px solid ${selected ? '#00c8e0' : 'var(--border)'}`,
+        background: selected ? 'rgba(6,182,212,0.08)' : 'var(--bg-card2)',
+        border: `1px solid ${selected ? '#06B6D4' : 'var(--border)'}`,
         borderRadius:12, padding:'11px 13px',
         cursor: onSelect ? 'pointer' : undefined,
         transition: 'border-color 0.15s, background 0.15s, box-shadow 0.15s',
-        boxShadow: selected ? '0 0 0 2px rgba(0,200,224,0.15)' : undefined,
+        boxShadow: selected ? '0 0 0 2px rgba(6,182,212,0.15)' : undefined,
         userSelect: 'none' as const,
       }}
     >
       <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:'0 0 4px' }}>{label}</p>
-      <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, color:selected?'#00c8e0':color||'var(--text)', margin:0, lineHeight:1 }}>
+      <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, color:selected?'#06B6D4':color||'var(--text)', margin:0, lineHeight:1 }}>
         {isInt ? <CountUp value={value as number} /> : value}
         {unit && <span style={{ fontSize:11, fontWeight:400, color:'var(--text-dim)', marginLeft:3 }}>{unit}</span>}
       </p>
@@ -146,21 +146,21 @@ function SelectedDatumBubble({ datum, onClear, onAsk }: {
       padding:'10px 14px 10px 16px',
       borderRadius:14,
       background:'var(--bg-card)',
-      border:'1px solid rgba(0,200,224,0.45)',
-      boxShadow:'0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,200,224,0.08)',
+      border:'1px solid rgba(6,182,212,0.45)',
+      boxShadow:'0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(6,182,212,0.08)',
       animation:'cardEnter 0.22s cubic-bezier(0.4,0,0.2,1) both',
       maxWidth:'calc(100vw - 48px)',
       whiteSpace:'nowrap' as const,
     }}>
       <div style={{ minWidth:0 }}>
         <p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-dim)', margin:0 }}>{datum.label}</p>
-        <p style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'#00c8e0', margin:0 }}>{datum.value}</p>
+        <p style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'#06B6D4', margin:0 }}>{datum.value}</p>
       </div>
       <button
         onClick={onAsk}
         style={{
           padding:'7px 14px', borderRadius:10,
-          background:'linear-gradient(135deg,#00c8e0,#5b6fff)',
+          background:'linear-gradient(135deg,#06B6D4,#5b6fff)',
           border:'none', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer',
           whiteSpace:'nowrap' as const, flexShrink:0,
         }}
@@ -224,7 +224,7 @@ const SPORT_SPEC_FIELDS: Record<SportSpecId, SportSpecField[]> = {
 }
 const SPORT_SPEC_TABS: { id: SportSpecId; label: string; color: string }[] = [
   { id:'running',  label:'Running',  color:'#22c55e' },
-  { id:'cycling',  label:'Cyclisme', color:'#00c8e0' },
+  { id:'cycling',  label:'Cyclisme', color:'#06B6D4' },
   { id:'swimming', label:'Natation', color:'#38bdf8' },
   { id:'hyrox',    label:'Hyrox',    color:'#ef4444' },
 ]
@@ -494,7 +494,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
   if (profLoading) {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'40px 0', color:'var(--text-dim)', fontSize:13, gap:10 }}>
-        <span style={{ width:16, height:16, border:'2px solid var(--border)', borderTopColor:'#00c8e0', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
+        <span style={{ width:16, height:16, border:'2px solid var(--border)', borderTopColor:'#06B6D4', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
         Chargement du profil…
       </div>
     )
@@ -532,7 +532,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap' as const, gap:8 }}>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
-              <div style={{ width:3, height:16, borderRadius:2, background:'linear-gradient(180deg,#00c8e0,#5b6fff)' }}/>
+              <div style={{ width:3, height:16, borderRadius:2, background:'linear-gradient(180deg,#06B6D4,#5b6fff)' }}/>
               <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Profil Global</h2>
             </div>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0 11px' }}>Paramètres physiologiques transversaux</p>
@@ -556,7 +556,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
                 <button
                   onClick={() => { void handleSaveGlobal() }}
                   disabled={saving}
-                  style={{ padding:'6px 14px', borderRadius:9, background:savedOk?'rgba(34,197,94,0.25)':'linear-gradient(135deg,#00c8e0,#5b6fff)', border:`1px solid ${savedOk?'rgba(34,197,94,0.5)':'transparent'}`, color:savedOk?'#22c55e':'#fff', fontSize:12, cursor:saving?'not-allowed':'pointer', fontWeight:600, opacity:saving?0.7:1 }}>
+                  style={{ padding:'6px 14px', borderRadius:9, background:savedOk?'rgba(34,197,94,0.25)':'linear-gradient(135deg,#06B6D4,#5b6fff)', border:`1px solid ${savedOk?'rgba(34,197,94,0.5)':'transparent'}`, color:savedOk?'#22c55e':'#fff', fontSize:12, cursor:saving?'not-allowed':'pointer', fontWeight:600, opacity:saving?0.7:1 }}>
                   {saving ? 'Enregistrement…' : savedOk ? '✓ Enregistré' : 'Enregistrer'}
                 </button>
               </>
@@ -861,7 +861,7 @@ const TEST_SPORT_TABS: { id: TestSport; label: string; short: string; color: str
     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M13 4a1 1 0 100-2 1 1 0 000 2z" fill="currentColor" stroke="none"/><path d="M7 20l3-6 3 3 3-7"/><path d="M15 4l-2 4-3 1-2 4"/></svg>,
   },
   {
-    id: 'cycling', label: 'Cyclisme', short: 'Vélo', color: '#00c8e0', bg: 'rgba(0,200,224,0.10)',
+    id: 'cycling', label: 'Cyclisme', short: 'Vélo', color: '#06B6D4', bg: 'rgba(6,182,212,0.10)',
     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-10h4l4 10M9 7h6"/></svg>,
   },
   {
@@ -2447,7 +2447,7 @@ export default function PerformancePage() {
   }
 
   const TABS: { id: PerfTab; label: string; short: string; color: string; bg: string }[] = [
-    { id:'profil', label:'Profil', short:'Profil', color:'#00c8e0', bg:'rgba(0,200,224,0.10)'  },
+    { id:'profil', label:'Profil', short:'Profil', color:'#06B6D4', bg:'rgba(6,182,212,0.10)'  },
     { id:'datas',  label:'Datas',  short:'Datas',  color:'#f97316', bg:'rgba(249,115,22,0.10)' },
     { id:'tests',  label:'Tests',  short:'Tests',  color:'#22c55e', bg:'rgba(34,197,94,0.10)'  },
   ]

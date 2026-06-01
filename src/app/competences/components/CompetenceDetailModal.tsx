@@ -233,7 +233,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
   // ── MOBILE : plein écran ──
   if (!isDesktop) {
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+      <div className="comp-modal-fullscreen" style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '16px 18px', borderBottom: '0.5px solid var(--border)', flexShrink: 0 }}>
           <button onClick={onClose} aria-label="Retour" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', marginTop: 2 }}>
             <ArrowLeft size={18} color="var(--text-mid)" />

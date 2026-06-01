@@ -109,7 +109,7 @@ export default function MobileTabBar() {
   // Page /record : compteur immersif, on cache la navbar
   if (pathname === '/record') return null
   // Page /competences : header + champ dédiés, on masque la tabbar
-  if (pathname === '/competences' || pathname.startsWith('/competences/')) return null
+  if (pathname?.startsWith('/competences')) return null
 
   const activeTab = ROUTE_TO_TAB[pathname]
   const col       = (on: boolean) => on ? ACCENT : DIM

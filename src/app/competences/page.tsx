@@ -247,11 +247,11 @@ export default function CompetencesPage() {
   if (!isDesktop) {
     return (
       <div className="competences-mobile-root" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', background: 'var(--bg-card)' }}>
-        {/* Header dédié — sticky */}
+        {/* Header dédié — sticky (le header global app est masqué sur /competences) */}
         <div style={{
           position: 'sticky', top: 0, zIndex: 5,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-          padding: '14px 16px', background: 'var(--bg-card)', borderBottom: '0.5px solid var(--border)',
+          padding: 'calc(14px + env(safe-area-inset-top)) 16px 14px', background: 'var(--bg-card)', borderBottom: '0.5px solid var(--border)',
         }}>
           <button onClick={() => setMobileOpen(true)} aria-label="Filtres"
             style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-alt)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

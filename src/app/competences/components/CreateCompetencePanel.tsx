@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Zap, ArrowUp } from 'lucide-react'
+import { Zap, ArrowUp, Mic } from 'lucide-react'
 import { useCreateCompetenceConversation } from '../hooks/useCreateCompetenceConversation'
 import { sportIcon, SPORT_LABELS, type SportFilter } from '../constants'
 
@@ -44,15 +44,39 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
 
   const hasConversation = conv.messages.length > 0
 
+  const insertExample = (ex: string) => {
+    setText(ex)
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }
+
   const chat = (
     <>
       {!hasConversation && (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-          <div style={avatarStyle}><Zap size={12} color="#06B6D4" /></div>
-          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>
-            Décris la compétence que tu veux créer — une méthode d&apos;entraînement, une approche nutritionnelle, un principe de récupération…
-          </p>
-        </div>
+        <>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <div style={avatarStyle}><Zap size={12} color="#06B6D4" /></div>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>
+              Décris la compétence que tu veux créer — une méthode d&apos;entraînement, une approche nutritionnelle, un principe de récupération… Je te poserai les bonnes questions pour générer un prompt sur mesure.
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingLeft: 38 }}>
+            {EXAMPLE_CHIPS.map(ex => (
+              <button
+                key={ex}
+                onClick={() => insertExample(ex)}
+                style={{
+                  background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 16,
+                  padding: '5px 12px', fontSize: 11, color: 'var(--text-mid)', cursor: 'pointer',
+                  fontFamily: 'DM Sans, sans-serif', transition: 'border-color 150ms',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#06B6D4' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)' }}
+              >
+                {ex}
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {conv.messages.map((m, i) => {
@@ -111,20 +135,31 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
   )
 
   const inputBar = (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+    <div className="comp-input-wrap">
       <textarea
         ref={inputRef}
         id="create-competence-input"
         value={text}
         onChange={e => setText(e.target.value)}
+        onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px' }}
         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend() } }}
         placeholder="Décris ton idée..."
         rows={1}
-        style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', minHeight: 24, maxHeight: 120 }}
+        style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', minHeight: 24, maxHeight: 120 }}
       />
-      <button onClick={doSend} disabled={!text.trim() || conv.isStreaming} aria-label="Envoyer" style={sendBtn(!!text.trim() && !conv.isStreaming)}>
-        <ArrowUp size={16} color="#fff" />
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+        <button
+          onClick={() => inputRef.current?.focus()}
+          aria-label="Dictée vocale"
+          title="Dictée vocale"
+          style={{ width: 22, height: 22, background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Mic size={15} />
+        </button>
+        <button onClick={doSend} disabled={!text.trim() || conv.isStreaming} aria-label="Envoyer" style={sendBtn(!!text.trim() && !conv.isStreaming)}>
+          <ArrowUp size={16} color="#fff" />
+        </button>
+      </div>
     </div>
   )
 
@@ -154,6 +189,12 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
     </div>
   )
 }
+
+const EXAMPLE_CHIPS = [
+  'Méthode 16/8 nutrition',
+  'Endurance fondamentale spécifique trail',
+  'Récupération entre séances doubles',
+]
 
 const avatarStyle: React.CSSProperties = {
   width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: 'rgba(6,182,212,0.12)',

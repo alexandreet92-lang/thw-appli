@@ -154,8 +154,8 @@ export default function CompetencesPage() {
   }, [])
 
   const badge = (
-    <span style={{ fontSize: 11, border: '0.5px solid var(--border)', borderRadius: 20, padding: '4px 12px', color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>
-      <span style={{ color: '#06B6D4', fontWeight: 700 }}>{limit.active_count}</span> / {limit.limit} actives · Plan {limit.planLabel}
+    <span style={{ fontSize: 12, fontWeight: 500, background: 'var(--bg-alt)', border: '0.5px solid var(--border-mid)', borderRadius: 20, padding: '5px 14px', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+      <span style={{ color: '#06B6D4', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} actives · Plan {limit.planLabel}
     </span>
   )
 

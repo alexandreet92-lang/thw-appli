@@ -11901,27 +11901,6 @@ function HistoryDrawer({
 
       {/* ── Settings ── */}
       <div style={{ borderTop: '1px solid var(--border)', padding: '6px 8px 8px', flexShrink: 0 }}>
-        {/* Compétences */}
-        <a
-          href="/competences"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 12px', borderRadius: 8,
-            color: 'var(--text-mid)', textDecoration: 'none',
-            fontFamily: 'DM Sans,sans-serif', fontSize: 14,
-            transition: 'background 0.12s',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-hover)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 5a3 3 0 10-3 3M12 5a3 3 0 113 3M9 8a3 3 0 00-3 3M15 8a3 3 0 013 3M6 11a3 3 0 100 6h1M18 11a3 3 0 010 6h-1M9 17a3 3 0 006 0M12 8v9" />
-          </svg>
-          <span style={{ flex: 1 }}>Compétences</span>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--text-dim)' }}>
-            <path d="M9 18l6-6-6-6" />
-          </svg>
-        </a>
         {/* Réglages IA */}
         <a
           href="/profile"

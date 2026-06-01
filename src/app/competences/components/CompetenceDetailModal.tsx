@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, ArrowLeft, Zap, ArrowUp, AlertTriangle } from 'lucide-react'
+import { X, ArrowLeft, Zap, ArrowUp, AlertTriangle, Mic } from 'lucide-react'
 import type { CompetenceWithUserState } from '@/types/competences'
 import { sportIcon, SPORT_LABELS, CATEGORY_LABELS, type SportFilter } from '../constants'
 import { streamCompetenceAI, type AIChatMsg } from '../lib/streamCompetenceAI'
@@ -34,6 +34,7 @@ export default function CompetenceDetailModal({ competence, conflicts, isOpen, o
   const [shown, setShown] = useState(false)
   const [isDesktop, setIsDesktop] = useState(true)
   const busyRef = useRef(false)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     const check = () => setIsDesktop(window.innerWidth >= 768)
@@ -163,24 +164,36 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
           )
         })}
 
-        {/* Input */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 8, background: 'var(--input-bg)', border: '0.5px solid var(--border)', borderRadius: 12, padding: '8px 10px' }}>
+        {/* Input — style identique à l'AI Coach */}
+        <div className="comp-input-wrap" style={{ marginTop: 8 }}>
           <textarea
+            ref={inputRef}
             value={input}
             onChange={e => setInput(e.target.value)}
+            onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 100) + 'px' }}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }}
             placeholder="Ex : rends-la plus tournée vers le volume…"
             rows={1}
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', minHeight: 22, maxHeight: 100 }}
+            style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', minHeight: 22, maxHeight: 100 }}
           />
-          <button
-            onClick={() => void send()}
-            disabled={!input.trim() || isStreaming}
-            aria-label="Envoyer"
-            style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', flexShrink: 0, cursor: input.trim() && !isStreaming ? 'pointer' : 'not-allowed', background: input.trim() && !isStreaming ? '#06B6D4' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <ArrowUp size={15} color="#fff" />
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+            <button
+              onClick={() => inputRef.current?.focus()}
+              aria-label="Dictée vocale"
+              title="Dictée vocale"
+              style={{ width: 22, height: 22, background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Mic size={15} />
+            </button>
+            <button
+              onClick={() => void send()}
+              disabled={!input.trim() || isStreaming}
+              aria-label="Envoyer"
+              style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', flexShrink: 0, cursor: input.trim() && !isStreaming ? 'pointer' : 'not-allowed', background: input.trim() && !isStreaming ? '#06B6D4' : 'var(--border)', opacity: input.trim() && !isStreaming ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <ArrowUp size={15} color="#fff" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -202,17 +215,24 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
   )
 
   const footer = (
-    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 22px', borderTop: '0.5px solid var(--border)', flexShrink: 0 }}>
-      {isCustom && (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '14px 22px', borderTop: '0.5px solid var(--border)', flexShrink: 0 }}>
+      {/* Gauche : Supprimer (custom uniquement) sinon spacer */}
+      {isCustom ? (
         <button
           onClick={() => { if (confirm('Supprimer définitivement cette compétence ?')) onDelete() }}
-          style={{ background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}
+          style={{ background: 'transparent', color: '#EF4444', border: '0.5px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
         >Supprimer</button>
-      )}
-      <button onClick={onClose} style={{ background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}>Fermer</button>
-      {dirty && (
-        <button onClick={() => onSave(currentPrompt)} style={{ background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Enregistrer</button>
-      )}
+      ) : <span />}
+
+      {/* Droite : Fermer + Enregistrer */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={onClose} style={{ background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}>Fermer</button>
+        <button
+          onClick={() => onSave(currentPrompt)}
+          disabled={!dirty}
+          style={{ background: dirty ? '#06B6D4' : 'var(--border)', color: dirty ? '#fff' : 'var(--text-dim)', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 12, fontWeight: 500, cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.6 }}
+        >Enregistrer</button>
+      </div>
     </div>
   )
 
@@ -259,8 +279,14 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
             <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{competence.nom}</div>
             {tags}
           </div>
-          <button onClick={onClose} aria-label="Fermer" style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--bg-hover)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <X size={13} color="var(--text-mid)" />
+          <button
+            onClick={onClose}
+            aria-label="Fermer"
+            style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-hover)', border: '0.5px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 150ms' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+          >
+            <X size={16} color="var(--text)" />
           </button>
         </div>
         {body}

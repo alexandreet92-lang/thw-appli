@@ -71,6 +71,7 @@
   --shadow:      0 4px 24px rgba(0,100,150,0.10), 0 1px 4px rgba(0,0,0,0.06);
   --shadow-card: 0 2px 12px rgba(0,80,160,0.07), 0 1px 3px rgba(0,0,0,0.05);
   --input-bg:    #f0f6f9;
+  --toggle-off:  #D1D5DB;
   --nav-w:       220px;
   --nav-w-mobile: 0px;
   --gty-bg:      #111111;
@@ -94,6 +95,7 @@
   --shadow:      0 4px 24px rgba(0,0,0,0.6);
   --shadow-card: 0 1px 8px rgba(0,0,0,0.4);
   --input-bg:    #0B0E15;
+  --toggle-off:  var(--border-mid);
   --gty-bg:      #111111;
   --gty-text:    #ffffff;
   --gty-border:  rgba(255,255,255,0.15);
@@ -104,6 +106,20 @@
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
+
+/* Champ de saisie style AI Coach — réutilisé page Compétences */
+.comp-input-wrap {
+  background: var(--input-bg);
+  border: 1.5px solid var(--border-mid);
+  border-radius: 14px;
+  padding: 10px 14px;
+  transition: border-color 200ms, box-shadow 200ms;
+}
+.comp-input-wrap:focus-within {
+  border-color: #06B6D4;
+  box-shadow: 0 0 0 3px rgba(6,182,212,0.12);
+}
+.comp-input-wrap textarea:focus-visible { outline: none; }
 *::-webkit-scrollbar { width: 4px; }
 *::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 

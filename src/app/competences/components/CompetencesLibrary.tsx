@@ -49,7 +49,7 @@ export default function CompetencesLibrary({ competences, activeTab, onTabChange
       </div>
 
       {/* Liste */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 14px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {loading ? (
           <p style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 4px' }}>Chargement…</p>
         ) : competences.length === 0 ? (

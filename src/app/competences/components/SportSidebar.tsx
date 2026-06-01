@@ -30,13 +30,17 @@ function Item({ active, icon, label, onClick }: { active: boolean; icon: React.R
         cursor: 'pointer', fontSize: 13, fontFamily: 'DM Sans, sans-serif',
         transition: 'background 120ms, color 120ms',
         background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
-        color: active ? '#06B6D4' : 'var(--text-mid)',
+        color: active ? '#06B6D4' : 'var(--text)',
         fontWeight: active ? 500 : 400,
       }}
       onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
       onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
     >
-      <span style={{ flexShrink: 0, display: 'flex', color: active ? '#06B6D4' : 'var(--text-mid)' }}>{icon}</span>
+      <span style={{
+        flexShrink: 0, width: 18, height: 18,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: active ? '#06B6D4' : 'var(--text-mid)',
+      }}>{icon}</span>
       {label}
     </button>
   )
@@ -52,9 +56,9 @@ export default function SportSidebar({ activeSport, activeCategory, onSelectSpor
         ))}
       </div>
 
-      <div style={{ height: 1, background: 'var(--border)', margin: '12px 10px' }} />
+      <div style={{ height: 1, background: 'var(--border)', margin: '14px 10px' }} />
 
-      <div style={labelStyle}>Catégories</div>
+      <div style={{ ...labelStyle, marginTop: 10 }}>Catégories</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {CATEGORIES_ORDER.map(c => (
           <Item

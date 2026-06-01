@@ -40,15 +40,16 @@ export default function CompetenceCard({ competence, conflicts, onToggle, onOpen
           aria-label={active ? 'Désactiver' : 'Activer'}
           style={{
             width: 32, height: 17, borderRadius: 9, flexShrink: 0,
-            border: 'none', cursor: 'pointer', position: 'relative',
-            background: active ? '#06B6D4' : 'var(--border)',
+            cursor: 'pointer', position: 'relative',
+            background: active ? '#06B6D4' : 'var(--toggle-off)',
+            border: active ? 'none' : '1px solid rgba(0,0,0,0.05)',
             transition: 'background 180ms',
           }}
         >
           <span style={{
             position: 'absolute', top: 2, left: active ? 17 : 2,
             width: 13, height: 13, borderRadius: '50%', background: '#fff',
-            transition: 'left 180ms', boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+            transition: 'left 180ms', boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
           }} />
         </button>
       </div>

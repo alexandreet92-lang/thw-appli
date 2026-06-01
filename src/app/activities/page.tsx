@@ -14,7 +14,7 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
-import { HelpCircle, ChevronDown, ChevronLeft, MoreHorizontal, Sparkles } from 'lucide-react'
+import { HelpCircle, ChevronDown, ChevronLeft, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen } from 'lucide-react'
 import { ActivityTitle } from '@/components/activity/ActivityTitle'
 import { Spinner } from '@/components/ui/Spinner'
 import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
@@ -5246,10 +5246,10 @@ function SectionProgression({ activities }: { activities: Activity[] }) {
 // ─────────────────────────────────────────────────────────────
 type Section = 'donnees' | 'analyse' | 'progression'
 
-const NAV: { id: Section; label: string; desc: string }[] = [
-  { id: 'donnees',     label: 'Données',     desc: 'Charge et volume' },
-  { id: 'analyse',     label: 'Analyse',     desc: 'Activités et détails' },
-  { id: 'progression', label: 'Progression', desc: 'Records et tendances' },
+const NAV: { id: Section; label: string; desc: string; Icon: React.ComponentType<{ size?: number; color?: string }> }[] = [
+  { id: 'donnees',     label: 'Données',     desc: 'Charge et volume',      Icon: BarChart2 },
+  { id: 'analyse',     label: 'Analyse',     desc: 'Activités et détails',  Icon: Search },
+  { id: 'progression', label: 'Progression', desc: 'Records et tendances',  Icon: TrendingUp },
 ]
 
 // ─────────────────────────────────────────────────────────────
@@ -5269,7 +5269,8 @@ function TrainingPageInner() {
   const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
   const [sectionOpen, setSectionOpen] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarExpanded, setSidebarExpanded] = useState(false)
+  const sidebarLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [syncing, setSyncing]           = useState(false)
   const [syncingPolar, setSyncingPolar] = useState(false)
   const [syncMsg, setSyncMsg]           = useState<string | null>(null)
@@ -5380,18 +5381,6 @@ function TrainingPageInner() {
     const id = params.get('id')
     if (id) { setDeepLinkId(id); setSection('analyse') }
   }, [])
-
-  // Sidebar collapse — restore from localStorage (mobile always closed)
-  useEffect(() => {
-    if (isMobile) { setSidebarOpen(false); return }
-    const saved = localStorage.getItem('sidebar_open')
-    if (saved !== null) setSidebarOpen(saved === 'true')
-  }, [isMobile])
-
-  // Sidebar collapse — persist to localStorage
-  useEffect(() => {
-    localStorage.setItem('sidebar_open', String(sidebarOpen))
-  }, [sidebarOpen])
 
   async function syncStrava() {
     setSyncing(true); setSyncMsg(null)
@@ -5507,27 +5496,62 @@ function TrainingPageInner() {
               <ChevronDown size={13} className="text-muted-foreground" />
             </button>
             {appMenuOpen && createPortal(
-              <div className="fixed inset-0 z-[9999]" onClick={() => setAppMenuOpen(false)}>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }} onClick={() => setAppMenuOpen(false)}>
                 <div
-                  className="absolute w-52 bg-background border border-border rounded-2xl shadow-2xl overflow-hidden"
-                  style={{ top: menuPos.top, right: menuPos.right }}
+                  style={{
+                    position: 'absolute',
+                    top: menuPos.top, right: menuPos.right,
+                    background: 'var(--bg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                    minWidth: 220,
+                    overflow: 'hidden',
+                    animation: 'fadeUp 200ms ease-out',
+                  }}
                   onClick={e => e.stopPropagation()}
                 >
+                  {/* Header */}
+                  <div style={{ padding: '10px 14px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-dim)', borderBottom: '1px solid var(--border)' }}>
+                    Connexions
+                  </div>
                   {[
-                    { name: 'Strava', color: '#FC4C02', connected: stravaConnected,  onPress: () => syncStrava() },
-                    { name: 'Garmin', color: '#007DC5', connected: garminConnected,  onPress: () => handleFileImport() },
-                    { name: 'Polar',  color: '#D0021B', connected: polarConnected,   onPress: () => syncPolar() },
+                    { name: 'Strava', logo: 'strava', color: '#FC4C02', initial: 'ST', connected: stravaConnected, onPress: () => syncStrava() },
+                    { name: 'Garmin', logo: null,     color: '#007CC3', initial: 'GC', connected: garminConnected, onPress: () => handleFileImport() },
+                    { name: 'Polar',  logo: 'polar',  color: '#D9001B', initial: 'PO', connected: polarConnected,  onPress: () => syncPolar() },
                   ].map((svc, i, arr) => (
                     <button
                       key={svc.name}
                       onClick={() => { svc.onPress(); setAppMenuOpen(false) }}
-                      className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted transition-colors text-left${i < arr.length - 1 ? ' border-b border-border' : ''}`}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 14px',
+                        borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
+                        cursor: 'pointer', textAlign: 'left', border: 'none',
+                        background: 'transparent',
+                        transition: 'background 0.12s',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                     >
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: svc.color }} />
-                      <span className="text-sm font-medium text-foreground flex-1">{svc.name}</span>
+                      {/* Logo */}
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 6, flexShrink: 0, overflow: 'hidden',
+                        background: svc.logo ? '#fff' : svc.color,
+                        border: svc.logo ? '1px solid rgba(0,0,0,0.08)' : 'none',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {svc.logo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={`/logos/apps/${svc.logo}.png`} alt={svc.name} width={22} height={22} style={{ objectFit: 'contain', width: '100%', height: '100%' }} />
+                        ) : (
+                          <span style={{ fontSize: 8, fontWeight: 700, color: '#fff', fontFamily: 'Syne,sans-serif' }}>{svc.initial}</span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{svc.name}</span>
                       {svc.connected
-                        ? <span className="text-[11px] font-medium text-green-500">Connecté</span>
-                        : <span className="text-[11px] text-muted-foreground">{svc.name === 'Garmin' ? 'Importer' : 'Non connecté'}</span>
+                        ? <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>✓ Connecté</span>
+                        : <span style={{ fontSize: 11, color: '#06B6D4' }}>{svc.name === 'Garmin' ? 'Importer' : 'Connecter'}</span>
                       }
                     </button>
                   ))}
@@ -5544,107 +5568,96 @@ function TrainingPageInner() {
             >
               {loading ? <Spinner size={13} color={T.textSub} /> : '↻'}
             </button>
-            <button onClick={reopenHelp} style={{ width:28, height:28, borderRadius:'50%', background:'rgba(6,182,212,0.1)', border:'1px solid rgba(6,182,212,0.25)', color:'#06B6D4', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>?</button>
+            <button
+              onClick={reopenHelp}
+              style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: 'var(--bg-card2)',
+                border: '1px solid var(--border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', flexShrink: 0,
+                transition: 'background 200ms',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--border)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
+            >
+              <BookOpen size={15} color="var(--text)" strokeWidth={1.75} />
+            </button>
           </div>
         </div>
       </div>
 
       <div style={{ display: 'flex', maxWidth: 1400, margin: '0 auto', position: 'relative' }}>
 
-        {/* ── SIDEBAR (desktop) — overlay drawer ── */}
+        {/* ── SIDEBAR desktop — Supabase style (toujours visible, icons + hover expand) ── */}
         {!isMobile && (
-          <>
-            {/* Backdrop transparent pour fermer au clic extérieur */}
-            {sidebarOpen && (
-              <div
-                onClick={() => setSidebarOpen(false)}
-                style={{ position: 'fixed', inset: 0, zIndex: 98 }}
-              />
-            )}
-            <aside style={{
+          <aside
+            onMouseEnter={() => {
+              if (sidebarLeaveTimer.current) clearTimeout(sidebarLeaveTimer.current)
+              setSidebarExpanded(true)
+            }}
+            onMouseLeave={() => {
+              sidebarLeaveTimer.current = setTimeout(() => setSidebarExpanded(false), 150)
+            }}
+            style={{
               position: 'fixed',
               top: 0, left: 0,
               height: '100vh',
-              width: 260,
+              width: sidebarExpanded ? 220 : 52,
               zIndex: 100,
-              background: 'var(--nav-bg)',
+              background: 'var(--bg)',
               borderRight: '1px solid var(--border)',
-              transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-              transition: 'transform 280ms cubic-bezier(0.32,0.72,0,1)',
-              overflowY: 'auto',
-              padding: '72px 12px 20px',
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.1, paddingLeft: 10, marginBottom: 10, fontFamily: T.fontDisplay }}>
-                NAVIGATION
-              </div>
-              {NAV.map(n => {
-                const isActive = n.id === section
-                return (
-                  <button
-                    key={n.id}
-                    onClick={() => { setSection(n.id); setSidebarOpen(false) }}
-                    style={{
-                      width: '100%', textAlign: 'left', border: 'none',
-                      borderRadius: T.radiusSm, padding: '10px 12px', cursor: 'pointer', marginBottom: 3,
-                      background: isActive ? T.accentBg : 'transparent',
-                      borderLeft: `3px solid ${isActive ? T.accent : 'transparent'}`,
-                      transition: 'background 0.12s',
-                    }}
-                    onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = T.bgAlt }}
-                    onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                  >
-                    <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? T.accent : T.text, fontFamily: T.fontDisplay }}>
+              display: 'flex', flexDirection: 'column',
+              gap: 4,
+              padding: '72px 0 20px',
+              overflow: 'hidden',
+              transition: 'width 250ms cubic-bezier(0.32,0.72,0,1)',
+              flexShrink: 0,
+            }}
+          >
+            {NAV.map(n => {
+              const isActive = n.id === section
+              return (
+                <button
+                  key={n.id}
+                  onClick={() => setSection(n.id)}
+                  style={{
+                    height: 44, display: 'flex', alignItems: 'center',
+                    padding: '0 8px', gap: 10,
+                    cursor: 'pointer', border: 'none',
+                    borderLeft: `3px solid ${isActive ? '#06B6D4' : 'transparent'}`,
+                    background: isActive ? 'rgba(6,182,212,0.08)' : 'transparent',
+                    whiteSpace: 'nowrap',
+                    transition: 'background 0.12s',
+                    width: '100%', textAlign: 'left',
+                  }}
+                  onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = T.bgAlt }}
+                  onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                >
+                  {/* Icon wrapper */}
+                  <div style={{
+                    width: 36, height: 36, flexShrink: 0,
+                    borderRadius: 8,
+                    background: isActive ? 'transparent' : 'var(--bg-card2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <n.Icon size={18} color={isActive ? '#06B6D4' : T.textSub} />
+                  </div>
+                  {/* Labels */}
+                  <div style={{ overflow: 'hidden' }}>
+                    <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? '#06B6D4' : T.text, fontFamily: T.fontDisplay }}>
                       {n.label}
                     </div>
-                    <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2, fontFamily: T.fontBody }}>{n.desc}</div>
-                  </button>
-                )
-              })}
-
-              {/* Résumé */}
-              {!loading && activities.length > 0 && (
-                <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${T.border}`, paddingLeft: 10 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 1.1, marginBottom: 10, fontFamily: T.fontDisplay }}>RÉSUMÉ</div>
-                  {[
-                    { label: 'Total',         value: activities.length },
-                    { label: 'Cette semaine', value: activities.filter(a => isoWeek(new Date(a.started_at)) === isoWeek(new Date())).length },
-                    { label: 'Compétitions',  value: activities.filter(a => a.is_race).length },
-                  ].map(s => (
-                    <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12 }}>
-                      <span style={{ color: T.textSub, fontFamily: T.fontBody }}>{s.label}</span>
-                      <span style={{ color: T.text, fontWeight: 700, fontFamily: T.fontMono }}>{s.value}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Pull-tab bord droit */}
-              <button
-                onClick={() => setSidebarOpen(o => !o)}
-                style={{
-                  position: 'absolute',
-                  top: '50%', right: -16,
-                  transform: 'translateY(-50%)',
-                  width: 16, height: 48,
-                  background: 'var(--nav-bg)',
-                  border: '1px solid var(--border)',
-                  borderLeft: 'none',
-                  borderRadius: '0 6px 6px 0',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: 'var(--text-muted)',
-                  fontSize: 10, padding: 0,
-                  zIndex: 1,
-                }}
-              >
-                {sidebarOpen ? '‹' : '⋮'}
-              </button>
-            </aside>
-          </>
+                    <div style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontBody }}>{n.desc}</div>
+                  </div>
+                </button>
+              )
+            })}
+          </aside>
         )}
 
         {/* ── CONTENT ── */}
-        <main style={{ flex: 1, minWidth: 0, padding: isMobile ? '14px 12px' : '22px 28px' }}>
+        <main style={{ flex: 1, minWidth: 0, padding: isMobile ? '14px 12px' : '22px 28px 22px 72px' }}>
 
           {/* Error */}
           {error && (

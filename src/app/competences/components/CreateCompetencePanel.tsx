@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Zap, ArrowUp, Mic } from 'lucide-react'
+import { Zap, ArrowUp } from 'lucide-react'
 import { useCreateCompetenceConversation } from '../hooks/useCreateCompetenceConversation'
 import { sportIcon, SPORT_LABELS, type SportFilter } from '../constants'
+import MicButton from '@/components/ai-coach/MicButton'
 
 interface Props {
   variant?: 'desktop' | 'mobile'
@@ -147,18 +148,14 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
         rows={1}
         style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', minHeight: 24, maxHeight: 120 }}
       />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-        <button
-          onClick={() => inputRef.current?.focus()}
-          aria-label="Dictée vocale"
-          title="Dictée vocale"
-          style={{ width: 22, height: 22, background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Mic size={15} />
-        </button>
-        <button onClick={doSend} disabled={!text.trim() || conv.isStreaming} aria-label="Envoyer" style={sendBtn(!!text.trim() && !conv.isStreaming)}>
-          <ArrowUp size={16} color="#fff" />
-        </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+        <span style={agentBadge}>Athéna</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <MicButton onTranscript={setText} iconSize={16} boxSize={24} />
+          <button onClick={doSend} disabled={!text.trim() || conv.isStreaming} aria-label="Envoyer" style={sendBtn(!!text.trim() && !conv.isStreaming)}>
+            <ArrowUp size={14} color="#fff" />
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -166,9 +163,10 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
   if (variant === 'mobile') {
     return (
       <div style={{
-        position: 'fixed', bottom: 14, left: 14, right: 14, zIndex: 40,
-        background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 14,
+        position: 'fixed', bottom: 16, left: 16, right: 16, zIndex: 20,
+        background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16,
         display: 'flex', flexDirection: 'column', maxHeight: '60vh', overflow: 'hidden',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
       }}>
         {(hasConversation || conv.generatedMetadata) && (
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 0' }}>{chat}</div>
@@ -200,11 +198,17 @@ const avatarStyle: React.CSSProperties = {
   width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: 'rgba(6,182,212,0.12)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 2,
 }
+const agentBadge: React.CSSProperties = {
+  fontSize: 10, color: 'var(--text-mid)', border: '0.5px solid var(--border)',
+  borderRadius: 6, padding: '2px 8px', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap',
+}
+
 function sendBtn(active: boolean): React.CSSProperties {
   return {
-    width: 30, height: 30, borderRadius: '50%', border: 'none', flexShrink: 0,
+    width: 28, height: 28, borderRadius: '50%', border: 'none', flexShrink: 0,
     cursor: active ? 'pointer' : 'not-allowed',
     background: active ? '#06B6D4' : 'var(--border)',
+    opacity: active ? 1 : 0.5,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   }
 }

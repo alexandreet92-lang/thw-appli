@@ -24,6 +24,8 @@ export default function GlobalAIButton() {
 
   // Caché sur la page profil (le bouton IA y est inutile)
   if (pathname === '/profile') return null
+  // Caché sur /competences (champ dédié + bouton retour ; évite le chevauchement)
+  if (pathname === '/competences' || pathname.startsWith('/competences/')) return null
 
   return (
     <>

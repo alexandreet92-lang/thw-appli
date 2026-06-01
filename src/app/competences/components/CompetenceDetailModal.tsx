@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, ArrowLeft, Zap, ArrowUp, AlertTriangle, Mic } from 'lucide-react'
+import { X, ArrowLeft, Zap, ArrowUp, AlertTriangle } from 'lucide-react'
 import type { CompetenceWithUserState } from '@/types/competences'
 import { sportIcon, SPORT_LABELS, CATEGORY_LABELS, type SportFilter } from '../constants'
 import { streamCompetenceAI, type AIChatMsg } from '../lib/streamCompetenceAI'
+import MicButton from '@/components/ai-coach/MicButton'
 
 interface Props {
   competence: CompetenceWithUserState
@@ -177,14 +178,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
             style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', minHeight: 22, maxHeight: 100 }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-            <button
-              onClick={() => inputRef.current?.focus()}
-              aria-label="Dictée vocale"
-              title="Dictée vocale"
-              style={{ width: 22, height: 22, background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Mic size={15} />
-            </button>
+            <MicButton onTranscript={setInput} iconSize={15} boxSize={22} />
             <button
               onClick={() => void send()}
               disabled={!input.trim() || isStreaming}

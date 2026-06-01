@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Menu, Lock } from 'lucide-react'
+import { Plus, Menu, Lock, X } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
 import { createClient } from '@/lib/supabase/client'
 import type { CategorieCompetence, CompetenceWithUserState } from '@/types/competences'
@@ -153,6 +153,12 @@ export default function CompetencesPage() {
     if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); (el as HTMLTextAreaElement).focus() }
   }, [])
 
+  // Retour vers l'app / le Coach IA (le coach est un overlay, pas une route)
+  const goBack = useCallback(() => {
+    if (typeof window !== 'undefined' && window.history.length > 1) router.back()
+    else router.push('/')
+  }, [router])
+
   const badge = (
     <span style={{ fontSize: 12, fontWeight: 500, background: 'var(--bg-alt)', border: '0.5px solid var(--border-mid)', borderRadius: 20, padding: '5px 14px', color: 'var(--text)', whiteSpace: 'nowrap' }}>
       <span style={{ color: '#06B6D4', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} actives · Plan {limit.planLabel}
@@ -240,36 +246,41 @@ export default function CompetencesPage() {
   // ══════════════════ MOBILE ══════════════════
   if (!isDesktop) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', paddingBottom: 90 }}>
-        {/* Header mobile */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '16px 18px 14px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', background: 'var(--bg-card)' }}>
+        {/* Header dédié — sticky */}
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 5,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          padding: '14px 16px', background: 'var(--bg-card)', borderBottom: '0.5px solid var(--border)',
+        }}>
           <button onClick={() => setMobileOpen(true)} aria-label="Filtres"
-            style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--bg-hover)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-alt)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Menu size={16} color="var(--text)" />
           </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ textAlign: 'center', minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Compétences</div>
             <div style={{ fontSize: 11, color: 'var(--text-mid)' }}>Personnalise ton coach IA</div>
           </div>
-          <button onClick={focusCreate} aria-label="Créer"
-            style={{ width: 28, height: 28, borderRadius: 7, background: '#06B6D4', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Plus size={16} color="#fff" />
+          <button onClick={goBack} aria-label="Retour au Coach IA"
+            style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-alt)', border: '0.5px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <X size={16} color="var(--text)" />
           </button>
         </div>
 
         {/* Chips sports */}
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '0 14px 12px' }}>
+        <div className="comp-chips-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '8px 16px 12px' }}>
           {SPORTS_ORDER.map(s => {
             const a = activeSport === s
             return (
               <button key={s} onClick={() => setActiveSport(s)}
                 style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0,
-                  fontSize: 11, padding: '5px 12px', borderRadius: 16, cursor: 'pointer',
-                  fontFamily: 'DM Sans, sans-serif',
+                  display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                  fontSize: 12, padding: '6px 14px', borderRadius: 18, cursor: 'pointer',
+                  fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap',
                   border: `0.5px solid ${a ? 'rgba(6,182,212,0.4)' : 'var(--border)'}`,
-                  background: a ? 'rgba(6,182,212,0.12)' : 'transparent',
+                  background: a ? 'rgba(6,182,212,0.12)' : 'var(--bg-card)',
                   color: a ? '#06B6D4' : 'var(--text-mid)',
+                  fontWeight: a ? 500 : 400,
                 }}>
                 {sportIcon(s, 12)}{SPORT_LABELS[s]}
               </button>
@@ -277,16 +288,16 @@ export default function CompetencesPage() {
           })}
         </div>
 
-        {/* Compteur */}
-        <div style={{ fontSize: 10, color: 'var(--text-mid)', padding: '0 14px 8px' }}>
-          <span style={{ color: '#06B6D4', fontWeight: 700 }}>{limit.active_count}</span> / {limit.limit} actives · Plan {limit.planLabel}
+        {/* Compteur sous les chips */}
+        <div style={{ fontSize: 12, color: 'var(--text-mid)', padding: '0 16px 12px' }}>
+          <span style={{ color: '#06B6D4', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} actives · Plan {limit.planLabel}
         </div>
 
         {/* Notice */}
         {notice && <div style={noticeStyle}>{notice}</div>}
 
         {/* Liste */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 16px 120px' }}>
           {loading ? (
             <p style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 4px' }}>Chargement…</p>
           ) : filtered.length === 0 ? (
@@ -319,7 +330,7 @@ export default function CompetencesPage() {
 
   // ══════════════════ DESKTOP ══════════════════
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'var(--bg-card)' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px', borderBottom: '0.5px solid var(--border)', flexShrink: 0 }}>
         <div>

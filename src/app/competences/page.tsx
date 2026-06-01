@@ -246,7 +246,7 @@ export default function CompetencesPage() {
   // ══════════════════ MOBILE ══════════════════
   if (!isDesktop) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', background: 'var(--bg-card)' }}>
+      <div className="competences-mobile-root" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', background: 'var(--bg-card)' }}>
         {/* Header dédié — sticky */}
         <div style={{
           position: 'sticky', top: 0, zIndex: 5,

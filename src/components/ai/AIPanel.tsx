@@ -19423,20 +19423,28 @@ export default function AIPanel({
           padding: 0 4px 16px !important;
         }
 
-        /* B2 — Input wrap: boîte centrée max 756px, sans glow au focus */
+        /* B2 — Input wrap: boîte centrée max 756px, blanc pur en mode clair */
         .aip-input-wrap {
           max-width: 756px !important;
           margin: 0 auto !important;
           width: 100% !important;
           border-radius: 16px !important;
-          background: var(--ai-bg2) !important;
-          border: 1px solid var(--ai-border) !important;
+          background: #FFFFFF !important;
+          border: 1.5px solid rgba(0,0,0,0.10) !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+        }
+        .aip-input-wrap:focus-within {
+          border-color: #06B6D4 !important;
+          box-shadow: 0 0 0 3px rgba(6,182,212,0.12), 0 2px 8px rgba(0,0,0,0.06) !important;
+        }
+        html.dark .aip-input-wrap {
+          background: #1C2333 !important;
+          border-color: rgba(255,255,255,0.10) !important;
           box-shadow: none !important;
         }
-        /* Pas de changement de couleur au focus */
-        .aip-input-wrap:focus-within {
-          border-color: var(--ai-border) !important;
-          box-shadow: none !important;
+        html.dark .aip-input-wrap:focus-within {
+          border-color: #06B6D4 !important;
+          box-shadow: 0 0 0 3px rgba(6,182,212,0.15) !important;
         }
         .aip-input-wrap *:focus-visible { outline: none !important; }
 

@@ -107,19 +107,33 @@
   scrollbar-color: var(--border) transparent;
 }
 
-/* Champ de saisie style AI Coach — réutilisé page Compétences */
+/* Champ de saisie blanc pur (mode clair) — réutilisé page Compétences */
 .comp-input-wrap {
-  background: var(--input-bg);
-  border: 1.5px solid var(--border-mid);
-  border-radius: 14px;
-  padding: 10px 14px;
+  background: #FFFFFF;
+  border: 1.5px solid rgba(0,0,0,0.10);
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   transition: border-color 200ms, box-shadow 200ms;
 }
 .comp-input-wrap:focus-within {
   border-color: #06B6D4;
-  box-shadow: 0 0 0 3px rgba(6,182,212,0.12);
+  box-shadow: 0 0 0 3px rgba(6,182,212,0.12), 0 2px 8px rgba(0,0,0,0.06);
 }
 .comp-input-wrap textarea:focus-visible { outline: none; }
+html.dark .comp-input-wrap {
+  background: #1C2333;
+  border-color: rgba(255,255,255,0.10);
+  box-shadow: none;
+}
+html.dark .comp-input-wrap:focus-within {
+  border-color: #06B6D4;
+  box-shadow: 0 0 0 3px rgba(6,182,212,0.15);
+}
+
+/* /competences mobile : retire le padding-bottom du <main> (réservé à la
+   tabbar masquée) qui laissait apparaître une bande grise en bas. */
+main:has(.competences-mobile-root) { padding-bottom: 0 !important; }
 
 /* Dictée vocale — pulse rouge pendant l'écoute */
 @keyframes micPulse {

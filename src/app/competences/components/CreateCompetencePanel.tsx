@@ -164,14 +164,16 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
     return (
       <div style={{
         position: 'fixed', bottom: 16, left: 16, right: 16, zIndex: 20,
-        background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16,
-        display: 'flex', flexDirection: 'column', maxHeight: '60vh', overflow: 'hidden',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+        display: 'flex', flexDirection: 'column', maxHeight: '60vh',
       }}>
         {(hasConversation || conv.generatedMetadata) && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 0' }}>{chat}</div>
+          <div style={{
+            flex: 1, overflowY: 'auto', padding: 12, marginBottom: 8,
+            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+          }}>{chat}</div>
         )}
-        <div style={{ padding: '10px 12px' }}>{inputBar}</div>
+        {inputBar}
       </div>
     )
   }

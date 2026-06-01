@@ -11302,15 +11302,17 @@ function PlusMenu({
   onEnriched,
   onFlow,
   onClose,
+  onClosePanel,
   onCamera,
   onFiles,
 }: {
-  onPrepare:  (label: string, apiPrompt: string) => void
-  onEnriched: (id: string, label: string) => void
-  onFlow:     (f: FlowId) => void
-  onClose:    () => void
-  onCamera:   () => void
-  onFiles:    () => void
+  onPrepare:    (label: string, apiPrompt: string) => void
+  onEnriched:   (id: string, label: string) => void
+  onFlow:       (f: FlowId) => void
+  onClose:      () => void
+  onClosePanel: () => void
+  onCamera:     () => void
+  onFiles:      () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
@@ -11438,7 +11440,7 @@ function PlusMenu({
           {/* 6. Compétences → page dédiée */}
           <button
             style={{ ...rowStyle, alignItems: 'flex-start' }}
-            onClick={() => { onClose(); router.push('/competences') }}
+            onClick={() => { onClose(); onClosePanel(); router.push('/competences') }}
             onMouseEnter={hoverOn}
             onMouseLeave={hoverOff}
           >
@@ -20535,6 +20537,7 @@ export default function AIPanel({
                       onEnriched={(id, label) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void handleEnrichedAction(id, label) }}
                       onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f) }}
                       onClose={() => setPlusOpen(false)}
+                      onClosePanel={onClose}
                       onCamera={() => cameraRef.current?.click()}
                       onFiles={() => filesRef.current?.click()}
                     />

@@ -2305,6 +2305,94 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
 // SECTION: DONNÉES
 // ─────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────
+// DONNÉES SPÉCIFIQUES PAR SPORT — helpers
+// ─────────────────────────────────────────────────────────────
+
+const SPORT_PILL_COLOR: Record<string, string> = {
+  run:       '#10B981',
+  trail_run: '#F97316',
+  bike:      '#06B6D4',
+  swim:      '#0EA5E9',
+  gym:       '#8B5CF6',
+  hyrox:     '#7C3AED',
+  rowing:    '#EF4444',
+}
+const SPORT_PILL_LABEL: Record<string, string> = {
+  run: 'Course', trail_run: 'Trail', bike: 'Vélo',
+  swim: 'Natation', gym: 'Muscu', hyrox: 'Hyrox', rowing: 'Aviron',
+}
+
+function SportZoneDonut({ timesS, colors, size = 80 }: { timesS: number[]; colors: string[]; size?: number }) {
+  const total = timesS.reduce((a, b) => a + b, 0)
+  if (!total) return null
+  const cx = size / 2, cy = size / 2
+  const R = size * 0.42, inner = R * 0.55
+  let angle = -Math.PI / 2
+  const arcs: { d: string; color: string }[] = []
+  timesS.forEach((t, i) => {
+    if (!t) return
+    const sweep = (t / total) * 2 * Math.PI
+    const x1 = cx + R * Math.cos(angle), y1 = cy + R * Math.sin(angle)
+    const x2 = cx + R * Math.cos(angle + sweep), y2 = cy + R * Math.sin(angle + sweep)
+    const xi1 = cx + inner * Math.cos(angle + sweep), yi1 = cy + inner * Math.sin(angle + sweep)
+    const xi2 = cx + inner * Math.cos(angle), yi2 = cy + inner * Math.sin(angle)
+    const large = sweep > Math.PI ? 1 : 0
+    arcs.push({ color: colors[i] ?? '#ccc', d: `M${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 ${large},1 ${x2.toFixed(2)},${y2.toFixed(2)} L${xi1.toFixed(2)},${yi1.toFixed(2)} A${inner},${inner} 0 ${large},0 ${xi2.toFixed(2)},${yi2.toFixed(2)} Z` })
+    angle += sweep
+  })
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {arcs.map((arc, i) => <path key={i} d={arc.d} fill={arc.color} />)}
+    </svg>
+  )
+}
+
+function ZoneTableWithHR({ zones, timesS, hrZones, hrTimesZ }: {
+  zones: ParsedZone[]; timesS: number[]
+  hrZones?: ParsedZone[]; hrTimesZ?: number[]
+}) {
+  const totalS = timesS.reduce((a, b) => a + b, 0)
+  const totalH = (hrTimesZ ?? []).reduce((a, b) => a + b, 0)
+  const hasHr  = !!totalH && !!hrZones && !!hrTimesZ
+  const cols = hasHr ? '1fr 1fr' : '1fr'
+  const renderTable = (zns: ParsedZone[], tms: number[], total: number) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      {zns.map((z, i) => {
+        const t = tms[i] ?? 0
+        const pct = total > 0 ? (t / total) * 100 : 0
+        return (
+          <div key={z.label} style={{ display: 'grid', gridTemplateColumns: '72px 1fr 52px 36px', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 11, color: T.textSub, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: z.color, flexShrink: 0, display: 'inline-block' }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.label}</span>
+            </div>
+            <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ width: `${pct}%`, height: '100%', background: z.color, borderRadius: 3, transition: 'width 0.4s' }} />
+            </div>
+            <div style={{ fontSize: 11, color: T.text, textAlign: 'right', fontWeight: 500, fontFamily: T.fontMono }}>{fmtDur(t)}</div>
+            <div style={{ fontSize: 10, color: T.textMuted, textAlign: 'right' }}>{pct.toFixed(0)}%</div>
+          </div>
+        )
+      })}
+    </div>
+  )
+  if (!totalS) return <div style={{ fontSize: 12, color: T.textMuted }}>Aucune donnée de zone</div>
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 20 }}>
+      <div>
+        {renderTable(zones, timesS, totalS)}
+      </div>
+      {hasHr && (
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Fréquence cardiaque</div>
+          {renderTable(hrZones!, hrTimesZ!, totalH)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 // DONNÉES SPÉCIFIQUES PAR SPORT
 // ─────────────────────────────────────────────────────────────
 function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZones, bikeTimesZ, runTimesZ, hrTimesZ }: {
@@ -2317,147 +2405,298 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
   runTimesZ: number[] | null
   hrTimesZ: number[]
 }) {
-  const [activeSport, setActiveSport] = useState<string>('run')
+  const [activeSport, setActiveSport] = useState<string>('')
 
   const sportsPresent = useMemo(() => {
-    const s = new Set(inRange.map(a => normalizeSport(a.sport_type)))
-    return ['run', 'bike', 'swim', 'gym', 'hyrox', 'rowing'].filter(sp => s.has(sp))
+    const s = new Set<string>(inRange.map(a => a.sport_type === 'virtual_bike' ? 'bike' : (a.sport_type as string)))
+    return ['run', 'trail_run', 'bike', 'swim', 'gym', 'hyrox', 'rowing'].filter(sp => s.has(sp))
   }, [inRange])
 
-  if (!sportsPresent.length) return <div style={{ color: T.textMuted, padding: 20 }}>Aucune activité dans la période</div>
+  const sport = sportsPresent.includes(activeSport) ? activeSport : (sportsPresent[0] ?? '')
 
-  const sport = sportsPresent.includes(activeSport) ? activeSport : sportsPresent[0]
-  const sportActs = inRange.filter(a => normalizeSport(a.sport_type) === sport)
+  if (!sportsPresent.length) {
+    return <div style={{ color: T.textMuted, padding: 20, fontSize: 13 }}>Aucune activité dans la période</div>
+  }
 
-  // Run metrics
-  const runPaces = sportActs.filter(a => a.avg_pace_s_km || (a.moving_time_s && a.distance_m)).map(a =>
-    a.avg_pace_s_km ?? (a.moving_time_s! / a.distance_m!) * 1000)
-  const avgPace = runPaces.length ? runPaces.reduce((a, b) => a + b, 0) / runPaces.length : null
+  const sportActs = inRange.filter(a => {
+    const n = a.sport_type === 'virtual_bike' ? 'bike' : a.sport_type
+    return n === sport
+  })
+
+  // ── Shared metrics ──────────────────────────────────────────
+  const totalDist    = sportActs.reduce((s, a) => s + (a.distance_m ?? 0), 0)
+  const totalTime    = sportActs.reduce((s, a) => s + (a.moving_time_s ?? 0), 0)
+  const totalTss     = sportActs.reduce((s, a) => s + (a.tss ?? 0), 0)
+  const hrVals       = sportActs.filter(a => a.avg_hr).map(a => Number(a.avg_hr))
+  const avgHr        = hrVals.length ? Math.round(hrVals.reduce((a,b)=>a+b,0)/hrVals.length) : null
+  const decouplings  = sportActs.filter(a => a.aerobic_decoupling != null).map(a => Number(a.aerobic_decoupling))
+  const avgDecoupling = decouplings.length ? (decouplings.reduce((a,b)=>a+b,0)/decouplings.length).toFixed(1) : null
+
+  // ── Run / Trail ─────────────────────────────────────────────
+  const runPaces = sportActs
+    .filter(a => a.avg_pace_s_km || (a.moving_time_s && a.distance_m && a.distance_m > 0))
+    .map(a => a.avg_pace_s_km ?? (a.moving_time_s! / a.distance_m!) * 1000)
+  const avgPace     = runPaces.length ? runPaces.reduce((a,b)=>a+b,0)/runPaces.length : null
   const runCadences = sportActs.filter(a => a.avg_cadence).map(a => Number(a.avg_cadence))
-  const avgRunCad = runCadences.length ? Math.round(runCadences.reduce((a,b)=>a+b,0)/runCadences.length) : null
+  const avgRunCad   = runCadences.length ? Math.round(runCadences.reduce((a,b)=>a+b,0)/runCadences.length) : null
+  const totalElevUp = sportActs.reduce((s, a) => s + (a.elevation_gain_m ?? 0), 0)
+  const totalElevDn = sportActs.reduce((s, a) => s + (a.elevation_loss_m ?? 0), 0)
 
-  // Bike metrics
+  // ── Bike ────────────────────────────────────────────────────
   const bikeWatts = sportActs.filter(a => a.avg_watts).map(a => Number(a.avg_watts))
-  const avgWatts = bikeWatts.length ? Math.round(bikeWatts.reduce((a,b)=>a+b,0)/bikeWatts.length) : null
-  const bikeNp = sportActs.filter(a => a.normalized_watts).map(a => Number(a.normalized_watts))
-  const avgNp = bikeNp.length ? Math.round(bikeNp.reduce((a,b)=>a+b,0)/bikeNp.length) : null
-  const bikeIf = sportActs.filter(a => a.intensity_factor).map(a => Number(a.intensity_factor))
-  const avgIf = bikeIf.length ? (bikeIf.reduce((a,b)=>a+b,0)/bikeIf.length).toFixed(2) : null
-  const bikeCad = sportActs.filter(a => a.avg_cadence).map(a => Number(a.avg_cadence))
-  const avgBikeCad = bikeCad.length ? Math.round(bikeCad.reduce((a,b)=>a+b,0)/bikeCad.length) : null
-  const bikeDecoupling = sportActs.filter(a => a.aerobic_decoupling != null).map(a => Number(a.aerobic_decoupling))
-  const avgDecoupling = bikeDecoupling.length ? (bikeDecoupling.reduce((a,b)=>a+b,0)/bikeDecoupling.length).toFixed(1) : null
+  const avgWatts  = bikeWatts.length ? Math.round(bikeWatts.reduce((a,b)=>a+b,0)/bikeWatts.length) : null
+  const bikeNp    = sportActs.filter(a => a.normalized_watts).map(a => Number(a.normalized_watts))
+  const avgNp     = bikeNp.length ? Math.round(bikeNp.reduce((a,b)=>a+b,0)/bikeNp.length) : null
+  const bikeIfVals = sportActs.filter(a => a.intensity_factor).map(a => Number(a.intensity_factor))
+  const avgIf     = bikeIfVals.length ? (bikeIfVals.reduce((a,b)=>a+b,0)/bikeIfVals.length).toFixed(2) : null
+  const bikeCads  = sportActs.filter(a => a.avg_cadence).map(a => Number(a.avg_cadence))
+  const avgBikeCad = bikeCads.length ? Math.round(bikeCads.reduce((a,b)=>a+b,0)/bikeCads.length) : null
+
+  // ── Swim ────────────────────────────────────────────────────
+  const swimPaces   = sportActs.filter(a => a.avg_pace_s_km).map(a => Number(a.avg_pace_s_km))
+  const avgSwimPace = swimPaces.length ? Math.round(swimPaces.reduce((a,b)=>a+b,0)/swimPaces.length / 10) : null // s/100m
+
+  // ── Rowing ──────────────────────────────────────────────────
+  const rowPaces   = sportActs.filter(a => a.avg_pace_s_km).map(a => Number(a.avg_pace_s_km))
+  const avgRowSplit = rowPaces.length ? Math.round(rowPaces.reduce((a,b)=>a+b,0)/rowPaces.length / 2) : null // s/500m
+
+  // ── Gym ─────────────────────────────────────────────────────
+  const calVals    = sportActs.filter(a => a.calories).map(a => Number(a.calories))
+  const avgCal     = calVals.length ? Math.round(calVals.reduce((a,b)=>a+b,0)/calVals.length) : null
+
+  // ── Zone data for current sport ──────────────────────────────
+  // HR times filtered to current sport
+  const hrTimesForSport = useMemo(() => {
+    const acc = hrZones.map(() => 0)
+    for (const a of sportActs) {
+      const streams = a.streams ?? (a.raw_data?.streams as StreamData | undefined) ?? null
+      if (!streams?.heartrate) continue
+      const t = calcTimeInZones(streams.heartrate, hrZones)
+      t.forEach((v, i) => { acc[i] += v })
+    }
+    return acc
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inRange, sport])
+
+  const hasHrForSport = hrTimesForSport.some(t => t > 0)
+
   const runZoneRow = zones.find(z => z.sport === 'run')
   const vapKmh = runZoneRow?.vma_ms ? (Number(runZoneRow.vma_ms) * 3.6).toFixed(1) : null
 
-  const SPORT_TAB_LABEL: Record<string, string> = { run: 'Course', bike: 'Vélo', swim: 'Natation', gym: 'Muscu', hyrox: 'Hyrox', rowing: 'Aviron' }
+  // ── Render ───────────────────────────────────────────────────
+  const pillColor = SPORT_PILL_COLOR[sport] ?? T.accent
 
   return (
-    <div>
-      {/* Sport tabs */}
-      <SportTabs
-        tabs={sportsPresent.map(sp => ({
-          id: sp,
-          label: SPORT_TAB_LABEL[sp] ?? sp,
-          color: SPORT_COLOR[sp as SportType] ?? T.accent,
-        }))}
-        value={sport}
-        onChange={(id) => setActiveSport(id as SportType)}
-        style={{ marginBottom: 20 }}
-      />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-      {/* Run specific */}
+      {/* Sport pills */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {sportsPresent.map(sp => {
+          const active = sp === sport
+          const c = SPORT_PILL_COLOR[sp] ?? T.accent
+          return (
+            <button key={sp} onClick={() => setActiveSport(sp)} style={{
+              padding: '5px 14px', fontSize: 13, fontWeight: 600, borderRadius: 20,
+              cursor: 'pointer', border: `1px solid ${active ? c : T.border}`,
+              background: active ? c : T.bgAlt,
+              color: active ? '#fff' : T.textMuted,
+              transition: 'all 0.15s',
+            }}>
+              {SPORT_PILL_LABEL[sp] ?? sp}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── Run ── */}
       {sport === 'run' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
-            {avgPace && <StatCard label="Allure moy." value={fmtPace(avgPace)} />}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+            {avgPace != null && <StatCard label="Allure moy." value={fmtPace(avgPace)} />}
+            {avgHr   != null && <StatCard label="FC moy." value={`${avgHr} bpm`} />}
+            {avgRunCad != null && <StatCard label="Cadence moy." value={`${avgRunCad} spm`} />}
+            {totalTss > 0 && <StatCard label="TSS période" value={Math.round(totalTss).toString()} />}
             {vapKmh && <StatCard label="VAP" value={`${vapKmh} km/h`} />}
-            {avgRunCad && <StatCard label="Cadence moy." value={`${avgRunCad} spm`} />}
-            {avgDecoupling && <StatCard label="Découplage moy." value={`${avgDecoupling}%`} />}
           </div>
           {runZones && runTimesZ && runTimesZ.some(t => t > 0) && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
-              <SectionTitle>Zones allure</SectionTitle>
-              <ZoneBars zones={runZones} timesS={runTimesZ} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <SectionTitle>Zones allure + FC</SectionTitle>
+                <SportZoneDonut timesS={runTimesZ} colors={ZONE_COLORS} size={64} />
+              </div>
+              <ZoneTableWithHR
+                zones={runZones} timesS={runTimesZ}
+                hrZones={hasHrForSport ? hrZones : undefined}
+                hrTimesZ={hasHrForSport ? hrTimesForSport : undefined}
+              />
             </div>
           )}
-          {hrTimesZ.some(t => t > 0) && (
+          {!runZones && hasHrForSport && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
-              <SectionTitle>Zones FC</SectionTitle>
-              <ZoneBars zones={hrZones} timesS={hrTimesZ} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <SectionTitle>Zones FC</SectionTitle>
+                <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
+              </div>
+              <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
+            </div>
+          )}
+          {avgDecoupling && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 12, color: T.textMuted }}>Découplage aérobie moyen</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: pillColor }}>{avgDecoupling}%</div>
             </div>
           )}
         </div>
       )}
 
-      {/* Bike specific */}
+      {/* ── Trail ── */}
+      {sport === 'trail_run' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+            <StatCard label="Séances" value={sportActs.length.toString()} />
+            <StatCard label="Distance tot." value={fmtDist(totalDist)} />
+            {totalElevUp > 0 && <StatCard label="D+ total" value={`${Math.round(totalElevUp)} m`} />}
+            {totalElevDn > 0 && <StatCard label="D− total" value={`${Math.round(totalElevDn)} m`} />}
+            {avgPace != null && <StatCard label="Allure moy." value={fmtPace(avgPace)} />}
+            {avgHr   != null && <StatCard label="FC moy." value={`${avgHr} bpm`} />}
+          </div>
+          {hasHrForSport && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <SectionTitle>Zones FC — Trail</SectionTitle>
+                <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
+              </div>
+              <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
+            </div>
+          )}
+          {totalElevUp === 0 && <div style={{ fontSize: 12, color: T.textMuted, padding: '8px 0' }}>Dénivelé non disponible pour certaines activités</div>}
+        </div>
+      )}
+
+      {/* ── Bike ── */}
       {sport === 'bike' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
-            {avgWatts && <StatCard label="Watts moy." value={`${avgWatts} W`} />}
-            {avgNp && <StatCard label="NP moy." value={`${avgNp} W`} />}
-            {avgIf && <StatCard label="IF moy." value={avgIf} />}
-            {avgBikeCad && <StatCard label="Cadence moy." value={`${avgBikeCad} rpm`} />}
-            {avgDecoupling && <StatCard label="Découplage moy." value={`${avgDecoupling}%`} />}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+            {avgWatts   != null && <StatCard label="Watts moy." value={`${avgWatts} W`} />}
+            {avgNp      != null && <StatCard label="NP moy." value={`${avgNp} W`} />}
+            {avgIf      != null && <StatCard label="IF moy." value={avgIf} />}
+            {avgBikeCad != null && <StatCard label="Cadence moy." value={`${avgBikeCad} rpm`} />}
+            {avgHr      != null && <StatCard label="FC moy." value={`${avgHr} bpm`} />}
+            {avgDecoupling && <StatCard label="Découplage" value={`${avgDecoupling}%`} />}
           </div>
           {bikeZones && bikeTimesZ && bikeTimesZ.some(t => t > 0) && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
-              <SectionTitle>Zones puissance</SectionTitle>
-              <ZoneBars zones={bikeZones} timesS={bikeTimesZ} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <SectionTitle>Zones puissance + FC</SectionTitle>
+                <SportZoneDonut timesS={bikeTimesZ} colors={ZONE_COLORS} size={64} />
+              </div>
+              <ZoneTableWithHR
+                zones={bikeZones} timesS={bikeTimesZ}
+                hrZones={hasHrForSport ? hrZones : undefined}
+                hrTimesZ={hasHrForSport ? hrTimesForSport : undefined}
+              />
             </div>
           )}
-          {hrTimesZ.some(t => t > 0) && (
+          {!bikeZones && hasHrForSport && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
-              <SectionTitle>Zones FC</SectionTitle>
-              <ZoneBars zones={hrZones} timesS={hrTimesZ} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <SectionTitle>Zones FC</SectionTitle>
+                <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
+              </div>
+              <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
             </div>
           )}
         </div>
       )}
 
-      {/* Swim specific */}
+      {/* ── Swim ── */}
       {sport === 'swim' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
-          <StatCard label="Séances" value={sportActs.length.toString()} />
-          <StatCard label="Distance tot." value={fmtDist(sportActs.reduce((s,a) => s + (a.distance_m ?? 0), 0))} />
-          <StatCard label="Temps tot." value={fmtDur(sportActs.reduce((s,a) => s + (a.moving_time_s ?? 0), 0))} />
-          {(() => {
-            const paces = sportActs.filter(a => a.avg_pace_s_km).map(a => Number(a.avg_pace_s_km))
-            const ap = paces.length ? Math.round(paces.reduce((a,b)=>a+b,0)/paces.length) : null
-            return ap ? <StatCard label="Allure moy." value={fmtPace(ap)} /> : null
-          })()}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+            <StatCard label="Séances" value={sportActs.length.toString()} />
+            <StatCard label="Distance tot." value={fmtDist(totalDist)} />
+            <StatCard label="Temps tot." value={fmtDur(totalTime)} />
+            {avgSwimPace != null && <StatCard label="Allure /100m" value={fmtDur(avgSwimPace)} />}
+          </div>
+          {hasHrForSport && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <SectionTitle>Zones FC</SectionTitle>
+                <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
+              </div>
+              <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
+            </div>
+          )}
+          {!hasHrForSport && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: T.textMuted }}>Zones non disponibles pour la natation</div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Gym specific */}
+      {/* ── Gym ── */}
       {sport === 'gym' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
-          <StatCard label="Séances" value={sportActs.length.toString()} />
-          <StatCard label="Temps tot." value={fmtDur(sportActs.reduce((s,a) => s + (a.moving_time_s ?? 0), 0))} />
-          {(() => {
-            const cals = sportActs.filter(a => a.calories).map(a => Number(a.calories))
-            return cals.length ? <StatCard label="Calories moy." value={`${Math.round(cals.reduce((a,b)=>a+b,0)/cals.length)} kcal`} /> : null
-          })()}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+            <StatCard label="Séances" value={sportActs.length.toString()} />
+            <StatCard label="Temps tot." value={fmtDur(totalTime)} />
+            {avgCal != null && <StatCard label="Calories moy." value={`${avgCal} kcal`} />}
+          </div>
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', textAlign: 'center' }}>
+            <div style={{ fontSize: 12, color: T.textMuted }}>Analyse spécifique musculation à venir</div>
+          </div>
         </div>
       )}
 
-      {/* Hyrox specific */}
+      {/* ── Hyrox ── */}
       {sport === 'hyrox' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
-          <StatCard label="Séances" value={sportActs.length.toString()} />
-          <StatCard label="Temps tot." value={fmtDur(sportActs.reduce((s,a) => s + (a.moving_time_s ?? 0), 0))} />
-          <StatCard label="Distance tot." value={fmtDist(sportActs.reduce((s,a) => s + (a.distance_m ?? 0), 0))} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+            <StatCard label="Séances" value={sportActs.length.toString()} />
+            {totalTime > 0 && <StatCard label="Temps moy." value={fmtDur(Math.round(totalTime / sportActs.length))} />}
+            {totalDist > 0 && <StatCard label="Distance tot." value={fmtDist(totalDist)} />}
+            {avgHr != null && <StatCard label="FC moy." value={`${avgHr} bpm`} />}
+          </div>
+          {hasHrForSport && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <SectionTitle>Zones FC</SectionTitle>
+                <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
+              </div>
+              <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
+            </div>
+          )}
+          {!hasHrForSport && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: T.textMuted }}>Analyse détaillée Hyrox à venir</div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Rowing specific */}
+      {/* ── Rowing ── */}
       {sport === 'rowing' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
-          <StatCard label="Séances" value={sportActs.length.toString()} />
-          <StatCard label="Distance tot." value={fmtDist(sportActs.reduce((s,a) => s + (a.distance_m ?? 0), 0))} />
-          <StatCard label="Temps tot." value={fmtDur(sportActs.reduce((s,a) => s + (a.moving_time_s ?? 0), 0))} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+            <StatCard label="Séances" value={sportActs.length.toString()} />
+            <StatCard label="Distance tot." value={fmtDist(totalDist)} />
+            <StatCard label="Temps tot." value={fmtDur(totalTime)} />
+            {avgRowSplit != null && <StatCard label="Split moy. /500m" value={fmtDur(avgRowSplit)} />}
+            {avgHr      != null && <StatCard label="FC moy." value={`${avgHr} bpm`} />}
+          </div>
+          {hasHrForSport && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <SectionTitle>Zones FC</SectionTitle>
+                <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
+              </div>
+              <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
+            </div>
+          )}
         </div>
       )}
+
     </div>
   )
 }

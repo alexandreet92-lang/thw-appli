@@ -110,6 +110,8 @@ export default function MobileTabBar() {
   if (pathname === '/record') return null
   // Page /competences : header + champ dédiés, on masque la tabbar
   if (pathname?.startsWith('/competences')) return null
+  // Page /topup : standalone (lien email)
+  if (pathname?.startsWith('/topup')) return null
 
   const activeTab = ROUTE_TO_TAB[pathname]
   const col       = (on: boolean) => on ? ACCENT : DIM

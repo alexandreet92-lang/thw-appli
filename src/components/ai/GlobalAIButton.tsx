@@ -26,6 +26,8 @@ export default function GlobalAIButton() {
   if (pathname === '/profile') return null
   // Caché sur /competences (champ dédié + bouton retour ; évite le chevauchement)
   if (pathname === '/competences' || pathname.startsWith('/competences/')) return null
+  // Caché sur /topup (page standalone d'achat de tokens)
+  if (pathname.startsWith('/topup')) return null
 
   return (
     <>

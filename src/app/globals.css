@@ -146,6 +146,12 @@ main:has(.competences-mobile-root) { margin-top: 0 !important; height: 100vh !im
 .comp-modal-fullscreen { background: #FFFFFF; }
 html.dark .comp-modal-fullscreen { background: var(--bg-card); }
 
+/* /topup : page standalone (lien email) — neutralise l'offset du <main>
+   mobile (header global masqué) et le padding réservé à la tabbar. */
+@media (max-width: 767px) {
+  main:has(.topup-root) { margin-top: 0 !important; height: 100vh !important; padding-bottom: 0 !important; }
+}
+
 /* ── Modal détail compétence : sections colorées ── */
 .cmp-section { border-radius: 12px; padding: 16px 20px; margin-bottom: 14px; border: 0.5px solid transparent; }
 .cmp-section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }

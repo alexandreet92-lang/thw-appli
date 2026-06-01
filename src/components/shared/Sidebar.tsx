@@ -553,6 +553,9 @@ export function Sidebar() {
   // Ferme le drawer mobile à chaque changement de route
   useEffect(() => { setMobileOpen(false) }, [pathname])
 
+  // Page /topup : standalone (lien email) — aucun chrome d'app
+  if (pathname?.startsWith('/topup')) return null
+
   return (
     <>
       {/* ════════════════════════════════════════════════════

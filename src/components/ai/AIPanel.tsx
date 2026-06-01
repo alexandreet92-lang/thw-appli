@@ -11880,7 +11880,7 @@ function HistoryDrawer({
   if (persistent) {
     return (
       <div style={{
-        width: 240, flexShrink: 0,
+        width: 278, flexShrink: 0,
         borderRight: '0.5px solid var(--border)',
         background: 'var(--bg-card)',
         display: 'flex', flexDirection: 'column',
@@ -11900,7 +11900,7 @@ function HistoryDrawer({
       />
       <div style={{
         position: 'absolute', top: 0, left: 0, bottom: 0,
-        width: 260, background: 'var(--bg-card)',
+        width: 298, background: 'var(--bg-card)',
         borderRight: '0.5px solid var(--border)',
         zIndex: 26, display: 'flex', flexDirection: 'column',
         boxShadow: '4px 0 24px rgba(0,0,0,0.16)',
@@ -19370,24 +19370,23 @@ export default function AIPanel({
         .aip-input-footer {
           border-top: none !important;
           background: transparent !important;
-          padding: 0 16px 16px !important;
+          padding: 0 4px 16px !important;
         }
 
-        /* B2 — Input wrap: via variables thème, centré max 680px, sans glow au focus */
+        /* B2 — Input wrap: boîte centrée max 756px, sans glow au focus */
         .aip-input-wrap {
-          max-width: 680px !important;
+          max-width: 756px !important;
           margin: 0 auto !important;
           width: 100% !important;
           border-radius: 16px !important;
-          background: var(--input-bg) !important;
-          border: 1px solid var(--border-mid) !important;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
-          transition: border-color 200ms !important;
+          background: var(--ai-bg2) !important;
+          border: 1px solid var(--ai-border) !important;
+          box-shadow: none !important;
         }
         /* Pas de changement de couleur au focus */
         .aip-input-wrap:focus-within {
-          border-color: var(--border-mid) !important;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+          border-color: var(--ai-border) !important;
+          box-shadow: none !important;
         }
         .aip-input-wrap *:focus-visible { outline: none !important; }
 

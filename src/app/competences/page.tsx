@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Plus, Menu } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
+import { createClient } from '@/lib/supabase/client'
 import type { CategorieCompetence, CompetenceWithUserState } from '@/types/competences'
 import { useCompetences } from './hooks/useCompetences'
 import { useUserCompetences } from './hooks/useUserCompetences'
@@ -13,11 +14,12 @@ import CompetencesLibrary from './components/CompetencesLibrary'
 import CreateCompetencePanel from './components/CreateCompetencePanel'
 import MobileSidebar from './components/MobileSidebar'
 import CompetenceCard from './components/CompetenceCard'
+import CompetenceDetailModal from './components/CompetenceDetailModal'
 import { SPORTS_ORDER, SPORT_LABELS, sportIcon, type SportFilter, type CompetenceTab } from './constants'
 
 export default function CompetencesPage() {
   useTheme()
-  const { competences, setCompetences, loading } = useCompetences()
+  const { competences, setCompetences, loading, reload } = useCompetences()
   const { checkLimit, detectConflicts, toggleCompetence } = useUserCompetences()
 
   const [activeSport, setActiveSport]       = useState<SportFilter>('all')
@@ -26,6 +28,8 @@ export default function CompetencesPage() {
   const [mobileSidebarOpen, setMobileOpen]  = useState(false)
   const [isDesktop, setIsDesktop]           = useState(true)
   const [notice, setNotice]                 = useState<string | null>(null)
+  const [detail, setDetail]                 = useState<CompetenceWithUserState | null>(null)
+  const [conflictState, setConflictState]   = useState<{ target: CompetenceWithUserState; blocker: CompetenceWithUserState } | null>(null)
 
   useEffect(() => {
     const check = () => setIsDesktop(window.innerWidth >= 768)
@@ -56,6 +60,20 @@ export default function CompetencesPage() {
     return true
   }), [competences, activeSport, activeCategory, activeTab])
 
+  // Bascule optimiste + DB (sans vérifs — déjà faites par l'appelant)
+  const applyToggle = useCallback(async (c: CompetenceWithUserState, currentlyActive: boolean) => {
+    setCompetences(prev => prev.map(x => x.id === c.id
+      ? { ...x, user_state: { active: !currentlyActive, prompt_custom: x.user_state?.prompt_custom ?? null, activated_at: !currentlyActive ? new Date().toISOString() : null } }
+      : x))
+    const res = await toggleCompetence(c.id, currentlyActive)
+    if (!res.ok) {
+      setNotice(res.error ?? 'Erreur lors de la mise à jour.')
+      setCompetences(prev => prev.map(x => x.id === c.id
+        ? { ...x, user_state: { active: currentlyActive, prompt_custom: x.user_state?.prompt_custom ?? null, activated_at: x.user_state?.activated_at ?? null } }
+        : x))
+    }
+  }, [toggleCompetence, setCompetences])
+
   const handleToggle = useCallback(async (c: CompetenceWithUserState) => {
     const currentlyActive = c.user_state?.active ?? false
 
@@ -65,33 +83,67 @@ export default function CompetencesPage() {
         setNotice(`Limite atteinte : ${limit.limit} compétences actives (plan ${limit.planLabel}).`)
         return
       }
-      // Vérifier les conflits
+      // Vérifier les conflits → proposer de désactiver l'autre
       const conflicts = detectConflicts(c, competences)
       if (conflicts.length > 0) {
-        setNotice(`Conflit avec « ${conflicts[0].nom} » — désactive-la d'abord.`)
+        setConflictState({ target: c, blocker: conflicts[0] })
         return
       }
     }
 
-    // Optimistic update
-    setCompetences(prev => prev.map(x => x.id === c.id
-      ? { ...x, user_state: { active: !currentlyActive, prompt_custom: x.user_state?.prompt_custom ?? null, activated_at: !currentlyActive ? new Date().toISOString() : null } }
-      : x))
+    await applyToggle(c, currentlyActive)
+  }, [competences, limit, detectConflicts, applyToggle])
 
-    const res = await toggleCompetence(c.id, currentlyActive)
-    if (!res.ok) {
-      setNotice(res.error ?? 'Erreur lors de la mise à jour.')
-      // rollback
-      setCompetences(prev => prev.map(x => x.id === c.id
-        ? { ...x, user_state: { active: currentlyActive, prompt_custom: x.user_state?.prompt_custom ?? null, activated_at: x.user_state?.activated_at ?? null } }
-        : x))
-    }
-  }, [competences, limit, detectConflicts, toggleCompetence, setCompetences])
+  // Résolution de conflit : désactive l'autre puis active la cible
+  const resolveConflict = useCallback(async () => {
+    if (!conflictState) return
+    const { target, blocker } = conflictState
+    setConflictState(null)
+    await applyToggle(blocker, true)   // blocker est actif → on le désactive
+    await applyToggle(target, false)   // target est inactif → on l'active
+  }, [conflictState, applyToggle])
 
   const handleOpenDetail = useCallback((c: CompetenceWithUserState) => {
-    // Modal de détail : prompt 4
-    console.log('Modal détail à venir', c.id)
+    setDetail(c)
   }, [])
+
+  // Sauvegarde du prompt remodelé
+  const handleSaveDetail = useCallback(async (newPrompt: string) => {
+    if (!detail) return
+    try {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { setNotice('Non connecté'); return }
+      if (!detail.is_predefined && detail.created_by === user.id) {
+        // compétence custom du créateur → modifier le prompt de base
+        await sb.from('competences').update({ prompt_base: newPrompt }).eq('id', detail.id)
+      } else {
+        // prédéfinie → override perso via user_competences
+        await sb.from('user_competences').upsert(
+          { user_id: user.id, competence_id: detail.id, prompt_custom: newPrompt },
+          { onConflict: 'user_id,competence_id' },
+        )
+      }
+      setNotice('Prompt enregistré')
+      setDetail(null)
+      await reload()
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : 'Erreur')
+    }
+  }, [detail, reload])
+
+  const handleDeleteDetail = useCallback(async () => {
+    if (!detail) return
+    try {
+      const sb = createClient()
+      await sb.from('competences').delete().eq('id', detail.id)
+      setNotice('Compétence supprimée')
+      setDetail(null)
+      await reload()
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : 'Erreur')
+    }
+  }, [detail, reload])
 
   const focusCreate = useCallback(() => {
     const el = document.getElementById('create-competence-input')
@@ -102,6 +154,39 @@ export default function CompetencesPage() {
     <span style={{ fontSize: 11, border: '0.5px solid var(--border)', borderRadius: 20, padding: '4px 12px', color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>
       <span style={{ color: '#06B6D4', fontWeight: 700 }}>{limit.active_count}</span> / {limit.limit} actives · Plan {limit.planLabel}
     </span>
+  )
+
+  // Modal de détail + barre de résolution de conflit (rendus dans les 2 layouts)
+  const overlays = (
+    <>
+      {detail && (
+        <CompetenceDetailModal
+          competence={detail}
+          conflicts={conflictsFor(detail)}
+          isOpen={!!detail}
+          onClose={() => setDetail(null)}
+          onSave={handleSaveDetail}
+          onDelete={handleDeleteDetail}
+        />
+      )}
+      {conflictState && (
+        <div style={{
+          position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 110,
+          maxWidth: 480, width: 'calc(100% - 28px)',
+          background: 'var(--bg-card)', border: '0.5px solid var(--border-mid)', borderRadius: 12,
+          boxShadow: '0 12px 40px rgba(0,0,0,0.4)', padding: '12px 14px',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          <span style={{ fontSize: 12.5, color: 'var(--text)' }}>
+            Cette compétence entre en conflit avec « {conflictState.blocker.nom} ».
+          </span>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setConflictState(null)} style={{ fontSize: 12, background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>Annuler</button>
+            <button onClick={() => void resolveConflict()} style={{ fontSize: 12, fontWeight: 500, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>Désactiver l&apos;autre et activer celle-ci</button>
+          </div>
+        </div>
+      )}
+    </>
   )
 
   // ══════════════════ MOBILE ══════════════════
@@ -166,7 +251,7 @@ export default function CompetencesPage() {
           )}
         </div>
 
-        <CreateCompetencePanel variant="mobile" />
+        <CreateCompetencePanel variant="mobile" limitReached={!limit.can_activate_more} onCreated={reload} onNotice={setNotice} />
 
         <MobileSidebar
           open={mobileSidebarOpen}
@@ -178,6 +263,8 @@ export default function CompetencesPage() {
           onSelectCategory={setActiveCategory}
           onSelectTab={setActiveTab}
         />
+
+        {overlays}
       </div>
     )
   }
@@ -223,8 +310,10 @@ export default function CompetencesPage() {
           loading={loading}
         />
 
-        <CreateCompetencePanel variant="desktop" />
+        <CreateCompetencePanel variant="desktop" limitReached={!limit.can_activate_more} onCreated={reload} onNotice={setNotice} />
       </div>
+
+      {overlays}
     </div>
   )
 }

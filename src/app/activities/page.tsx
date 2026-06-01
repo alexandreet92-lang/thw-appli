@@ -2575,6 +2575,43 @@ function WeekDetailModal({ week, activities, onClose }: {
   )
 }
 
+// ─────────────────────────────────────────────────────────────
+// PMC HELPER — daily CTL/ATL/TSB series
+// ─────────────────────────────────────────────────────────────
+function computePMCSeries(
+  acts: { started_at: string; tss: number | null }[],
+  displayDays: number
+): Array<{ date: string; ctl: number; atl: number; tsb: number }> {
+  const tssMap = new Map<string, number>()
+  for (const a of acts) {
+    if (!a.tss) continue
+    const d = a.started_at.slice(0, 10)
+    tssMap.set(d, (tssMap.get(d) ?? 0) + Number(a.tss))
+  }
+  const today = new Date()
+  const result: Array<{ date: string; ctl: number; atl: number; tsb: number }> = []
+  let ctl = 0, atl = 0
+  const ctlK = 1 / 42, atlK = 1 / 7
+  const WARMUP = 90
+  for (let i = displayDays + WARMUP; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i)
+    const dateStr = d.toISOString().slice(0, 10)
+    const tss = tssMap.get(dateStr) ?? 0
+    const prevCtl = ctl, prevAtl = atl
+    ctl += (tss - ctl) * ctlK
+    atl += (tss - atl) * atlK
+    if (i <= displayDays) {
+      result.push({
+        date: dateStr,
+        ctl:  Math.round(ctl * 10) / 10,
+        atl:  Math.round(atl * 10) / 10,
+        tsb:  Math.round((prevCtl - prevAtl) * 10) / 10,
+      })
+    }
+  }
+  return result
+}
+
 function SectionDonnees({ activities, zones, profile }: {
   activities: Activity[]
   zones: TrainingZoneRow[]
@@ -2616,6 +2653,48 @@ function SectionDonnees({ activities, zones, profile }: {
       .order('started_at', { ascending: true })
       .then(({ data }) => setWeeklyActs((data ?? []) as { started_at: string; moving_time_s: number | null; distance_m: number | null; sport_type: string }[]))
   }, [])
+
+  // ── PMC data ───────────────────────────────────────────────────────────────
+  const [pmcActs, setPmcActs] = useState<{ started_at: string; tss: number | null; title: string | null }[]>([])
+  const [pmcHoverIdx, setPmcHoverIdx] = useState<number | null>(null)
+  const pmcSvgRef = useRef<SVGSVGElement>(null)
+  const [heatHover, setHeatHover] = useState<{ date: string; tss: number; title: string } | null>(null)
+
+  useEffect(() => {
+    const start = new Date(); start.setDate(start.getDate() - 400)
+    createClient().from('activities').select('started_at, tss, title')
+      .gte('started_at', start.toISOString())
+      .order('started_at', { ascending: true })
+      .then(({ data }) => setPmcActs((data ?? []) as { started_at: string; tss: number | null; title: string | null }[]))
+  }, [])
+
+  const displayDays = numWeeks(filter) * 7
+  const pmcSeries = useMemo(() => computePMCSeries(pmcActs, displayDays), [pmcActs, displayDays])
+
+  const prevCutoff = useMemo(() => {
+    if (!cutoff) return null
+    const now = new Date()
+    const ms = now.getTime() - cutoff.getTime()
+    return new Date(cutoff.getTime() - ms)
+  }, [cutoff]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const prevInRange = useMemo(() =>
+    prevCutoff && cutoff
+      ? activities.filter(a => { const d = new Date(a.started_at); return d >= prevCutoff && d < cutoff })
+      : [],
+    [activities, prevCutoff, cutoff] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
+  const tssByDate = useMemo(() => {
+    const map = new Map<string, { tss: number; title: string }>()
+    for (const a of pmcActs) {
+      if (!a.tss) continue
+      const d = a.started_at.slice(0, 10)
+      const e = map.get(d)
+      map.set(d, { tss: (e?.tss ?? 0) + Number(a.tss), title: a.title ?? '' })
+    }
+    return map
+  }, [pmcActs])
 
   const CHART_WEEKS = 12
   const weeks = useMemo(() => {
@@ -2701,26 +2780,77 @@ function SectionDonnees({ activities, zones, profile }: {
 
   void profile
 
+  // ── TSB form color ─────────────────────────────────────────────────────────
+  const tsbColor = tsb < -20 ? '#EF4444' : tsb < -10 ? '#F97316' : tsb < 5 ? '#06B6D4' : tsb < 20 ? '#10B981' : '#818CF8'
+  const tsbLabel = tsb < -20 ? 'Très fatigué' : tsb < -10 ? 'Fatigué' : tsb < 5 ? 'Optimal' : tsb < 20 ? 'Frais' : 'Très frais'
+  const tsbAdvice = tsb < -20 ? 'Récupération obligatoire' : tsb < -10 ? 'Récupération recommandée' : tsb < 5 ? 'Prêt à performer' : tsb < 20 ? 'Forme optimale' : 'Risque de désentraînement'
+
+  // ── Trend helper ────────────────────────────────────────────────────────────
+  function trendOf(curr: number, prev: number): { pct: number; color: string; arrow: string } {
+    if (!prev || !curr) return { pct: 0, color: 'var(--text-dim)', arrow: '→' }
+    const pct = ((curr - prev) / prev) * 100
+    if (Math.abs(pct) < 3) return { pct: 0, color: 'var(--text-dim)', arrow: '→' }
+    if (pct > 0) return { pct, color: pct > 25 ? '#EF4444' : '#10B981', arrow: '↑' }
+    return { pct, color: '#F97316', arrow: '↓' }
+  }
+
+  // ── PMC chart dims ──────────────────────────────────────────────────────────
+  const PMC_W = 900, PMC_H = 160, PMC_PL = 40, PMC_PR = 12, PMC_PT = 12, PMC_PB = 24
+  const pmcChW = PMC_W - PMC_PL - PMC_PR
+  const pmcChH = PMC_H - PMC_PT - PMC_PB
+  const pmcCtls = pmcSeries.map(p => p.ctl)
+  const pmcAtls = pmcSeries.map(p => p.atl)
+  const pmcTsbs = pmcSeries.map(p => p.tsb)
+  const pmcYMax = Math.max(...pmcCtls, ...pmcAtls, 10) * 1.08
+  const pmcYMin = Math.min(...pmcTsbs, 0) - 5
+  const pmcYRange = pmcYMax - pmcYMin
+  const pmcYOf = (v: number) => PMC_PT + pmcChH - ((v - pmcYMin) / pmcYRange) * pmcChH
+  const pmcXOf = (i: number) => PMC_PL + (i / Math.max(pmcSeries.length - 1, 1)) * pmcChW
+  const pmcPath = (vals: number[]) =>
+    vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${pmcXOf(i).toFixed(1)},${pmcYOf(v).toFixed(1)}`).join(' ')
+
+  // ── Polarization ───────────────────────────────────────────────────────────
+  const polZ12 = (hrTimesZ[0] ?? 0) + (hrTimesZ[1] ?? 0)
+  const polZ3  = hrTimesZ[2] ?? 0
+  const polZ45 = (hrTimesZ[3] ?? 0) + (hrTimesZ[4] ?? 0)
+  const polTotal = polZ12 + polZ3 + polZ45
+
+  // ── TSB arc ────────────────────────────────────────────────────────────────
+  const arcR = 48, arcCx = 60, arcCy = 60
+  const arcCirc = 2 * Math.PI * arcR
+  const arcTotal = arcCirc * 270 / 360  // 270° arc
+  const tsbPct = Math.max(0, Math.min(1, (tsb + 30) / 60))
+  const arcFilled = tsbPct * arcTotal
+
   return (
     <div>
-      {/* Filtres période + toggle général/spécifique */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {/* ── SECTION 0: Button bar ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+        {/* Time filter pills */}
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
           {(Object.keys(TIME_FILTER_LABEL) as TimeFilter[]).map(f => (
-            <Chip key={f} label={TIME_FILTER_LABEL[f]} active={filter === f} onClick={() => setFilter(f)} />
+            <button key={f} onClick={() => setFilter(f)} style={{
+              background: filter === f ? 'var(--text)' : 'var(--bg)',
+              color: filter === f ? 'var(--bg)' : 'var(--text-dim)',
+              border: `1px solid ${filter === f ? 'var(--text)' : 'var(--border)'}`,
+              borderRadius: 20, padding: '4px 12px', fontSize: 12, cursor: 'pointer',
+              fontWeight: filter === f ? 600 : 400, transition: 'all 0.15s',
+            }}>
+              {TIME_FILTER_LABEL[f]}
+            </button>
           ))}
         </div>
-        {/* Toggle Général / Spécifique */}
-        <div style={{ display: 'flex', background: T.bgAlt, borderRadius: T.radiusSm, padding: 3, gap: 2, border: `1px solid ${T.border}` }}>
+        {/* Divider */}
+        <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 6px', flexShrink: 0 }} />
+        {/* Tab pills */}
+        <div style={{ display: 'flex', gap: 5 }}>
           {(['general', 'specific'] as const).map(tab => (
             <button key={tab} onClick={() => setDataTab(tab)} style={{
-              background: dataTab === tab ? T.surface : 'transparent',
-              border: dataTab === tab ? `1px solid ${T.border}` : '1px solid transparent',
-              borderRadius: 7, padding: '5px 14px', fontSize: 12, cursor: 'pointer',
-              color: dataTab === tab ? T.text : T.textSub,
-              fontWeight: dataTab === tab ? 600 : 400,
-              fontFamily: T.fontBody, transition: 'all 0.15s',
-              boxShadow: dataTab === tab ? T.shadow : 'none',
+              background: dataTab === tab ? 'var(--text)' : 'var(--bg)',
+              color: dataTab === tab ? 'var(--bg)' : 'var(--text-dim)',
+              border: `1px solid ${dataTab === tab ? 'var(--text)' : 'var(--border)'}`,
+              borderRadius: 20, padding: '4px 14px', fontSize: 12, cursor: 'pointer',
+              fontWeight: dataTab === tab ? 600 : 400, transition: 'all 0.15s',
             }}>
               {tab === 'general' ? 'Général' : 'Spécifique'}
             </button>
@@ -2734,10 +2864,10 @@ function SectionDonnees({ activities, zones, profile }: {
         const we = new Date(ws); we.setDate(we.getDate() + 6)
         const label = ws.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' – ' + we.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
         const weekActs = activities.filter(a => { const d = new Date(a.started_at); return d >= ws && d <= we })
-        const totalTss  = weekActs.reduce((s, a) => s + (a.tss ?? 0), 0)
-        const totalElev = weekActs.reduce((s, a) => s + (a.elevation_gain_m ?? 0), 0)
-        const hrVals    = weekActs.filter(a => a.avg_hr).map(a => Number(a.avg_hr))
-        const meanHr    = hrVals.length ? Math.round(hrVals.reduce((a,b)=>a+b,0)/hrVals.length) : null
+        const totalTssW  = weekActs.reduce((s, a) => s + (a.tss ?? 0), 0)
+        const totalElevW = weekActs.reduce((s, a) => s + (a.elevation_gain_m ?? 0), 0)
+        const hrValsW    = weekActs.filter(a => a.avg_hr).map(a => Number(a.avg_hr))
+        const meanHrW    = hrValsW.length ? Math.round(hrValsW.reduce((a,b)=>a+b,0)/hrValsW.length) : null
         const sportEntries = Array.from(selectedWeek.sports.entries()).sort((a, b) => b[1] - a[1])
         const totalSport   = sportEntries.reduce((s, [,t]) => s + t, 0)
         return (
@@ -2750,7 +2880,7 @@ function SectionDonnees({ activities, zones, profile }: {
               {[
                 { label: 'TEMPS',    value: fmtDur(selectedWeek.time) },
                 { label: 'DISTANCE', value: fmtDist(selectedWeek.dist) },
-                { label: 'D+',       value: totalElev >= 1 ? `+${Math.round(totalElev)} m` : '—' },
+                { label: 'D+',       value: totalElevW >= 1 ? `+${Math.round(totalElevW)} m` : '—' },
               ].map(({ label, value }) => (
                 <div key={label} className="bg-muted rounded-xl p-3 flex flex-col gap-1">
                   <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">{label}</span>
@@ -2760,8 +2890,8 @@ function SectionDonnees({ activities, zones, profile }: {
             </div>
             <div className="grid grid-cols-3 gap-2 mb-5">
               {[
-                { label: 'TSS',     value: totalTss ? Math.round(totalTss).toString() : '—' },
-                { label: 'FC MOY.', value: meanHr ? `${meanHr} bpm` : '—' },
+                { label: 'TSS',     value: totalTssW ? Math.round(totalTssW).toString() : '—' },
+                { label: 'FC MOY.', value: meanHrW ? `${meanHrW} bpm` : '—' },
                 { label: 'SÉANCES', value: selectedWeek.count.toString() },
               ].map(({ label, value }) => (
                 <div key={label} className="bg-muted rounded-xl p-3 flex flex-col gap-1">
@@ -2817,127 +2947,479 @@ function SectionDonnees({ activities, zones, profile }: {
       {/* === DONNÉES GÉNÉRALES === */}
       {dataTab === 'general' && (
         <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10, marginBottom: 24 }}>
-        <StatCard label="Séances" value={inRange.length.toString()} />
-        <StatCard label="Distance" value={fmtDist(totalDist)} />
-        <StatCard label="Temps" value={fmtDur(totalTime)} />
-        <StatCard label="D+" value={totalElev >= 1 ? `+${Math.round(totalElev)} m` : '—'} />
-        <StatCard label="TSS total" value={totalTss ? Math.round(totalTss).toString() : '—'} />
-        <StatCard label="TSS / séance" value={avgTss ? avgTss.toString() : '—'} />
-        <StatCard label="FC moy." value={meanHr ? `${meanHr} bpm` : '—'} />
-        <StatCard label="RPE moyen" value={meanRpe ? `${meanRpe}/10` : '—'} />
-      </div>
 
-      {/* CTL / ATL / TSB — skeleton pendant chargement Supabase */}
-      {dbMetrics.loading
-        ? <SkeletonFitnessCards />
-        : <FitnessCards ctl={ctl} atl={atl} tsb={tsb} />
-      }
-
-      {/* Weekly volume chart */}
-      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '18px 20px', marginBottom: 16 }}>
-        <SectionTitle>Volume hebdomadaire <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 400, marginLeft: 6 }}>— clic pour détail</span></SectionTitle>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 120 }}>
-          {weeks.map((w, i) => {
-            const barH = Math.max(4, Math.round((w.total / maxTime) * 96))
-            const isNow = i === weeks.length - 1
-            const d = new Date(w.week)
-            const sportEntries = Array.from(w.sports.entries()).sort((a, b) => b[1] - a[1])
-
-            return (
-              <div key={w.week}
-                onClick={() => w.count > 0 && setSelectedWeek(w)}
-                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 0, cursor: w.count > 0 ? 'pointer' : 'default' }}>
-                {w.time > 60 && (
-                  <div style={{ fontSize: 9, color: isNow ? T.accent : T.textMuted, fontWeight: isNow ? 700 : 400 }}>
-                    {fmtDur(w.time)}
+          {/* ── SECTION 1: Hero ─────────────────────────────────────────────── */}
+          {dbMetrics.loading
+            ? <SkeletonFitnessCards />
+            : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+              {/* LEFT: Forme du jour (TSB arc) */}
+              <div style={{
+                background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius,
+                padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 20,
+              }}>
+                <svg width="120" height="120" viewBox="0 0 120 120" style={{ flexShrink: 0 }}>
+                  {/* Background arc (270°, gray) */}
+                  <circle
+                    cx={arcCx} cy={arcCy} r={arcR}
+                    fill="none" stroke="var(--border)" strokeWidth="9"
+                    strokeDasharray={`${arcTotal.toFixed(1)} ${(arcCirc - arcTotal).toFixed(1)}`}
+                    strokeLinecap="round"
+                    transform={`rotate(-225 ${arcCx} ${arcCy})`}
+                  />
+                  {/* Value arc (colored) */}
+                  <circle
+                    cx={arcCx} cy={arcCy} r={arcR}
+                    fill="none" stroke={tsbColor} strokeWidth="9"
+                    strokeDasharray={`${arcFilled.toFixed(1)} ${(arcCirc - arcFilled).toFixed(1)}`}
+                    strokeLinecap="round"
+                    transform={`rotate(-225 ${arcCx} ${arcCy})`}
+                    style={{ transition: 'stroke-dasharray 0.5s ease' }}
+                  />
+                  {/* Center text */}
+                  <text x={arcCx} y={arcCy - 6} textAnchor="middle" fontSize="22" fontWeight="700" fill="var(--text)">{tsb > 0 ? '+' : ''}{Math.round(tsb)}</text>
+                  <text x={arcCx} y={arcCy + 12} textAnchor="middle" fontSize="10" fill="var(--text-dim)" fontWeight="600" letterSpacing="0.06em">TSB</text>
+                </svg>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: tsbColor, marginBottom: 4 }}>{tsbLabel}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>{tsbAdvice}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-sub)' }}>
+                    CTL {Math.round(ctl)} · ATL {Math.round(atl)}
                   </div>
-                )}
-                <div style={{
-                  width: '75%', height: barH, display: 'flex', flexDirection: 'column-reverse',
-                  borderRadius: '3px 3px 0 0', overflow: 'hidden', minWidth: 6,
-                  transition: 'opacity 0.15s', opacity: 1,
-                }}
-                  onMouseEnter={e => { if (w.count > 0) (e.currentTarget as HTMLDivElement).style.opacity = '0.75' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.opacity = '1' }}>
-                  {sportEntries.map(([sport, sportTime]) => {
-                    const col = SPORT_COLOR[sport as SportType] ?? '#94a3b8'
-                    const pct = w.total > 0 ? (sportTime / w.total) * 100 : 0
+                  {tsb < 5 && tsb > -30 && (
+                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>
+                      Forme optimale dans ~{Math.max(1, Math.round((5 - tsb) / Math.max(0.1, (ctl - atl) * 0.1 + 0.5)))} jours
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* RIGHT: CTL / ATL / TSB cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                {[
+                  { key: 'CTL', val: Math.round(ctl), color: '#06B6D4', max: 120, sub: 'Charge chronique', note: '42 jours' },
+                  { key: 'ATL', val: Math.round(atl), color: '#F97316', max: 150, sub: 'Charge aiguë',     note: '7 jours' },
+                  { key: 'TSB', val: Math.round(tsb), color: tsbColor,  max: 40,  sub: 'Forme du moment', note: 'CTL−ATL' },
+                ].map(({ key, val, color, max, sub, note }) => {
+                  const barPct = Math.min(100, Math.abs(val) / max * 100)
+                  return (
+                    <div key={key} style={{
+                      background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius,
+                      padding: '14px 14px 12px', borderTop: `3px solid ${color}`,
+                    }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color, marginBottom: 6 }}>{key}</div>
+                      <div style={{ fontSize: 28, fontWeight: 700, color, lineHeight: 1, marginBottom: 4, fontFamily: T.fontMono }}>
+                        {val > 0 && key === 'TSB' ? '+' : ''}{val}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 8 }}>{sub}</div>
+                      <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
+                        <div style={{ height: '100%', width: `${barPct}%`, background: color, borderRadius: 2, transition: 'width 0.5s' }} />
+                      </div>
+                      <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{note}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── SECTION 2: PMC ──────────────────────────────────────────────── */}
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <SectionTitle>Performance Management Chart</SectionTitle>
+              <div style={{ display: 'flex', gap: 14 }}>
+                {[['CTL','#06B6D4'],['ATL','#F97316'],['TSB','#EF4444']].map(([label, col]) => (
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--text-dim)' }}>
+                    <div style={{ width: 18, height: 2, background: col, borderRadius: 1, opacity: label === 'TSB' ? 0.7 : 1 }} />
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {pmcSeries.length > 1 ? (
+              <div style={{ position: 'relative' }}>
+                <svg
+                  ref={pmcSvgRef}
+                  viewBox={`0 0 ${PMC_W} ${PMC_H}`}
+                  style={{ width: '100%', height: 160, display: 'block', overflow: 'visible' }}
+                  preserveAspectRatio="none"
+                  onMouseMove={e => {
+                    const rect = pmcSvgRef.current?.getBoundingClientRect()
+                    if (!rect) return
+                    const pct = (e.clientX - rect.left) / rect.width
+                    const idx = Math.round(pct * (pmcSeries.length - 1))
+                    setPmcHoverIdx(Math.max(0, Math.min(pmcSeries.length - 1, idx)))
+                  }}
+                  onMouseLeave={() => setPmcHoverIdx(null)}
+                >
+                  {/* Y gridlines */}
+                  {[0, 25, 50, 75, 100].map(v => {
+                    if (v < pmcYMin || v > pmcYMax) return null
+                    const y = pmcYOf(v)
                     return (
-                      <div key={sport} style={{ width: '100%', flexShrink: 0, background: isNow ? col : col + '99',
-                        height: `${pct}%`, transition: 'height 0.3s' }} />
+                      <g key={v}>
+                        <line x1={PMC_PL} y1={y} x2={PMC_W - PMC_PR} y2={y} stroke="var(--border)" strokeWidth="0.8" strokeDasharray="4,4" />
+                        <text x={PMC_PL - 4} y={y + 4} textAnchor="end" fontSize="9" fill="var(--text-dim)">{v}</text>
+                      </g>
                     )
                   })}
-                  {w.total === 0 && <div style={{ width: '100%', height: '100%', background: T.border }} />}
-                </div>
-                {(i === 0 || i % Math.max(1, Math.floor(weeks.length / 4)) === 0 || isNow) && (
-                  <div style={{ fontSize: 9, color: T.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '100%', textAlign: 'center' }}>
-                    {d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
-                  </div>
-                )}
+                  {/* Zero line */}
+                  <line x1={PMC_PL} y1={pmcYOf(0)} x2={PMC_W - PMC_PR} y2={pmcYOf(0)} stroke="var(--border)" strokeWidth="1" />
+
+                  {/* CTL fill area */}
+                  <path
+                    d={`M${PMC_PL},${pmcYOf(0)} ${pmcCtls.map((v,i) => `L${pmcXOf(i).toFixed(1)},${pmcYOf(v).toFixed(1)}`).join(' ')} L${pmcXOf(pmcCtls.length-1).toFixed(1)},${pmcYOf(0)} Z`}
+                    fill="rgba(6,182,212,0.06)"
+                  />
+
+                  {/* TSB curve (dashed, behind others) */}
+                  <path d={pmcPath(pmcTsbs)} fill="none" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="5,3" strokeLinejoin="round" opacity="0.8" />
+
+                  {/* ATL curve */}
+                  <path d={pmcPath(pmcAtls)} fill="none" stroke="#F97316" strokeWidth="2" strokeLinejoin="round" />
+
+                  {/* CTL curve */}
+                  <path d={pmcPath(pmcCtls)} fill="none" stroke="#06B6D4" strokeWidth="2.5" strokeLinejoin="round" />
+
+                  {/* X axis labels */}
+                  {pmcSeries.filter((_, i) => {
+                    const step = Math.max(1, Math.floor(pmcSeries.length / 6))
+                    return i === 0 || i % step === 0 || i === pmcSeries.length - 1
+                  }).map((pt, _, arr) => {
+                    const origIdx = pmcSeries.indexOf(pt)
+                    const x = pmcXOf(origIdx)
+                    const d = new Date(pt.date)
+                    return (
+                      <text key={pt.date} x={x} y={PMC_H - 4} textAnchor="middle" fontSize="9" fill="var(--text-dim)">
+                        {d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                      </text>
+                    )
+                  })}
+
+                  {/* Hover line + dots + tooltip */}
+                  {pmcHoverIdx !== null && pmcSeries[pmcHoverIdx] && (() => {
+                    const pt = pmcSeries[pmcHoverIdx]
+                    const x = pmcXOf(pmcHoverIdx)
+                    return (
+                      <>
+                        <line x1={x} y1={PMC_PT} x2={x} y2={PMC_H - PMC_PB} stroke="var(--text)" strokeWidth="1" strokeDasharray="3,2" opacity="0.5" />
+                        <circle cx={x} cy={pmcYOf(pt.ctl)} r="4" fill="#06B6D4" />
+                        <circle cx={x} cy={pmcYOf(pt.atl)} r="3.5" fill="#F97316" />
+                        <circle cx={x} cy={pmcYOf(pt.tsb)} r="3" fill="#EF4444" />
+                        {/* Tooltip box */}
+                        {(() => {
+                          const tipX = pmcHoverIdx > pmcSeries.length * 0.7 ? x - 128 : x + 10
+                          const tipY = PMC_PT
+                          return (
+                            <g>
+                              <rect x={tipX} y={tipY} width="120" height="76" rx="6"
+                                fill="var(--bg)" stroke="var(--border)" strokeWidth="1" />
+                              <text x={tipX + 8} y={tipY + 14} fontSize="10" fill="var(--text-dim)">
+                                {new Date(pt.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                              </text>
+                              <text x={tipX + 8} y={tipY + 32} fontSize="11" fill="#06B6D4" fontWeight="600">CTL {pt.ctl}</text>
+                              <text x={tipX + 8} y={tipY + 48} fontSize="11" fill="#F97316" fontWeight="600">ATL {pt.atl}</text>
+                              <text x={tipX + 8} y={tipY + 64} fontSize="11" fill="#EF4444" fontWeight="600">TSB {pt.tsb > 0 ? '+' : ''}{pt.tsb}</text>
+                            </g>
+                          )
+                        })()}
+                      </>
+                    )
+                  })()}
+                </svg>
+              </div>
+            ) : (
+              <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 12 }}>
+                Données insuffisantes pour le graphique
+              </div>
+            )}
+          </div>
+
+          {/* ── SECTION 3: 4 stats avec tendances ───────────────────────────── */}
+          {(() => {
+            const prevTss   = prevInRange.reduce((s, a) => s + (a.tss ?? 0), 0)
+            const prevRpeVals = prevInRange.filter(a => a.rpe ?? a.perceived_effort).map(a => Number(a.rpe ?? a.perceived_effort))
+            const prevMeanRpe = prevRpeVals.length ? avg(prevRpeVals) : 0
+            const prevDist  = prevInRange.reduce((s, a) => s + (a.distance_m ?? 0), 0)
+            const stats = [
+              { label: 'Séances',    curr: inRange.length,    prev: prevInRange.length, fmt: (v: number) => v.toString() },
+              { label: 'Distance',   curr: totalDist / 1000,  prev: prevDist / 1000,    fmt: (v: number) => `${v.toFixed(0)} km` },
+              { label: 'TSS Total',  curr: totalTss,           prev: prevTss,            fmt: (v: number) => Math.round(v).toString() },
+              { label: 'RPE Moyen',  curr: rpeVals.length ? avg(rpeVals) : 0, prev: prevMeanRpe, fmt: (v: number) => v ? `${v.toFixed(1)}/10` : '—' },
+            ]
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+                {stats.map(({ label, curr, prev, fmt }) => {
+                  const tr = trendOf(curr, prev)
+                  return (
+                    <div key={label} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '14px 16px' }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-dim)', marginBottom: 6 }}>{label}</div>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, marginBottom: 4, fontFamily: T.fontMono }}>{fmt(curr)}</div>
+                      <div style={{ fontSize: 11, color: tr.color, fontWeight: 600 }}>
+                        {tr.arrow} {tr.pct !== 0 ? `${Math.abs(tr.pct).toFixed(0)}%` : 'Stable'}
+                        {tr.pct > 25 && <span style={{ color: '#EF4444', marginLeft: 4, fontSize: 10 }}>surcharge?</span>}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )
-          })}
-        </div>
-        {sports.length > 1 && (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
-            {sports.map(([sport]) => (
-              <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: T.textSub }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: SPORT_COLOR[sport as SportType] ?? '#888', display: 'inline-block' }} />
-                {SPORT_LABEL[sport as SportType] ?? sport}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+          })()}
 
-      {/* Sport breakdown */}
-      {sports.length > 0 && (
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '18px 20px', marginBottom: 16 }}>
-          <SectionTitle>Répartition par sport</SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {sports.map(([sport, v]) => {
-              const col = SPORT_COLOR[sport as SportType] ?? '#888'
-              const pct = totalTime > 0 ? (v.time / totalTime) * 100 : 0
+          {/* ── SECTION 4: Volume + Polarisation ────────────────────────────── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+
+            {/* LEFT: Volume hebdo */}
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <SectionTitle>Volume hebdomadaire</SectionTitle>
+                {/* Sport deltas discrets */}
+                {sports.length > 0 && prevInRange.length > 0 && (() => {
+                  const prevSportMap = new Map<string, number>()
+                  for (const a of prevInRange) {
+                    const sp = normalizeSport(a.sport_type ?? 'other')
+                    prevSportMap.set(sp, (prevSportMap.get(sp) ?? 0) + (a.moving_time_s ?? 0))
+                  }
+                  const periodWeeks = Math.max(1, numWeeks(filter))
+                  return (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {sports.slice(0, 3).map(([sport, v]) => {
+                        const currAvg = v.time / periodWeeks
+                        const prevTotal = prevSportMap.get(sport) ?? 0
+                        const prevAvg = prevTotal / periodWeeks
+                        if (!prevAvg) return null
+                        const pct = ((currAvg - prevAvg) / prevAvg) * 100
+                        if (Math.abs(pct) < 3) return null
+                        const color = pct > 0 ? '#10B981' : '#F97316'
+                        const arrow = pct > 0 ? '↑' : '↓'
+                        const col = SPORT_COLOR[sport as SportType] ?? '#888'
+                        return (
+                          <div key={sport} style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: 1, background: col, display: 'inline-block' }} />
+                            <span style={{ color }}>{arrow}{Math.abs(Math.round(pct))}%</span>
+                          </div>
+                        )
+                      }).filter(Boolean)}
+                    </div>
+                  )
+                })()}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 100 }}>
+                {weeks.map((w, i) => {
+                  const barH = Math.max(4, Math.round((w.total / maxTime) * 80))
+                  const isNow = i === weeks.length - 1
+                  const d = new Date(w.week)
+                  const sportEntries = Array.from(w.sports.entries()).sort((a, b) => b[1] - a[1])
+                  return (
+                    <div key={w.week}
+                      onClick={() => w.count > 0 && setSelectedWeek(w)}
+                      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 0, cursor: w.count > 0 ? 'pointer' : 'default' }}>
+                      {w.time > 60 && (
+                        <div style={{ fontSize: 8, color: isNow ? T.accent : T.textMuted, fontWeight: isNow ? 700 : 400 }}>
+                          {fmtDur(w.time)}
+                        </div>
+                      )}
+                      <div style={{
+                        width: '80%', height: barH, display: 'flex', flexDirection: 'column-reverse',
+                        borderRadius: '3px 3px 0 0', overflow: 'hidden', minWidth: 5,
+                      }}
+                        onMouseEnter={e => { if (w.count > 0) (e.currentTarget as HTMLDivElement).style.opacity = '0.75' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.opacity = '1' }}>
+                        {sportEntries.map(([sport, sportTime]) => {
+                          const col = SPORT_COLOR[sport as SportType] ?? '#94a3b8'
+                          const pct = w.total > 0 ? (sportTime / w.total) * 100 : 0
+                          return (
+                            <div key={sport} style={{ width: '100%', flexShrink: 0, background: isNow ? col : col + '99', height: `${pct}%` }} />
+                          )
+                        })}
+                        {w.total === 0 && <div style={{ width: '100%', height: '100%', background: T.border }} />}
+                      </div>
+                      {(i === 0 || i % Math.max(1, Math.floor(weeks.length / 4)) === 0 || isNow) && (
+                        <div style={{ fontSize: 8, color: T.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '100%', textAlign: 'center' }}>
+                          {d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {sports.length > 1 && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                  {sports.map(([sport]) => (
+                    <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: T.textSub }}>
+                      <span style={{ width: 7, height: 7, borderRadius: 2, background: SPORT_COLOR[sport as SportType] ?? '#888', display: 'inline-block' }} />
+                      {SPORT_LABEL[sport as SportType] ?? sport}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT: Polarisation */}
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+              <SectionTitle>Répartition polarisation</SectionTitle>
+              {polTotal > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {[
+                    { label: 'Endurance fondamentale', zones: 'Z1–Z2', time: polZ12, color: '#10B981' },
+                    { label: 'Tempo',                   zones: 'Z3',    time: polZ3,  color: '#F97316' },
+                    { label: 'Haute intensité',          zones: 'Z4–Z5', time: polZ45, color: '#EF4444' },
+                  ].map(({ label, zones, time, color }) => {
+                    const pct = polTotal > 0 ? (time / polTotal) * 100 : 0
+                    return (
+                      <div key={label}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                          <div>
+                            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{label}</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 6 }}>{zones}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{fmtDur(time)}</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color, minWidth: 36, textAlign: 'right' }}>{pct.toFixed(0)}%</span>
+                          </div>
+                        </div>
+                        <div style={{ height: 8, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', borderRadius: 4, transition: 'width 0.5s',
+                            width: `${pct}%`,
+                            background: `linear-gradient(90deg, ${color}88, ${color})`,
+                          }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: 16 }}>
+                  Données FC insuffisantes sur la période
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── SECTION 5: Heatmap calendrier ───────────────────────────────── */}
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <SectionTitle>Calendrier des charges</SectionTitle>
+              <span style={{
+                fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase',
+                background: 'rgba(6,182,212,0.15)', color: '#06B6D4',
+                padding: '2px 7px', borderRadius: 10, marginBottom: 14,
+              }}>Nouveau</span>
+            </div>
+            {(() => {
+              const heatDays = Math.min(displayDays, 365)
+              const today = new Date()
+              // Build list of days from (today - heatDays) to today
+              const startDay = new Date(today); startDay.setDate(startDay.getDate() - heatDays)
+              // Align to Monday
+              const dow = startDay.getDay()
+              const offset = dow === 0 ? 6 : dow - 1
+              startDay.setDate(startDay.getDate() - offset)
+              const days: Array<{ date: string; col: number; row: number }> = []
+              let col = 0, row = 0
+              const cur = new Date(startDay)
+              while (cur <= today) {
+                days.push({ date: cur.toISOString().slice(0, 10), col, row })
+                cur.setDate(cur.getDate() + 1)
+                row++
+                if (row === 7) { row = 0; col++ }
+              }
+              const numCols = col + (row > 0 ? 1 : 0)
+              const CELL = 12, GAP = 2, LABEL_H = 20
+              const svgW = numCols * (CELL + GAP)
+              const svgH = 7 * (CELL + GAP) + LABEL_H
+              const tssColor = (tssVal: number) => {
+                if (!tssVal) return 'var(--border)'
+                if (tssVal < 50)  return '#BFDBFE'
+                if (tssVal < 100) return '#60A5FA'
+                if (tssVal < 150) return '#F97316'
+                return '#EF4444'
+              }
+              // Month labels
+              const monthLabels = new Map<number, string>()
+              for (const d of days) {
+                const dt = new Date(d.date)
+                if (dt.getDate() <= 7) {
+                  monthLabels.set(d.col, dt.toLocaleDateString('fr-FR', { month: 'short' }))
+                }
+              }
               return (
-                <div key={sport} style={{ display: 'grid', gridTemplateColumns: '96px 1fr 56px 56px', alignItems: 'center', gap: 10 }}>
-                  <div style={{ fontSize: 12, color: T.text, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: 2, background: col, display: 'inline-block', flexShrink: 0 }} />
-                    {SPORT_LABEL[sport as SportType] ?? sport}
+                <div style={{ position: 'relative', overflowX: 'auto' }}>
+                  <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ height: svgH, minWidth: Math.min(svgW, 600), display: 'block' }}
+                    preserveAspectRatio="xMinYMin meet">
+                    {/* Month labels */}
+                    {Array.from(monthLabels.entries()).map(([c, label]) => (
+                      <text key={c} x={c * (CELL + GAP)} y={10} fontSize="9" fill="var(--text-dim)">{label}</text>
+                    ))}
+                    {/* Cells */}
+                    {days.map(({ date, col: c, row: r }) => {
+                      const entry = tssByDate.get(date)
+                      const tssVal = entry?.tss ?? 0
+                      const color = tssColor(tssVal)
+                      const x = c * (CELL + GAP)
+                      const y = LABEL_H + r * (CELL + GAP)
+                      return (
+                        <rect key={date}
+                          x={x} y={y} width={CELL} height={CELL}
+                          rx="2" ry="2"
+                          fill={color}
+                          style={{ cursor: tssVal ? 'pointer' : 'default' }}
+                          onMouseEnter={() => tssVal && setHeatHover({ date, tss: tssVal, title: entry?.title ?? '' })}
+                          onMouseLeave={() => setHeatHover(null)}
+                        />
+                      )
+                    })}
+                  </svg>
+                  {/* Heatmap tooltip */}
+                  {heatHover && (
+                    <div style={{
+                      position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+                      background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8,
+                      padding: '8px 12px', fontSize: 12, pointerEvents: 'none', whiteSpace: 'nowrap',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10,
+                    }}>
+                      <div style={{ color: 'var(--text-dim)', fontSize: 10, marginBottom: 2 }}>
+                        {new Date(heatHover.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      </div>
+                      <div style={{ fontWeight: 600, color: 'var(--text)' }}>TSS {heatHover.tss}</div>
+                      {heatHover.title && <div style={{ color: 'var(--text-dim)', fontSize: 11, marginTop: 2 }}>{heatHover.title}</div>}
+                    </div>
+                  )}
+                  {/* Legend */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 10, color: 'var(--text-dim)' }}>
+                    <span>Repos</span>
+                    {[0, 25, 75, 125, 160].map((v, i) => (
+                      <div key={i} style={{ width: 12, height: 12, borderRadius: 2, background: tssColor(v) }} />
+                    ))}
+                    <span>Intensité élevée</span>
                   </div>
-                  <div style={{ height: 7, background: T.border, borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: col, borderRadius: 4, transition: 'width 0.5s' }} />
-                  </div>
-                  <div style={{ fontSize: 11, color: T.textSub, textAlign: 'right' }}>{fmtDur(v.time)}</div>
-                  <div style={{ fontSize: 11, color: T.textMuted, textAlign: 'right' }}>{v.count}×</div>
                 </div>
               )
-            })}
+            })()}
           </div>
-        </div>
-      )}
 
-      {/* Zones panels */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-        {bikeZones && bikeTimesZ && bikeTimesZ.some(t => t > 0) && (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
-            <SectionTitle>Zones puissance — Vélo</SectionTitle>
-            <ZoneBars zones={bikeZones} timesS={bikeTimesZ} />
+          {/* ── SECTION 6: Zones (3 colonnes) ───────────────────────────────── */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            {bikeZones && bikeTimesZ && bikeTimesZ.some(t => t > 0) && (
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+                <SectionTitle>Zones puissance — Vélo</SectionTitle>
+                <ZoneBars zones={bikeZones} timesS={bikeTimesZ} />
+              </div>
+            )}
+            {runZones && runTimesZ && runTimesZ.some(t => t > 0) && (
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+                <SectionTitle>Zones allure — Course</SectionTitle>
+                <ZoneBars zones={runZones} timesS={runTimesZ} />
+              </div>
+            )}
+            {hrTimesZ && hrTimesZ.some(t => t > 0) && (
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+                <SectionTitle>Zones FC — Global</SectionTitle>
+                <ZoneBars zones={hrZoneColors} timesS={hrTimesZ} />
+              </div>
+            )}
           </div>
-        )}
-        {runZones && runTimesZ && runTimesZ.some(t => t > 0) && (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
-            <SectionTitle>Zones allure — Course</SectionTitle>
-            <ZoneBars zones={runZones} timesS={runTimesZ} />
-          </div>
-        )}
-        {hrTimesZ && hrTimesZ.some(t => t > 0) && (
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
-            <SectionTitle>Zones FC — Global</SectionTitle>
-            <ZoneBars zones={hrZoneColors} timesS={hrTimesZ} />
-          </div>
-        )}
-      </div>
         </> /* end general tab */
       )}
 

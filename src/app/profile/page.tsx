@@ -1192,15 +1192,377 @@ function RulesCard() {
   )
 }
 
-function IASettingsBloc() {
-  const trialLeft = 9; const trialDays = 14
-  const dailyUsed = 23; const dailyMax = 80
-  const weekUsed  = 87; const weekMax  = 400
+// ══════════════════════════════════════════════════════════════
+// ABONNEMENT SUB-PAGE
+// ══════════════════════════════════════════════════════════════
 
+interface SubDetails {
+  tier:                string
+  status:              string
+  cancel_at_period_end: boolean
+  current_period_end?: string | null
+  monthly?:            { used: number; limit: number; resets_at: string }
+  rolling_6h?:         { used: number; limit: number; resets_at: string }
+  stripe?: {
+    nextBillingDate?:  string | null
+    amount?:           number | null
+    currency?:         string | null
+    cancelAtPeriodEnd?: boolean | null
+  } | null
+  invoices?:       { amount: number; currency: string; date: string; status: string; url?: string | null }[]
+  paymentMethod?:  { brand: string; last4: string; exp_month: number; exp_year: number } | null
+}
+
+const TIER_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  trial:   { label: 'Essai gratuit',  color: '#ffb340', bg: 'rgba(255,179,64,0.07)',   border: 'rgba(255,179,64,0.28)' },
+  premium: { label: 'Premium',        color: '#06B6D4', bg: 'rgba(6,182,212,0.07)',    border: 'rgba(6,182,212,0.25)' },
+  pro:     { label: 'Pro',            color: '#5b6fff', bg: 'rgba(91,111,255,0.07)',   border: 'rgba(91,111,255,0.25)' },
+  expert:  { label: 'Expert',         color: '#8b5cf6', bg: 'rgba(139,92,246,0.07)',   border: 'rgba(139,92,246,0.25)' },
+}
+
+function fmtTokens(v: number): string {
+  if (v >= 1000) return `${Math.round(v / 1000)}k`
+  return String(v)
+}
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function fmtAmount(amount: number, currency: string): string {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: currency.toUpperCase(), maximumFractionDigits: 0 }).format(amount / 100)
+}
+
+function AbonnementSubPage({ onBack }: { onBack: () => void }) {
+  const [details,  setDetails]  = useState<SubDetails | null>(null)
+  const [loading,  setLoading]  = useState(true)
+  const [closing,  setClosing]  = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelConfirm, setCancelConfirm] = useState(false)
+  const [portalLoading, setPortalLoading] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/subscription/details')
+      .then(r => r.json())
+      .then((d: SubDetails) => setDetails(d))
+      .catch(() => setDetails(null))
+      .finally(() => setLoading(false))
+  }, [])
+
+  function handleBack() {
+    setClosing(true)
+    setTimeout(() => onBack(), 240)
+  }
+
+  async function handlePortal() {
+    setPortalLoading(true)
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const data = await res.json() as { url?: string; error?: string }
+      if (data.url) window.location.href = data.url
+    } catch { /* ignore */ } finally {
+      setPortalLoading(false)
+    }
+  }
+
+  async function handleCancel() {
+    setCancelling(true)
+    try {
+      await fetch('/api/subscription/cancel', { method: 'POST' })
+      // Reload details
+      const res = await fetch('/api/subscription/details')
+      const d = await res.json() as SubDetails
+      setDetails(d)
+      setCancelConfirm(false)
+    } catch { /* ignore */ } finally {
+      setCancelling(false)
+    }
+  }
+
+  const tier = details?.tier ?? 'trial'
+  const meta = TIER_META[tier] ?? TIER_META.trial
+  const hasStripe = !!(details?.stripe?.nextBillingDate)
+  const isCancelling = details?.cancel_at_period_end || details?.stripe?.cancelAtPeriodEnd
+
+  return (
+    <div
+      className={closing ? 'sub-page-exit' : 'sub-page-enter'}
+      style={{
+        position:   'fixed',
+        inset:      0,
+        zIndex:     300,
+        background: 'var(--bg)',
+        overflowY:  'auto',
+        WebkitOverflowScrolling: 'touch',
+      }}
+    >
+      {/* Header */}
+      <div style={{
+        display:        'flex',
+        alignItems:     'center',
+        gap:            12,
+        padding:        '16px 20px',
+        borderBottom:   '1px solid var(--border)',
+        position:       'sticky',
+        top:            0,
+        background:     'var(--bg)',
+        zIndex:         1,
+      }}>
+        <button
+          onClick={handleBack}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', padding: '4px 8px 4px 0', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <div>
+          <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--text)' }}>Abonnement</p>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Plan · crédits · facturation</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>Chargement…</div>
+      ) : (
+        <div style={{ padding: '20px 20px 48px', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* ── 1. Carte plan ───────────────────────────── */}
+          <div style={{ padding: '18px 20px', borderRadius: 16, background: meta.bg, border: `1px solid ${meta.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div>
+                <span style={{ padding: '3px 10px', borderRadius: 20, background: `${meta.color}22`, border: `1px solid ${meta.color}55`, color: meta.color, fontSize: 11, fontWeight: 700 }}>
+                  {meta.label}
+                </span>
+                <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 17, fontWeight: 700, margin: '8px 0 2px', color: 'var(--text)' }}>
+                  THW Coach {meta.label}
+                </p>
+                {isCancelling ? (
+                  <p style={{ fontSize: 11, color: '#ef4444', margin: 0, fontWeight: 600 }}>
+                    Résiliation en cours · expire le {details?.current_period_end ? fmtDate(details.current_period_end) : '—'}
+                  </p>
+                ) : hasStripe && details?.stripe?.nextBillingDate ? (
+                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>
+                    Prochain paiement · {fmtDate(details.stripe.nextBillingDate)}
+                    {details.stripe.amount != null && details.stripe.currency
+                      ? ` · ${fmtAmount(details.stripe.amount, details.stripe.currency)}`
+                      : ''}
+                  </p>
+                ) : tier === 'trial' && details?.current_period_end ? (
+                  <p style={{ fontSize: 11, color: meta.color, margin: 0, fontWeight: 600 }}>
+                    Expire le {fmtDate(details.current_period_end)}
+                  </p>
+                ) : (
+                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Accès complet</p>
+                )}
+              </div>
+              {!isCancelling && (
+                <div style={{ flexShrink: 0, paddingTop: 4 }}>
+                  {hasStripe ? (
+                    <button
+                      onClick={handlePortal}
+                      disabled={portalLoading}
+                      style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: portalLoading ? 0.6 : 1 }}
+                    >
+                      {portalLoading ? '…' : 'Gérer'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { window.location.href = '/profile?tab=ia' }}
+                      style={{ padding: '8px 14px', borderRadius: 10, background: 'linear-gradient(135deg,#06B6D4,#5b6fff)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      Upgrader
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Barre trial */}
+            {tier === 'trial' && details?.current_period_end && (
+              (() => {
+                const now       = Date.now()
+                const end       = new Date(details.current_period_end).getTime()
+                const totalDays = 14 * 24 * 3600 * 1000
+                const leftMs    = Math.max(0, end - now)
+                const pct       = Math.min(100, Math.round((leftMs / totalDays) * 100))
+                return (
+                  <>
+                    <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,179,64,0.15)', overflow: 'hidden', marginBottom: 6 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#ffb340,#f97316)', borderRadius: 999 }}/>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Essai en cours</span>
+                      <span style={{ fontSize: 10, color: '#ffb340', fontWeight: 600 }}>{Math.ceil(leftMs / (24 * 3600 * 1000))} jours restants</span>
+                    </div>
+                  </>
+                )
+              })()
+            )}
+          </div>
+
+          {/* ── 2. Jauges tokens ────────────────────────── */}
+          {(details?.monthly || details?.rolling_6h) && (
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 5, margin: '0 0 12px' }}>
+                Utilisation IA
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {([
+                  details?.monthly    && { label: 'Mensuelle',    gauge: details.monthly,   color: '#06B6D4' },
+                  details?.rolling_6h && { label: '6h glissantes', gauge: details.rolling_6h, color: '#5b6fff' },
+                ].filter(Boolean) as { label: string; gauge: { used: number; limit: number; resets_at: string }; color: string }[]).map(g => {
+                  const pct       = Math.min(100, Math.round((g.gauge.used / g.gauge.limit) * 100))
+                  const remaining = g.gauge.limit - g.gauge.used
+                  return (
+                    <div key={g.label} style={{ padding: '14px 16px', borderRadius: 13, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{g.label}</p>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                          <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 16, fontWeight: 700, color: g.color }}>{fmtTokens(g.gauge.used)}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>/ {fmtTokens(g.gauge.limit)}</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 8, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', marginBottom: 8 }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg,${g.color},${g.color}bb)`, borderRadius: 999, transition: 'width 0.4s' }}/>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{pct}% utilisé</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-mid)', fontWeight: 600 }}>{fmtTokens(remaining)} restant{remaining > 1 ? 's' : ''}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── 3. Derniers paiements ───────────────────── */}
+          {details?.invoices && details.invoices.length > 0 && (
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', margin: '0 0 12px', borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
+                Derniers paiements
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {details.invoices.map((inv, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px' }}>{fmtDate(inv.date)}</p>
+                      <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: inv.status === 'paid' ? 'rgba(34,197,94,0.12)' : 'rgba(251,191,36,0.12)', color: inv.status === 'paid' ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
+                        {inv.status === 'paid' ? 'Payé' : 'En attente'}
+                      </span>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 2px' }}>{fmtAmount(inv.amount, inv.currency)}</p>
+                      {inv.url && (
+                        <a href={inv.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#5b6fff', textDecoration: 'none' }}>
+                          Voir la facture →
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── 4. Moyen de paiement ────────────────────── */}
+          {details?.paymentMethod && (
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', margin: '0 0 12px', borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
+                Moyen de paiement
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 36, height: 24, borderRadius: 5, background: 'rgba(91,111,255,0.12)', border: '1px solid var(--border-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#5b6fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {details.paymentMethod.brand.slice(0, 4)}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: '0 0 1px' }}>
+                      •••• {details.paymentMethod.last4}
+                    </p>
+                    <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0 }}>
+                      Expire {details.paymentMethod.exp_month.toString().padStart(2, '0')}/{details.paymentMethod.exp_year}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handlePortal}
+                  disabled={portalLoading}
+                  style={{ fontSize: 12, fontWeight: 600, color: '#5b6fff', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+                >
+                  Modifier
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── 5. Actions bas de page ──────────────────── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 8 }}>
+            {hasStripe && !isCancelling && (
+              <button
+                onClick={() => setCancelConfirm(true)}
+                style={{ width: '100%', padding: '12px', borderRadius: 12, background: 'transparent', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Résilier l&apos;abonnement
+              </button>
+            )}
+            {isCancelling && (
+              <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', textAlign: 'center' }}>
+                <p style={{ fontSize: 12, color: '#ef4444', margin: 0, fontWeight: 600 }}>Résiliation programmée</p>
+                <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>
+                  L&apos;accès reste actif jusqu&apos;au {details?.current_period_end ? fmtDate(details.current_period_end) : '—'}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal confirmation résiliation ──────────── */}
+      {cancelConfirm && (
+        <div
+          onClick={() => setCancelConfirm(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 24px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border-mid)', padding: '24px 24px 20px', maxWidth: 400, width: 'calc(100% - 32px)' }}
+          >
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            </div>
+            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 700, textAlign: 'center', margin: '0 0 8px', color: 'var(--text)' }}>Résilier l&apos;abonnement ?</h3>
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 20px' }}>
+              Ton accès restera actif jusqu&apos;à la fin de la période en cours. Aucun remboursement ne sera effectué.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setCancelConfirm(false)}
+                style={{ flex: 1, padding: '11px', borderRadius: 11, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                style={{ flex: 1, padding: '11px', borderRadius: 11, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: cancelling ? 0.6 : 1 }}
+              >
+                {cancelling ? '…' : 'Confirmer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function IASettingsBloc() {
   // Overlays
-  const [modelsOpen,  setModelsOpen]  = useState(false)
-  const [subOpen,     setSubOpen]     = useState(false)
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [modelsOpen,   setModelsOpen]   = useState(false)
+  const [subPageOpen,  setSubPageOpen]  = useState(false)
+  const [upgradeOpen,  setUpgradeOpen]  = useState(false)
 
   // AI settings — localStorage
   const [defaultModel,    setDefaultModel]    = useState<THWModel>('athena')
@@ -1275,64 +1637,10 @@ function IASettingsBloc() {
         </div>
       </Sheet>
 
-      {/* ── Overlay Abonnement ────────────────────────── */}
-      <Sheet open={subOpen} onClose={()=>setSubOpen(false)} title="Abonnement" subtitle="Plan actuel et utilisation des crédits">
-        {/* Plan */}
-        <div style={{ padding:'16px 18px', borderRadius:14, background:'rgba(255,179,64,0.07)', border:'1px solid rgba(255,179,64,0.28)', marginBottom:20 }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-            <div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
-                <span style={{ padding:'3px 10px', borderRadius:20, background:'rgba(255,179,64,0.15)', border:'1px solid rgba(255,179,64,0.4)', color:'#ffb340', fontSize:11, fontWeight:700 }}>Essai gratuit</span>
-              </div>
-              <p style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:0, color:'var(--text)' }}>Version Premium</p>
-              <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>Accès complet pendant l'essai</p>
-            </div>
-            <button onClick={()=>{ setSubOpen(false); setUpgradeOpen(true) }} style={{ padding:'9px 16px', borderRadius:10, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>Upgrade</button>
-          </div>
-          <div style={{ height:6, borderRadius:999, background:'rgba(255,179,64,0.15)', overflow:'hidden' }}>
-            <div style={{ height:'100%', width:`${(trialLeft/trialDays)*100}%`, background:'linear-gradient(90deg,#ffb340,#f97316)', borderRadius:999 }}/>
-          </div>
-          <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
-            <span style={{ fontSize:10, color:'var(--text-dim)' }}>Essai en cours</span>
-            <span style={{ fontSize:10, color:'#ffb340', fontWeight:600 }}>{trialLeft} jours restants sur {trialDays}</span>
-          </div>
-        </div>
-
-        {/* Jauges */}
-        <SectionLabel>Utilisation des crédits IA</SectionLabel>
-        <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:14 }}>
-          {([
-            { label:'Journalière',    used:dailyUsed, max:dailyMax, color:'#06B6D4', period:'jour' },
-            { label:'Hebdomadaire', used:weekUsed,  max:weekMax,  color:'#5b6fff', period:'semaine' },
-          ] as const).map(g=>{
-            const pct = Math.min(100, Math.round((g.used/g.max)*100))
-            const remaining = g.max - g.used
-            return (
-              <div key={g.label} style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-                <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:10 }}>
-                  <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', margin:0 }}>{g.label}</p>
-                  <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
-                    <span style={{ fontFamily:'DM Mono,monospace', fontSize:16, fontWeight:700, color:g.color }}>{g.used}</span>
-                    <span style={{ fontSize:11, color:'var(--text-dim)' }}>/ {g.max}</span>
-                  </div>
-                </div>
-                <div style={{ height:8, borderRadius:999, background:'var(--border)', overflow:'hidden', marginBottom:8 }}>
-                  <div style={{ height:'100%', width:`${pct}%`, background:`linear-gradient(90deg,${g.color},${g.color}bb)`, borderRadius:999, transition:'width 0.4s' }}/>
-                </div>
-                <div style={{ display:'flex', justifyContent:'space-between' }}>
-                  <span style={{ fontSize:10, color:'var(--text-dim)' }}>{pct}% utilisé</span>
-                  <span style={{ fontSize:10, color:'var(--text-mid)', fontWeight:600 }}>{remaining} crédit{remaining>1?'s':''} restant{remaining>1?'s':''}</span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        <div style={{ padding:'11px 14px', borderRadius:11, background:'rgba(91,111,255,0.06)', border:'1px solid rgba(91,111,255,0.15)' }}>
-          <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, lineHeight:1.6 }}>
-            Plan <strong style={{ color:'var(--text)' }}>Pro</strong> : 400 crédits/semaine — <strong style={{ color:'var(--text)' }}>Expert</strong> : 800 crédits/semaine
-          </p>
-        </div>
-      </Sheet>
+      {/* ── Sous-page Abonnement (slide-in) ──────────── */}
+      {subPageOpen && (
+        <AbonnementSubPage onBack={() => setSubPageOpen(false)} />
+      )}
 
       {/* ── Modal Upgrade ─────────────────────────────── */}
       {upgradeOpen && (
@@ -1371,9 +1679,9 @@ function IASettingsBloc() {
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.75"/></svg>}
             onClick={()=>setModelsOpen(true)}
           />
-          <NavRow label="Abonnement" sub="Plan actuel · crédits journaliers et hebdo"
+          <NavRow label="Abonnement" sub="Plan actuel · crédits et facturation"
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4M14 15h2"/></svg>}
-            onClick={()=>setSubOpen(true)}
+            onClick={()=>setSubPageOpen(true)}
           />
         </div>
       </Card>
@@ -1554,6 +1862,10 @@ function ProfileContent() {
       @keyframes profileSlideLeft  { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
       .profile-slide-right { animation: profileSlideRight 280ms cubic-bezier(0.32,0.72,0,1); }
       .profile-slide-left  { animation: profileSlideLeft 280ms cubic-bezier(0.32,0.72,0,1); }
+      @keyframes slideInFromRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+      @keyframes slideOutToRight  { from { transform: translateX(0); }   to { transform: translateX(100%); } }
+      .sub-page-enter { animation: slideInFromRight 280ms cubic-bezier(0.32,0.72,0,1) forwards; }
+      .sub-page-exit  { animation: slideOutToRight  240ms cubic-bezier(0.32,0.72,0,1) forwards; }
       .profile-section-container { width: 100%; max-width: 900px; margin: 0 auto; box-sizing: border-box; overflow-wrap: break-word; }
       .profile-tab { font-size: 13px; }
       @media (max-width: 380px) { .profile-tab { font-size: 12px; } }

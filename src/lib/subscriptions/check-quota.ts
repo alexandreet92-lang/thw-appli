@@ -15,7 +15,7 @@ const CREATOR_EMAILS = new Set<string>([
 // userId → bool (creator ou pas). Le mapping email→userId ne change pas.
 const creatorCache = new Map<string, boolean>()
 
-async function isCreatorAccount(userId: string): Promise<boolean> {
+export async function isCreatorAccount(userId: string): Promise<boolean> {
   const cached = creatorCache.get(userId)
   if (cached !== undefined) return cached
 

@@ -11495,7 +11495,7 @@ function PlusMenu({
           </div>
 
           {/* 2 colonnes : thèmes | actions */}
-          <div style={{ display: 'flex', minWidth: 420, maxHeight: 360 }}>
+          <div style={{ display: 'flex', minWidth: 420, height: 360 }}>
             {/* Colonne gauche — thèmes */}
             <div style={{ width: 160, flexShrink: 0, borderRight: '1px solid var(--border)', padding: 6, overflowY: 'auto' }}>
               {QA_THEMES.map(t => {

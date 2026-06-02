@@ -5,7 +5,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { createServiceClient } from '@/lib/supabase/server'
-import { getUserTier } from '@/lib/subscriptions/check-quota'
+import { getUserTier, isCreatorAccount } from '@/lib/subscriptions/check-quota'
 import { getModelMultiplier } from './multipliers'
 
 export interface TokenLimits {
@@ -38,7 +38,9 @@ function sumTokens(rows: { tokens_used: number }[] | null): number {
 export async function getUserTokenLimits(userId: string): Promise<TokenLimits> {
   const sb = createServiceClient()
 
-  const plan = await getUserTier(userId) // premium | pro | expert (défaut premium)
+  // Compte créateur (détecté par email) → limites Expert (illimité de fait)
+  const unlimited = await isCreatorAccount(userId)
+  const plan = unlimited ? 'expert' : await getUserTier(userId) // premium | pro | expert
 
   // Date de début de période (= début d'abonnement, sinon NOW)
   const { data: sub } = await sb
@@ -154,6 +156,12 @@ export async function consumeTokens(
   messageId?: string,
   model?: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // Compte créateur : on enregistre mais on ne bloque jamais
+  if (await isCreatorAccount(userId)) {
+    await recordTokenUsage(userId, tokensUsed, { conversationId, messageId, model })
+    return { success: true }
+  }
+
   // Pondération par le multiplicateur du modèle (tokensUsed = tokens réels)
   const mult = model ? getModelMultiplier(model) : 1
   const weighted = Math.ceil(tokensUsed * mult)

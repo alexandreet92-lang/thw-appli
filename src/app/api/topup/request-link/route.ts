@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Service email non configuré' }, { status: 500 })
     }
     const resend = new Resend(apiKey)
-    const from = process.env.RESEND_FROM ?? 'Hybrid Training <noreply@thwcoaching.com>'
+    const from = process.env.RESEND_FROM ?? 'Hybrid Training <noreply@the-hybridway.com>'
 
     const { error: mailErr } = await resend.emails.send({
       from,

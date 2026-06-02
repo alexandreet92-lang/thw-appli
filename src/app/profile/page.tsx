@@ -7,12 +7,12 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
+import { SectionLayout } from '@/components/navigation/SectionLayout'
 
 // ══════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════
 
-type ProfileTab    = 'profil' | 'notifications' | 'ia'
 type OAuthProvider = 'strava' | 'wahoo' | 'polar' | 'withings'
 type THWModel      = 'hermes' | 'athena' | 'zeus'
 type ChatFontId    = 'dm_sans' | 'inter' | 'system' | 'serif' | 'mono'
@@ -1943,54 +1943,7 @@ function IASettingsBloc() {
 // PAGE PRINCIPALE — Navigation entre onglets
 // ══════════════════════════════════════════════════
 
-const TAB_ORDER: ProfileTab[] = ['profil', 'notifications', 'ia']
-const TABS: { id: ProfileTab; label: string; short: string; sub: string; Icon: typeof User }[] = [
-  { id: 'profil',        label: 'Profil',        short: 'Profil',        sub: 'Identité et matériel',   Icon: User },
-  { id: 'notifications', label: 'Notifications', short: 'Notifications', sub: 'Alertes et rappels',     Icon: Bell },
-  { id: 'ia',            label: 'Réglages IA',   short: 'Réglages',      sub: 'Modèles et préférences', Icon: Zap  },
-]
-
 function ProfileContent() {
-  const sp = useSearchParams()
-  const router = useRouter()
-
-  const initialTab = ((): ProfileTab => {
-    const t = sp.get('tab')
-    return t && (TAB_ORDER as string[]).includes(t) ? (t as ProfileTab) : 'profil'
-  })()
-
-  const [tab, setTab] = useState<ProfileTab>(initialTab)
-  const [dir, setDir] = useState<'right' | 'left'>('right')
-  const [isDesktop, setIsDesktop] = useState(false)
-  const [railOpen, setRailOpen] = useState(false)
-
-  useEffect(() => {
-    const check = () => setIsDesktop(window.innerWidth >= 1024)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-
-  const go = useCallback((next: ProfileTab) => {
-    if (next === tab) return
-    setDir(TAB_ORDER.indexOf(next) > TAB_ORDER.indexOf(tab) ? 'right' : 'left')
-    setTab(next)
-    try {
-      const url = new URL(window.location.href)
-      url.searchParams.set('tab', next)
-      router.replace(url.pathname + url.search, { scroll: false })
-    } catch { /* ignore */ }
-  }, [tab, router])
-
-  // Contenu animé — `key={tab}` rejoue l'animation à chaque changement
-  const content = (
-    <div key={tab} className={dir === 'right' ? 'profile-slide-right' : 'profile-slide-left'}>
-      {tab === 'profil'        && <ProfilBloc/>}
-      {tab === 'notifications' && <NotificationsBloc/>}
-      {tab === 'ia'            && <IASettingsBloc/>}
-    </div>
-  )
-
   const header = (
     <div>
       <p style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.02em', color:'var(--text)' }}>Mon Profil</p>
@@ -1998,104 +1951,25 @@ function ProfileContent() {
     </div>
   )
 
-  const styleBlock = (
-    <style>{`
-      .profile-shell { width: 100%; max-width: 100%; margin: 0; padding: 0 0 80px; overflow-x: hidden; box-sizing: border-box; }
-      .profile-notif-grid { display: flex; flex-direction: column; }
-      @media (min-width: 768px) {
-        .profile-notif-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; align-items: start; }
-      }
-      @keyframes profileSlideRight { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-      @keyframes profileSlideLeft  { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-      .profile-slide-right { animation: profileSlideRight 280ms cubic-bezier(0.32,0.72,0,1); }
-      .profile-slide-left  { animation: profileSlideLeft 280ms cubic-bezier(0.32,0.72,0,1); }
-      .profile-section-container { width: 100%; max-width: 900px; margin: 0 auto; box-sizing: border-box; overflow-wrap: break-word; }
-      .profile-tab { font-size: 13px; }
-      @media (max-width: 380px) { .profile-tab { font-size: 12px; } }
-    `}</style>
-  )
-
-  // ── DESKTOP : rail collé au bord gauche (pleine largeur) ──
-  if (isDesktop) {
-    return (
-      <div style={{ display:'flex', width:'100%', alignItems:'flex-start', overflowX:'hidden' }}>
-        {styleBlock}
-        {/* Spacer 56px (réserve la place) ; l'aside s'étend en overlay vers la droite */}
-        <div style={{ width:56, flexShrink:0, position:'relative', alignSelf:'stretch' }}>
-          <aside
-            onMouseEnter={() => setRailOpen(true)}
-            onMouseLeave={() => setRailOpen(false)}
-            style={{
-              position:'sticky', top:0, left:0, zIndex:5,
-              width: railOpen ? 232 : 56, overflow:'hidden',
-              background:'var(--bg-card)', borderRight:'0.5px solid var(--border)',
-              padding:'14px 8px', minHeight:'calc(100vh - var(--header-height))',
-              boxShadow: railOpen ? '8px 0 28px rgba(0,0,0,0.16)' : 'none',
-              transition:'width 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms',
-            }}
-          >
-            {TABS.map(t => {
-              const active = tab === t.id
-              return (
-                <button key={t.id} onClick={() => go(t.id)} title={t.label}
-                  style={{
-                    position:'relative', display:'flex', alignItems:'center', gap:12, width:'100%',
-                    padding:'11px 11px', borderRadius:10, marginBottom:4, cursor:'pointer',
-                    border:'none', textAlign:'left' as const, fontFamily:'DM Sans,sans-serif',
-                    background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
-                    transition:'background 0.14s', whiteSpace:'nowrap' as const,
-                  }}
-                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                >
-                  {active && <span style={{ position:'absolute', left:-8, top:8, bottom:8, width:3, borderRadius:'0 3px 3px 0', background:'#06B6D4' }} />}
-                  <t.Icon size={18} color={active ? '#06B6D4' : 'var(--text-mid)'} style={{ flexShrink:0 }} />
-                  <span style={{ display:'flex', flexDirection:'column', gap:1, minWidth:0, opacity: railOpen ? 1 : 0, transition:'opacity 150ms ease' }}>
-                    <span style={{ fontSize:13.5, fontWeight:600, color: active ? '#06B6D4' : 'var(--text)' }}>{t.label}</span>
-                    <span style={{ fontSize:11, color:'var(--text-dim)' }}>{t.sub}</span>
-                  </span>
-                </button>
-              )
-            })}
-          </aside>
-        </div>
-        <main style={{ flex:1, minWidth:0, padding:'28px 28px 80px' }}>
-          <div style={{ marginBottom:18 }}>{header}</div>
-          <div className="profile-section-container">{content}</div>
-        </main>
-      </div>
-    )
-  }
-
-  // ── MOBILE / TABLET : onglets pleine largeur + glissement ──
   return (
-    <div className="profile-shell">
-      {styleBlock}
-      <div style={{ padding:'24px 16px 0' }}>{header}</div>
-      <div style={{ display:'flex', width:'100%', borderBottom:'1px solid var(--border)', marginTop:12, boxSizing:'border-box' }}>
-        {TABS.map(t => {
-          const active = tab === t.id
-          return (
-            <button key={t.id} onClick={() => go(t.id)} className="profile-tab"
-              style={{
-                flex:1, minWidth:0, position:'relative', textAlign:'center' as const, padding:'14px 4px',
-                background:'transparent', border:'none', cursor:'pointer',
-                fontFamily:'DM Sans,sans-serif', whiteSpace:'nowrap' as const,
-                overflow:'hidden', textOverflow:'ellipsis' as const,
-                fontWeight: active ? 700 : 600, color: active ? '#06B6D4' : '#94A3B8',
-                transition:'color 0.15s',
-              }}
-            >
-              {t.short}
-              {active && <span style={{ position:'absolute', bottom:-1, left:10, right:10, height:3, borderRadius:'2px 2px 0 0', background:'linear-gradient(90deg,#06B6D4 0%,#5b6fff 100%)' }} />}
-            </button>
-          )
-        })}
-      </div>
-      <div style={{ padding:'14px 12px 0' }}>
-        <div className="profile-section-container">{content}</div>
-      </div>
-    </div>
+    <>
+      <style>{`
+        .profile-notif-grid { display: flex; flex-direction: column; }
+        @media (min-width: 768px) {
+          .profile-notif-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; align-items: start; }
+        }
+      `}</style>
+      <SectionLayout
+        urlParam="tab"
+        contentMaxWidth={900}
+        header={header}
+        sections={[
+          { id:'profil',        label:'Profil',        short:'Profil',        subtitle:'Identité et matériel',   icon:User, content:<ProfilBloc/> },
+          { id:'notifications', label:'Notifications', short:'Notifications', subtitle:'Alertes et rappels',     icon:Bell, content:<NotificationsBloc/> },
+          { id:'ia',            label:'Réglages IA',   short:'Réglages',      subtitle:'Modèles et préférences', icon:Zap,  content:<IASettingsBloc/> },
+        ]}
+      />
+    </>
   )
 }
 

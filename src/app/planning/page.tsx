@@ -17,9 +17,10 @@ const AIPanelDynamic = nDynamic(() => import('@/components/ai/AIPanel'), { ssr: 
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
+import { Dumbbell, CalendarDays } from 'lucide-react'
+import { SectionLayout } from '@/components/navigation/SectionLayout'
 
 // ── Types ─────────────────────────────────────────
-type PlanningTab   = 'training' | 'week'
 type PlanVariant   = 'A' | 'B'
 type WeekRange     = 1 | 5 | 10
 type DayIntensity  = 'recovery' | 'low' | 'mid' | 'hard'
@@ -11346,15 +11347,9 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
 // PAGE
 // ════════════════════════════════════════════════
 export default function PlanningPage() {
-  const [tab, setTab] = useState<PlanningTab>('training')
   const { sessions, races, intensities, weekStart } = usePlanning()
   const { zones } = useTrainingZones()
   const { show, dismiss, reopen } = usePageOnboarding(PLANNING_ONBOARDING.pageId, PLANNING_ONBOARDING.version)
-
-  const TABS: [PlanningTab,string,string,string,string][] = [
-    ['training','Planning Training','Training','#06B6D4','rgba(6,182,212,0.10)'],
-    ['week',    'Planning Week',    'Week',    '#a78bfa','rgba(167,139,250,0.10)'],
-  ]
 
   const aiContext = {
     page: 'planning',
@@ -11387,32 +11382,26 @@ export default function PlanningPage() {
     },
   }
 
-  return (
-    <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-6">
-      <PageHelp config={PLANNING_ONBOARDING} show={show} onDismiss={dismiss} />
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-        <div>
-          <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Planning</h1>
-          <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Training · Semaine · Saison</p>
-        </div>
-        <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
+  const header = (
+    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+      <div>
+        <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Planning</h1>
+        <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Entraînement · Semaine</p>
       </div>
-
-      <div style={{ display:'flex',gap:7,marginBottom:20,flexWrap:'wrap' as const }}>
-        {TABS.map(([id,label,short,color,bg])=>(
-          <button key={id} onClick={()=>setTab(id)}
-            style={{ flex:1,minWidth:90,padding:'11px 14px',borderRadius:12,border:'1px solid',cursor:'pointer',
-              borderColor:tab===id?color:'var(--border)',background:tab===id?bg:'var(--bg-card)',
-              color:tab===id?color:'var(--text-mid)',fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:tab===id?700:400,
-              boxShadow:'var(--shadow-card)',transition:'all 0.15s' }}>
-            <span className="hidden md:inline">{label}</span>
-            <span className="md:hidden">{short}</span>
-          </button>
-        ))}
-      </div>
-
-      {tab==='training' && <TrainingTab/>}
-      {tab==='week'     && <WeekTab trainingWeek={sessions}/>}
+      <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
     </div>
+  )
+
+  return (
+    <>
+      <PageHelp config={PLANNING_ONBOARDING} show={show} onDismiss={dismiss} />
+      <SectionLayout
+        header={header}
+        sections={[
+          { id:'training', label:'Entraînement', subtitle:'Séances et plan',    icon:Dumbbell,     content:<TrainingTab/> },
+          { id:'week',     label:'Semaine',      subtitle:'Vue hebdomadaire',   icon:CalendarDays, content:<WeekTab trainingWeek={sessions}/> },
+        ]}
+      />
+    </>
   )
 }

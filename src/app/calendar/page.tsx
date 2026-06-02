@@ -17,9 +17,8 @@ import DayModal from './components/DayModal'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { CALENDAR_ONBOARDING } from '@/onboarding/configs/calendar.config'
-
-// ── Types ─────────────────────────────────────────
-type CalTab        = 'race' | 'pro' | 'perso' | 'all'
+import { Trophy, Briefcase, Heart, LayoutGrid } from 'lucide-react'
+import { SectionLayout } from '@/components/navigation/SectionLayout'
 type CalView       = 'year' | 'month'
 type TimelineMode  = 'vertical' | 'horizontal'
 type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty'
@@ -1442,16 +1441,8 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 // PAGE
 // ════════════════════════════════════════════════
 export default function CalendarPage() {
-  const [tab, setTab] = useState<CalTab>('race')
   const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, patchStageDayLocal, deleteStageDayLocal, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
   const { show, dismiss, reopen } = usePageOnboarding(CALENDAR_ONBOARDING.pageId, CALENDAR_ONBOARDING.version)
-
-  const TABS: { id: CalTab; label: string; short: string; color: string; bg: string }[] = [
-    { id:'race',  label:'Race',  short:'Race',  color:'#ef4444', bg:'rgba(239,68,68,0.10)'  },
-    { id:'pro',   label:'Pro',   short:'Pro',   color:'#3b82f6', bg:'rgba(59,130,246,0.10)' },
-    { id:'perso', label:'Perso', short:'Perso', color:'#a855f7', bg:'rgba(168,85,247,0.10)' },
-    { id:'all',   label:'All',   short:'All',   color:'#06B6D4', bg:'rgba(6,182,212,0.10)'  },
-  ]
 
   const aiContext = {
     page: 'strategy',
@@ -1469,40 +1460,32 @@ export default function CalendarPage() {
     eventsCount: events.length,
   }
 
-  return (
-    <div style={{ padding:'24px 28px',maxWidth:'100%' }}>
-      <PageHelp config={CALENDAR_ONBOARDING} show={show} onDismiss={dismiss} />
-      {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-        <div>
-          <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Calendar</h1>
-          <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Race · Pro · Perso · Vue globale</p>
-        </div>
-        <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
+  const header = (
+    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+      <div>
+        <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Calendar</h1>
+        <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Course · Pro · Perso · Tout</p>
       </div>
-
-      {/* Tab pills */}
-      <div style={{ display:'flex',gap:6,marginBottom:20,flexWrap:'wrap' }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`tab-btn${tab === t.id ? ' active' : ''}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {loading && (
-        <div style={{ padding:'40px',textAlign:'center',color:'var(--text-dim)',fontSize:13 }}>Chargement…</div>
-      )}
-
-      {!loading && (
-        <>
-          {tab === 'race'  && <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/>}
-          {tab === 'pro'   && <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/>}
-          {tab === 'perso' && <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/>}
-          {tab === 'all'   && <AllTab races={races} eventTypes={eventTypes} events={events}/>}
-        </>
-      )}
+      <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
     </div>
+  )
+
+  const loader = (
+    <div style={{ padding:'40px',textAlign:'center',color:'var(--text-dim)',fontSize:13 }}>Chargement…</div>
+  )
+
+  return (
+    <>
+      <PageHelp config={CALENDAR_ONBOARDING} show={show} onDismiss={dismiss} />
+      <SectionLayout
+        header={header}
+        sections={[
+          { id:'race',  label:'Course', subtitle:'Compétitions',  icon:Trophy,     content: loading ? loader : <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/> },
+          { id:'pro',   label:'Pro',    subtitle:'Professionnel',  icon:Briefcase,  content: loading ? loader : <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
+          { id:'perso', label:'Perso',  subtitle:'Personnel',      icon:Heart,      content: loading ? loader : <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
+          { id:'all',   label:'Tout',   subtitle:'Vue globale',    icon:LayoutGrid, content: loading ? loader : <AllTab races={races} eventTypes={eventTypes} events={events}/> },
+        ]}
+      />
+    </>
   )
 }

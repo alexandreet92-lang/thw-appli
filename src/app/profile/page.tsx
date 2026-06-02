@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints } from 'lucide-react'
+import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 
@@ -1681,24 +1681,79 @@ function IASettingsBloc() {
   const [subPageOpen,    setSubPageOpen]    = useState(false)
   const [upgradeOpen,  setUpgradeOpen]  = useState(false)
 
+  const router = useRouter()
+
   // AI settings — localStorage
   const [defaultModel,    setDefaultModel]    = useState<THWModel>('athena')
   const [creditSaving,    setCreditSaving]    = useState(false)
   const [allowSuggestions,setAllowSuggestions]= useState(true)
   const [chatFont,        setChatFont]        = useState<ChatFontId>('dm_sans')
+  const [webSearchDefault,setWebSearchDefault]= useState(false)
+
+  // Compétences actives (sur 70)
+  const [activeComp,      setActiveComp]      = useState<number | null>(null)
 
   useEffect(() => {
     const m  = localStorage.getItem('thw_ai_default_model')
     const cs = localStorage.getItem('thw_ai_credit_saving')
     const as = localStorage.getItem('thw_ai_allow_suggestions')
     const cf = localStorage.getItem('thw_ai_chat_font')
+    const ws = localStorage.getItem('thw_ai_web_search_default')
     if (m === 'hermes' || m === 'athena' || m === 'zeus') setDefaultModel(m)
     if (cs) setCreditSaving(cs === 'true')
     if (as) setAllowSuggestions(as !== 'false')
     if (cf === 'dm_sans' || cf === 'inter' || cf === 'system' || cf === 'serif' || cf === 'mono') setChatFont(cf)
+    if (ws) setWebSearchDefault(ws === 'true')
+    // Source de vérité = base (fallback localStorage déjà appliqué ci-dessus)
+    fetch('/api/user/ai-settings')
+      .then(r => r.json())
+      .then((d: { ai_web_search_default?: boolean }) => {
+        if (typeof d.ai_web_search_default === 'boolean') {
+          setWebSearchDefault(d.ai_web_search_default)
+          localStorage.setItem('thw_ai_web_search_default', String(d.ai_web_search_default))
+        }
+      })
+      .catch(() => { /* garde la valeur localStorage */ })
+  }, [])
+
+  // Nombre de compétences actives de l'utilisateur
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { if (alive) setActiveComp(0); return }
+        const { count } = await sb
+          .from('user_competences')
+          .select('competence_id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('active', true)
+        if (alive) setActiveComp(count ?? 0)
+      } catch { if (alive) setActiveComp(0) }
+    })()
+    return () => { alive = false }
   }, [])
 
   function save(key:string, val:string) { localStorage.setItem(key, val) }
+
+  // Toggle « Recherche web par défaut » — optimistic + persistance localStorage & DB
+  async function handleWebSearchToggle(next: boolean) {
+    setWebSearchDefault(next)
+    localStorage.setItem('thw_ai_web_search_default', String(next))
+    try {
+      const res = await fetch('/api/user/ai-settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ai_web_search_default: next }),
+      })
+      if (!res.ok) throw new Error('patch failed')
+    } catch (err) {
+      setWebSearchDefault(!next)
+      localStorage.setItem('thw_ai_web_search_default', String(!next))
+      console.error('[ai-settings] web search default toggle', err)
+    }
+  }
 
   // Data connection status (static indicators for now)
   const DATA_CONNECTIONS = [
@@ -1769,6 +1824,11 @@ function IASettingsBloc() {
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4M14 15h2"/></svg>}
             onClick={()=>setSubPageOpen(true)}
           />
+          <NavRow label="Mes compétences"
+            sub={`${activeComp ?? 0} active${(activeComp ?? 0) > 1 ? 's' : ''} sur 70`}
+            icon={<Target size={14} />}
+            onClick={()=>router.push('/competences')}
+          />
         </div>
       </Card>
 
@@ -1780,6 +1840,7 @@ function IASettingsBloc() {
           {[
             { label:'Mode économie de crédits', sub:"L'IA sélectionne automatiquement le modèle le plus adapté pour économiser des crédits", val:creditSaving, onChange:(v:boolean)=>{ setCreditSaving(v); save('thw_ai_credit_saving',String(v)) } },
             { label:'Autoriser les suggestions', sub:"THW Coach peut proposer des actions ou analyses proactives en dehors du chat", val:allowSuggestions, onChange:(v:boolean)=>{ setAllowSuggestions(v); save('thw_ai_allow_suggestions',String(v)) } },
+            { label:'Recherche web par défaut', sub:"Active la recherche web au démarrage de chaque conversation", val:webSearchDefault, onChange:(v:boolean)=>{ void handleWebSearchToggle(v) } },
           ].map((item, idx)=>(
             <div key={item.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'13px 0', borderTop:idx>0?'1px solid var(--border)':'none' }}>
               <div style={{ flex:1, paddingRight:14 }}>

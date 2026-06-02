@@ -22,6 +22,7 @@ interface Props {
   activityId:   string
   cachedLaps?:  LapData[] | null
   avgWatts?:    number | null
+  streams?:     { watts?: number[] | null } | null
 }
 
 // ── Formatters ─────────────────────────────────────────────────────────────
@@ -48,12 +49,14 @@ function fmtVal(v: number | null | undefined, unit: string, round = true): strin
 }
 
 // ── Detail panel ───────────────────────────────────────────────────────────
-function LapDetailPanel({ lap, index, onClose }: { lap: LapData; index: number; onClose: () => void }) {
+function LapDetailPanel({ lap, index, maxWatts, onClose }: { lap: LapData; index: number; maxWatts: number | null; onClose: () => void }) {
   const rows: { label: string; value: string }[] = [
     { label: 'Distance',    value: fmtDist(lap.distance_m) },
     { label: 'Durée',       value: fmtDur(lap.moving_time_s) },
     { label: 'Watts moy.',  value: fmtVal(lap.avg_watts, 'W') },
+    { label: 'Watts max',   value: fmtVal(maxWatts ?? lap.max_watts ?? null, 'W') },
     { label: 'FC moy.',     value: fmtVal(lap.avg_hr, 'bpm') },
+    { label: 'FC max',      value: fmtVal(lap.max_heartrate, 'bpm') },
     { label: 'RPM moy.',    value: fmtVal(lap.avg_cadence, 'rpm') },
     { label: 'D+',          value: lap.elevation_gain_m != null ? `+${Math.round(lap.elevation_gain_m)} m` : '—' },
     { label: 'Vitesse moy.',value: fmtSpeed(lap.avg_speed_ms) },
@@ -95,7 +98,7 @@ function LapDetailPanel({ lap, index, onClose }: { lap: LapData; index: number; 
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
-export function LapsBikeChart({ activityId, cachedLaps, avgWatts }: Props) {
+export function LapsBikeChart({ activityId, cachedLaps, avgWatts, streams }: Props) {
   const [laps,        setLaps]        = useState<LapData[]>(cachedLaps && cachedLaps.length > 1 ? cachedLaps : [])
   const [loading,     setLoading]     = useState(!cachedLaps || cachedLaps.length <= 1)
   const [error,       setError]       = useState<string | null>(null)
@@ -103,16 +106,29 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts }: Props) {
   const [hoveredLap,  setHoveredLap]  = useState<number | null>(null)
 
   useEffect(() => {
-    if (cachedLaps && cachedLaps.length > 1) return
+    if (cachedLaps && cachedLaps.length > 1) { console.log('[Laps] cache:', cachedLaps.length, 'tours'); return }
     fetch(`/api/strava/activity-laps?activity_id=${activityId}`)
       .then(r => r.json())
       .then((data: { laps?: LapData[]; error?: string }) => {
+        console.log('[Laps] réponse:', { laps: data.laps?.length ?? 0, error: data.error })
         if (data.error) { setError(data.error); return }
         setLaps(data.laps ?? [])
       })
-      .catch(() => setError('Impossible de charger les tours'))
+      .catch((e) => { console.error('[Laps] fetch échoué', e); setError('fetch') })
       .finally(() => setLoading(false))
   }, [activityId, cachedLaps])
+
+  // Watts max par tour = MAX du stream watts entre start_index et end_index
+  const wattsStream = streams?.watts ?? null
+  const lapMaxWatts = (lap: LapData): number | null => {
+    if (!wattsStream || lap.start_index == null || lap.end_index == null) return null
+    let mx = 0
+    for (let i = lap.start_index; i <= lap.end_index && i < wattsStream.length; i++) {
+      const v = wattsStream[i]
+      if (typeof v === 'number' && v > mx) mx = v
+    }
+    return mx > 0 ? mx : null
+  }
 
   if (loading) {
     return (
@@ -136,14 +152,24 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts }: Props) {
           Tours
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '8px 0' }}>
-          Impossible de charger les tours
+          Aucun tour enregistré
         </div>
       </div>
     )
   }
 
-  // Don't show if 0 or 1 lap, or no power data
-  if (laps.length <= 1) return null
+  // 0 ou 1 tour → message clair (pas de graphe)
+  if (laps.length <= 1) {
+    return (
+      <div style={{ marginBottom: 32, paddingTop: 8 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9,
+          textTransform: 'uppercase', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
+          Tours
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '8px 0' }}>Aucun tour enregistré</div>
+      </div>
+    )
+  }
   const hasWatts = laps.some(l => (l.avg_watts ?? 0) > 0)
   if (!hasWatts) return null
 
@@ -264,6 +290,7 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts }: Props) {
         <LapDetailPanel
           lap={laps[selectedLap]}
           index={selectedLap}
+          maxWatts={lapMaxWatts(laps[selectedLap])}
           onClose={() => setSelectedLap(null)}
         />
       )}

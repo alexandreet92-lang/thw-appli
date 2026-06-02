@@ -98,32 +98,53 @@ export async function GET(req: NextRequest) {
   // 4. Token Strava valide (auto-refresh inclus)
   const token = await getValidToken(user.id)
   if (!token) {
+    console.error('[activity-laps] token Strava indisponible pour user', user.id)
     return NextResponse.json({ error: 'Token Strava non disponible' }, { status: 503 })
   }
+  const headers = { Authorization: `Bearer ${token.access_token}` }
 
-  // 5. Fetch depuis l'API Strava
+  const cacheLaps = async (laps: LapData[]) => {
+    if (laps.length > 0) {
+      await serviceClient.from('activities').update({ laps }).eq('id', activityId)
+    }
+  }
+
+  // 5. Fetch depuis l'API Strava — endpoint dédié /laps
   const res = await fetch(
     `https://www.strava.com/api/v3/activities/${activity.provider_id}/laps`,
-    { headers: { Authorization: `Bearer ${token.access_token}` } }
+    { headers },
   )
 
-  if (!res.ok) {
-    if (res.status === 404) return NextResponse.json({ laps: [] })
-    return NextResponse.json({ error: `Erreur API Strava: ${res.status}` }, { status: 502 })
+  if (res.ok) {
+    const raw = await res.json()
+    if (Array.isArray(raw)) {
+      const laps = (raw as StravaLap[]).map(mapLap)
+      await cacheLaps(laps)
+      return NextResponse.json({ laps })
+    }
+    return NextResponse.json({ laps: [] })
   }
 
-  const raw: StravaLap[] = await res.json()
-  if (!Array.isArray(raw)) return NextResponse.json({ laps: [] })
+  console.error('[activity-laps] /laps a échoué', res.status, 'provider_id', activity.provider_id)
+  if (res.status === 404) return NextResponse.json({ laps: [] })
 
-  const laps = raw.map(mapLap)
-
-  // 6. Cache dans activities.laps
-  if (laps.length > 0) {
-    await serviceClient
-      .from('activities')
-      .update({ laps })
-      .eq('id', activityId)
+  // 6. Fallback : endpoint détaillé de l'activité (contient aussi "laps")
+  try {
+    const detRes = await fetch(
+      `https://www.strava.com/api/v3/activities/${activity.provider_id}?include_all_efforts=false`,
+      { headers },
+    )
+    if (detRes.ok) {
+      const det = await detRes.json() as { laps?: StravaLap[] }
+      const laps = Array.isArray(det.laps) ? det.laps.map(mapLap) : []
+      await cacheLaps(laps)
+      return NextResponse.json({ laps })
+    }
+    console.error('[activity-laps] fallback /activities a échoué', detRes.status)
+  } catch (e) {
+    console.error('[activity-laps] fallback exception', e)
   }
 
-  return NextResponse.json({ laps })
+  const status = res.status === 429 ? 429 : 502
+  return NextResponse.json({ error: `Erreur API Strava (${res.status})` }, { status })
 }

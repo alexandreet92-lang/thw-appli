@@ -22,6 +22,7 @@ import { PageLoader } from '@/components/ui/PageLoader'
 import { ActivityMapCard } from '@/components/activity/ActivityMapCard'
 import { LapsChart } from '@/components/activity/LapsChart'
 import { LapsTable } from '@/components/activity/LapsTable'
+import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
 import { PowerDistribution } from '@/components/activity/PowerDistribution'
 import { AerobicEfficiency } from '@/components/activity/AerobicEfficiency'
 import { MmpTable, MMP_TABLE_DURATIONS, MMP_TABLE_LABELS } from '@/components/activity/MmpTable'
@@ -121,18 +122,19 @@ interface StreamData {
 }
 
 interface LapData {
-  lap_index?:       number
-  start_index?:     number
-  end_index?:       number
-  distance_m:       number
-  moving_time_s:    number
-  elapsed_time_s?:  number | null
-  avg_hr?:          number | null
-  max_heartrate?:   number | null
-  avg_speed_ms?:    number | null
-  avg_watts?:       number | null
-  max_watts?:       number | null
-  avg_cadence?:     number | null
+  lap_index?:        number
+  start_index?:      number
+  end_index?:        number
+  distance_m:        number
+  moving_time_s:     number
+  elapsed_time_s?:   number | null
+  avg_hr?:           number | null
+  max_heartrate?:    number | null
+  avg_speed_ms?:     number | null
+  avg_watts?:        number | null
+  max_watts?:        number | null
+  avg_cadence?:      number | null
+  elevation_gain_m?: number | null
 }
 
 interface TrainingZoneRow {
@@ -5626,6 +5628,16 @@ conseil pour la prochaine séance similaire.`
                   activityDurationS={a.moving_time_s ?? s.watts.length}
                 />
               )}
+
+              {/* Laps bar chart — cyclisme uniquement, sous la courbe de puissance */}
+              {isBike && (
+                <LapsBikeChart
+                  activityId={a.id}
+                  cachedLaps={a.laps}
+                  avgWatts={a.avg_watts}
+                />
+              )}
+
               {isRun && s.velocity && s.altitude && s.distance && s.velocity.length > 60 && (
                 <GapChart velocity={s.velocity} altitude={s.altitude} distance={s.distance} />
               )}

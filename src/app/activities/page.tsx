@@ -23,6 +23,7 @@ import { ActivityMapCard } from '@/components/activity/ActivityMapCard'
 import { LapsChart } from '@/components/activity/LapsChart'
 import { LapsTable } from '@/components/activity/LapsTable'
 import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
+import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
 import { PowerDistribution } from '@/components/activity/PowerDistribution'
 import { AerobicEfficiency } from '@/components/activity/AerobicEfficiency'
 import { MmpTable, MMP_TABLE_DURATIONS, MMP_TABLE_LABELS } from '@/components/activity/MmpTable'
@@ -703,8 +704,6 @@ function useCrosshairSvg(
 // ─────────────────────────────────────────────────────────────
 const MMP_DURATIONS   = [5,10,30,60,180,300,600,1200,1800,3600,5400,7200,10800,14400]
 const MMP_LABELS      = ["5s","10s","30s","1'","3'","5'","10'","20'","30'","1h","1h30","2h","3h","4h"]
-const KEY_MOMENT_DURS = [300, 1200, 1800, 2700, 3600] // 5' 20' 30' 45' 1h
-const KEY_MOMENT_LBLS = ["5'", "20'", "30'", "45'", "1h"]
 
 function calculateDecoupling(watts: number[], heartrate: number[]): number | null {
   const n = Math.min(watts.length, heartrate.length)
@@ -850,18 +849,6 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
     [recordCurve, mmp] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
-  // Key moment markers (5' 20' 30' 45' 1h) — only if duration in range
-  const keyMoments = useMemo(() => {
-    return KEY_MOMENT_DURS
-      .filter(d => d <= N)
-      .map((d, i) => {
-        const ti = MMP_TABLE_DURATIONS.indexOf(d)
-        const w  = ti >= 0 ? sessionMmpTable[ti] : 0
-        return { d, label: KEY_MOMENT_LBLS[KEY_MOMENT_DURS.indexOf(d)], watts: w, altY: i % 2 === 1 }
-      })
-      .filter(m => m.watts > 0)
-  }, [sessionMmpTable, N])
-
   const { idx: _rawIdx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, DURATIONS.length)
   void _rawIdx
   const mmpContainerRef = useRef<HTMLDivElement>(null)
@@ -995,26 +982,6 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
           {/* This activity curve */}
           <path d={fillPath} fill="url(#mmpFill)"/>
           <path d={linePath} fill="none" stroke="#5b6fff" strokeWidth="2" strokeLinejoin="round"/>
-
-          {/* Key moment markers — rendered before cursor so cursor stays on top */}
-          {keyMoments.map(({ d, label: kmLabel, watts: kmW, altY }) => {
-            const x  = sqrtX(d)
-            const cy = yOf(kmW)
-            const ly = altY ? cy - 24 : cy - 10
-            return (
-              <g key={d}>
-                <line x1={x} y1={0} x2={x} y2={H} stroke="#94A3B8" strokeWidth="0.7" strokeDasharray="3 2" opacity="0.65"/>
-                <rect x={x - 22} y={ly - 11} width={44} height={12} rx={2}
-                  fill="var(--bg-card)" stroke="#94A3B8" strokeWidth="0.7" opacity="0.95"/>
-                <text x={x} y={ly - 2} textAnchor="middle"
-                  fontSize="9" fill="var(--text-mid)" fontWeight="700"
-                  style={{ fontFamily: 'DM Mono, monospace' }}>
-                  {kmW}W
-                </text>
-                <circle cx={x} cy={cy} r="2.5" fill="#94A3B8" opacity="0.8"/>
-              </g>
-            )
-          })}
 
           {/* Stars where session beats record */}
           {recordStars.map(i => (
@@ -4968,6 +4935,11 @@ conseil pour la prochaine séance similaire.`
             </p>
           </div>
 
+          {/* Records battus — sous la carte (mobile) */}
+          <div style={{ padding: '0 16px' }}>
+            <RecordsBeaten activityId={a.id} isBike={isBike} />
+          </div>
+
           {/* Stats 3×2 compact */}
           {(() => {
             const km = a.distance_m ? (Number(a.distance_m)/1000).toFixed(2) : null
@@ -5367,6 +5339,9 @@ conseil pour la prochaine séance similaire.`
             </div>
           </div>
         )}
+
+        {/* ── Records battus — sous la carte (desktop) ── */}
+        <RecordsBeaten activityId={a.id} isBike={isBike} />
 
         {/* ── IA ANALYSE GLOBALE (desktop) ── */}
         <div style={{ marginBottom: 20 }}>

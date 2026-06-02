@@ -1294,6 +1294,7 @@ function AbonnementSubPage({ onBack }: { onBack: () => void }) {
         background: 'var(--bg)',
         overflowY:  'auto',
         WebkitOverflowScrolling: 'touch',
+        paddingTop: 'calc(var(--header-height) + env(safe-area-inset-top))',
       }}
     >
       {/* Header */}
@@ -1301,10 +1302,10 @@ function AbonnementSubPage({ onBack }: { onBack: () => void }) {
         display:        'flex',
         alignItems:     'center',
         gap:            12,
-        padding:        'calc(16px + env(safe-area-inset-top)) 20px 16px',
+        padding:        '16px 20px',
         borderBottom:   '1px solid var(--border)',
         position:       'sticky',
-        top:            0,
+        top:            'calc(var(--header-height) + env(safe-area-inset-top))',
         background:     'var(--bg)',
         zIndex:         1,
       }}>
@@ -1629,6 +1630,7 @@ function ModelesSubPage({ onBack }: { onBack: () => void }) {
         background: 'var(--bg)',
         overflowY:  'auto',
         WebkitOverflowScrolling: 'touch',
+        paddingTop: 'calc(var(--header-height) + env(safe-area-inset-top))',
       }}
     >
       {/* Header */}
@@ -1636,10 +1638,10 @@ function ModelesSubPage({ onBack }: { onBack: () => void }) {
         display:      'flex',
         alignItems:   'center',
         gap:          12,
-        padding:      'calc(16px + env(safe-area-inset-top)) 20px 16px',
+        padding:      '16px 20px',
         borderBottom: '1px solid var(--border)',
         position:     'sticky',
-        top:          0,
+        top:          'calc(var(--header-height) + env(safe-area-inset-top))',
         background:   'var(--bg)',
         zIndex:       1,
       }}>

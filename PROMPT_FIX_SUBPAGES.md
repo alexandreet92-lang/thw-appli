@@ -1,27 +1,27 @@
-# Sous-pages Abonnement / Modèles — bouton retour visible + En savoir plus
+# Sous-pages Abonnement / Modèles — bouton retour visible (Option A)
 
-Cibles réelles : `AbonnementSubPage` et `ModelesSubPage` dans
-`src/app/profile/page.tsx` (slide-in `position:fixed; inset:0`, header sticky
-avec bouton « ← »).
+## Cause racine (pourquoi le z-index ne suffisait pas)
+Les sous-pages (`AbonnementSubPage` / `ModelesSubPage`) sont rendues **dans
+`<main>`**, qui a `position:relative; zIndex:10` → un **stacking context**. Le
+header/sidebar de l'app est un **sibling** de `<main>` (z 50/100) dans le
+contexte racine → il peint TOUJOURS au-dessus de tout le sous-arbre de `<main>`,
+quel que soit le z-index interne de la sous-page (même 1000). → Les 56px du haut
+de la sous-page (dont le bouton « ← ») sont couverts par le header app.
 
-## FIX 1 — bouton retour entièrement visible
-- Conteneur des deux sous-pages : `zIndex` 300 → **1000** → garantit qu'elles
-  passent AU-DESSUS du header/sidebar de l'app (z 50/100) et du bouton IA (z 90).
-- Header collant : `padding-top: calc(16px + env(safe-area-inset-top))` → le
-  bouton retour n'est plus rogné par la status bar / l'encoche iOS.
+## FIX 1 — Option A (recommandée) : décaler le contenu sous le header
+- Conteneur des deux sous-pages : `padding-top: calc(var(--header-height) +
+  env(safe-area-inset-top))` (= 56px + encoche iOS) → pousse le contenu (donc le
+  bouton « ← ») SOUS le header de l'app → visible et cliquable.
+- Header collant : `top: calc(var(--header-height) + env(safe-area-inset-top))`
+  → reste visible (collé juste sous le header app) même en scrollant ; padding
+  ramené à `16px 20px` (l'offset/safe-area vient désormais du conteneur + top).
+
+`var(--header-height)` = 56px (header mobile de l'app). Sur desktop, la même
+valeur dégage aussi le hamburger flottant (top-left).
 
 ## FIX 2 — « En savoir plus sur les abonnements »
-`ModelesSubPage` a déjà « En savoir plus » (`/comprendre/ia`). Ajout du pendant
-sur `AbonnementSubPage` : lien « En savoir plus sur les abonnements » →
-`/comprendre/abonnements`, placé **après** la carte « Moyen de paiement » et
-**avant** « Résilier l'abonnement » (style identique : bordure 0.5px,
-ExternalLink). Page cible inexistante (V1).
-
-## Note
-Découverte en cours de route : le `main` distant avait déjà remplacé les
-anciens bottom-sheets par ces vraies sous-pages slide-in (mon 1er essai était
-basé sur une version locale périmée → rebase abandonné, reset sur origin/main,
-fix réappliqué sur les bons composants). Le fix token des laps (oauth_tokens)
-est bien présent sur le distant.
+Déjà ajouté sur `AbonnementSubPage` (après « Moyen de paiement », avant
+« Résilier ») → `/comprendre/abonnements`. `ModelesSubPage` a le sien
+(`/comprendre/ia`). Conservés.
 
 npm run build : 0 erreur.

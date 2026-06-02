@@ -1221,8 +1221,7 @@ const TIER_META: Record<string, { label: string; color: string; bg: string; bord
 }
 
 function fmtTokens(v: number): string {
-  if (v >= 1000) return `${Math.round(v / 1000)}k`
-  return String(v)
+  return v.toLocaleString('fr-FR')
 }
 
 function fmtDate(iso: string): string {
@@ -1251,7 +1250,7 @@ function AbonnementSubPage({ onBack }: { onBack: () => void }) {
 
   function handleBack() {
     setClosing(true)
-    setTimeout(() => onBack(), 240)
+    setTimeout(() => onBack(), 280)
   }
 
   async function handlePortal() {
@@ -1410,8 +1409,8 @@ function AbonnementSubPage({ onBack }: { onBack: () => void }) {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {([
-                  details?.monthly    && { label: 'Mensuelle',    gauge: details.monthly,   color: '#06B6D4' },
-                  details?.rolling_6h && { label: '6h glissantes', gauge: details.rolling_6h, color: '#5b6fff' },
+                  details?.monthly    && { label: 'Hebdomadaire',          gauge: details.monthly,   color: '#06B6D4' },
+                  details?.rolling_6h && { label: 'Sur 6 heures glissantes', gauge: details.rolling_6h, color: '#5b6fff' },
                 ].filter(Boolean) as { label: string; gauge: { used: number; limit: number; resets_at: string }; color: string }[]).map(g => {
                   const pct       = Math.min(100, Math.round((g.gauge.used / g.gauge.limit) * 100))
                   const remaining = g.gauge.limit - g.gauge.used
@@ -1617,7 +1616,7 @@ function ModelesSubPage({ onBack }: { onBack: () => void }) {
 
   function handleBack() {
     setClosing(true)
-    setTimeout(() => onBack(), 240)
+    setTimeout(() => onBack(), 280)
   }
 
   return (
@@ -2027,10 +2026,10 @@ function ProfileContent() {
       @keyframes profileSlideLeft  { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
       .profile-slide-right { animation: profileSlideRight 280ms cubic-bezier(0.32,0.72,0,1); }
       .profile-slide-left  { animation: profileSlideLeft 280ms cubic-bezier(0.32,0.72,0,1); }
-      @keyframes slideInFromRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
-      @keyframes slideOutToRight  { from { transform: translateX(0); }   to { transform: translateX(100%); } }
-      .sub-page-enter { animation: slideInFromRight 280ms cubic-bezier(0.32,0.72,0,1) forwards; }
-      .sub-page-exit  { animation: slideOutToRight  240ms cubic-bezier(0.32,0.72,0,1) forwards; }
+      @keyframes subpageUp   { from { transform: translateY(100%); } to { transform: translateY(0); } }
+      @keyframes subpageDown { from { transform: translateY(0); }    to { transform: translateY(100%); } }
+      .sub-page-enter { animation: subpageUp 320ms cubic-bezier(0.32,0.72,0,1) forwards; }
+      .sub-page-exit  { animation: subpageDown 280ms cubic-bezier(0.32,0.72,0,1) forwards; }
       .profile-section-container { width: 100%; max-width: 900px; margin: 0 auto; box-sizing: border-box; overflow-wrap: break-word; }
       .profile-tab { font-size: 13px; }
       @media (max-width: 380px) { .profile-tab { font-size: 12px; } }

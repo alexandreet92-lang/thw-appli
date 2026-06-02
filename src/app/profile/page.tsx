@@ -613,7 +613,7 @@ function NotificationsBloc() {
       </Card>
 
       {/* Sections */}
-      <div style={{ opacity:globalOn?1:0.4, pointerEvents:globalOn?'auto':'none', transition:'opacity 0.2s', display:'flex', flexDirection:'column' }}>
+      <div className="profile-notif-grid" style={{ opacity:globalOn?1:0.4, pointerEvents:globalOn?'auto':'none', transition:'opacity 0.2s' }}>
         {SECTIONS.map(sec=>(
           <Card key={sec.label}>
             {/* Section header */}
@@ -1325,7 +1325,16 @@ function ProfileContent() {
   ]
 
   return (
-    <div style={{ maxWidth:680, margin:'0 auto', padding:'0 0 80px' }}>
+    <div className="profile-shell">
+      <style>{`
+        .profile-shell { max-width: 680px; margin: 0 auto; padding: 0 0 80px; }
+        @media (min-width: 768px)  { .profile-shell { max-width: 760px; } }
+        @media (min-width: 1024px) { .profile-shell { max-width: 900px; } }
+        .profile-notif-grid { display: flex; flex-direction: column; }
+        @media (min-width: 768px) {
+          .profile-notif-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; align-items: start; }
+        }
+      `}</style>
 
       {/* Header */}
       <div style={{ padding:'28px 20px 0' }}>

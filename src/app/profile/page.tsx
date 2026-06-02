@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { User, Bell, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 // ══════════════════════════════════════════════════
@@ -1306,62 +1307,130 @@ function IASettingsBloc() {
 // PAGE PRINCIPALE — Navigation entre onglets
 // ══════════════════════════════════════════════════
 
-function ProfileContent() {
-  const [tab, setTab] = useState<ProfileTab>('profil')
+const TAB_ORDER: ProfileTab[] = ['profil', 'notifications', 'ia']
+const TABS: { id: ProfileTab; label: string; sub: string; Icon: typeof User }[] = [
+  { id: 'profil',        label: 'Profil',      sub: 'Identité et matériel',     Icon: User },
+  { id: 'notifications', label: 'Notifications', sub: 'Alertes et rappels',     Icon: Bell },
+  { id: 'ia',            label: 'Réglages IA', sub: 'Modèles et préférences',   Icon: Zap  },
+]
 
-  const TABS: { id:ProfileTab; label:string; icon:React.ReactNode }[] = [
-    {
-      id:'profil', label:'Profil',
-      icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
-    },
-    {
-      id:'notifications', label:'Notifications',
-      icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
-    },
-    {
-      id:'ia', label:'Réglages IA',
-      icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.55"/></svg>,
-    },
-  ]
+function ProfileContent() {
+  const sp = useSearchParams()
+  const router = useRouter()
+
+  const initialTab = ((): ProfileTab => {
+    const t = sp.get('tab')
+    return t && (TAB_ORDER as string[]).includes(t) ? (t as ProfileTab) : 'profil'
+  })()
+
+  const [tab, setTab] = useState<ProfileTab>(initialTab)
+  const [dir, setDir] = useState<'right' | 'left'>('right')
+  const [isDesktop, setIsDesktop] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 1024)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  const go = useCallback((next: ProfileTab) => {
+    if (next === tab) return
+    setDir(TAB_ORDER.indexOf(next) > TAB_ORDER.indexOf(tab) ? 'right' : 'left')
+    setTab(next)
+    try {
+      const url = new URL(window.location.href)
+      url.searchParams.set('tab', next)
+      router.replace(url.pathname + url.search, { scroll: false })
+    } catch { /* ignore */ }
+  }, [tab, router])
+
+  // Contenu animé — `key={tab}` rejoue l'animation à chaque changement
+  const content = (
+    <div key={tab} className={dir === 'right' ? 'profile-slide-right' : 'profile-slide-left'}>
+      {tab === 'profil'        && <ProfilBloc/>}
+      {tab === 'notifications' && <NotificationsBloc/>}
+      {tab === 'ia'            && <IASettingsBloc/>}
+    </div>
+  )
 
   return (
     <div className="profile-shell">
       <style>{`
         .profile-shell { max-width: 680px; margin: 0 auto; padding: 0 0 80px; }
-        @media (min-width: 768px)  { .profile-shell { max-width: 760px; } }
-        @media (min-width: 1024px) { .profile-shell { max-width: 900px; } }
+        @media (min-width: 768px)  { .profile-shell { max-width: 820px; } }
+        @media (min-width: 1024px) { .profile-shell { max-width: 1080px; } }
         .profile-notif-grid { display: flex; flex-direction: column; }
         @media (min-width: 768px) {
           .profile-notif-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; align-items: start; }
         }
+        @keyframes profileSlideRight { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes profileSlideLeft  { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .profile-slide-right { animation: profileSlideRight 280ms cubic-bezier(0.32,0.72,0,1); }
+        .profile-slide-left  { animation: profileSlideLeft 280ms cubic-bezier(0.32,0.72,0,1); }
       `}</style>
 
       {/* Header */}
       <div style={{ padding:'28px 20px 0' }}>
         <p style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.02em', color:'var(--text)' }}>Mon Profil</p>
-        <p style={{ fontSize:13, color:'var(--text-dim)', margin:'0 0 24px' }}>Paramètres · Coaching · Connexions</p>
+        <p style={{ fontSize:13, color:'var(--text-dim)', margin:'0 0 4px' }}>Paramètres · Coaching · Connexions</p>
+      </div>
 
-        {/* Tab bar */}
-        <div style={{ display:'flex', gap:4, padding:'4px', borderRadius:14, background:'var(--bg-card2)', border:'1px solid var(--border)', marginBottom:20 }}>
-          {TABS.map(t=>{
-            const active = tab===t.id
-            return (
-              <button key={t.id} onClick={()=>setTab(t.id)}
-                style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'9px 8px', borderRadius:11, border:'none', background:active?'var(--bg-card)':'transparent', color:active?'var(--text)':'var(--text-dim)', fontSize:12, fontWeight:active?700:500, cursor:'pointer', transition:'all 0.16s', fontFamily:'DM Sans,sans-serif', boxShadow:active?'0 1px 6px rgba(0,0,0,0.1)':'none' }}>
-                <span style={{ opacity:active?1:0.55, display:'flex', flexShrink:0 }}>{t.icon}</span>
-                <span style={{ whiteSpace:'nowrap' as const }}>{t.label}</span>
-              </button>
-            )
-          })}
+      {isDesktop ? (
+        // ── DESKTOP : sidebar coulissante + contenu ──
+        <div style={{ display:'flex', gap:24, padding:'12px 20px 0', alignItems:'flex-start' }}>
+          <aside style={{ width:220, flexShrink:0, position:'sticky', top:16 }}>
+            {TABS.map(t => {
+              const active = tab === t.id
+              return (
+                <button key={t.id} onClick={() => go(t.id)}
+                  style={{
+                    position:'relative', display:'flex', alignItems:'center', gap:11, width:'100%',
+                    padding:'12px 14px', borderRadius:10, marginBottom:4, cursor:'pointer',
+                    border:'none', textAlign:'left' as const, fontFamily:'DM Sans,sans-serif',
+                    background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
+                    transition:'background 0.14s',
+                  }}
+                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                >
+                  {active && <span style={{ position:'absolute', left:0, top:8, bottom:8, width:3, borderRadius:'0 3px 3px 0', background:'#06B6D4' }} />}
+                  <t.Icon size={18} color={active ? '#06B6D4' : 'var(--text-mid)'} style={{ flexShrink:0 }} />
+                  <span style={{ display:'flex', flexDirection:'column', gap:1, minWidth:0 }}>
+                    <span style={{ fontSize:13.5, fontWeight:600, color: active ? '#06B6D4' : 'var(--text)' }}>{t.label}</span>
+                    <span style={{ fontSize:11, color:'var(--text-dim)' }}>{t.sub}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </aside>
+          <div style={{ flex:1, minWidth:0 }}>{content}</div>
         </div>
-      </div>
-
-      {/* Content */}
-      <div style={{ padding:'0 12px' }}>
-        {tab === 'profil'        && <ProfilBloc/>}
-        {tab === 'notifications' && <NotificationsBloc/>}
-        {tab === 'ia'            && <IASettingsBloc/>}
-      </div>
+      ) : (
+        // ── MOBILE / TABLET : onglets pleine largeur + glissement ──
+        <>
+          <div style={{ display:'flex', width:'100%', borderBottom:'1px solid var(--border)', marginTop:10 }}>
+            {TABS.map(t => {
+              const active = tab === t.id
+              return (
+                <button key={t.id} onClick={() => go(t.id)}
+                  style={{
+                    flex:1, position:'relative', textAlign:'center' as const, padding:'14px 8px',
+                    background:'transparent', border:'none', cursor:'pointer',
+                    fontFamily:'DM Sans,sans-serif', fontSize:14, whiteSpace:'nowrap' as const,
+                    fontWeight: active ? 700 : 600, color: active ? '#06B6D4' : '#94A3B8',
+                    transition:'color 0.15s',
+                  }}
+                >
+                  {t.label}
+                  {active && <span style={{ position:'absolute', bottom:-1, left:12, right:12, height:3, borderRadius:'2px 2px 0 0', background:'linear-gradient(90deg,#06B6D4 0%,#5b6fff 100%)' }} />}
+                </button>
+              )
+            })}
+          </div>
+          <div style={{ padding:'14px 12px 0' }}>{content}</div>
+        </>
+      )}
     </div>
   )
 }

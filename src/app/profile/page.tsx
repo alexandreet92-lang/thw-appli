@@ -1290,7 +1290,7 @@ function AbonnementSubPage({ onBack }: { onBack: () => void }) {
       style={{
         position:   'fixed',
         inset:      0,
-        zIndex:     300,
+        zIndex:     1000,
         background: 'var(--bg)',
         overflowY:  'auto',
         WebkitOverflowScrolling: 'touch',
@@ -1301,7 +1301,7 @@ function AbonnementSubPage({ onBack }: { onBack: () => void }) {
         display:        'flex',
         alignItems:     'center',
         gap:            12,
-        padding:        '16px 20px',
+        padding:        'calc(16px + env(safe-area-inset-top)) 20px 16px',
         borderBottom:   '1px solid var(--border)',
         position:       'sticky',
         top:            0,
@@ -1499,6 +1499,17 @@ function AbonnementSubPage({ onBack }: { onBack: () => void }) {
 
           {/* ── 5. Actions bas de page ──────────────────── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 8 }}>
+            <a
+              href="/comprendre/abonnements"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '14px', background: 'transparent', border: '0.5px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 14, fontWeight: 500, textDecoration: 'none', cursor: 'pointer' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              En savoir plus sur les abonnements
+            </a>
             {hasStripe && !isCancelling && (
               <button
                 onClick={() => setCancelConfirm(true)}
@@ -1614,7 +1625,7 @@ function ModelesSubPage({ onBack }: { onBack: () => void }) {
       style={{
         position:   'fixed',
         inset:      0,
-        zIndex:     300,
+        zIndex:     1000,
         background: 'var(--bg)',
         overflowY:  'auto',
         WebkitOverflowScrolling: 'touch',
@@ -1625,7 +1636,7 @@ function ModelesSubPage({ onBack }: { onBack: () => void }) {
         display:      'flex',
         alignItems:   'center',
         gap:          12,
-        padding:      '16px 20px',
+        padding:      'calc(16px + env(safe-area-inset-top)) 20px 16px',
         borderBottom: '1px solid var(--border)',
         position:     'sticky',
         top:          0,

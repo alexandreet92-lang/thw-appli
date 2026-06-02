@@ -1308,10 +1308,10 @@ function IASettingsBloc() {
 // ══════════════════════════════════════════════════
 
 const TAB_ORDER: ProfileTab[] = ['profil', 'notifications', 'ia']
-const TABS: { id: ProfileTab; label: string; sub: string; Icon: typeof User }[] = [
-  { id: 'profil',        label: 'Profil',      sub: 'Identité et matériel',     Icon: User },
-  { id: 'notifications', label: 'Notifications', sub: 'Alertes et rappels',     Icon: Bell },
-  { id: 'ia',            label: 'Réglages IA', sub: 'Modèles et préférences',   Icon: Zap  },
+const TABS: { id: ProfileTab; label: string; short: string; sub: string; Icon: typeof User }[] = [
+  { id: 'profil',        label: 'Profil',        short: 'Profil',        sub: 'Identité et matériel',   Icon: User },
+  { id: 'notifications', label: 'Notifications', short: 'Notifications', sub: 'Alertes et rappels',     Icon: Bell },
+  { id: 'ia',            label: 'Réglages IA',   short: 'Réglages',      sub: 'Modèles et préférences', Icon: Zap  },
 ]
 
 function ProfileContent() {
@@ -1326,6 +1326,7 @@ function ProfileContent() {
   const [tab, setTab] = useState<ProfileTab>(initialTab)
   const [dir, setDir] = useState<'right' | 'left'>('right')
   const [isDesktop, setIsDesktop] = useState(false)
+  const [railOpen, setRailOpen] = useState(false)
 
   useEffect(() => {
     const check = () => setIsDesktop(window.innerWidth >= 1024)
@@ -1368,6 +1369,8 @@ function ProfileContent() {
         @keyframes profileSlideLeft  { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .profile-slide-right { animation: profileSlideRight 280ms cubic-bezier(0.32,0.72,0,1); }
         .profile-slide-left  { animation: profileSlideLeft 280ms cubic-bezier(0.32,0.72,0,1); }
+        /* Largeur de contenu identique pour tous les onglets */
+        .profile-section-container { width: 100%; max-width: 900px; margin: 0 auto; }
       `}</style>
 
       {/* Header */}
@@ -1377,34 +1380,49 @@ function ProfileContent() {
       </div>
 
       {isDesktop ? (
-        // ── DESKTOP : sidebar coulissante + contenu ──
+        // ── DESKTOP : sidebar rail (hover-to-expand, en overlay) + contenu ──
         <div style={{ display:'flex', gap:24, padding:'12px 20px 0', alignItems:'flex-start' }}>
-          <aside style={{ width:220, flexShrink:0, position:'sticky', top:16 }}>
-            {TABS.map(t => {
-              const active = tab === t.id
-              return (
-                <button key={t.id} onClick={() => go(t.id)}
-                  style={{
-                    position:'relative', display:'flex', alignItems:'center', gap:11, width:'100%',
-                    padding:'12px 14px', borderRadius:10, marginBottom:4, cursor:'pointer',
-                    border:'none', textAlign:'left' as const, fontFamily:'DM Sans,sans-serif',
-                    background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
-                    transition:'background 0.14s',
-                  }}
-                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                >
-                  {active && <span style={{ position:'absolute', left:0, top:8, bottom:8, width:3, borderRadius:'0 3px 3px 0', background:'#06B6D4' }} />}
-                  <t.Icon size={18} color={active ? '#06B6D4' : 'var(--text-mid)'} style={{ flexShrink:0 }} />
-                  <span style={{ display:'flex', flexDirection:'column', gap:1, minWidth:0 }}>
-                    <span style={{ fontSize:13.5, fontWeight:600, color: active ? '#06B6D4' : 'var(--text)' }}>{t.label}</span>
-                    <span style={{ fontSize:11, color:'var(--text-dim)' }}>{t.sub}</span>
-                  </span>
-                </button>
-              )
-            })}
-          </aside>
-          <div style={{ flex:1, minWidth:0 }}>{content}</div>
+          {/* Spacer de 56px : réserve la place du rail ; l'aside s'étend en overlay */}
+          <div style={{ width:56, flexShrink:0, position:'relative', alignSelf:'stretch' }}>
+            <aside
+              onMouseEnter={() => setRailOpen(true)}
+              onMouseLeave={() => setRailOpen(false)}
+              style={{
+                position:'absolute', top:0, left:0, zIndex:5,
+                width: railOpen ? 232 : 56, overflow:'hidden',
+                background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14,
+                padding:'8px 8px', boxShadow: railOpen ? '0 12px 36px rgba(0,0,0,0.18)' : 'none',
+                transition:'width 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms',
+              }}
+            >
+              {TABS.map(t => {
+                const active = tab === t.id
+                return (
+                  <button key={t.id} onClick={() => go(t.id)} title={t.label}
+                    style={{
+                      position:'relative', display:'flex', alignItems:'center', gap:12, width:'100%',
+                      padding:'11px 11px', borderRadius:10, marginBottom:4, cursor:'pointer',
+                      border:'none', textAlign:'left' as const, fontFamily:'DM Sans,sans-serif',
+                      background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
+                      transition:'background 0.14s', whiteSpace:'nowrap' as const,
+                    }}
+                    onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                  >
+                    {active && <span style={{ position:'absolute', left:-8, top:8, bottom:8, width:3, borderRadius:'0 3px 3px 0', background:'#06B6D4' }} />}
+                    <t.Icon size={18} color={active ? '#06B6D4' : 'var(--text-mid)'} style={{ flexShrink:0 }} />
+                    <span style={{ display:'flex', flexDirection:'column', gap:1, minWidth:0, opacity: railOpen ? 1 : 0, transition:'opacity 150ms ease' }}>
+                      <span style={{ fontSize:13.5, fontWeight:600, color: active ? '#06B6D4' : 'var(--text)' }}>{t.label}</span>
+                      <span style={{ fontSize:11, color:'var(--text-dim)' }}>{t.sub}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </aside>
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div className="profile-section-container">{content}</div>
+          </div>
         </div>
       ) : (
         // ── MOBILE / TABLET : onglets pleine largeur + glissement ──
@@ -1415,20 +1433,23 @@ function ProfileContent() {
               return (
                 <button key={t.id} onClick={() => go(t.id)}
                   style={{
-                    flex:1, position:'relative', textAlign:'center' as const, padding:'14px 8px',
+                    flex:1, minWidth:0, position:'relative', textAlign:'center' as const, padding:'14px 4px',
                     background:'transparent', border:'none', cursor:'pointer',
-                    fontFamily:'DM Sans,sans-serif', fontSize:14, whiteSpace:'nowrap' as const,
+                    fontFamily:'DM Sans,sans-serif', fontSize:13, whiteSpace:'nowrap' as const,
+                    overflow:'visible', textOverflow:'clip' as const,
                     fontWeight: active ? 700 : 600, color: active ? '#06B6D4' : '#94A3B8',
                     transition:'color 0.15s',
                   }}
                 >
-                  {t.label}
-                  {active && <span style={{ position:'absolute', bottom:-1, left:12, right:12, height:3, borderRadius:'2px 2px 0 0', background:'linear-gradient(90deg,#06B6D4 0%,#5b6fff 100%)' }} />}
+                  {t.short}
+                  {active && <span style={{ position:'absolute', bottom:-1, left:10, right:10, height:3, borderRadius:'2px 2px 0 0', background:'linear-gradient(90deg,#06B6D4 0%,#5b6fff 100%)' }} />}
                 </button>
               )
             })}
           </div>
-          <div style={{ padding:'14px 12px 0' }}>{content}</div>
+          <div style={{ padding:'14px 12px 0' }}>
+            <div className="profile-section-container">{content}</div>
+          </div>
         </>
       )}
     </div>

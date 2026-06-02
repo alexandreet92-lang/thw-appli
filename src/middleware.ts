@@ -65,5 +65,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  // Exclut les assets publics (dont /branding/*) : sinon les requêtes d'images
+  // sans cookie (ex. clients mail) sont redirigées vers /auth (307) → image cassée.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|branding|logos|logo.png).*)'],
 }

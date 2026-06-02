@@ -61,6 +61,7 @@ export async function POST(req: Request) {
         quantity: 1,
       }],
       mode: 'payment',
+      customer_email: session.email,
       success_url: `${TOPUP_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${TOPUP_BASE_URL}?session=${session_token}`,
       metadata: {

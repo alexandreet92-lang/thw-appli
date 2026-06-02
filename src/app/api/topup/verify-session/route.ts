@@ -28,6 +28,7 @@ export async function POST(req: Request) {
       email: session.email,
       plan: limits.plan,
       monthly: limits.monthly,
+      rolling_6h: limits.rolling_6h,
       bonus_tokens: limits.bonus_tokens,
     })
   } catch (e) {

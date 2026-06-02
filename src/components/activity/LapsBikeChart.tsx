@@ -23,6 +23,7 @@ interface Props {
   cachedLaps?:  LapData[] | null
   avgWatts?:    number | null
   streams?:     { watts?: number[] | null } | null
+  ftp?:         number | null
 }
 
 // ── Formatters ─────────────────────────────────────────────────────────────
@@ -48,15 +49,47 @@ function fmtVal(v: number | null | undefined, unit: string, round = true): strin
   return `${round ? Math.round(v) : v} ${unit}`
 }
 
+// ── Power zones (% FTP → violet shade) ─────────────────────────────────────
+const POWER_ZONE_COLORS = [
+  '#EDE9FE',  // Z1 récup       <55%
+  '#C4B5FD',  // Z2 endurance   55-75%
+  '#A78BFA',  // Z3 tempo       75-90%
+  '#8B5CF6',  // Z4 seuil       90-105%
+  '#7C3AED',  // Z5 VO2max     105-120%
+  '#6B21A8',  // Z6 anaérobie+  >120%
+] as const
+
+function powerZoneColor(watts: number, ftp: number | null | undefined): string {
+  if (!ftp || ftp <= 0 || !watts || watts <= 0) return POWER_ZONE_COLORS[2]  // fallback Z3
+  const pct = watts / ftp
+  if (pct < 0.55) return POWER_ZONE_COLORS[0]
+  if (pct < 0.75) return POWER_ZONE_COLORS[1]
+  if (pct < 0.90) return POWER_ZONE_COLORS[2]
+  if (pct < 1.05) return POWER_ZONE_COLORS[3]
+  if (pct < 1.20) return POWER_ZONE_COLORS[4]
+  return POWER_ZONE_COLORS[5]
+}
+
+// Darken a hex color by ~12% (for hover/selected states)
+function darken(hex: string, factor = 0.82): string {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  const k = factor
+  const rr = Math.max(0, Math.round(r * k)).toString(16).padStart(2, '0')
+  const gg = Math.max(0, Math.round(g * k)).toString(16).padStart(2, '0')
+  const bb = Math.max(0, Math.round(b * k)).toString(16).padStart(2, '0')
+  return `#${rr}${gg}${bb}`
+}
+
 // ── Detail panel ───────────────────────────────────────────────────────────
-function LapDetailPanel({ lap, index, maxWatts, onClose }: { lap: LapData; index: number; maxWatts: number | null; onClose: () => void }) {
+function LapDetailPanel({ lap, index, onClose }: { lap: LapData; index: number; onClose: () => void }) {
   const rows: { label: string; value: string }[] = [
     { label: 'Distance',    value: fmtDist(lap.distance_m) },
     { label: 'Durée',       value: fmtDur(lap.moving_time_s) },
     { label: 'Watts moy.',  value: fmtVal(lap.avg_watts, 'W') },
-    { label: 'Watts max',   value: fmtVal(maxWatts ?? lap.max_watts ?? null, 'W') },
     { label: 'FC moy.',     value: fmtVal(lap.avg_hr, 'bpm') },
-    { label: 'FC max',      value: fmtVal(lap.max_heartrate, 'bpm') },
     { label: 'RPM moy.',    value: fmtVal(lap.avg_cadence, 'rpm') },
     { label: 'D+',          value: lap.elevation_gain_m != null ? `+${Math.round(lap.elevation_gain_m)} m` : '—' },
     { label: 'Vitesse moy.',value: fmtSpeed(lap.avg_speed_ms) },
@@ -98,7 +131,7 @@ function LapDetailPanel({ lap, index, maxWatts, onClose }: { lap: LapData; index
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
-export function LapsBikeChart({ activityId, cachedLaps, avgWatts, streams }: Props) {
+export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp }: Props) {
   const [laps,        setLaps]        = useState<LapData[]>(cachedLaps && cachedLaps.length > 1 ? cachedLaps : [])
   const [loading,     setLoading]     = useState(!cachedLaps || cachedLaps.length <= 1)
   const [error,       setError]       = useState<string | null>(null)
@@ -106,29 +139,16 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, streams }: Pro
   const [hoveredLap,  setHoveredLap]  = useState<number | null>(null)
 
   useEffect(() => {
-    if (cachedLaps && cachedLaps.length > 1) { console.log('[Laps] cache:', cachedLaps.length, 'tours'); return }
+    if (cachedLaps && cachedLaps.length > 1) return
     fetch(`/api/strava/activity-laps?activity_id=${activityId}`)
       .then(r => r.json())
       .then((data: { laps?: LapData[]; error?: string }) => {
-        console.log('[Laps] réponse:', { laps: data.laps?.length ?? 0, error: data.error })
         if (data.error) { setError(data.error); return }
         setLaps(data.laps ?? [])
       })
-      .catch((e) => { console.error('[Laps] fetch échoué', e); setError('fetch') })
+      .catch(() => setError('Impossible de charger les tours'))
       .finally(() => setLoading(false))
   }, [activityId, cachedLaps])
-
-  // Watts max par tour = MAX du stream watts entre start_index et end_index
-  const wattsStream = streams?.watts ?? null
-  const lapMaxWatts = (lap: LapData): number | null => {
-    if (!wattsStream || lap.start_index == null || lap.end_index == null) return null
-    let mx = 0
-    for (let i = lap.start_index; i <= lap.end_index && i < wattsStream.length; i++) {
-      const v = wattsStream[i]
-      if (typeof v === 'number' && v > mx) mx = v
-    }
-    return mx > 0 ? mx : null
-  }
 
   if (loading) {
     return (
@@ -152,51 +172,66 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, streams }: Pro
           Tours
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '8px 0' }}>
-          {error === 'not_connected' ? 'Connecte Strava pour voir les tours' : 'Aucun tour enregistré'}
+          Impossible de charger les tours
         </div>
       </div>
     )
   }
 
-  // 0 ou 1 tour → message clair (pas de graphe)
-  if (laps.length <= 1) {
-    return (
-      <div style={{ marginBottom: 32, paddingTop: 8 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9,
-          textTransform: 'uppercase', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
-          Tours
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '8px 0' }}>Aucun tour enregistré</div>
-      </div>
-    )
-  }
+  // Don't show if 0 or 1 lap, or no power data
+  if (laps.length <= 1) return null
   const hasWatts = laps.some(l => (l.avg_watts ?? 0) > 0)
   if (!hasWatts) return null
 
-  // ── SVG chart constants ────────────────────────────────────────────────
-  const N       = laps.length
-  const PAD_L   = 44   // Y-axis labels
-  const PAD_R   = 8
-  const PAD_T   = 8
-  const PAD_B   = 24   // X-axis labels
-  const CH      = 150  // chart height
-  const SLOT_W  = Math.max(28, Math.min(60, Math.floor(560 / N)))
-  const BAR_W   = Math.max(10, SLOT_W - 6)
-  const SVG_W   = PAD_L + N * SLOT_W + PAD_R
-  const SVG_H   = PAD_T + CH + PAD_B
+  // ── SVG layout (viewBox fixe) ──────────────────────────────────────────
+  const N        = laps.length
+  const VBW      = 600   // viewBox width — toujours fixe
+  const PAD_L    = 44
+  const PAD_R    = 8
+  const PAD_T    = 22
+  const PAD_B    = 26
+  const CH       = 150   // chart height
+  const SVG_H    = PAD_T + CH + PAD_B
+  const innerW   = VBW - PAD_L - PAD_R
+  const GAP      = 1.5
+  const totalBarW= Math.max(1, innerW - (N - 1) * GAP)
 
+  // Durées
+  const totalTime = laps.reduce((s, l) => s + Math.max(0, l.moving_time_s || 0), 0) || 1
+
+  // Largeur proportionnelle + position cumulative
+  const widths: number[] = laps.map(l => {
+    const raw = (Math.max(0, l.moving_time_s || 0) / totalTime) * totalBarW
+    return Math.max(2, raw)
+  })
+  // Renormaliser pour que la somme = totalBarW (compenser les min 2)
+  const wSum = widths.reduce((a, b) => a + b, 0)
+  if (wSum > 0 && wSum !== totalBarW) {
+    const k = totalBarW / wSum
+    for (let i = 0; i < widths.length; i++) widths[i] = Math.max(2, widths[i] * k)
+  }
+  const xs: number[] = []
+  {
+    let cursor = PAD_L
+    for (let i = 0; i < N; i++) {
+      xs.push(cursor)
+      cursor += widths[i] + GAP
+    }
+  }
+
+  // Axe Y
   const maxW = Math.max(...laps.map(l => l.avg_watts ?? 0)) * 1.05 || 1
-
-  // Y-axis grid lines (every 50W)
   const yStep = maxW > 400 ? 100 : maxW > 200 ? 50 : 25
   const yLabels: number[] = []
   for (let w = 0; w <= maxW; w += yStep) yLabels.push(Math.round(w))
 
   const yOf = (w: number) => PAD_T + CH - (w / maxW) * CH
-  const xOf = (i: number) => PAD_L + i * SLOT_W + (SLOT_W - BAR_W) / 2
 
   // Avg watts dashed line
   const avgY = avgWatts != null ? yOf(avgWatts) : null
+
+  // Label step : on évite les labels qui se chevauchent
+  const labelStep = N <= 10 ? 1 : N <= 20 ? 2 : N <= 40 ? 5 : Math.ceil(N / 10)
 
   return (
     <div style={{ marginBottom: 32, paddingTop: 8 }}>
@@ -207,90 +242,104 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, streams }: Pro
         Tours · {N}
       </div>
 
-      {/* SVG chart */}
-      <div style={{ overflowX: 'auto' }}>
-        <svg
-          viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-          style={{ width: '100%', minWidth: SVG_W > 400 ? undefined : SVG_W, height: SVG_H, display: 'block' }}
-          preserveAspectRatio="xMinYMid meet"
-        >
-          {/* Y-axis grid + labels */}
-          {yLabels.map(w => {
-            const y = yOf(w)
-            return (
-              <g key={w}>
-                <line x1={PAD_L} y1={y} x2={PAD_L + N * SLOT_W} y2={y}
-                  stroke="var(--border)" strokeWidth="0.5" strokeDasharray={w === 0 ? '' : '2 3'} />
-                <text x={PAD_L - 4} y={y + 3.5} textAnchor="end"
-                  fontSize="9" fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {w}
+      {/* SVG chart — largeur 100% du conteneur, jamais de scroll horizontal */}
+      <svg
+        viewBox={`0 0 ${VBW} ${SVG_H}`}
+        style={{ width: '100%', height: 'auto', display: 'block' }}
+        preserveAspectRatio="xMidYMid meet"
+      >
+        {/* Y-axis grid + labels */}
+        {yLabels.map(w => {
+          const y = yOf(w)
+          return (
+            <g key={w}>
+              <line x1={PAD_L} y1={y} x2={PAD_L + innerW} y2={y}
+                stroke="var(--border)" strokeWidth="0.5" strokeDasharray={w === 0 ? '' : '2 3'}
+                vectorEffect="non-scaling-stroke" />
+              <text x={PAD_L - 4} y={y + 3.5} textAnchor="end"
+                fontSize="9" fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {w}
+              </text>
+            </g>
+          )
+        })}
+
+        {/* W axis label */}
+        <text x={6} y={PAD_T + CH / 2} textAnchor="middle" fontSize="9" fill="var(--text-dim)"
+          transform={`rotate(-90, 6, ${PAD_T + CH / 2})`}>W</text>
+
+        {/* Average watts line */}
+        {avgY !== null && (
+          <line x1={PAD_L} y1={avgY} x2={PAD_L + innerW} y2={avgY}
+            stroke="#475569" strokeWidth="1" strokeDasharray="4 3"
+            vectorEffect="non-scaling-stroke" />
+        )}
+
+        {/* Bars */}
+        {laps.map((lap, i) => {
+          const w        = lap.avg_watts ?? 0
+          const bH       = w > 0 ? Math.max(2, (w / maxW) * CH) : 2
+          const bY       = yOf(w)
+          const bX       = xs[i]
+          const bW       = widths[i]
+          const sel      = selectedLap === i
+          const hov      = hoveredLap === i
+          const baseFill = powerZoneColor(w, ftp)
+          const fill     = sel ? darken(baseFill, 0.7) : hov ? darken(baseFill, 0.85) : baseFill
+          const stroke   = sel ? darken(baseFill, 0.55) : 'none'
+          const showLabel    = bW >= 18 && bH >= 18 && w > 0
+          const showTickName = i % labelStep === 0 || i === N - 1
+
+          return (
+            <g
+              key={i}
+              onClick={() => setSelectedLap(sel ? null : i)}
+              onMouseEnter={() => setHoveredLap(i)}
+              onMouseLeave={() => setHoveredLap(null)}
+              style={{ cursor: 'pointer' }}
+            >
+              {/* Invisible hit area sur toute la hauteur */}
+              <rect x={bX} y={PAD_T} width={bW + GAP} height={CH} fill="transparent" />
+              {/* Bar */}
+              <rect
+                x={bX}
+                y={bY}
+                width={bW}
+                height={bH}
+                fill={fill}
+                stroke={stroke}
+                strokeWidth={sel ? 1 : 0}
+                vectorEffect="non-scaling-stroke"
+                rx={1.5}
+                style={{ transition: 'fill 0.15s' }}
+              />
+              {/* Watts au-dessus si place */}
+              {showLabel && (
+                <text x={bX + bW / 2} y={bY - 4} textAnchor="middle"
+                  fontSize="8" fill="#7C3AED" fontWeight="600"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {Math.round(w)}
                 </text>
-              </g>
-            )
-          })}
-
-          {/* W label */}
-          <text x={6} y={PAD_T + CH / 2} textAnchor="middle" fontSize="9" fill="var(--text-dim)"
-            transform={`rotate(-90, 6, ${PAD_T + CH / 2})`}>W</text>
-
-          {/* Average watts line */}
-          {avgY !== null && (
-            <line x1={PAD_L} y1={avgY} x2={PAD_L + N * SLOT_W} y2={avgY}
-              stroke="#475569" strokeWidth="1" strokeDasharray="4 3" />
-          )}
-
-          {/* Bars */}
-          {laps.map((lap, i) => {
-            const w   = lap.avg_watts ?? 0
-            const bH  = w > 0 ? Math.max(2, (w / maxW) * CH) : 2
-            const bY  = yOf(w)
-            const bX  = xOf(i)
-            const sel = selectedLap === i
-            const hov = hoveredLap === i
-            const fill = sel ? '#7C3AED' : hov ? '#9333EA' : '#A855F7'
-
-            return (
-              <g
-                key={i}
-                onClick={() => setSelectedLap(sel ? null : i)}
-                onMouseEnter={() => setHoveredLap(i)}
-                onMouseLeave={() => setHoveredLap(null)}
-                style={{ cursor: 'pointer' }}
-              >
-                {/* Invisible hit area */}
-                <rect x={PAD_L + i * SLOT_W} y={PAD_T} width={SLOT_W} height={CH}
-                  fill="transparent" />
-                {/* Bar */}
-                <rect
-                  x={bX} y={bY} width={BAR_W} height={bH}
-                  fill={fill}
-                  rx={sel ? 3 : 2}
-                  style={{ transition: 'fill 0.15s' }}
-                />
-                {/* Watts label on top of bar (if bar is tall enough) */}
-                {bH > 18 && w > 0 && (
-                  <text x={bX + BAR_W / 2} y={bY - 3} textAnchor="middle"
-                    fontSize="8" fill="#A855F7" fontWeight="600" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {Math.round(w)}
-                  </text>
-                )}
-                {/* Tour label below */}
-                <text x={PAD_L + i * SLOT_W + SLOT_W / 2} y={PAD_T + CH + PAD_B - 6}
-                  textAnchor="middle" fontSize="9" fill={sel ? '#A855F7' : 'var(--text-dim)'}>
+              )}
+              {/* Label T_i sous la barre */}
+              {showTickName && (
+                <text x={bX + bW / 2} y={PAD_T + CH + PAD_B - 8}
+                  textAnchor="middle" fontSize="9"
+                  fill={sel ? '#7C3AED' : 'var(--text-dim)'}
+                  style={{ fontVariantNumeric: 'tabular-nums' }}>
                   T{i + 1}
                 </text>
-              </g>
-            )
-          })}
-        </svg>
-      </div>
+              )}
+            </g>
+          )
+        })}
+      </svg>
 
       {/* Detail panel */}
       {selectedLap !== null && laps[selectedLap] && (
         <LapDetailPanel
           lap={laps[selectedLap]}
           index={selectedLap}
-          maxWatts={lapMaxWatts(laps[selectedLap])}
           onClose={() => setSelectedLap(null)}
         />
       )}

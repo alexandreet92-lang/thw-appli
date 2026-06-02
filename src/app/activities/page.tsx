@@ -5636,6 +5636,7 @@ conseil pour la prochaine séance similaire.`
                   cachedLaps={a.laps}
                   avgWatts={a.avg_watts}
                   streams={a.streams}
+                  ftp={bikeZoneRow?.ftp_watts ?? null}
                 />
               )}
 

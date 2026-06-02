@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { User, Bell, Zap } from 'lucide-react'
+import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 // ══════════════════════════════════════════════════
@@ -529,76 +529,116 @@ function ProfilBloc() {
 // NOTIFICATIONS BLOC — Onglet 2
 // ══════════════════════════════════════════════════
 
-type NotifKey =
-  | 'sessionRemind' | 'morningProg' | 'sessionUpcoming'
-  | 'hrv' | 'sleep' | 'fatigue'
-  | 'meals' | 'hydration' | 'nutritionTiming'
-  | 'weekSummary' | 'monthSummary' | 'progressionDetected'
-  | 'aiSuggestions' | 'aiAnalysis' | 'dataReminder'
+// Catalogue exhaustif des notifications. Clés STABLES "categorie.nom".
+interface NotifItem { key: string; label: string; sub: string; def: boolean }
+interface NotifCategory { id: string; label: string; color: string; Icon: typeof Zap; items: NotifItem[] }
+
+const NOTIF_CATEGORIES: NotifCategory[] = [
+  { id:'entrainement', label:'Entraînement', color:'#06B6D4', Icon: Zap, items:[
+    { key:'entrainement.rappel_seance',        label:'Rappel séance',          sub:'Avant ta séance planifiée', def:true },
+    { key:'entrainement.programme_matin',      label:'Programme du matin',     sub:'Ton briefing chaque matin', def:true },
+    { key:'entrainement.seance_a_venir',       label:'Séance à venir',         sub:'Alerte ~1h avant une séance clé', def:false },
+    { key:'entrainement.nouveau_plan',         label:'Nouveau plan',           sub:"Un plan d'entraînement est prêt", def:true },
+    { key:'entrainement.rappel_enregistrement',label:"Rappel d'enregistrement",sub:'Pense à enregistrer ta séance manuelle', def:false },
+    { key:'entrainement.test_suggere',         label:'Test suggéré',           sub:'Un test de performance est recommandé', def:false },
+  ]},
+  { id:'recuperation', label:'Récupération', color:'#22c55e', Icon: Moon, items:[
+    { key:'recuperation.rappel_hrv',          label:'Rappel HRV',             sub:'Mesure HRV au réveil', def:true },
+    { key:'recuperation.suivi_sommeil',       label:'Suivi sommeil',          sub:'Rappel pour lancer le suivi du sommeil', def:false },
+    { key:'recuperation.alerte_fatigue',      label:'Alerte fatigue',         sub:'TSB trop bas / charge excessive', def:true },
+    { key:'recuperation.recup_recommandee',   label:'Récupération recommandée',sub:'Repos conseillé détecté', def:true },
+    { key:'recuperation.conseils_post_seance',label:'Conseils post-séance',   sub:'Recommandations après une séance dure', def:false },
+  ]},
+  { id:'nutrition', label:'Nutrition', color:'#f97316', Icon: Apple, items:[
+    { key:'nutrition.rappel_repas',        label:'Rappel repas',         sub:'Alertes aux heures de repas', def:false },
+    { key:'nutrition.hydratation',         label:'Hydratation',          sub:'Rappels pour boire dans la journée', def:false },
+    { key:'nutrition.timing_nutritionnel', label:'Timing nutritionnel',  sub:'Conseils avant / après séance', def:false },
+    { key:'nutrition.recharge_glucidique', label:'Recharge glucidique',  sub:'Avant une compétition', def:true },
+    { key:'nutrition.plan_nutrition',      label:'Plan nutritionnel',    sub:'Un plan nutrition est prêt', def:true },
+  ]},
+  { id:'performance', label:'Performance', color:'#a855f7', Icon: TrendingUp, items:[
+    { key:'performance.resume_hebdo',    label:'Résumé hebdomadaire', sub:'Bilan charge & progression', def:true },
+    { key:'performance.resume_mensuel',  label:'Résumé mensuel',      sub:'Synthèse du mois', def:false },
+    { key:'performance.progression',     label:'Progression détectée',sub:'Record / nouvelle perf', def:true },
+    { key:'performance.evolution_charge',label:'Évolution de forme',  sub:'Changement notable CTL/ATL/TSB', def:false },
+    { key:'performance.zones_maj',       label:'Zones à mettre à jour',sub:'Test FTP / seuil suggéré', def:false },
+  ]},
+  { id:'coach', label:'Coach IA', color:'#5b6fff', Icon: Sparkles, items:[
+    { key:'coach.suggestions',      label:'Suggestions du coach', sub:'Actions proposées à la volée', def:true },
+    { key:'coach.briefing',         label:'Nouveau briefing',     sub:'Briefing quotidien disponible', def:true },
+    { key:'coach.analyse_terminee', label:'Analyse terminée',     sub:'Ton analyse de séance est prête', def:false },
+    { key:'coach.competences',      label:'Compétences à activer',sub:'Des compétences pertinentes pour toi', def:false },
+  ]},
+  { id:'tokens', label:'Tokens & abonnement', color:'#06B6D4', Icon: Coins, items:[
+    { key:'tokens.quota_80',        label:'Quota à 80%',        sub:'Tu approches de ta limite hebdo', def:true },
+    { key:'tokens.quota_95',        label:'Quota à 95%',        sub:'Limite presque atteinte', def:true },
+    { key:'tokens.quota_epuise',    label:'Quota épuisé',       sub:'Plus de tokens disponibles', def:true },
+    { key:'tokens.pack_credite',    label:'Pack crédité',       sub:'Tes tokens ont été ajoutés', def:true },
+    { key:'tokens.plan_expiration', label:'Plan en expiration', sub:'Ton abonnement arrive à échéance', def:true },
+    { key:'tokens.paiement_echoue', label:'Paiement échoué',    sub:'Action requise sur ton paiement', def:true },
+  ]},
+  { id:'connexions', label:'Connexions', color:'#14b8a6', Icon: Plug, items:[
+    { key:'connexions.activite_synchro', label:'Activité synchronisée',    sub:'Nouvelle activité importée', def:false },
+    { key:'connexions.donnee_importee',  label:'Donnée importée',          sub:'Wahoo / Polar / Withings', def:false },
+    { key:'connexions.reconnexion',      label:'Reconnexion nécessaire',   sub:'Une app doit être reconnectée', def:true },
+    { key:'connexions.echec_sync',       label:'Échec de synchronisation', sub:'Une synchronisation a échoué', def:true },
+  ]},
+  { id:'competitions', label:'Compétitions', color:'#eab308', Icon: Trophy, items:[
+    { key:'competitions.j7',             label:'Compétition J-7',     sub:'Ta course approche', def:true },
+    { key:'competitions.j3',             label:'Compétition J-3',     sub:'Derniers préparatifs', def:true },
+    { key:'competitions.j1',             label:'Compétition J-1',     sub:"C'est demain !", def:true },
+    { key:'competitions.strategie_dispo',label:'Stratégie disponible',sub:'Ton plan de course est prêt', def:true },
+  ]},
+  { id:'systeme', label:'Système', color:'#94a3b8', Icon: Settings, items:[
+    { key:'systeme.nouvelle_version', label:'Nouvelle version',       sub:'Une mise à jour est disponible', def:true },
+    { key:'systeme.nouvelle_feature', label:'Nouvelle fonctionnalité',sub:'Découvre les nouveautés', def:true },
+    { key:'systeme.maintenance',      label:'Maintenance prévue',     sub:'Interruption programmée', def:false },
+    { key:'systeme.astuce',           label:'Astuce du jour',         sub:"Conseils d'utilisation", def:false },
+  ]},
+]
+
+const NOTIF_DEFAULTS: Record<string, boolean> = (() => {
+  const d: Record<string, boolean> = {}
+  NOTIF_CATEGORIES.forEach(c => c.items.forEach(i => { d[i.key] = i.def }))
+  return d
+})()
 
 function NotificationsBloc() {
   const [globalOn, setGlobalOn] = useState(true)
-  const [settings, setSettings] = useState<Record<NotifKey,boolean>>({
-    sessionRemind: true,  morningProg: true,   sessionUpcoming: false,
-    hrv: true,            sleep: false,         fatigue: true,
-    meals: true,          hydration: false,     nutritionTiming: false,
-    weekSummary: true,    monthSummary: false,  progressionDetected: true,
-    aiSuggestions: true,  aiAnalysis: false,    dataReminder: false,
-  })
+  const [prefs, setPrefs] = useState<Record<string, boolean>>(NOTIF_DEFAULTS)
 
-  const toggle = (key: NotifKey) => setSettings(p=>({...p,[key]:!p[key]}))
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      try {
+        const res = await fetch('/api/notifications/preferences')
+        if (!res.ok || !alive) return
+        const j = await res.json() as { global_enabled?: boolean; preferences?: Record<string, boolean> }
+        if (!alive) return
+        setGlobalOn(j.global_enabled ?? true)
+        setPrefs({ ...NOTIF_DEFAULTS, ...(j.preferences ?? {}) })
+      } catch { /* garde les défauts */ }
+    })()
+    return () => { alive = false }
+  }, [])
 
-  const SECTIONS: {
-    label: string; color: string;
-    icon: React.ReactNode;
-    items: { key: NotifKey; label: string; sub: string }[]
-  }[] = [
-    {
-      label:'Entraînement', color:'#06B6D4',
-      icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>,
-      items:[
-        { key:'sessionRemind',    label:'Rappel séance',     sub:'Notification avant ta séance planifiée' },
-        { key:'morningProg',      label:'Programme du matin',sub:'Reçois ton programme chaque matin' },
-        { key:'sessionUpcoming',  label:'Séance à venir',    sub:'Alerte 1h avant une séance clé' },
-      ],
-    },
-    {
-      label:'Récupération', color:'#22c55e',
-      icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/><path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4"/></svg>,
-      items:[
-        { key:'hrv',    label:'Rappel HRV',    sub:'Mesure HRV chaque matin au réveil' },
-        { key:'sleep',  label:'Suivi sommeil', sub:'Rappel pour démarrer le chrono sommeil' },
-        { key:'fatigue',label:'Alerte fatigue',sub:'Notification si ta charge dépasse le seuil' },
-      ],
-    },
-    {
-      label:'Nutrition', color:'#f97316',
-      icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M12 2C8 2 5 5 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>,
-      items:[
-        { key:'meals',           label:'Rappel repas',         sub:'Alertes aux heures de repas' },
-        { key:'hydration',       label:'Hydratation',          sub:'Rappels pour boire tout au long de la journée' },
-        { key:'nutritionTiming', label:'Timing nutritionnel',  sub:'Conseils avant / après séance' },
-      ],
-    },
-    {
-      label:'Performance', color:'#a855f7',
-      icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
-      items:[
-        { key:'weekSummary',          label:'Résumé semaine',      sub:'Bilan hebdo de ta charge et progression' },
-        { key:'monthSummary',         label:'Résumé mois',         sub:'Synthèse mensuelle de tes entraînements' },
-        { key:'progressionDetected',  label:'Progression détectée',sub:'Alerte quand une amélioration est constatée' },
-      ],
-    },
-    {
-      label:'IA', color:'#5b6fff',
-      icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.7"/></svg>,
-      items:[
-        { key:'aiSuggestions', label:'Suggestions IA',           sub:'THW Coach propose des actions à la volée' },
-        { key:'aiAnalysis',    label:'Analyse disponible',       sub:'L\'IA a généré une nouvelle analyse' },
-        { key:'dataReminder',  label:'Rappel compléter données', sub:'Données manquantes pour une meilleure analyse' },
-      ],
-    },
-  ]
+  const patch = (body: { global_enabled?: boolean; preferences?: Record<string, boolean> }, rollback: () => void) => {
+    void fetch('/api/notifications/preferences', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    }).then(r => { if (!r.ok) rollback() }).catch(rollback)
+  }
+
+  const toggleItem = (key: string) => {
+    const next = !(prefs[key] ?? NOTIF_DEFAULTS[key])
+    setPrefs(p => ({ ...p, [key]: next }))
+    patch({ preferences: { [key]: next } }, () => setPrefs(p => ({ ...p, [key]: !next })))
+  }
+
+  const toggleGlobal = () => {
+    const next = !globalOn
+    setGlobalOn(next)
+    patch({ global_enabled: next }, () => setGlobalOn(!next))
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
@@ -609,18 +649,18 @@ function NotificationsBloc() {
             <p style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, color:'var(--text)', margin:'0 0 3px' }}>Notifications</p>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>Activer ou désactiver toutes les notifications</p>
           </div>
-          <Toggle value={globalOn} onChange={setGlobalOn}/>
+          <Toggle value={globalOn} onChange={toggleGlobal}/>
         </div>
       </Card>
 
       {/* Sections */}
       <div className="profile-notif-grid" style={{ opacity:globalOn?1:0.4, pointerEvents:globalOn?'auto':'none', transition:'opacity 0.2s' }}>
-        {SECTIONS.map(sec=>(
-          <Card key={sec.label}>
+        {NOTIF_CATEGORIES.map(sec=>(
+          <Card key={sec.id}>
             {/* Section header */}
             <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:14 }}>
               <div style={{ width:28, height:28, borderRadius:8, background:`${sec.color}15`, border:`1px solid ${sec.color}33`, display:'flex', alignItems:'center', justifyContent:'center', color:sec.color, flexShrink:0 }}>
-                {sec.icon}
+                <sec.Icon size={14} />
               </div>
               <p style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'var(--text)', margin:0 }}>{sec.label}</p>
             </div>
@@ -633,7 +673,7 @@ function NotificationsBloc() {
                     <p style={{ fontSize:13, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{item.label}</p>
                     <p style={{ fontSize:10, color:'var(--text-dim)', margin:0, lineHeight:1.5 }}>{item.sub}</p>
                   </div>
-                  <Toggle value={settings[item.key]} onChange={()=>toggle(item.key)}/>
+                  <Toggle value={prefs[item.key] ?? NOTIF_DEFAULTS[item.key]} onChange={()=>toggleItem(item.key)}/>
                 </div>
               ))}
             </div>

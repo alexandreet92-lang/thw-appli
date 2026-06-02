@@ -7,6 +7,9 @@ import crypto from 'crypto'
 export const dynamic = 'force-dynamic'
 
 const TOPUP_BASE_URL = process.env.TOPUP_BASE_URL ?? 'https://thwcoaching.com/topup'
+// Logo email — URL absolue (les clients mail exigent une URL publique).
+// Variante "light" (cyan foncé) pour fond clair du mail.
+const LOGO_URL = process.env.EMAIL_LOGO_URL ?? 'https://thw-appli.vercel.app/branding/logo-thw-light.png'
 
 export async function POST(req: Request) {
   try {
@@ -57,7 +60,7 @@ export async function POST(req: Request) {
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #0F172A;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <div style="width: 40px; height: 40px; background: #06B6D4; border-radius: 10px; display: inline-block;"></div>
+            <img src="${LOGO_URL}" alt="THW" width="80" height="80" style="display: inline-block; width: 80px; height: 80px; border-radius: 18px;" />
           </div>
           <h1 style="font-size: 22px; font-weight: 600; margin: 0 0 12px; text-align: center;">Achète tes tokens</h1>
           <p style="font-size: 14px; line-height: 1.6; color: #475569; text-align: center; margin: 0 0 24px;">

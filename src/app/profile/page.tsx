@@ -6,6 +6,7 @@ import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { BottomSheet } from '@/components/ui/BottomSheet'
 
 // ══════════════════════════════════════════════════
 // TYPES
@@ -1232,10 +1233,9 @@ function fmtAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: currency.toUpperCase(), maximumFractionDigits: 0 }).format(amount / 100)
 }
 
-function AbonnementSubPage({ onBack }: { onBack: () => void }) {
+function AbonnementContent() {
   const [details,  setDetails]  = useState<SubDetails | null>(null)
   const [loading,  setLoading]  = useState(true)
-  const [closing,  setClosing]  = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
@@ -1247,11 +1247,6 @@ function AbonnementSubPage({ onBack }: { onBack: () => void }) {
       .catch(() => setDetails(null))
       .finally(() => setLoading(false))
   }, [])
-
-  function handleBack() {
-    setClosing(true)
-    setTimeout(() => onBack(), 280)
-  }
 
   async function handlePortal() {
     setPortalLoading(true)
@@ -1284,48 +1279,13 @@ function AbonnementSubPage({ onBack }: { onBack: () => void }) {
   const isCancelling = details?.cancel_at_period_end || details?.stripe?.cancelAtPeriodEnd
 
   return (
-    <div
-      className={closing ? 'sub-page-exit' : 'sub-page-enter'}
-      style={{
-        position:   'fixed',
-        inset:      0,
-        zIndex:     1000,
-        background: 'var(--bg)',
-        overflowY:  'auto',
-        WebkitOverflowScrolling: 'touch',
-        paddingTop: 'calc(var(--header-height) + env(safe-area-inset-top))',
-      }}
-    >
-      {/* Header */}
-      <div style={{
-        display:        'flex',
-        alignItems:     'center',
-        gap:            12,
-        padding:        '16px 20px',
-        borderBottom:   '1px solid var(--border)',
-        position:       'sticky',
-        top:            'calc(var(--header-height) + env(safe-area-inset-top))',
-        background:     'var(--bg)',
-        zIndex:         1,
-      }}>
-        <button
-          onClick={handleBack}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', padding: '4px 8px 4px 0', display: 'flex', alignItems: 'center', gap: 6 }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6"/>
-          </svg>
-        </button>
-        <div>
-          <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--text)' }}>Abonnement</p>
-          <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Plan · crédits · facturation</p>
-        </div>
-      </div>
+    <>
+      <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 4px' }}>Plan · crédits et facturation</p>
 
       {loading ? (
         <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>Chargement…</div>
       ) : (
-        <div style={{ padding: '20px 20px 48px', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ padding: '8px 0 24px', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* ── 1. Carte plan ───────────────────────────── */}
           <div style={{ padding: '18px 20px', borderRadius: 16, background: meta.bg, border: `1px solid ${meta.border}` }}>
@@ -1565,7 +1525,7 @@ function AbonnementSubPage({ onBack }: { onBack: () => void }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
@@ -1611,53 +1571,10 @@ const MODELES: ModeleCard[] = [
   },
 ]
 
-function ModelesSubPage({ onBack }: { onBack: () => void }) {
-  const [closing, setClosing] = useState(false)
-
-  function handleBack() {
-    setClosing(true)
-    setTimeout(() => onBack(), 280)
-  }
-
+function ModelesContent() {
   return (
-    <div
-      className={closing ? 'sub-page-exit' : 'sub-page-enter'}
-      style={{
-        position:   'fixed',
-        inset:      0,
-        zIndex:     1000,
-        background: 'var(--bg)',
-        overflowY:  'auto',
-        WebkitOverflowScrolling: 'touch',
-        paddingTop: 'calc(var(--header-height) + env(safe-area-inset-top))',
-      }}
-    >
-      {/* Header */}
-      <div style={{
-        display:      'flex',
-        alignItems:   'center',
-        gap:          12,
-        padding:      '16px 20px',
-        borderBottom: '1px solid var(--border)',
-        position:     'sticky',
-        top:          'calc(var(--header-height) + env(safe-area-inset-top))',
-        background:   'var(--bg)',
-        zIndex:       1,
-      }}>
-        <button
-          onClick={handleBack}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', padding: '4px 8px 4px 0', display: 'flex', alignItems: 'center', gap: 6 }}
-          aria-label="Retour"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M15 18l-6-6 6-6"/>
-          </svg>
-        </button>
-        <div>
-          <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--text)' }}>Les modèles IA</p>
-          <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Trois niveaux selon ta demande</p>
-        </div>
-      </div>
+    <>
+      <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 16px' }}>Trois niveaux selon ta demande</p>
 
       {/* Body */}
       <div
@@ -1752,12 +1669,9 @@ function ModelesSubPage({ onBack }: { onBack: () => void }) {
       </div>
 
       <style>{`
-        .modeles-sub-page-body { padding: 24px 24px 48px; }
-        @media (max-width: 600px) {
-          .modeles-sub-page-body { padding: 20px 16px 48px; }
-        }
+        .modeles-sub-page-body { padding: 4px 0 24px; }
       `}</style>
-    </div>
+    </>
   )
 }
 
@@ -1796,15 +1710,23 @@ function IASettingsBloc() {
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
 
-      {/* ── Sous-page Modèles (slide-in) ──────────────── */}
-      {modelsPageOpen && (
-        <ModelesSubPage onBack={() => setModelsPageOpen(false)} />
-      )}
+      {/* ── Bottom sheet Modèles ──────────────────────── */}
+      <BottomSheet
+        isOpen={modelsPageOpen}
+        onClose={() => setModelsPageOpen(false)}
+        title="Les modèles IA"
+      >
+        <ModelesContent />
+      </BottomSheet>
 
-      {/* ── Sous-page Abonnement (slide-in) ──────────── */}
-      {subPageOpen && (
-        <AbonnementSubPage onBack={() => setSubPageOpen(false)} />
-      )}
+      {/* ── Bottom sheet Abonnement ───────────────────── */}
+      <BottomSheet
+        isOpen={subPageOpen}
+        onClose={() => setSubPageOpen(false)}
+        title="Abonnement"
+      >
+        <AbonnementContent />
+      </BottomSheet>
 
       {/* ── Modal Upgrade ─────────────────────────────── */}
       {upgradeOpen && (
@@ -2026,10 +1948,6 @@ function ProfileContent() {
       @keyframes profileSlideLeft  { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
       .profile-slide-right { animation: profileSlideRight 280ms cubic-bezier(0.32,0.72,0,1); }
       .profile-slide-left  { animation: profileSlideLeft 280ms cubic-bezier(0.32,0.72,0,1); }
-      @keyframes subpageUp   { from { transform: translateY(100%); } to { transform: translateY(0); } }
-      @keyframes subpageDown { from { transform: translateY(0); }    to { transform: translateY(100%); } }
-      .sub-page-enter { animation: subpageUp 320ms cubic-bezier(0.32,0.72,0,1) forwards; }
-      .sub-page-exit  { animation: subpageDown 280ms cubic-bezier(0.32,0.72,0,1) forwards; }
       .profile-section-container { width: 100%; max-width: 900px; margin: 0 auto; box-sizing: border-box; overflow-wrap: break-word; }
       .profile-tab { font-size: 13px; }
       @media (max-width: 380px) { .profile-tab { font-size: 12px; } }

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&family=Nunito:wght@700&family=Barlow+Condensed:wght@700&family=Bebas+Neue&family=Roboto+Mono:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&family=Nunito:wght@700&family=Barlow+Condensed:wght@600;700&family=Bebas+Neue&family=Roboto+Mono:wght@700&display=swap');
 @import 'leaflet/dist/leaflet.css';
 
 @tailwind base;
@@ -56,7 +56,7 @@
 }
 
 :root, .light {
-  --bg:          #eef2f7;
+  --bg:          #ffffff;
   --bg-alt:      #e4eaf2;
   --bg-card:     #ffffff;
   --bg-card2:    #f8fafc;
@@ -227,6 +227,14 @@ body {
   color: var(--text);
   font-family: 'DM Sans', sans-serif;
   transition: background-color 0.5s ease, color 0.3s ease;
+}
+
+/* Barlow Condensed utility — grands chiffres */
+.stat-number {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 /* .bg-atmosphere removed — solid bg only */

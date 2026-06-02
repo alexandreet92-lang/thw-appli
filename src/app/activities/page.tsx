@@ -14,7 +14,7 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
-import { HelpCircle, ChevronDown, ChevronLeft, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen } from 'lucide-react'
+import { HelpCircle, ChevronDown, ChevronLeft, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen, Menu } from 'lucide-react'
 import { ActivityTitle } from '@/components/activity/ActivityTitle'
 import { Spinner } from '@/components/ui/Spinner'
 import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
@@ -423,7 +423,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   return (
     <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '14px 16px', boxShadow: T.shadow }}>
       <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: T.fontDisplay, fontWeight: 700 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: T.text, lineHeight: 1.2, fontFamily: T.fontDisplay }}>{value}</div>
+      <div className="stat-number" style={{ fontSize: 22, fontWeight: 700, color: T.text, lineHeight: 1.2 }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: T.textSub, marginTop: 3, fontFamily: T.fontBody }}>{sub}</div>}
     </div>
   )
@@ -2864,6 +2864,7 @@ function SectionDonnees({ activities, zones, profile }: {
 }) {
   const [filter, setFilter] = useState<TimeFilter>('4w')
   const [dataTab, setDataTab] = useState<'general' | 'specific'>('general')
+  const [periodMenuOpen, setPeriodMenuOpen] = useState(false)
   const [selectedWeek, setSelectedWeek] = useState<null | { week: string; total: number; time: number; dist: number; count: number; sports: Map<string, number> }>(null)
   const dbMetrics = useMetricsDaily()
   const cutoff = cutoffDate(filter)
@@ -3098,49 +3099,95 @@ function SectionDonnees({ activities, zones, profile }: {
   return (
     <div style={{ overflowX: 'hidden' }}>
       {/* ── SECTION 0: Button bar ── */}
-      <div style={{
-        display: 'flex', gap: isMobile ? 10 : 6, marginBottom: 20,
-        flexDirection: isMobile ? 'column' : 'row',
-        alignItems: isMobile ? 'stretch' : 'center',
-        flexWrap: isMobile ? 'nowrap' : 'wrap',
-      }}>
-        {/* Time filter pills */}
-        <div className={isMobile ? 'comp-chips-scroll' : undefined} style={{
-          display: 'flex', gap: 5,
-          flexWrap: isMobile ? 'nowrap' : 'wrap',
-          overflowX: isMobile ? 'auto' : 'visible',
-        }}>
-          {(Object.keys(TIME_FILTER_LABEL) as TimeFilter[]).map(f => (
-            <button key={f} onClick={() => setFilter(f)} style={{
-              background: filter === f ? 'var(--text)' : 'var(--bg)',
-              color: filter === f ? 'var(--bg)' : 'var(--text-dim)',
-              border: `1px solid ${filter === f ? 'var(--text)' : 'var(--border)'}`,
-              borderRadius: 20, padding: '4px 12px', fontSize: 12, cursor: 'pointer',
-              fontWeight: filter === f ? 600 : 400, transition: 'all 0.15s',
-              flexShrink: 0, whiteSpace: 'nowrap',
+      {isMobile ? (
+        /* ── Contrôles compacts mobile ── */
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', marginBottom: 14 }}>
+          {/* GAUCHE: dropdown période */}
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setPeriodMenuOpen(v => !v)} style={{
+              padding: '6px 12px', borderRadius: 16, border: '1px solid var(--border)',
+              background: 'var(--bg)', fontSize: 13, fontWeight: 500, color: 'var(--text)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
             }}>
-              {TIME_FILTER_LABEL[f]}
+              {TIME_FILTER_LABEL[filter]}
+              <span style={{ fontSize: 10, opacity: 0.6 }}>▼</span>
             </button>
-          ))}
+            {periodMenuOpen && (
+              <>
+                <div onClick={() => setPeriodMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 299 }} />
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 300,
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  overflow: 'hidden', minWidth: 130,
+                }}>
+                {(Object.keys(TIME_FILTER_LABEL) as TimeFilter[]).map(f => (
+                  <button key={f} onClick={() => { setFilter(f); setPeriodMenuOpen(false) }} style={{
+                    width: '100%', padding: '10px 14px', textAlign: 'left',
+                    fontSize: 13, fontWeight: filter === f ? 700 : 500,
+                    background: filter === f ? 'linear-gradient(135deg, #06B6D4, #3B82F6)' : 'transparent',
+                    color: filter === f ? '#fff' : 'var(--text)',
+                    border: 'none', cursor: 'pointer', display: 'block',
+                  }}>
+                    {TIME_FILTER_LABEL[f]}
+                  </button>
+                ))}
+              </div>
+              </>
+            )}
+          </div>
+          {/* DROITE: mini toggle Général/Spécifique */}
+          <div style={{ display: 'flex', background: 'var(--bg-card2)', borderRadius: 16, padding: 2, gap: 0 }}>
+            {(['general', 'specific'] as const).map(tab => (
+              <button key={tab} onClick={() => setDataTab(tab)} style={{
+                padding: '5px 12px', fontSize: 12, fontWeight: 600, borderRadius: 14, border: 'none',
+                cursor: 'pointer', transition: 'all 0.15s',
+                background: dataTab === tab ? 'var(--bg-card)' : 'transparent',
+                color: dataTab === tab ? '#06B6D4' : 'var(--text-dim)',
+                boxShadow: dataTab === tab ? '0 1px 2px rgba(0,0,0,0.10)' : 'none',
+              }}>
+                {tab === 'general' ? 'Général' : 'Spécifique'}
+              </button>
+            ))}
+          </div>
         </div>
-        {/* Divider — masqué sur mobile (les tabs passent en dessous) */}
-        {!isMobile && <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 6px', flexShrink: 0 }} />}
-        {/* Tab pills */}
-        <div style={{ display: 'flex', gap: 5, width: isMobile ? '100%' : undefined }}>
-          {(['general', 'specific'] as const).map(tab => (
-            <button key={tab} onClick={() => setDataTab(tab)} style={{
-              background: dataTab === tab ? 'var(--text)' : 'var(--bg)',
-              color: dataTab === tab ? 'var(--bg)' : 'var(--text-dim)',
-              border: `1px solid ${dataTab === tab ? 'var(--text)' : 'var(--border)'}`,
-              borderRadius: 20, padding: '4px 14px', fontSize: 12, cursor: 'pointer',
-              fontWeight: dataTab === tab ? 600 : 400, transition: 'all 0.15s',
-              flex: isMobile ? 1 : undefined,
-            }}>
-              {tab === 'general' ? 'Général' : 'Spécifique'}
-            </button>
-          ))}
+      ) : (
+        /* ── Contrôles desktop (pills) ── */
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+          {/* Time filter pills */}
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            {(Object.keys(TIME_FILTER_LABEL) as TimeFilter[]).map(f => (
+              <button key={f} onClick={() => setFilter(f)} style={{
+                background: filter === f ? 'linear-gradient(135deg, #06B6D4, #3B82F6)' : 'var(--bg)',
+                color: filter === f ? '#fff' : 'var(--text-dim)',
+                border: `1px solid ${filter === f ? 'transparent' : 'var(--border)'}`,
+                borderRadius: 20, padding: '4px 12px', fontSize: 12, cursor: 'pointer',
+                fontWeight: filter === f ? 600 : 400, transition: 'all 0.15s',
+              }}>
+                {TIME_FILTER_LABEL[f]}
+              </button>
+            ))}
+          </div>
+          {/* Divider */}
+          <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 6px', flexShrink: 0 }} />
+          {/* Tab pills */}
+          <div style={{ display: 'flex', gap: 5 }}>
+            {(['general', 'specific'] as const).map(tab => (
+              <button key={tab} onClick={() => setDataTab(tab)} style={{
+                background: dataTab === tab ? 'linear-gradient(135deg, #06B6D4, #3B82F6)' : 'var(--bg)',
+                color: dataTab === tab ? '#fff' : 'var(--text-dim)',
+                border: `1px solid ${dataTab === tab ? 'transparent' : 'var(--border)'}`,
+                borderRadius: 20, padding: '4px 14px', fontSize: 12, cursor: 'pointer',
+                fontWeight: dataTab === tab ? 600 : 400, transition: 'all 0.15s',
+              }}>
+                {tab === 'general' ? 'Général' : 'Spécifique'}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Détail semaine — BottomSheet */}
       {selectedWeek && (() => {
@@ -3261,7 +3308,7 @@ function SectionDonnees({ activities, zones, profile }: {
                     style={{ transition: 'stroke-dasharray 0.5s ease' }}
                   />
                   {/* Center text */}
-                  <text x={arcCx} y={arcCy - 6} textAnchor="middle" fontSize="22" fontWeight="700" fill="var(--text)">{tsb > 0 ? '+' : ''}{Math.round(tsb)}</text>
+                  <text x={arcCx} y={arcCy - 6} textAnchor="middle" fontSize="22" fontWeight="700" fill="var(--text)" fontFamily="'Barlow Condensed', sans-serif">{tsb > 0 ? '+' : ''}{Math.round(tsb)}</text>
                   <text x={arcCx} y={arcCy + 12} textAnchor="middle" fontSize="10" fill="var(--text-dim)" fontWeight="600" letterSpacing="0.06em">TSB</text>
                 </svg>
                 <div>
@@ -3292,7 +3339,7 @@ function SectionDonnees({ activities, zones, profile }: {
                       padding: '14px 14px 12px', borderTop: `3px solid ${color}`,
                     }}>
                       <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color, marginBottom: 6 }}>{key}</div>
-                      <div style={{ fontSize: 28, fontWeight: 700, color, lineHeight: 1, marginBottom: 4, fontFamily: T.fontMono }}>
+                      <div className="stat-number" style={{ fontSize: 28, fontWeight: 700, color, lineHeight: 1, marginBottom: 4 }}>
                         {val > 0 && key === 'TSB' ? '+' : ''}{val}
                       </div>
                       <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 8 }}>{sub}</div>
@@ -3438,7 +3485,7 @@ function SectionDonnees({ activities, zones, profile }: {
                   return (
                     <div key={label} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '14px 16px' }}>
                       <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-dim)', marginBottom: 6 }}>{label}</div>
-                      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, marginBottom: 4, fontFamily: T.fontMono }}>{fmt(curr)}</div>
+                      <div className="stat-number" style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, marginBottom: 4 }}>{fmt(curr)}</div>
                       <div style={{ fontSize: 11, color: tr.color, fontWeight: 600 }}>
                         {tr.arrow} {tr.pct !== 0 ? `${Math.abs(tr.pct).toFixed(0)}%` : 'Stable'}
                         {tr.pct > 25 && <span style={{ color: '#EF4444', marginLeft: 4, fontSize: 10 }}>surcharge?</span>}
@@ -6195,52 +6242,16 @@ function TrainingPageInner() {
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '12px 16px',
-          borderBottom: '1px solid var(--border)',
         }}>
-          {/* Gauche : dropdown de section animé (mobile uniquement) */}
-          <div ref={sectionDropdownRef} style={{ position: 'relative' }}>
+          {/* Gauche : logo mobile / label desktop */}
+          <div>
             {isMobile ? (
-            <button
-              onClick={() => setSectionOpen(v => !v)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-            >
-              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{active.label}</span>
-              <svg width="12" height="12" viewBox="0 0 12 12"
-                style={{ transform: sectionOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 250ms ease', flexShrink: 0 }}
-              >
-                <path d="M2 4l4 4 4-4" stroke="var(--text-muted)" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-              </svg>
-            </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logos/logo_4bras.png" alt="THW" width={24} height={24} style={{ objectFit: 'contain', opacity: 0.9 }} />
+              </div>
             ) : (
               <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{active.label}</span>
-            )}
-            {/* Menu déroulant animé — mobile uniquement */}
-            {isMobile && (
-            <div style={{
-              position: 'absolute', top: 'calc(100% + 8px)', left: 0, minWidth: 220, zIndex: 200,
-              backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)',
-              borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden',
-              maxHeight: sectionOpen ? '300px' : '0px',
-              opacity: sectionOpen ? 1 : 0,
-              transition: 'max-height 300ms cubic-bezier(0.32,0.72,0,1), opacity 200ms ease',
-              pointerEvents: sectionOpen ? 'auto' : 'none',
-            }}>
-              {NAV.map(n => (
-                <button key={n.id}
-                  onClick={() => { setSection(n.id); setSectionOpen(false) }}
-                  style={{
-                    width: '100%', padding: '14px 16px',
-                    display: 'flex', flexDirection: 'column', gap: 2,
-                    textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer',
-                    backgroundColor: n.id === section ? 'rgba(6,182,212,0.08)' : 'transparent',
-                    borderLeft: n.id === section ? '3px solid #06B6D4' : '3px solid transparent',
-                  }}
-                >
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{n.label}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{n.desc}</span>
-                </button>
-              ))}
-            </div>
             )}
           </div>
 
@@ -6351,6 +6362,44 @@ function TrainingPageInner() {
             </button>
           </div>
         </div>
+
+        {/* ── STRAVA TABS — mobile uniquement ── */}
+        {isMobile && (
+          <div style={{
+            display: 'flex', overflowX: 'auto',
+            background: T.bg, padding: '0 4px 0',
+            scrollbarWidth: 'none',
+          }}>
+            <style>{`.strava-tabs::-webkit-scrollbar{display:none}`}</style>
+            {NAV.map(n => {
+              const isAct = n.id === section
+              return (
+                <button
+                  key={n.id}
+                  onClick={() => setSection(n.id)}
+                  style={{
+                    padding: '12px 16px', fontSize: 14, fontWeight: 600, border: 'none',
+                    background: 'transparent', cursor: 'pointer', whiteSpace: 'nowrap',
+                    color: isAct ? '#06B6D4' : 'var(--text-dim)',
+                    position: 'relative', flexShrink: 0,
+                    transition: 'color 250ms',
+                  }}
+                >
+                  {n.label}
+                  {isAct && (
+                    <span style={{
+                      position: 'absolute', bottom: 0, left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '70%', height: 2.5, borderRadius: 2,
+                      background: 'linear-gradient(90deg, #06B6D4, #3B82F6)',
+                      display: 'block',
+                    }} />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', maxWidth: 1400, margin: '0 auto', position: 'relative' }}>

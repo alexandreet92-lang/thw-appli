@@ -14,7 +14,7 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
-import { HelpCircle, ChevronDown, ChevronLeft, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen, Menu } from 'lucide-react'
+import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen, Menu } from 'lucide-react'
 import { ActivityTitle } from '@/components/activity/ActivityTitle'
 import { Spinner } from '@/components/ui/Spinner'
 import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
@@ -2888,10 +2888,10 @@ function SectionDonnees({ activities, zones, profile }: {
   const atl = dbMetrics.atl ?? localMetrics.atl
   const tsb = dbMetrics.tsb ?? localMetrics.tsb
 
-  // Requête dédiée graphe — indépendante de la pagination, toujours 12 semaines
+  // Requête dédiée graphe — indépendante de la pagination, 52 semaines pour navigation
   const [weeklyActs, setWeeklyActs] = useState<{ started_at: string; moving_time_s: number | null; distance_m: number | null; sport_type: string }[]>([])
   useEffect(() => {
-    const start = new Date(); start.setDate(start.getDate() - 12 * 7)
+    const start = new Date(); start.setDate(start.getDate() - 52 * 7)
     createClient()
       .from('activities')
       .select('started_at, moving_time_s, distance_m, sport_type')
@@ -2970,7 +2970,8 @@ function SectionDonnees({ activities, zones, profile }: {
     return map
   }, [pmcActs])
 
-  const CHART_WEEKS = 12
+  const CHART_WEEKS = 52
+  const [weekBlockOffset, setWeekBlockOffset] = useState(0)
   const weeks = useMemo(() => {
     const now = new Date()
     const map = new Map<string, { total: number; time: number; dist: number; count: number; sports: Map<string, number> }>()
@@ -3501,90 +3502,171 @@ function SectionDonnees({ activities, zones, profile }: {
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14, marginBottom: 16 }}>
 
             {/* LEFT: Volume hebdo */}
-            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <SectionTitle>Volume hebdomadaire</SectionTitle>
-                {/* Sport deltas discrets */}
-                {sports.length > 0 && prevInRange.length > 0 && (() => {
-                  const prevSportMap = new Map<string, number>()
-                  for (const a of prevInRange) {
-                    const sp = normalizeSport(a.sport_type ?? 'other')
-                    prevSportMap.set(sp, (prevSportMap.get(sp) ?? 0) + (a.moving_time_s ?? 0))
-                  }
-                  const periodWeeks = Math.max(1, numWeeks(filter))
-                  return (
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {sports.slice(0, 3).map(([sport, v]) => {
-                        const currAvg = v.time / periodWeeks
-                        const prevTotal = prevSportMap.get(sport) ?? 0
-                        const prevAvg = prevTotal / periodWeeks
-                        if (!prevAvg) return null
-                        const pct = ((currAvg - prevAvg) / prevAvg) * 100
-                        if (Math.abs(pct) < 3) return null
-                        const color = pct > 0 ? '#10B981' : '#F97316'
-                        const arrow = pct > 0 ? '↑' : '↓'
-                        const col = SPORT_COLOR[sport as SportType] ?? '#888'
-                        return (
-                          <div key={sport} style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 3 }}>
-                            <span style={{ width: 6, height: 6, borderRadius: 1, background: col, display: 'inline-block' }} />
-                            <span style={{ color }}>{arrow}{Math.abs(Math.round(pct))}%</span>
-                          </div>
-                        )
-                      }).filter(Boolean)}
-                    </div>
-                  )
-                })()}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 100 }}>
-                {weeks.map((w, i) => {
-                  const barH = Math.max(4, Math.round((w.total / maxTime) * 80))
-                  const isNow = i === weeks.length - 1
-                  const d = new Date(w.week)
-                  const sportEntries = Array.from(w.sports.entries()).sort((a, b) => b[1] - a[1])
-                  return (
-                    <div key={w.week}
-                      onClick={() => w.count > 0 && setSelectedWeek(w)}
-                      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 0, cursor: w.count > 0 ? 'pointer' : 'default' }}>
-                      {w.time > 60 && (
-                        <div style={{ fontSize: 8, color: isNow ? T.accent : T.textMuted, fontWeight: isNow ? 700 : 400 }}>
-                          {fmtDur(w.time)}
+            {(() => {
+              const DISP = 10
+              const maxBlockOffset = Math.max(0, Math.floor((weeks.length - 1) / DISP))
+              const safeOffset = Math.min(weekBlockOffset, maxBlockOffset)
+              const sliceEnd   = weeks.length - safeOffset * DISP
+              const sliceStart = Math.max(0, sliceEnd - DISP)
+              const weekSlice  = weeks.slice(sliceStart, sliceEnd)
+              const maxSliceTime = Math.max(...weekSlice.map(w => w.total), 1)
+              const isLatest = safeOffset === 0
+
+              // Deltas: visible slice vs preceding 10 weeks
+              const prevSlice = weeks.slice(Math.max(0, sliceStart - DISP), sliceStart)
+              const sliceSportMap  = new Map<string, number>()
+              const prevSportMapW  = new Map<string, number>()
+              for (const w of weekSlice)  for (const [sp, t] of w.sports) sliceSportMap.set(sp, (sliceSportMap.get(sp) ?? 0) + t)
+              for (const w of prevSlice)  for (const [sp, t] of w.sports) prevSportMapW.set(sp, (prevSportMapW.get(sp) ?? 0) + t)
+
+              // SVG chart constants
+              const VH_T = 22, VH_B = 20, VH_H = 200, VH_W = 600
+              const VH_CH = VH_H - VH_T - VH_B
+              const SLOT_W = VH_W / DISP
+              const BAR_W = Math.round(SLOT_W * 0.56)
+              const BASE_Y = VH_T + VH_CH
+
+              return (
+                <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <SectionTitle>Volume hebdomadaire</SectionTitle>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {/* Deltas discrets */}
+                      {prevSlice.length > 0 && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {Array.from(sliceSportMap.entries()).slice(0, 3).map(([sp, curr]) => {
+                            const prev = prevSportMapW.get(sp) ?? 0
+                            if (!prev) return null
+                            const pct = ((curr - prev) / prev) * 100
+                            if (Math.abs(pct) < 3) return null
+                            const col  = SPORT_COLOR[sp as SportType] ?? '#888'
+                            const color = pct > 0 ? '#10B981' : '#F97316'
+                            return (
+                              <div key={sp} style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 3 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: 1, background: col, display: 'inline-block' }} />
+                                <span style={{ color }}>{pct > 0 ? '↑' : '↓'}{Math.abs(Math.round(pct))}%</span>
+                              </div>
+                            )
+                          }).filter(Boolean)}
                         </div>
                       )}
-                      <div style={{
-                        width: '80%', height: barH, display: 'flex', flexDirection: 'column-reverse',
-                        borderRadius: '3px 3px 0 0', overflow: 'hidden', minWidth: 5,
-                      }}
-                        onMouseEnter={e => { if (w.count > 0) (e.currentTarget as HTMLDivElement).style.opacity = '0.75' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.opacity = '1' }}>
-                        {sportEntries.map(([sport, sportTime]) => {
-                          const col = SPORT_COLOR[sport as SportType] ?? '#94a3b8'
-                          const pct = w.total > 0 ? (sportTime / w.total) * 100 : 0
-                          return (
-                            <div key={sport} style={{ width: '100%', flexShrink: 0, background: isNow ? col : col + '99', height: `${pct}%` }} />
-                          )
-                        })}
-                        {w.total === 0 && <div style={{ width: '100%', height: '100%', background: T.border }} />}
+                      {/* Navigation */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button
+                          onClick={() => setWeekBlockOffset(v => Math.min(v + 1, maxBlockOffset))}
+                          disabled={safeOffset >= maxBlockOffset}
+                          style={{ width: 24, height: 24, borderRadius: '50%', border: `1px solid ${T.border}`, background: T.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: safeOffset >= maxBlockOffset ? 'default' : 'pointer', opacity: safeOffset >= maxBlockOffset ? 0.3 : 1, padding: 0 }}
+                        >
+                          <ChevronLeft size={12} color={T.textMuted} />
+                        </button>
+                        {weekSlice.length > 0 && (
+                          <span style={{ fontSize: 10, color: T.textMuted, whiteSpace: 'nowrap' }}>
+                            {new Date(weekSlice[0].week).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                            {' – '}
+                            {new Date(weekSlice[weekSlice.length - 1].week).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setWeekBlockOffset(v => Math.max(v - 1, 0))}
+                          disabled={isLatest}
+                          style={{ width: 24, height: 24, borderRadius: '50%', border: `1px solid ${T.border}`, background: T.bgAlt, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isLatest ? 'default' : 'pointer', opacity: isLatest ? 0.3 : 1, padding: 0 }}
+                        >
+                          <ChevronRight size={12} color={T.textMuted} />
+                        </button>
                       </div>
-                      {(i === 0 || i % Math.max(1, Math.floor(weeks.length / 4)) === 0 || isNow) && (
-                        <div style={{ fontSize: 8, color: T.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '100%', textAlign: 'center' }}>
-                          {d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
-                        </div>
-                      )}
                     </div>
-                  )
-                })}
-              </div>
-              {sports.length > 1 && (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                  {sports.map(([sport]) => (
-                    <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: T.textSub }}>
-                      <span style={{ width: 7, height: 7, borderRadius: 2, background: SPORT_COLOR[sport as SportType] ?? '#888', display: 'inline-block' }} />
-                      {SPORT_LABEL[sport as SportType] ?? sport}
-                    </div>
-                  ))}
+                  </div>
+
+                  {/* SVG chart */}
+                  <svg
+                    viewBox={`0 0 ${VH_W} ${VH_H}`}
+                    preserveAspectRatio="none"
+                    style={{ width: '100%', height: 200, display: 'block', overflow: 'visible' }}
+                  >
+                    {/* Baseline */}
+                    <line x1={0} y1={BASE_Y} x2={VH_W} y2={BASE_Y} stroke="var(--border)" strokeWidth="1" />
+
+                    {weekSlice.map((w, i) => {
+                      const barH = w.total > 0 ? Math.max(3, (w.total / maxSliceTime) * (VH_CH - 6)) : 0
+                      const isNow = isLatest && i === weekSlice.length - 1
+                      const bx    = i * SLOT_W + (SLOT_W - BAR_W) / 2
+                      const sportEntries = Array.from(w.sports.entries()).sort((a, b) => b[1] - a[1])
+                      const durLabel = w.time >= 60 ? fmtDur(w.time) : ''
+                      const dateLabel = new Date(w.week).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+                      const labelY = Math.max(VH_T + 11, BASE_Y - barH - 4)
+
+                      // Stack segments bottom → top
+                      let segY = BASE_Y
+                      const segs = sportEntries.map(([sp, spTime]) => {
+                        const h = Math.max(0, (spTime / maxSliceTime) * (VH_CH - 6))
+                        const seg = { sp, h, y: segY - h }
+                        segY -= h
+                        return seg
+                      })
+
+                      return (
+                        <g key={w.week} onClick={() => w.count > 0 && setSelectedWeek(w)}
+                          style={{ cursor: w.count > 0 ? 'pointer' : 'default' }}
+                          onMouseEnter={e => { const el = e.currentTarget; el.style.opacity = w.count > 0 ? '0.75' : '1' }}
+                          onMouseLeave={e => { (e.currentTarget as SVGGElement).style.opacity = '1' }}
+                        >
+                          {/* Empty bar placeholder */}
+                          {w.total === 0 && (
+                            <rect x={bx} y={BASE_Y - 2} width={BAR_W} height={2} fill="var(--border)" rx="1" />
+                          )}
+                          {/* Sport segments */}
+                          {segs.map((seg, si) => (
+                            <rect
+                              key={seg.sp}
+                              x={bx} y={seg.y} width={BAR_W} height={Math.max(0.5, seg.h)}
+                              fill={isNow ? (SPORT_COLOR[seg.sp as SportType] ?? '#94a3b8') : ((SPORT_COLOR[seg.sp as SportType] ?? '#94a3b8') + 'AA')}
+                              rx={si === 0 ? 2 : 0}
+                            />
+                          ))}
+                          {/* Duration label above bar */}
+                          {durLabel && (
+                            <text
+                              x={bx + BAR_W / 2} y={labelY}
+                              textAnchor="middle" fontSize="8"
+                              fill={isNow ? 'var(--text)' : 'var(--text-dim)'}
+                              fontWeight={isNow ? '700' : '400'}
+                            >
+                              {durLabel}
+                            </text>
+                          )}
+                          {/* Date label below */}
+                          <text
+                            x={bx + BAR_W / 2} y={VH_H - 4}
+                            textAnchor="middle" fontSize="8"
+                            fill={isNow ? 'var(--text)' : 'var(--text-dim)'}
+                          >
+                            {dateLabel}
+                          </text>
+                        </g>
+                      )
+                    })}
+                  </svg>
+
+                  {/* Legend */}
+                  {(() => {
+                    const sportSet = new Set<string>()
+                    for (const w of weekSlice) for (const [sp] of w.sports) sportSet.add(sp)
+                    const sportList = Array.from(sportSet)
+                    return sportList.length > 1 ? (
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                        {sportList.map(sp => (
+                          <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: T.textSub }}>
+                            <span style={{ width: 7, height: 7, borderRadius: 2, background: SPORT_COLOR[sp as SportType] ?? '#888', display: 'inline-block' }} />
+                            {SPORT_LABEL[sp as SportType] ?? sp}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null
+                  })()}
                 </div>
-              )}
-            </div>
+              )
+            })()}
 
             {/* RIGHT: Polarisation */}
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>

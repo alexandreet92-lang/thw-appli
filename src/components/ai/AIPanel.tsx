@@ -19,6 +19,8 @@ import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import ActiveCompetencesBadge from '@/components/ai-coach/ActiveCompetencesBadge'
 import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
 import TopupEmailModal from '@/components/topup/TopupEmailModal'
+import { MODEL_BADGE, quickActionEstimate, fmtEstimate } from '@/lib/quick-actions/models'
+import { getModelMultiplier } from '@/lib/tokens/multipliers'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -1249,9 +1251,10 @@ function ModelEffigy({ model, isAnimating, size = 18, color }: {
 
 // ── ModelPicker — bouton rond + dropdown monochrome ──────────
 
-function ModelPicker({ model, onChange }: {
+function ModelPicker({ model, onChange, disabled = false }: {
   model: THWModel
   onChange: (m: THWModel) => void
+  disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -1273,13 +1276,15 @@ function ModelPicker({ model, onChange }: {
 
       {/* Bouton trigger — rond, monochrome */}
       <button
-        onClick={() => setOpen(p => !p)}
-        title={`Modèle : ${cfg.name}`}
+        onClick={() => { if (!disabled) setOpen(p => !p) }}
+        disabled={disabled}
+        title={disabled ? 'Modèle imposé pendant la génération' : `Modèle : ${cfg.name}`}
         style={{
           width: 28, height: 28, borderRadius: '50%',
           border: `1px solid ${open ? 'var(--ai-mid)' : 'var(--ai-border)'}`,
           background: open ? 'var(--ai-bg2)' : 'transparent',
-          cursor: 'pointer',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          opacity: disabled ? 0.45 : 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'all 0.12s',
         }}
@@ -11307,6 +11312,7 @@ function PlusMenu({
   onClosePanel,
   onCamera,
   onFiles,
+  onForceModel,
 }: {
   onPrepare:    (label: string, apiPrompt: string) => void
   onEnriched:   (id: string, label: string) => void
@@ -11315,6 +11321,7 @@ function PlusMenu({
   onClosePanel: () => void
   onCamera:     () => void
   onFiles:      () => void
+  onForceModel: (m: THWModel) => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
@@ -11525,13 +11532,14 @@ function PlusMenu({
                   <button
                     key={i}
                     onClick={() => {
+                      onForceModel(qa.model)
                       onClose()
                       if (qa.flow) onFlow(qa.flow)
                       else if (qa.enrichedId) onEnriched(qa.enrichedId, qa.label)
                       else if (qa.prompt) onPrepare(qa.label, qa.prompt)
                     }}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
+                      display: 'flex', alignItems: 'flex-start', gap: 8,
                       width: '100%', padding: '8px 10px', borderRadius: 8, marginBottom: 2,
                       fontSize: 13, color: 'var(--text)', cursor: 'pointer',
                       border: 'none', background: 'transparent', textAlign: 'left',
@@ -11539,10 +11547,15 @@ function PlusMenu({
                     }}
                     onMouseEnter={hoverOn} onMouseLeave={hoverOff}
                   >
-                    <span style={{ flexShrink: 0, display: 'flex' }}>{actionIcon(qa.flow)}</span>
-                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{qa.label}</span>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)', border: '0.5px solid var(--border)', borderRadius: 4, padding: '1px 5px', flexShrink: 0 }}>
-                      {MODEL_CONFIGS[qa.model].name}
+                    <span style={{ flexShrink: 0, display: 'flex', marginTop: 2 }}>{actionIcon(qa.flow)}</span>
+                    <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{qa.label}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 10, fontWeight: 500, color: MODEL_BADGE[qa.model].color, background: MODEL_BADGE[qa.model].bg, border: `0.5px solid ${MODEL_BADGE[qa.model].border}`, borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>
+                          {MODEL_CONFIGS[qa.model].name}
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>· {fmtEstimate(quickActionEstimate(qa.flow))}</span>
+                      </span>
                     </span>
                   </button>
                 ))}
@@ -18225,6 +18238,7 @@ export default function AIPanel({
   const [histOpen,    setHistOpen]    = useState(false)
   const [plusOpen,    setPlusOpen]    = useState(false)
   const [topupOpen,   setTopupOpen]   = useState(false)
+  const [tokenLimitMsg, setTokenLimitMsg] = useState<string | null>(null)
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
   const [activeQA,    setActiveQA]    = useState<ActiveQuickAction | null>(null)
   const [isDesktop,   setIsDesktop]   = useState(false)
@@ -19086,19 +19100,14 @@ export default function AIPanel({
         return
       }
 
-      // ── 402 Limite de tokens atteinte ──────────────────────────
+      // ── 402 Limite de tokens atteinte → modal contextualisé ────
       if (res.status === 402) {
-        let tokMsg = '⚠️ **Limite de tokens atteinte.** Recharge pour continuer.'
+        let errTxt = 'Limite hebdomadaire atteinte.'
         try {
           const td = await res.json() as { error?: string }
-          if (td.error) tokMsg = `⚠️ **Limite atteinte** — ${td.error}`
+          if (td.error) errTxt = td.error
         } catch { /* fallback */ }
-        tokMsg += '\n\n👉 Clique sur la jauge (à gauche du micro) pour acheter des tokens.'
-        const tokErrMsg: AIMsg = { id: genId(), role: 'assistant', content: tokMsg, ts: Date.now() }
-        setConvs(prev => prev.map(c =>
-          c.id === cid ? { ...c, msgs: [...c.msgs, tokErrMsg], updatedAt: Date.now() } : c
-        ))
-        setTopupOpen(true)
+        setTokenLimitMsg(errTxt)
         setLoading(false)
         return
       }
@@ -20566,6 +20575,7 @@ export default function AIPanel({
                       onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f) }}
                       onClose={() => setPlusOpen(false)}
                       onClosePanel={onClose}
+                      onForceModel={setModel}
                       onCamera={() => cameraRef.current?.click()}
                       onFiles={() => filesRef.current?.click()}
                     />
@@ -20576,13 +20586,13 @@ export default function AIPanel({
                 <FontPicker current={chatFontFamily} onChange={setChatFontFamily} />
 
                 {/* Sélecteur modèle */}
-                <ModelPicker model={model} onChange={setModel} />
+                <ModelPicker model={model} onChange={setModel} disabled={loading} />
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
 
                 {/* Jauge tokens — à gauche du micro */}
-                <TokenUsageBubble onBuyTokens={() => setTopupOpen(true)} />
+                <TokenUsageBubble onBuyTokens={() => setTopupOpen(true)} currentModel={model} />
 
                 {/* Mic button — B3 (hidden if not supported) */}
                 {speechSupported && !loading && (
@@ -20661,6 +20671,41 @@ export default function AIPanel({
 
       {/* ── Modal d'achat de tokens ───────────────────────── */}
       <TopupEmailModal isOpen={topupOpen} onClose={() => setTopupOpen(false)} />
+
+      {/* ── Modal limite de tokens atteinte ───────────────── */}
+      {tokenLimitMsg && (() => {
+        const mult = getModelMultiplier(model)
+        const mName = MODEL_CONFIGS[model].name
+        return (
+          <div onClick={() => setTokenLimitMsg(null)} style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: 420, maxWidth: '100%', background: 'var(--bg-card)', borderRadius: 16, padding: 24, border: '0.5px solid var(--border-mid)', boxShadow: '0 24px 70px rgba(0,0,0,0.5)' }}>
+              <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Limite atteinte</h3>
+              <p style={{ margin: '0 0 6px', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55 }}>{tokenLimitMsg}</p>
+              {mult > 1 && (
+                <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55 }}>
+                  Tu utilises actuellement <strong style={{ color: 'var(--text)' }}>{mName} (× {mult})</strong>, qui épuise ton quota {mult}× plus vite. Passe sur Hermès pour économiser, ou recharge.
+                </p>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {model !== 'hermes' && (
+                  <button onClick={() => { setModel('hermes'); setTokenLimitMsg(null) }}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '0.5px solid var(--border-mid)', background: 'transparent', color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                    Switcher sur Hermès (× 1)
+                  </button>
+                )}
+                <button onClick={() => { setTokenLimitMsg(null); setTopupOpen(true) }}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                  Acheter des tokens
+                </button>
+                <button onClick={() => setTokenLimitMsg(null)}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '0.5px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Popup sélection de texte ──────────────────────── */}
       {selPopup && (

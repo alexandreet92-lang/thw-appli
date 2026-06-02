@@ -27,11 +27,12 @@ export const PACKS: Pack[] = [
   { id: 'elite',       name: 'Elite',       tokens: 1000000,  tokensLabel: '1 000 000', price: 25, vol: 1.0,  per: '2,50 €/100k', save: '−37%', desc: "Pour un usage prolongé, sans compromis.", featured: false, accent: '#5b6fff' },
 ]
 
+// Estimations pondérées par modèle (× multiplicateur : Hermès ×1, Athéna ×3, Zeus ×8)
 export const USAGES = [
-  { Ic: MessageCircle, title: 'Question au coach',    amt: '≈ 3 000',  desc: 'Conseils, recommandations, échanges courts.', c: '#06B6D4' },
-  { Ic: Activity,      title: "Analyse d'une séance", amt: '≈ 8 000',  desc: 'Lecture des données + interprétation détaillée.', c: '#ef4444' },
-  { Ic: Calendar,      title: "Plan d'entraînement",  amt: '≈ 25 000', desc: 'Programme structuré sur plusieurs semaines.', c: '#5b6fff' },
-  { Ic: Sunrise,       title: 'Briefing matinal',     amt: '≈ 10 000', desc: 'Avec recherche web et données du jour.', c: '#f59e0b' },
+  { Ic: MessageCircle, title: 'Question à Hermès',        amt: '≈ 3 000',  desc: 'Conseils rapides, échanges courts (×1).', c: '#16A34A' },
+  { Ic: Activity,      title: 'Analyse de séance · Athéna', amt: '≈ 12 000', desc: '4 000 réels × 3 — lecture + interprétation détaillée.', c: '#06B6D4' },
+  { Ic: Calendar,      title: "Plan d'entraînement · Zeus", amt: '≈ 64 000', desc: '8 000 réels × 8 — programme structuré sur plusieurs semaines.', c: '#A855F7' },
+  { Ic: Sunrise,       title: 'Briefing matinal · Athéna',  amt: '≈ 15 000', desc: 'Avec recherche web et données du jour (×3).', c: '#f59e0b' },
 ]
 
 // ── Count-up (avec filet de sécurité) ──

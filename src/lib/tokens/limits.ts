@@ -6,6 +6,7 @@
 
 import { createServiceClient } from '@/lib/supabase/server'
 import { getUserTier } from '@/lib/subscriptions/check-quota'
+import { getModelMultiplier } from './multipliers'
 
 export interface TokenLimits {
   monthly:     { used: number; limit: number; resets_at: string }
@@ -110,24 +111,30 @@ export async function getUserTokenLimits(userId: string): Promise<TokenLimits> {
 interface TokenMeta { conversationId?: string; messageId?: string; model?: string }
 
 /**
- * Insère la consommation réelle (best-effort, ne rejette jamais).
- * Débite d'abord le plan, puis les tokens bonus si le plan est épuisé.
+ * Insère la consommation (best-effort, ne rejette jamais).
+ * `rawTokens` = tokens réels API ; on stocke le PONDÉRÉ (× multiplicateur du
+ * modèle) dans tokens_used, le réel dans raw_tokens. Débite plan puis bonus.
  */
-export async function recordTokenUsage(userId: string, tokensUsed: number, meta: TokenMeta = {}): Promise<void> {
-  if (tokensUsed <= 0) return
+export async function recordTokenUsage(userId: string, rawTokens: number, meta: TokenMeta = {}): Promise<void> {
+  if (rawTokens <= 0) return
   try {
     const sb = createServiceClient()
+    const mult = meta.model ? getModelMultiplier(meta.model) : 1
+    const weighted = Math.ceil(rawTokens * mult)
     const limits = await getUserTokenLimits(userId)
     const remainingPlan = Math.max(0, limits.monthly.limit - limits.monthly.used)
-    const base = { user_id: userId, conversation_id: meta.conversationId ?? null, message_id: meta.messageId ?? null, model: meta.model ?? null }
+    const base = {
+      user_id: userId, conversation_id: meta.conversationId ?? null,
+      message_id: meta.messageId ?? null, model: meta.model ?? null, multiplier: mult,
+    }
 
-    if (remainingPlan >= tokensUsed) {
-      await sb.from('token_usage').insert({ ...base, tokens_used: tokensUsed, source: 'plan' })
+    if (remainingPlan >= weighted) {
+      await sb.from('token_usage').insert({ ...base, tokens_used: weighted, raw_tokens: rawTokens, source: 'plan' })
     } else {
       const fromPlan = remainingPlan
-      const fromBonus = tokensUsed - fromPlan
-      if (fromPlan > 0) await sb.from('token_usage').insert({ ...base, tokens_used: fromPlan, source: 'plan' })
-      await sb.from('token_usage').insert({ ...base, tokens_used: fromBonus, source: 'bonus' })
+      const fromBonus = weighted - fromPlan
+      if (fromPlan > 0) await sb.from('token_usage').insert({ ...base, tokens_used: fromPlan, raw_tokens: Math.round(fromPlan / mult), source: 'plan' })
+      await sb.from('token_usage').insert({ ...base, tokens_used: fromBonus, raw_tokens: Math.round(fromBonus / mult), source: 'bonus' })
       await sb.from('user_token_wallet')
         .update({ bonus_tokens: Math.max(0, limits.bonus_tokens - fromBonus), updated_at: new Date().toISOString() })
         .eq('user_id', userId)
@@ -147,24 +154,28 @@ export async function consumeTokens(
   messageId?: string,
   model?: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // Pondération par le multiplicateur du modèle (tokensUsed = tokens réels)
+  const mult = model ? getModelMultiplier(model) : 1
+  const weighted = Math.ceil(tokensUsed * mult)
   const limits = await getUserTokenLimits(userId)
 
-  if (tokensUsed > limits.per_request) {
-    return { success: false, error: `Cette demande est trop volumineuse (${tokensUsed} tokens). Maximum par requête : ${limits.per_request} tokens.` }
+  if (weighted > limits.per_request) {
+    return { success: false, error: `Cette demande est trop volumineuse (${weighted} tokens). Maximum par requête : ${limits.per_request} tokens.` }
   }
 
   const remainingMonthly = limits.monthly.limit - limits.monthly.used
   const remainingRolling = limits.rolling_6h.limit - limits.rolling_6h.used
   const totalAvailable = remainingMonthly + limits.bonus_tokens
 
-  if (tokensUsed > remainingRolling) {
+  if (weighted > remainingRolling) {
     const hours = Math.ceil((new Date(limits.rolling_6h.resets_at).getTime() - Date.now()) / (60 * 60 * 1000))
     return { success: false, error: `Limite de 6h atteinte. Réinitialisation dans ${Math.max(1, hours)}h.` }
   }
-  if (tokensUsed > totalAvailable) {
+  if (weighted > totalAvailable) {
     return { success: false, error: 'Limite hebdomadaire atteinte. Achète des tokens supplémentaires ou attends le reset.' }
   }
 
+  // recordTokenUsage repondère en interne → on lui passe les tokens RÉELS
   await recordTokenUsage(userId, tokensUsed, { conversationId, messageId, model })
   return { success: true }
 }

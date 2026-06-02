@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { CircleGauge, ShoppingBag, ChevronRight } from 'lucide-react'
+import { getModelMultiplier, getModelDisplayName } from '@/lib/tokens/multipliers'
 
 interface TokenLimits {
   monthly:     { used: number; limit: number; resets_at: string }
@@ -60,7 +61,7 @@ function Gauge({ label, used, limit, resetLabel }: { label: string; used: number
   )
 }
 
-export default function TokenUsageBubble({ onBuyTokens }: { onBuyTokens: () => void }) {
+export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena' }: { onBuyTokens: () => void; currentModel?: string }) {
   const [open, setOpen] = useState(false)
   const [limits, setLimits] = useState<TokenLimits | null>(null)
   const ref = useRef<HTMLDivElement>(null)
@@ -117,6 +118,31 @@ export default function TokenUsageBubble({ onBuyTokens }: { onBuyTokens: () => v
               </div>
             </>
           )}
+          {/* Modèle actuel + multiplicateurs */}
+          {(() => {
+            const mult = getModelMultiplier(currentModel)
+            const name = getModelDisplayName(currentModel)
+            const cell = (m: string, label: string) => {
+              const active = getModelDisplayName(currentModel) === label
+              return <span style={{ color: active ? 'var(--text)' : 'var(--text-dim)', fontWeight: active ? 500 : 400 }}>{label} ×{m}</span>
+            }
+            return (
+              <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Modèle actuel</span>
+                  <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 500, color: '#06B6D4', background: 'rgba(6,182,212,0.10)', border: '0.5px solid rgba(6,182,212,0.25)' }}>{name}</span>
+                </div>
+                {mult > 1 && (
+                  <p style={{ fontSize: 11, color: 'var(--text-mid)', lineHeight: 1.5, margin: '6px 0 8px' }}>
+                    1 message {name} consomme environ {mult} fois plus vite ton quota qu&apos;un message Hermès.
+                  </p>
+                )}
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.3px', display: 'flex', gap: 6 }}>
+                  {cell('1', 'Hermès')}<span>·</span>{cell('3', 'Athéna')}<span>·</span>{cell('8', 'Zeus')}
+                </div>
+              </div>
+            )
+          })()}
           <div style={{ height: 1, background: 'var(--border)' }} />
           <button
             onClick={() => { setOpen(false); onBuyTokens() }}

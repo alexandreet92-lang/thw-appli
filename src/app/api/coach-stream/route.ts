@@ -31,6 +31,7 @@ import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
 import { TIER_LIMITS, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/tier-limits'
 import { getActiveCompetencesPrompt } from '@/lib/ai/competences'
 import { getUserTokenLimits, recordTokenUsage } from '@/lib/tokens/limits'
+import { getModelMultiplier } from '@/lib/tokens/multipliers'
 
 // ── System prompts côté serveur ───────────────────────────────
 
@@ -314,9 +315,11 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Pré-check tokens (fail-open : n'interrompt jamais en cas d'erreur) ──
+  const tokenModelKey = (chatBody as { modelId?: string }).modelId ?? 'athena'
   try {
     const tl = await getUserTokenLimits(userId)
-    const estimate = Math.ceil((JSON.stringify(anthropicMessages).length + systemWithTools.length) / 4)
+    const rawEstimate = Math.ceil((JSON.stringify(anthropicMessages).length + systemWithTools.length) / 4)
+    const estimate = Math.ceil(rawEstimate * getModelMultiplier(tokenModelKey))
     const remainingRolling = tl.rolling_6h.limit - tl.rolling_6h.used
     const remainingTotal = (tl.monthly.limit - tl.monthly.used) + tl.bonus_tokens
     if (estimate > remainingRolling) {
@@ -339,10 +342,10 @@ export async function POST(req: NextRequest) {
     tool_choice: { type: 'auto' },
   })
 
-  // ── Enregistrement de la consommation réelle (best-effort) ──
+  // ── Enregistrement de la consommation réelle (best-effort, pondéré modèle) ──
   try {
     const total = (response.usage?.input_tokens ?? 0) + (response.usage?.output_tokens ?? 0)
-    if (total > 0) void recordTokenUsage(userId, total, { model })
+    if (total > 0) void recordTokenUsage(userId, total, { model: tokenModelKey })
   } catch (e) {
     console.error('[coach-stream] recordTokenUsage failed:', e)
   }

@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings } from 'lucide-react'
+import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 // ══════════════════════════════════════════════════
@@ -185,14 +185,6 @@ function useConnections() {
     { id:'wahoo',        provider:'wahoo',    label:'Wahoo',        connected:false, lastSync:'', loading:false, available:true },
     { id:'polar',        provider:'polar',    label:'Polar',        connected:false, lastSync:'', loading:false, available:true },
     { id:'withings',     provider:'withings', label:'Withings',     connected:false, lastSync:'', loading:false, available:true },
-    { id:'apple_health', label:'Apple Health', connected:false, lastSync:'', loading:false, available:false },
-    { id:'google_fit',   label:'Google Fit',   connected:false, lastSync:'', loading:false, available:false },
-    { id:'fitbit',       label:'Fitbit',       connected:false, lastSync:'', loading:false, available:false },
-    { id:'hrv4training', label:'HRV4Training', connected:false, lastSync:'', loading:false, available:false },
-    { id:'elite_hrv',    label:'Elite HRV',    connected:false, lastSync:'', loading:false, available:false },
-    { id:'oura',         label:'Oura',         connected:false, lastSync:'', loading:false, available:false },
-    { id:'myfitnesspal', label:'MyFitnessPal', connected:false, lastSync:'', loading:false, available:false },
-    { id:'cronometer',   label:'Cronometer',   connected:false, lastSync:'', loading:false, available:false },
   ])
 
   const reload = useCallback(async () => {
@@ -323,6 +315,163 @@ function useAthleteSports() {
 }
 
 // ══════════════════════════════════════════════════
+// MATÉRIEL BLOC — vélos + chaussures (dans l'onglet Profil)
+// ══════════════════════════════════════════════════
+
+interface GearStatsT { total_sessions: number; total_km: number; total_hours: number }
+interface BikeT { id: string; name: string; brand: string | null; model: string | null; weight_kg: number | null; stats?: GearStatsT }
+interface ShoeT { id: string; name: string; brand: string | null; stats?: GearStatsT }
+
+const fmtFR = (n: number) => n.toLocaleString('fr-FR')
+const ZERO_STATS: GearStatsT = { total_sessions: 0, total_km: 0, total_hours: 0 }
+
+function statsLine(s: GearStatsT) {
+  return `${fmtFR(s.total_sessions)} séance${s.total_sessions > 1 ? 's' : ''} · ${fmtFR(s.total_km)} km · ${fmtFR(s.total_hours)} h`
+}
+
+function GearBloc() {
+  const [bikes, setBikes] = useState<BikeT[]>([])
+  const [shoes, setShoes] = useState<ShoeT[]>([])
+  const [modal, setModal] = useState<null | 'bike' | 'shoes'>(null)
+  const [form, setForm] = useState({ name: '', brand: '', model: '', weight: '' })
+  const [saving, setSaving] = useState(false)
+  const [confirmDel, setConfirmDel] = useState<null | { type: 'bike' | 'shoes'; id: string; label: string }>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch('/api/gear')
+      if (!r.ok) return
+      const j = await r.json() as { bikes?: BikeT[]; shoes?: ShoeT[] }
+      setBikes(j.bikes ?? [])
+      setShoes(j.shoes ?? [])
+    } catch { /* silencieux */ }
+  }, [])
+  useEffect(() => { void load() }, [load])
+
+  const openAdd = (type: 'bike' | 'shoes') => { setForm({ name: '', brand: '', model: '', weight: '' }); setModal(type) }
+
+  const submit = async () => {
+    if (!form.name.trim() || saving) return
+    if (modal === 'bike' && form.weight) {
+      const w = Number(form.weight.replace(',', '.'))
+      if (!Number.isFinite(w) || w <= 0 || w > 30) return
+    }
+    setSaving(true)
+    const data = modal === 'bike'
+      ? { name: form.name, brand: form.brand, model: form.model, weight_kg: form.weight ? Number(form.weight.replace(',', '.')) : undefined }
+      : { name: form.name, brand: form.brand }
+    try {
+      const r = await fetch('/api/gear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: modal, data }) })
+      if (r.ok) { setModal(null); await load() }
+    } finally { setSaving(false) }
+  }
+
+  const doDelete = async () => {
+    if (!confirmDel) return
+    const c = confirmDel
+    setConfirmDel(null)
+    await fetch('/api/gear', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: c.type, id: c.id }) }).catch(() => {})
+    await load()
+  }
+
+  const gearCard = (icon: React.ReactNode, title: string, sub: string, onDel: () => void) => (
+    <div style={{ position: 'relative', background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 10, padding: '14px 16px', marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, paddingRight: 28 }}>
+        <span style={{ color: 'var(--text-mid)', display: 'flex', flexShrink: 0 }}>{icon}</span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</span>
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '6px 0 0', paddingLeft: 27 }}>{sub}</p>
+      <button onClick={onDel} aria-label="Supprimer" title="Supprimer"
+        style={{ position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+      >✕</button>
+    </div>
+  )
+
+  const addBtn = (label: string, onClick: () => void) => (
+    <button onClick={onClick}
+      style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px dashed var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', transition: 'color 0.14s, border-color 0.14s' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#06B6D4'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#06B6D4' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-mid)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-mid)' }}
+    >{label}</button>
+  )
+
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'DM Sans,sans-serif', marginBottom: 10 }
+
+  return (
+    <Card>
+      <CardTitle icon={<Package size={15} />}>Matériel</CardTitle>
+
+      {/* Vélos */}
+      <SectionLabel>Vélos</SectionLabel>
+      <div style={{ marginBottom: 8 }}>
+        {bikes.length === 0 && <p style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', margin: '0 0 10px' }}>Aucun vélo enregistré.</p>}
+        {bikes.map(b => gearCard(
+          <Bike size={16} />,
+          `${b.name}${b.weight_kg ? `  ·  ${String(b.weight_kg).replace('.', ',')} kg` : ''}`,
+          statsLine(b.stats ?? ZERO_STATS),
+          () => setConfirmDel({ type: 'bike', id: b.id, label: b.name }),
+        ))}
+      </div>
+      {addBtn('+ Ajouter un vélo', () => openAdd('bike'))}
+
+      {/* Chaussures */}
+      <div style={{ marginTop: 18 }}>
+        <SectionLabel>Chaussures running</SectionLabel>
+        <div style={{ marginBottom: 8 }}>
+          {shoes.length === 0 && <p style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', margin: '0 0 10px' }}>Aucune paire enregistrée.</p>}
+          {shoes.map(s => gearCard(
+            <Footprints size={16} />,
+            `${s.name}${s.brand ? `  ·  ${s.brand}` : ''}`,
+            statsLine(s.stats ?? ZERO_STATS),
+            () => setConfirmDel({ type: 'shoes', id: s.id, label: s.name }),
+          ))}
+        </div>
+        {addBtn('+ Ajouter des chaussures', () => openAdd('shoes'))}
+      </div>
+
+      {/* Modal d'ajout */}
+      {modal && (
+        <div onClick={() => setModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 14, border: '1px solid var(--border-mid)', padding: 24 }}>
+            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: 'var(--text)' }}>
+              {modal === 'bike' ? 'Ajouter un vélo' : 'Ajouter des chaussures'}
+            </h3>
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nom *" style={inputStyle} />
+            <input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} placeholder="Marque" style={inputStyle} />
+            {modal === 'bike' && <>
+              <input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} placeholder="Modèle" style={inputStyle} />
+              <input value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} placeholder="Poids (kg)" inputMode="decimal" style={inputStyle} />
+            </>}
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <button onClick={() => setModal(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Annuler</button>
+              <button onClick={() => void submit()} disabled={!form.name.trim() || saving} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: form.name.trim() && !saving ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--border)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: form.name.trim() && !saving ? 'pointer' : 'not-allowed', fontFamily: 'Syne,sans-serif', opacity: saving ? 0.7 : 1 }}>
+                {saving ? '…' : 'Ajouter'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation suppression */}
+      {confirmDel && (
+        <div onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 14, border: '1px solid var(--border-mid)', padding: 22 }}>
+            <p style={{ fontSize: 14, color: 'var(--text)', margin: '0 0 6px', fontWeight: 600 }}>Supprimer « {confirmDel.label} » ?</p>
+            <p style={{ fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.5 }}>Cet équipement sera retiré de ton profil.</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setConfirmDel(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Annuler</button>
+              <button onClick={() => void doDelete()} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Supprimer</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ══════════════════════════════════════════════════
 // PROFIL BLOC — Onglet 1
 // ══════════════════════════════════════════════════
 
@@ -381,7 +530,6 @@ function ProfilBloc() {
     ? (parseFloat(profileData.weight_kg)/((parseFloat(profileData.height_cm)/100)**2)).toFixed(1) : '—'
 
   const availableConns = connections.filter(c=>c.available)
-  const soonConns      = connections.filter(c=>!c.available)
 
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
@@ -484,6 +632,9 @@ function ProfilBloc() {
         </div>
       </Card>
 
+      {/* ── Matériel ─────────────────────────────────── */}
+      <GearBloc/>
+
       {/* ── Connexions ───────────────────────────────── */}
       <Card>
         <CardTitle icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>}>Connexions</CardTitle>
@@ -508,16 +659,6 @@ function ProfilBloc() {
                 </button>
               </div>
             </div>
-          ))}
-        </div>
-
-        <SectionLabel>Bientôt disponible</SectionLabel>
-        <div style={{ display:'flex', flexWrap:'wrap' as const, gap:7 }}>
-          {soonConns.map(c=>(
-            <span key={c.id} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:20, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <AppLogo id={c.id} size={16}/>
-              <span style={{ fontSize:11, color:'var(--text-dim)' }}>{c.label}</span>
-            </span>
           ))}
         </div>
       </Card>

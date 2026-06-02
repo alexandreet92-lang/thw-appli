@@ -1,7 +1,7 @@
 'use client'
 
-export const MMP_TABLE_DURATIONS = [1, 5, 10, 30, 60, 180, 300, 480, 600, 900, 1200, 1800, 2700, 3600, 5400, 7200, 10800, 21600]
-export const MMP_TABLE_LABELS    = ["Pmax", "5''", "10''", "30''", "1'", "3'", "5'", "8'", "10'", "15'", "20'", "30'", "45'", "1h", "1h30", "2h", "3h", "6h"]
+export const MMP_TABLE_DURATIONS = [1, 5, 10, 30, 60, 180, 300, 480, 600, 720, 900, 1200, 1800, 2700, 3600, 5400, 7200, 10800, 14400, 18000, 21600]
+export const MMP_TABLE_LABELS    = ["Pmax", "5''", "10''", "30''", "1'", "3'", "5'", "8'", "10'", "12'", "15'", "20'", "30'", "45'", "1h", "1h30", "2h", "3h", "4h", "5h", "6h"]
 
 interface Props {
   sessionMmp:  number[]
@@ -37,29 +37,29 @@ export function MmpTable({ sessionMmp, recordMmp, durations, labels, sessionN, f
 
       {/* Table */}
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: 'var(--bg-card2)' }}>
               <th style={{
-                padding: '6px 14px', textAlign: 'right',
-                fontSize: 10, fontWeight: 700, color: '#EF4444',
-                textTransform: 'uppercase', letterSpacing: 0.7,
+                padding: '10px 18px', textAlign: 'right',
+                fontSize: 11, fontWeight: 700, color: '#EF4444',
+                textTransform: 'uppercase', letterSpacing: 0.8,
                 borderRight: '1px solid var(--border)',
               }}>
                 Records
               </th>
               <th style={{
-                padding: '6px 12px', textAlign: 'center',
-                fontSize: 10, fontWeight: 700, color: 'var(--text-dim)',
-                textTransform: 'uppercase', letterSpacing: 0.7,
+                padding: '10px 14px', textAlign: 'center',
+                fontSize: 11, fontWeight: 700, color: 'var(--text-dim)',
+                textTransform: 'uppercase', letterSpacing: 0.8,
                 borderRight: '1px solid var(--border)',
               }}>
                 Durée
               </th>
               <th style={{
-                padding: '6px 14px', textAlign: 'left',
-                fontSize: 10, fontWeight: 700, color: '#818CF8',
-                textTransform: 'uppercase', letterSpacing: 0.7,
+                padding: '10px 18px', textAlign: 'left',
+                fontSize: 11, fontWeight: 700, color: '#818CF8',
+                textTransform: 'uppercase', letterSpacing: 0.8,
               }}>
                 Cette séance
               </th>
@@ -90,28 +90,44 @@ export function MmpTable({ sessionMmp, recordMmp, durations, labels, sessionN, f
               return (
                 <tr key={d} style={{ background: rowBg }}>
                   <td style={{
-                    padding: '5px 14px', textAlign: 'right',
+                    padding: '8px 18px', textAlign: 'right',
                     color: rec > 0 ? '#EF4444' : 'var(--text-dim)',
-                    fontVariantNumeric: 'tabular-nums',
                     borderRight: '1px solid var(--border)',
                   }}>
-                    {loading ? '…' : rec > 0 ? `${rec} W` : '—'}
+                    {loading ? (
+                      <span style={{ color: 'var(--text-dim)' }}>…</span>
+                    ) : rec > 0 ? (
+                      <>
+                        <span className="stat-number" style={{ fontSize: 16, lineHeight: 1 }}>{rec}</span>
+                        <span style={{ fontSize: 11, marginLeft: 4, color: 'var(--text-dim)' }}>W</span>
+                      </>
+                    ) : (
+                      <span style={{ color: 'var(--text-dim)' }}>—</span>
+                    )}
                   </td>
                   <td style={{
-                    padding: '5px 12px', textAlign: 'center',
-                    color: 'var(--text-dim)', fontWeight: 600,
+                    padding: '8px 14px', textAlign: 'center',
+                    color: 'var(--text-mid)', fontWeight: 600,
+                    fontSize: 12, letterSpacing: 0.3,
                     borderRight: '1px solid var(--border)',
                     whiteSpace: 'nowrap',
+                    fontVariantNumeric: 'tabular-nums',
                   }}>
                     {labels[i]}
                   </td>
                   <td style={{
-                    padding: '5px 14px', textAlign: 'left',
+                    padding: '8px 18px', textAlign: 'left',
                     background: sessBg, color: sessColor,
-                    fontVariantNumeric: 'tabular-nums',
-                    fontWeight: star ? 700 : 400,
                   }}>
-                    {skip ? '—' : sess > 0 ? `${sess} W${star ? ' ★' : ''}` : '—'}
+                    {skip || sess <= 0 ? (
+                      <span style={{ color: 'var(--text-dim)' }}>—</span>
+                    ) : (
+                      <>
+                        <span className="stat-number" style={{ fontSize: 16, lineHeight: 1, fontWeight: star ? 800 : 700 }}>{sess}</span>
+                        <span style={{ fontSize: 11, marginLeft: 4, color: star ? sessColor : 'var(--text-dim)' }}>W</span>
+                        {star && <span style={{ marginLeft: 6, fontSize: 13 }}>★</span>}
+                      </>
+                    )}
                   </td>
                 </tr>
               )

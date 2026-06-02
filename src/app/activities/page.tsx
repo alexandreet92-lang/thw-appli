@@ -747,14 +747,18 @@ const BIKE_DUR_TO_IDX: Record<string, number> = {
   '5min':  6,  // 300s
   '8min':  7,  // 480s
   '10min': 8,  // 600s
-  '15min': 9,  // 900s
-  '20min': 10, // 1200s
-  '30min': 11, // 1800s
-  '1h':    13, // 3600s
-  '90min': 14, // 5400s
-  '2h':    15, // 7200s
-  '3h':    16, // 10800s
-  '6h':    17, // 21600s
+  '12min': 9,  // 720s
+  '15min': 10, // 900s
+  '20min': 11, // 1200s
+  '30min': 12, // 1800s
+  '45min': 13, // 2700s
+  '1h':    14, // 3600s
+  '90min': 15, // 5400s
+  '2h':    16, // 7200s
+  '3h':    17, // 10800s
+  '4h':    18, // 14400s
+  '5h':    19, // 18000s
+  '6h':    20, // 21600s
 }
 
 function PowerCurveChart({ watts, activityId, activityDurationS }: {
@@ -2089,6 +2093,15 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
                         <stop offset="100%" stopColor={track.color} stopOpacity="0"/>
                       </linearGradient>
                     </defs>
+
+                    {/* Profil altimétrique en fond léger (gris) sur tous les tracks non-altitude */}
+                    {alt && !track.isAlt && (
+                      <path
+                        d={buildFillPath(alt, track.H, 4, false)}
+                        fill="rgba(148,163,184,0.15)"
+                        pointerEvents="none"
+                      />
+                    )}
 
                     {/* Lap rectangles on altitude track */}
                     {track.isAlt && laps.map((lap, li) => {

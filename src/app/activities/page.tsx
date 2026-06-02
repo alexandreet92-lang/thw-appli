@@ -2710,111 +2710,433 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
 // ─────────────────────────────────────────────────────────────
 // WEEK DETAIL MODAL
 // ─────────────────────────────────────────────────────────────
-function WeekDetailModal({ week, activities, onClose }: {
+const WK_HR_ZONES: ParsedZone[] = [
+  { label: 'Z1 Récup',   color: ZONE_COLORS[0], min: 0,   max: 120 },
+  { label: 'Z2 Aérobie', color: ZONE_COLORS[1], min: 120, max: 150 },
+  { label: 'Z3 Tempo',   color: ZONE_COLORS[2], min: 150, max: 165 },
+  { label: 'Z4 Seuil',   color: ZONE_COLORS[3], min: 165, max: 180 },
+  { label: 'Z5 VO2max',  color: ZONE_COLORS[4], min: 180, max: 999 },
+]
+
+function WeekDetailModal({ week, activities, zones, onClose }: {
   week: { week: string; total: number; time: number; dist: number; count: number; sports: Map<string, number> }
   activities: Activity[]
+  zones: TrainingZoneRow[]
   onClose: () => void
 }) {
-  const weekStart = new Date(week.week)
-  const weekEnd   = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6)
-  const weekActs  = activities.filter(a => {
-    const d = new Date(a.started_at)
-    return d >= weekStart && d <= weekEnd
-  })
+  const width    = useWindowWidth()
+  const isMobile = width < 768
+  const [sportFilter, setSportFilter] = useState<string>('all')
 
-  const totalTss  = weekActs.reduce((s, a) => s + (a.tss ?? 0), 0)
+  const weekStart = useMemo(() => { const d = new Date(week.week); d.setHours(0,0,0,0); return d }, [week.week])
+  const weekEnd   = useMemo(() => { const d = new Date(weekStart); d.setDate(d.getDate() + 6); d.setHours(23,59,59,999); return d }, [weekStart])
+
+  const weekActs = useMemo(() =>
+    activities.filter(a => { const d = new Date(a.started_at); return d >= weekStart && d <= weekEnd }),
+    [activities, weekStart, weekEnd]
+  )
+
+  const prevWeekActs = useMemo(() => {
+    const ps = new Date(weekStart); ps.setDate(ps.getDate() - 7)
+    const pe = new Date(weekEnd);   pe.setDate(pe.getDate() - 7)
+    return activities.filter(a => { const d = new Date(a.started_at); return d >= ps && d <= pe })
+  }, [activities, weekStart, weekEnd])
+
+  // ── Summary stats ──────────────────────────────────────────
+  const totalTime = weekActs.reduce((s, a) => s + (a.moving_time_s ?? 0), 0)
+  const totalDist = weekActs.reduce((s, a) => s + (a.distance_m ?? 0), 0)
   const totalElev = weekActs.reduce((s, a) => s + (a.elevation_gain_m ?? 0), 0)
+  const totalTss  = weekActs.reduce((s, a) => s + (a.tss ?? 0), 0)
   const hrVals    = weekActs.filter(a => a.avg_hr).map(a => Number(a.avg_hr))
-  const meanHr    = hrVals.length ? Math.round(hrVals.reduce((a,b)=>a+b,0)/hrVals.length) : null
+  const meanHr    = hrVals.length ? Math.round(hrVals.reduce((a,b) => a+b, 0) / hrVals.length) : null
+  const prevTime  = prevWeekActs.reduce((s, a) => s + (a.moving_time_s ?? 0), 0)
+  const compPct   = prevTime > 0 ? Math.round(((totalTime - prevTime) / prevTime) * 100) : null
 
-  const sportEntries = Array.from(week.sports.entries()).sort((a, b) => b[1] - a[1])
-  const maxSport = Math.max(...sportEntries.map(e => e[1]), 1)
+  // ── Sports present ─────────────────────────────────────────
+  const sportsPresent = useMemo(() => {
+    const s = new Set<string>()
+    weekActs.forEach(a => s.add(normalizeSport(a.sport_type)))
+    return ['run','trail_run','bike','swim','gym','hyrox','rowing'].filter(sp => s.has(sp))
+  }, [weekActs])
 
-  const label = weekStart.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) +
+  // ── Days Mon→Sun ───────────────────────────────────────────
+  const daysOfWeek = useMemo(() => {
+    const SHORT = ['L','M','M','J','V','S','D']
+    const LONG  = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekStart); d.setDate(d.getDate() + i)
+      const iso = d.toISOString().slice(0, 10)
+      const dayActs = weekActs.filter(a => a.started_at.slice(0,10) === iso)
+      const dayTime = dayActs.reduce((s, a) => s + (a.moving_time_s ?? 0), 0)
+      const stMap = new Map<string, number>()
+      dayActs.forEach(a => { const sp = normalizeSport(a.sport_type); stMap.set(sp, (stMap.get(sp) ?? 0) + (a.moving_time_s ?? 0)) })
+      const dominantSport = dayActs.length > 0 ? [...stMap.entries()].sort((a,b) => b[1]-a[1])[0][0] : null
+      return { short: SHORT[i], long: LONG[i], iso, time: dayTime, sport: dominantSport }
+    })
+  }, [weekActs, weekStart])
+
+  const maxDayTime = Math.max(...daysOfWeek.map(d => d.time), 1)
+
+  // ── TSS by sport ───────────────────────────────────────────
+  const tssBySport = useMemo(() => {
+    const m = new Map<string, number>()
+    weekActs.forEach(a => { const sp = normalizeSport(a.sport_type); m.set(sp, (m.get(sp) ?? 0) + (a.tss ?? 0)) })
+    return m
+  }, [weekActs])
+
+  const totalTssSports = Array.from(tssBySport.values()).reduce((a,b) => a+b, 0)
+
+  // ── Zone rows ──────────────────────────────────────────────
+  const bikeZoneRow = zones.find(z => z.sport === 'bike')
+  const bikeZones   = bikeZoneRow ? buildZones(bikeZoneRow) : null
+
+  // ── Filtered acts for HR ───────────────────────────────────
+  const filteredActs = useMemo(() =>
+    sportFilter === 'all' ? weekActs : weekActs.filter(a => normalizeSport(a.sport_type) === sportFilter),
+    [weekActs, sportFilter]
+  )
+
+  // ── HR times by zone ───────────────────────────────────────
+  const hrTimesZ = useMemo(() => {
+    const acc = WK_HR_ZONES.map(() => 0)
+    for (const a of filteredActs) {
+      const streams = a.streams ?? (a.raw_data?.streams as StreamData | null)
+      if (!streams?.heartrate?.length) continue
+      const t = calcTimeInZones(streams.heartrate, WK_HR_ZONES)
+      t.forEach((v, i) => { acc[i] += v })
+    }
+    return acc
+  }, [filteredActs])
+
+  // ── Bike power times ───────────────────────────────────────
+  const bikeTimesZ = useMemo(() => {
+    if (!bikeZones) return null
+    const acc = bikeZones.map(() => 0)
+    for (const a of weekActs) {
+      if (!['bike','virtual_bike'].includes(a.sport_type)) continue
+      const streams = a.streams ?? (a.raw_data?.streams as StreamData | null)
+      if (!streams?.watts?.length) continue
+      const t = calcTimeInZones(streams.watts, bikeZones)
+      t.forEach((v, i) => { acc[i] += v })
+    }
+    return acc
+  }, [weekActs]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Polarization bands ─────────────────────────────────────
+  const hrTotal = hrTimesZ.reduce((a,b) => a+b, 0)
+  const hrBands = hrTotal > 0 ? [
+    { label: 'Endurance',  sub: 'Z1–Z2', time: hrTimesZ[0] + hrTimesZ[1], color: '#10B981' },
+    { label: 'Tempo',      sub: 'Z3',    time: hrTimesZ[2],                color: '#F97316' },
+    { label: 'Haute int.', sub: 'Z4–Z5', time: hrTimesZ[3] + hrTimesZ[4], color: '#EF4444' },
+  ] : null
+
+  const bikeTotal = bikeTimesZ ? bikeTimesZ.reduce((a,b) => a+b, 0) : 0
+  const bikeBands = bikeTimesZ && bikeTotal > 0 && bikeZones ? [
+    { label: 'Endurance',      sub: 'Z1–Z2', time: bikeTimesZ[0] + bikeTimesZ[1], color: '#10B981' },
+    { label: 'Tempo/Seuil',    sub: 'Z3',    time: bikeTimesZ[2],                 color: '#F97316' },
+    { label: 'VO2/Anaérobie',  sub: 'Z4–Z5', time: bikeTimesZ[3] + bikeTimesZ[4], color: '#EF4444' },
+  ] : null
+
+  const dateLabel = weekStart.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) +
     ' – ' + weekEnd.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 600,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-    }} onClick={onClose}>
-      <div style={{
-        background: T.surface, borderRadius: T.radius, padding: '24px 28px',
-        width: '100%', maxWidth: 480, boxShadow: T.shadowCard, maxHeight: '90vh', overflowY: 'auto',
-      }} onClick={e => e.stopPropagation()}>
+  const sortedActs = useMemo(() =>
+    [...weekActs].sort((a,b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime()),
+    [weekActs]
+  )
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay }}>Semaine du {label}</div>
-            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{week.count} séance{week.count !== 1 ? 's' : ''}</div>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: T.textMuted, lineHeight: 1 }}>✕</button>
-        </div>
+  // ── Section header style ───────────────────────────────────
+  const secTitle = (label: string) => (
+    <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase',
+      letterSpacing: 0.8, marginBottom: 10, fontFamily: T.fontDisplay }}>{label}</div>
+  )
 
-        {/* KPIs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
-          {[
-            { label: 'Temps', value: fmtDur(week.time) },
-            { label: 'Distance', value: fmtDist(week.dist) },
-            { label: 'D+', value: totalElev > 1 ? `+${Math.round(totalElev)} m` : '—' },
-            { label: 'TSS', value: totalTss ? Math.round(totalTss).toString() : '—' },
-            { label: 'FC moy.', value: meanHr ? `${meanHr} bpm` : '—' },
-            { label: 'Séances', value: week.count.toString() },
-          ].map(k => (
-            <div key={k.label} style={{ background: T.bg, borderRadius: T.radiusSm, padding: '10px 12px' }}>
-              <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.7, fontFamily: T.fontDisplay, fontWeight: 700 }}>{k.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay }}>{k.value}</div>
+  // ── Sport selector ─────────────────────────────────────────
+  const sportSelectorEl = (
+    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
+      {(['all', ...sportsPresent] as string[]).map(sp => {
+        const active = sportFilter === sp
+        return (
+          <button key={sp} onClick={() => setSportFilter(sp)} style={{
+            padding: '3px 11px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            border: active ? 'none' : `1px solid ${T.border}`,
+            background: active ? 'linear-gradient(135deg,#06B6D4,#3B82F6)' : T.bgAlt,
+            color: active ? '#fff' : T.textMuted,
+          }}>
+            {sp === 'all' ? 'Tous' : (SPORT_LABEL[sp as SportType] ?? sp)}
+          </button>
+        )
+      })}
+    </div>
+  )
+
+  // ── Polarization band renderer ─────────────────────────────
+  function renderBands(bands: { label: string; sub: string; time: number; color: string }[], total: number) {
+    return bands.map(band => {
+      const pct = total > 0 ? (band.time / total) * 100 : 0
+      return (
+        <div key={band.label} style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>
+              <span style={{ fontSize: 9, color: band.color, fontWeight: 700, marginRight: 5,
+                background: band.color + '22', borderRadius: 3, padding: '1px 4px' }}>{band.sub}</span>
+              {band.label}
             </div>
-          ))}
+            <div style={{ fontSize: 11, color: T.textSub, display: 'flex', gap: 6 }}>
+              <span className="stat-number" style={{ fontWeight: 700, color: T.text }}>{fmtDur(band.time)}</span>
+              <span style={{ color: T.textMuted }}>{pct.toFixed(0)}%</span>
+            </div>
+          </div>
+          <div style={{ height: 5, background: T.bgAlt, borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: band.color, borderRadius: 3 }} />
+          </div>
         </div>
+      )
+    })
+  }
 
-        {/* Répartition sport */}
-        {sportEntries.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 10, fontFamily: T.fontDisplay }}>Répartition</div>
-            {sportEntries.map(([sport, time]) => {
-              const col = SPORT_COLOR[sport as SportType] ?? '#888'
-              const pct = (time / maxSport) * 100
+  // ── Répartition semaine ────────────────────────────────────
+  const distributionEl = (
+    <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
+      {secTitle('Répartition sur la semaine')}
+      <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 80 }}>
+        {daysOfWeek.map((day, i) => {
+          const barH = day.time > 0 ? Math.max(5, (day.time / maxDayTime) * 60) : 2
+          const col  = day.sport ? (SPORT_COLOR[day.sport as SportType] ?? '#888') : T.border
+          return (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%', paddingBottom: 0 }}>
+                <div style={{
+                  width: '100%', height: barH,
+                  background: day.time === 0 ? T.bgAlt : col,
+                  borderRadius: 3,
+                  border: day.time === 0 ? `1px solid ${T.border}` : 'none',
+                }} />
+              </div>
+              <span style={{ fontSize: isMobile ? 9 : 10, color: T.textMuted, fontWeight: 600 }}>
+                {isMobile ? day.short : day.long}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+
+  // ── TSS total ──────────────────────────────────────────────
+  const tssEl = (
+    <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase',
+          letterSpacing: 0.8, fontFamily: T.fontDisplay }}>TSS total</span>
+        <span className="stat-number" style={{ fontSize: 18, fontWeight: 700, color: T.text }}>
+          {totalTss > 0 ? Math.round(totalTss) : '—'}
+        </span>
+      </div>
+      {totalTssSports > 0 ? (
+        <>
+          <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', gap: 1, marginBottom: 10 }}>
+            {[...tssBySport.entries()].filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]).map(([sp, tss]) => (
+              <div key={sp} style={{ flex: tss / totalTssSports, background: SPORT_COLOR[sp as SportType] ?? '#888', minWidth: 2 }} />
+            ))}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+            {[...tssBySport.entries()].filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]).map(([sp, tss]) => (
+              <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: T.textSub }}>
+                <span style={{ width: 7, height: 7, borderRadius: 2, background: SPORT_COLOR[sp as SportType] ?? '#888', display: 'inline-block' }} />
+                {SPORT_LABEL[sp as SportType] ?? sp}
+                <span className="stat-number" style={{ fontWeight: 700, color: T.text, fontSize: 12 }}>{Math.round(tss)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div style={{ fontSize: 12, color: T.textMuted }}>—</div>
+      )}
+    </div>
+  )
+
+  // ── HR polarisation ────────────────────────────────────────
+  const hrPolEl = (
+    <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
+      {secTitle('Polarisation FC')}
+      {sportSelectorEl}
+      {hrBands ? renderBands(hrBands, hrTotal) : (
+        <div style={{ fontSize: 12, color: T.textMuted }}>Aucune donnée FC pour cette sélection</div>
+      )}
+    </div>
+  )
+
+  // ── Bike power polarisation ────────────────────────────────
+  const bikePowerEl = (
+    <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px',
+      border: `1px solid ${T.border}`, borderTop: '3px solid #06B6D4' }}>
+      {secTitle('Polarisation puissance — Cyclisme')}
+      {bikeBands ? renderBands(bikeBands, bikeTotal) : (
+        <div style={{ fontSize: 12, color: T.textMuted }}>—</div>
+      )}
+    </div>
+  )
+
+  // ── Zones FC détaillées ────────────────────────────────────
+  const hrZonesEl = (
+    <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
+      {secTitle('Zones FC détaillées')}
+      {sportSelectorEl}
+      {hrTotal > 0 ? WK_HR_ZONES.map((zone, i) => {
+        const t   = hrTimesZ[i]
+        const pct = hrTotal > 0 ? (t / hrTotal) * 100 : 0
+        return (
+          <div key={zone.label} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 90px', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: zone.color, display: 'inline-block', flexShrink: 0 }} />
+              <span style={{ color: T.text, fontWeight: 600 }}>{zone.label}</span>
+            </div>
+            <div style={{ height: 5, background: T.bgAlt, borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ width: `${pct}%`, height: '100%', background: zone.color, borderRadius: 3 }} />
+            </div>
+            <div style={{ display: 'flex', gap: 5, fontSize: 10, justifyContent: 'flex-end', alignItems: 'center' }}>
+              <span className="stat-number" style={{ fontWeight: 700, color: T.text, fontSize: 11 }}>{fmtDur(t)}</span>
+              <span style={{ color: T.textMuted }}>{pct.toFixed(0)}%</span>
+            </div>
+          </div>
+        )
+      }) : (
+        <div style={{ fontSize: 12, color: T.textMuted }}>Aucune donnée FC</div>
+      )}
+    </div>
+  )
+
+  // ── Activités ──────────────────────────────────────────────
+  const activitiesEl = (
+    <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
+      {secTitle('Activités')}
+      {sortedActs.length === 0 ? (
+        <div style={{ fontSize: 12, color: T.textMuted }}>Aucune activité</div>
+      ) : sortedActs.map(act => {
+        const col  = SPORT_COLOR[act.sport_type] ?? '#888'
+        const stat = ['gym','hyrox'].includes(act.sport_type)
+          ? fmtDur(act.moving_time_s)
+          : (act.distance_m ? fmtDist(act.distance_m) : fmtDur(act.moving_time_s))
+        return (
+          <div key={act.id}
+            onClick={() => { window.location.href = `/activities?id=${act.id}` }}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 8px',
+              cursor: 'pointer', borderRadius: 8, marginBottom: 1 }}
+            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = T.bgAlt }}
+            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
+          >
+            <span style={{ width: 3, height: 36, background: col, borderRadius: 2, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {act.title}
+              </div>
+              <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>
+                {new Date(act.started_at).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}
+              </div>
+            </div>
+            <span className="stat-number" style={{ fontSize: 13, fontWeight: 700, color: T.text, flexShrink: 0 }}>{stat}</span>
+            <ChevronRight size={14} color={T.textMuted} />
+          </div>
+        )
+      })}
+    </div>
+  )
+
+  // ── Header ─────────────────────────────────────────────────
+  const headerEl = (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: isMobile ? 15 : 17, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay }}>
+            Semaine du {dateLabel}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{week.count} séance{week.count !== 1 ? 's' : ''}</span>
+            {sportsPresent.map(sp => {
+              const cnt = weekActs.filter(a => normalizeSport(a.sport_type) === sp).length
               return (
-                <div key={sport} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 56px', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <div style={{ fontSize: 12, color: T.text, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: 2, background: col, display: 'inline-block', flexShrink: 0 }} />
-                    {SPORT_LABEL[sport as SportType] ?? sport}
-                  </div>
-                  <div style={{ height: 8, background: T.border, borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: col, borderRadius: 4, transition: 'width 0.4s' }} />
-                  </div>
-                  <div style={{ fontSize: 11, color: T.textSub, textAlign: 'right' }}>{fmtDur(time)}</div>
-                </div>
+                <span key={sp} style={{ display: 'inline-flex', alignItems: 'center', gap: 4,
+                  background: T.bgAlt, borderRadius: 10, padding: '2px 8px', fontSize: 12 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: SPORT_COLOR[sp as SportType] ?? '#888', flexShrink: 0 }} />
+                  <span style={{ color: T.text, fontWeight: 600 }}>{SPORT_LABEL[sp as SportType] ?? sp}</span>
+                  <span style={{ color: T.textMuted }}>{cnt}</span>
+                </span>
               )
             })}
           </div>
+          {compPct !== null && (
+            <div style={{ fontSize: 12, marginTop: 5, fontWeight: 600,
+              color: compPct >= 0 ? '#10B981' : '#F97316' }}>
+              {compPct >= 0 ? '↑ +' : '↓ '}{compPct}% vs semaine préc.
+            </div>
+          )}
+        </div>
+        {!isMobile && (
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer',
+            color: T.textMuted, fontSize: 18, padding: 4, lineHeight: 1, flexShrink: 0 }}>✕</button>
         )}
+      </div>
+    </div>
+  )
 
-        {/* Activités */}
-        {weekActs.length > 0 && (
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 8, fontFamily: T.fontDisplay }}>Activités</div>
-            {weekActs.map(a => {
-              const col = SPORT_COLOR[a.sport_type] ?? '#888'
-              return (
-                <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${T.border}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ width: 3, height: 32, background: col, borderRadius: 2, flexShrink: 0 }} />
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{a.title}</div>
-                      <div style={{ fontSize: 10, color: T.textMuted }}>{new Date(a.started_at).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}</div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: 11, color: T.textSub, fontFamily: T.fontMono }}>
-                    {a.distance_m ? <div style={{ fontWeight: 600, color: T.text }}>{fmtDist(a.distance_m)}</div> : null}
-                    <div>{fmtDur(a.moving_time_s)}</div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+  // ── Stats grid ─────────────────────────────────────────────
+  const statsEl = (
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3,1fr)' : 'repeat(6,1fr)', gap: 8, marginBottom: 16 }}>
+      {[
+        { label: 'Temps',    value: fmtDur(totalTime) },
+        { label: 'Distance', value: fmtDist(totalDist) },
+        { label: 'D+',       value: totalElev >= 1 ? `+${Math.round(totalElev)} m` : '—' },
+        { label: 'TSS',      value: totalTss > 0 ? Math.round(totalTss).toString() : '—' },
+        { label: 'FC moy.',  value: meanHr ? `${meanHr} bpm` : '—' },
+        { label: 'Séances',  value: week.count.toString() },
+      ].map(k => (
+        <div key={k.label} style={{ background: T.bgAlt, borderRadius: T.radiusSm, padding: '9px 12px' }}>
+          <div style={{ fontSize: 9, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.7,
+            fontWeight: 700, fontFamily: T.fontDisplay, marginBottom: 3 }}>{k.label}</div>
+          <div className="stat-number" style={{ fontSize: 15, color: T.text }}>{k.value}</div>
+        </div>
+      ))}
+    </div>
+  )
+
+  // ── Body ───────────────────────────────────────────────────
+  const bodyEl = (
+    <>
+      {statsEl}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        {distributionEl}
+        {tssEl}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        {hrPolEl}
+        {bikePowerEl}
+      </div>
+      <div style={{ marginBottom: 12 }}>{hrZonesEl}</div>
+      {activitiesEl}
+    </>
+  )
+
+  // ── Mobile → BottomSheet ───────────────────────────────────
+  if (isMobile) {
+    return (
+      <BottomSheet isOpen onClose={onClose}>
+        {headerEl}
+        {bodyEl}
+      </BottomSheet>
+    )
+  }
+
+  // ── Desktop → modal overlay ────────────────────────────────
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 600,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={onClose}>
+      <div style={{ background: T.surface, borderRadius: T.radius, width: '100%', maxWidth: 900,
+        maxHeight: '90vh', overflowY: 'auto', boxShadow: T.shadowCard, padding: '24px 28px' }}
+        onClick={e => e.stopPropagation()}>
+        {headerEl}
+        {bodyEl}
       </div>
     </div>
   )
@@ -3190,91 +3512,15 @@ function SectionDonnees({ activities, zones, profile }: {
         </div>
       )}
 
-      {/* Détail semaine — BottomSheet */}
-      {selectedWeek && (() => {
-        const ws = new Date(selectedWeek.week)
-        const we = new Date(ws); we.setDate(we.getDate() + 6)
-        const label = ws.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' – ' + we.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
-        const weekActs = activities.filter(a => { const d = new Date(a.started_at); return d >= ws && d <= we })
-        const totalTssW  = weekActs.reduce((s, a) => s + (a.tss ?? 0), 0)
-        const totalElevW = weekActs.reduce((s, a) => s + (a.elevation_gain_m ?? 0), 0)
-        const hrValsW    = weekActs.filter(a => a.avg_hr).map(a => Number(a.avg_hr))
-        const meanHrW    = hrValsW.length ? Math.round(hrValsW.reduce((a,b)=>a+b,0)/hrValsW.length) : null
-        const sportEntries = Array.from(selectedWeek.sports.entries()).sort((a, b) => b[1] - a[1])
-        const totalSport   = sportEntries.reduce((s, [,t]) => s + t, 0)
-        return (
-          <BottomSheet isOpen onClose={() => setSelectedWeek(null)}>
-            <div className="mb-5">
-              <h2 className="text-lg font-bold text-foreground">Semaine du {label}</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">{selectedWeek.count} séance{selectedWeek.count !== 1 ? 's' : ''}</p>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              {[
-                { label: 'TEMPS',    value: fmtDur(selectedWeek.time) },
-                { label: 'DISTANCE', value: fmtDist(selectedWeek.dist) },
-                { label: 'D+',       value: totalElevW >= 1 ? `+${Math.round(totalElevW)} m` : '—' },
-              ].map(({ label, value }) => (
-                <div key={label} className="bg-muted rounded-xl p-3 flex flex-col gap-1">
-                  <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">{label}</span>
-                  <span className="text-base font-bold text-foreground leading-tight">{value}</span>
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-3 gap-2 mb-5">
-              {[
-                { label: 'TSS',     value: totalTssW ? Math.round(totalTssW).toString() : '—' },
-                { label: 'FC MOY.', value: meanHrW ? `${meanHrW} bpm` : '—' },
-                { label: 'SÉANCES', value: selectedWeek.count.toString() },
-              ].map(({ label, value }) => (
-                <div key={label} className="bg-muted rounded-xl p-3 flex flex-col gap-1">
-                  <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">{label}</span>
-                  <span className="text-base font-bold text-foreground">{value}</span>
-                </div>
-              ))}
-            </div>
-            {sportEntries.length > 0 && (
-              <div className="mb-5">
-                <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-3">Répartition</p>
-                {sportEntries.map(([sport, time]) => {
-                  const col = SPORT_COLOR[sport as SportType] ?? '#888'
-                  const pct = totalSport > 0 ? (time / totalSport) * 100 : 0
-                  return (
-                    <div key={sport} className="flex items-center gap-3 mb-2.5">
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col }} />
-                      <span className="text-sm text-foreground w-16 flex-shrink-0">{SPORT_LABEL[sport as SportType] ?? sport}</span>
-                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: col }} />
-                      </div>
-                      <span className="text-sm font-medium text-foreground w-10 text-right flex-shrink-0">{fmtDur(time)}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-            {weekActs.length > 0 && (
-              <div>
-                <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase mb-3">Activités</p>
-                {weekActs.map(act => {
-                  const col = SPORT_COLOR[act.sport_type] ?? '#888'
-                  return (
-                    <div key={act.id} className="flex items-start py-3 border-b border-border last:border-0">
-                      <div className="w-1 self-stretch rounded-full mr-3 flex-shrink-0 min-h-[36px]" style={{ background: col }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{act.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{new Date(act.started_at).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}</p>
-                      </div>
-                      <div className="text-right flex-shrink-0 ml-2">
-                        {act.distance_m && <p className="text-sm font-semibold text-foreground">{fmtDist(act.distance_m)}</p>}
-                        <p className="text-xs text-muted-foreground">{fmtDur(act.moving_time_s)}</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </BottomSheet>
-        )
-      })()}
+      {/* Détail semaine */}
+      {selectedWeek && (
+        <WeekDetailModal
+          week={selectedWeek}
+          activities={activities}
+          zones={zones}
+          onClose={() => setSelectedWeek(null)}
+        />
+      )}
 
       {/* === DONNÉES GÉNÉRALES === */}
       {dataTab === 'general' && (

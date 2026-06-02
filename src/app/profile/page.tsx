@@ -1558,10 +1558,201 @@ function AbonnementSubPage({ onBack }: { onBack: () => void }) {
   )
 }
 
+// ══════════════════════════════════════════════════════════════
+// MODÈLES SUB-PAGE
+// ══════════════════════════════════════════════════════════════
+
+interface ModeleCard {
+  id:          'hermes' | 'athena' | 'zeus'
+  name:        string
+  subtitle:    string
+  multiplier:  number
+  color:       string
+  description: string
+  recommended?: boolean
+}
+
+const MODELES: ModeleCard[] = [
+  {
+    id:          'hermes',
+    name:        'Hermès',
+    subtitle:    'Rapide et direct',
+    multiplier:  1,
+    color:       '#B8860B',
+    description: 'Pour les questions simples, conseils rapides ou besoins immédiats.',
+  },
+  {
+    id:          'athena',
+    name:        'Athéna',
+    subtitle:    'Coaching intelligent',
+    multiplier:  3,
+    color:       '#06B6D4',
+    description: 'Le modèle principal. Analyse, contextualise et propose des améliorations concrètes.',
+    recommended: true,
+  },
+  {
+    id:          'zeus',
+    name:        'Zeus',
+    subtitle:    'Le plus avancé',
+    multiplier:  8,
+    color:       '#7C3AED',
+    description: 'Pour les analyses très poussées, plans complexes et stratégies sur le long terme.',
+  },
+]
+
+function ModelesSubPage({ onBack }: { onBack: () => void }) {
+  const [closing, setClosing] = useState(false)
+
+  function handleBack() {
+    setClosing(true)
+    setTimeout(() => onBack(), 240)
+  }
+
+  return (
+    <div
+      className={closing ? 'sub-page-exit' : 'sub-page-enter'}
+      style={{
+        position:   'fixed',
+        inset:      0,
+        zIndex:     300,
+        background: 'var(--bg)',
+        overflowY:  'auto',
+        WebkitOverflowScrolling: 'touch',
+      }}
+    >
+      {/* Header */}
+      <div style={{
+        display:      'flex',
+        alignItems:   'center',
+        gap:          12,
+        padding:      '16px 20px',
+        borderBottom: '1px solid var(--border)',
+        position:     'sticky',
+        top:          0,
+        background:   'var(--bg)',
+        zIndex:       1,
+      }}>
+        <button
+          onClick={handleBack}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', padding: '4px 8px 4px 0', display: 'flex', alignItems: 'center', gap: 6 }}
+          aria-label="Retour"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <div>
+          <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--text)' }}>Les modèles IA</p>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Trois niveaux selon ta demande</p>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div
+        className="modeles-sub-page-body"
+        style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}
+      >
+        {MODELES.map(m => (
+          <div
+            key={m.id}
+            style={{
+              position:     'relative',
+              background:   'var(--bg-card)',
+              border:       m.recommended ? `2px solid ${m.color}` : '0.5px solid var(--border)',
+              borderRadius: 14,
+              padding:      20,
+            }}
+          >
+            {m.recommended && (
+              <span style={{
+                position:      'absolute',
+                top:           -10,
+                left:          16,
+                background:    m.color,
+                color:         '#fff',
+                fontSize:      10,
+                fontWeight:    500,
+                padding:       '3px 10px',
+                borderRadius:  10,
+                letterSpacing: '0.5px',
+              }}>
+                RECOMMANDÉ
+              </span>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 18, fontWeight: 500, color: m.color, margin: '0 0 2px' }}>{m.name}</p>
+                <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: 0 }}>{m.subtitle}</p>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <p style={{ fontSize: 22, fontWeight: 500, color: m.color, margin: 0, fontVariantNumeric: 'tabular-nums' }}>× {m.multiplier}</p>
+                <p style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.5px', margin: '2px 0 0' }}>MULTIPLICATEUR</p>
+              </div>
+            </div>
+
+            <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-mid)', margin: 0 }}>
+              {m.description}
+            </p>
+          </div>
+        ))}
+
+        {/* Note explicative */}
+        <div style={{
+          background:    'var(--bg-card2)',
+          borderRadius:  10,
+          padding:       '12px 14px',
+          fontSize:      12,
+          color:         'var(--text-mid)',
+          lineHeight:    1.55,
+          border:        '1px solid var(--border)',
+        }}>
+          Tous les modèles sont accessibles. Le multiplicateur indique à quelle vitesse ton quota se vide.
+        </div>
+
+        {/* Bouton En savoir plus */}
+        <a
+          href="/comprendre/ia"
+          style={{
+            display:        'flex',
+            alignItems:     'center',
+            justifyContent: 'center',
+            gap:            8,
+            padding:        14,
+            background:     'transparent',
+            border:         '0.5px solid var(--border)',
+            color:          'var(--text)',
+            borderRadius:   10,
+            fontSize:       14,
+            fontWeight:     500,
+            cursor:         'pointer',
+            textDecoration: 'none',
+            marginTop:      4,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          En savoir plus sur les modèles
+        </a>
+      </div>
+
+      <style>{`
+        .modeles-sub-page-body { padding: 24px 24px 48px; }
+        @media (max-width: 600px) {
+          .modeles-sub-page-body { padding: 20px 16px 48px; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 function IASettingsBloc() {
   // Overlays
-  const [modelsOpen,   setModelsOpen]   = useState(false)
-  const [subPageOpen,  setSubPageOpen]  = useState(false)
+  const [modelsPageOpen, setModelsPageOpen] = useState(false)
+  const [subPageOpen,    setSubPageOpen]    = useState(false)
   const [upgradeOpen,  setUpgradeOpen]  = useState(false)
 
   // AI settings — localStorage
@@ -1593,49 +1784,10 @@ function IASettingsBloc() {
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
 
-      {/* ── Overlay Modèles ───────────────────────────── */}
-      <Sheet open={modelsOpen} onClose={()=>setModelsOpen(false)} title="Les modèles IA" subtitle="Trois niveaux pour chaque besoin">
-        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          {(Object.entries(MODEL_META) as [THWModel, typeof MODEL_META[THWModel]][]).map(([id, m])=>(
-            <div key={id} style={{ borderRadius:16, border:`1px solid ${m.color}33`, background:`${m.color}08`, padding:'18px 18px 16px' }}>
-              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <div style={{ width:40, height:40, borderRadius:11, background:`${m.color}18`, border:`1px solid ${m.color}44`, display:'flex', alignItems:'center', justifyContent:'center', color:m.color, flexShrink:0 }}>{m.effigy}</div>
-                  <div>
-                    <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:800, color:m.color, margin:0, textTransform:'capitalize' as const }}>{id === 'athena' ? 'Athéna' : id.charAt(0).toUpperCase()+id.slice(1)}</p>
-                    <p style={{ fontSize:11, color:'var(--text-dim)', margin:'1px 0 0', fontStyle:'italic' }}>{m.tagline}</p>
-                  </div>
-                </div>
-                <div style={{ textAlign:'right' as const, flexShrink:0, paddingTop:2 }}>
-                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:18, fontWeight:700, color:m.color, margin:0 }}>{m.cost}</p>
-                  <p style={{ fontSize:9, color:'var(--text-dim)', margin:'1px 0 0' }}>crédit{m.cost>1?'s':''}</p>
-                </div>
-              </div>
-              <p style={{ fontSize:12.5, color:'var(--text-mid)', lineHeight:1.7, margin:'0 0 14px' }}>{m.desc}</p>
-              <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.07em', margin:'0 0 7px' }}>À utiliser pour</p>
-              <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:12 }}>
-                {m.uses.map((u,i)=>(
-                  <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <div style={{ width:5, height:5, borderRadius:'50%', background:m.color, flexShrink:0 }}/>
-                    <span style={{ fontSize:12, color:'var(--text-mid)' }}>{u}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const }}>
-                {m.levels.map((l,i)=>(
-                  <span key={i} style={{ fontSize:10, padding:'3px 10px', borderRadius:20, background:`${m.color}14`, border:`1px solid ${m.color}33`, color:m.color, fontWeight:600 }}>{l}</span>
-                ))}
-              </div>
-            </div>
-          ))}
-          <div style={{ padding:'14px 16px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', textAlign:'center' as const }}>
-            <p style={{ fontSize:12.5, color:'var(--text-mid)', margin:0, lineHeight:1.7 }}>
-              Tous les modèles sont accessibles à tous.<br/>
-              <span style={{ color:'var(--text-dim)' }}>La différence se fait sur les crédits.</span>
-            </p>
-          </div>
-        </div>
-      </Sheet>
+      {/* ── Sous-page Modèles (slide-in) ──────────────── */}
+      {modelsPageOpen && (
+        <ModelesSubPage onBack={() => setModelsPageOpen(false)} />
+      )}
 
       {/* ── Sous-page Abonnement (slide-in) ──────────── */}
       {subPageOpen && (
@@ -1677,7 +1829,7 @@ function IASettingsBloc() {
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
           <NavRow label="Modèles" sub="Hermès · Athéna · Zeus — crédits et usages"
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.75"/></svg>}
-            onClick={()=>setModelsOpen(true)}
+            onClick={()=>setModelsPageOpen(true)}
           />
           <NavRow label="Abonnement" sub="Plan actuel · crédits et facturation"
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4M14 15h2"/></svg>}

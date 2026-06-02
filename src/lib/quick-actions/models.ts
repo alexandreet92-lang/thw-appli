@@ -30,7 +30,7 @@ const ESTIMATES: Record<string, number> = {
   app_guide:             3000,
 }
 
-export function quickActionEstimate(flow?: string): number {
+export function quickActionEstimate(flow?: string | null): number {
   return (flow && ESTIMATES[flow]) || 8000
 }
 

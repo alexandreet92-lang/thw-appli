@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 
-interface BeatenEntry { label: string; display: string; watts: number }
+interface BeatenAllTime { label: string; display: string; watts: number }
+interface BeatenYear    { label: string; display: string; watts: number; year: string }
 interface BeatenPayload {
-  allTime: BeatenEntry[]
-  year:    BeatenEntry[]
+  allTime: BeatenAllTime[]
+  year:    BeatenYear[]
 }
 
 interface Props {
@@ -149,7 +150,7 @@ export function RecordsBeaten({ activityId, isBike }: Props) {
               borderRadius:   999,
               border:         '1px solid rgba(8,145,178,0.40)',
             }}>
-              Année
+              Record&nbsp;{e.year}
             </span>
           </div>
         ))}

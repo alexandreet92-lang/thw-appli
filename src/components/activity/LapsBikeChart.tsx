@@ -152,7 +152,7 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, streams }: Pro
           Tours
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '8px 0' }}>
-          Aucun tour enregistré
+          {error === 'not_connected' ? 'Connecte Strava pour voir les tours' : 'Aucun tour enregistré'}
         </div>
       </div>
     )

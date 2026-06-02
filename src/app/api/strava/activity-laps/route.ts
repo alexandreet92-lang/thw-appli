@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createPublicClient, createServiceClient } from '@/lib/supabase/server'
-import { getValidToken } from '@/lib/strava/tokens'
+import { getValidToken } from '@/lib/oauth/tokens'
+import { getValidToken as getLegacyToken } from '@/lib/strava/tokens'
 
 // Interface for Strava lap response
 interface StravaLap {
@@ -95,13 +96,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ laps: [] })
   }
 
-  // 4. Token Strava valide (auto-refresh inclus)
-  const token = await getValidToken(user.id)
-  if (!token) {
-    console.error('[activity-laps] token Strava indisponible pour user', user.id)
-    return NextResponse.json({ error: 'Token Strava non disponible' }, { status: 503 })
+  console.log('[laps] strava_id résolu:', activity.provider_id)
+
+  // 4. Token Strava — MÊME source que la synchro : oauth_tokens (refresh auto),
+  //    fallback legacy strava_tokens. (Avant : seulement legacy → 503.)
+  let accessToken: string | null = await getValidToken(user.id, 'strava')
+  if (!accessToken) {
+    const legacy = await getLegacyToken(user.id)
+    accessToken = legacy?.access_token ?? null
   }
-  const headers = { Authorization: `Bearer ${token.access_token}` }
+  if (!accessToken) {
+    console.error('[activity-laps] aucun token Strava (oauth_tokens + legacy) pour user', user.id)
+    return NextResponse.json({ error: 'not_connected' }, { status: 403 })
+  }
+  const headers = { Authorization: `Bearer ${accessToken}` }
 
   const cacheLaps = async (laps: LapData[]) => {
     if (laps.length > 0) {

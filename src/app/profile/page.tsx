@@ -1355,103 +1355,110 @@ function ProfileContent() {
     </div>
   )
 
-  return (
-    <div className="profile-shell">
-      <style>{`
-        .profile-shell { max-width: 680px; margin: 0 auto; padding: 0 0 80px; }
-        @media (min-width: 768px)  { .profile-shell { max-width: 820px; } }
-        @media (min-width: 1024px) { .profile-shell { max-width: 1080px; } }
-        .profile-notif-grid { display: flex; flex-direction: column; }
-        @media (min-width: 768px) {
-          .profile-notif-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; align-items: start; }
-        }
-        @keyframes profileSlideRight { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes profileSlideLeft  { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .profile-slide-right { animation: profileSlideRight 280ms cubic-bezier(0.32,0.72,0,1); }
-        .profile-slide-left  { animation: profileSlideLeft 280ms cubic-bezier(0.32,0.72,0,1); }
-        /* Largeur de contenu identique pour tous les onglets */
-        .profile-section-container { width: 100%; max-width: 900px; margin: 0 auto; }
-      `}</style>
+  const header = (
+    <div>
+      <p style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.02em', color:'var(--text)' }}>Mon Profil</p>
+      <p style={{ fontSize:13, color:'var(--text-dim)', margin:0 }}>Paramètres · Coaching · Connexions</p>
+    </div>
+  )
 
-      {/* Header */}
-      <div style={{ padding:'28px 20px 0' }}>
-        <p style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.02em', color:'var(--text)' }}>Mon Profil</p>
-        <p style={{ fontSize:13, color:'var(--text-dim)', margin:'0 0 4px' }}>Paramètres · Coaching · Connexions</p>
-      </div>
+  const styleBlock = (
+    <style>{`
+      .profile-shell { width: 100%; max-width: 100%; margin: 0; padding: 0 0 80px; overflow-x: hidden; box-sizing: border-box; }
+      .profile-notif-grid { display: flex; flex-direction: column; }
+      @media (min-width: 768px) {
+        .profile-notif-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; align-items: start; }
+      }
+      @keyframes profileSlideRight { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+      @keyframes profileSlideLeft  { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+      .profile-slide-right { animation: profileSlideRight 280ms cubic-bezier(0.32,0.72,0,1); }
+      .profile-slide-left  { animation: profileSlideLeft 280ms cubic-bezier(0.32,0.72,0,1); }
+      .profile-section-container { width: 100%; max-width: 900px; margin: 0 auto; box-sizing: border-box; overflow-wrap: break-word; }
+      .profile-tab { font-size: 13px; }
+      @media (max-width: 380px) { .profile-tab { font-size: 12px; } }
+    `}</style>
+  )
 
-      {isDesktop ? (
-        // ── DESKTOP : sidebar rail (hover-to-expand, en overlay) + contenu ──
-        <div style={{ display:'flex', gap:24, padding:'12px 20px 0', alignItems:'flex-start' }}>
-          {/* Spacer de 56px : réserve la place du rail ; l'aside s'étend en overlay */}
-          <div style={{ width:56, flexShrink:0, position:'relative', alignSelf:'stretch' }}>
-            <aside
-              onMouseEnter={() => setRailOpen(true)}
-              onMouseLeave={() => setRailOpen(false)}
-              style={{
-                position:'absolute', top:0, left:0, zIndex:5,
-                width: railOpen ? 232 : 56, overflow:'hidden',
-                background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14,
-                padding:'8px 8px', boxShadow: railOpen ? '0 12px 36px rgba(0,0,0,0.18)' : 'none',
-                transition:'width 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms',
-              }}
-            >
-              {TABS.map(t => {
-                const active = tab === t.id
-                return (
-                  <button key={t.id} onClick={() => go(t.id)} title={t.label}
-                    style={{
-                      position:'relative', display:'flex', alignItems:'center', gap:12, width:'100%',
-                      padding:'11px 11px', borderRadius:10, marginBottom:4, cursor:'pointer',
-                      border:'none', textAlign:'left' as const, fontFamily:'DM Sans,sans-serif',
-                      background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
-                      transition:'background 0.14s', whiteSpace:'nowrap' as const,
-                    }}
-                    onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-                    onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                  >
-                    {active && <span style={{ position:'absolute', left:-8, top:8, bottom:8, width:3, borderRadius:'0 3px 3px 0', background:'#06B6D4' }} />}
-                    <t.Icon size={18} color={active ? '#06B6D4' : 'var(--text-mid)'} style={{ flexShrink:0 }} />
-                    <span style={{ display:'flex', flexDirection:'column', gap:1, minWidth:0, opacity: railOpen ? 1 : 0, transition:'opacity 150ms ease' }}>
-                      <span style={{ fontSize:13.5, fontWeight:600, color: active ? '#06B6D4' : 'var(--text)' }}>{t.label}</span>
-                      <span style={{ fontSize:11, color:'var(--text-dim)' }}>{t.sub}</span>
-                    </span>
-                  </button>
-                )
-              })}
-            </aside>
-          </div>
-          <div style={{ flex:1, minWidth:0 }}>
-            <div className="profile-section-container">{content}</div>
-          </div>
-        </div>
-      ) : (
-        // ── MOBILE / TABLET : onglets pleine largeur + glissement ──
-        <>
-          <div style={{ display:'flex', width:'100%', borderBottom:'1px solid var(--border)', marginTop:10 }}>
+  // ── DESKTOP : rail collé au bord gauche (pleine largeur) ──
+  if (isDesktop) {
+    return (
+      <div style={{ display:'flex', width:'100%', alignItems:'flex-start', overflowX:'hidden' }}>
+        {styleBlock}
+        {/* Spacer 56px (réserve la place) ; l'aside s'étend en overlay vers la droite */}
+        <div style={{ width:56, flexShrink:0, position:'relative', alignSelf:'stretch' }}>
+          <aside
+            onMouseEnter={() => setRailOpen(true)}
+            onMouseLeave={() => setRailOpen(false)}
+            style={{
+              position:'sticky', top:0, left:0, zIndex:5,
+              width: railOpen ? 232 : 56, overflow:'hidden',
+              background:'var(--bg-card)', borderRight:'0.5px solid var(--border)',
+              padding:'14px 8px', minHeight:'calc(100vh - var(--header-height))',
+              boxShadow: railOpen ? '8px 0 28px rgba(0,0,0,0.16)' : 'none',
+              transition:'width 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms',
+            }}
+          >
             {TABS.map(t => {
               const active = tab === t.id
               return (
-                <button key={t.id} onClick={() => go(t.id)}
+                <button key={t.id} onClick={() => go(t.id)} title={t.label}
                   style={{
-                    flex:1, minWidth:0, position:'relative', textAlign:'center' as const, padding:'14px 4px',
-                    background:'transparent', border:'none', cursor:'pointer',
-                    fontFamily:'DM Sans,sans-serif', fontSize:13, whiteSpace:'nowrap' as const,
-                    overflow:'visible', textOverflow:'clip' as const,
-                    fontWeight: active ? 700 : 600, color: active ? '#06B6D4' : '#94A3B8',
-                    transition:'color 0.15s',
+                    position:'relative', display:'flex', alignItems:'center', gap:12, width:'100%',
+                    padding:'11px 11px', borderRadius:10, marginBottom:4, cursor:'pointer',
+                    border:'none', textAlign:'left' as const, fontFamily:'DM Sans,sans-serif',
+                    background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
+                    transition:'background 0.14s', whiteSpace:'nowrap' as const,
                   }}
+                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                 >
-                  {t.short}
-                  {active && <span style={{ position:'absolute', bottom:-1, left:10, right:10, height:3, borderRadius:'2px 2px 0 0', background:'linear-gradient(90deg,#06B6D4 0%,#5b6fff 100%)' }} />}
+                  {active && <span style={{ position:'absolute', left:-8, top:8, bottom:8, width:3, borderRadius:'0 3px 3px 0', background:'#06B6D4' }} />}
+                  <t.Icon size={18} color={active ? '#06B6D4' : 'var(--text-mid)'} style={{ flexShrink:0 }} />
+                  <span style={{ display:'flex', flexDirection:'column', gap:1, minWidth:0, opacity: railOpen ? 1 : 0, transition:'opacity 150ms ease' }}>
+                    <span style={{ fontSize:13.5, fontWeight:600, color: active ? '#06B6D4' : 'var(--text)' }}>{t.label}</span>
+                    <span style={{ fontSize:11, color:'var(--text-dim)' }}>{t.sub}</span>
+                  </span>
                 </button>
               )
             })}
-          </div>
-          <div style={{ padding:'14px 12px 0' }}>
-            <div className="profile-section-container">{content}</div>
-          </div>
-        </>
-      )}
+          </aside>
+        </div>
+        <main style={{ flex:1, minWidth:0, padding:'28px 28px 80px' }}>
+          <div style={{ marginBottom:18 }}>{header}</div>
+          <div className="profile-section-container">{content}</div>
+        </main>
+      </div>
+    )
+  }
+
+  // ── MOBILE / TABLET : onglets pleine largeur + glissement ──
+  return (
+    <div className="profile-shell">
+      {styleBlock}
+      <div style={{ padding:'24px 16px 0' }}>{header}</div>
+      <div style={{ display:'flex', width:'100%', borderBottom:'1px solid var(--border)', marginTop:12, boxSizing:'border-box' }}>
+        {TABS.map(t => {
+          const active = tab === t.id
+          return (
+            <button key={t.id} onClick={() => go(t.id)} className="profile-tab"
+              style={{
+                flex:1, minWidth:0, position:'relative', textAlign:'center' as const, padding:'14px 4px',
+                background:'transparent', border:'none', cursor:'pointer',
+                fontFamily:'DM Sans,sans-serif', whiteSpace:'nowrap' as const,
+                overflow:'hidden', textOverflow:'ellipsis' as const,
+                fontWeight: active ? 700 : 600, color: active ? '#06B6D4' : '#94A3B8',
+                transition:'color 0.15s',
+              }}
+            >
+              {t.short}
+              {active && <span style={{ position:'absolute', bottom:-1, left:10, right:10, height:3, borderRadius:'2px 2px 0 0', background:'linear-gradient(90deg,#06B6D4 0%,#5b6fff 100%)' }} />}
+            </button>
+          )
+        })}
+      </div>
+      <div style={{ padding:'14px 12px 0' }}>
+        <div className="profile-section-container">{content}</div>
+      </div>
     </div>
   )
 }

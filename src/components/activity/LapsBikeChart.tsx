@@ -16,6 +16,7 @@ interface LapData {
   max_watts?:       number | null
   avg_cadence?:     number | null
   elevation_gain_m?:number | null
+  temp_avg?:        number | null
 }
 
 interface Props {
@@ -84,7 +85,7 @@ function darken(hex: string, factor = 0.82): string {
 }
 
 // ── Detail panel ───────────────────────────────────────────────────────────
-function LapDetailPanel({ lap, index, onClose }: { lap: LapData; index: number; onClose: () => void }) {
+function LapDetailPanel({ lap, index, ftp, onClose }: { lap: LapData; index: number; ftp?: number | null; onClose: () => void }) {
   const rows: { label: string; value: string }[] = [
     { label: 'Distance',    value: fmtDist(lap.distance_m) },
     { label: 'Durée',       value: fmtDur(lap.moving_time_s) },
@@ -93,19 +94,23 @@ function LapDetailPanel({ lap, index, onClose }: { lap: LapData; index: number; 
     { label: 'RPM moy.',    value: fmtVal(lap.avg_cadence, 'rpm') },
     { label: 'D+',          value: lap.elevation_gain_m != null ? `+${Math.round(lap.elevation_gain_m)} m` : '—' },
     { label: 'Vitesse moy.',value: fmtSpeed(lap.avg_speed_ms) },
+    { label: 'Temp. moy.',  value: lap.temp_avg != null ? `${Math.round(lap.temp_avg)} °C` : '—' },
   ]
+
+  const zoneColor = powerZoneColor(lap.avg_watts ?? 0, ftp)
 
   return (
     <div style={{
       background:    'var(--bg-card)',
       border:        '0.5px solid var(--border)',
+      borderLeft:    `4px solid ${zoneColor}`,
       borderRadius:  12,
       padding:       '16px 20px',
       marginTop:     16,
       position:      'relative',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#A855F7', fontVariantNumeric: 'tabular-nums' }}>
+        <span className="barlow" style={{ fontSize: 14, fontWeight: 700, color: '#A855F7', fontVariantNumeric: 'tabular-nums' }}>
           Tour {index + 1}
         </span>
         <button
@@ -118,9 +123,9 @@ function LapDetailPanel({ lap, index, onClose }: { lap: LapData; index: number; 
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
         {rows.map(({ label, value }) => (
-          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{label}</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '8px 12px', borderBottom: '0.5px solid var(--border)' }}>
+            <span style={{ fontSize: 9.5, color: 'var(--text-dim)', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+            <span className="barlow" style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
               {value}
             </span>
           </div>
@@ -257,7 +262,7 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp }: Props) 
                 stroke="var(--border)" strokeWidth="0.5" strokeDasharray={w === 0 ? '' : '2 3'}
                 vectorEffect="non-scaling-stroke" />
               <text x={PAD_L - 4} y={y + 3.5} textAnchor="end"
-                fontSize="9" fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                fontSize="9" fill="var(--text-dim)" style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }}>
                 {w}
               </text>
             </g>
@@ -316,17 +321,17 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp }: Props) 
               {/* Watts au-dessus si place */}
               {showLabel && (
                 <text x={bX + bW / 2} y={bY - 4} textAnchor="middle"
-                  fontSize="8" fill="#7C3AED" fontWeight="600"
-                  style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  fontSize="9" fill="#7C3AED" fontWeight="600"
+                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }}>
                   {Math.round(w)}
                 </text>
               )}
               {/* Label T_i sous la barre */}
               {showTickName && (
                 <text x={bX + bW / 2} y={PAD_T + CH + PAD_B - 8}
-                  textAnchor="middle" fontSize="9"
+                  textAnchor="middle" fontSize="10"
                   fill={sel ? '#7C3AED' : 'var(--text-dim)'}
-                  style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }}>
                   T{i + 1}
                 </text>
               )}
@@ -340,6 +345,7 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp }: Props) 
         <LapDetailPanel
           lap={laps[selectedLap]}
           index={selectedLap}
+          ftp={ftp}
           onClose={() => setSelectedLap(null)}
         />
       )}

@@ -1679,6 +1679,297 @@ function computeBestWindows(rawWatts: number[], N: number): BestWindow[] {
   })
 }
 
+// ── Panneau de sélection (slide-up depuis le bas) ──────────────────
+interface SelectionSheetProps {
+  sel:         [number, number]
+  time:        number[]
+  distance:    number[] | null
+  watts:       number[] | null
+  hr:          number[] | null
+  velocity:    number[] | null
+  alt:         number[] | null
+  cadence:     number[] | null
+  temp:        number[] | null
+  ftp:         number | null
+  hrZones?:    ParsedZone[]
+  onClose:     () => void
+}
+
+function SelectionSheet(props: SelectionSheetProps) {
+  const { sel, time, distance, watts, hr, velocity, alt, cadence, temp, ftp, hrZones, onClose } = props
+  const [closing, setClosing]   = useState(false)
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+
+  const [i1, i2] = sel
+  const len = Math.max(1, i2 - i1 + 1)
+  const dur = time[i2] - time[i1]
+
+  function handleClose() { setClosing(true); setTimeout(onClose, 280) }
+
+  const sliceOf = (arr: number[] | null | undefined) => (arr ? arr.slice(i1, i2 + 1) : null)
+  const wS = sliceOf(watts)
+  const hrS = sliceOf(hr)
+  const vRaw = sliceOf(velocity)
+  const vS = vRaw ? vRaw.map(v => v * 3.6) : null            // km/h
+  const aS = sliceOf(alt)
+  const cS = sliceOf(cadence)
+  const tS = sliceOf(temp)
+
+  const distM = distance ? distance[i2] - distance[i1] : null
+
+  const avgOf = (a: number[] | null) => (a && a.length ? a.reduce((x, y) => x + y, 0) / a.length : null)
+  const maxOf = (a: number[] | null) => (a && a.length ? Math.max(...a) : null)
+  const minOf = (a: number[] | null) => (a && a.length ? Math.min(...a) : null)
+
+  // Watts normalisés du segment (NP = (moy des moyennes glissantes 30s ^4) ^ 1/4)
+  const npSeg = (() => {
+    if (!wS || wS.length < 30) return null
+    const roll: number[] = []
+    for (let i = 29; i < wS.length; i++) {
+      let s = 0
+      for (let j = i - 29; j <= i; j++) s += wS[j]
+      roll.push(s / 30)
+    }
+    if (!roll.length) return null
+    const mean4 = roll.reduce((a, b) => a + Math.pow(b, 4), 0) / roll.length
+    return Math.round(Math.pow(mean4, 0.25))
+  })()
+
+  // D+ / D-
+  let dPlus = 0, dMinus = 0
+  if (aS) for (let i = 1; i < aS.length; i++) { const d = aS[i] - aS[i - 1]; if (d > 0) dPlus += d; else dMinus += -d }
+
+  // Roue libre (cadence = 0)
+  let freeCount = 0
+  if (cS) cS.forEach(c => { if (c <= 0) freeCount++ })
+  const freePct = cS && cS.length ? freeCount / cS.length : null
+  const freeDur = freePct != null ? dur * freePct : null
+
+  const fmtDuration = (s: number): string => {
+    if (s == null || !isFinite(s)) return '—'
+    const m = Math.floor(s / 60), sec = Math.round(s % 60)
+    if (m < 60) return `${m}m ${String(sec).padStart(2, '0')}s`
+    const h = Math.floor(m / 60), rm = m % 60
+    return `${h}h ${String(rm).padStart(2, '0')}m`
+  }
+  const fmtClock = (s: number): string => {
+    const m = Math.floor(s / 60), sec = Math.round(s % 60)
+    return `${m}:${String(sec).padStart(2, '0')}`
+  }
+  const v = (x: number | null | undefined, unit: string, d = 0): string =>
+    x == null || !isFinite(x) ? '—' : `${d ? x.toFixed(d).replace('.', ',') : Math.round(x)} ${unit}`
+
+  // ── Groupes de stats ──
+  const groups: { title: string; items: { label: string; value: string }[] }[] = [
+    { title: 'Effort', items: [
+      { label: 'Durée',        value: fmtDuration(dur) },
+      { label: 'Distance',     value: distM != null ? `${(distM / 1000).toFixed(2).replace('.', ',')} km` : '—' },
+      { label: 'Vitesse moy.', value: v(avgOf(vS), 'km/h', 1) },
+      { label: 'Vitesse max.', value: v(maxOf(vS), 'km/h', 1) },
+    ] },
+    { title: 'Puissance', items: [
+      { label: 'Watts moy.',        value: v(avgOf(wS), 'W') },
+      { label: 'Watts max.',        value: v(maxOf(wS), 'W') },
+      { label: 'Watts normalisés',  value: v(npSeg, 'W') },
+      { label: 'W/kg',              value: '—' },
+    ] },
+    { title: 'Cadence', items: [
+      { label: 'Cadence moy.', value: v(avgOf(cS), 'rpm') },
+      { label: 'Cadence max.', value: v(maxOf(cS), 'rpm') },
+      { label: 'Roue libre',   value: freeDur != null ? `${fmtClock(freeDur)} (${Math.round((freePct ?? 0) * 100)} %)` : '—' },
+    ] },
+    { title: 'Terrain', items: [
+      { label: 'D+',           value: aS ? `+${Math.round(dPlus)} m` : '—' },
+      { label: 'D−',           value: aS ? `−${Math.round(dMinus)} m` : '—' },
+      { label: 'Altitude max.',value: v(maxOf(aS), 'm') },
+      { label: 'Altitude moy.',value: v(avgOf(aS), 'm') },
+    ] },
+    { title: 'Température', items: [
+      { label: 'Temp. moy.', value: v(avgOf(tS), '°C') },
+      { label: 'Temp. max.', value: v(maxOf(tS), '°C') },
+      { label: 'Temp. min.', value: v(minOf(tS), '°C') },
+    ] },
+  ]
+
+  // ── 6 mini-courbes ──
+  const charts: { name: string; color: string; data: number[] | null; unit: string; d: number; mode: 'max' | 'min' }[] = [
+    { name: 'Altitude',    color: '#64748b', data: aS,  unit: 'm',    d: 0, mode: 'max' },
+    { name: 'FC',          color: '#EF4444', data: hrS, unit: 'bpm',  d: 0, mode: 'max' },
+    { name: 'Puissance',   color: '#8B5CF6', data: wS,  unit: 'W',    d: 0, mode: 'max' },
+    { name: 'Vitesse',     color: '#06B6D4', data: vS,  unit: 'km/h', d: 1, mode: 'max' },
+    { name: 'Cadence',     color: '#EC4899', data: cS,  unit: 'rpm',  d: 0, mode: 'max' },
+    { name: 'Température',  color: '#10B981', data: tS,  unit: '°C',   d: 0, mode: 'min' },
+  ]
+
+  // ── Zones puissance (polarisation) ──
+  const pol = (() => {
+    if (!wS || !ftp || ftp <= 0) return null
+    let low = 0, mid = 0, high = 0
+    wS.forEach(w => { const p = w / ftp; if (p < 0.75) low++; else if (p < 0.90) mid++; else high++ })
+    const tot = wS.length || 1
+    return [
+      { label: 'Z1-Z2', pct: Math.round((low / tot) * 100),  color: '#10B981' },
+      { label: 'Z3',    pct: Math.round((mid / tot) * 100),  color: '#F97316' },
+      { label: 'Z4-Z5', pct: Math.round((high / tot) * 100), color: '#EF4444' },
+    ]
+  })()
+
+  // ── Zones FC ──
+  const hrZoneColors = ['#06B6D4', '#10B981', '#F97316', '#EF4444', '#7C3AED']
+  const hrBars = (() => {
+    if (!hrS || !hrZones || hrZones.length === 0) return null
+    const hz = hrZones.slice(0, 5)
+    const counts = hz.map(() => 0)
+    hrS.forEach(h => {
+      for (let z = 0; z < hz.length; z++) {
+        if (h >= hz[z].min && (h <= hz[z].max || z === hz.length - 1)) { counts[z]++; break }
+      }
+    })
+    const tot = hrS.length || 1
+    return hz.map((z, idx) => ({ label: z.label || `Z${idx + 1}`, pct: Math.round((counts[idx] / tot) * 100), color: hrZoneColors[idx] ?? '#06B6D4' }))
+  })()
+
+  const subtitle = `${fmtClock(time[i1] - time[0])} → ${fmtClock(time[i2] - time[0])}${distM != null ? ` · ${(distM / 1000).toFixed(2).replace('.', ',')} km` : ''}`
+
+  const labelGroup: React.CSSProperties = { fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 8 }
+  const labelStat: React.CSSProperties = { fontSize: 9, color: 'var(--text-dim)' }
+  const valStat: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }
+
+  return (
+    <>
+      <div onClick={handleClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 600, animation: 'selSheetFade 200ms ease-out' }} />
+      <div
+        className={closing ? 'sel-sheet-out' : 'sel-sheet-in'}
+        style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 601,
+          background: 'var(--bg)', borderRadius: '18px 18px 0 0',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+          maxHeight: '88vh', overflowY: 'auto',
+          padding: '0 0 28px',
+        }}
+      >
+        {/* Handle — clic ferme (le clic sur l'overlay et le ✕ ferment aussi) */}
+        <div
+          style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px', cursor: 'pointer' }}
+          onClick={handleClose}
+        >
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+        </div>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '4px 20px 12px' }}>
+          <div>
+            <div className="barlow" style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Sélection — {fmtDuration(dur)}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{subtitle}</div>
+          </div>
+          <button onClick={handleClose} aria-label="Fermer"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 20, lineHeight: 1, padding: 4 }}>✕</button>
+        </div>
+
+        {/* Stats — 5 groupes */}
+        <div className="sel-groups" style={{ padding: '0 20px 18px' }}>
+          {groups.map((g) => (
+            <div key={g.title} className="sel-group">
+              <div style={labelGroup}>{g.title}</div>
+              <div className="sel-group-items">
+                {g.items.map(it => (
+                  <div key={it.label} style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+                    <span style={labelStat}>{it.label}</span>
+                    <span style={valStat}>{it.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Mini-courbes */}
+        <div style={{ padding: '0 20px 8px' }}
+          onMouseLeave={() => setHoverIdx(null)}
+        >
+          {charts.filter(c => c.data && c.data.length > 1).map(c => {
+            const data = c.data as number[]
+            const mn = Math.min(...data), mx = Math.max(...data), rg = mx - mn || 1
+            const pts = data.map((val, idx) => `${(idx / (data.length - 1)) * 100},${32 - ((val - mn) / rg) * 30 - 1}`).join('L')
+            const hx = hoverIdx != null ? (Math.min(data.length - 1, hoverIdx) / (data.length - 1)) * 100 : null
+            const hVal = hoverIdx != null ? data[Math.min(data.length - 1, hoverIdx)] : null
+            const stat = c.mode === 'min' ? minOf(data) : maxOf(data)
+            const statLabel = c.mode === 'min' ? 'Min' : 'Max'
+            return (
+              <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderTop: '1px solid var(--border)' }}>
+                <div style={{ width: 68, flexShrink: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: c.color }}>{c.name}</div>
+                  <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{statLabel} {v(stat, '', c.d).replace(' ', '')}</div>
+                  <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>Moy {v(avgOf(data), '', c.d).replace(' ', '')}</div>
+                </div>
+                <div
+                  style={{ position: 'relative', flex: 1, minWidth: 0, height: 32, cursor: 'crosshair' }}
+                  onMouseMove={e => {
+                    const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+                    const p = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width))
+                    setHoverIdx(Math.round(p * (len - 1)))
+                  }}
+                >
+                  <svg viewBox="0 0 100 32" preserveAspectRatio="none" style={{ width: '100%', height: 32, display: 'block', overflow: 'visible' }}>
+                    <path d={`M${pts}`} fill="none" stroke={c.color} strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
+                    {hx != null && (
+                      <line x1={hx} y1={0} x2={hx} y2={32} stroke="var(--text-dim)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                    )}
+                  </svg>
+                  {hx != null && hVal != null && (
+                    <div style={{
+                      position: 'absolute', left: `${hx}%`, top: -26, transform: 'translateX(-50%)',
+                      background: '#1e293b', color: '#fff', fontSize: 10, fontWeight: 600,
+                      padding: '3px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none',
+                      fontVariantNumeric: 'tabular-nums', zIndex: 5,
+                    }}>
+                      {c.d ? hVal.toFixed(c.d).replace('.', ',') : Math.round(hVal)} {c.unit}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Zones d'intensité */}
+        {(pol || hrBars) && (
+          <div style={{ display: 'flex', gap: 16, padding: '12px 20px 0', flexWrap: 'wrap' }}>
+            {pol && (
+              <div style={{ flex: 1, minWidth: 150 }}>
+                <div style={labelGroup}>Polarisation puissance</div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 90 }}>
+                  {pol.map(z => (
+                    <div key={z.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                      <span className="barlow" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{z.pct} %</span>
+                      <div style={{ width: '100%', height: `${Math.max(2, z.pct)}%`, background: z.color, borderRadius: '3px 3px 0 0', minHeight: 2 }} />
+                      <span style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 3 }}>{z.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {hrBars && (
+              <div style={{ flex: 1, minWidth: 150 }}>
+                <div style={labelGroup}>Zones FC</div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 90 }}>
+                  {hrBars.map(z => (
+                    <div key={z.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                      <span className="barlow" style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{z.pct} %</span>
+                      <div style={{ width: '100%', height: `${Math.max(2, z.pct)}%`, background: z.color, borderRadius: '3px 3px 0 0', minHeight: 2 }} />
+                      <span style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 3 }}>{z.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
 function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, onHoverGps }: {
   activity: Activity
   hrZones?: ParsedZone[]
@@ -1701,6 +1992,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
   const [cursorPct, setCursorPct]   = useState<number | null>(null)
   const [mousePos, setMousePos]     = useState<{x:number;y:number}|null>(null)
   const [isOverCharts, setIsOverCharts] = useState(false)
+  const [inPlot, setInPlot]         = useState(false)
   const [selection, setSelection]   = useState<[number,number] | null>(null)
   const [dragStartPct, setDragStartPct] = useState<number | null>(null)
   const [selectedLap, setSelectedLap]   = useState<number | null>(null)
@@ -1735,6 +2027,10 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
     setMousePos({ x: clientX - rect.left, y: clientY - rect.top })
     // pct calculé sur la zone charts (sans le left-col label)
     const chartEl = tracksAreaRef.current ?? containerRef.current
+    // pct brut (non clampé) → détecte si le curseur est DANS la zone de tracé
+    const chartRect = chartEl.getBoundingClientRect()
+    const rawPct = (clientX - chartRect.left) / chartRect.width
+    setInPlot(rawPct >= 0 && rawPct <= 1)
     const pct = getPct(clientX, chartEl)
     setCursorPct(pct)
     if (dragStartPct !== null) {
@@ -1921,27 +2217,6 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
 
   const maxIntensity = watts ? Math.max(...watts) : hr ? Math.max(...hr) : 1
 
-  const selStats = selection ? (() => {
-    const [i1, i2] = selection
-    const dur = time[i2] - time[i1]
-    const sliceDist = s.distance ? s.distance[i2] - s.distance[i1] : null
-    const hrSlice = hr ? hr.slice(i1, i2+1) : null
-    const wSlice  = watts ? watts.slice(i1, i2+1) : null
-    const vSlice  = velocity ? velocity.slice(i1, i2+1).filter(v => v > 0) : null
-    const altSlice = alt ? alt.slice(i1, i2+1) : null
-    const dPlus  = altSlice ? altSlice.reduce((acc, v, idx) => idx > 0 && v > altSlice[idx-1] ? acc + (v - altSlice[idx-1]) : acc, 0) : null
-    const cadSlice = cadence ? cadence.slice(i1, i2+1) : null
-    return {
-      dur, dist: sliceDist,
-      hrMoy: hrSlice ? Math.round(avg(hrSlice)) : null,
-      hrMax: hrSlice ? Math.round(Math.max(...hrSlice)) : null,
-      watts: wSlice ? Math.round(avg(wSlice)) : null,
-      pace:  vSlice && vSlice.length ? avg(vSlice.map(v => 1000/v)) : null,
-      dPlus: dPlus ? Math.round(dPlus) : null,
-      cad:   cadSlice ? Math.round(avg(cadSlice)) : null,
-    }
-  })() : null
-
   const selLap = selectedLap !== null && laps[selectedLap] ? laps[selectedLap] : null
 
   return (
@@ -1953,6 +2228,22 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
         @media (min-width: 768px) {
           .sync-mobile-header { display: none  !important; }
           .sync-left-col      { display: block !important; }
+        }
+        /* Selection slide-up sheet */
+        @keyframes selSheetFade { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes selSheetUp   { from { transform: translateY(100%) } to { transform: translateY(0) } }
+        @keyframes selSheetDown { from { transform: translateY(0) } to { transform: translateY(100%) } }
+        .sel-sheet-in  { animation: selSheetUp 300ms ease-out; }
+        .sel-sheet-out { animation: selSheetDown 280ms ease-out forwards; }
+        .sel-groups     { display: flex; flex-direction: column; gap: 0; }
+        .sel-group      { padding-top: 12px; }
+        .sel-group + .sel-group { border-top: 1px solid var(--border); }
+        .sel-group-items { display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px 20px; }
+        @media (min-width: 768px) {
+          .sel-groups   { flex-direction: row; }
+          .sel-group    { flex: 1; padding: 0 16px; }
+          .sel-group + .sel-group { border-top: none; border-left: 1px solid var(--border); }
+          .sel-group-items { flex-direction: column; gap: 8px; }
         }
       `}</style>
 
@@ -1967,8 +2258,8 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
         onTouchStart={e => { setIsOverCharts(true); handleDown(e.touches[0].clientX) }}
         onTouchEnd={() => { handleUp() }}
       >
-        {/* Cursor line */}
-        {isOverCharts && cursorPct !== null && mousePos !== null && (
+        {/* Cursor line — uniquement dans la zone de tracé effective */}
+        {isOverCharts && inPlot && cursorPct !== null && mousePos !== null && (
           <div style={{
             position: 'absolute', top: 0, bottom: 0, left: mousePos.x,
             width: 1, background: T.text, pointerEvents: 'none', zIndex: 50,
@@ -2135,8 +2426,8 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
         })}
         </div>{/* end tracksAreaRef */}
 
-        {/* Unified cursor tooltip */}
-        {isOverCharts && cursor !== null && mousePos !== null && (
+        {/* Unified cursor tooltip — uniquement dans la zone de tracé */}
+        {isOverCharts && inPlot && cursor !== null && mousePos !== null && (
           <div
             data-chart-tooltip=""
             style={{
@@ -2243,31 +2534,22 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
         </div>
       )}
 
-      {/* Selection modal */}
-      {showSelModal && selStats && selection && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 500,
-          display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setShowSelModal(false)}
-        >
-          <div style={{ background: T.surface, borderRadius: 12, padding: '24px 28px', minWidth: 280, maxWidth: 380,
-            boxShadow: '0 12px 40px rgba(0,0,0,0.15)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Sélection — {fmtDur(selStats.dur)}</div>
-              <button onClick={() => setShowSelModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, fontSize: 18 }}>✕</button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-              {selStats.dist != null && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>Distance</span><span style={{ fontWeight: 600 }}>{fmtDist(selStats.dist)}</span></div>}
-              {selStats.hrMoy != null && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>FC moyenne</span><span style={{ fontWeight: 600 }}>{selStats.hrMoy} bpm</span></div>}
-              {selStats.hrMax != null && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>FC max.</span><span style={{ fontWeight: 600 }}>{selStats.hrMax} bpm</span></div>}
-              {selStats.watts != null && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>Watts moy.</span><span style={{ fontWeight: 600 }}>{selStats.watts} W</span></div>}
-              {selStats.pace != null && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>Allure moy.</span><span style={{ fontWeight: 600 }}>{fmtPace(selStats.pace)}</span></div>}
-              {selStats.dPlus != null && selStats.dPlus > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>D+</span><span style={{ fontWeight: 600 }}>+{selStats.dPlus} m</span></div>}
-              {selStats.cad != null && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: T.textMuted }}>Cadence moy.</span><span style={{ fontWeight: 600 }}>{selStats.cad} rpm</span></div>}
-            </div>
-          </div>
-        </div>
+      {/* Selection slide-up sheet */}
+      {showSelModal && selection && (
+        <SelectionSheet
+          sel={selection}
+          time={time}
+          distance={s.distance ?? null}
+          watts={watts}
+          hr={hr}
+          velocity={velocity}
+          alt={alt}
+          cadence={cadence}
+          temp={temp}
+          ftp={activity.ftp_at_time ?? null}
+          hrZones={hrZones}
+          onClose={() => setShowSelModal(false)}
+        />
       )}
     </div>
   )

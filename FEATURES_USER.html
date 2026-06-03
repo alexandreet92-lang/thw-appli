@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THW Coaching — Toutes les fonctionnalités</title>
+<style>
+  :root{
+    --cyan:#06B6D4; --cyan-dark:#0891a8; --indigo:#5b6fff;
+    --ink:#0d1117; --muted:#5b6470; --line:#e6eaef; --card:#f7fafc; --bg:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color:var(--ink); background:var(--bg); line-height:1.6; font-size:15px;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:48px 40px 64px;}
+  /* Cover */
+  .cover{
+    background:linear-gradient(135deg,var(--cyan) 0%,var(--indigo) 100%);
+    color:#fff;border-radius:20px;padding:40px 36px;margin-bottom:36px;
+  }
+  .cover h1{font-size:30px;font-weight:800;letter-spacing:-.02em;margin:0 0 8px;}
+  .cover p{font-size:15px;margin:0;opacity:.95;}
+  .cover .tag{display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);
+    padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;margin-bottom:14px;}
+  /* TOC */
+  .toc{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 24px;margin-bottom:40px;}
+  .toc h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 12px;}
+  .toc ol{margin:0;padding-left:20px;columns:2;column-gap:32px;}
+  .toc li{margin:4px 0;}
+  .toc a{color:var(--ink);text-decoration:none;}
+  /* Sections */
+  section{margin:0 0 30px;break-inside:avoid;page-break-inside:avoid;}
+  h2.theme{
+    font-size:21px;font-weight:800;letter-spacing:-.01em;margin:0 0 6px;padding-bottom:8px;
+    border-bottom:2px solid var(--cyan);
+  }
+  .intro{color:var(--muted);margin:0 0 16px;font-size:14.5px;}
+  h3{font-size:15.5px;font-weight:700;margin:18px 0 4px;color:var(--cyan-dark);}
+  ul{margin:6px 0 6px;padding-left:22px;}
+  li{margin:4px 0;}
+  p{margin:6px 0;}
+  strong{color:var(--ink);}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px;}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;}
+  th{background:var(--card);font-weight:700;}
+  .footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);
+    color:var(--muted);font-size:13px;text-align:center;font-style:italic;}
+  @page{size:A4;margin:16mm 14mm;}
+  @media print{
+    .wrap{padding:0;max-width:none;}
+    .cover{border-radius:0;}
+    a{color:var(--ink);text-decoration:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="cover">
+    <span class="tag">THW Coaching</span>
+    <h1>Tout ce que l'app sait faire</h1>
+    <p>Ton entraînement hybride (endurance + force), piloté par une IA qui te connaît.</p>
+  </div>
+
+  <nav class="toc">
+    <h2>Sommaire — 16 thèmes</h2>
+    <ol>
+      <li><a href="#t1">🤖 Coach IA personnalisé</a></li>
+      <li><a href="#t2">🎯 Compétences (méthodologies)</a></li>
+      <li><a href="#t3">⚡ Actions rapides</a></li>
+      <li><a href="#t4">📊 Analyse de tes performances</a></li>
+      <li><a href="#t5">📅 Planification de l'entraînement</a></li>
+      <li><a href="#t6">🗓️ Calendrier</a></li>
+      <li><a href="#t7">💪 Récupération et bien-être</a></li>
+      <li><a href="#t8">🥗 Nutrition</a></li>
+      <li><a href="#t9">🔌 Connexions et intégrations</a></li>
+      <li><a href="#t10">👤 Mon profil</a></li>
+      <li><a href="#t11">🪙 Système de tokens</a></li>
+      <li><a href="#t12">💳 Abonnements</a></li>
+      <li><a href="#t13">🔔 Notifications</a></li>
+      <li><a href="#t14">🎨 Personnalisation de l'app</a></li>
+      <li><a href="#t15">📝 Enregistrement et séances</a></li>
+      <li><a href="#t16">🔐 Sécurité et compte</a></li>
+    </ol>
+  </nav>
+
+  <section id="t1">
+    <h2 class="theme">🤖 1. Coach IA personnalisé</h2>
+    <p class="intro">Un véritable coach disponible 24/7 qui connaît ton historique, tes objectifs et ton matériel, et te répond dans une conversation naturelle.</p>
+    <h3>Trois cerveaux selon ton besoin</h3>
+    <ul>
+      <li><strong>Hermès</strong> — rapide et direct, pour les questions simples et les conseils immédiats.</li>
+      <li><strong>Athéna</strong> — le coach équilibré du quotidien : analyse, contextualise et propose des améliorations concrètes.</li>
+      <li><strong>Zeus</strong> — le plus avancé, pour les analyses très poussées, les plans complexes et les stratégies sur le long terme.</li>
+    </ul>
+    <h3>Un coach qui agit, pas seulement qui parle</h3>
+    <p>Au-delà du chat, ton coach peut <strong>générer des plans d'entraînement</strong>, <strong>construire des séances</strong>, <strong>analyser ta semaine</strong>, <strong>interpréter tes tests</strong> et <strong>te proposer des ajustements</strong> selon ta forme du moment.</p>
+    <h3>Réponses en direct</h3>
+    <p>Les réponses s'affichent au fil de l'eau, comme une conversation, sans attendre un long chargement.</p>
+    <h3>Recherche web</h3>
+    <p>Active la recherche web pour que ton coach s'appuie sur des informations à jour quand c'est pertinent (actus course, nouveautés matériel…).</p>
+    <h3>Mémoire et règles personnelles</h3>
+    <p>Donne à ton coach des <strong>règles permanentes</strong> qu'il respectera toujours (ex. « ne me propose jamais de séance le lundi »). Il s'en souvient d'une conversation à l'autre.</p>
+    <h3>Conversations sauvegardées</h3>
+    <p>Retrouve l'historique de tes échanges et reprends une discussion là où tu l'avais laissée.</p>
+  </section>
+
+  <section id="t2">
+    <h2 class="theme">🎯 2. Compétences (méthodologies)</h2>
+    <p class="intro">Les compétences permettent à ton coach d'adopter une approche d'entraînement précise, selon ta vision et ton sport.</p>
+    <h3>70 méthodologies pré-construites</h3>
+    <p>Choisis parmi <strong>70 méthodologies reconnues</strong>, couvrant 9 univers : <strong>Running, Trail, Cyclisme, Triathlon, Natation, Rowing, Musculation, Hyrox</strong> et des approches <strong>transversales</strong>.</p>
+    <h3>Des grands noms de l'entraînement</h3>
+    <ul>
+      <li><strong>80/20 (Fitzgerald)</strong> — polarisation accessible pour amateurs.</li>
+      <li><strong>Méthode Daniels (VDOT)</strong> — allures calculées à partir de ton VDOT.</li>
+      <li><strong>Méthode Norvégienne</strong> — double seuil contrôlé au lactate.</li>
+      <li><strong>4DP / Sufferfest</strong> — profil 4 dimensions pour cibler tes faiblesses (cyclisme).</li>
+      <li><strong>Sweet Spot Training</strong> — travail à 88-94 % du FTP, rendement/temps optimal.</li>
+      <li><strong>5/3/1 (Wendler)</strong>, <strong>Westside Conjugate</strong>, <strong>GVT</strong> — piliers de la musculation.</li>
+      <li><strong>Running-engine first</strong> &amp; <strong>Compromised running</strong> — spécifiques Hyrox.</li>
+      <li><strong>Polarisée natation (CSS + 80/20)</strong>, <strong>HVLIT</strong> (aviron), <strong>Skyrunning</strong> &amp; <strong>Vertical Kilometer</strong> (trail)…</li>
+    </ul>
+    <h3>Des approches au-delà de l'entraînement</h3>
+    <p>Les compétences couvrent aussi la <strong>nutrition</strong> (Train Low Compete High, Nutrition périodisée, Jeûne 16/8…), la <strong>récupération</strong> (Sommeil optimisé 9h+, Récupération active, Cryothérapie) et la <strong>périodisation</strong> (par blocs, linéaire, inversée…).</p>
+    <h3>Compétences sur mesure</h3>
+    <p>Crée tes propres méthodologies en discutant avec l'IA : ton coach s'adapte exactement à ta façon de t'entraîner.</p>
+    <h3>Combien de compétences actives ?</h3>
+    <ul>
+      <li><strong>Premium</strong> : 3 compétences actives</li>
+      <li><strong>Pro</strong> : 7 compétences actives</li>
+      <li><strong>Expert</strong> : 20 compétences actives</li>
+    </ul>
+  </section>
+
+  <section id="t3">
+    <h2 class="theme">⚡ 3. Actions rapides</h2>
+    <p class="intro">Des raccourcis qui lancent la bonne tâche avec le bon niveau de coach automatiquement sélectionné — tu n'as rien à régler.</p>
+    <h3>Entraînement</h3>
+    <ul>
+      <li><strong>Créer un plan d'entraînement</strong> — un plan complet sur mesure (coach le plus avancé).</li>
+      <li><strong>Créer une séance</strong> — une séance détaillée prête à l'emploi.</li>
+      <li><strong>Training Analyse</strong> — analyse une activité ou un bloc.</li>
+      <li><strong>Analyser ma semaine</strong> — bilan de ta semaine d'entraînement.</li>
+      <li><strong>Analyser ma progression</strong> — vois où tu progresses sur la durée.</li>
+      <li><strong>Identifier mes points faibles</strong> — cible ce qui te freine.</li>
+    </ul>
+    <h3>Course</h3>
+    <ul>
+      <li><strong>Stratégie de course</strong> — plan de pacing et scénarios pour le jour J.</li>
+      <li><strong>Analyser un test</strong> — interprète tes résultats de test.</li>
+      <li><strong>Estimer mes zones</strong> — calcule tes zones d'entraînement.</li>
+    </ul>
+    <h3>Nutrition</h3>
+    <ul>
+      <li><strong>Créer un plan nutritionnel</strong> — un plan adapté à ta charge.</li>
+      <li><strong>Recharge glucidique</strong> — protocole de recharge avant épreuve.</li>
+    </ul>
+    <h3>Récupération</h3>
+    <ul>
+      <li><strong>Analyser ma récupération</strong> — état de forme et fatigue.</li>
+      <li><strong>Conseils sommeil</strong> — recommandations pour mieux récupérer.</li>
+    </ul>
+    <h3>Application</h3>
+    <ul>
+      <li><strong>Comprendre l'application</strong> — un guide pour tout savoir utiliser.</li>
+    </ul>
+  </section>
+
+  <section id="t4">
+    <h2 class="theme">📊 4. Analyse de tes performances</h2>
+    <p class="intro">Une page Performance complète pour transformer tes données en décisions d'entraînement.</p>
+    <h3>Ton profil athlète</h3>
+    <p>Renseigne (ou laisse l'app estimer) tes repères clés : <strong>FTP, VMA, VO2max, FC max/repos, seuil (LTHR), allure seuil, CSS</strong> en natation, et des repères spécifiques par sport.</p>
+    <h3>Tests par sport</h3>
+    <p>Évalue-toi avec des tests dédiés — notamment les tests <strong>Hyrox</strong> (Force, Endurance fonctionnelle, Explosivité) et des repères running, cyclisme, natation et triathlon.</p>
+    <h3>Un système de niveaux clair</h3>
+    <p>Chaque performance se situe sur une échelle parlante : <strong>Alien → Élite → AHN → TBA → BA → Amateur → Débutant</strong>, avec des seuils adaptés selon le sexe.</p>
+    <h3>Des graphiques qui parlent</h3>
+    <ul>
+      <li><strong>Radars par sport</strong> pour visualiser tes forces et faiblesses d'un coup d'œil.</li>
+      <li><strong>Courbe de puissance (MMP)</strong> en cyclisme, avec tes meilleurs efforts mis en évidence.</li>
+      <li><strong>Courbe d'allure</strong> en course.</li>
+      <li><strong>Volume d'entraînement</strong> par sport, mois par mois.</li>
+      <li><strong>Charge d'entraînement</strong> (forme / fatigue / fraîcheur).</li>
+    </ul>
+    <h3>Tes records</h3>
+    <p>Garde une trace de tes records de puissance et de performance par durée et par sport, et vois quand tu bats une nouvelle marque.</p>
+  </section>
+
+  <section id="t5">
+    <h2 class="theme">📅 5. Planification de l'entraînement</h2>
+    <p class="intro">Planifie ta semaine et tes blocs, ou laisse l'IA le faire pour toi.</p>
+    <h3>Vue Entraînement</h3>
+    <p>Ton planning organisé : séances, intensités et plan en cours, sport par sport.</p>
+    <h3>Vue Semaine</h3>
+    <p>Une vue hebdomadaire détaillée pour préparer et suivre tes séances jour par jour.</p>
+    <h3>Plans générés par l'IA</h3>
+    <p>Demande un plan complet : ton coach le construit selon ton objectif, ton temps disponible et ton matériel — puis l'ajoute directement à ton planning.</p>
+    <h3>Séances prêtes à l'emploi</h3>
+    <p>Construis des séances structurées (intervalles par zone, cibles d'allure/puissance/FC, temps de repos) aussi bien en <strong>endurance</strong> qu'en <strong>musculation</strong> (circuits, EMOM, superset).</p>
+  </section>
+
+  <section id="t6">
+    <h2 class="theme">🗓️ 6. Calendrier</h2>
+    <p class="intro">Toute ta saison au même endroit : compétitions, vie pro et perso.</p>
+    <h3>Quatre vues filtrées</h3>
+    <ul>
+      <li><strong>Course</strong> — tes compétitions et objectifs.</li>
+      <li><strong>Pro</strong> — tes obligations professionnelles.</li>
+      <li><strong>Perso</strong> — ta vie personnelle.</li>
+      <li><strong>Tout</strong> — la vue globale qui combine tout.</li>
+    </ul>
+    <h3>Vue mensuelle et vue annuelle circulaire</h3>
+    <p>Navigue mois par mois, ou prends de la hauteur avec une vue annuelle originale pour visualiser ta saison entière.</p>
+    <h3>Gestion des compétitions</h3>
+    <p>Ajoute tes courses avec leur niveau d'objectif et leurs détails, importe des fichiers de parcours, et prépare chaque épreuve.</p>
+  </section>
+
+  <section id="t7">
+    <h2 class="theme">💪 7. Récupération et bien-être</h2>
+    <p class="intro">Parce que la performance se construit aussi au repos.</p>
+    <h3>Variabilité cardiaque (HRV)</h3>
+    <p>Suis ta HRV pour mieux comprendre ton état de forme et ta capacité à encaisser la charge.</p>
+    <h3>Suivi du sommeil</h3>
+    <p>Durée, score, phases (léger / profond / paradoxal), et même un hypnogramme pour visualiser ta nuit.</p>
+    <h3>Forme et fatigue</h3>
+    <p>Visualise ta <strong>charge chronique et aiguë</strong> et ta <strong>fraîcheur</strong> pour savoir quand pousser et quand lever le pied.</p>
+    <h3>Score de readiness et tendances</h3>
+    <p>Un indicateur de forme du jour, accompagné de tendances sur 7 jours (HRV, fréquence cardiaque, sommeil, fatigue…).</p>
+  </section>
+
+  <section id="t8">
+    <h2 class="theme">🥗 8. Nutrition</h2>
+    <p class="intro">De quoi piloter ton alimentation comme ton entraînement.</p>
+    <h3>Plans nutritionnels</h3>
+    <p>Génère un plan adapté à ta charge d'entraînement et à tes objectifs.</p>
+    <h3>Suivi quotidien</h3>
+    <p>Compteur de calories, répartition des macros (protéines / glucides / lipides) et types de journée (facile / moyenne / dure) selon ton entraînement prévu.</p>
+    <h3>Recharge glucidique</h3>
+    <p>Un protocole de recharge avant les épreuves importantes.</p>
+    <h3>Repas et poids</h3>
+    <p>Enregistre tes repas (scan code-barres + recherche d'aliments) et suis ton poids et ta composition corporelle dans le temps.</p>
+  </section>
+
+  <section id="t9">
+    <h2 class="theme">🔌 9. Connexions et intégrations</h2>
+    <p class="intro">Tes données arrivent automatiquement depuis tes apps et capteurs préférés.</p>
+    <h3>Connectées dès aujourd'hui</h3>
+    <ul>
+      <li><strong>Strava</strong> — synchronisation automatique de tes activités, avec données détaillées (puissance, fréquence cardiaque, cadence, parcours…).</li>
+      <li><strong>Polar</strong> — sommeil, récupération nocturne (HRV), activité quotidienne et séances.</li>
+      <li><strong>Wahoo</strong> — import de tes entraînements.</li>
+      <li><strong>Withings</strong> — poids, composition corporelle et sommeil.</li>
+    </ul>
+    <h3>Bientôt disponibles</h3>
+    <p>De nombreuses autres apps et capteurs sont en cours d'intégration (Garmin, Coros, Suunto, Whoop, Oura, Apple Health, Google Fit, et bien d'autres) — visibles directement dans la page Connexions.</p>
+  </section>
+
+  <section id="t10">
+    <h2 class="theme">👤 10. Mon profil</h2>
+    <p class="intro">Ton identité d'athlète, centralisée.</p>
+    <h3>Identité et données physiques</h3>
+    <p>Tes informations clés (taille, poids, âge, IMC) pour des recommandations vraiment personnalisées.</p>
+    <h3>Sports pratiqués</h3>
+    <p>Déclare tes disciplines et personnalise l'app autour d'elles.</p>
+    <h3>Mon matériel</h3>
+    <p>Enregistre tes <strong>vélos</strong> et tes <strong>chaussures de running</strong>, et suis le kilométrage accumulé sur chacun.</p>
+  </section>
+
+  <section id="t11">
+    <h2 class="theme">🪙 11. Système de tokens</h2>
+    <p class="intro">Un fonctionnement simple et transparent de l'IA, sans mauvaise surprise.</p>
+    <h3>Deux jauges claires</h3>
+    <p>Tu disposes d'un quota <strong>hebdomadaire</strong> et d'un garde-fou <strong>sur 6 heures glissantes</strong>, affichés en temps réel pendant que tu utilises le coach.</p>
+    <h3>Pourquoi des multiplicateurs</h3>
+    <p>Plus le coach choisi est puissant, plus il « consomme » : <strong>Hermès ×1 · Athéna ×3 · Zeus ×8</strong>. Tu gardes le contrôle en choisissant le bon outil pour chaque tâche.</p>
+    <h3>Quotas par plan (hebdomadaire)</h3>
+    <ul>
+      <li><strong>Premium</strong> : 250 000 tokens</li>
+      <li><strong>Pro</strong> : 750 000 tokens</li>
+      <li><strong>Expert</strong> : 2 000 000 tokens</li>
+    </ul>
+    <h3>Packs à la demande</h3>
+    <ul>
+      <li><strong>Découverte</strong> — 100 000 tokens · 4 €</li>
+      <li><strong>Performance</strong> — 500 000 tokens · 15 € (−25 %)</li>
+      <li><strong>Elite</strong> — 1 000 000 tokens · 25 € (−37 %)</li>
+    </ul>
+    <p>La recharge se fait en quelques clics : lien sécurisé par email, paiement sécurisé, tokens crédités immédiatement.</p>
+  </section>
+
+  <section id="t12">
+    <h2 class="theme">💳 12. Abonnements</h2>
+    <p class="intro">Trois formules selon ton ambition, sans engagement.</p>
+    <table>
+      <thead><tr><th>Formule</th><th>Mensuel</th><th>Annuel (≈ −20 %)</th><th>Pour qui</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Premium</strong></td><td>14 €/mois</td><td>132 €/an</td><td>Démarrer le coaching IA</td></tr>
+        <tr><td><strong>Pro</strong></td><td>26 €/mois</td><td>249 €/an</td><td>L'athlète sérieux</td></tr>
+        <tr><td><strong>Expert</strong></td><td>49 €/mois</td><td>468 €/an</td><td>La performance sans limites</td></tr>
+      </tbody>
+    </table>
+    <h3>Ce qui change entre les plans</h3>
+    <p>En montant en gamme, tu débloques : un <strong>coach plus puissant</strong> (Hermès → Athéna → Zeus), <strong>plus de plans et d'analyses</strong>, des <strong>briefings quotidiens</strong>, la <strong>recherche web</strong>, <strong>plus de compétences actives</strong>, un <strong>historique plus long</strong> et une <strong>synchronisation illimitée</strong>.</p>
+    <h3>14 jours d'essai</h3>
+    <p>Teste l'expérience pendant <strong>14 jours</strong> avec les fonctionnalités Premium pour te faire ta propre idée.</p>
+    <h3>Paiement et gestion simples</h3>
+    <p>Paiement sécurisé via Stripe, gestion de ton abonnement et de tes factures en autonomie, résiliation possible à tout moment (l'accès reste actif jusqu'à la fin de la période réglée).</p>
+  </section>
+
+  <section id="t13">
+    <h2 class="theme">🔔 13. Notifications</h2>
+    <p class="intro">Reste informé, à ta façon.</p>
+    <h3>Des préférences fines</h3>
+    <p>Active ou coupe les notifications par <strong>catégorie</strong> (entraînement, récupération, nutrition, rappels de séance, bilans…) grâce à un panneau de préférences détaillé, avec un interrupteur global pour tout gérer d'un geste.</p>
+  </section>
+
+  <section id="t14">
+    <h2 class="theme">🎨 14. Personnalisation de l'app</h2>
+    <p class="intro">L'app s'adapte à toi, pas l'inverse.</p>
+    <h3>Mode jour / nuit</h3>
+    <p>Bascule entre un thème clair et un thème sombre élégant selon le moment de la journée.</p>
+    <h3>Police du chat</h3>
+    <p>Choisis la police de lecture des réponses du coach parmi <strong>DM Sans, Inter, Système, Serif</strong> ou <strong>Mono</strong>.</p>
+    <h3>Modèle par défaut</h3>
+    <p>Définis le coach (Hermès / Athéna / Zeus) utilisé par défaut dans tes conversations.</p>
+    <h3>Mes règles</h3>
+    <p>Tes règles permanentes guident l'IA en continu, pour des réponses toujours alignées avec ta façon de t'entraîner.</p>
+    <h3>Mode économie</h3>
+    <p>Laisse l'app choisir automatiquement le coach le plus adapté pour optimiser ta consommation.</p>
+  </section>
+
+  <section id="t15">
+    <h2 class="theme">📝 15. Enregistrement et séances</h2>
+    <p class="intro">Capture ton activité directement, ou prépare-la à l'avance.</p>
+    <h3>Enregistrement multi-sports</h3>
+    <p>Enregistre tes séances dans de nombreux sports : <strong>cyclisme, course, trail, rando, VTT, natation, aviron, ski, yoga, padel, eau libre, home trainer, musculation et Hyrox</strong>, avec carte GPS.</p>
+    <h3>Suivi des blessures</h3>
+    <p>Cartographie tes douleurs sur un <strong>modèle 3D du corps</strong>, note leur intensité et leur contexte, suis leur évolution, et obtiens l'avis de l'IA.</p>
+    <h3>Briefing du jour</h3>
+    <p>Reçois chaque jour un résumé clair : ta séance du jour, tes tâches et l'essentiel à retenir.</p>
+  </section>
+
+  <section id="t16">
+    <h2 class="theme">🔐 16. Sécurité et compte</h2>
+    <p class="intro">Tes données, protégées et sous ton contrôle.</p>
+    <h3>Connexion simple et sûre</h3>
+    <p>Crée ton compte par <strong>email + mot de passe</strong>, ou connecte-toi en un clic avec <strong>Google</strong> ou <strong>Apple</strong>.</p>
+    <h3>Compte protégé</h3>
+    <p>Vérification de l'adresse email à l'inscription, réinitialisation du mot de passe par email, et sessions sécurisées.</p>
+    <h3>Tes données t'appartiennent</h3>
+    <p>Chaque utilisateur n'accède qu'à ses propres données, isolées et protégées.</p>
+  </section>
+
+  <div class="footer">Prêt à passer à la vitesse supérieure ? Ton coach hybride t'attend. — THW Coaching</div>
+
+</div>
+</body>
+</html>

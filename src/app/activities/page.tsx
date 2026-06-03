@@ -24,6 +24,7 @@ import { LapsChart } from '@/components/activity/LapsChart'
 import { LapsTable } from '@/components/activity/LapsTable'
 import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
 import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
+import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
 import { PowerDistribution } from '@/components/activity/PowerDistribution'
 import { AerobicEfficiency } from '@/components/activity/AerobicEfficiency'
 import { MmpTable, MMP_TABLE_DURATIONS, MMP_TABLE_LABELS } from '@/components/activity/MmpTable'
@@ -6407,7 +6408,15 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
 }) {
   const saWidth    = useWindowWidth()
   const isMobileSA = saWidth < 768
-  const [view, setView]         = useState<'list'|'calendar'>('list')
+  const [view, setView]         = useState<'list'|'calendar'|'cards'>('list')
+  // Restaure la vue depuis localStorage au mount
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('thw_activities_view') : null
+    if (saved === 'list' || saved === 'calendar' || saved === 'cards') setView(saved)
+  }, [])
+  useEffect(() => {
+    if (typeof window !== 'undefined') localStorage.setItem('thw_activities_view', view)
+  }, [view])
   const [selected, setSelected] = useState<Activity | null>(null)
   const [search, setSearch]     = useState('')
   const [sport, setSport]       = useState<'all' | SportType>('all')
@@ -6465,10 +6474,8 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-        <Chip label="Liste" active={view === 'list'} onClick={() => setView('list')} />
-        <Chip label="Calendrier" active={view === 'calendar'} onClick={() => setView('calendar')} />
-      </div>
+      <ViewSegmented value={view} onChange={setView} />
+
 
       {view === 'calendar' && (
         <CalendarGrid activities={activities} onSelect={setSelected} />
@@ -6551,7 +6558,250 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
           )}
         </div>
       )}
+
+      {view === 'cards' && (
+        <CardsView
+          activities={filtered}
+          onSelect={setSelected}
+          sentinelRef={sentinelRef}
+          loadingMore={!!loadingMore}
+        />
+      )}
     </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// VIEW SEGMENTED (Liste · Calendrier · Cards)
+// ─────────────────────────────────────────────────────────────
+function ViewSegmented({ value, onChange }: {
+  value:    'list' | 'calendar' | 'cards'
+  onChange: (v: 'list' | 'calendar' | 'cards') => void
+}) {
+  const isMobile = useWindowWidth() < 640
+  const options: { id: 'list'|'calendar'|'cards'; label: string; icon: React.ReactNode }[] = [
+    { id: 'list',     label: 'Liste',      icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+        <line x1="4" y1="6"  x2="20" y2="6" />
+        <line x1="4" y1="12" x2="20" y2="12" />
+        <line x1="4" y1="18" x2="20" y2="18" />
+      </svg>
+    ) },
+    { id: 'calendar', label: 'Calendrier', icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2" />
+        <line x1="16" y1="2" x2="16" y2="6" />
+        <line x1="8"  y1="2" x2="8"  y2="6" />
+        <line x1="3" y1="10" x2="21" y2="10" />
+      </svg>
+    ) },
+    { id: 'cards',    label: 'Cards',      icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3"  width="8" height="8"  rx="1.5" />
+        <rect x="13" y="3" width="8" height="8"  rx="1.5" />
+        <rect x="3" y="13"  width="8" height="8" rx="1.5" />
+        <rect x="13" y="13" width="8" height="8" rx="1.5" />
+      </svg>
+    ) },
+  ]
+  return (
+    <div style={{
+      display:       'inline-flex',
+      gap:           2,
+      padding:       3,
+      borderRadius:  8,
+      border:        '1px solid var(--border)',
+      background:    'transparent',
+      marginBottom:  16,
+    }}>
+      {options.map(o => {
+        const active = value === o.id
+        return (
+          <button
+            key={o.id}
+            onClick={() => onChange(o.id)}
+            title={o.label}
+            style={{
+              display:      'inline-flex',
+              alignItems:   'center',
+              gap:          6,
+              padding:      isMobile ? '5px 8px' : '5px 12px',
+              borderRadius: 5,
+              border:       'none',
+              background:   active ? 'var(--bg-card2)' : 'transparent',
+              color:        active ? 'var(--text)' : 'var(--text-dim)',
+              fontSize:     12,
+              fontWeight:   active ? 600 : 500,
+              cursor:       'pointer',
+              transition:   'background 0.15s, color 0.15s',
+              fontFamily:   'inherit',
+            }}
+          >
+            {o.icon}
+            {!isMobile && <span>{o.label}</span>}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// CARDS VIEW — grille de cards style Strava
+// ─────────────────────────────────────────────────────────────
+interface AutoRecRow {
+  activity_id:    string
+  distance_label: string
+  performance:    string
+  achieved_at:    string
+}
+interface BestRow { distance_label: string; performance: string }
+
+function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
+  activities:  Activity[]
+  onSelect:    (a: Activity) => void
+  sentinelRef: React.RefObject<HTMLDivElement | null>
+  loadingMore: boolean
+}) {
+  const [recordsByActivity, setRecordsByActivity] = useState<Map<string, AutoRecRow[]>>(new Map())
+  const [bestPerLabel,      setBestPerLabel]      = useState<Map<string, number>>(new Map())
+
+  const visibleIds = useMemo(
+    () => activities.map(a => a.id).filter(Boolean),
+    [activities],
+  )
+
+  // Une seule query pour les records auto liés aux activités visibles
+  useEffect(() => {
+    if (visibleIds.length === 0) { setRecordsByActivity(new Map()); return }
+    let cancelled = false
+    void (async () => {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+
+      // 1) Tous les records auto liés aux activités visibles
+      const { data: autoRows } = await sb
+        .from('personal_records')
+        .select('activity_id, distance_label, performance, achieved_at')
+        .eq('user_id', user.id)
+        .eq('sport', 'bike')
+        .eq('event_type', 'auto_session')
+        .in('activity_id', visibleIds)
+
+      // 2) Tous les records bike (manuels + auto) pour calculer le best par label
+      //    → permet de séparer All Time vs simple Année
+      const { data: allRows } = await sb
+        .from('personal_records')
+        .select('distance_label, performance')
+        .eq('user_id', user.id)
+        .eq('sport', 'bike')
+
+      if (cancelled) return
+
+      // Map records par activity_id
+      const byActivity = new Map<string, AutoRecRow[]>()
+      for (const r of (autoRows ?? []) as AutoRecRow[]) {
+        if (!r.activity_id) continue
+        const arr = byActivity.get(r.activity_id) ?? []
+        arr.push(r)
+        byActivity.set(r.activity_id, arr)
+      }
+      setRecordsByActivity(byActivity)
+
+      // Best par distance_label (toutes sources confondues)
+      const bestMap = new Map<string, number>()
+      for (const r of (allRows ?? []) as BestRow[]) {
+        const w = parseInt(r.performance) || 0
+        if (w <= 0) continue
+        const prev = bestMap.get(r.distance_label) ?? 0
+        if (w > prev) bestMap.set(r.distance_label, w)
+      }
+      setBestPerLabel(bestMap)
+    })()
+    return () => { cancelled = true }
+  }, [visibleIds.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Construit les data pour chaque ActivityCard
+  const cards: ActivityCardData[] = useMemo(() => {
+    return activities.map(a => {
+      const sportColor = SPORT_COLOR[a.sport_type] ?? '#888'
+      const sportLabel = SPORT_LABEL[a.sport_type] ?? a.sport_type
+      const encoded    = a.summary_polyline
+        ?? ((a.raw_data as Record<string, unknown> | null)?.map as Record<string, unknown> | undefined)?.summary_polyline as string | undefined
+        ?? null
+
+      const auto    = recordsByActivity.get(a.id) ?? []
+      const allTime: { label: string; watts: number }[] = []
+      const year:    { label: string; watts: number; year: string }[] = []
+      for (const r of auto) {
+        const w = parseInt(r.performance) || 0
+        if (w <= 0) continue
+        const bestForLabel = bestPerLabel.get(r.distance_label) ?? 0
+        const isAllTime = w >= bestForLabel
+        if (isAllTime) {
+          allTime.push({ label: r.distance_label, watts: w })
+        } else {
+          year.push({ label: r.distance_label, watts: w, year: r.achieved_at.slice(0, 4) })
+        }
+      }
+
+      return {
+        id:               a.id,
+        title:            a.title ?? null,
+        sportType:        a.sport_type,
+        sportLabel,
+        sportColor,
+        startedAt:        a.started_at,
+        distance_m:       a.distance_m ? Number(a.distance_m) : null,
+        moving_time_s:    a.moving_time_s ? Number(a.moving_time_s) : null,
+        elevation_gain_m: a.elevation_gain_m ? Number(a.elevation_gain_m) : null,
+        tss:              a.tss ? Number(a.tss) : null,
+        encodedPolyline:  encoded,
+        records:          { allTime, year },
+      } satisfies ActivityCardData
+    })
+  }, [activities, recordsByActivity, bestPerLabel])
+
+  if (cards.length === 0) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: T.textMuted, fontSize: 14 }}>
+        Aucune activité
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className="thw-cards-grid">
+        {cards.map(c => (
+          <ActivityCard
+            key={c.id}
+            data={c}
+            onClick={() => {
+              const act = activities.find(a => a.id === c.id)
+              if (act) onSelect(act)
+            }}
+          />
+        ))}
+      </div>
+      <div ref={sentinelRef} style={{ height: 1 }} />
+      {loadingMore && (
+        <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 12, color: T.textMuted }}>Chargement…</div>
+      )}
+      <style>{`
+        .thw-cards-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 12px;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+        @media (min-width: 768px) {
+          .thw-cards-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+        }
+      `}</style>
+    </>
   )
 }
 

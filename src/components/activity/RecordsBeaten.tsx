@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { formatRecordDuration, durationRank } from '@/lib/records/format'
 
 interface BeatenAllTime { label: string; display: string; watts: number }
 interface BeatenYear    { label: string; display: string; watts: number; year: string }
@@ -17,36 +18,6 @@ interface Props {
 // ── Couleurs sémantiques fixes ─────────────────────────────────────────
 const GOLD = '#eab308'
 const CYAN = '#06B6D4'
-
-// ── Ordre canonique des durées (évite le tri lexicographique) ──────────
-const DURATION_ORDER: string[] = [
-  'Pmax',
-  '5s', '10s', '30s',
-  '1min', '3min', '5min', '8min', '10min', '12min', '15min',
-  '20min', '30min', '45min',
-  '1h', '1h30', '90min',
-  '2h', '3h', '4h', '5h', '6h',
-]
-
-function durationRank(label: string): number {
-  const i = DURATION_ORDER.indexOf(label)
-  return i === -1 ? 9999 : i
-}
-
-// ── Format durée → libellé court (1min → 1', 90min → 1h30, etc.) ──────
-function formatRecordDuration(label: string): string {
-  if (!label) return '—'
-  if (label === 'Pmax') return 'Pmax'
-  if (label === '90min' || label === '1h30') return '1h30'
-  // 5s, 10s, 30s → tels quels
-  if (/^\d+s$/.test(label)) return label
-  // 1min, 3min, ..., 45min → 1' / 3' / ... / 45'
-  const mMatch = label.match(/^(\d+)min$/)
-  if (mMatch) return `${mMatch[1]}'`
-  // 1h, 2h, ..., 6h → tels quels
-  if (/^\d+h$/.test(label)) return label
-  return label
-}
 
 export function RecordsBeaten({ activityId, isBike }: Props) {
   const [data,    setData]    = useState<BeatenPayload | null>(null)

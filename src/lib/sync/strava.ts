@@ -12,7 +12,8 @@
 //   → Retry automatique en cas de 429
 // ══════════════════════════════════════════════════════════════════
 
-import { createServiceClient } from '@/lib/supabase/server'
+import { createServiceClient }         from '@/lib/supabase/server'
+import { triggerRecordsProcessing }    from '@/lib/records/triggerRecordsProcessing'
 import { getValidToken }       from '@/lib/oauth/tokens'
 
 const STRAVA_API  = 'https://www.strava.com/api/v3'
@@ -224,7 +225,7 @@ export async function syncStravaActivities(userId: string): Promise<number> {
 
   const { data: needStreams } = await supabase
     .from('activities')
-    .select('id, provider_id, is_race, started_at')
+    .select('id, provider_id, is_race, started_at, sport_type')
     .eq('user_id', userId)
     .eq('provider', 'strava')
     .not('provider_id', 'is', null)
@@ -242,6 +243,12 @@ export async function syncStravaActivities(userId: string): Promise<number> {
         .update({ streams })
         .eq('id', act.id)
       streamsSynced++
+      // Records : déclenche le traitement maintenant que les streams sont là
+      await triggerRecordsProcessing({
+        activityId: act.id as string,
+        userId,
+        sport:      (act.sport_type as string | null) ?? null,
+      })
     }
     await new Promise(r => setTimeout(r, 200))
   }
@@ -265,7 +272,7 @@ export async function syncMissingStreams(userId: string): Promise<number> {
 
   const { data: activities } = await supabase
     .from('activities')
-    .select('id, provider_id')
+    .select('id, provider_id, sport_type')
     .eq('user_id', userId)
     .eq('provider', 'strava')
     .not('provider_id', 'is', null)
@@ -283,6 +290,12 @@ export async function syncMissingStreams(userId: string): Promise<number> {
         .update({ streams })
         .eq('id', act.id)
       synced++
+      // Records : streams fraîchement présents → déclenche
+      await triggerRecordsProcessing({
+        activityId: act.id as string,
+        userId,
+        sport:      (act.sport_type as string | null) ?? null,
+      })
     }
     await new Promise(r => setTimeout(r, 200))
   }

@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { getValidToken } from '@/lib/oauth/tokens'
+import { triggerRecordsProcessing } from '@/lib/records/triggerRecordsProcessing'
 
 const WAHOO_API = 'https://api.wahooligan.com/v1'
 
@@ -64,11 +65,22 @@ export async function syncWahooWorkouts(userId: string): Promise<number> {
     raw_data:         w,
   }))
 
-  const { error } = await supabase
+  const { data: upserted, error } = await supabase
     .from('activities')
     .upsert(rows, { onConflict: 'user_id,provider,provider_id' })
+    .select('id, sport_type')
 
   if (error) throw new Error(`Supabase upsert error: ${error.message}`)
+
+  // Records : déclenche pour chaque activité bike (séquentiel)
+  for (const a of upserted ?? []) {
+    await triggerRecordsProcessing({
+      activityId: a.id as string,
+      userId,
+      sport:      (a.sport_type as string | null) ?? null,
+    })
+  }
+
   return all.length
 }
 

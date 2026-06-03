@@ -1,5 +1,7 @@
 -- Pipeline records de puissance auto : suivi d'idempotence + payload des records
 -- battus par activité. Indispensable à process-records & backfill-records.
+-- Note : la prod utilise DEFAULT '[]'::jsonb pour records_beaten
+-- (vérifié via information_schema.columns) — ce fichier reflète la prod.
 ALTER TABLE activities
   ADD COLUMN IF NOT EXISTS records_processed boolean DEFAULT false,
   ADD COLUMN IF NOT EXISTS records_beaten    jsonb    DEFAULT '[]'::jsonb;

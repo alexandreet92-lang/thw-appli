@@ -8,6 +8,7 @@
 
 import { createServiceClient } from '@/lib/supabase/server'
 import { getValidToken }       from '@/lib/oauth/tokens'
+import { triggerRecordsProcessing } from '@/lib/records/triggerRecordsProcessing'
 
 // ── Types Strava ──────────────────────────────────────────────────
 
@@ -190,14 +191,24 @@ export async function POST(req: Request) {
     summary_polyline:  activity.map?.summary_polyline ?? activity.map?.polyline ?? null,
   }
 
-  const { error } = await supabase
+  const { data: upserted, error } = await supabase
     .from('activities')
     .upsert(row, { onConflict: 'user_id,provider,provider_id' })
+    .select('id, sport_type')
+    .single()
 
   if (error) {
     console.error(`[strava-webhook] Upsert error: ${error.message}`)
   } else {
     console.log(`[strava-webhook] ✅ Activity ${activityId} upserted for user ${userId}`)
+    // Déclenchement records (non bloquant, ignoré si pas bike)
+    if (upserted?.id) {
+      await triggerRecordsProcessing({
+        activityId: upserted.id as string,
+        userId,
+        sport:      (upserted.sport_type as string | null) ?? row.sport_type,
+      })
+    }
   }
 
   return Response.json({ ok: true })

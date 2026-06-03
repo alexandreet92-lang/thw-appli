@@ -15,6 +15,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { getValidToken } from '@/lib/oauth/tokens'
 import { callPolarV4, polarDateRange, polarDateChunks } from '@/lib/polar'
+import { triggerRecordsProcessing } from '@/lib/records/triggerRecordsProcessing'
 
 // ── Context ────────────────────────────────────────────────────────
 // v4 : pas besoin du polarUserId dans les URLs — le token suffit.
@@ -360,10 +361,20 @@ export async function syncPolarActivities(userId: string): Promise<{
   console.log(`[syncPolarActivities] ${candidates.length} candidats → ${rows.length} nouveaux`)
   if (!rows.length) return { status: 'ok', exercises_synced: 0 }
 
-  const { error } = await supabase
+  const { data: upserted, error } = await supabase
     .from('activities')
     .upsert(rows, { onConflict: 'user_id,provider,provider_id' })
+    .select('id, sport_type')
   if (error) throw new Error(`activities upsert: ${error.message}`)
+
+  // Records : déclenche pour chaque activité bike (séquentiel pour ne pas saturer)
+  for (const a of upserted ?? []) {
+    await triggerRecordsProcessing({
+      activityId: a.id as string,
+      userId,
+      sport:      (a.sport_type as string | null) ?? null,
+    })
+  }
 
   return { status: 'ok', exercises_synced: rows.length }
 }

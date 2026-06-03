@@ -199,6 +199,16 @@ export async function processBikeActivityRecords(
     }))
     const { error: insErr } = await sb.from('personal_records').insert(rows)
     if (insErr) {
+      // Log défensif : sans ça, l'erreur passe en silence dans les logs Vercel
+      console.error(
+        '[records] insert failed for activity', activityId,
+        '— code:', insErr.code,
+        '— message:', insErr.message,
+        '— details:', insErr.details,
+        '— hint:',    insErr.hint,
+      )
+      // IMPORTANT : on NE marque PAS l'activité records_processed=true
+      // → elle sera retentée au prochain backfill (idempotent côté DB).
       return {
         payload:   { allTime: [], year: [] },
         processed: false,

@@ -45,9 +45,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ processed: 0, beatenAllTime: 0, beatenYear: 0, total: 0 })
   }
 
-  let processed     = 0
-  let beatenAllTime = 0
-  let beatenYear    = 0
+  let processed       = 0
+  let beatenAllTime   = 0
+  let beatenYear      = 0
+  let insertFailed    = 0
   const errors:    string[] = []
 
   for (const id of ids) {
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
         beatenYear    += r.payload.year.length
       }
       if (r.reason?.startsWith('insert_failed')) {
+        insertFailed++
         errors.push(`${id}: ${r.reason}`)
       }
     } catch (e) {
@@ -67,11 +69,24 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const warning = insertFailed > 0
+    ? `${insertFailed} activité(s) ont échoué à l'insertion. Vérifier les logs serveur ([records] insert failed).`
+    : null
+
+  if (insertFailed > 0) {
+    console.error('[backfill-records] insert_failed=', insertFailed, 'sur', ids.length, 'activités')
+  }
+  console.log('[backfill-records] résultat : processed=', processed,
+              'beatenAllTime=', beatenAllTime, 'beatenYear=', beatenYear,
+              'insert_failed=', insertFailed)
+
   return NextResponse.json({
     processed,
     beatenAllTime,
     beatenYear,
-    total:  ids.length,
-    errors: errors.slice(0, 10),
+    total:         ids.length,
+    insert_failed: insertFailed,
+    warning,
+    errors:        errors.slice(0, 10),
   })
 }

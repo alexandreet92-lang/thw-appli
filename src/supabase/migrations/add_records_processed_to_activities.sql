@@ -1,12 +1,10 @@
--- Add records_processed flag + records_beaten cache to activities.
--- Used by /api/activities/process-records to avoid re-processing
--- the MMP→personal_records auto-update on each view.
-
+-- Pipeline records de puissance auto : suivi d'idempotence + payload des records
+-- battus par activité. Indispensable à process-records & backfill-records.
 ALTER TABLE activities
-  ADD COLUMN IF NOT EXISTS records_processed BOOLEAN DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS records_beaten    JSONB   DEFAULT NULL;
+  ADD COLUMN IF NOT EXISTS records_processed boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS records_beaten    jsonb    DEFAULT '[]'::jsonb;
 
--- Optional index to speed up bulk back-processing if ever needed.
-CREATE INDEX IF NOT EXISTS idx_activities_records_unprocessed
-  ON activities (user_id)
-  WHERE records_processed = FALSE;
+-- Index partiel : accélère la sélection des activités non encore traitées (backfill).
+CREATE INDEX IF NOT EXISTS idx_activities_records_processed
+  ON activities (records_processed)
+  WHERE records_processed = false;

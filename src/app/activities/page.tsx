@@ -2114,16 +2114,6 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
                       )
                     })()}
 
-                    {/* Best effort windows (Puissance track only) */}
-                    {track.label === 'Puissance' && bestWindows.map(win => {
-                      const wx1 = (win.startIdx / (N-1)) * 1000
-                      const wx2 = (win.endIdx   / (N-1)) * 1000
-                      return (
-                        <rect key={win.label} x={wx1} y={0} width={Math.max(1, wx2-wx1)} height={track.H}
-                          fill={win.color} />
-                      )
-                    })}
-
                     {/* Other tracks */}
                     {!track.isHr && (
                       <>

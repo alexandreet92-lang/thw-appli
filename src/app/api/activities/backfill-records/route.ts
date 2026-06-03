@@ -14,10 +14,12 @@ export const maxDuration = 60 // s
 interface ActivityIdRow { id: string }
 
 export async function POST(req: NextRequest) {
+  console.log('[backfill-records] handler atteint —', new Date().toISOString())
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 
+  console.log('[backfill-records] user', user.id, '— démarrage backfill')
   const { searchParams } = new URL(req.url)
   const force = searchParams.get('force') === 'true'
 

@@ -186,6 +186,8 @@ export async function processBikeActivityRecords(
       performance_unit: 'watts',
       event_type:       'auto_session',
       achieved_at:      activityDate,
+      // Lien d'interconnexion : chaque record auto pointe vers l'activité source
+      activity_id:      activityId,
       race_name:        null,
       pace_s_km:        null,
       elevation_gain_m: null,

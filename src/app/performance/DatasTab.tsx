@@ -220,25 +220,44 @@ function calcRowZones(splitSec: number) {
 
 // ── BackfillRecordsButton — recalcule les records depuis toutes les activités ──
 function BackfillRecordsButton({ onDone }: { onDone?: () => void | Promise<void> }) {
-  const [busy,   setBusy]   = useState(false)
-  const [done,   setDone]   = useState<{ processed: number; beatenAllTime: number; beatenYear: number } | null>(null)
+  type State =
+    | { kind: 'idle' }
+    | { kind: 'busy' }
+    | { kind: 'ok-empty' }                                     // processed=0 (tout à jour)
+    | { kind: 'ok-no-beats'; processed: number }               // n traitées, 0 record
+    | { kind: 'ok-beats'; processed: number; beats: number }   // n traitées, m records
+    | { kind: 'error'; msg: string }
+  const [state, setState] = useState<State>({ kind: 'idle' })
 
   async function run() {
-    if (busy) return
-    setBusy(true)
-    setDone(null)
+    if (state.kind === 'busy') return
+    setState({ kind: 'busy' })
     try {
-      const res = await fetch('/api/activities/backfill-records', { method: 'POST' })
-      if (res.ok) {
-        const data = await res.json() as { processed: number; beatenAllTime: number; beatenYear: number }
-        setDone(data)
-        await onDone?.()
+      const res = await fetch('/api/activities/backfill-records?force=true', { method: 'POST' })
+      if (!res.ok) {
+        setState({ kind: 'error', msg: `Erreur ${res.status}` })
+        return
       }
-    } catch {
-      // silent
-    } finally {
-      setBusy(false)
+      const data = await res.json() as { processed: number; beatenAllTime: number; beatenYear: number }
+      const beats = (data.beatenAllTime ?? 0) + (data.beatenYear ?? 0)
+      if (data.processed === 0)        setState({ kind: 'ok-empty' })
+      else if (beats === 0)            setState({ kind: 'ok-no-beats', processed: data.processed })
+      else                             setState({ kind: 'ok-beats', processed: data.processed, beats })
+      await onDone?.()
+    } catch (e) {
+      setState({ kind: 'error', msg: e instanceof Error ? e.message : 'Erreur' })
     }
+  }
+
+  const busy = state.kind === 'busy'
+  let label = 'Recalculer'
+  let color: string = 'var(--text-dim)'
+  switch (state.kind) {
+    case 'busy':         label = 'Calcul…'; break
+    case 'ok-empty':     label = '✓ Tout à jour'; color = '#10B981'; break
+    case 'ok-no-beats':  label = `✓ ${state.processed} activité${state.processed > 1 ? 's' : ''} · 0 record`; color = '#06B6D4'; break
+    case 'ok-beats':     label = `✓ ${state.processed} · +${state.beats} record${state.beats > 1 ? 's' : ''}`; color = '#10B981'; break
+    case 'error':        label = `⚠ ${state.msg}`; color = '#EF4444'; break
   }
 
   return (
@@ -249,9 +268,9 @@ function BackfillRecordsButton({ onDone }: { onDone?: () => void | Promise<void>
       style={{
         padding:      '4px 10px',
         borderRadius: 6,
-        border:       '1px solid var(--border)',
+        border:       `1px solid ${state.kind === 'idle' || state.kind === 'busy' ? 'var(--border)' : color}`,
         background:   busy ? 'var(--bg-card2)' : 'transparent',
-        color:        'var(--text-dim)',
+        color,
         fontSize:     10,
         fontWeight:   600,
         cursor:       busy ? 'wait' : 'pointer',
@@ -259,11 +278,7 @@ function BackfillRecordsButton({ onDone }: { onDone?: () => void | Promise<void>
         opacity:      busy ? 0.7 : 1,
       }}
     >
-      {busy
-        ? 'Calcul…'
-        : done
-          ? `${done.processed} traitées · ${done.beatenAllTime + done.beatenYear} records`
-          : 'Recalculer'}
+      {label}
     </button>
   )
 }
@@ -3024,22 +3039,63 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
   // All personal records for run/swim/rowing/gym from Supabase
   const [allSpRecords, setAllSpRecords] = useState<SpRecord[]>([])
 
-  // Load all bike records from Supabase on mount (toutes années)
-  useEffect(() => {
-    const load = async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data } = await supabase
-        .from('personal_records')
-        .select('id, distance_label, performance, achieved_at')
-        .eq('user_id', user.id)
-        .eq('sport', 'bike')
-        .order('achieved_at', { ascending: false })
-      if (data) setBikeAllRecords(data as {id: string; distance_label: string; performance: string; achieved_at: string}[])
-    }
-    void load()
+  // Statut de synchronisation auto des records depuis les activités
+  type BikeSyncStatus =
+    | { kind: 'idle' }
+    | { kind: 'syncing' }
+    | { kind: 'done'; processed: number; beats: number }
+    | { kind: 'error'; msg: string }
+  const [bikeSyncStatus, setBikeSyncStatus] = useState<BikeSyncStatus>({ kind: 'idle' })
+
+  // Loader bike records, réutilisable (mount + après backfill + après edit)
+  const loadBikeRecords = useCallback(async () => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase
+      .from('personal_records')
+      .select('id, distance_label, performance, achieved_at')
+      .eq('user_id', user.id)
+      .eq('sport', 'bike')
+      .order('achieved_at', { ascending: false })
+    if (data) setBikeAllRecords(data as {id: string; distance_label: string; performance: string; achieved_at: string}[])
   }, [])
+
+  // 1. Charger les records bike depuis personal_records (au mount)
+  useEffect(() => { void loadBikeRecords() }, [loadBikeRecords])
+
+  // 2. Auto-backfill des records depuis les activités quand on entre dans le sport vélo.
+  //    Idempotent côté serveur (records_processed=false uniquement). Toast transitoire.
+  useEffect(() => {
+    if (sport !== 'bike') return
+    let cancelled = false
+    void (async () => {
+      setBikeSyncStatus({ kind: 'syncing' })
+      try {
+        const res = await fetch('/api/activities/backfill-records', { method: 'POST' })
+        if (!res.ok) {
+          if (!cancelled) setBikeSyncStatus({ kind: 'error', msg: `Erreur ${res.status}` })
+          return
+        }
+        const data = await res.json() as { processed: number; beatenAllTime: number; beatenYear: number }
+        const beats = (data.beatenAllTime ?? 0) + (data.beatenYear ?? 0)
+        if (!cancelled) {
+          await loadBikeRecords()
+          // Si rien n'a été traité → on cache (déjà à jour)
+          if ((data.processed ?? 0) === 0) {
+            setBikeSyncStatus({ kind: 'idle' })
+          } else {
+            setBikeSyncStatus({ kind: 'done', processed: data.processed, beats })
+            // Auto-disparition après 5s
+            setTimeout(() => { if (!cancelled) setBikeSyncStatus({ kind: 'idle' }) }, 5000)
+          }
+        }
+      } catch {
+        if (!cancelled) setBikeSyncStatus({ kind: 'error', msg: 'Échec réseau' })
+      }
+    })()
+    return () => { cancelled = true }
+  }, [sport, loadBikeRecords])
 
   // Load run/swim/rowing/gym/triathlon records from Supabase
   useEffect(() => {
@@ -3481,19 +3537,36 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
 
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8 }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records de puissance</h2>
-              <BackfillRecordsButton onDone={async () => {
-                const sb = createClient()
-                const { data: { user } } = await sb.auth.getUser()
-                if (!user) return
-                const { data } = await sb
-                  .from('personal_records')
-                  .select('id, distance_label, performance, achieved_at')
-                  .eq('user_id', user.id)
-                  .eq('sport', 'bike')
-                  .order('achieved_at', { ascending: false })
-                if (data) setBikeAllRecords(data as {id: string; distance_label: string; performance: string; achieved_at: string}[])
-              }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records de puissance</h2>
+                {/* Toast auto-sync : visible quand on entre dans le sport vélo */}
+                {bikeSyncStatus.kind === 'syncing' && (
+                  <span style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                    Synchronisation des records…
+                  </span>
+                )}
+                {bikeSyncStatus.kind === 'done' && (
+                  <span style={{
+                    fontSize:     10,
+                    fontWeight:   600,
+                    padding:      '2px 8px',
+                    borderRadius: 999,
+                    background:   bikeSyncStatus.beats > 0 ? 'rgba(16,185,129,0.10)' : 'rgba(6,182,212,0.10)',
+                    color:        bikeSyncStatus.beats > 0 ? '#10B981' : '#06B6D4',
+                    border:       `1px solid ${bikeSyncStatus.beats > 0 ? 'rgba(16,185,129,0.35)' : 'rgba(6,182,212,0.35)'}`,
+                  }}>
+                    {bikeSyncStatus.beats > 0
+                      ? `✓ ${bikeSyncStatus.processed} traitée${bikeSyncStatus.processed > 1 ? 's' : ''} · +${bikeSyncStatus.beats} record${bikeSyncStatus.beats > 1 ? 's' : ''}`
+                      : `✓ ${bikeSyncStatus.processed} activité${bikeSyncStatus.processed > 1 ? 's' : ''} traitée${bikeSyncStatus.processed > 1 ? 's' : ''}, aucun record battu`}
+                  </span>
+                )}
+                {bikeSyncStatus.kind === 'error' && (
+                  <span style={{ fontSize: 10, color: '#EF4444', fontWeight: 600 }}>
+                    ⚠ {bikeSyncStatus.msg}
+                  </span>
+                )}
+              </div>
+              <BackfillRecordsButton onDone={loadBikeRecords} />
             </div>
             {BIKE_DURS.map(d => {
               const eff = getEffectiveRec(d)

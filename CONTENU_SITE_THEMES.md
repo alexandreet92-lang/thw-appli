@@ -328,9 +328,9 @@
 ### Limites par plan
 | Plan | Compétences actives simultanées |
 |---|---|
-| Premium | 3 |
-| Pro | 7 |
-| Expert | 20 |
+| Premium | 5 |
+| Pro | 15 |
+| Expert | 30 |
 
 > Toutes les 70 méthodologies sont consultables et créables quel que soit le plan. Ce qui change, c'est le nombre que tu peux garder **actives** en même temps.
 
@@ -1263,7 +1263,7 @@ Le suivi de récupération est disponible sur tous les plans. La richesse des do
 #### Mon matériel
 **Tagline :** Tes vélos et tes chaussures, suivis à l'usure.
 
-**Description :** Tu enregistres tes vélos et tes chaussures de running, et tu suis le kilométrage accumulé sur chacun. Tu sais quand tes chaussures arrivent en fin de vie ou quand entretenir ton vélo. Un détail qui évite les blessures et les pannes.
+**Description :** Tu enregistres tes vélos et tes chaussures de running, et tu suis le kilométrage accumulé sur chacun. Tu sais quand tes chaussures arrivent en fin de vie ou quand entretenir ton vélo. Un détail qui prolonge la vie de ton matériel et t'évite les mauvaises surprises.
 
 **Détails utiles :**
 - Vélos et chaussures de running.
@@ -1520,7 +1520,7 @@ Le profil est identique sur tous les plans. Il conditionne la qualité de la per
 |---|---|---|---|
 | Coach par défaut | Hermès | Athéna | Zeus |
 | Tokens / semaine | 250 000 | 750 000 | 2 000 000 |
-| Compétences actives | 3 | 7 | 20 |
+| Compétences actives | 5 | 15 | 30 |
 | Plans d'entraînement / mois | 2 | 6 | 20 |
 | Plans nutrition / mois | 1 | 3 | 10 |
 | Briefings | 4 / semaine | quotidien | quotidien |
@@ -1528,7 +1528,7 @@ Le profil est identique sur tous les plans. Il conditionne la qualité de la per
 | Historique | 6 mois | 24 mois | Illimité |
 | Synchronisation | Confortable | Illimitée | Illimitée |
 
-**Exemple concret :** un triathlète exigeant choisit Expert pour le coach Zeus par défaut, 20 compétences actives et un quota qui ne le freine jamais.
+**Exemple concret :** un triathlète exigeant choisit Expert pour le coach Zeus par défaut, 30 compétences actives et un quota qui ne le freine jamais.
 
 **Visuel suggéré :** tableau comparatif clair avec coches.
 
@@ -1592,55 +1592,10 @@ Voir le tableau « Ce qui change entre les plans » ci-dessus — il récapitule
 
 ## 13. 🔔 Notifications
 
-### Vue d'ensemble
+### Bientôt disponible
 
-**Tagline :** Reste informé, exactement comme tu veux.
-
-**Description courte :** Tu choisis précisément les notifications que tu reçois, catégorie par catégorie. Un panneau de préférences détaillé te laisse tout régler, avec un interrupteur global pour couper ou activer d'un geste.
-
-**Bénéfices clés :**
-- Préférences fines, catégorie par catégorie.
-- Un interrupteur global pour tout gérer d'un coup.
-- Aucune notification subie : tu décides.
-
-**Profil d'athlète ciblé :** celui qui veut rester au courant sans être submergé — du minimaliste au suiveur assidu.
-
-### Sous-thèmes
-
-#### Préférences par catégorie
-**Tagline :** Active ce qui compte, coupe le reste.
-
-**Description :** Tu règles tes notifications par catégorie : entraînement, récupération, nutrition, rappels de séance, bilans, et plus encore. Chaque type s'active ou se coupe indépendamment. Tu construis exactement le niveau d'alertes qui te convient.
-
-**Détails utiles :**
-- Réglage indépendant par catégorie.
-- Interrupteur global pour tout activer/couper.
-
-**Exemple concret :** tu gardes les rappels de séance et les bilans, mais tu coupes le reste pour rester focalisé.
-
-**Visuel suggéré :** liste de catégories avec interrupteurs + switch global en tête.
-
-**Citation à mettre en avant :** « Tes notifications, tes règles. »
-
-### Cas d'usage typiques
-1. **Le minimaliste :** il ne garde que les rappels de séance.
-2. **Le suiveur :** il active les bilans et les rappels de récupération.
-3. **Le focus total :** il coupe tout via l'interrupteur global pendant une période chargée.
-
-### Limites par plan
-Les préférences de notifications sont disponibles sur tous les plans.
-
-### Thèmes liés
-- [🎨 Personnalisation de l'app](#14--personnalisation-de-lapp) — l'app s'adapte à toi.
-- [💪 Récupération et bien-être](#7--récupération-et-bien-être) — rappels liés à la forme.
-
-### CTA suggéré
-**« Règle tes préférences »**
-
-### Notes pour Claude Design
-- **À mettre en avant :** le contrôle total (catégorie par catégorie + interrupteur global).
-- **À éviter :** promettre des canaux précis (push/email) — rester sur « tu choisis tes préférences ».
-- **Ambiance visuelle :** panneau de réglages épuré, interrupteurs nets.
+Le système de notifications est en cours de développement.
+Il sera enrichi avec le lancement de l'application native iOS et Android.
 
 [↑ Retour au sommaire](#sommaire)
 
@@ -1770,14 +1725,13 @@ Les options de personnalisation sont disponibles sur tous les plans.
 
 **Tagline :** Capture ton activité, ou prépare-la à l'avance.
 
-**Description courte :** Tu enregistres tes séances directement dans l'app, dans une large palette de sports, avec carte GPS. Tu suis aussi tes blessures sur un modèle 3D, et tu reçois chaque jour un briefing clair de ce qui t'attend.
+**Description courte :** Tu enregistres tes séances directement dans l'app, dans une large palette de sports, avec carte GPS. Et tu reçois chaque jour un briefing clair de ce qui t'attend.
 
 **Bénéfices clés :**
 - Enregistrement multi-sports avec GPS.
-- Suivi des blessures sur un modèle 3D du corps.
 - Un briefing quotidien qui résume ta journée.
 
-**Profil d'athlète ciblé :** l'athlète hybride qui pratique plusieurs disciplines et veut tout centraliser, blessures comprises.
+**Profil d'athlète ciblé :** l'athlète hybride qui pratique plusieurs disciplines et veut tout centraliser.
 
 ### Sous-thèmes
 
@@ -1796,22 +1750,6 @@ Les options de personnalisation sont disponibles sur tous les plans.
 
 **Citation à mettre en avant :** « Du vélo au yoga, tout dans une seule app. »
 
-#### Suivi des blessures
-**Tagline :** Cartographie tes douleurs sur ton corps.
-
-**Description :** Tu localises tes douleurs sur un modèle 3D du corps, tu notes leur intensité et leur contexte, et tu suis leur évolution dans le temps. Ton coach peut donner son avis pour t'aider à gérer la reprise. Un outil précieux pour ne pas transformer une gêne en blessure sérieuse.
-
-**Détails utiles :**
-- Modèle 3D du corps pour localiser la douleur.
-- Type (douleur / gêne / blessure), intensité, contexte, statut.
-- Historique + avis de l'IA.
-
-**Exemple concret :** tu notes une gêne au tendon d'Achille ; tu suis son évolution et ton coach adapte ta charge course.
-
-**Visuel suggéré :** corps 3D interactif avec points de douleur.
-
-**Citation à mettre en avant :** « Une gêne notée tôt, une blessure évitée. »
-
 #### Briefing du jour
 **Tagline :** Ta journée résumée, chaque matin.
 
@@ -1829,11 +1767,10 @@ Les options de personnalisation sont disponibles sur tous les plans.
 
 ### Cas d'usage typiques
 1. **Journée hybride :** muscu enregistrée le matin, vélo l'après-midi, tout centralisé.
-2. **Gestion de gêne :** suivi d'une douleur sur le modèle 3D et adaptation de la charge.
-3. **Routine du matin :** lecture du briefing pour cadrer la journée.
+2. **Routine du matin :** lecture du briefing pour cadrer la journée.
 
 ### Limites par plan
-L'enregistrement, le suivi des blessures et le briefing sont disponibles sur tous les plans. La fréquence des briefings dépend du plan (voir [Abonnements](#12--abonnements)).
+L'enregistrement et le briefing sont disponibles sur tous les plans. La fréquence des briefings dépend du plan (voir [Abonnements](#12--abonnements)).
 
 ### Thèmes liés
 - [📊 Analyse de tes performances](#4--analyse-de-tes-performances) — analyse des séances enregistrées.
@@ -1844,9 +1781,9 @@ L'enregistrement, le suivi des blessures et le briefing sont disponibles sur tou
 **« Enregistre ta séance »**
 
 ### Notes pour Claude Design
-- **À mettre en avant :** la diversité des sports et le modèle 3D des blessures (différenciant).
+- **À mettre en avant :** la diversité des sports et le briefing quotidien.
 - **À éviter :** donner l'impression d'un simple tracker GPS — insister sur l'intégration à tout l'écosystème.
-- **Ambiance visuelle :** corps 3D interactif, écrans d'enregistrement par sport, carte GPS soignée.
+- **Ambiance visuelle :** écrans d'enregistrement par sport, carte GPS soignée, carte de briefing matinal.
 
 [↑ Retour au sommaire](#sommaire)
 

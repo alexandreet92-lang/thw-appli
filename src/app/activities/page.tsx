@@ -1704,7 +1704,7 @@ function SelectionSheet(props: SelectionSheetProps) {
   const len = Math.max(1, i2 - i1 + 1)
   const dur = time[i2] - time[i1]
 
-  function handleClose() { setClosing(true); setTimeout(onClose, 280) }
+  function handleClose() { setClosing(true); setTimeout(onClose, 250) }
 
   const sliceOf = (arr: number[] | null | undefined) => (arr ? arr.slice(i1, i2 + 1) : null)
   const wS = sliceOf(watts)
@@ -1835,16 +1835,29 @@ function SelectionSheet(props: SelectionSheetProps) {
   const labelStat: React.CSSProperties = { fontSize: 9, color: 'var(--text-dim)' }
   const valStat: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }
 
-  return (
+  // Sheet rendu via portal sur document.body pour échapper à tout containing
+  // block créé par un ancêtre transformé (ex: bottom-sheet de l'activité).
+  const sheetNode = (
     <>
-      <div onClick={handleClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 600, animation: 'selSheetFade 200ms ease-out' }} />
+      <div
+        onClick={handleClose}
+        className={closing ? 'sel-sheet-overlay-out' : 'sel-sheet-overlay-in'}
+        style={{
+          position:                 'fixed',
+          inset:                    0,
+          zIndex:                   600,
+          background:               'rgba(0,0,0,0.4)',
+          backdropFilter:           'blur(4px)',
+          WebkitBackdropFilter:     'blur(4px)',
+        }}
+      />
       <div
         className={closing ? 'sel-sheet-out' : 'sel-sheet-in'}
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 601,
           background: 'var(--bg)', borderRadius: '18px 18px 0 0',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
-          maxHeight: '88vh', overflowY: 'auto',
+          maxHeight: '85vh', overflowY: 'auto',
           padding: '0 0 28px',
         }}
       >
@@ -1968,6 +1981,11 @@ function SelectionSheet(props: SelectionSheetProps) {
       </div>
     </>
   )
+
+  // SSR-safe : ne rend que côté client. Portal sur document.body pour
+  // s'extraire de tout ancêtre transformé (containing-block fixed).
+  if (typeof document === 'undefined') return null
+  return createPortal(sheetNode, document.body)
 }
 
 function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, onHoverGps }: {
@@ -2025,13 +2043,15 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
     if (!containerRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
     setMousePos({ x: clientX - rect.left, y: clientY - rect.top })
-    // pct calculé sur la zone charts (sans le left-col label)
-    const chartEl = tracksAreaRef.current ?? containerRef.current
+    // Zone de tracé réelle = 1er <svg> dans tracksAreaRef (exclut la left-col)
+    const firstSvg = tracksAreaRef.current?.querySelector('svg') as SVGElement | null
+    const chartRect = firstSvg
+      ? firstSvg.getBoundingClientRect()
+      : (tracksAreaRef.current ?? containerRef.current).getBoundingClientRect()
     // pct brut (non clampé) → détecte si le curseur est DANS la zone de tracé
-    const chartRect = chartEl.getBoundingClientRect()
     const rawPct = (clientX - chartRect.left) / chartRect.width
     setInPlot(rawPct >= 0 && rawPct <= 1)
-    const pct = getPct(clientX, chartEl)
+    const pct = Math.min(1, Math.max(0, rawPct))
     setCursorPct(pct)
     if (dragStartPct !== null) {
       const i1 = Math.round(dragStartPct * (N-1))
@@ -2230,11 +2250,14 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
           .sync-left-col      { display: block !important; }
         }
         /* Selection slide-up sheet */
-        @keyframes selSheetFade { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes selSheetUp   { from { transform: translateY(100%) } to { transform: translateY(0) } }
-        @keyframes selSheetDown { from { transform: translateY(0) } to { transform: translateY(100%) } }
-        .sel-sheet-in  { animation: selSheetUp 300ms ease-out; }
-        .sel-sheet-out { animation: selSheetDown 280ms ease-out forwards; }
+        @keyframes selSheetFadeIn  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes selSheetFadeOut { from { opacity: 1 } to { opacity: 0 } }
+        @keyframes selSheetUp      { from { transform: translateY(100%) } to { transform: translateY(0) } }
+        @keyframes selSheetDown    { from { transform: translateY(0) } to { transform: translateY(100%) } }
+        .sel-sheet-in           { animation: selSheetUp 300ms ease-out; }
+        .sel-sheet-out          { animation: selSheetDown 250ms ease-in forwards; }
+        .sel-sheet-overlay-in   { animation: selSheetFadeIn 300ms ease-out; }
+        .sel-sheet-overlay-out  { animation: selSheetFadeOut 250ms ease-in forwards; }
         .sel-groups     { display: flex; flex-direction: column; gap: 0; }
         .sel-group      { padding-top: 12px; }
         .sel-group + .sel-group { border-top: 1px solid var(--border); }

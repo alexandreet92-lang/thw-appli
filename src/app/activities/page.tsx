@@ -768,6 +768,9 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
 }) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const N = watts.length
+  // Mobile : edge-to-edge — retire le paddingLeft:32 du conteneur,
+  // bump des fontSize axes pour lisibilité sur largeur réduite.
+  const isMobileMmp = useWindowWidth() < 768
   if (N < 60) return null
 
   const DURATIONS = MMP_DURATIONS.filter(d => d <= N)
@@ -949,7 +952,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
         </div>
       )}
 
-      <div ref={mmpContainerRef} style={{ position: 'relative', cursor: 'crosshair', paddingLeft: 32 }}>
+      <div ref={mmpContainerRef} style={{ position: 'relative', cursor: 'crosshair', paddingLeft: isMobileMmp ? 0 : 32 }}>
         <svg ref={svgRef} viewBox={`-32 0 ${W + 32} ${H}`} style={{ width: '100%', height: H, display: 'block', overflow: 'visible' }}
           preserveAspectRatio="none"
           onMouseMove={handleMmpMove} onMouseLeave={handleMmpLeave}
@@ -967,7 +970,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
             return (
               <g key={w}>
                 <line x1={0} y1={y} x2={W} y2={y} stroke="var(--border)" strokeWidth="1" strokeDasharray="3,3"/>
-                <text x={-6} y={y + 4} textAnchor="end" style={{ fontSize: 9, fill: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{w}W</text>
+                <text x={-6} y={y + 4} textAnchor="end" style={{ fontSize: isMobileMmp ? 10 : 9, fill: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{w}W</text>
               </g>
             )
           })}
@@ -997,7 +1000,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
             if (i > 0 && sqrtX(DURATIONS[i-1]) > x - 28) return null
             return (
               <text key={d} x={x} y={H + 14} textAnchor="middle"
-                fontSize="8" fill="var(--text-dim)" style={{ fontFamily: 'DM Mono, monospace' }}>
+                fontSize={isMobileMmp ? 10 : 8} fill="var(--text-dim)" style={{ fontFamily: 'DM Mono, monospace' }}>
                 {LABELS[i]}
               </text>
             )

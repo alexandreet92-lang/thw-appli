@@ -5153,21 +5153,28 @@ conseil pour la prochaine séance similaire.`
     </div>
   )
 
-  // ── Two-path return: mobile (Strava) vs desktop (unchanged) ──
+  // ── Two-path return: mobile (linéaire) vs desktop (inchangé) ──
+  // DIAGNOSTIC : les anciennes tentatives utilisaient `position:fixed` sur la carte
+  // + `minHeight:100vh` sur le wrapper + `marginTop:52vh` sur le sheet. Le bug
+  // `containing block` (transform retenu par <div.fade-up> et <ScrollReveal>)
+  // empêchait la carte de se résoudre au viewport → carte « tout en bas » +
+  // placeholder 100vh vide → gros espace blanc.
+  // FIX : layout strictement linéaire — la carte est dans le flux normal,
+  // height: 50vh, et le contenu suit. Plus de fixed, plus de min-height,
+  // plus d'animation slideUp. Scroll classique géré par le <main> parent.
   return isMobile ? (
     /* ══════════════════════════════════════════
-       MOBILE — layout Strava
+       MOBILE — layout linéaire propre
     ══════════════════════════════════════════ */
     <>
-      <div data-fullscreen-activity="" style={{ position: 'relative', minHeight: '100vh' }}>
+      <div data-fullscreen-activity="">
 
-        {/* ── CARTE HERO — position:fixed garantit pleine largeur viewport ── */}
+        {/* ── CARTE HERO — dans le flux, height: 50vh ── */}
         <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0,
-          height: '52vh',
-          width: '100%',
-          zIndex: 10,
+          position: 'relative',
+          width:    '100%',
+          height:   '50vh',
+          overflow: 'hidden',
         }}>
           {polylinePoints && polylinePoints.length >= 2 ? (
             <ActivityMapCard
@@ -5184,33 +5191,37 @@ conseil pour la prochaine séance similaire.`
               <div style={{ width: 64, height: 64, borderRadius: 20, background: col, opacity: 0.25 }} />
             </div>
           )}
-          {/* Bouton retour overlay — fond sombre visible sur toute carte */}
+          {/* Bouton retour — cercle blanc 40px, ombre, safe-area iOS */}
           <button
             onClick={onClose}
+            aria-label="Retour"
             style={{
-              position: 'absolute', top: 16, left: 12, zIndex: 20,
-              width: 36, height: 36, borderRadius: '50%',
-              backgroundColor: 'rgba(0,0,0,0.55)',
-              backdropFilter: 'blur(8px)',
-              border: '1.5px solid rgba(255,255,255,0.25)',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              position:        'absolute',
+              top:             'calc(env(safe-area-inset-top, 0px) + 12px)',
+              left:            12,
+              zIndex:          10,
+              width:           40,
+              height:          40,
+              borderRadius:    '50%',
+              backgroundColor: '#ffffff',
+              border:          'none',
+              cursor:          'pointer',
+              display:         'flex',
+              alignItems:      'center',
+              justifyContent:  'center',
+              boxShadow:       '0 2px 8px rgba(0, 0, 0, 0.25)',
             }}
           >
-            <ChevronLeft size={18} color="white" strokeWidth={2.5} />
+            <ChevronLeft size={20} color="#0f172a" strokeWidth={2.2} />
           </button>
         </div>
 
-        {/* ── BOTTOM SHEET ── */}
+        {/* ── CONTENU — flux normal après la carte ── */}
         <div
           data-bottom-sheet=""
           style={{
-            marginTop: '52vh',
-            position: 'relative', zIndex: 20,
-            borderRadius: '20px 20px 0 0',
+            position:      'relative',
             paddingBottom: 120,
-            animation: 'slideUpSheet 0.45s cubic-bezier(0.32,0.72,0,1) both',
           }}
         >
           {/* Handle bar */}
@@ -7113,7 +7124,7 @@ function TrainingPageInner() {
     <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.fontBody }}>
 
       {/* ── TOP BAR — section dropdown + boutons ── */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: T.bg }}>
+      <div data-training-topbar="" style={{ position: 'sticky', top: 0, zIndex: 100, background: T.bg }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '12px 16px',
@@ -7240,7 +7251,7 @@ function TrainingPageInner() {
 
         {/* ── STRAVA TABS — mobile uniquement ── */}
         {isMobile && (
-          <div style={{
+          <div data-training-tabs="" style={{
             display: 'flex', overflowX: 'auto',
             background: T.bg, padding: '0 4px 0',
             scrollbarWidth: 'none',

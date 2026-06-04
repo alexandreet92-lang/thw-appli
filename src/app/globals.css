@@ -695,6 +695,13 @@ button:active { transform: scale(0.97); }
     height: 100vh !important;
   }
 
+  /* Masque les onglets Training (Données/Analyse/Progression) et la TOP BAR
+     quand une fiche activité est ouverte */
+  body:has([data-fullscreen-activity]) [data-training-topbar],
+  body:has([data-fullscreen-activity]) [data-training-tabs] {
+    display: none !important;
+  }
+
   /* Approche className (fallback fiable via useEffect) */
   body.hide-app-header [data-app-header],
   body.hide-app-header header,
@@ -711,5 +718,9 @@ button:active { transform: scale(0.97); }
     margin-top: 0 !important;
     padding: 0 !important;
     height: 100vh !important;
+  }
+  body.hide-app-header [data-training-topbar],
+  body.hide-app-header [data-training-tabs] {
+    display: none !important;
   }
 }

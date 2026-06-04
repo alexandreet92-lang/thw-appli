@@ -4537,25 +4537,25 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     return () => document.body.classList.remove('hide-app-header')
   }, [])
 
-  // ── Ref carte mobile (utilisé par l'effet de scroll-zoom étape 3) ──
+  // ── Ref carte mobile ─────────────────────────────────────────────────
   const mobileMapRef = useRef<HTMLDivElement>(null)
 
-  // ── Sheet draggable + zoom fluide map (mobile uniquement) ────────────
-  // Zoom piloté UNIQUEMENT par le drag du sheet (en temps réel via RAF).
-  // Plus de useEffect sur sheetPos (ça créait un saut visuel au touchend).
-  // Plus de scroll-zoom listener (ça conflictait avec le drag + se déclenchait
-  // sur le scroll interne du contenu, ce qui n'était pas voulu).
-  const [sheetPos,    setSheetPos]    = useState<'collapsed' | 'default' | 'expanded'>('default')
-  const [dragOffset,  setDragOffset]  = useState(0)
-  const [isDragging,  setIsDragging]  = useState(false)
-  const [winH,        setWinH]        = useState<number>(() =>
+  // ── Sheet draggable + zoom map (mobile uniquement) ───────────────────
+  // Stratégie : pendant le drag, on bypasse complètement React. Aucun
+  // setState dans onSheetTouchMove → aucun re-render → zéro backpressure.
+  // - sheetRef + isDraggingRef + currentOffsetRef remplacent les states
+  // - On manipule le DOM direct (sheet + .leaflet-container)
+  // - UN seul setSheetPos au touchend pour persister le snap dans React
+  const [sheetPos, setSheetPos] = useState<'collapsed' | 'default' | 'expanded'>('default')
+  const [winH,     setWinH]     = useState<number>(() =>
     typeof window !== 'undefined' ? window.innerHeight : 800,
   )
-  const dragStartY      = useRef(0)
-  const dragStartOffset = useRef(0)
-  // RAF throttle du touchmove pour éviter les frame drops sur drags rapides
-  const rafIdRef         = useRef<number | null>(null)
-  const pendingOffsetRef = useRef<number>(0)
+
+  const sheetRef          = useRef<HTMLDivElement>(null)
+  const isDraggingRef     = useRef(false)
+  const currentOffsetRef  = useRef(0)
+  const dragStartY        = useRef(0)
+  const dragStartOffset   = useRef(0)
 
   function getOffsetForPos(pos: 'collapsed' | 'default' | 'expanded'): number {
     if (pos === 'collapsed') return  winH * 0.25   // descend → +25vh
@@ -4573,15 +4573,10 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     return 1 + progress * 0.15
   }
 
-  // Helper : applique le scale au .leaflet-container avec/sans transition
-  function applyMapScale(scale: number, withTransition: boolean) {
+  function getLeafletEl(): HTMLElement | null {
     const mapEl = mobileMapRef.current
-    if (!mapEl) return
-    const leaflet = mapEl.querySelector('.leaflet-container') as HTMLElement | null
-    if (!leaflet) return
-    leaflet.style.transformOrigin = 'center center'
-    leaflet.style.transition      = withTransition ? 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)' : ''
-    leaflet.style.transform       = `scale(${scale})`
+    if (!mapEl) return null
+    return mapEl.querySelector('.leaflet-container') as HTMLElement | null
   }
 
   // Recalcule winH au resize
@@ -4592,66 +4587,117 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  const baseOffset    = getOffsetForPos(sheetPos)
-  const currentOffset = isDragging ? dragOffset : baseOffset
+  // Init position au mount + chaque resize : applique transform direct
+  // (le sheet n'a plus de transform inline contrôlé par React)
+  useEffect(() => {
+    if (winH <= 0) return
+    const target = getOffsetForPos(sheetPos)
+    currentOffsetRef.current = target
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = ''
+      sheetRef.current.style.transform  = `translateY(${target}px)`
+    }
+    const leaflet = getLeafletEl()
+    if (leaflet) {
+      leaflet.style.transformOrigin = 'center center'
+      leaflet.style.transition      = ''
+      leaflet.style.transform       = `scale(${computeMapScale(target)})`
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [winH])
+
+  // Sync DOM ↔ sheetPos pour les changements externes (hors drag)
+  useEffect(() => {
+    if (isDraggingRef.current) return
+    const target = getOffsetForPos(sheetPos)
+    if (currentOffsetRef.current === target) return  // déjà au bon endroit
+    currentOffsetRef.current = target
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+      sheetRef.current.style.transform  = `translateY(${target}px)`
+    }
+    const leaflet = getLeafletEl()
+    if (leaflet) {
+      leaflet.style.transformOrigin = 'center center'
+      leaflet.style.transition      = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+      leaflet.style.transform       = `scale(${computeMapScale(target)})`
+    }
+    const timer = setTimeout(() => {
+      if (sheetRef.current && !isDraggingRef.current) sheetRef.current.style.transition = ''
+      const l = getLeafletEl()
+      if (l && !isDraggingRef.current) l.style.transition = ''
+    }, 260)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetPos])
 
   function onSheetTouchStart(e: React.TouchEvent) {
-    setIsDragging(true)
-    dragStartY.current      = e.touches[0].clientY
-    dragStartOffset.current = baseOffset
-    setDragOffset(baseOffset)
-    // Clear la transition sur la leaflet pour suivre le doigt sans délai
-    const mapEl = mobileMapRef.current
-    if (mapEl) {
-      const leaflet = mapEl.querySelector('.leaflet-container') as HTMLElement | null
-      if (leaflet) leaflet.style.transition = ''
+    isDraggingRef.current  = true
+    dragStartY.current     = e.touches[0].clientY
+    dragStartOffset.current = currentOffsetRef.current
+    // Désactive les transitions pendant le drag (pas de retard sur le doigt)
+    if (sheetRef.current) {
+      sheetRef.current.classList.add('dragging')
+      sheetRef.current.style.transition = 'none'
     }
+    const leaflet = getLeafletEl()
+    if (leaflet) leaflet.style.transition = 'none'
   }
+
   function onSheetTouchMove(e: React.TouchEvent) {
-    if (!isDragging) return
+    if (!isDraggingRef.current) return
     const delta     = e.touches[0].clientY - dragStartY.current
     const newOff    = dragStartOffset.current + delta
     const minOffset = -winH * 0.42
     const maxOffset =  winH * 0.25
     const clamped   = Math.max(minOffset, Math.min(maxOffset, newOff))
-    pendingOffsetRef.current = clamped
-
-    // Batch via RAF : 1 update par frame quel que soit le débit du touchmove
-    if (rafIdRef.current === null) {
-      rafIdRef.current = requestAnimationFrame(() => {
-        const off = pendingOffsetRef.current
-        setDragOffset(off)
-        applyMapScale(computeMapScale(off), false)
-        rafIdRef.current = null
-      })
+    currentOffsetRef.current = clamped
+    // ⚠️ Aucun setState — manipulation DOM directe pour 60 fps fluide
+    if (sheetRef.current) {
+      sheetRef.current.style.transform = `translateY(${clamped}px)`
+    }
+    const leaflet = getLeafletEl()
+    if (leaflet) {
+      leaflet.style.transform = `scale(${computeMapScale(clamped)})`
     }
   }
+
   function onSheetTouchEnd() {
-    if (!isDragging) return
-    setIsDragging(false)
-    // Annule un RAF en attente pour éviter d'écraser le snap
-    if (rafIdRef.current !== null) {
-      cancelAnimationFrame(rafIdRef.current)
-      rafIdRef.current = null
-    }
+    if (!isDraggingRef.current) return
+    isDraggingRef.current = false
+    if (sheetRef.current) sheetRef.current.classList.remove('dragging')
+
+    const currentOffset = currentOffsetRef.current
     const positions = [
       { pos: 'collapsed' as const, val:  winH * 0.25 },
       { pos: 'default'   as const, val:  0          },
       { pos: 'expanded'  as const, val: -winH * 0.42 },
     ]
     const nearest = positions.reduce((best, curr) =>
-      Math.abs(curr.val - dragOffset) < Math.abs(best.val - dragOffset) ? curr : best,
+      Math.abs(curr.val - currentOffset) < Math.abs(best.val - currentOffset) ? curr : best,
     )
+
+    // Anime le snap via transition CSS (pas de RAF, pas de setState dans la boucle)
+    currentOffsetRef.current = nearest.val
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+      sheetRef.current.style.transform  = `translateY(${nearest.val}px)`
+    }
+    const leaflet = getLeafletEl()
+    if (leaflet) {
+      leaflet.style.transition = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+      leaflet.style.transform  = `scale(${computeMapScale(nearest.val)})`
+    }
+
+    // UN SEUL setState — persiste le snap dans React pour cohérence
+    // (le useEffect [sheetPos] skip car currentOffsetRef est déjà à target)
     setSheetPos(nearest.pos)
-    setDragOffset(nearest.val)
-    // Apply final scale avec transition pour un snap fluide
-    applyMapScale(computeMapScale(nearest.val), true)
-    // Retire la transition après l'animation pour ne pas gêner le prochain drag
+
+    // Retire les transitions après l'animation pour ne pas gêner le prochain drag
     setTimeout(() => {
-      const mapEl = mobileMapRef.current
-      if (!mapEl) return
-      const leaflet = mapEl.querySelector('.leaflet-container') as HTMLElement | null
-      if (leaflet) leaflet.style.transition = ''
+      if (sheetRef.current && !isDraggingRef.current) sheetRef.current.style.transition = ''
+      const l = getLeafletEl()
+      if (l && !isDraggingRef.current) l.style.transition = ''
     }, 260)
   }
 
@@ -5349,10 +5395,11 @@ conseil pour la prochaine séance similaire.`
           </button>
         </div>
 
-        {/* ── SHEET draggable — handle = poignée tactile, contenu = scroll pan-y ── */}
+        {/* ── SHEET draggable — transform géré via ref pour 60fps (pas via state React) ── */}
         <div
+          ref={sheetRef}
           data-bottom-sheet=""
-          className={`thw-activity-sheet${isDragging ? ' dragging' : ''}`}
+          className="thw-activity-sheet"
           style={{
             position:      'relative',
             zIndex:        2,
@@ -5362,7 +5409,8 @@ conseil pour la prochaine séance similaire.`
             boxShadow:     '0 -4px 24px rgba(0, 0, 0, 0.08)',
             minHeight:     '50vh',
             paddingBottom: 120,
-            transform:     `translateY(${currentOffset}px)`,
+            /* transform appliqué via sheetRef.style dans les useEffects + handlers
+               — aucun re-render React pendant le drag */
           }}
         >
           {/* Handle bar — zone tactile élargie, touch-action:none via CSS */}

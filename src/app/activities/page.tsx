@@ -4540,7 +4540,11 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   // ── Ref carte mobile (utilisé par l'effet de scroll-zoom étape 3) ──
   const mobileMapRef = useRef<HTMLDivElement>(null)
 
-  // ── Sheet draggable (mobile uniquement) ──────────────────────────────
+  // ── Sheet draggable + zoom fluide map (mobile uniquement) ────────────
+  // Zoom piloté UNIQUEMENT par le drag du sheet (en temps réel via RAF).
+  // Plus de useEffect sur sheetPos (ça créait un saut visuel au touchend).
+  // Plus de scroll-zoom listener (ça conflictait avec le drag + se déclenchait
+  // sur le scroll interne du contenu, ce qui n'était pas voulu).
   const [sheetPos,    setSheetPos]    = useState<'collapsed' | 'default' | 'expanded'>('default')
   const [dragOffset,  setDragOffset]  = useState(0)
   const [isDragging,  setIsDragging]  = useState(false)
@@ -4549,7 +4553,9 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   )
   const dragStartY      = useRef(0)
   const dragStartOffset = useRef(0)
-  const sheetScaleRef   = useRef(1)   // lu par le scroll-zoom de l'étape 3
+  // RAF throttle du touchmove pour éviter les frame drops sur drags rapides
+  const rafIdRef         = useRef<number | null>(null)
+  const pendingOffsetRef = useRef<number>(0)
 
   function getOffsetForPos(pos: 'collapsed' | 'default' | 'expanded'): number {
     if (pos === 'collapsed') return  winH * 0.25   // descend → +25vh
@@ -4557,30 +4563,34 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     return 0
   }
 
-  // Recalcule au resize
+  // Convertit l'offset du sheet en scale de la map (continu, monotone)
+  // collapsed (+25vh) → 1.0  |  default (0) → ~1.06  |  expanded (-42vh) → 1.15
+  function computeMapScale(offset: number): number {
+    const collapsed = winH * 0.25
+    const expanded  = -winH * 0.42
+    const range = expanded - collapsed   // négatif
+    const progress = Math.max(0, Math.min(1, (offset - collapsed) / range))
+    return 1 + progress * 0.15
+  }
+
+  // Helper : applique le scale au .leaflet-container avec/sans transition
+  function applyMapScale(scale: number, withTransition: boolean) {
+    const mapEl = mobileMapRef.current
+    if (!mapEl) return
+    const leaflet = mapEl.querySelector('.leaflet-container') as HTMLElement | null
+    if (!leaflet) return
+    leaflet.style.transformOrigin = 'center center'
+    leaflet.style.transition      = withTransition ? 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)' : ''
+    leaflet.style.transform       = `scale(${scale})`
+  }
+
+  // Recalcule winH au resize
   useEffect(() => {
     if (typeof window === 'undefined') return
     const onResize = () => setWinH(window.innerHeight)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-
-  // Map scale piloté par la position du sheet (commence à 1.0 / 1.08 / 1.15)
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (window.innerWidth >= 768) return
-    const newScale = sheetPos === 'expanded' ? 1.15
-                   : sheetPos === 'default'  ? 1.08
-                   : 1.0
-    sheetScaleRef.current = newScale
-    const mapEl = mobileMapRef.current
-    if (!mapEl) return
-    const leaflet = mapEl.querySelector('.leaflet-container') as HTMLElement | null
-    if (!leaflet) return
-    leaflet.style.transformOrigin = 'center center'
-    leaflet.style.transition      = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-    leaflet.style.transform       = `scale(${newScale})`
-  }, [sheetPos])
 
   const baseOffset    = getOffsetForPos(sheetPos)
   const currentOffset = isDragging ? dragOffset : baseOffset
@@ -4590,6 +4600,12 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     dragStartY.current      = e.touches[0].clientY
     dragStartOffset.current = baseOffset
     setDragOffset(baseOffset)
+    // Clear la transition sur la leaflet pour suivre le doigt sans délai
+    const mapEl = mobileMapRef.current
+    if (mapEl) {
+      const leaflet = mapEl.querySelector('.leaflet-container') as HTMLElement | null
+      if (leaflet) leaflet.style.transition = ''
+    }
   }
   function onSheetTouchMove(e: React.TouchEvent) {
     if (!isDragging) return
@@ -4597,11 +4613,27 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     const newOff    = dragStartOffset.current + delta
     const minOffset = -winH * 0.42
     const maxOffset =  winH * 0.25
-    setDragOffset(Math.max(minOffset, Math.min(maxOffset, newOff)))
+    const clamped   = Math.max(minOffset, Math.min(maxOffset, newOff))
+    pendingOffsetRef.current = clamped
+
+    // Batch via RAF : 1 update par frame quel que soit le débit du touchmove
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(() => {
+        const off = pendingOffsetRef.current
+        setDragOffset(off)
+        applyMapScale(computeMapScale(off), false)
+        rafIdRef.current = null
+      })
+    }
   }
   function onSheetTouchEnd() {
     if (!isDragging) return
     setIsDragging(false)
+    // Annule un RAF en attente pour éviter d'écraser le snap
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current)
+      rafIdRef.current = null
+    }
     const positions = [
       { pos: 'collapsed' as const, val:  winH * 0.25 },
       { pos: 'default'   as const, val:  0          },
@@ -4612,59 +4644,16 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     )
     setSheetPos(nearest.pos)
     setDragOffset(nearest.val)
+    // Apply final scale avec transition pour un snap fluide
+    applyMapScale(computeMapScale(nearest.val), true)
+    // Retire la transition après l'animation pour ne pas gêner le prochain drag
+    setTimeout(() => {
+      const mapEl = mobileMapRef.current
+      if (!mapEl) return
+      const leaflet = mapEl.querySelector('.leaflet-container') as HTMLElement | null
+      if (leaflet) leaflet.style.transition = ''
+    }, 260)
   }
-
-  // ── Étape 3 : effet zoom Strava au scroll (mobile uniquement) ──
-  // Sécurité : SSR-safe + early-return desktop + null-safety partout.
-  // Trouve le scroll container (closest ancestor avec overflow-y:auto)
-  // car <body> est overflow:hidden donc window.scrollY reste à 0.
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (window.innerWidth >= 768) return
-
-    const mapEl = mobileMapRef.current
-    if (!mapEl) return
-
-    // Cherche le 1er ancêtre scrollable (sinon fallback window).
-    function findScrollContainer(el: HTMLElement): HTMLElement | Window {
-      let cur: HTMLElement | null = el.parentElement
-      while (cur) {
-        const cs = getComputedStyle(cur)
-        if (cs.overflowY === 'auto' || cs.overflowY === 'scroll') return cur
-        cur = cur.parentElement
-      }
-      return window
-    }
-    const container = findScrollContainer(mapEl)
-
-    let raf = 0
-    const onScroll = () => {
-      cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(() => {
-        const y = container === window
-          ? window.scrollY
-          : (container as HTMLElement).scrollTop
-        const progress = Math.min(Math.max(0, y) / 600, 1)
-        const scrollScale = 1 + progress * 0.15
-        // Fusion : le scale final est le max entre le scroll et la position
-        // du sheet (cohabitation sans conflit avec l'effet sheet-drag).
-        const finalScale = Math.max(scrollScale, sheetScaleRef.current)
-        const leaflet = mapEl.querySelector('.leaflet-container') as HTMLElement | null
-        if (leaflet) {
-          leaflet.style.transformOrigin = 'center center'
-          leaflet.style.transition      = 'transform 0.1s linear'
-          leaflet.style.transform       = `scale(${finalScale})`
-        }
-      })
-    }
-
-    const target = container as EventTarget
-    target.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      target.removeEventListener('scroll', onScroll)
-      cancelAnimationFrame(raf)
-    }
-  }, [])
 
   // Tracé GPS décodé (pour mapping curseur → point sur la carte)
   const polylinePoints = useMemo<LatLngPoint[] | null>(() => {

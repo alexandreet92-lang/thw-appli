@@ -750,6 +750,12 @@ html.dark .thw-activity-back-btn {
   will-change: transform;
   touch-action: pan-y;
 }
+
+/* Optim GPU pour le zoom de la map (transforms appliqués via JS) */
+.thw-activity-map-sticky .leaflet-container {
+  will-change: transform;
+  transform-origin: center center;
+}
 .thw-activity-sheet.dragging {
   transition: none;          /* pendant le drag, suit le doigt sans easing */
 }

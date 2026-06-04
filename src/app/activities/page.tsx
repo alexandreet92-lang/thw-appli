@@ -5154,17 +5154,26 @@ conseil pour la prochaine séance similaire.`
   )
 
   // ── Two-path return: mobile (Strava) vs desktop (unchanged) ──
+  // DIAGNOSTIC : la fiche mobile est rendue dans des ancêtres qui créent
+  // des containing blocks via `transform` (<div.fade-up> avec
+  // `animation forwards` et <ScrollReveal> motion.div), ce qui empêchait
+  // `position:fixed; top:0` de la carte de se résoudre au viewport.
+  // FIX : on rend la branche mobile via createPortal(document.body) pour
+  // s'extraire de toute la chaîne ancestrale. Identique au fix
+  // SelectionSheet (PROMPT_ACTIVITY_CSSFIX).
   return isMobile ? (
     /* ══════════════════════════════════════════
-       MOBILE — layout Strava
+       MOBILE — layout Strava (rendu via portal sur document.body)
     ══════════════════════════════════════════ */
+    typeof document === 'undefined' ? null : createPortal(
     <>
       <div data-fullscreen-activity="" style={{ position: 'relative', minHeight: '100vh' }}>
 
-        {/* ── CARTE HERO — position:fixed garantit pleine largeur viewport ── */}
+        {/* ── CARTE HERO — position:fixed sous la safe-area iOS, edge-to-edge ── */}
         <div style={{
           position: 'fixed',
-          top: 0, left: 0, right: 0,
+          top: 'env(safe-area-inset-top, 0px)',
+          left: 0, right: 0,
           height: '52vh',
           width: '100%',
           zIndex: 10,
@@ -5214,7 +5223,7 @@ conseil pour la prochaine séance similaire.`
         <div
           data-bottom-sheet=""
           style={{
-            marginTop: '52vh',
+            marginTop: 'calc(env(safe-area-inset-top, 0px) + 52vh)',
             position: 'relative', zIndex: 20,
             borderRadius: '20px 20px 0 0',
             paddingBottom: 120,
@@ -5237,11 +5246,6 @@ conseil pour la prochaine séance similaire.`
               {fmtDate(a.started_at)}
               {a.is_race ? ' · Compétition' : ''}
             </p>
-          </div>
-
-          {/* Records battus — sous la carte (mobile) */}
-          <div style={{ padding: '0 16px' }}>
-            <RecordsBeaten activityId={a.id} isBike={isBike} />
           </div>
 
           {/* Stats 3×2 compact */}
@@ -5300,6 +5304,11 @@ conseil pour la prochaine séance similaire.`
               </div>
             )
           })()}
+
+          {/* Records battus — après les stats (mobile) */}
+          <div style={{ padding: '0 16px' }}>
+            <RecordsBeaten activityId={a.id} isBike={isBike} />
+          </div>
 
           {/* ── BOUTON IA GLOBAL (mobile) ── */}
           <div style={{ padding: '0 16px 20px' }}>
@@ -5527,7 +5536,9 @@ conseil pour la prochaine séance similaire.`
       </div>
 
       {sharedModals}
-    </>
+    </>,
+    document.body,
+    )
   ) : (
     /* ══════════════════════════════════════════
        DESKTOP — layout existant inchangé

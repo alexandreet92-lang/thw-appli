@@ -5184,21 +5184,29 @@ conseil pour la prochaine séance similaire.`
               <div style={{ width: 64, height: 64, borderRadius: 20, background: col, opacity: 0.25 }} />
             </div>
           )}
-          {/* Bouton retour overlay — fond sombre visible sur toute carte */}
+          {/* Bouton retour flottant — design spec : rond blanc 40px, icône sombre,
+             positionné dans la safe-area iOS pour respecter la notch / dynamic island */}
           <button
             onClick={onClose}
+            aria-label="Retour"
             style={{
-              position: 'absolute', top: 16, left: 12, zIndex: 20,
-              width: 36, height: 36, borderRadius: '50%',
-              backgroundColor: 'rgba(0,0,0,0.55)',
-              backdropFilter: 'blur(8px)',
-              border: '1.5px solid rgba(255,255,255,0.25)',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              position:        'absolute',
+              top:             'calc(env(safe-area-inset-top, 0px) + 12px)',
+              left:            12,
+              zIndex:          20,
+              width:           40,
+              height:          40,
+              borderRadius:    '50%',
+              backgroundColor: '#ffffff',
+              border:          'none',
+              cursor:          'pointer',
+              display:         'flex',
+              alignItems:      'center',
+              justifyContent:  'center',
+              boxShadow:       '0 2px 8px rgba(0, 0, 0, 0.25)',
             }}
           >
-            <ChevronLeft size={18} color="white" strokeWidth={2.5} />
+            <ChevronLeft size={20} color="#0f172a" strokeWidth={2.2} />
           </button>
         </div>
 
@@ -7113,7 +7121,7 @@ function TrainingPageInner() {
     <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.fontBody }}>
 
       {/* ── TOP BAR — section dropdown + boutons ── */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: T.bg }}>
+      <div data-training-topbar="" style={{ position: 'sticky', top: 0, zIndex: 100, background: T.bg }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '12px 16px',
@@ -7240,7 +7248,7 @@ function TrainingPageInner() {
 
         {/* ── STRAVA TABS — mobile uniquement ── */}
         {isMobile && (
-          <div style={{
+          <div data-training-tabs="" style={{
             display: 'flex', overflowX: 'auto',
             background: T.bg, padding: '0 4px 0',
             scrollbarWidth: 'none',

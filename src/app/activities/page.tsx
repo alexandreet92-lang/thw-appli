@@ -5154,26 +5154,17 @@ conseil pour la prochaine séance similaire.`
   )
 
   // ── Two-path return: mobile (Strava) vs desktop (unchanged) ──
-  // DIAGNOSTIC : la fiche mobile est rendue dans des ancêtres qui créent
-  // des containing blocks via `transform` (<div.fade-up> avec
-  // `animation forwards` et <ScrollReveal> motion.div), ce qui empêchait
-  // `position:fixed; top:0` de la carte de se résoudre au viewport.
-  // FIX : on rend la branche mobile via createPortal(document.body) pour
-  // s'extraire de toute la chaîne ancestrale. Identique au fix
-  // SelectionSheet (PROMPT_ACTIVITY_CSSFIX).
   return isMobile ? (
     /* ══════════════════════════════════════════
-       MOBILE — layout Strava (rendu via portal sur document.body)
+       MOBILE — layout Strava
     ══════════════════════════════════════════ */
-    typeof document === 'undefined' ? null : createPortal(
     <>
       <div data-fullscreen-activity="" style={{ position: 'relative', minHeight: '100vh' }}>
 
-        {/* ── CARTE HERO — position:fixed sous la safe-area iOS, edge-to-edge ── */}
+        {/* ── CARTE HERO — position:fixed garantit pleine largeur viewport ── */}
         <div style={{
           position: 'fixed',
-          top: 'env(safe-area-inset-top, 0px)',
-          left: 0, right: 0,
+          top: 0, left: 0, right: 0,
           height: '52vh',
           width: '100%',
           zIndex: 10,
@@ -5193,29 +5184,21 @@ conseil pour la prochaine séance similaire.`
               <div style={{ width: 64, height: 64, borderRadius: 20, background: col, opacity: 0.25 }} />
             </div>
           )}
-          {/* Bouton retour flottant — design spec : rond blanc 40px, icône sombre,
-             positionné dans la safe-area iOS pour respecter la notch / dynamic island */}
+          {/* Bouton retour overlay — fond sombre visible sur toute carte */}
           <button
             onClick={onClose}
-            aria-label="Retour"
             style={{
-              position:        'absolute',
-              top:             'calc(env(safe-area-inset-top, 0px) + 12px)',
-              left:            12,
-              zIndex:          20,
-              width:           40,
-              height:          40,
-              borderRadius:    '50%',
-              backgroundColor: '#ffffff',
-              border:          'none',
-              cursor:          'pointer',
-              display:         'flex',
-              alignItems:      'center',
-              justifyContent:  'center',
-              boxShadow:       '0 2px 8px rgba(0, 0, 0, 0.25)',
+              position: 'absolute', top: 16, left: 12, zIndex: 20,
+              width: 36, height: 36, borderRadius: '50%',
+              backgroundColor: 'rgba(0,0,0,0.55)',
+              backdropFilter: 'blur(8px)',
+              border: '1.5px solid rgba(255,255,255,0.25)',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
             }}
           >
-            <ChevronLeft size={20} color="#0f172a" strokeWidth={2.2} />
+            <ChevronLeft size={18} color="white" strokeWidth={2.5} />
           </button>
         </div>
 
@@ -5223,7 +5206,7 @@ conseil pour la prochaine séance similaire.`
         <div
           data-bottom-sheet=""
           style={{
-            marginTop: 'calc(env(safe-area-inset-top, 0px) + 52vh)',
+            marginTop: '52vh',
             position: 'relative', zIndex: 20,
             borderRadius: '20px 20px 0 0',
             paddingBottom: 120,
@@ -5246,6 +5229,11 @@ conseil pour la prochaine séance similaire.`
               {fmtDate(a.started_at)}
               {a.is_race ? ' · Compétition' : ''}
             </p>
+          </div>
+
+          {/* Records battus — sous la carte (mobile) */}
+          <div style={{ padding: '0 16px' }}>
+            <RecordsBeaten activityId={a.id} isBike={isBike} />
           </div>
 
           {/* Stats 3×2 compact */}
@@ -5304,11 +5292,6 @@ conseil pour la prochaine séance similaire.`
               </div>
             )
           })()}
-
-          {/* Records battus — après les stats (mobile) */}
-          <div style={{ padding: '0 16px' }}>
-            <RecordsBeaten activityId={a.id} isBike={isBike} />
-          </div>
 
           {/* ── BOUTON IA GLOBAL (mobile) ── */}
           <div style={{ padding: '0 16px 20px' }}>
@@ -5536,9 +5519,7 @@ conseil pour la prochaine séance similaire.`
       </div>
 
       {sharedModals}
-    </>,
-    document.body,
-    )
+    </>
   ) : (
     /* ══════════════════════════════════════════
        DESKTOP — layout existant inchangé
@@ -7132,7 +7113,7 @@ function TrainingPageInner() {
     <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.fontBody }}>
 
       {/* ── TOP BAR — section dropdown + boutons ── */}
-      <div data-training-topbar="" style={{ position: 'sticky', top: 0, zIndex: 100, background: T.bg }}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: T.bg }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '12px 16px',
@@ -7259,7 +7240,7 @@ function TrainingPageInner() {
 
         {/* ── STRAVA TABS — mobile uniquement ── */}
         {isMobile && (
-          <div data-training-tabs="" style={{
+          <div style={{
             display: 'flex', overflowX: 'auto',
             background: T.bg, padding: '0 4px 0',
             scrollbarWidth: 'none',

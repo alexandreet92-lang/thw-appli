@@ -4534,31 +4534,6 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     return () => document.body.classList.remove('hide-app-header')
   }, [])
 
-  // ── Parallax mobile (Strava-style) : zoom léger de la carte au scroll ──
-  const mobileScrollRef = useRef<HTMLDivElement>(null)
-  const mapZoomRef       = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (typeof window === 'undefined' || window.innerWidth >= 768) return
-    const wrapper = mobileScrollRef.current
-    if (!wrapper) return
-    let raf = 0
-    const onScroll = () => {
-      cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(() => {
-        const y = Math.max(0, wrapper.scrollTop)
-        const scale = Math.min(1 + y / 1500, 1.15)
-        if (mapZoomRef.current) {
-          mapZoomRef.current.style.transform = `scale(${scale})`
-        }
-      })
-    }
-    wrapper.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      wrapper.removeEventListener('scroll', onScroll)
-      cancelAnimationFrame(raf)
-    }
-  }, [])
-
   // Tracé GPS décodé (pour mapping curseur → point sur la carte)
   const polylinePoints = useMemo<LatLngPoint[] | null>(() => {
     const encoded = (a.summary_polyline as string | null)
@@ -5192,101 +5167,72 @@ conseil pour la prochaine séance similaire.`
     ══════════════════════════════════════════ */
     typeof document === 'undefined' ? null : createPortal(
     <>
-      {/* Wrapper = scroll container plein écran. La carte est rendue en
-          sticky derrière, le sheet glisse par-dessus au scroll. */}
-      <div
-        ref={mobileScrollRef}
-        data-fullscreen-activity=""
-        style={{
-          position:                 'fixed',
-          inset:                    0,
-          overflowY:                'auto',
-          overflowX:                'hidden',
-          background:               'var(--bg)',
-          paddingTop:               'env(safe-area-inset-top, 0px)',
-          boxSizing:                'border-box',
-          WebkitOverflowScrolling:  'touch' as React.CSSProperties['WebkitOverflowScrolling'],
-        }}
-      >
+      <div data-fullscreen-activity="" style={{ position: 'relative', minHeight: '100vh' }}>
 
-        {/* ── CARTE HERO — sticky derrière le sheet (parallax au scroll) ── */}
+        {/* ── CARTE HERO — position:fixed sous la safe-area iOS, edge-to-edge ── */}
         <div style={{
-          position:     'sticky',
-          top:          0,
-          height:       '60vh',
-          width:        '100%',
-          zIndex:       1,
-          overflow:     'hidden',
+          position: 'fixed',
+          top: 'env(safe-area-inset-top, 0px)',
+          left: 0, right: 0,
+          height: '52vh',
+          width: '100%',
+          zIndex: 10,
         }}>
-          <div
-            ref={mapZoomRef}
+          {polylinePoints && polylinePoints.length >= 2 ? (
+            <ActivityMapCard
+              activity={a as unknown as Record<string, unknown>}
+              mobileHero={true}
+              hoverGps={hoverGps}
+            />
+          ) : (
+            <div style={{
+              width: '100%', height: '100%',
+              background: `linear-gradient(135deg, ${col}33 0%, ${col}11 100%)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div style={{ width: 64, height: 64, borderRadius: 20, background: col, opacity: 0.25 }} />
+            </div>
+          )}
+          {/* Bouton retour flottant — design spec : rond blanc 40px, icône sombre,
+             positionné dans la safe-area iOS pour respecter la notch / dynamic island */}
+          <button
+            onClick={onClose}
+            aria-label="Retour"
             style={{
-              width:           '100%',
-              height:          '100%',
-              transformOrigin: 'center center',
-              willChange:      'transform',
-              transition:      'transform 0.1s linear',
+              position:        'absolute',
+              top:             'calc(env(safe-area-inset-top, 0px) + 12px)',
+              left:            12,
+              zIndex:          20,
+              width:           40,
+              height:          40,
+              borderRadius:    '50%',
+              backgroundColor: '#ffffff',
+              border:          'none',
+              cursor:          'pointer',
+              display:         'flex',
+              alignItems:      'center',
+              justifyContent:  'center',
+              boxShadow:       '0 2px 8px rgba(0, 0, 0, 0.25)',
             }}
           >
-            {polylinePoints && polylinePoints.length >= 2 ? (
-              <ActivityMapCard
-                activity={a as unknown as Record<string, unknown>}
-                mobileHero={true}
-                hoverGps={hoverGps}
-              />
-            ) : (
-              <div style={{
-                width: '100%', height: '100%',
-                background: `linear-gradient(135deg, ${col}33 0%, ${col}11 100%)`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <div style={{ width: 64, height: 64, borderRadius: 20, background: col, opacity: 0.25 }} />
-              </div>
-            )}
-          </div>
+            <ChevronLeft size={20} color="#0f172a" strokeWidth={2.2} />
+          </button>
         </div>
 
-        {/* Bouton retour flottant — fixe sur le viewport, hors carte (ne zoome pas) */}
-        <button
-          onClick={onClose}
-          aria-label="Retour"
-          style={{
-            position:        'fixed',
-            top:             'calc(env(safe-area-inset-top, 0px) + 12px)',
-            left:            12,
-            zIndex:          30,
-            width:           40,
-            height:          40,
-            borderRadius:    '50%',
-            backgroundColor: '#ffffff',
-            border:          'none',
-            cursor:          'pointer',
-            display:         'flex',
-            alignItems:      'center',
-            justifyContent:  'center',
-            boxShadow:       '0 2px 8px rgba(0, 0, 0, 0.25)',
-          }}
-        >
-          <ChevronLeft size={20} color="#0f172a" strokeWidth={2.2} />
-        </button>
-
-        {/* ── SHEET — glisse par-dessus la carte sticky, overlap 10vh ── */}
+        {/* ── BOTTOM SHEET ── */}
         <div
           data-bottom-sheet=""
           style={{
-            marginTop:     '-10vh',
-            position:      'relative',
-            zIndex:        10,
-            background:    'var(--bg)',
-            borderRadius:  '20px 20px 0 0',
-            boxShadow:     '0 -4px 24px rgba(0, 0, 0, 0.08)',
-            paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))',
-            minHeight:     '60vh',
+            marginTop: 'calc(env(safe-area-inset-top, 0px) + 52vh)',
+            position: 'relative', zIndex: 20,
+            borderRadius: '20px 20px 0 0',
+            paddingBottom: 120,
+            animation: 'slideUpSheet 0.45s cubic-bezier(0.32,0.72,0,1) both',
           }}
         >
-          {/* Handle bar — indicateur drag visuel */}
+          {/* Handle bar */}
           <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
-            <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'var(--border-mid)' }} />
+            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--info-border)' }} />
           </div>
 
           {/* Nom + sport + date */}

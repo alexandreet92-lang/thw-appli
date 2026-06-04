@@ -4534,6 +4534,9 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     return () => document.body.classList.remove('hide-app-header')
   }, [])
 
+  // ── Ref carte mobile (utilisé par l'effet de scroll-zoom étape 3) ──
+  const mobileMapRef = useRef<HTMLDivElement>(null)
+
   // Tracé GPS décodé (pour mapping curseur → point sur la carte)
   const polylinePoints = useMemo<LatLngPoint[] | null>(() => {
     const encoded = (a.summary_polyline as string | null)
@@ -5164,18 +5167,28 @@ conseil pour la prochaine séance similaire.`
   // plus d'animation slideUp. Scroll classique géré par le <main> parent.
   return isMobile ? (
     /* ══════════════════════════════════════════
-       MOBILE — layout linéaire propre
+       MOBILE — layout Strava (map sticky + sheet overlap)
+       Étape 1+2 (DOM+CSS) : map sticky top:0 height:60vh, sheet glisse
+       par-dessus avec overlap visuel (margin-top:-20) + border-radius
+       + boxShadow. isolation:isolate sur la map contient les z-indexes
+       Leaflet (déjà en place via ActivityMapCard mobileHero).
     ══════════════════════════════════════════ */
     <>
-      <div data-fullscreen-activity="">
+      <div data-fullscreen-activity="" style={{ position: 'relative', minHeight: '100vh' }}>
 
-        {/* ── CARTE HERO — dans le flux, height: 50vh ── */}
-        <div style={{
-          position: 'relative',
-          width:    '100%',
-          height:   '50vh',
-          overflow: 'hidden',
-        }}>
+        {/* ── CARTE HERO — sticky, reste collée au top pendant le scroll ── */}
+        <div
+          ref={mobileMapRef}
+          className="thw-activity-map-sticky"
+          style={{
+            position: 'sticky',
+            top:      0,
+            width:    '100%',
+            height:   '60vh',
+            zIndex:   1,
+            overflow: 'hidden',
+          }}
+        >
           {polylinePoints && polylinePoints.length >= 2 ? (
             <ActivityMapCard
               activity={a as unknown as Record<string, unknown>}
@@ -5218,11 +5231,17 @@ conseil pour la prochaine séance similaire.`
           </button>
         </div>
 
-        {/* ── CONTENU — flux normal après la carte ── */}
+        {/* ── SHEET — glisse par-dessus la carte sticky ── */}
         <div
           data-bottom-sheet=""
           style={{
             position:      'relative',
+            zIndex:        2,
+            marginTop:     '-20px',
+            background:    'var(--bg)',
+            borderRadius:  '20px 20px 0 0',
+            boxShadow:     '0 -4px 24px rgba(0, 0, 0, 0.08)',
+            minHeight:     '50vh',
             paddingBottom: 120,
           }}
         >

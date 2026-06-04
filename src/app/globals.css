@@ -702,6 +702,12 @@ button:active { transform: scale(0.97); }
     display: none !important;
   }
 
+  /* Masque la tab bar mobile basse (Plan / Stats / + / Plus / Réglages)
+     sur fiche activité (mobile uniquement, déjà dans @media). */
+  body:has([data-fullscreen-activity]) .mobile-tab-bar {
+    display: none !important;
+  }
+
   /* Approche className (fallback fiable via useEffect) */
   body.hide-app-header [data-app-header],
   body.hide-app-header header,
@@ -723,4 +729,17 @@ button:active { transform: scale(0.97); }
   body.hide-app-header [data-training-tabs] {
     display: none !important;
   }
+  body.hide-app-header .mobile-tab-bar {
+    display: none !important;
+  }
+}
+
+/* ── Bouton retour flottant sur la fiche activité — thème adaptatif ─── */
+.thw-activity-back-btn {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+html.dark .thw-activity-back-btn {
+  background-color: #0f172a;
+  color: #ffffff;
 }

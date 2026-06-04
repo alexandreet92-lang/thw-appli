@@ -5191,28 +5191,30 @@ conseil pour la prochaine séance similaire.`
               <div style={{ width: 64, height: 64, borderRadius: 20, background: col, opacity: 0.25 }} />
             </div>
           )}
-          {/* Bouton retour — cercle blanc 40px, ombre, safe-area iOS */}
+          {/* Bouton retour — cercle 40px adaptatif (blanc en clair, noir en sombre),
+             ombre lisible, safe-area iOS, icône en currentColor */}
           <button
             onClick={onClose}
             aria-label="Retour"
+            className="thw-activity-back-btn"
             style={{
-              position:        'absolute',
-              top:             'calc(env(safe-area-inset-top, 0px) + 12px)',
-              left:            12,
-              zIndex:          10,
-              width:           40,
-              height:          40,
-              borderRadius:    '50%',
-              backgroundColor: '#ffffff',
-              border:          'none',
-              cursor:          'pointer',
-              display:         'flex',
-              alignItems:      'center',
-              justifyContent:  'center',
-              boxShadow:       '0 2px 8px rgba(0, 0, 0, 0.25)',
+              position:       'absolute',
+              top:            'calc(env(safe-area-inset-top, 0px) + 12px)',
+              left:           12,
+              zIndex:         10,
+              width:          40,
+              height:         40,
+              borderRadius:   '50%',
+              border:         'none',
+              cursor:         'pointer',
+              display:        'flex',
+              alignItems:     'center',
+              justifyContent: 'center',
+              boxShadow:      '0 2px 8px rgba(0, 0, 0, 0.25)',
+              padding:        0,
             }}
           >
-            <ChevronLeft size={20} color="#0f172a" strokeWidth={2.2} />
+            <ChevronLeft size={20} strokeWidth={2.5} />
           </button>
         </div>
 

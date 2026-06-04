@@ -743,3 +743,20 @@ html.dark .thw-activity-back-btn {
   background-color: #0f172a;
   color: #ffffff;
 }
+
+/* ── Sheet draggable (mobile fiche activité) ─────────────────────────── */
+.thw-activity-sheet {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+  touch-action: pan-y;
+}
+.thw-activity-sheet.dragging {
+  transition: none;          /* pendant le drag, suit le doigt sans easing */
+}
+.thw-activity-sheet-handle {
+  touch-action: none;        /* intercepte le geste sur la handle */
+  cursor: grab;
+}
+.thw-activity-sheet-handle:active {
+  cursor: grabbing;
+}

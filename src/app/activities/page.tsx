@@ -4537,6 +4537,80 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   // ── Ref carte mobile (utilisé par l'effet de scroll-zoom étape 3) ──
   const mobileMapRef = useRef<HTMLDivElement>(null)
 
+  // ── Sheet draggable (mobile uniquement) ──────────────────────────────
+  const [sheetPos,    setSheetPos]    = useState<'collapsed' | 'default' | 'expanded'>('default')
+  const [dragOffset,  setDragOffset]  = useState(0)
+  const [isDragging,  setIsDragging]  = useState(false)
+  const [winH,        setWinH]        = useState<number>(() =>
+    typeof window !== 'undefined' ? window.innerHeight : 800,
+  )
+  const dragStartY      = useRef(0)
+  const dragStartOffset = useRef(0)
+  const sheetScaleRef   = useRef(1)   // lu par le scroll-zoom de l'étape 3
+
+  function getOffsetForPos(pos: 'collapsed' | 'default' | 'expanded'): number {
+    if (pos === 'collapsed') return  winH * 0.25   // descend → +25vh
+    if (pos === 'expanded')  return -winH * 0.42   // monte    → -42vh
+    return 0
+  }
+
+  // Recalcule au resize
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onResize = () => setWinH(window.innerHeight)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  // Map scale piloté par la position du sheet (commence à 1.0 / 1.08 / 1.15)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.innerWidth >= 768) return
+    const newScale = sheetPos === 'expanded' ? 1.15
+                   : sheetPos === 'default'  ? 1.08
+                   : 1.0
+    sheetScaleRef.current = newScale
+    const mapEl = mobileMapRef.current
+    if (!mapEl) return
+    const leaflet = mapEl.querySelector('.leaflet-container') as HTMLElement | null
+    if (!leaflet) return
+    leaflet.style.transformOrigin = 'center center'
+    leaflet.style.transition      = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+    leaflet.style.transform       = `scale(${newScale})`
+  }, [sheetPos])
+
+  const baseOffset    = getOffsetForPos(sheetPos)
+  const currentOffset = isDragging ? dragOffset : baseOffset
+
+  function onSheetTouchStart(e: React.TouchEvent) {
+    setIsDragging(true)
+    dragStartY.current      = e.touches[0].clientY
+    dragStartOffset.current = baseOffset
+    setDragOffset(baseOffset)
+  }
+  function onSheetTouchMove(e: React.TouchEvent) {
+    if (!isDragging) return
+    const delta     = e.touches[0].clientY - dragStartY.current
+    const newOff    = dragStartOffset.current + delta
+    const minOffset = -winH * 0.42
+    const maxOffset =  winH * 0.25
+    setDragOffset(Math.max(minOffset, Math.min(maxOffset, newOff)))
+  }
+  function onSheetTouchEnd() {
+    if (!isDragging) return
+    setIsDragging(false)
+    const positions = [
+      { pos: 'collapsed' as const, val:  winH * 0.25 },
+      { pos: 'default'   as const, val:  0          },
+      { pos: 'expanded'  as const, val: -winH * 0.42 },
+    ]
+    const nearest = positions.reduce((best, curr) =>
+      Math.abs(curr.val - dragOffset) < Math.abs(best.val - dragOffset) ? curr : best,
+    )
+    setSheetPos(nearest.pos)
+    setDragOffset(nearest.val)
+  }
+
   // ── Étape 3 : effet zoom Strava au scroll (mobile uniquement) ──
   // Sécurité : SSR-safe + early-return desktop + null-safety partout.
   // Trouve le scroll container (closest ancestor avec overflow-y:auto)
@@ -4568,12 +4642,15 @@ function ActivityDetail({ a, onClose, zones, profile }: {
           ? window.scrollY
           : (container as HTMLElement).scrollTop
         const progress = Math.min(Math.max(0, y) / 600, 1)
-        const scale = 1 + progress * 0.15
+        const scrollScale = 1 + progress * 0.15
+        // Fusion : le scale final est le max entre le scroll et la position
+        // du sheet (cohabitation sans conflit avec l'effet sheet-drag).
+        const finalScale = Math.max(scrollScale, sheetScaleRef.current)
         const leaflet = mapEl.querySelector('.leaflet-container') as HTMLElement | null
         if (leaflet) {
           leaflet.style.transformOrigin = 'center center'
           leaflet.style.transition      = 'transform 0.1s linear'
-          leaflet.style.transform       = `scale(${scale})`
+          leaflet.style.transform       = `scale(${finalScale})`
         }
       })
     }
@@ -5280,9 +5357,10 @@ conseil pour la prochaine séance similaire.`
           </button>
         </div>
 
-        {/* ── SHEET — glisse par-dessus la carte sticky ── */}
+        {/* ── SHEET draggable — handle = poignée tactile, contenu = scroll pan-y ── */}
         <div
           data-bottom-sheet=""
+          className={`thw-activity-sheet${isDragging ? ' dragging' : ''}`}
           style={{
             position:      'relative',
             zIndex:        2,
@@ -5292,11 +5370,19 @@ conseil pour la prochaine séance similaire.`
             boxShadow:     '0 -4px 24px rgba(0, 0, 0, 0.08)',
             minHeight:     '50vh',
             paddingBottom: 120,
+            transform:     `translateY(${currentOffset}px)`,
           }}
         >
-          {/* Handle bar */}
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--info-border)' }} />
+          {/* Handle bar — zone tactile élargie, touch-action:none via CSS */}
+          <div
+            className="thw-activity-sheet-handle"
+            onTouchStart={onSheetTouchStart}
+            onTouchMove={onSheetTouchMove}
+            onTouchEnd={onSheetTouchEnd}
+            onTouchCancel={onSheetTouchEnd}
+            style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}
+          >
+            <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'var(--info-border)' }} />
           </div>
 
           {/* Nom + sport + date */}

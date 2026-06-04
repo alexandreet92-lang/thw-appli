@@ -95,13 +95,18 @@ export function ActivityMapCard({ activity, isMobile = false, expanded = false, 
   // ── Style de la carte selon le contexte ──────────────────────────────────────
   let cardStyle: CSSProperties
   if (mobileHero) {
-    // Hero mobile Strava : occupe tout l'espace du conteneur parent
+    // Hero mobile Strava : occupe tout l'espace du conteneur parent.
+    // `isolation: isolate` crée un stacking context local qui contient
+    // les z-indexes internes de Leaflet (panes 200-1000), pour qu'ils
+    // ne fuitent plus dans le stacking context parent et masquent le
+    // bouton retour (sibling à z-index 10).
     cardStyle = {
-      position: 'relative',
-      width: '100%',
-      height: '100%',
+      position:  'relative',
+      width:     '100%',
+      height:    '100%',
       borderRadius: 0,
-      overflow: 'hidden',
+      overflow:  'hidden',
+      isolation: 'isolate',
     }
   } else if (isMobile && mobileFullscreen) {
     // Plein écran mobile : recouvre tout l'écran

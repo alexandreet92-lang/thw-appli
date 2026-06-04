@@ -5338,7 +5338,7 @@ conseil pour la prochaine séance similaire.`
             className="thw-activity-back-btn"
             style={{
               position:       'absolute',
-              top:            'calc(env(safe-area-inset-top, 0px) + 12px)',
+              top:            'calc(env(safe-area-inset-top, 0px) + 20px)',
               left:           12,
               zIndex:         10,
               width:          40,

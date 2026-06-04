@@ -5,8 +5,8 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import dynamicImport from 'next/dynamic'
-import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { Button } from '@/components/ui/Button'
+import { SportTabs, type SportTabItem } from '@/components/ui/SportTabs'
 import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
 import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
@@ -821,75 +821,14 @@ function MealTemplatesSection({
 }
 
 // ══════════════════════════════════════════════════════════════════
-// TAB NAVIGATION
+// TAB NAVIGATION — style identique aux pills de la page Training
 // ══════════════════════════════════════════════════════════════════
-const NUTRITION_TABS: { key: NutritionTab; label: string; icon: React.ReactNode }[] = [
-  {
-    key: 'today',
-    label: "Aujourd'hui",
-    icon: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-      </svg>
-    ),
-  },
-  {
-    key: 'plan',
-    label: 'Mon plan',
-    icon: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M3 10h18M8 2v4M16 2v4M9 16l2 2 4-4" />
-      </svg>
-    ),
-  },
-  {
-    key: 'tracking',
-    label: 'Suivi',
-    icon: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 3v18h18" /><path d="M7 14l3-4 3 3 4-6" />
-      </svg>
-    ),
-  },
-  {
-    key: 'body',
-    label: 'Composition',
-    icon: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 3a2 2 0 100 4 2 2 0 000-4zM6 21V11a6 6 0 0112 0v10M9 21v-5M15 21v-5" />
-      </svg>
-    ),
-  },
+const NUTRITION_TAB_ITEMS: SportTabItem[] = [
+  { id: 'today',    label: "Aujourd'hui",  color: '#06B6D4' },
+  { id: 'plan',     label: 'Mon plan',     color: '#06B6D4' },
+  { id: 'tracking', label: 'Suivi',        color: '#06B6D4' },
+  { id: 'body',     label: 'Composition',  color: '#06B6D4' },
 ]
-
-function NutritionTabs({ tab, onChange }: { tab: NutritionTab; onChange: (t: NutritionTab) => void }) {
-  return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
-      {NUTRITION_TABS.map(t => {
-        const active = t.key === tab
-        return (
-          <button
-            key={t.key}
-            onClick={() => onChange(t.key)}
-            aria-pressed={active}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              padding: '9px 16px', borderRadius: 12, flexShrink: 0, minHeight: 44,
-              border: `1px solid ${active ? 'rgba(6,182,212,0.35)' : 'var(--border)'}`,
-              background: active ? 'rgba(6,182,212,0.12)' : 'var(--bg-card)',
-              color: active ? '#06B6D4' : 'var(--text-dim)',
-              fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13,
-              cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s',
-            }}
-          >
-            {t.icon}
-            {t.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
 
 // ══════════════════════════════════════════════════════════════════
 // MAIN PAGE
@@ -1190,7 +1129,6 @@ export default function NutritionPage() {
             </svg>
           </button>
           <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
-          <AIAssistantButton agent="nutrition" context={{ activePlan, todayLog }} />
         </div>
       </div>
 
@@ -1214,7 +1152,12 @@ export default function NutritionPage() {
 
       <div className="px-4 md:px-8 pt-4 md:pt-6" style={{ paddingBottom: 0 }}>
 
-        <NutritionTabs tab={tab} onChange={setTab} />
+        <SportTabs
+          tabs={NUTRITION_TAB_ITEMS}
+          value={tab}
+          onChange={id => setTab(id as NutritionTab)}
+          style={{ marginBottom: 16 }}
+        />
 
         {tab === 'today' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

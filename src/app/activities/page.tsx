@@ -4537,6 +4537,55 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   // ── Ref carte mobile (utilisé par l'effet de scroll-zoom étape 3) ──
   const mobileMapRef = useRef<HTMLDivElement>(null)
 
+  // ── Étape 3 : effet zoom Strava au scroll (mobile uniquement) ──
+  // Sécurité : SSR-safe + early-return desktop + null-safety partout.
+  // Trouve le scroll container (closest ancestor avec overflow-y:auto)
+  // car <body> est overflow:hidden donc window.scrollY reste à 0.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.innerWidth >= 768) return
+
+    const mapEl = mobileMapRef.current
+    if (!mapEl) return
+
+    // Cherche le 1er ancêtre scrollable (sinon fallback window).
+    function findScrollContainer(el: HTMLElement): HTMLElement | Window {
+      let cur: HTMLElement | null = el.parentElement
+      while (cur) {
+        const cs = getComputedStyle(cur)
+        if (cs.overflowY === 'auto' || cs.overflowY === 'scroll') return cur
+        cur = cur.parentElement
+      }
+      return window
+    }
+    const container = findScrollContainer(mapEl)
+
+    let raf = 0
+    const onScroll = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const y = container === window
+          ? window.scrollY
+          : (container as HTMLElement).scrollTop
+        const progress = Math.min(Math.max(0, y) / 600, 1)
+        const scale = 1 + progress * 0.15
+        const leaflet = mapEl.querySelector('.leaflet-container') as HTMLElement | null
+        if (leaflet) {
+          leaflet.style.transformOrigin = 'center center'
+          leaflet.style.transition      = 'transform 0.1s linear'
+          leaflet.style.transform       = `scale(${scale})`
+        }
+      })
+    }
+
+    const target = container as EventTarget
+    target.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      target.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(raf)
+    }
+  }, [])
+
   // Tracé GPS décodé (pour mapping curseur → point sur la carte)
   const polylinePoints = useMemo<LatLngPoint[] | null>(() => {
     const encoded = (a.summary_polyline as string | null)

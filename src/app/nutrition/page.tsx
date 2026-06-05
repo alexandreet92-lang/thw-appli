@@ -13,6 +13,7 @@ import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
 import { useDailyMeals } from '@/hooks/useDailyMeals'
 import { useHydration } from '@/hooks/useHydration'
 import { DayFoodJournal } from '@/app/nutrition/components/DayFoodJournal'
+import { SwipeableTabs } from '@/components/ui/SwipeableTabs'
 import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -832,6 +833,7 @@ const NUTRITION_TAB_ITEMS: { id: NutritionTab; label: string }[] = [
   { id: 'tracking', label: 'Suivi' },
   { id: 'body',     label: 'Composition' },
 ]
+const TAB_ORDER: NutritionTab[] = NUTRITION_TAB_ITEMS.map(t => t.id)
 
 // Onglets soulignés — style identique à SectionLayout (page Planning)
 function NutritionTabs({ tab, onChange }: { tab: NutritionTab; onChange: (t: NutritionTab) => void }) {
@@ -1166,7 +1168,14 @@ export default function NutritionPage() {
 
         <NutritionTabs tab={tab} onChange={setTab} />
 
-        {tab === 'today' && (
+        <SwipeableTabs
+          index={TAB_ORDER.indexOf(tab)}
+          count={TAB_ORDER.length}
+          onIndexChange={i => setTab(TAB_ORDER[i])}
+        >
+
+        {/* ════════════════════ PAGE — Aujourd'hui ════════════════════ */}
+        <div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
         {/* ══════════════════════════════════════════════════════ */}
@@ -1327,13 +1336,53 @@ export default function NutritionPage() {
           )}
         </div>
 
-        </div>
-        )}
+        </div>{/* end today grid */}
 
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION 3 — Plan nutritionnel                         */}
-        {/* ══════════════════════════════════════════════════════ */}
-        {tab === 'plan' && (
+        {/* SECTION 4 — Repas de la journée (journal IA) */}
+        <div style={cardStyle}>
+          <p style={sectionTitle}>Repas de la journee</p>
+
+          <DayFoodJournal
+            entries={dayMeals.entries}
+            loading={dayMeals.loading}
+            saveEntry={dayMeals.saveEntry}
+            deleteEntry={dayMeals.deleteEntry}
+          />
+
+          {/* Suggestion IA du prochain repas */}
+          <div style={{ marginTop: 18 }}>
+            <button
+              onClick={() => void handleSuggestMeal()}
+              disabled={suggesting}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                width: '100%', padding: '12px', borderRadius: 11, minHeight: 44,
+                border: '1px solid rgba(139,92,246,0.3)', background: 'rgba(139,92,246,0.08)',
+                color: '#8b5cf6', fontWeight: 700, fontSize: 13,
+                cursor: suggesting ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif',
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3l1.9 4.8L18.5 9l-4.6 1.2L12 15l-1.9-4.8L5.5 9l4.6-1.2z" /><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z" />
+              </svg>
+              {suggesting ? 'Réflexion…' : 'Suggérer mon prochain repas (IA)'}
+            </button>
+            {suggestion && (
+              <div style={{ marginTop: 10, padding: '14px 16px', borderRadius: 12, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)' }}>
+                <p style={{ margin: 0, fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{suggestion.title}</p>
+                <p style={{ margin: '4px 0 8px', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5 }}>{suggestion.description}</p>
+                <p style={{ margin: 0, fontSize: 11, fontFamily: 'DM Mono,monospace', color: '#8b5cf6' }}>
+                  {suggestion.kcal} kcal · P {suggestion.prot}g · G {suggestion.gluc}g · L {suggestion.lip}g
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+        </div>{/* end PAGE Aujourd'hui */}
+
+        {/* ════════════════════ PAGE — Mon plan ════════════════════ */}
+        <div>
+        {/* SECTION 3 — Plan nutritionnel */}
         <div style={cardStyle}>
           <p style={sectionTitle}>Plan nutritionnel</p>
 
@@ -1434,57 +1483,18 @@ export default function NutritionPage() {
             </div>
           )}
         </div>
-        )}
 
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION 4 — Repas de la journee                       */}
-        {/* ══════════════════════════════════════════════════════ */}
-        {tab === 'today' && (
-        <div style={cardStyle}>
-          <p style={sectionTitle}>Repas de la journee</p>
-
-          <DayFoodJournal
-            entries={dayMeals.entries}
-            loading={dayMeals.loading}
-            saveEntry={dayMeals.saveEntry}
-            deleteEntry={dayMeals.deleteEntry}
-          />
-
-          {/* Suggestion IA du prochain repas */}
-          <div style={{ marginTop: 18 }}>
-            <button
-              onClick={() => void handleSuggestMeal()}
-              disabled={suggesting}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                width: '100%', padding: '12px', borderRadius: 11, minHeight: 44,
-                border: '1px solid rgba(139,92,246,0.3)', background: 'rgba(139,92,246,0.08)',
-                color: '#8b5cf6', fontWeight: 700, fontSize: 13,
-                cursor: suggesting ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 3l1.9 4.8L18.5 9l-4.6 1.2L12 15l-1.9-4.8L5.5 9l4.6-1.2z" /><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z" />
-              </svg>
-              {suggesting ? 'Réflexion…' : 'Suggérer mon prochain repas (IA)'}
-            </button>
-            {suggestion && (
-              <div style={{ marginTop: 10, padding: '14px 16px', borderRadius: 12, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)' }}>
-                <p style={{ margin: 0, fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{suggestion.title}</p>
-                <p style={{ margin: '4px 0 8px', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5 }}>{suggestion.description}</p>
-                <p style={{ margin: 0, fontSize: 11, fontFamily: 'DM Mono,monospace', color: '#8b5cf6' }}>
-                  {suggestion.kcal} kcal · P {suggestion.prot}g · G {suggestion.gluc}g · L {suggestion.lip}g
-                </p>
-              </div>
-            )}
-          </div>
+        {/* Mes repas types (page Mon plan) */}
+        <div style={{ padding: '8px 0 8px', textAlign: 'center' }}>
+          <Button variant="ghost" onClick={() => setShowTemplates(true)}>
+            Mes repas types
+          </Button>
         </div>
-        )}
+        </div>{/* end PAGE Mon plan */}
 
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION 5 — Historique et graphiques                  */}
-        {/* ══════════════════════════════════════════════════════ */}
-        {tab === 'tracking' && (
+        {/* ════════════════════ PAGE — Suivi ════════════════════ */}
+        <div>
+        {/* SECTION 5 — Historique et graphiques */}
         <div style={cardStyle}>
           <p style={sectionTitle}>Historique</p>
 
@@ -1546,11 +1556,11 @@ export default function NutritionPage() {
             )}
           </div>
         </div>
+        </div>{/* end PAGE Suivi */}
 
-        )}
-
+        {/* ════════════════════ PAGE — Composition ════════════════════ */}
+        <div>
         {/* Weight section */}
-        {tab === 'body' && (
         <div style={cardStyle}>
           <p style={sectionTitle}>Poids et composition</p>
 
@@ -1663,7 +1673,9 @@ export default function NutritionPage() {
           </div>{/* end form column */}
           </div>{/* end xl:grid-cols-3 */}
         </div>
-        )}
+        </div>{/* end PAGE Composition */}
+
+        </SwipeableTabs>
       </div>
 
       {/* ══════════════════════════════════════════════════════════ */}
@@ -1976,15 +1988,6 @@ export default function NutritionPage() {
         document.body,
         )
       })()}
-
-      {/* Bouton Mes repas types */}
-      {tab === 'plan' && (
-      <div style={{ padding: '8px 16px 24px', textAlign: 'center' }}>
-        <Button variant="ghost" onClick={() => setShowTemplates(true)}>
-          Mes repas types
-        </Button>
-      </div>
-      )}
 
       {/* Templates modal */}
       {showTemplates && (

@@ -822,17 +822,15 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
     })()
   }, [activityId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Red curve: built from personal_records, follows recordFilter toggle
-  const recordCurve = useMemo((): number[] | null => {
-    const rec = recordFilter === 'year' ? yearMmp : allTimeMmp
-    if (!rec || !rec.some(v => v > 0)) return null
+  // Helper : interpole une courbe à partir des arrays MMP_TABLE_DURATIONS-indexés
+  function interpolateCurve(table: number[] | null): number[] | null {
+    if (!table || !table.some(v => v > 0)) return null
     const curve = DURATIONS.map(d => {
       const ti = MMP_TABLE_DURATIONS.indexOf(d)
-      if (ti >= 0) return rec[ti] > 0 ? rec[ti] : 0
-      // Linear interpolation for durations not in MMP_TABLE_DURATIONS (e.g. 14400s = 4h)
+      if (ti >= 0) return table[ti] > 0 ? table[ti] : 0
       for (let i = 0; i < MMP_TABLE_DURATIONS.length - 1; i++) {
         if (MMP_TABLE_DURATIONS[i] <= d && MMP_TABLE_DURATIONS[i + 1] >= d) {
-          const lo = rec[i], hi = rec[i + 1]
+          const lo = table[i], hi = table[i + 1]
           if (lo > 0 && hi > 0) {
             const t = (d - MMP_TABLE_DURATIONS[i]) / (MMP_TABLE_DURATIONS[i + 1] - MMP_TABLE_DURATIONS[i])
             return Math.round(lo * (1 - t) + hi * t)
@@ -843,15 +841,26 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
       return 0
     })
     return curve.some(v => v > 0) ? curve : null
-  }, [recordFilter, yearMmp, allTimeMmp]) // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
-  // Stars: indices where this session beats the record
-  const recordStars = useMemo(() =>
-    recordCurve
-      ? DURATIONS.map((_, i) => i).filter(i => recordCurve[i] > 0 && mmp[i] >= recordCurve[i])
-      : [],
-    [recordCurve, mmp] // eslint-disable-line react-hooks/exhaustive-deps
-  )
+  // Courbe rouge pointillée = TOUJOURS All Time (indépendant du toggle MmpTable)
+  const recordCurve = useMemo(() => interpolateCurve(allTimeMmp), [allTimeMmp]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Courbe année séparée pour différencier les trophées (cyan vs doré)
+  const yearCurve   = useMemo(() => interpolateCurve(yearMmp),    [yearMmp])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Trophées : 🏆 par durée selon le type de record battu
+  const trophies = useMemo((): { i: number; kind: 'allTime' | 'year' }[] => {
+    const result: { i: number; kind: 'allTime' | 'year' }[] = []
+    for (let i = 0; i < DURATIONS.length; i++) {
+      const sess = mmp[i]
+      if (sess <= 0) continue
+      const at = recordCurve?.[i] ?? 0
+      if (at > 0 && sess > at) { result.push({ i, kind: 'allTime' }); continue }
+      const yr = yearCurve?.[i] ?? 0
+      if (yr > 0 && sess > yr) result.push({ i, kind: 'year' })
+    }
+    return result
+  }, [mmp, recordCurve, yearCurve])
 
   const { idx: _rawIdx, pct, onMove, onLeave } = useCrosshairSvg(svgRef, DURATIONS.length)
   void _rawIdx
@@ -878,15 +887,19 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
     return (Math.sqrt(t) - sqrtMin) / (sqrtMax - sqrtMin) * W
   }
 
-  const allVals = [...mmp, ...(recordCurve ?? [])]
-  const maxYWatts = Math.ceil(Math.max(...allVals.filter(v => v > 0), 200) / 200) * 200
-
+  // ── Y axis ÉCHELLE LOGARITHMIQUE (style Strava / TrainingPeaks) ───────
+  const Y_MIN = 50
+  const allVals = [...mmp, ...(recordCurve ?? []), ...(yearCurve ?? [])]
+  const Y_MAX = Math.max(...allVals.filter(v => v > 0), 200) * 1.2
+  const logMin = Math.log10(Y_MIN)
+  const logMax = Math.log10(Y_MAX)
   function yOf(v: number): number {
-    return H - (v / maxYWatts) * H
+    if (v <= 0) return H
+    const clamped = Math.max(Y_MIN, v)
+    return H - ((Math.log10(clamped) - logMin) / (logMax - logMin)) * H
   }
-
-  const yGridlines: number[] = []
-  for (let w = 0; w <= maxYWatts; w += 200) yGridlines.push(w)
+  // Ticks Y fixes (spec : 100, 200, 300, 500, 1000, 1500 dans le domaine)
+  const yTicks = [100, 200, 300, 500, 1000, 1500].filter(t => t >= Y_MIN && t <= Y_MAX)
 
   function buildCurvePaths(vals: number[]): { fill: string; line: string } {
     const pts = DURATIONS.map((d, i) => `${sqrtX(d).toFixed(1)},${yOf(vals[i]).toFixed(1)}`)
@@ -930,68 +943,82 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
 
   return (
     <div style={{ marginBottom: 20 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
-        textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-        Courbe de puissance (MMP)
-        {prLoading && <span style={{ marginLeft: 8, fontSize: 10, color: T.textMuted, fontWeight: 400 }}>Calcul des records…</span>}
+      {/* Header card : titre + compteur records battus */}
+      <div style={{
+        display:        'flex',
+        alignItems:     'baseline',
+        justifyContent: 'space-between',
+        padding:        '18px 16px 12px',
+        gap:            10,
+      }}>
+        <span style={{
+          fontSize:       11,
+          fontWeight:     700,
+          letterSpacing:  '0.12em',
+          textTransform:  'uppercase',
+          color:          'var(--text-dim)',
+        }}>
+          Courbe de puissance
+        </span>
+        {prLoading ? (
+          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Calcul des records…</span>
+        ) : trophies.length > 0 ? (
+          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)' }}>
+            {trophies.length} record{trophies.length > 1 ? 's' : ''} battu{trophies.length > 1 ? 's' : ''}
+          </span>
+        ) : null}
       </div>
 
-      {/* Hover bar */}
-      {sqrtIdx !== null && (
-        <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, color: '#5b6fff', fontWeight: 600, fontFamily: T.fontMono }}>{mmp[sqrtIdx!]} W · {fmtDuration(DURATIONS[sqrtIdx!])}</span>
-          <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{(mmp[sqrtIdx!] / avgW).toFixed(2)}× moy.</span>
-          {recordCurve && recordCurve[sqrtIdx!] > 0 && (
-            <span style={{ fontSize: 10, color: '#EF4444', fontFamily: T.fontMono }}>
-              Record: {recordCurve[sqrtIdx!]} W
-            </span>
-          )}
-          {recordStars.includes(sqrtIdx!) && (
-            <span style={{ fontSize: 10, color: '#F59E0B', fontWeight: 700 }}>★ Record !</span>
-          )}
-        </div>
-      )}
-
-      <div ref={mmpContainerRef} style={{ position: 'relative', cursor: 'crosshair', paddingLeft: isMobileMmp ? 0 : 32 }}>
-        <svg ref={svgRef} viewBox={`-32 0 ${W + 32} ${H}`} style={{ width: '100%', height: H, display: 'block', overflow: 'visible' }}
+<div ref={mmpContainerRef} style={{ position: 'relative', cursor: 'crosshair', paddingLeft: isMobileMmp ? 0 : 32 }}>
+        <svg ref={svgRef} viewBox={`-32 0 ${W + 32} ${H}`} style={{ width: '100%', height: isMobileMmp ? 260 : 280, display: 'block', overflow: 'visible' }}
           preserveAspectRatio="none"
           onMouseMove={handleMmpMove} onMouseLeave={handleMmpLeave}
           onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
           <defs>
             <linearGradient id="mmpFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#5b6fff" stopOpacity="0.25"/>
-              <stop offset="100%" stopColor="#5b6fff" stopOpacity="0.02"/>
+              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.25"/>
+              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.02"/>
             </linearGradient>
           </defs>
 
-          {/* Gridlines Y tous les 200W */}
-          {yGridlines.filter(w => w > 0).map(w => {
+          {/* Gridlines Y (échelle log) : 100, 200, 300, 500, 1000, 1500 */}
+          {yTicks.map(w => {
             const y = yOf(w)
             return (
               <g key={w}>
-                <line x1={0} y1={y} x2={W} y2={y} stroke="var(--border)" strokeWidth="1" strokeDasharray="3,3"/>
-                <text x={-6} y={y + 4} textAnchor="end" style={{ fontSize: isMobileMmp ? 10 : 9, fill: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{w}W</text>
+                <line x1={0} y1={y} x2={W} y2={y} stroke="var(--border)" strokeWidth="1" strokeDasharray="3,3" opacity={0.5}/>
+                <text x={-6} y={y + 3} textAnchor="end" style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{w}</text>
               </g>
             )
           })}
 
-          {/* Record curve (from personal_records, follows filter toggle) */}
+          {/* Zone record All Time (opacity 0.08), derrière la zone séance */}
           {recPaths && (
-            <>
-              <path d={recPaths.fill} fill="rgba(239,68,68,0.05)"/>
-              <path d={recPaths.line} fill="none" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="5,3" strokeLinejoin="round"/>
-            </>
+            <path d={recPaths.fill} fill="#ef4444" fillOpacity="0.08"/>
           )}
-
-          {/* This activity curve */}
+          {/* Zone séance (devant) */}
           <path d={fillPath} fill="url(#mmpFill)"/>
-          <path d={linePath} fill="none" stroke="#5b6fff" strokeWidth="2" strokeLinejoin="round"/>
+          {/* Ligne record All Time pointillée */}
+          {recPaths && (
+            <path d={recPaths.line} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="5,3"
+              strokeLinecap="round" strokeLinejoin="round"/>
+          )}
+          {/* Ligne séance pleine — au-dessus de tout */}
+          <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="2.5"
+            strokeLinecap="round" strokeLinejoin="round"/>
 
-          {/* Stars where session beats record */}
-          {recordStars.map(i => (
-            <text key={i} x={sqrtX(DURATIONS[i])} y={yOf(mmp[i]) - 6}
-              textAnchor="middle" fontSize="13" fill="#F59E0B">★</text>
-          ))}
+          {/* Trophées 🏆 (gold = All Time, cyan = Année) sur la courbe séance */}
+          {trophies.map(({ i, kind }) => {
+            const cx     = sqrtX(DURATIONS[i])
+            const cy     = yOf(mmp[i])
+            const border = kind === 'allTime' ? '#eab308' : '#06B6D4'
+            return (
+              <g key={i} transform={`translate(${cx},${cy - 14})`}>
+                <circle r="9" fill="var(--bg-card)" stroke={border} strokeWidth="1.5"/>
+                <text x={0} y={3} textAnchor="middle" fontSize="10">🏆</text>
+              </g>
+            )
+          })}
 
           {/* X axis labels in SVG — sqrt-aware spacing */}
           {DURATIONS.map((d, i) => {
@@ -1000,73 +1027,115 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
             if (i > 0 && sqrtX(DURATIONS[i-1]) > x - 28) return null
             return (
               <text key={d} x={x} y={H + 14} textAnchor="middle"
-                fontSize={isMobileMmp ? 10 : 8} fill="var(--text-dim)" style={{ fontFamily: 'DM Mono, monospace' }}>
+                fontSize={isMobileMmp ? 9 : 8} fill="var(--text-dim)" style={{ fontFamily: 'DM Mono, monospace' }}>
                 {LABELS[i]}
               </text>
             )
           })}
 
           {cursorX !== null && (
-            <line x1={cursorX} y1={0} x2={cursorX} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
+            <line x1={cursorX} y1={0} x2={cursorX} y2={H} stroke="var(--border-mid)" strokeWidth="1" strokeDasharray="2 3" opacity={0.7}/>
           )}
           {sqrtIdx !== null && (
-            <circle cx={sqrtX(DURATIONS[sqrtIdx])} cy={yOf(mmp[sqrtIdx])} r="4" fill="#5b6fff"/>
+            <circle cx={sqrtX(DURATIONS[sqrtIdx])} cy={yOf(mmp[sqrtIdx])} r="4" fill="#6366f1"/>
           )}
           {sqrtIdx !== null && recordCurve && recordCurve[sqrtIdx] > 0 && (
-            <circle cx={sqrtX(DURATIONS[sqrtIdx])} cy={yOf(recordCurve[sqrtIdx])} r="3.5" fill="#EF4444" opacity="0.8"/>
+            <circle cx={sqrtX(DURATIONS[sqrtIdx])} cy={yOf(recordCurve[sqrtIdx])} r="3.5" fill="#ef4444" opacity="0.8"/>
           )}
         </svg>
 
-        {/* MMP tooltip */}
-        {sqrtIdx !== null && mmpMousePos && (
-          <div style={{
-            position: 'absolute',
-            left: mmpMousePos.x > 300 ? mmpMousePos.x - 155 : mmpMousePos.x + 14,
-            top: Math.max(4, mmpMousePos.y - 72),
-            background: 'var(--bg)',
-            border: `1px solid ${T.border}`,
-            borderRadius: 8,
-            padding: '8px 12px',
-            fontSize: 12,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.10)',
-            pointerEvents: 'none',
-            zIndex: 20,
-            whiteSpace: 'nowrap',
-          }}>
-            <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 4, fontFamily: T.fontMono }}>
-              {fmtDuration(DURATIONS[sqrtIdx])}
-            </div>
-            <div style={{ color: '#5b6fff', fontWeight: 700, fontFamily: T.fontMono }}>
-              {mmp[sqrtIdx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>séance</span>
-            </div>
-            {recordCurve && recordCurve[sqrtIdx] > 0 && (
-              <div style={{ color: '#EF4444', fontFamily: T.fontMono, marginTop: 2 }}>
-                {recordCurve[sqrtIdx]} W <span style={{ color: T.textMuted, fontWeight: 400, fontSize: 10 }}>record</span>
+        {/* MMP tooltip — durée + séance + record + delta */}
+        {sqrtIdx !== null && mmpMousePos && (() => {
+          const sessW = mmp[sqrtIdx]
+          const recW  = recordCurve?.[sqrtIdx] ?? 0
+          const delta = sessW - recW
+          const pct   = recW > 0 ? Math.round((sessW / recW) * 100) : null
+          const isBeat = recW > 0 && sessW > recW
+          return (
+            <div style={{
+              position:      'absolute',
+              left:          Math.max(4, Math.min((mmpContainerRef.current?.clientWidth ?? 400) - 168, mmpMousePos.x + 14)),
+              top:           Math.max(4, mmpMousePos.y - 84),
+              background:    'var(--bg-card)',
+              border:        '1px solid var(--border)',
+              borderRadius:  8,
+              padding:       '8px 10px',
+              fontSize:      10,
+              boxShadow:     '0 4px 16px rgba(0,0,0,0.4)',
+              pointerEvents: 'none',
+              zIndex:        20,
+              whiteSpace:    'nowrap',
+              minWidth:      150,
+            }}>
+              <div style={{
+                fontSize:       9,
+                fontWeight:     700,
+                letterSpacing:  '0.08em',
+                textTransform:  'uppercase',
+                color:          'var(--text-dim)',
+                marginBottom:   6,
+              }}>
+                {fmtDuration(DURATIONS[sqrtIdx])}
               </div>
-            )}
-            {recordStars.includes(sqrtIdx) && (
-              <div style={{ color: '#F59E0B', fontWeight: 700, marginTop: 3 }}>★ Nouveau record !</div>
-            )}
-          </div>
-        )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1' }} />
+                <span style={{ flex: 1, color: 'var(--text-mid)' }}>Séance</span>
+                <span style={{ color: '#6366f1', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{sessW} W</span>
+              </div>
+              {recW > 0 && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />
+                    <span style={{ flex: 1, color: 'var(--text-mid)' }}>Record</span>
+                    <span style={{ color: '#ef4444', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{recW} W</span>
+                  </div>
+                  <div style={{
+                    fontSize:           9.5,
+                    fontWeight:         600,
+                    color:              isBeat ? '#10B981' : 'var(--text-dim)',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {delta > 0 ? '+' : ''}{delta} W{pct !== null ? ` (${pct}% du record)` : ''}
+                  </div>
+                </>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
-          <span style={{ width: 12, height: 2, background: '#5b6fff', display: 'inline-block', borderRadius: 1 }}/>Cette séance
+      {/* Légende compacte */}
+      <div style={{
+        display:       'flex',
+        flexWrap:      'wrap',
+        gap:           14,
+        marginTop:     10,
+        paddingTop:    10,
+        borderTop:     '1px solid var(--border)',
+        fontSize:      10,
+        color:         'var(--text-dim)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 16, height: 2, background: '#6366f1', display: 'inline-block', borderRadius: 1 }}/>
+          Cette séance
         </div>
         {recordCurve && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
-            <span style={{ width: 12, height: 2, background: '#EF4444', display: 'inline-block', borderRadius: 1 }}/>
-            {recordFilter === 'year' ? 'Record cette année' : 'Record all time'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{
+              width:                    16,
+              height:                   2,
+              display:                  'inline-block',
+              background:               'repeating-linear-gradient(to right, #ef4444 0, #ef4444 4px, transparent 4px, transparent 7px)',
+            }}/>
+            Record All Time
           </div>
         )}
-        {recordStars.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#F59E0B', fontWeight: 600 }}>
-            ★ {recordStars.length} record{recordStars.length > 1 ? 's' : ''} battu{recordStars.length > 1 ? 's' : ''}
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ color: '#06B6D4' }}>🏆</span> Record année
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ color: '#eab308' }}>🏆</span> All Time
+        </div>
       </div>
 
       {/* Records vs Session table */}

@@ -2,18 +2,22 @@
 
 // ══════════════════════════════════════════════════════════════════
 // SwipeableTabs — carrousel horizontal de pages de largeur égale.
-//  • Suivi du doigt en temps réel (translateX sur le rail)
+//  • Largeur mesurée en pixels (aucune ambiguïté flex/%) → cadrage exact
+//  • Suivi du doigt en temps réel (translateX en px sur le rail)
 //  • Navigation en boucle (clones des bords → wrap sans couture)
-//  • Animation de glissement au tap (onIndexChange) et au swipe
+//  • Animation de glissement au tap et au swipe
 //  • Hauteur du viewport adaptée à la page active (transition douce)
 //  • Lock horizontal/vertical : le scroll vertical natif reste possible
 // ══════════════════════════════════════════════════════════════════
 
-import { useRef, useState, useEffect, useCallback, Children } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect, useCallback, Children } from 'react'
 import type { ReactNode, TouchEvent as ReactTouchEvent, TransitionEvent as ReactTransitionEvent } from 'react'
 
 const EASE = 'cubic-bezier(0.32,0.72,0,1)'
 const DUR  = 320
+
+// useLayoutEffect côté client, useEffect en SSR (évite le warning)
+const useIso = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 interface Props {
   index:         number
@@ -30,7 +34,8 @@ export function SwipeableTabs({ index, count, onIndexChange, children }: Props) 
   const viewportRef = useRef<HTMLDivElement>(null)
   const slideRefs   = useRef<Array<HTMLDivElement | null>>([])
 
-  const [pos, setPos]       = useState(index + 1)   // position dans le rail étendu
+  const [w, setW]           = useState(0)            // largeur viewport (px)
+  const [pos, setPos]       = useState(index + 1)    // position dans le rail étendu
   const [anim, setAnim]     = useState(true)
   const [dragPx, setDragPx] = useState(0)
   const [vh, setVh]         = useState<number | undefined>(undefined)
@@ -39,7 +44,21 @@ export function SwipeableTabs({ index, count, onIndexChange, children }: Props) 
   const startX   = useRef(0)
   const startY   = useRef(0)
   const axis     = useRef<'h' | 'v' | null>(null)
-  const widthRef = useRef(1)
+
+  // ── Mesure de la largeur du viewport (px) ─────────────────────────
+  useIso(() => {
+    const el = viewportRef.current
+    if (!el) return
+    const update = () => setW(el.clientWidth)
+    update()
+    let ro: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(update)
+      ro.observe(el)
+    }
+    window.addEventListener('resize', update)
+    return () => { ro?.disconnect(); window.removeEventListener('resize', update) }
+  }, [])
 
   // ── Hauteur adaptée à la page active ──────────────────────────────
   const measure = useCallback(() => {
@@ -47,7 +66,7 @@ export function SwipeableTabs({ index, count, onIndexChange, children }: Props) 
     if (el) setVh(el.offsetHeight)
   }, [pos])
 
-  useEffect(() => { measure() }, [measure, pages.length])
+  useEffect(() => { measure() }, [measure, w, pages.length])
 
   useEffect(() => {
     const el = slideRefs.current[pos]
@@ -78,7 +97,6 @@ export function SwipeableTabs({ index, count, onIndexChange, children }: Props) 
     startX.current = e.touches[0].clientX
     startY.current = e.touches[0].clientY
     axis.current = null
-    widthRef.current = viewportRef.current?.offsetWidth ?? 1
     setAnim(false)
   }
   function onTouchMove(e: ReactTouchEvent) {
@@ -95,7 +113,7 @@ export function SwipeableTabs({ index, count, onIndexChange, children }: Props) 
   function onTouchEnd() {
     if (!dragging.current) return
     dragging.current = false
-    const threshold = Math.min(70, widthRef.current * 0.22)
+    const threshold = Math.min(70, (w || 1) * 0.22)
     let next = pos
     if (dragPx <= -threshold) next = pos + 1
     else if (dragPx >= threshold) next = pos - 1
@@ -118,7 +136,7 @@ export function SwipeableTabs({ index, count, onIndexChange, children }: Props) 
     }
   }
 
-  const basePct = count > 1 ? pos : 0
+  const tx = -(pos * w) + dragPx
 
   return (
     <div
@@ -128,7 +146,9 @@ export function SwipeableTabs({ index, count, onIndexChange, children }: Props) 
       onTouchEnd={onTouchEnd}
       style={{
         position: 'relative',
-        overflow: 'hidden', width: '100%', maxWidth: '100%',
+        overflow: 'hidden',
+        width: '100%',
+        maxWidth: '100%',
         height: vh,
         transition: anim ? `height ${DUR}ms ${EASE}` : 'none',
         touchAction: 'pan-y',
@@ -138,8 +158,8 @@ export function SwipeableTabs({ index, count, onIndexChange, children }: Props) 
         onTransitionEnd={onRailTransitionEnd}
         style={{
           display: 'flex',
-          width: '100%',
-          transform: `translateX(calc(${-basePct * 100}% + ${dragPx}px))`,
+          width: w ? w * slides.length : '100%',
+          transform: `translateX(${tx}px)`,
           transition: anim ? `transform ${DUR}ms ${EASE}` : 'none',
         }}
       >
@@ -147,7 +167,13 @@ export function SwipeableTabs({ index, count, onIndexChange, children }: Props) 
           <div
             key={i}
             ref={el => { slideRefs.current[i] = el }}
-            style={{ flex: '0 0 100%', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', alignSelf: 'flex-start' }}
+            style={{
+              width: w || '100%',
+              flex: w ? `0 0 ${w}px` : '0 0 100%',
+              minWidth: 0,
+              boxSizing: 'border-box',
+              alignSelf: 'flex-start',
+            }}
           >
             {s}
           </div>

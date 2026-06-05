@@ -5672,18 +5672,21 @@ conseil pour la prochaine séance similaire.`
               </Section>
             )}
 
-            {/* LAPS — sur mobile, on remplace le tableau par le graphique en
-               barres (même composant que desktop). Pour les sports sans watts
-               (run, swim, gym, etc.), on retombe sur le tableau historique. */}
+            {/* LAPS — sur mobile, graphique en barres VERTICALES par tour
+               (LapsBikeChart : 1 barre = 1 tour, couleur par zone de puissance,
+                largeur ∝ durée du tour, valeur watts au-dessus, ligne moyenne
+                pointillée, clic → panneau détail). Même composant que celui
+                rendu sous la courbe MMP sur desktop.
+               Pour les sports sans watts (run, swim, gym) : fallback tableau. */}
             {a.laps && a.laps.length > 1 && (
               <Section title={`Intervalles — ${a.laps.length} tours`}>
                 {isBike && a.streams?.watts && a.streams.watts.length >= 2 ? (
-                  <LapsChart
-                    laps={a.laps}
-                    streams={a.streams}
+                  <LapsBikeChart
+                    activityId={a.id}
+                    cachedLaps={a.laps}
                     avgWatts={a.avg_watts}
-                    hoveredLap={hoveredLapBar}
-                    onHoverLap={setHoveredLapBar}
+                    streams={a.streams}
+                    ftp={bikeZoneRow?.ftp_watts ?? null}
                   />
                 ) : (
                   <div style={{ overflowX: 'auto' }}>

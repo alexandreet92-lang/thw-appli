@@ -13,6 +13,7 @@ import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
 import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
 import { useDailyMeals } from '@/hooks/useDailyMeals'
 import { useHydration } from '@/hooks/useHydration'
+import { useProfile } from '@/hooks/useProfile'
 import { DayFoodJournal } from '@/app/nutrition/components/DayFoodJournal'
 import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
@@ -33,8 +34,8 @@ import { NUTRITION_ONBOARDING } from '@/onboarding/configs/nutrition.config'
 // TYPES
 // ══════════════════════════════════════════════════════════════════
 type DayType      = 'low' | 'mid' | 'hard'
-type WeightMetric = 'weight_kg' | 'fat_mass_percent' | 'muscle_mass_kg'
-type HistRange    = '7j' | '14j'
+type WeightMetric = 'weight_kg' | 'fat_mass_percent' | 'muscle_mass_kg' | 'bmi'
+type HistRange    = '7j' | '14j' | '30j'
 type MealKey      = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
 type PlanVariant  = 'A' | 'B'
 type NutritionTab = 'today' | 'plan' | 'tracking' | 'body'
@@ -102,6 +103,30 @@ function macroStatus(consumed: number, objective: number): { label: string; colo
   return { label: 'dépassé', color: '#ef4444' }
 }
 
+// Agrégats de suivi sur N jours : moyennes consommées + score d'adhérence vs plan.
+function computeTracking(logs: DailyLog[], days: number, plan: NutritionPlanData | null, today: string) {
+  const dates: string[] = []
+  for (let i = days - 1; i >= 0; i--) dates.push(addDays(today, -i))
+  const rows = dates.map(date => {
+    const log = logs.find(l => l.date === date)
+    const planned = plan?.jours?.find(j => j.date === date)?.kcal ?? plan?.calories_low ?? 0
+    return { consumed: log?.kcal_consommees ?? 0, p: log?.proteines ?? 0, g: log?.glucides ?? 0, l: log?.lipides ?? 0, planned }
+  })
+  const logged = rows.filter(r => r.consumed > 0)
+  const avg = (arr: number[]) => (arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0)
+  const withPlan = logged.filter(r => r.planned > 0)
+  const inTarget = withPlan.filter(r => { const x = r.consumed / r.planned; return x >= 0.9 && x <= 1.1 }).length
+  return {
+    daysLogged:   logged.length,
+    avgKcal:      avg(logged.map(r => r.consumed)),
+    avgP:         avg(logged.map(r => r.p)),
+    avgG:         avg(logged.map(r => r.g)),
+    avgL:         avg(logged.map(r => r.l)),
+    withPlanCount: withPlan.length,
+    inTargetPct:  withPlan.length ? Math.round((inTarget / withPlan.length) * 100) : null,
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════
 // SVG COMPONENTS
 // ══════════════════════════════════════════════════════════════════
@@ -153,7 +178,7 @@ function MacroBar({ label, consumed, objective, color }: { label: string; consum
 }
 
 function KcalHistoryChart({ logs, range, activePlan }: { logs: DailyLog[]; range: HistRange; activePlan: NutritionPlanData | null }) {
-  const days = range === '7j' ? 7 : 14
+  const days = range === '7j' ? 7 : range === '14j' ? 14 : 30
   const today = new Date().toISOString().split('T')[0]
   const dates: string[] = []
   for (let i = days - 1; i >= 0; i--) dates.push(addDays(today, -i))
@@ -312,18 +337,88 @@ function MacrosChart({ logs, activePlan }: { logs: DailyLog[]; activePlan: Nutri
   )
 }
 
-function WeightChart({ logs, metric }: { logs: WeightLog[]; metric: WeightMetric }) {
+// ── Empty state réutilisable (cohérent design system) ───────────
+function NutritionEmpty({ icon, text, hint }: { icon: 'chart' | 'scale'; text: string; hint?: string }) {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      gap: 8, padding: '32px 16px', textAlign: 'center',
+      border: '1px dashed var(--border)', borderRadius: 14, background: 'var(--bg-card2)',
+    }}>
+      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(6,182,212,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#06B6D4' }}>
+        {icon === 'chart' ? (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 4-5"/></svg>
+        ) : (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        )}
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>{text}</div>
+      {hint && <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>{hint}</div>}
+    </div>
+  )
+}
+
+// Valeur d'une mesure pour la métrique demandée (bmi = poids / taille²).
+function weightMetricValue(l: WeightLog, metric: WeightMetric, heightCm: number | null): number | null {
+  if (metric === 'bmi') {
+    if (l.weight_kg && heightCm) { const h = heightCm / 100; return +(l.weight_kg / (h * h)).toFixed(1) }
+    return null
+  }
+  if (metric === 'weight_kg')        return l.weight_kg
+  if (metric === 'fat_mass_percent') return l.fat_mass_percent
+  return l.muscle_mass_kg
+}
+
+// Stats de composition pour la métrique : actuel, min, max, variation, tendance/semaine.
+function computeBodyStats(logs: WeightLog[], metric: WeightMetric, heightCm: number | null) {
+  const sorted = [...logs].sort((a, b) => a.measured_at.localeCompare(b.measured_at))
+  const pts = sorted
+    .map(l => ({ t: new Date(l.measured_at).getTime(), v: weightMetricValue(l, metric, heightCm) }))
+    .filter((p): p is { t: number; v: number } => p.v != null)
+  if (!pts.length) return null
+  const vals = pts.map(p => p.v)
+  const current = vals[vals.length - 1]
+  let trendPerWeek: number | null = null
+  const last = pts.slice(-4)
+  if (last.length >= 2) {
+    const t0 = last[0].t
+    const xs = last.map(p => (p.t - t0) / 86400000)
+    const ys = last.map(p => p.v)
+    const meanX = xs.reduce((a, b) => a + b, 0) / xs.length
+    const meanY = ys.reduce((a, b) => a + b, 0) / ys.length
+    let num = 0, den = 0
+    for (let i = 0; i < xs.length; i++) { num += (xs[i] - meanX) * (ys[i] - meanY); den += (xs[i] - meanX) ** 2 }
+    if (den !== 0) trendPerWeek = +((num / den) * 7).toFixed(2)
+  }
+  return {
+    current,
+    min: Math.min(...vals),
+    max: Math.max(...vals),
+    deltaTotal: +(current - vals[0]).toFixed(1),
+    trendPerWeek,
+    count: vals.length,
+  }
+}
+
+const METRIC_UNIT: Record<WeightMetric, string> = {
+  weight_kg: 'kg', fat_mass_percent: '%', muscle_mass_kg: 'kg', bmi: '',
+}
+
+function WeightChart({ logs, metric, heightCm, goal }: { logs: WeightLog[]; metric: WeightMetric; heightCm: number | null; goal: number | null }) {
   if (!logs.length) {
-    return <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '24px 0' }}>Aucune donnee disponible</div>
+    return <NutritionEmpty icon="scale" text="Aucune mesure enregistrée" hint="Ajoute ta première mesure ci-dessous." />
   }
 
   const sorted = [...logs].sort((a, b) => a.measured_at.localeCompare(b.measured_at))
-  const vals = sorted.map(l => (metric === 'weight_kg' ? l.weight_kg : metric === 'fat_mass_percent' ? l.fat_mass_percent : l.muscle_mass_kg) ?? null)
+  const vals = sorted.map(l => weightMetricValue(l, metric, heightCm))
   const nonNull = vals.filter((v): v is number => v !== null)
-  if (!nonNull.length) return <div style={{ color: 'var(--text-dim)', fontSize: 13, padding: '24px 0' }}>Aucune donnee pour cette metrique</div>
+  if (!nonNull.length) {
+    return <NutritionEmpty icon="scale" text="Aucune donnée pour cette métrique" hint={metric === 'bmi' ? "Renseigne ta taille dans le profil." : undefined} />
+  }
 
-  const minV = Math.min(...nonNull)
-  const maxV = Math.max(...nonNull)
+  const showGoal = metric === 'weight_kg' && goal != null && goal > 0
+  const minV = Math.min(...nonNull, ...(showGoal ? [goal as number] : []))
+  const maxV = Math.max(...nonNull, ...(showGoal ? [goal as number] : []))
   const range = maxV - minV || 1
   const chartH = 160
   const chartW = 300
@@ -357,6 +452,17 @@ function WeightChart({ logs, metric }: { logs: WeightLog[]; metric: WeightMetric
           </g>
         )
       })}
+      {showGoal && (() => {
+        const gy = toY(goal as number)
+        return (
+          <g>
+            <line x1={leftPad} y1={gy} x2={chartW + leftPad} y2={gy} stroke="#22c55e" strokeWidth={1.5} strokeDasharray="5 4" />
+            <text x={chartW + leftPad} y={gy - 4} textAnchor="end" fill="#22c55e" fontSize={9} fontFamily="DM Mono,monospace" fontWeight={700}>
+              cible {(goal as number).toFixed(1)}
+            </text>
+          </g>
+        )
+      })()}
       {points && <polyline points={points} fill="none" stroke="#06B6D4" strokeWidth={2} strokeLinejoin="round" />}
       {sorted.map((_, i) => {
         const v = vals[i]
@@ -881,7 +987,8 @@ export default function NutritionPage() {
   const today = new Date().toISOString().split('T')[0]
   const { show, dismiss, reopen } = usePageOnboarding(NUTRITION_ONBOARDING.pageId, NUTRITION_ONBOARDING.version)
 
-  const { activePlan, dailyLogs, weightLogs, loading: nutLoading, saveDailyLog, saveWeightLog } = useNutrition()
+  const { activePlan, dailyLogs, weightLogs, loading: nutLoading, saveDailyLog, saveWeightLog, deactivatePlan } = useNutrition()
+  const { profile } = useProfile()
   const { templates, loading: templatesLoading, addTemplate, updateTemplate, deleteTemplate } = useNutritionTemplates()
   const { sessions } = usePlanning()
 
@@ -895,6 +1002,17 @@ export default function NutritionPage() {
   const [planVariant, setPlanVariant] = useState<PlanVariant>('A')
   const [histRange, setHistRange] = useState<HistRange>('7j')
   const [weightMetric, setWeightMetric] = useState<WeightMetric>('weight_kg')
+  const [goalWeight, setGoalWeight] = useState<number | null>(null)
+  const [goalInput, setGoalInput] = useState('')
+  useEffect(() => {
+    const v = typeof window !== 'undefined' ? window.localStorage.getItem('thw_goal_weight') : null
+    if (v) { setGoalWeight(parseFloat(v)); setGoalInput(v) }
+  }, [])
+  const saveGoalWeight = useCallback(() => {
+    const v = parseFloat(goalInput)
+    if (!isNaN(v) && v > 0) { window.localStorage.setItem('thw_goal_weight', String(v)); setGoalWeight(v) }
+    else { window.localStorage.removeItem('thw_goal_weight'); setGoalWeight(null) }
+  }, [goalInput])
   const [dayDetailOpen, setDayDetailOpen] = useState<PlanDay | null>(null)
   const [weightInputDate, setWeightInputDate] = useState<string>(today)
   const [weightInput, setWeightInput] = useState<string>('')
@@ -1078,6 +1196,12 @@ export default function NutritionPage() {
     setMgInput('')
     setMmInput('')
   }, [weightInputDate, weightInput, mgInput, mmInput, saveWeightLog])
+
+  // ── Supprimer (désactiver) le plan actif ────────────────────────
+  const handleDeletePlan = useCallback(async () => {
+    if (!confirm('Supprimer le plan actif ? Tu pourras en recréer un à tout moment.')) return
+    await deactivatePlan()
+  }, [deactivatePlan])
 
   // ── Suggestion IA du prochain repas ─────────────────────────────
   const handleSuggestMeal = useCallback(async () => {
@@ -1455,9 +1579,58 @@ export default function NutritionPage() {
           {/* 3C. 14-day calendar grid */}
           {activePlan && (
             <div style={{ marginTop: 0 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 10 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 12 }}>
                 Plan actif : {activePlan.type} — {formatDate(today)}
               </div>
+
+              {/* Résumé objectifs Low / Mid / Hard */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
+                {([
+                  { t: 'low'  as DayType, kcal: activePlan.plan_data?.calories_low,  m: activePlan.plan_data?.macros_low },
+                  { t: 'mid'  as DayType, kcal: activePlan.plan_data?.calories_mid,  m: activePlan.plan_data?.macros_mid },
+                  { t: 'hard' as DayType, kcal: activePlan.plan_data?.calories_hard, m: activePlan.plan_data?.macros_hard },
+                ]).map(({ t, kcal, m }) => (
+                  <div key={t} style={{
+                    padding: '10px 8px', borderRadius: 12,
+                    background: DAY_COLORS[t].bg, border: `1px solid ${DAY_COLORS[t].border}`,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, fontFamily: 'Syne,sans-serif', color: DAY_COLORS[t].text, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {DAY_COLORS[t].label.replace('Jour ', '')}
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--text)', margin: '3px 0 1px' }}>
+                      {kcal ?? 0}
+                    </div>
+                    <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', marginBottom: 4 }}>kcal</div>
+                    <div style={{ fontSize: 9, color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace', lineHeight: 1.4 }}>
+                      P {m?.proteines ?? 0} · G {m?.glucides ?? 0} · L {m?.lipides ?? 0}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Sélecteur variante A / B */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Variante de repas</span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['A', 'B'] as PlanVariant[]).map(v => (
+                    <button
+                      key={v}
+                      onClick={() => setPlanVariant(v)}
+                      style={{
+                        width: 34, padding: '5px 0', borderRadius: 8,
+                        border: '1px solid var(--border)',
+                        background: planVariant === v ? 'rgba(6,182,212,0.14)' : 'var(--bg-card2)',
+                        color: planVariant === v ? '#06B6D4' : 'var(--text-dim)',
+                        fontWeight: 700, fontSize: 12, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
+                      }}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(7, 1fr)',
@@ -1513,6 +1686,39 @@ export default function NutritionPage() {
                     </button>
                   )
                 })}
+              </div>
+
+              {/* Actions plan */}
+              <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+                <button
+                  onClick={() => setAiPanelOpen(true)}
+                  style={{
+                    flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    padding: '10px', borderRadius: 11,
+                    border: '1px solid rgba(91,111,255,0.35)',
+                    background: 'linear-gradient(135deg,rgba(6,182,212,0.12),rgba(91,111,255,0.18))',
+                    color: 'var(--text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+                  </svg>
+                  Régénérer
+                </button>
+                <button
+                  onClick={() => void handleDeletePlan()}
+                  style={{
+                    minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    padding: '10px 16px', borderRadius: 11,
+                    border: '1px solid rgba(239,68,68,0.3)', background: 'transparent',
+                    color: '#ef4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                  </svg>
+                  Supprimer
+                </button>
               </div>
             </div>
           )}
@@ -1574,7 +1780,7 @@ export default function NutritionPage() {
 
           {/* Range toggle */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {(['7j', '14j'] as HistRange[]).map(r => (
+            {(['7j', '14j', '30j'] as HistRange[]).map(r => (
               <button
                 key={r}
                 onClick={() => setHistRange(r)}
@@ -1592,15 +1798,45 @@ export default function NutritionPage() {
             ))}
           </div>
 
+          {/* Résumé adhérence + moyennes */}
+          {(() => {
+            const tr = computeTracking(dailyLogs, histRange === '7j' ? 7 : histRange === '14j' ? 14 : 30, activePlan?.plan_data ?? null, today)
+            if (tr.daysLogged === 0) return null
+            const adhColor = tr.inTargetPct == null ? 'var(--text-dim)' : tr.inTargetPct >= 70 ? '#22c55e' : tr.inTargetPct >= 40 ? '#eab308' : '#ef4444'
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 20 }}>
+                <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, fontFamily: 'DM Sans,sans-serif' }}>Adhérence</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+                    <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: adhColor }}>
+                      {tr.inTargetPct == null ? '—' : `${tr.inTargetPct}%`}
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                      {tr.inTargetPct == null ? 'pas de plan' : `${tr.withPlanCount} j vs plan`}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, fontFamily: 'DM Sans,sans-serif' }}>Moyenne / jour</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+                    <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: '#06B6D4' }}>{tr.avgKcal}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>kcal · {tr.daysLogged} j</span>
+                  </div>
+                  <div style={{ fontSize: 9, color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace', marginTop: 3 }}>
+                    P {tr.avgP} · G {tr.avgG} · L {tr.avgL}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           {/* Graph 1 — Kcal history */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
               Kcal consommees vs planifiees
             </div>
             {dailyLogs.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '16px 0' }}>
-                Aucune donnee disponible
-              </div>
+              <NutritionEmpty icon="chart" text="Aucun historique" hint="Tes journées validées apparaîtront ici." />
             ) : (
               <KcalHistoryChart
                 logs={dailyLogs}
@@ -1624,7 +1860,7 @@ export default function NutritionPage() {
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>Macros 7 derniers jours (g)</div>
             {dailyLogs.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '16px 0' }}>Aucune donnee disponible</div>
+              <NutritionEmpty icon="chart" text="Aucun historique" />
             ) : (
               <MacrosChart logs={dailyLogs} activePlan={activePlan?.plan_data ?? null} />
             )}
@@ -1641,11 +1877,12 @@ export default function NutritionPage() {
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2">
           {/* Metric toggle */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
             {([
               { key: 'weight_kg' as WeightMetric, label: 'Poids' },
               { key: 'fat_mass_percent' as WeightMetric, label: 'Masse grasse' },
               { key: 'muscle_mass_kg' as WeightMetric, label: 'Masse musculaire' },
+              { key: 'bmi' as WeightMetric, label: 'IMC' },
             ]).map(({ key, label }) => (
               <button
                 key={key}
@@ -1664,7 +1901,33 @@ export default function NutritionPage() {
             ))}
           </div>
 
-          <WeightChart logs={weightLogs} metric={weightMetric} />
+          {/* Résumé stats + tendance */}
+          {(() => {
+            const st = computeBodyStats(weightLogs, weightMetric, profile?.height_cm ?? null)
+            if (!st) return null
+            const u = METRIC_UNIT[weightMetric]
+            const trUp = st.trendPerWeek != null && st.trendPerWeek > 0
+            const trDown = st.trendPerWeek != null && st.trendPerWeek < 0
+            const goalGap = weightMetric === 'weight_kg' && goalWeight ? +(st.current - goalWeight).toFixed(1) : null
+            const cell = (label: string, value: string, color?: string) => (
+              <div style={{ flex: 1, minWidth: 64 }}>
+                <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans,sans-serif' }}>{label}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: color ?? 'var(--text)', marginTop: 2 }}>{value}</div>
+              </div>
+            )
+            return (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', marginBottom: 16 }}>
+                {cell('Actuel', `${st.current}${u}`, '#06B6D4')}
+                {cell('Min', `${st.min}${u}`)}
+                {cell('Max', `${st.max}${u}`)}
+                {cell('Variation', `${st.deltaTotal > 0 ? '+' : ''}${st.deltaTotal}${u}`)}
+                {st.trendPerWeek != null && cell('Tendance/sem', `${trUp ? '▲' : trDown ? '▼' : ''} ${Math.abs(st.trendPerWeek)}${u}`, trUp ? '#ef4444' : trDown ? '#22c55e' : undefined)}
+                {goalGap != null && cell('Reste vs cible', `${goalGap > 0 ? '−' : '+'}${Math.abs(goalGap)}kg`, '#22c55e')}
+              </div>
+            )
+          })()}
+
+          <WeightChart logs={weightLogs} metric={weightMetric} heightCm={profile?.height_cm ?? null} goal={goalWeight} />
           </div>{/* end xl:col-span-2 */}
 
           <div>
@@ -1743,6 +2006,39 @@ export default function NutritionPage() {
             >
               Sauvegarder la mesure
             </Button>
+          </div>
+
+          {/* Objectif de poids */}
+          <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 12, fontFamily: 'Syne,sans-serif', fontWeight: 700, marginBottom: 10, color: 'var(--text)' }}>
+              Objectif de poids
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Poids cible (kg)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={goalInput}
+                  onChange={e => setGoalInput(e.target.value)}
+                  placeholder="ex: 75.0"
+                  style={{
+                    width: '100%', background: 'var(--input-bg)',
+                    border: '1px solid var(--border)', borderRadius: 7,
+                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
+                    fontFamily: 'DM Mono,monospace',
+                  }}
+                />
+              </div>
+              <Button variant="secondary" onClick={saveGoalWeight} style={{ justifyContent: 'center' }}>
+                Définir
+              </Button>
+            </div>
+            {goalWeight != null && (
+              <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0', fontFamily: 'DM Sans,sans-serif' }}>
+                Cible tracée en vert sur le graphe « Poids ».
+              </p>
+            )}
           </div>
           </div>{/* end form column */}
           </div>{/* end xl:grid-cols-3 */}

@@ -149,6 +149,14 @@ export function useNutrition() {
     await load()
   }
 
+  // Désactive le plan actif (réversible : on garde l'historique, on n'orpheline pas les meal_logs).
+  async function deactivatePlan(): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('nutrition_plans').update({ actif: false }).eq('user_id', user.id).eq('actif', true)
+    await load()
+  }
+
   async function saveDailyLog(log: Omit<DailyLog, 'id'>): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -166,7 +174,7 @@ export function useNutrition() {
     await load()
   }
 
-  return { activePlan, dailyLogs, weightLogs, loading, savePlan, saveDailyLog, saveWeightLog, reload: load }
+  return { activePlan, dailyLogs, weightLogs, loading, savePlan, deactivatePlan, saveDailyLog, saveWeightLog, reload: load }
 }
 
 export function useNutritionTemplates() {

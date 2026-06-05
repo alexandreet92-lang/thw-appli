@@ -127,7 +127,8 @@ export function SwipeableTabs({ index, count, onIndexChange, children }: Props) 
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
       style={{
-        overflow: 'hidden', width: '100%',
+        position: 'relative',
+        overflow: 'hidden', width: '100%', maxWidth: '100%',
         height: vh,
         transition: anim ? `height ${DUR}ms ${EASE}` : 'none',
         touchAction: 'pan-y',
@@ -137,6 +138,7 @@ export function SwipeableTabs({ index, count, onIndexChange, children }: Props) 
         onTransitionEnd={onRailTransitionEnd}
         style={{
           display: 'flex',
+          width: '100%',
           transform: `translateX(calc(${-basePct * 100}% + ${dragPx}px))`,
           transition: anim ? `transform ${DUR}ms ${EASE}` : 'none',
         }}
@@ -145,7 +147,7 @@ export function SwipeableTabs({ index, count, onIndexChange, children }: Props) 
           <div
             key={i}
             ref={el => { slideRefs.current[i] = el }}
-            style={{ width: '100%', flexShrink: 0, minWidth: 0, alignSelf: 'flex-start' }}
+            style={{ flex: '0 0 100%', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', alignSelf: 'flex-start' }}
           >
             {s}
           </div>

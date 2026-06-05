@@ -370,19 +370,20 @@ function WeightChart({ logs, metric }: { logs: WeightLog[]; metric: WeightMetric
 // ══════════════════════════════════════════════════════════════════
 const cardStyle: React.CSSProperties = {
   background: 'var(--bg-card)',
-  borderRadius: 16,
+  borderRadius: 20,
   border: '1px solid var(--border)',
-  padding: '20px 20px',
-  marginBottom: 16,
+  padding: '28px 24px',
+  marginBottom: 20,
 }
 
 const sectionTitle: React.CSSProperties = {
   fontFamily: 'Syne,sans-serif',
   fontWeight: 700,
-  fontSize: 16,
+  fontSize: 18,
   color: 'var(--text)',
-  marginBottom: 16,
+  marginBottom: 22,
   marginTop: 0,
+  letterSpacing: '-0.01em',
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1150,26 +1151,26 @@ export default function NutritionPage() {
         </div>
       )}
 
-      <div className="px-4 md:px-8 pt-4 md:pt-6" style={{ paddingBottom: 0 }}>
+      <div className="px-4 md:px-8 pt-5 md:pt-8" style={{ paddingBottom: 0 }}>
 
         <SportTabs
           tabs={NUTRITION_TAB_ITEMS}
           value={tab}
           onChange={id => setTab(id as NutritionTab)}
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 22 }}
         />
 
         {tab === 'today' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 1 — Bilan du jour                             */}
         {/* ══════════════════════════════════════════════════════ */}
         <div style={cardStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <p style={sectionTitle}>Bilan du jour</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+            <p style={{ ...sectionTitle, marginBottom: 0 }}>Bilan du jour</p>
             <div style={{
-              padding: '4px 10px',
+              padding: '5px 12px',
               borderRadius: 8,
               background: DAY_COLORS[todayType].bg,
               border: `1px solid ${DAY_COLORS[todayType].border}`,
@@ -1182,7 +1183,7 @@ export default function NutritionPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'space-around', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 18, rowGap: 24, justifyContent: 'space-around', flexWrap: 'wrap', padding: '4px 0' }}>
             <MacroDonut
               label="Calories"
               consumed={todayMealTotals.kcal}
@@ -1387,7 +1388,7 @@ export default function NutritionPage() {
         {/* ══════════════════════════════════════════════════════ */}
         {tab === 'today' && (
         <div style={cardStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
             <p style={{ ...sectionTitle, marginBottom: 0 }}>Repas de la journee</p>
             <input
               type="date"

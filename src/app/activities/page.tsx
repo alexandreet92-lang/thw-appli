@@ -14,7 +14,7 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
-import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen, Menu } from 'lucide-react'
+import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen, Menu, AlignJustify, LayoutGrid } from 'lucide-react'
 import { ActivityTitle } from '@/components/activity/ActivityTitle'
 import { Spinner } from '@/components/ui/Spinner'
 import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
@@ -2647,6 +2647,450 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
           onClose={() => setShowSelModal(false)}
         />
       )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// ACTIVITY CURVES — section Courbes refondu (Empilé / Superposé)
+// ─────────────────────────────────────────────────────────────
+function smoothSeries(values: number[], windowSize: number): number[] {
+  if (windowSize < 2) return values
+  const half = Math.floor(windowSize / 2)
+  const N = values.length
+  const out: number[] = new Array(N)
+  for (let i = 0; i < N; i++) {
+    const start = Math.max(0, i - half)
+    const end   = Math.min(N, i + half + 1)
+    let sum = 0, cnt = 0
+    for (let j = start; j < end; j++) {
+      const v = values[j]
+      if (v != null && !isNaN(v)) { sum += v; cnt++ }
+    }
+    out[i] = cnt > 0 ? sum / cnt : values[i]
+  }
+  return out
+}
+
+interface MetricDef {
+  key:        'altitude' | 'hr' | 'watts' | 'speed' | 'cadence' | 'temp'
+  label:      string
+  unit:       string
+  color:      string
+  // Texte sur fond coloré (mobile tooltip) : noir si couleur claire, blanc si sombre
+  textOnColor: '#000000' | '#ffffff'
+  fmt:        (v: number) => string
+}
+
+const METRIC_DEFS: MetricDef[] = [
+  { key: 'altitude', label: 'Altitude',     unit: 'm',    color: '#94a3b8', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
+  { key: 'hr',       label: 'FC',           unit: 'bpm',  color: '#f97316', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
+  { key: 'watts',    label: 'Puissance',    unit: 'W',    color: '#6366f1', textOnColor: '#ffffff', fmt: v => `${Math.round(v)}` },
+  { key: 'speed',    label: 'Vitesse',      unit: 'km/h', color: '#06B6D4', textOnColor: '#000000', fmt: v => v.toFixed(1).replace('.', ',') },
+  { key: 'cadence',  label: 'Cadence',      unit: 'rpm',  color: '#ec4899', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
+  { key: 'temp',     label: 'Température',  unit: '°C',   color: '#10B981', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
+]
+
+interface ActivityCurvesProps {
+  activity: Activity
+}
+
+export function ActivityCurves({ activity }: ActivityCurvesProps) {
+  const isMobile = useWindowWidth() < 768
+  const s = activity.streams ?? null
+
+  // ── Format persistant (stacked / overlaid) ─────────────────────────
+  type Format = 'stacked' | 'overlaid'
+  const [format, setFormat] = useState<Format>('stacked')
+  const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(['hr', 'watts', 'speed']))
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const f = localStorage.getItem('activity-charts-format') as Format | null
+    if (f === 'stacked' || f === 'overlaid') setFormat(f)
+    try {
+      const m = JSON.parse(localStorage.getItem('activity-charts-overlaid-metrics') ?? '[]') as string[]
+      if (Array.isArray(m) && m.length > 0) setActiveMetrics(new Set(m))
+    } catch { /* default */ }
+  }, [])
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('activity-charts-format', format) }, [format])
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('activity-charts-overlaid-metrics', JSON.stringify(Array.from(activeMetrics)))
+    }
+  }, [activeMetrics])
+
+  // ── Préparation des séries (lissées, useMemo) ──────────────────────
+  const series = useMemo(() => {
+    if (!s) return null
+    // Estime taille de la fenêtre de lissage à partir du stream time
+    const time = s.time
+    let dt = 1
+    if (time && time.length > 10) {
+      dt = (time[10] - time[0]) / 10
+      if (dt <= 0) dt = 1
+    }
+    const win = Math.max(2, Math.round(30 / dt))   // fenêtre ~30s
+
+    const altitude = s.altitude && s.altitude.length > 1 ? smoothSeries(s.altitude, win) : null
+    const hr       = s.heartrate && s.heartrate.length > 1 ? smoothSeries(s.heartrate, win) : null
+    const watts    = s.watts && s.watts.length > 1 ? smoothSeries(s.watts, win) : null
+    const speed    = s.velocity && s.velocity.length > 1
+      ? smoothSeries(s.velocity.map(v => v > 0 ? v * 3.6 : 0), win) : null
+    const cadence  = s.cadence && s.cadence.length > 1 ? smoothSeries(s.cadence, win) : null
+    const temp     = s.temp && s.temp.length > 1 ? smoothSeries(s.temp, win) : null
+
+    return { altitude, hr, watts, speed, cadence, temp, time: s.time ?? null, distance: s.distance ?? null }
+  }, [s])
+
+  // Métriques effectivement présentes (data non-null + au moins quelques valeurs > 0)
+  const presentKeys = useMemo<MetricDef['key'][]>(() => {
+    if (!series) return []
+    const keys: MetricDef['key'][] = []
+    if (series.altitude && series.altitude.some(v => v > 0)) keys.push('altitude')
+    if (series.hr       && series.hr.some(v => v > 0))       keys.push('hr')
+    if (series.watts    && series.watts.some(v => v > 0))    keys.push('watts')
+    if (series.speed    && series.speed.some(v => v > 0))    keys.push('speed')
+    if (series.cadence  && series.cadence.some(v => v > 0))  keys.push('cadence')
+    if (series.temp     && series.temp.some(v => v > 0))     keys.push('temp')
+    return keys
+  }, [series])
+
+  if (!series || presentKeys.length === 0) return null
+
+  function getData(key: MetricDef['key']): number[] | null {
+    if (!series) return null
+    return series[key]
+  }
+
+  // Stats par métrique
+  function stats(arr: number[] | null): { min: number; max: number; avg: number } | null {
+    if (!arr || arr.length === 0) return null
+    const valid = arr.filter(v => v != null && !isNaN(v) && v > 0)
+    if (valid.length === 0) return null
+    const min = Math.min(...valid)
+    const max = Math.max(...valid)
+    const avg = valid.reduce((a, b) => a + b, 0) / valid.length
+    return { min, max, avg }
+  }
+
+  const N = series.time?.length ?? series.altitude?.length ?? series.hr?.length ?? series.watts?.length ?? 0
+  const totalDistKm = series.distance && series.distance.length > 0 ? series.distance[series.distance.length - 1] / 1000 : 0
+  const totalSec = series.time && series.time.length > 0 ? series.time[series.time.length - 1] - series.time[0] : 0
+
+  // X labels équidistants (4 ticks)
+  const xLabels = useMemo(() => {
+    if (totalDistKm <= 0) {
+      const m = Math.floor(totalSec / 60)
+      return [0, 0.25, 0.5, 0.75, 1].map(t => ({ pct: t, label: `${Math.round(m * t)} min` }))
+    }
+    return [0, 0.25, 0.5, 0.75, 1].map(t => ({
+      pct:   t,
+      label: t === 0 ? '0' : `${Math.round(totalDistKm * t)} km`,
+    }))
+  }, [totalDistKm, totalSec])
+
+  // ── Refs pour crosshair/tooltip (perf : pas de re-render) ──────────
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  function fmtSubLine(idx: number): string {
+    const parts: string[] = []
+    if (series?.distance && series.distance[idx] != null) {
+      parts.push(`${(series.distance[idx] / 1000).toFixed(1).replace('.', ',')} km`)
+    }
+    if (series?.time && series.time[idx] != null) {
+      const sec = series.time[idx] - (series.time[0] ?? 0)
+      const m = Math.floor(sec / 60)
+      parts.push(`${m} min`)
+    }
+    return parts.join(' · ')
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // TOGGLE FORMAT (Empilé / Superposé)
+  // ─────────────────────────────────────────────────────────────
+  const FormatToggle = (
+    <div style={{
+      display:      'inline-flex',
+      gap:          2,
+      padding:      3,
+      borderRadius: 8,
+      border:       '1px solid var(--border)',
+      background:   'var(--bg-card2)',
+      marginBottom: 14,
+    }}>
+      {([
+        { id: 'stacked',  label: 'Empilé',     icon: <AlignJustify size={13} /> },
+        { id: 'overlaid', label: 'Superposé',  icon: <LayoutGrid   size={13} /> },
+      ] as const).map(o => {
+        const active = format === o.id
+        return (
+          <button
+            key={o.id}
+            onClick={() => setFormat(o.id)}
+            style={{
+              display:      'inline-flex',
+              alignItems:   'center',
+              gap:          6,
+              padding:      '7px 10px',
+              borderRadius: 5,
+              border:       'none',
+              background:   active ? 'var(--bg-card)' : 'transparent',
+              color:        active ? 'var(--text)' : 'var(--text-dim)',
+              fontSize:     11,
+              fontWeight:   active ? 600 : 500,
+              cursor:       'pointer',
+              transition:   'background 0.15s, color 0.15s',
+              fontFamily:   'inherit',
+            }}
+          >
+            {o.icon}
+            <span>{o.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+
+  // ─────────────────────────────────────────────────────────────
+  // FORMAT A — STACKED (6 charts empilés)
+  // ─────────────────────────────────────────────────────────────
+  if (format === 'stacked') {
+    const chartH    = 100      // hauteur de chaque mini chart
+    const chartBg   = isMobile ? '#000000' : 'var(--bg-card2)'
+    const altBgFill = isMobile ? 'rgba(58,58,58,0.6)' : 'rgba(203,213,225,0.6)'
+
+    return (
+      <div ref={containerRef}>
+        {FormatToggle}
+
+        {presentKeys.map(key => {
+          const def  = METRIC_DEFS.find(m => m.key === key)!
+          const data = getData(key)
+          if (!data) return null
+          const st = stats(data)
+          if (!st) return null
+          const W = 1000, padTop = 4, padBot = 4
+          // Altitude background (toujours même si métrique = altitude)
+          const altData = series.altitude
+          let altPath = ''
+          if (altData) {
+            const altSt = stats(altData)
+            if (altSt) {
+              const range = (altSt.max - altSt.min) || 1
+              const pts = altData.map((v, i) => {
+                const x = (i / (N - 1)) * W
+                const y = chartH - padBot - ((v - altSt.min) / range) * (chartH - padTop - padBot)
+                return `${x.toFixed(1)},${y.toFixed(1)}`
+              })
+              altPath = `M0,${chartH}L${pts.join('L')}L${W},${chartH}Z`
+            }
+          }
+          // Courbe principale (area)
+          const range = (st.max - st.min) || 1
+          const pts = data.map((v, i) => {
+            const x = (i / (N - 1)) * W
+            const y = chartH - padBot - ((v - st.min) / range) * (chartH - padTop - padBot)
+            return `${x.toFixed(1)},${y.toFixed(1)}`
+          })
+          const mainPath = `M0,${chartH}L${pts.join('L')}L${W},${chartH}Z`
+
+          return (
+            <div key={key} style={{ marginBottom: 18 }}>
+              {/* Header : nom + range */}
+              <div style={{
+                display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+                padding: '0 2px', marginBottom: 6,
+              }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: def.color }}>
+                  {def.label}
+                </span>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                  {def.fmt(st.min)} – {def.fmt(st.max)} {def.unit}
+                </span>
+              </div>
+
+              {/* Chart area */}
+              <div style={{
+                background:   chartBg,
+                borderRadius: 6,
+                overflow:     'hidden',
+                position:     'relative',
+                height:       chartH,
+              }}>
+                <svg
+                  viewBox={`0 0 ${W} ${chartH}`}
+                  style={{ width: '100%', height: '100%', display: 'block' }}
+                  preserveAspectRatio="none"
+                >
+                  {/* Profil altitude en arrière-plan */}
+                  {altPath && <path d={altPath} fill={altBgFill} />}
+                  {/* Zone principale */}
+                  <path d={mainPath} fill={def.color} fillOpacity={0.6} strokeLinejoin="round" />
+                </svg>
+              </div>
+
+              {/* Stats : moy / max */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                padding: '8px 2px 0', fontSize: 11,
+                color: 'var(--text-dim)',
+              }}>
+                <span>
+                  {def.label} moyenne{' '}
+                  <span style={{ fontWeight: 700, color: def.color, fontVariantNumeric: 'tabular-nums' }}>
+                    {def.fmt(st.avg)} {def.unit}
+                  </span>
+                </span>
+                <span>
+                  {def.label} max{' '}
+                  <span style={{ fontWeight: 700, color: def.color, fontVariantNumeric: 'tabular-nums' }}>
+                    {def.fmt(st.max)} {def.unit}
+                  </span>
+                </span>
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Labels axe X commun en bas */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          padding: '6px 2px 0', fontSize: 9, color: 'var(--text-dim)',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
+        </div>
+      </div>
+    )
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // FORMAT B — OVERLAID (1 chart combiné + toggles)
+  // ─────────────────────────────────────────────────────────────
+  const chartH      = isMobile ? 280 : 320
+  const chartBg     = isMobile ? '#000000' : 'var(--bg-card2)'
+  const altBgFill   = isMobile ? 'rgba(58,58,58,0.6)' : 'rgba(203,213,225,0.6)'
+  const W = 1000, padTop = 8, padBot = 8
+
+  // Altitude background path
+  let altPath = ''
+  if (series.altitude) {
+    const altSt = stats(series.altitude)
+    if (altSt) {
+      const range = (altSt.max - altSt.min) || 1
+      const pts = series.altitude.map((v, i) => {
+        const x = (i / (N - 1)) * W
+        const y = chartH - padBot - ((v - altSt.min) / range) * (chartH - padTop - padBot)
+        return `${x.toFixed(1)},${y.toFixed(1)}`
+      })
+      altPath = `M0,${chartH}L${pts.join('L')}L${W},${chartH}Z`
+    }
+  }
+
+  return (
+    <div ref={containerRef}>
+      {FormatToggle}
+
+      {/* Toggles métriques 3x2 */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: 6,
+        marginBottom: 14,
+      }}>
+        {METRIC_DEFS.filter(d => presentKeys.includes(d.key)).map(def => {
+          const active = activeMetrics.has(def.key)
+          return (
+            <button
+              key={def.key}
+              onClick={() => {
+                const next = new Set(activeMetrics)
+                if (active) next.delete(def.key)
+                else next.add(def.key)
+                setActiveMetrics(next)
+              }}
+              style={{
+                display:      'inline-flex',
+                alignItems:   'center',
+                gap:          6,
+                padding:      '6px 8px',
+                borderRadius: 6,
+                border:       '1px solid var(--border)',
+                background:   'var(--bg-card2)',
+                color:        def.color,
+                fontSize:     10,
+                fontWeight:   600,
+                cursor:       'pointer',
+                opacity:      active ? 1 : 0.4,
+                transition:   'opacity 0.15s',
+                fontFamily:   'inherit',
+              }}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: def.color }} />
+              {def.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Chart combiné */}
+      <div style={{
+        background:    chartBg,
+        borderRadius:  8,
+        overflow:      'visible',
+        position:      'relative',
+        height:        chartH,
+      }}>
+        <svg
+          viewBox={`0 0 ${W} ${chartH}`}
+          style={{ width: '100%', height: '100%', display: 'block' }}
+          preserveAspectRatio="none"
+        >
+          {/* Grille horizontale subtile (3 lignes) */}
+          {[0.25, 0.5, 0.75].map(t => (
+            <line
+              key={t}
+              x1={0} y1={chartH * t} x2={W} y2={chartH * t}
+              stroke={isMobile ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'}
+              strokeWidth="1"
+            />
+          ))}
+          {/* Profil altitude arrière-plan (toujours visible) */}
+          {altPath && <path d={altPath} fill={altBgFill} />}
+          {/* Courbes lignes (normalisées chacune sur son range) */}
+          {METRIC_DEFS.filter(d => activeMetrics.has(d.key) && presentKeys.includes(d.key)).map(def => {
+            const data = getData(def.key)
+            if (!data) return null
+            const st = stats(data)
+            if (!st) return null
+            const range = (st.max - st.min) || 1
+            const pts = data.map((v, i) => {
+              const x = (i / (N - 1)) * W
+              const y = chartH - padBot - ((v - st.min) / range) * (chartH - padTop - padBot)
+              return `${x.toFixed(1)},${y.toFixed(1)}`
+            })
+            return (
+              <path
+                key={def.key}
+                d={`M${pts.join('L')}`}
+                fill="none"
+                stroke={def.color}
+                strokeWidth="1.8"
+                strokeLinejoin="round"
+              />
+            )
+          })}
+        </svg>
+      </div>
+
+      {/* Labels axe X */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        padding: '6px 2px 0', fontSize: 9, color: 'var(--text-dim)',
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
+      </div>
     </div>
   )
 }
@@ -5635,14 +6079,7 @@ conseil pour la prochaine séance similaire.`
             {/* COURBES */}
             {a.streams && (
               <Section title="Courbes">
-                <SyncCharts
-                  activity={a}
-                  hrZones={hrZones}
-                  powerZones={bikeZones ?? undefined}
-                  paceZones={runZones ?? undefined}
-                  polylinePoints={polylinePoints}
-                  onHoverGps={setHoverGps}
-                />
+                <ActivityCurves activity={a} />
               </Section>
             )}
 
@@ -6072,14 +6509,7 @@ conseil pour la prochaine séance similaire.`
               textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
               Courbes
             </div>
-            <SyncCharts
-              activity={a}
-              hrZones={hrZones}
-              powerZones={bikeZones ?? undefined}
-              paceZones={runZones ?? undefined}
-              polylinePoints={polylinePoints}
-              onHoverGps={setHoverGps}
-            />
+            <ActivityCurves activity={a} />
           </div>
         )}
 

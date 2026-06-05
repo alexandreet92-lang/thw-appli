@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import dynamicImport from 'next/dynamic'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
@@ -1172,14 +1173,12 @@ export default function NutritionPage() {
 
         <NutritionTabs tab={tab} onChange={changeTab} />
 
-        <style>{`
-          @keyframes npSlideR { from { transform: translateX(26px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
-          @keyframes npSlideL { from { transform: translateX(-26px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
-          .np-slide-r { animation: npSlideR 280ms cubic-bezier(0.32,0.72,0,1) both }
-          .np-slide-l { animation: npSlideL 280ms cubic-bezier(0.32,0.72,0,1) both }
-        `}</style>
-
-        <div key={tab} className={tabDir === 'right' ? 'np-slide-r' : 'np-slide-l'}>
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, x: tabDir === 'right' ? 60 : -60 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+        >
 
         {tab === 'today' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -1680,7 +1679,7 @@ export default function NutritionPage() {
         </div>
         )}
 
-        </div>{/* end animated tab content */}
+        </motion.div>{/* end animated tab content */}
       </div>
 
       {/* ══════════════════════════════════════════════════════════ */}

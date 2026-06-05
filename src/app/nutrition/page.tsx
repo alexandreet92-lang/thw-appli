@@ -93,6 +93,15 @@ function addDays(dateStr: string, n: number): string {
   return d.toISOString().split('T')[0]
 }
 
+// Statut d'une macro vs son objectif (null si pas d'objectif défini).
+function macroStatus(consumed: number, objective: number): { label: string; color: string } | null {
+  if (objective <= 0) return null
+  const ratio = consumed / objective
+  if (ratio < 0.9)  return { label: 'à compléter', color: '#64748b' }
+  if (ratio <= 1.05) return { label: 'dans la cible', color: '#22c55e' }
+  return { label: 'dépassé', color: '#ef4444' }
+}
+
 // ══════════════════════════════════════════════════════════════════
 // SVG COMPONENTS
 // ══════════════════════════════════════════════════════════════════
@@ -919,7 +928,15 @@ export default function NutritionPage() {
 
   // ── Journal alimentaire du jour (indépendant du plan) ─────────
   const dayMeals  = useDailyMeals(today)
+  const yesterdayMeals = useDailyMeals(addDays(today, -1))
   const hydration = useHydration(today)
+  const [mealJumpSignal, setMealJumpSignal] = useState(0)
+  const jumpToMeals = useCallback(() => {
+    setMealJumpSignal(s => s + 1)
+    requestAnimationFrame(() => {
+      document.getElementById('repas-du-jour')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
   const [suggestion, setSuggestion] = useState<{ title: string; description: string; kcal: number; prot: number; gluc: number; lip: number } | null>(null)
   const [suggesting, setSuggesting] = useState(false)
 
@@ -1189,8 +1206,19 @@ export default function NutritionPage() {
         {/* SECTION 1 — Bilan du jour                             */}
         {/* ══════════════════════════════════════════════════════ */}
         <div style={cardStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-            <p style={{ ...sectionTitle, marginBottom: 0 }}>Bilan du jour</p>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 12 }}>
+            <div>
+              <p style={{ ...sectionTitle, marginBottom: 0 }}>Bilan du jour</p>
+              {yesterdayMeals.totals.kcal > 0 && (() => {
+                const delta = Math.round(dayMeals.totals.kcal - yesterdayMeals.totals.kcal)
+                const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '='
+                return (
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif', marginTop: 4 }}>
+                    {arrow} {Math.abs(delta)} kcal <span style={{ opacity: 0.7 }}>vs hier</span>
+                  </div>
+                )
+              })()}
+            </div>
             <div style={{
               padding: '5px 12px',
               borderRadius: 8,
@@ -1200,6 +1228,7 @@ export default function NutritionPage() {
               fontSize: 11,
               fontFamily: 'Syne,sans-serif',
               fontWeight: 700,
+              flexShrink: 0,
             }}>
               {DAY_COLORS[todayType].label}
             </div>
@@ -1213,6 +1242,8 @@ export default function NutritionPage() {
               unit="kcal"
               color="#06B6D4"
               size={96}
+              statusLabel={macroStatus(dayMeals.totals.kcal, todayKcalObj)?.label}
+              statusColor={macroStatus(dayMeals.totals.kcal, todayKcalObj)?.color}
             />
             <MacroDonut
               label="Proteines"
@@ -1221,6 +1252,8 @@ export default function NutritionPage() {
               unit="g"
               color="#22c55e"
               size={96}
+              statusLabel={macroStatus(dayMeals.totals.prot, todayMacroObj.proteines)?.label}
+              statusColor={macroStatus(dayMeals.totals.prot, todayMacroObj.proteines)?.color}
             />
             <MacroDonut
               label="Glucides"
@@ -1229,6 +1262,8 @@ export default function NutritionPage() {
               unit="g"
               color="#eab308"
               size={96}
+              statusLabel={macroStatus(dayMeals.totals.gluc, todayMacroObj.glucides)?.label}
+              statusColor={macroStatus(dayMeals.totals.gluc, todayMacroObj.glucides)?.color}
             />
             <MacroDonut
               label="Lipides"
@@ -1237,6 +1272,8 @@ export default function NutritionPage() {
               unit="g"
               color="#f97316"
               size={96}
+              statusLabel={macroStatus(dayMeals.totals.lip, todayMacroObj.lipides)?.label}
+              statusColor={macroStatus(dayMeals.totals.lip, todayMacroObj.lipides)?.color}
             />
           </div>
 
@@ -1258,10 +1295,40 @@ export default function NutritionPage() {
               </span>
             </div>
           ) : (
-            <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 12, textAlign: 'center' }}>
-              Aucun plan actif — créez un plan pour définir vos objectifs.
-            </p>
+            <div style={{
+              marginTop: 18, padding: '12px 16px', borderRadius: 12,
+              background: 'var(--bg-card2)', border: '1px solid var(--border)',
+              display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
+            }}>
+              <span style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Consommé aujourd&apos;hui</span>
+              <span style={{ fontSize: 16, fontWeight: 800, color: '#06B6D4', fontFamily: 'DM Mono,monospace' }}>
+                {Math.round(dayMeals.totals.kcal)} kcal
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>
+                · {Math.round(dayMeals.totals.prot)}g prot
+                · {Math.round(dayMeals.totals.gluc)}g gluc
+                · {Math.round(dayMeals.totals.lip)}g lip
+              </span>
+            </div>
           )}
+
+          {/* Raccourci ajouter un repas → ouvre le journal */}
+          <button
+            onClick={jumpToMeals}
+            style={{
+              marginTop: 12, width: '100%', minHeight: 44,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '11px', borderRadius: 11,
+              border: '1px solid rgba(6,182,212,0.3)', background: 'rgba(6,182,212,0.08)',
+              color: '#06B6D4', fontWeight: 700, fontSize: 13,
+              cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Ajouter un repas
+          </button>
         </div>
 
         {/* ══════════════════════════════════════════════════════ */}
@@ -1456,7 +1523,7 @@ export default function NutritionPage() {
         {/* SECTION 4 — Repas de la journee                       */}
         {/* ══════════════════════════════════════════════════════ */}
         {tab === 'today' && (
-        <div style={cardStyle}>
+        <div style={cardStyle} id="repas-du-jour">
           <p style={sectionTitle}>Repas de la journee</p>
 
           <DayFoodJournal
@@ -1464,6 +1531,7 @@ export default function NutritionPage() {
             loading={dayMeals.loading}
             saveEntry={dayMeals.saveEntry}
             deleteEntry={dayMeals.deleteEntry}
+            expandSignal={mealJumpSignal}
           />
 
           {/* Suggestion IA du prochain repas */}

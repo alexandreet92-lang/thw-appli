@@ -18,6 +18,9 @@ interface MacroDonutProps {
   unit: string
   color: string
   size?: number
+  /** Mini-statut optionnel sous le donut (point + libellé). */
+  statusLabel?: string | null
+  statusColor?: string | null
 }
 
 // ── Tiny count-up hook ───────────────────────────────────────────
@@ -54,6 +57,8 @@ export function MacroDonut({
   unit,
   color,
   size = 96,
+  statusLabel = null,
+  statusColor = null,
 }: MacroDonutProps) {
   const stroke     = size <= 80 ? 8 : 10
   const r          = (size - stroke) / 2
@@ -185,6 +190,30 @@ export function MacroDonut({
       }}>
         {unit}
       </div>
+
+      {/* ── Statut (optionnel) ───────────────────────────────── */}
+      {statusLabel && statusColor && (
+        <div style={{
+          display:      'flex',
+          alignItems:   'center',
+          gap:          4,
+          marginTop:    2,
+          padding:      '2px 7px',
+          borderRadius: 999,
+          background:   `${statusColor}1a`,
+        }}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusColor, flexShrink: 0 }} />
+          <span style={{
+            fontSize:   9,
+            fontWeight: 700,
+            color:      statusColor,
+            fontFamily: 'DM Sans,sans-serif',
+            whiteSpace: 'nowrap',
+          }}>
+            {statusLabel}
+          </span>
+        </div>
+      )}
     </div>
   )
 }

@@ -10,7 +10,7 @@
 // au Bilan du jour via le hook useDailyMeals (porté par le parent).
 // ══════════════════════════════════════════════════════════════════
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import {
   SLOT_KEYS, SLOT_LABELS,
@@ -79,11 +79,25 @@ interface Props {
   loading:     boolean
   saveEntry:   (slot: MealSlotKey, patch: Partial<Omit<DailyMealEntry, 'id' | 'plan_id' | 'date' | 'meal_slot'>>) => Promise<void>
   deleteEntry: (id: string) => Promise<void>
+  /** Quand cette valeur change (> 0), déplie le 1er créneau sans aliment. */
+  expandSignal?: number
 }
 
-export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Props) {
+export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expandSignal = 0 }: Props) {
   const [expanded, setExpanded] = useState<MealSlotKey | null>(null)
   const [method, setMethod]     = useState<'photo' | 'search' | 'manual' | null>(null)
+
+  // ── Déclenchement externe : déplie le 1er créneau vide (raccourci Bilan) ──
+  useEffect(() => {
+    if (!expandSignal) return
+    const target = SLOT_KEYS.find(k => {
+      const e = entries.find(x => x.meal_slot === k)
+      return !e || (e.actual_kcal ?? 0) === 0
+    }) ?? SLOT_KEYS[0]
+    setExpanded(target)
+    setMethod(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandSignal])
 
   // Photo IA state
   const [preview, setPreview]   = useState<string | null>(null)

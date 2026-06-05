@@ -6,7 +6,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import dynamicImport from 'next/dynamic'
 import { Button } from '@/components/ui/Button'
-import { SportTabs, type SportTabItem } from '@/components/ui/SportTabs'
 import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
 import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
@@ -824,12 +823,42 @@ function MealTemplatesSection({
 // ══════════════════════════════════════════════════════════════════
 // TAB NAVIGATION — style identique aux pills de la page Training
 // ══════════════════════════════════════════════════════════════════
-const NUTRITION_TAB_ITEMS: SportTabItem[] = [
-  { id: 'today',    label: "Aujourd'hui",  color: '#06B6D4' },
-  { id: 'plan',     label: 'Mon plan',     color: '#06B6D4' },
-  { id: 'tracking', label: 'Suivi',        color: '#06B6D4' },
-  { id: 'body',     label: 'Composition',  color: '#06B6D4' },
+const NUTRITION_TAB_ITEMS: { id: NutritionTab; label: string }[] = [
+  { id: 'today',    label: "Aujourd'hui" },
+  { id: 'plan',     label: 'Mon plan' },
+  { id: 'tracking', label: 'Suivi' },
+  { id: 'body',     label: 'Composition' },
 ]
+
+// Onglets soulignés — style identique à SectionLayout (page Planning)
+function NutritionTabs({ tab, onChange }: { tab: NutritionTab; onChange: (t: NutritionTab) => void }) {
+  return (
+    <div style={{ display: 'flex', width: '100%', borderBottom: '1px solid var(--border)', marginBottom: 22, boxSizing: 'border-box' }}>
+      {NUTRITION_TAB_ITEMS.map(t => {
+        const active = tab === t.id
+        return (
+          <button
+            key={t.id}
+            onClick={() => onChange(t.id)}
+            style={{
+              flex: 1, minWidth: 0, position: 'relative', textAlign: 'center', padding: '14px 4px',
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              fontFamily: 'DM Sans,sans-serif', whiteSpace: 'nowrap',
+              overflow: 'hidden', textOverflow: 'ellipsis',
+              fontSize: 13, fontWeight: active ? 700 : 600,
+              color: active ? '#06B6D4' : '#94A3B8', transition: 'color 0.15s',
+            }}
+          >
+            {t.label}
+            {active && (
+              <span style={{ position: 'absolute', bottom: -1, left: 10, right: 10, height: 3, borderRadius: '2px 2px 0 0', background: 'linear-gradient(90deg,#06B6D4 0%,#5b6fff 100%)' }} />
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 // ══════════════════════════════════════════════════════════════════
 // MAIN PAGE
@@ -1153,12 +1182,7 @@ export default function NutritionPage() {
 
       <div className="px-4 md:px-8 pt-5 md:pt-8" style={{ paddingBottom: 0 }}>
 
-        <SportTabs
-          tabs={NUTRITION_TAB_ITEMS}
-          value={tab}
-          onChange={id => setTab(id as NutritionTab)}
-          style={{ marginBottom: 22 }}
-        />
+        <NutritionTabs tab={tab} onChange={setTab} />
 
         {tab === 'today' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

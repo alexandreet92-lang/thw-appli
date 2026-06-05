@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import dynamicImport from 'next/dynamic'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
@@ -1173,11 +1173,13 @@ export default function NutritionPage() {
 
         <NutritionTabs tab={tab} onChange={changeTab} />
 
+        <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={tab}
-          initial={{ opacity: 0, x: tabDir === 'right' ? 60 : -60 }}
+          initial={{ opacity: 0, x: tabDir === 'right' ? 50 : -50 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+          exit={{ opacity: 0, x: tabDir === 'right' ? -50 : 50 }}
+          transition={{ duration: 0.26, ease: [0.32, 0.72, 0, 1] }}
         >
 
         {tab === 'today' && (
@@ -1679,7 +1681,8 @@ export default function NutritionPage() {
         </div>
         )}
 
-        </motion.div>{/* end animated tab content */}
+        </motion.div>
+        </AnimatePresence>{/* end animated tab content */}
       </div>
 
       {/* ══════════════════════════════════════════════════════════ */}

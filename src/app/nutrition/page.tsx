@@ -5,8 +5,8 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import dynamicImport from 'next/dynamic'
-import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { Button } from '@/components/ui/Button'
+import { SportTabs, type SportTabItem } from '@/components/ui/SportTabs'
 import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
 import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
@@ -34,6 +34,7 @@ type WeightMetric = 'weight_kg' | 'fat_mass_percent' | 'muscle_mass_kg'
 type HistRange    = '7j' | '14j'
 type MealKey      = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
 type PlanVariant  = 'A' | 'B'
+type NutritionTab = 'today' | 'plan' | 'tracking' | 'body'
 
 // ══════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -820,6 +821,16 @@ function MealTemplatesSection({
 }
 
 // ══════════════════════════════════════════════════════════════════
+// TAB NAVIGATION — style identique aux pills de la page Training
+// ══════════════════════════════════════════════════════════════════
+const NUTRITION_TAB_ITEMS: SportTabItem[] = [
+  { id: 'today',    label: "Aujourd'hui",  color: '#06B6D4' },
+  { id: 'plan',     label: 'Mon plan',     color: '#06B6D4' },
+  { id: 'tracking', label: 'Suivi',        color: '#06B6D4' },
+  { id: 'body',     label: 'Composition',  color: '#06B6D4' },
+]
+
+// ══════════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════
 export default function NutritionPage() {
@@ -831,6 +842,7 @@ export default function NutritionPage() {
   const { sessions } = usePlanning()
 
   // ── State ──────────────────────────────────────────────────────
+  const [tab, setTab] = useState<NutritionTab>('today')
   const [selectedDate, setSelectedDate] = useState<string>(today)
   const [planVariant, setPlanVariant] = useState<PlanVariant>('A')
   const [histRange, setHistRange] = useState<HistRange>('7j')
@@ -1117,7 +1129,6 @@ export default function NutritionPage() {
             </svg>
           </button>
           <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
-          <AIAssistantButton agent="nutrition" context={{ activePlan, todayLog }} />
         </div>
       </div>
 
@@ -1141,6 +1152,14 @@ export default function NutritionPage() {
 
       <div className="px-4 md:px-8 pt-4 md:pt-6" style={{ paddingBottom: 0 }}>
 
+        <SportTabs
+          tabs={NUTRITION_TAB_ITEMS}
+          value={tab}
+          onChange={id => setTab(id as NutritionTab)}
+          style={{ marginBottom: 16 }}
+        />
+
+        {tab === 'today' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         {/* ══════════════════════════════════════════════════════ */}
@@ -1254,13 +1273,13 @@ export default function NutritionPage() {
           )}
         </div>
 
-        </div>{/* end xl:grid-cols-2 */}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        </div>
+        )}
 
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 3 — Plan nutritionnel                         */}
         {/* ══════════════════════════════════════════════════════ */}
+        {tab === 'plan' && (
         <div style={cardStyle}>
           <p style={sectionTitle}>Plan nutritionnel</p>
 
@@ -1361,10 +1380,12 @@ export default function NutritionPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 4 — Repas de la journee                       */}
         {/* ══════════════════════════════════════════════════════ */}
+        {tab === 'today' && (
         <div style={cardStyle}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <p style={{ ...sectionTitle, marginBottom: 0 }}>Repas de la journee</p>
@@ -1510,12 +1531,12 @@ export default function NutritionPage() {
             </div>
           )}
         </div>
-
-        </div>{/* end sections 3+4 grid */}
+        )}
 
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 5 — Historique et graphiques                  */}
         {/* ══════════════════════════════════════════════════════ */}
+        {tab === 'tracking' && (
         <div style={cardStyle}>
           <p style={sectionTitle}>Historique</p>
 
@@ -1578,7 +1599,10 @@ export default function NutritionPage() {
           </div>
         </div>
 
+        )}
+
         {/* Weight section */}
+        {tab === 'body' && (
         <div style={cardStyle}>
           <p style={sectionTitle}>Poids et composition</p>
 
@@ -1691,6 +1715,7 @@ export default function NutritionPage() {
           </div>{/* end form column */}
           </div>{/* end xl:grid-cols-3 */}
         </div>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════════════ */}
@@ -2005,11 +2030,13 @@ export default function NutritionPage() {
       })()}
 
       {/* Bouton Mes repas types */}
+      {tab === 'plan' && (
       <div style={{ padding: '8px 16px 24px', textAlign: 'center' }}>
         <Button variant="ghost" onClick={() => setShowTemplates(true)}>
           Mes repas types
         </Button>
       </div>
+      )}
 
       {/* Templates modal */}
       {showTemplates && (

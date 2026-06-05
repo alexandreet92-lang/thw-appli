@@ -165,7 +165,7 @@ export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
               <>
                 {localResults.length > 0 && (
                   <>
-                    <p style={{ padding: '4px 16px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>Aliments de base</p>
+                    <p style={{ padding: '4px 16px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>Bibliothèque</p>
                     {localResults.map(f => <FoodRow key={f.code} food={f} onSelect={handleSelect} />)}
                   </>
                 )}

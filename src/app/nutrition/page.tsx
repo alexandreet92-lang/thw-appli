@@ -1093,7 +1093,7 @@ export default function NutritionPage() {
   const next14Days = Array.from({ length: 14 }, (_, i) => addDays(today, i))
 
   return (
-    <div className="max-w-screen-2xl mx-auto" style={{ padding: '0 0 80px' }}>
+    <div className="max-w-screen-2xl mx-auto" style={{ padding: '0 0 80px', minWidth: 0 }}>
       <PageHelp config={NUTRITION_ONBOARDING} show={show} onDismiss={dismiss} />
       {/* ── Scanner code-barres (mobile uniquement via CSS) ────── */}
       {scannerOpen && (

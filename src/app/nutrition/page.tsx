@@ -10,6 +10,9 @@ import { MacroDonut } from '@/components/ui/MacroDonut'
 import { useNutrition, useNutritionTemplates, type MealTemplate } from '@/hooks/useNutrition'
 import { usePlanning, type PlannedSession } from '@/hooks/usePlanning'
 import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
+import { useDailyMeals } from '@/hooks/useDailyMeals'
+import { useHydration } from '@/hooks/useHydration'
+import { DayFoodJournal } from '@/app/nutrition/components/DayFoodJournal'
 import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -873,21 +876,14 @@ export default function NutritionPage() {
 
   // ── State ──────────────────────────────────────────────────────
   const [tab, setTab] = useState<NutritionTab>('today')
-  const [selectedDate, setSelectedDate] = useState<string>(today)
   const [planVariant, setPlanVariant] = useState<PlanVariant>('A')
   const [histRange, setHistRange] = useState<HistRange>('7j')
   const [weightMetric, setWeightMetric] = useState<WeightMetric>('weight_kg')
   const [dayDetailOpen, setDayDetailOpen] = useState<PlanDay | null>(null)
-  const [savingLog, setSavingLog] = useState<boolean>(false)
   const [weightInputDate, setWeightInputDate] = useState<string>(today)
   const [weightInput, setWeightInput] = useState<string>('')
   const [mgInput, setMgInput] = useState<string>('')
   const [mmInput, setMmInput] = useState<string>('')
-  const [manualMeals, setManualMeals] = useState<Partial<Record<MealKey, string>>>({})
-  const [manualKcal, setManualKcal] = useState<string>('')
-  const [manualP, setManualP] = useState<string>('')
-  const [manualG, setManualG] = useState<string>('')
-  const [manualL, setManualL] = useState<string>('')
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
@@ -913,6 +909,12 @@ export default function NutritionPage() {
 
   // ── Meal logs for today (Bilan du jour) ───────────────────────
   const { logs: todayMealLogs, reload: reloadTodayLogs } = useMealLogs(activePlan?.id, today)
+
+  // ── Journal alimentaire du jour (indépendant du plan) ─────────
+  const dayMeals  = useDailyMeals(today)
+  const hydration = useHydration(today)
+  const [suggestion, setSuggestion] = useState<{ title: string; description: string; kcal: number; prot: number; gluc: number; lip: number } | null>(null)
+  const [suggesting, setSuggesting] = useState(false)
 
   // ── Meal logs for the open day detail modal ───────────────────
   const modalDate = dayDetailOpen?.date ?? ''
@@ -1037,33 +1039,6 @@ export default function NutritionPage() {
     todayMealSet,
   )
 
-  // ── Selected date data ─────────────────────────────────────────
-  const selectedPlanDay = activePlan?.plan_data?.jours?.find(j => j.date === selectedDate) ?? null
-  const selectedLog = dailyLogs.find(l => l.date === selectedDate)
-
-  // ── Toggle meal consumed ───────────────────────────────────────
-  const handleMealToggle = useCallback(async (mealKey: MealKey, consumed: boolean) => {
-    const log = todayLog ?? {
-      date: today,
-      kcal_consommees: 0,
-      proteines: 0,
-      glucides: 0,
-      lipides: 0,
-      repas_details: {} as Record<string, { consumed: boolean; note?: string }>,
-      option_choisie: planVariant as 'A' | 'B' | 'manuel',
-    }
-    const updated: DailyLog = {
-      ...log,
-      repas_details: {
-        ...log.repas_details,
-        [mealKey]: { consumed },
-      },
-    }
-    setSavingLog(true)
-    await saveDailyLog(updated)
-    setSavingLog(false)
-  }, [todayLog, today, planVariant, saveDailyLog])
-
   // ── Save weight log ────────────────────────────────────────────
   const handleSaveWeight = useCallback(async () => {
     if (!weightInput && !mgInput && !mmInput) return
@@ -1080,25 +1055,32 @@ export default function NutritionPage() {
     setMmInput('')
   }, [weightInputDate, weightInput, mgInput, mmInput, saveWeightLog])
 
-  // ── Save manual log ────────────────────────────────────────────
-  const handleSaveManualLog = useCallback(async () => {
-    const log: Omit<DailyLog, 'id'> = {
-      date: selectedDate,
-      kcal_consommees: parseFloat(manualKcal) || 0,
-      proteines: parseFloat(manualP) || 0,
-      glucides: parseFloat(manualG) || 0,
-      lipides: parseFloat(manualL) || 0,
-      repas_details: selectedLog?.repas_details ?? {},
-      option_choisie: 'manuel',
+  // ── Suggestion IA du prochain repas ─────────────────────────────
+  const handleSuggestMeal = useCallback(async () => {
+    setSuggesting(true)
+    setSuggestion(null)
+    try {
+      const remaining = {
+        kcal: Math.max(0, todayKcalObj - dayMeals.totals.kcal),
+        prot: Math.max(0, todayMacroObj.proteines - dayMeals.totals.prot),
+        gluc: Math.max(0, todayMacroObj.glucides - dayMeals.totals.gluc),
+        lip:  Math.max(0, todayMacroObj.lipides  - dayMeals.totals.lip),
+      }
+      const res = await fetch('/api/suggest-next-meal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remaining, dayType: todayType }),
+      })
+      if (res.ok) {
+        const r = await res.json() as { title: string; description: string; kcal: number; prot: number; gluc: number; lip: number }
+        setSuggestion(r)
+      }
+    } catch (err) {
+      console.error('[handleSuggestMeal]', err)
+    } finally {
+      setSuggesting(false)
     }
-    setSavingLog(true)
-    await saveDailyLog(log)
-    setSavingLog(false)
-    setManualKcal('')
-    setManualP('')
-    setManualG('')
-    setManualL('')
-  }, [selectedDate, manualKcal, manualP, manualG, manualL, selectedLog, saveDailyLog])
+  }, [todayKcalObj, todayMacroObj, todayType, dayMeals.totals])
 
   // ── Loading ────────────────────────────────────────────────────
   if (nutLoading) {
@@ -1210,7 +1192,7 @@ export default function NutritionPage() {
           <div style={{ display: 'flex', gap: 18, rowGap: 24, justifyContent: 'space-around', flexWrap: 'wrap', padding: '4px 0' }}>
             <MacroDonut
               label="Calories"
-              consumed={todayMealTotals.kcal}
+              consumed={dayMeals.totals.kcal}
               objective={todayKcalObj}
               unit="kcal"
               color="#06B6D4"
@@ -1218,7 +1200,7 @@ export default function NutritionPage() {
             />
             <MacroDonut
               label="Proteines"
-              consumed={todayMealTotals.prot}
+              consumed={dayMeals.totals.prot}
               objective={todayMacroObj.proteines}
               unit="g"
               color="#22c55e"
@@ -1226,7 +1208,7 @@ export default function NutritionPage() {
             />
             <MacroDonut
               label="Glucides"
-              consumed={todayMealTotals.gluc}
+              consumed={dayMeals.totals.gluc}
               objective={todayMacroObj.glucides}
               unit="g"
               color="#eab308"
@@ -1234,18 +1216,65 @@ export default function NutritionPage() {
             />
             <MacroDonut
               label="Lipides"
-              consumed={todayMealTotals.lip}
+              consumed={dayMeals.totals.lip}
               objective={todayMacroObj.lipides}
               unit="g"
               color="#f97316"
               size={96}
             />
           </div>
-          {!activePlan && (
+
+          {/* Bandeau « il te reste » */}
+          {todayKcalObj > 0 ? (
+            <div style={{
+              marginTop: 18, padding: '12px 16px', borderRadius: 12,
+              background: 'var(--bg-card2)', border: '1px solid var(--border)',
+              display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
+            }}>
+              <span style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Il te reste</span>
+              <span style={{ fontSize: 16, fontWeight: 800, color: '#06B6D4', fontFamily: 'DM Mono,monospace' }}>
+                {Math.max(0, Math.round(todayKcalObj - dayMeals.totals.kcal))} kcal
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>
+                · {Math.max(0, Math.round(todayMacroObj.proteines - dayMeals.totals.prot))}g prot
+                · {Math.max(0, Math.round(todayMacroObj.glucides - dayMeals.totals.gluc))}g gluc
+                · {Math.max(0, Math.round(todayMacroObj.lipides - dayMeals.totals.lip))}g lip
+              </span>
+            </div>
+          ) : (
             <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 12, textAlign: 'center' }}>
-              Aucun plan actif — créez un plan pour voir vos objectifs.
+              Aucun plan actif — créez un plan pour définir vos objectifs.
             </p>
           )}
+        </div>
+
+        {/* ══════════════════════════════════════════════════════ */}
+        {/* SECTION — Hydratation                                  */}
+        {/* ══════════════════════════════════════════════════════ */}
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <p style={{ ...sectionTitle, marginBottom: 0 }}>Hydratation</p>
+            <span style={{ fontSize: 18, fontWeight: 800, color: '#06B6D4', fontFamily: 'DM Mono,monospace' }}>
+              {hydration.liters.toFixed(2).replace(/\.?0+$/, '')} L
+            </span>
+          </div>
+          {/* Jauge */}
+          <svg width="100%" height={10} style={{ borderRadius: 5, display: 'block', marginBottom: 14 }}>
+            <rect x={0} y={0} width="100%" height={10} fill="var(--border)" rx={5} />
+            <rect x={0} y={0} width={`${Math.min(100, (hydration.liters / 2.5) * 100)}%`} height={10} fill="#06B6D4" rx={5} style={{ transition: 'width 0.4s ease' }} />
+          </svg>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[0.25, 0.5].map(d => (
+              <button key={d} onClick={() => void hydration.addLiters(d)}
+                style={{ flex: 1, padding: '10px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', minHeight: 44 }}>
+                + {d * 100} cl
+              </button>
+            ))}
+            <button onClick={() => void hydration.setLiters(Math.max(0, hydration.liters - 0.25))}
+              style={{ width: 52, padding: '10px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontWeight: 700, fontSize: 16, cursor: 'pointer', minHeight: 44 }}>
+              −
+            </button>
+          </div>
         </div>
 
         {/* ══════════════════════════════════════════════════════ */}
@@ -1412,149 +1441,43 @@ export default function NutritionPage() {
         {/* ══════════════════════════════════════════════════════ */}
         {tab === 'today' && (
         <div style={cardStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
-            <p style={{ ...sectionTitle, marginBottom: 0 }}>Repas de la journee</p>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value)}
+          <p style={sectionTitle}>Repas de la journee</p>
+
+          <DayFoodJournal
+            entries={dayMeals.entries}
+            loading={dayMeals.loading}
+            saveEntry={dayMeals.saveEntry}
+            deleteEntry={dayMeals.deleteEntry}
+          />
+
+          {/* Suggestion IA du prochain repas */}
+          <div style={{ marginTop: 18 }}>
+            <button
+              onClick={() => void handleSuggestMeal()}
+              disabled={suggesting}
               style={{
-                background: 'var(--input-bg)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '4px 8px', fontSize: 12,
-                color: 'var(--text)', fontFamily: 'DM Sans,sans-serif',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                width: '100%', padding: '12px', borderRadius: 11, minHeight: 44,
+                border: '1px solid rgba(139,92,246,0.3)', background: 'rgba(139,92,246,0.08)',
+                color: '#8b5cf6', fontWeight: 700, fontSize: 13,
+                cursor: suggesting ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif',
               }}
-            />
-          </div>
-
-          {/* Option A / B toggle */}
-          {selectedPlanDay && (
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-              {(['A', 'B'] as PlanVariant[]).map(v => (
-                <button
-                  key={v}
-                  onClick={() => setPlanVariant(v)}
-                  style={{
-                    padding: '5px 14px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border)',
-                    background: planVariant === v ? 'rgba(6,182,212,0.12)' : 'var(--bg-card2)',
-                    color: planVariant === v ? '#06B6D4' : 'var(--text-dim)',
-                    fontWeight: planVariant === v ? 700 : 400,
-                    fontSize: 12,
-                    fontFamily: 'Syne,sans-serif',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Option {v}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {selectedPlanDay ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {MEAL_KEYS.map(mealKey => {
-                const mealSet: MealSet = planVariant === 'A'
-                  ? selectedPlanDay.repas.option_A
-                  : selectedPlanDay.repas.option_B
-                const slotVal = mealSet[mealKey]
-                const text = slotText(slotVal)
-                const isConsumed = selectedLog?.repas_details?.[mealKey]?.consumed ?? false
-                const isToday = selectedDate === today
-                if (text === '-') return null
-                return (
-                  <div
-                    key={mealKey}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 10,
-                      background: isConsumed ? 'rgba(34,197,94,0.06)' : 'var(--bg-card2)',
-                      border: `1px solid ${isConsumed ? 'rgba(34,197,94,0.25)' : 'var(--border)'}`,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontSize: 11, fontFamily: 'Syne,sans-serif', fontWeight: 700, color: 'var(--text-mid)' }}>
-                        {MEAL_LABELS[mealKey]}
-                      </span>
-                      {isToday && (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={isConsumed}
-                            onChange={e => void handleMealToggle(mealKey, e.target.checked)}
-                            disabled={savingLog}
-                            style={{ accentColor: '#22c55e' }}
-                          />
-                          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Consomme</span>
-                        </label>
-                      )}
-                    </div>
-                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>{text}</p>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div>
-              <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 16 }}>
-                Aucun plan pour cette date. Ajoutez des repas manuellement.
-              </p>
-              {/* Manual entry form */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {MEAL_KEYS.map(mealKey => (
-                  <div key={mealKey}>
-                    <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>
-                      {MEAL_LABELS[mealKey]}
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={manualMeals[mealKey] ?? ''}
-                      onChange={e => setManualMeals(m => ({ ...m, [mealKey]: e.target.value }))}
-                      placeholder="Description du repas..."
-                      style={{
-                        width: '100%', background: 'var(--input-bg)',
-                        border: '1px solid var(--border)', borderRadius: 8,
-                        padding: '8px 10px', fontSize: 12, color: 'var(--text)',
-                        fontFamily: 'DM Sans,sans-serif', resize: 'vertical',
-                      }}
-                    />
-                  </div>
-                ))}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                  {[
-                    { label: 'Kcal', val: manualKcal, set: setManualKcal },
-                    { label: 'Prot. (g)', val: manualP, set: setManualP },
-                    { label: 'Gluc. (g)', val: manualG, set: setManualG },
-                    { label: 'Lip. (g)', val: manualL, set: setManualL },
-                  ].map(({ label, val, set }) => (
-                    <div key={label}>
-                      <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>{label}</label>
-                      <input
-                        type="number"
-                        value={val}
-                        onChange={e => set(e.target.value)}
-                        style={{
-                          width: '100%', background: 'var(--input-bg)',
-                          border: '1px solid var(--border)', borderRadius: 7,
-                          padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                          fontFamily: 'DM Mono,monospace',
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  variant="secondary"
-                  onClick={() => void handleSaveManualLog()}
-                  disabled={savingLog}
-                  loading={savingLog}
-                  style={{ width: '100%', justifyContent: 'center' }}
-                >
-                  Sauvegarder
-                </Button>
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3l1.9 4.8L18.5 9l-4.6 1.2L12 15l-1.9-4.8L5.5 9l4.6-1.2z" /><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z" />
+              </svg>
+              {suggesting ? 'Réflexion…' : 'Suggérer mon prochain repas (IA)'}
+            </button>
+            {suggestion && (
+              <div style={{ marginTop: 10, padding: '14px 16px', borderRadius: 12, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)' }}>
+                <p style={{ margin: 0, fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{suggestion.title}</p>
+                <p style={{ margin: '4px 0 8px', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5 }}>{suggestion.description}</p>
+                <p style={{ margin: 0, fontSize: 11, fontFamily: 'DM Mono,monospace', color: '#8b5cf6' }}>
+                  {suggestion.kcal} kcal · P {suggestion.prot}g · G {suggestion.gluc}g · L {suggestion.lip}g
+                </p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
         )}
 

@@ -56,6 +56,35 @@ function rowToDish(r: DishRow): DishItem {
   }
 }
 
+// ── Catégories (thèmes) du picker ───────────────────────────────────
+export const DISH_CATEGORIES: Array<{ key: string; label: string }> = [
+  { key: 'all',       label: 'Tout'      },
+  { key: 'main',      label: 'Plats'     },
+  { key: 'breakfast', label: 'Petit-déj' },
+  { key: 'salad',     label: 'Salades'   },
+  { key: 'soup',      label: 'Soupes'    },
+  { key: 'side',      label: 'Accomp.'   },
+  { key: 'snack',     label: 'Snacks'    },
+  { key: 'dessert',   label: 'Desserts'  },
+]
+
+const SELECT_COLS = 'id,name,image_url,category,kcal_100g,prot_100g,gluc_100g,lip_100g,default_portion_g'
+
+// ── Recherche + filtre catégorie (table dishes, ordre popularité) ───
+export async function fetchDishes(opts: { query?: string; category?: string }): Promise<DishItem[]> {
+  try {
+    const supabase = createClient()
+    let q = supabase.from('dishes').select(SELECT_COLS)
+    if (opts.category && opts.category !== 'all') q = q.eq('category', opts.category)
+    if (opts.query && opts.query.trim()) q = q.ilike('name', `%${opts.query.trim()}%`)
+    const { data, error } = await q.order('popularity', { ascending: false }).limit(80)
+    if (error || !data) return []
+    return (data as DishRow[]).map(rowToDish)
+  } catch {
+    return []
+  }
+}
+
 // ── Recherche (Supabase RPC). q='' → plats les plus populaires. ─────
 export async function searchDishes(query: string): Promise<DishItem[]> {
   try {

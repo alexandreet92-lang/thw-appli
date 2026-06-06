@@ -14,7 +14,7 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
-import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen, Menu, AlignJustify, LayoutGrid } from 'lucide-react'
+import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen, Menu, AlignJustify, LayoutGrid, Square } from 'lucide-react'
 import { ActivityTitle } from '@/components/activity/ActivityTitle'
 import { Spinner } from '@/components/ui/Spinner'
 import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
@@ -2695,22 +2695,26 @@ interface ActivityCurvesProps {
   activity: Activity
 }
 
+type CurvesFormat = 'stacked' | 'overlaid' | 'mono'
+
 export function ActivityCurves({ activity }: ActivityCurvesProps) {
-  const isMobile = useWindowWidth() < 768
+  void useWindowWidth() // force re-render au resize, mais on s'en sert pas autrement
   const s = activity.streams ?? null
 
-  // ── Format persistant (stacked / overlaid) ─────────────────────────
-  type Format = 'stacked' | 'overlaid'
-  const [format, setFormat] = useState<Format>('stacked')
+  // ── Format + métriques actives + métrique mono — persistés localStorage ─
+  const [format,        setFormat]        = useState<CurvesFormat>('stacked')
   const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(['hr', 'watts', 'speed']))
+  const [monoMetric,    setMonoMetric]    = useState<MetricDef['key']>('hr')
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const f = localStorage.getItem('activity-charts-format') as Format | null
-    if (f === 'stacked' || f === 'overlaid') setFormat(f)
+    const f = localStorage.getItem('activity-charts-format') as CurvesFormat | null
+    if (f === 'stacked' || f === 'overlaid' || f === 'mono') setFormat(f)
     try {
       const m = JSON.parse(localStorage.getItem('activity-charts-overlaid-metrics') ?? '[]') as string[]
       if (Array.isArray(m) && m.length > 0) setActiveMetrics(new Set(m))
     } catch { /* default */ }
+    const mm = localStorage.getItem('activity-charts-mono-metric') as MetricDef['key'] | null
+    if (mm && METRIC_DEFS.some(d => d.key === mm)) setMonoMetric(mm)
   }, [])
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('activity-charts-format', format) }, [format])
   useEffect(() => {
@@ -2718,6 +2722,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       localStorage.setItem('activity-charts-overlaid-metrics', JSON.stringify(Array.from(activeMetrics)))
     }
   }, [activeMetrics])
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('activity-charts-mono-metric', monoMetric) }, [monoMetric])
 
   // ── Préparation des séries (lissées, useMemo) ──────────────────────
   const series = useMemo(() => {
@@ -2789,24 +2794,119 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     }))
   }, [totalDistKm, totalSec])
 
-  // ── Refs pour crosshair/tooltip (perf : pas de re-render) ──────────
-  const containerRef = useRef<HTMLDivElement>(null)
+  // Stats par métrique (memoisé)
+  const statsMap = useMemo<Record<string, { min: number; max: number; avg: number } | null>>(() => {
+    const m: Record<string, { min: number; max: number; avg: number } | null> = {}
+    presentKeys.forEach(k => { m[k] = stats(getData(k)) })
+    return m
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [series, presentKeys])
 
-  function fmtSubLine(idx: number): string {
+  // ── Refs pour crosshair/tooltip (perf : pas de re-render au drag) ──
+  const containerRef           = useRef<HTMLDivElement>(null)
+  const crosshairRef           = useRef<HTMLDivElement>(null)
+  const dotRefsMap             = useRef<Map<string, HTMLDivElement | null>>(new Map())
+  const tooltipRef             = useRef<HTMLDivElement>(null)
+  const tooltipHeaderRef       = useRef<HTMLDivElement>(null)
+  const tooltipValRefs         = useRef<Map<string, HTMLSpanElement | null>>(new Map())
+  const tooltipMonoMainRef     = useRef<HTMLDivElement>(null)
+  const tooltipMonoSubRef      = useRef<HTMLDivElement>(null)
+
+  function fmtPosition(idx: number): string {
     const parts: string[] = []
     if (series?.distance && series.distance[idx] != null) {
       parts.push(`${(series.distance[idx] / 1000).toFixed(1).replace('.', ',')} km`)
     }
     if (series?.time && series.time[idx] != null) {
-      const sec = series.time[idx] - (series.time[0] ?? 0)
+      const sec = Math.max(0, series.time[idx] - (series.time[0] ?? 0))
       const m = Math.floor(sec / 60)
-      parts.push(`${m} min`)
+      const sc = Math.floor(sec % 60)
+      parts.push(`${m}:${String(sc).padStart(2, '0')}`)
     }
     return parts.join(' · ')
   }
 
+  // Met à jour le DOM (crosshair + dots + tooltip) directement, SANS setState
+  function updateAtClientX(clientX: number) {
+    const cont = containerRef.current
+    if (!cont) return
+    const rect = cont.getBoundingClientRect()
+    const x = clientX - rect.left
+    const ratio = Math.max(0, Math.min(1, x / rect.width))
+    const idx = Math.round(ratio * (N - 1))
+
+    // Crosshair
+    if (crosshairRef.current) {
+      crosshairRef.current.style.left    = `${ratio * 100}%`
+      crosshairRef.current.style.opacity = '1'
+    }
+    // Dots (chacun positionné dans son row chart-area)
+    dotRefsMap.current.forEach((dot, key) => {
+      if (!dot) return
+      const data = getData(key as MetricDef['key'])
+      const st = statsMap[key]
+      if (!data || !st) return
+      const v = data[idx]
+      if (v == null || isNaN(v)) { dot.style.opacity = '0'; return }
+      const rangeV = (st.max - st.min) || 1
+      const yRatio = (v - st.min) / rangeV
+      dot.style.left    = `${ratio * 100}%`
+      dot.style.top     = `${(1 - yRatio) * 100}%`
+      dot.style.opacity = '1'
+    })
+    // Tooltip — Empilé/Superposé : header + valeurs
+    if (tooltipHeaderRef.current) tooltipHeaderRef.current.textContent = fmtPosition(idx)
+    tooltipValRefs.current.forEach((span, key) => {
+      if (!span) return
+      const data = getData(key as MetricDef['key'])
+      const def  = METRIC_DEFS.find(d => d.key === key)
+      if (!data || !def) return
+      const v = data[idx]
+      span.textContent = v != null && !isNaN(v) ? `${def.fmt(v)} ${def.unit}` : '—'
+    })
+    // Tooltip — Mono : main + sub
+    if (tooltipMonoMainRef.current) {
+      const def = METRIC_DEFS.find(d => d.key === monoMetric)
+      const data = def ? getData(def.key) : null
+      if (def && data) {
+        const v = data[idx]
+        tooltipMonoMainRef.current.textContent = v != null && !isNaN(v) ? `${def.fmt(v)} ${def.unit}` : '—'
+      }
+    }
+    if (tooltipMonoSubRef.current) tooltipMonoSubRef.current.textContent = fmtPosition(idx)
+    // Tooltip wrapper
+    if (tooltipRef.current) tooltipRef.current.style.opacity = '1'
+  }
+
+  function hideHint() {
+    if (crosshairRef.current) crosshairRef.current.style.opacity = '0'
+    dotRefsMap.current.forEach(dot => { if (dot) dot.style.opacity = '0' })
+    if (tooltipRef.current) tooltipRef.current.style.opacity = '0'
+  }
+
+  // Handlers communs pointer (touch + mouse). PointerEvents unifie les 2.
+  function onPointerDown(e: React.PointerEvent) {
+    updateAtClientX(e.clientX)
+    // Capture pour drag continu hors zone
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  function onPointerMove(e: React.PointerEvent) {
+    if (e.buttons === 0 && e.pointerType === 'mouse') {
+      // Hover desktop : update sans bouton tenu
+      updateAtClientX(e.clientX)
+      return
+    }
+    updateAtClientX(e.clientX)
+  }
+  function onPointerLeaveOrUp() { hideHint() }
+
+  // Couleurs sémantiques fixes (pour le tooltip colored mono)
+  const monoDef     = METRIC_DEFS.find(d => d.key === monoMetric) ?? METRIC_DEFS[1]
+  const monoBg      = monoDef.color
+  const monoTxtClr  = monoDef.textOnColor
+
   // ─────────────────────────────────────────────────────────────
-  // TOGGLE FORMAT (Empilé / Superposé)
+  // TOGGLE FORMAT (Empilé / Superposé / Mono)
   // ─────────────────────────────────────────────────────────────
   const FormatToggle = (
     <div style={{
@@ -2816,11 +2916,12 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       borderRadius: 8,
       border:       '1px solid var(--border)',
       background:   'var(--bg-card2)',
-      marginBottom: 14,
+      marginBottom: 12,
     }}>
       {([
         { id: 'stacked',  label: 'Empilé',     icon: <AlignJustify size={13} /> },
         { id: 'overlaid', label: 'Superposé',  icon: <LayoutGrid   size={13} /> },
+        { id: 'mono',     label: 'Mono',       icon: <Square       size={13} /> },
       ] as const).map(o => {
         const active = format === o.id
         return (
@@ -2837,7 +2938,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
               background:   active ? 'var(--bg-card)' : 'transparent',
               color:        active ? 'var(--text)' : 'var(--text-dim)',
               fontSize:     11,
-              fontWeight:   active ? 600 : 500,
+              fontWeight:   active ? 700 : 500,
               cursor:       'pointer',
               transition:   'background 0.15s, color 0.15s',
               fontFamily:   'inherit',
@@ -2851,108 +2952,407 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     </div>
   )
 
+  // Tooltip NEUTRE (Empilé / Superposé)
+  const tooltipNeutralKeys = format === 'overlaid'
+    ? presentKeys.filter(k => activeMetrics.has(k))
+    : presentKeys
+  const TooltipNeutral = (
+    <div
+      ref={tooltipRef}
+      style={{
+        opacity:       0,
+        transition:    'opacity 0.12s',
+        background:    'var(--bg-card)',
+        border:        '1px solid var(--border)',
+        borderRadius:  12,
+        padding:       '10px 14px',
+        marginBottom:  10,
+        boxShadow:     '0 4px 16px rgba(0,0,0,0.10)',
+        pointerEvents: 'none',
+      }}
+    >
+      <div ref={tooltipHeaderRef} style={{
+        fontSize:       10,
+        opacity:        0.6,
+        textTransform:  'uppercase',
+        letterSpacing:  '0.08em',
+        marginBottom:   5,
+        color:          'var(--text)',
+      }}>—</div>
+      {tooltipNeutralKeys.map(key => {
+        const def = METRIC_DEFS.find(d => d.key === key)!
+        return (
+          <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: def.color, flexShrink: 0 }} />
+            <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>{def.label}</span>
+            <span
+              ref={el => { tooltipValRefs.current.set(key, el) }}
+              style={{
+                fontWeight:         700,
+                fontVariantNumeric: 'tabular-nums',
+                color:              def.color,
+                fontSize:           12,
+              }}
+            >—</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+
+  // Tooltip COLORÉ (Mono)
+  const TooltipColored = (
+    <div
+      ref={tooltipRef}
+      style={{
+        opacity:       0,
+        transition:    'opacity 0.12s',
+        background:    monoBg,
+        color:         monoTxtClr,
+        borderRadius:  12,
+        padding:       '12px 16px',
+        marginBottom:  10,
+        boxShadow:     '0 4px 16px rgba(0,0,0,0.15)',
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        ref={tooltipMonoMainRef}
+        style={{
+          fontSize:           22,
+          fontWeight:         700,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >—</div>
+      <div
+        ref={tooltipMonoSubRef}
+        style={{ fontSize: 11, opacity: 0.75, marginTop: 3 }}
+      >—</div>
+    </div>
+  )
+
+  const W = 1000
+  const ROW_H = 70    // hauteur fixe par row (Format A collé)
+
+  // Helper : path area pour une série donnée sur une hauteur H
+  function buildAreaPath(data: number[], st: { min: number; max: number }, H: number, padT = 4, padB = 4): string {
+    const range = (st.max - st.min) || 1
+    const inner = H - padT - padB
+    const pts = data.map((v, i) => {
+      const x = (i / (N - 1)) * W
+      const y = H - padB - ((v - st.min) / range) * inner
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    return `M0,${H}L${pts.join('L')}L${W},${H}Z`
+  }
+  function buildLinePath(data: number[], st: { min: number; max: number }, H: number, padT = 4, padB = 4): string {
+    const range = (st.max - st.min) || 1
+    const inner = H - padT - padB
+    const pts = data.map((v, i) => {
+      const x = (i / (N - 1)) * W
+      const y = H - padB - ((v - st.min) / range) * inner
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    return `M${pts.join('L')}`
+  }
+
   // ─────────────────────────────────────────────────────────────
-  // FORMAT A — STACKED (6 charts empilés)
+  // FORMAT A — STACKED COLLÉ (6 courbes collées + colonne label gauche)
   // ─────────────────────────────────────────────────────────────
   if (format === 'stacked') {
-    const chartH    = 100      // hauteur de chaque mini chart
-    const chartBg   = isMobile ? '#000000' : 'var(--bg-card2)'
-    const altBgFill = isMobile ? 'rgba(58,58,58,0.6)' : 'rgba(203,213,225,0.6)'
-
     return (
-      <div ref={containerRef}>
+      <div>
         {FormatToggle}
+        {TooltipNeutral}
 
-        {presentKeys.map(key => {
-          const def  = METRIC_DEFS.find(m => m.key === key)!
-          const data = getData(key)
-          if (!data) return null
-          const st = stats(data)
-          if (!st) return null
-          const W = 1000, padTop = 4, padBot = 4
-          // Altitude background (toujours même si métrique = altitude)
-          const altData = series.altitude
-          let altPath = ''
-          if (altData) {
-            const altSt = stats(altData)
-            if (altSt) {
-              const range = (altSt.max - altSt.min) || 1
-              const pts = altData.map((v, i) => {
-                const x = (i / (N - 1)) * W
-                const y = chartH - padBot - ((v - altSt.min) / range) * (chartH - padTop - padBot)
-                return `${x.toFixed(1)},${y.toFixed(1)}`
-              })
-              altPath = `M0,${chartH}L${pts.join('L')}L${W},${chartH}Z`
-            }
-          }
-          // Courbe principale (area)
-          const range = (st.max - st.min) || 1
-          const pts = data.map((v, i) => {
-            const x = (i / (N - 1)) * W
-            const y = chartH - padBot - ((v - st.min) / range) * (chartH - padTop - padBot)
-            return `${x.toFixed(1)},${y.toFixed(1)}`
-          })
-          const mainPath = `M0,${chartH}L${pts.join('L')}L${W},${chartH}Z`
+        <div
+          ref={containerRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerLeaveOrUp}
+          onPointerLeave={onPointerLeaveOrUp}
+          onPointerCancel={onPointerLeaveOrUp}
+          style={{
+            display:      'flex',
+            position:     'relative',
+            background:   'var(--bg-card2)',
+            borderRadius: 10,
+            overflow:     'hidden',
+            touchAction:  'none',
+            cursor:       'crosshair',
+          }}
+        >
+          {/* Colonne labels gauche */}
+          <div style={{
+            width:         60,
+            flexShrink:    0,
+            borderRight:   '1px solid var(--border)',
+            background:    'var(--bg-card2)',
+          }}>
+            {presentKeys.map((key, i) => {
+              const def = METRIC_DEFS.find(m => m.key === key)!
+              const st  = statsMap[key]
+              return (
+                <div key={key} style={{
+                  height:        ROW_H,
+                  padding:       '8px 6px',
+                  display:       'flex',
+                  flexDirection: 'column',
+                  justifyContent:'center',
+                  borderBottom:  i < presentKeys.length - 1 ? '1px solid var(--border)' : 'none',
+                }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: def.color }}>
+                    {def.label}
+                  </span>
+                  {st && (
+                    <span style={{
+                      fontSize:           9,
+                      color:              'var(--text-dim)',
+                      marginTop:          2,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}>
+                      {def.fmt(st.min)} – {def.fmt(st.max)} {def.unit}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
 
-          return (
-            <div key={key} style={{ marginBottom: 18 }}>
-              {/* Header : nom + range */}
-              <div style={{
-                display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-                padding: '0 2px', marginBottom: 6,
-              }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: def.color }}>
-                  {def.label}
-                </span>
-                <span style={{ fontSize: 10, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
-                  {def.fmt(st.min)} – {def.fmt(st.max)} {def.unit}
-                </span>
-              </div>
-
-              {/* Chart area */}
-              <div style={{
-                background:   chartBg,
-                borderRadius: 6,
-                overflow:     'hidden',
-                position:     'relative',
-                height:       chartH,
-              }}>
-                <svg
-                  viewBox={`0 0 ${W} ${chartH}`}
-                  style={{ width: '100%', height: '100%', display: 'block' }}
-                  preserveAspectRatio="none"
+          {/* Colonne charts + crosshair */}
+          <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+            {/* Crosshair vertical traversant TOUS les rows */}
+            <div
+              ref={crosshairRef}
+              style={{
+                position:      'absolute',
+                top:           0,
+                bottom:        0,
+                width:         1,
+                background:    'var(--border-mid)',
+                opacity:       0,
+                pointerEvents: 'none',
+                zIndex:        5,
+                transition:    'opacity 0.1s',
+              }}
+            />
+            {presentKeys.map((key, i) => {
+              const def  = METRIC_DEFS.find(m => m.key === key)!
+              const data = getData(key)
+              const st   = statsMap[key]
+              if (!data || !st) return null
+              const altData = series.altitude
+              const altSt   = altData ? statsMap['altitude'] : null
+              const altPath = altData && altSt ? buildAreaPath(altData, altSt, ROW_H) : ''
+              const mainPath = buildAreaPath(data, st, ROW_H)
+              return (
+                <div
+                  key={key}
+                  style={{
+                    height:       ROW_H,
+                    position:     'relative',
+                    borderBottom: i < presentKeys.length - 1 ? '1px solid var(--border)' : 'none',
+                  }}
                 >
-                  {/* Profil altitude en arrière-plan */}
-                  {altPath && <path d={altPath} fill={altBgFill} />}
-                  {/* Zone principale */}
-                  <path d={mainPath} fill={def.color} fillOpacity={0.6} strokeLinejoin="round" />
-                </svg>
-              </div>
-
-              {/* Stats : moy / max */}
-              <div style={{
-                display: 'flex', justifyContent: 'space-between',
-                padding: '8px 2px 0', fontSize: 11,
-                color: 'var(--text-dim)',
-              }}>
-                <span>
-                  {def.label} moyenne{' '}
-                  <span style={{ fontWeight: 700, color: def.color, fontVariantNumeric: 'tabular-nums' }}>
-                    {def.fmt(st.avg)} {def.unit}
-                  </span>
-                </span>
-                <span>
-                  {def.label} max{' '}
-                  <span style={{ fontWeight: 700, color: def.color, fontVariantNumeric: 'tabular-nums' }}>
-                    {def.fmt(st.max)} {def.unit}
-                  </span>
-                </span>
-              </div>
-            </div>
-          )
-        })}
+                  <svg
+                    viewBox={`0 0 ${W} ${ROW_H}`}
+                    style={{ width: '100%', height: '100%', display: 'block' }}
+                    preserveAspectRatio="none"
+                  >
+                    {altPath && <path d={altPath} fill="#94a3b8" fillOpacity={0.18} />}
+                    <path d={mainPath} fill={def.color} fillOpacity={key === 'altitude' ? 0.5 : 0.55} strokeLinejoin="round" />
+                  </svg>
+                  <div
+                    ref={el => { dotRefsMap.current.set(key, el) }}
+                    style={{
+                      position:      'absolute',
+                      width:         8,
+                      height:        8,
+                      borderRadius:  '50%',
+                      background:    '#ffffff',
+                      border:        '2px solid #0f172a',
+                      transform:     'translate(-50%, -50%)',
+                      opacity:       0,
+                      pointerEvents: 'none',
+                      zIndex:        6,
+                      transition:    'opacity 0.1s',
+                      left:          '0%',
+                      top:           '50%',
+                    }}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
 
         {/* Labels axe X commun en bas */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          padding: '6px 2px 0 62px', fontSize: 9, color: 'var(--text-dim)',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
+        </div>
+      </div>
+    )
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // FORMAT C — MONO (1 grande courbe + pills sélecteur)
+  // ─────────────────────────────────────────────────────────────
+  if (format === 'mono') {
+    const def = monoDef
+    const monoH = 280
+    const padT  = 8, padB = 8
+    const data  = getData(def.key)
+    const st    = statsMap[def.key]
+    const altData = series.altitude
+    const altSt   = altData ? statsMap['altitude'] : null
+    const altPath = altData && altSt ? buildAreaPath(altData, altSt, monoH, padT, padB) : ''
+    const mainPath = data && st ? buildAreaPath(data, st, monoH, padT, padB) : ''
+
+    return (
+      <div>
+        {FormatToggle}
+
+        {/* Pills sélecteur métrique */}
+        <div style={{
+          display:       'flex',
+          gap:           6,
+          overflowX:     'auto',
+          paddingBottom: 4,
+          marginBottom:  10,
+          scrollbarWidth: 'none',
+        }}>
+          {METRIC_DEFS.filter(d => presentKeys.includes(d.key)).map(d => {
+            const active = monoMetric === d.key
+            return (
+              <button
+                key={d.key}
+                onClick={() => setMonoMetric(d.key)}
+                style={{
+                  flexShrink:   0,
+                  padding:      '7px 12px',
+                  borderRadius: 999,
+                  border:       '1px solid var(--border)',
+                  background:   active ? 'var(--text)' : 'var(--bg-card2)',
+                  color:        active ? 'var(--bg)'   : 'var(--text-dim)',
+                  fontSize:     11,
+                  fontWeight:   600,
+                  cursor:       'pointer',
+                  transition:   'background 0.15s, color 0.15s',
+                  fontFamily:   'inherit',
+                  whiteSpace:   'nowrap',
+                }}
+              >
+                {d.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {TooltipColored}
+
+        <div
+          ref={containerRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerLeaveOrUp}
+          onPointerLeave={onPointerLeaveOrUp}
+          onPointerCancel={onPointerLeaveOrUp}
+          style={{
+            position:     'relative',
+            height:       monoH,
+            background:   'var(--bg-card2)',
+            borderRadius: 10,
+            overflow:     'visible',
+            touchAction:  'none',
+            cursor:       'crosshair',
+          }}
+        >
+          <svg
+            viewBox={`0 0 ${W} ${monoH}`}
+            style={{ width: '100%', height: '100%', display: 'block', borderRadius: 10 }}
+            preserveAspectRatio="none"
+          >
+            {altPath && <path d={altPath} fill="#94a3b8" fillOpacity={0.2} />}
+            {mainPath && (
+              <path d={mainPath} fill={def.color} fillOpacity={0.65} strokeLinejoin="round" />
+            )}
+          </svg>
+          <div
+            ref={crosshairRef}
+            style={{
+              position:      'absolute',
+              top:           0,
+              bottom:        0,
+              width:         1,
+              background:    'var(--border-mid)',
+              opacity:       0,
+              pointerEvents: 'none',
+              zIndex:        5,
+              transition:    'opacity 0.1s',
+            }}
+          />
+          <div
+            ref={el => { dotRefsMap.current.set(def.key, el) }}
+            style={{
+              position:      'absolute',
+              width:         10,
+              height:        10,
+              borderRadius:  '50%',
+              background:    '#ffffff',
+              border:        '2px solid #0f172a',
+              transform:     'translate(-50%, -50%)',
+              opacity:       0,
+              pointerEvents: 'none',
+              zIndex:        6,
+              transition:    'opacity 0.1s',
+              left:          '0%',
+              top:           '50%',
+            }}
+          />
+        </div>
+
+        {/* Stats moy / max */}
+        <div style={{
+          display:        'flex',
+          justifyContent: 'space-around',
+          padding:        '10px 0',
+          borderTop:      '1px solid var(--border)',
+          borderBottom:   '1px solid var(--border)',
+          marginTop:      10,
+        }}>
+          {st ? (
+            <>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Moyenne</div>
+                <div style={{
+                  fontSize:           16,
+                  fontWeight:         700,
+                  color:              def.color,
+                  fontVariantNumeric: 'tabular-nums',
+                  marginTop:          2,
+                }}>{def.fmt(st.avg)} {def.unit}</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Maximum</div>
+                <div style={{
+                  fontSize:           16,
+                  fontWeight:         700,
+                  color:              def.color,
+                  fontVariantNumeric: 'tabular-nums',
+                  marginTop:          2,
+                }}>{def.fmt(st.max)} {def.unit}</div>
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>—</div>
+          )}
+        </div>
+
+        {/* Labels axe X */}
         <div style={{
           display: 'flex', justifyContent: 'space-between',
           padding: '6px 2px 0', fontSize: 9, color: 'var(--text-dim)',
@@ -2967,28 +3367,15 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   // ─────────────────────────────────────────────────────────────
   // FORMAT B — OVERLAID (1 chart combiné + toggles)
   // ─────────────────────────────────────────────────────────────
-  const chartH      = isMobile ? 280 : 320
-  const chartBg     = isMobile ? '#000000' : 'var(--bg-card2)'
-  const altBgFill   = isMobile ? 'rgba(58,58,58,0.6)' : 'rgba(203,213,225,0.6)'
-  const W = 1000, padTop = 8, padBot = 8
-
+  const overlaidH = 260
+  const padT = 8, padB = 8
   // Altitude background path
-  let altPath = ''
-  if (series.altitude) {
-    const altSt = stats(series.altitude)
-    if (altSt) {
-      const range = (altSt.max - altSt.min) || 1
-      const pts = series.altitude.map((v, i) => {
-        const x = (i / (N - 1)) * W
-        const y = chartH - padBot - ((v - altSt.min) / range) * (chartH - padTop - padBot)
-        return `${x.toFixed(1)},${y.toFixed(1)}`
-      })
-      altPath = `M0,${chartH}L${pts.join('L')}L${W},${chartH}Z`
-    }
-  }
+  const altData = series.altitude
+  const altSt   = altData ? statsMap['altitude'] : null
+  const altPathO = altData && altSt ? buildAreaPath(altData, altSt, overlaidH, padT, padB) : ''
 
   return (
-    <div ref={containerRef}>
+    <div>
       {FormatToggle}
 
       {/* Toggles métriques 3x2 */}
@@ -2996,7 +3383,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
         gap: 6,
-        marginBottom: 14,
+        marginBottom: 12,
       }}>
         {METRIC_DEFS.filter(d => presentKeys.includes(d.key)).map(def => {
           const active = activeMetrics.has(def.key)
@@ -3021,7 +3408,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
                 fontSize:     10,
                 fontWeight:   600,
                 cursor:       'pointer',
-                opacity:      active ? 1 : 0.4,
+                opacity:      active ? 1 : 0.35,
                 transition:   'opacity 0.15s',
                 fontFamily:   'inherit',
               }}
@@ -3033,54 +3420,95 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         })}
       </div>
 
+      {TooltipNeutral}
+
       {/* Chart combiné */}
-      <div style={{
-        background:    chartBg,
-        borderRadius:  8,
-        overflow:      'visible',
-        position:      'relative',
-        height:        chartH,
-      }}>
+      <div
+        ref={containerRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerLeaveOrUp}
+        onPointerLeave={onPointerLeaveOrUp}
+        onPointerCancel={onPointerLeaveOrUp}
+        style={{
+          background:    'var(--bg-card2)',
+          borderRadius:  10,
+          overflow:      'visible',
+          position:      'relative',
+          height:        overlaidH,
+          touchAction:   'none',
+          cursor:        'crosshair',
+        }}
+      >
         <svg
-          viewBox={`0 0 ${W} ${chartH}`}
-          style={{ width: '100%', height: '100%', display: 'block' }}
+          viewBox={`0 0 ${W} ${overlaidH}`}
+          style={{ width: '100%', height: '100%', display: 'block', borderRadius: 10 }}
           preserveAspectRatio="none"
         >
-          {/* Grille horizontale subtile (3 lignes) */}
+          {/* Grille subtile */}
           {[0.25, 0.5, 0.75].map(t => (
             <line
               key={t}
-              x1={0} y1={chartH * t} x2={W} y2={chartH * t}
-              stroke={isMobile ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'}
-              strokeWidth="1"
+              x1={0} y1={overlaidH * t} x2={W} y2={overlaidH * t}
+              stroke="var(--border)" strokeWidth="1" opacity={0.5}
             />
           ))}
           {/* Profil altitude arrière-plan (toujours visible) */}
-          {altPath && <path d={altPath} fill={altBgFill} />}
-          {/* Courbes lignes (normalisées chacune sur son range) */}
+          {altPathO && <path d={altPathO} fill="#94a3b8" fillOpacity={0.18} />}
+          {/* Courbes lignes par métrique active */}
           {METRIC_DEFS.filter(d => activeMetrics.has(d.key) && presentKeys.includes(d.key)).map(def => {
             const data = getData(def.key)
-            if (!data) return null
-            const st = stats(data)
-            if (!st) return null
-            const range = (st.max - st.min) || 1
-            const pts = data.map((v, i) => {
-              const x = (i / (N - 1)) * W
-              const y = chartH - padBot - ((v - st.min) / range) * (chartH - padTop - padBot)
-              return `${x.toFixed(1)},${y.toFixed(1)}`
-            })
+            const st = statsMap[def.key]
+            if (!data || !st) return null
             return (
               <path
                 key={def.key}
-                d={`M${pts.join('L')}`}
+                d={buildLinePath(data, st, overlaidH, padT, padB)}
                 fill="none"
                 stroke={def.color}
-                strokeWidth="1.8"
+                strokeWidth="2"
                 strokeLinejoin="round"
               />
             )
           })}
         </svg>
+        {/* Crosshair */}
+        <div
+          ref={crosshairRef}
+          style={{
+            position:      'absolute',
+            top:           0,
+            bottom:        0,
+            width:         1,
+            background:    'var(--border-mid)',
+            opacity:       0,
+            pointerEvents: 'none',
+            zIndex:        5,
+            transition:    'opacity 0.1s',
+          }}
+        />
+        {/* Dots pour chaque métrique active */}
+        {METRIC_DEFS.filter(d => activeMetrics.has(d.key) && presentKeys.includes(d.key)).map(def => (
+          <div
+            key={def.key}
+            ref={el => { dotRefsMap.current.set(def.key, el) }}
+            style={{
+              position:      'absolute',
+              width:         9,
+              height:        9,
+              borderRadius:  '50%',
+              background:    '#ffffff',
+              border:        '2px solid #0f172a',
+              transform:     'translate(-50%, -50%)',
+              opacity:       0,
+              pointerEvents: 'none',
+              zIndex:        6,
+              transition:    'opacity 0.1s',
+              left:          '0%',
+              top:           '50%',
+            }}
+          />
+        ))}
       </div>
 
       {/* Labels axe X */}

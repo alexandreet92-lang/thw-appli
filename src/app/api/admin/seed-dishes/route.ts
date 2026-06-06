@@ -80,15 +80,31 @@ export async function POST(): Promise<NextResponse> {
 
   const apiKey = process.env.SPOONACULAR_API_KEY ?? ''
   const total  = DISH_CATALOGUE.length
+  const admin  = createServiceClient()
 
-  // ── Photos en parallèle (par lots, pour rester rapide) ───────────
+  // ── Conserve les photos déjà récupérées (résilience quota) ───────
+  // On ne re-télécharge que les plats qui n'ont pas encore d'image.
+  const photoByName = new Map<string, string>()
+  const { data: existing } = await admin.from('dishes').select('name,image_url')
+  for (const e of (existing ?? []) as Array<{ name: string; image_url: string | null }>) {
+    if (e.image_url) photoByName.set(e.name, e.image_url)
+  }
+
   const images = new Array<string | null>(total).fill(null)
-  if (apiKey) {
+  const toFetch: number[] = []
+  DISH_CATALOGUE.forEach((d, i) => {
+    const cached = photoByName.get(d.name)
+    if (cached) images[i] = cached
+    else toFetch.push(i)
+  })
+
+  // ── Photos manquantes, en parallèle (par lots) ───────────────────
+  if (apiKey && toFetch.length) {
     const BATCH = 8
-    for (let i = 0; i < total; i += BATCH) {
-      const slice = DISH_CATALOGUE.slice(i, i + BATCH)
-      const photos = await Promise.all(slice.map(d => fetchPhoto(apiKey, d.q)))
-      photos.forEach((p, j) => { images[i + j] = p })
+    for (let b = 0; b < toFetch.length; b += BATCH) {
+      const slice = toFetch.slice(b, b + BATCH)
+      const photos = await Promise.all(slice.map(i => fetchPhoto(apiKey, DISH_CATALOGUE[i].q)))
+      slice.forEach((i, j) => { images[i] = photos[j] })
     }
   }
 
@@ -96,7 +112,6 @@ export async function POST(): Promise<NextResponse> {
   const withPhoto = rows.filter(r => r.image_url).length
 
   // ── Reconstruction propre : on remplace tout le contenu ──────────
-  const admin = createServiceClient()
   const { error: delErr } = await admin.from('dishes').delete().not('id', 'is', null)
   if (delErr) return NextResponse.json({ error: `Supabase (delete): ${delErr.message}` }, { status: 500 })
 

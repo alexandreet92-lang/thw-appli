@@ -2982,9 +2982,10 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   const tooltipNeutralKeys = format === 'overlaid'
     ? presentKeys.filter(k => activeMetrics.has(k))
     : presentKeys
-  const TooltipNeutral = (
+  const TooltipNeutralNode = (
     <div
       ref={tooltipRef}
+      className="curves-tooltip-desktop"
       style={{
         opacity:       0,
         transition:    'opacity 0.15s',
@@ -2995,7 +2996,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         boxShadow:     '0 4px 16px rgba(0,0,0,0.10)',
         pointerEvents: 'none',
         ...(isDesktop
-          ? { position: 'fixed' as const, left: -9999, top: -9999, zIndex: 1000, marginBottom: 0 }
+          ? { position: 'fixed' as const, left: -9999, top: -9999, zIndex: 9999, marginBottom: 0 }
           : { position: 'static' as const, marginBottom: 10 }
         ),
       }}
@@ -3029,10 +3030,19 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     </div>
   )
 
+  // Sur desktop : portal vers document.body pour échapper à tout
+  // containing block créé par un ancêtre transformé (sidebar, sheet, etc.).
+  // Sur mobile : rendu inline en flow (style static).
+  const TooltipNeutral =
+    isDesktop && typeof document !== 'undefined'
+      ? createPortal(TooltipNeutralNode, document.body)
+      : TooltipNeutralNode
+
   // Tooltip COLORÉ (Mono)
-  const TooltipColored = (
+  const TooltipColoredNode = (
     <div
       ref={tooltipRef}
+      className="curves-tooltip-desktop"
       style={{
         opacity:       0,
         transition:    'opacity 0.15s',
@@ -3043,7 +3053,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         boxShadow:     '0 4px 16px rgba(0,0,0,0.15)',
         pointerEvents: 'none',
         ...(isDesktop
-          ? { position: 'fixed' as const, left: -9999, top: -9999, zIndex: 1000, marginBottom: 0 }
+          ? { position: 'fixed' as const, left: -9999, top: -9999, zIndex: 9999, marginBottom: 0 }
           : { position: 'static' as const, marginBottom: 10 }
         ),
       }}
@@ -3062,6 +3072,10 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       >—</div>
     </div>
   )
+  const TooltipColored =
+    isDesktop && typeof document !== 'undefined'
+      ? createPortal(TooltipColoredNode, document.body)
+      : TooltipColoredNode
 
   const W = 1000
   const ROW_H = 70    // hauteur fixe par row (Format A collé)

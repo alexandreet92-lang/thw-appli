@@ -17,9 +17,14 @@ import {
   type MealSlotKey, type DailyMealEntry, type MealIngredient,
 } from '@/hooks/useDailyMeals'
 import type { FoodItem } from '@/lib/food-search'
+import { dishMacros, type DishItem } from '@/lib/dish-search'
 
 const FoodSearchSheet = dynamic(
   () => import('@/components/nutrition/FoodSearchSheet').then(m => ({ default: m.FoodSearchSheet })),
+  { ssr: false },
+)
+const DishPickerSheet = dynamic(
+  () => import('@/components/nutrition/DishPickerSheet').then(m => ({ default: m.DishPickerSheet })),
   { ssr: false },
 )
 
@@ -85,7 +90,7 @@ interface Props {
 
 export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expandSignal = 0 }: Props) {
   const [expanded, setExpanded] = useState<MealSlotKey | null>(null)
-  const [method, setMethod]     = useState<'photo' | 'search' | 'manual' | null>(null)
+  const [method, setMethod]     = useState<'photo' | 'search' | 'dishes' | 'manual' | null>(null)
 
   // ── Déclenchement externe : déplie le 1er créneau vide (raccourci Bilan) ──
   useEffect(() => {
@@ -217,6 +222,18 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
     })
   }
 
+  // ── Plats (catalogue dishes) ──────────────────────────────────────
+  async function addSearchDish(slot: MealSlotKey, dish: DishItem, grams: number) {
+    const m = dishMacros(dish, grams)
+    await addToSlot(slot, {
+      name: dish.name + (grams !== dish.default_portion_g ? ` (${grams}g)` : ''),
+      kcal: m.kcal, prot: m.prot, gluc: m.gluc, lip: m.lip,
+      ingredient: { name: dish.name, qty: String(grams), unit: 'g' },
+      photo_url: dish.image_url ?? null,
+      source: 'dish', replace: false,
+    })
+  }
+
   // ── Styles ─────────────────────────────────────────────────────────
   const methodBtn = (active: boolean): React.CSSProperties => ({
     flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
@@ -317,6 +334,10 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                     Recherche
                   </button>
+                  <button style={methodBtn(method === 'dishes')} onClick={() => setMethod('dishes')}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3 11h18M5 11V7a2 2 0 012-2h10a2 2 0 012 2v4M4 11l1 8a2 2 0 002 2h10a2 2 0 002-2l1-8"/></svg>
+                    Plats
+                  </button>
                   <button style={methodBtn(method === 'manual')} onClick={() => setMethod('manual')}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Manuel
@@ -363,6 +384,14 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
                   <FoodSearchSheet
                     onClose={() => setMethod(null)}
                     onSelect={(food, grams) => { void addSearchFood(slot, food, grams) }}
+                  />
+                )}
+
+                {/* ── Méthode Plats ── */}
+                {method === 'dishes' && (
+                  <DishPickerSheet
+                    onClose={() => setMethod(null)}
+                    onSelect={(dish, grams) => { void addSearchDish(slot, dish, grams); setMethod(null) }}
                   />
                 )}
 

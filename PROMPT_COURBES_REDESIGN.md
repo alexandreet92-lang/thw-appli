@@ -1,73 +1,107 @@
-# PROMPT_COURBES_REDESIGN — Refonte section Courbes
-
-## Diagnostic
-La section « Courbes » utilisait `SyncCharts` (589 lignes), un composant tout-en-un avec drag-to-select, lap rectangles, hover GPS, etc. Le redesign demande un layout différent + toggle 2 formats + lissage + tooltip Strava-style → **nouveau composant `ActivityCurves`** créé en parallèle, les 2 call sites swappés vers le nouveau.
+# PROMPT_COURBES_REDESIGN — 3 formats + crosshair/tooltip via refs
 
 ## Fichier modifié
-- `src/app/activities/page.tsx` — nouveau composant `ActivityCurves` ajouté l. 2654+, swap des `<SyncCharts>` aux 2 endroits (mobile l. 5637, desktop l. 6080)
-- Import lucide : `+AlignJustify, +LayoutGrid`
+- `src/app/activities/page.tsx` — composant `ActivityCurves` étendu (Empilé COLLÉ, Superposé, Mono) + interactivité refs-based
 
-## Composant `ActivityCurves`
+## Étape 1 — Toggle 3 formats
+Segmented control 3 boutons : `Empilé` (`AlignJustify`) / `Superposé` (`LayoutGrid`) / `Mono` (`Square`).
+- Container `var(--bg-card2)` border `var(--border)` radius 8 padding 3 gap 2
+- Bouton actif : background `var(--bg-card)`, color `var(--text)`, fw 700
+- Bouton inactif : transparent, color `var(--text-dim)`, fw 500
+- Persistance `localStorage['activity-charts-format']` ∈ `stacked | overlaid | mono`, défaut `stacked`
 
-### 1. Toggle format (segmented control)
-- `Empilé` (`AlignJustify`) / `Superposé` (`LayoutGrid`)
-- Container `var(--bg-card2)` border radius 8 padding 3 ; bouton actif `var(--bg-card)` + `var(--text)`, inactif transparent + `var(--text-dim)`
-- localStorage `activity-charts-format` (`stacked`/`overlaid`)
-- Défaut `stacked`
+## Étape 2 — Lissage 30 s
+`smoothSeries(values, win)` appliqué une fois via `useMemo([streams])`. `win = round(30 / dt)` où `dt = (time[10]-time[0])/10`. Min 2.
 
-### 2. Lissage moyenne mobile
-`smoothSeries(values, windowSize)` → fenêtre = `Math.round(30 / dt)` où `dt` = pas de temps moyen du stream. Appliqué une seule fois dans un `useMemo([s])` sur les 6 séries (Altitude, FC, Watts, Vitesse, Cadence, Temp).
+## Étape 3 — Format A : Empilé COLLÉ
+Structure : 2 colonnes (label 60 px + charts flex 1) dans un wrapper `var(--bg-card2)` border-radius 10 overflow hidden.
 
-### 3. Format A — Empilé (Strava-like)
-Pour chaque métrique présente :
-- **Header** : nom (`fontSize: 13`, fontWeight: 600, color métrique) + range `min – max unit` (`fontSize: 10`, `var(--text-dim)`, tabular-nums)
-- **Chart 100 px** : background `#000000` mobile / `var(--bg-card2)` desktop, borderRadius 6, overflow hidden
-- **Profil altitude en arrière-plan** : fill `rgba(58,58,58,0.6)` mobile / `rgba(203,213,225,0.6)` desktop — visible derrière chaque courbe
-- **Zone area** : couleur sémantique, `fillOpacity: 0.6`, `strokeLinejoin: round`
-- **Stats** sous chart : `Label moyenne {valeur unit}` à gauche, `Label max {valeur unit}` à droite, fontSize 11, color `var(--text-dim)`, valeur en couleur métrique fw 700 tabular
-- **Espacement 18 px** entre blocs
-- **Labels axe X commun** en bas : 4-5 ticks équidistants (`0 / 15 km / 30 km / 45 km / N km` ou minutes si pas de distance) — fontSize 9 `var(--text-dim)` tabular
+- **Rows 70 px fixes**, `border-bottom: 1px var(--border)` entre eux (pas sur le dernier), aucun gap
+- **Colonne label** : nom 12/700 en couleur sémantique + range `min – max unit` 9/`var(--text-dim)` tabular, padding 8/6, `border-right: 1px var(--border)`
+- **Colonne chart** : SVG par row avec viewBox `0 0 1000 70` preserveAspectRatio none
+  - Profil altitude en arrière-plan `fill="#94a3b8"` opacity 0.18 (toujours, même dans le row Altitude)
+  - Zone area couleur sémantique fillOpacity 0.55 (0.5 pour Altitude)
+- **Crosshair vertical** TRAVERSANT toute la colonne chart : `position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border-mid); zIndex: 5`
+- **Dots** par row : 8 px blanc cerclé `#0f172a` 2 px, transform `translate(-50%, -50%)`, zIndex 6
+- Labels axe X commun en bas, padding-left 62 px (aligné sur la colonne chart)
 
-### 4. Format B — Superposé
-- **Toggles métriques** en grille 3 colonnes × 2 lignes
-  - Dot 8 px couleur sémantique + label couleur métrique fw 600 fontSize 10
-  - Border 1px `var(--border)`, background `var(--bg-card2)`, padding 6/8, radius 6
-  - `opacity: 0.4` si inactif → clic toggle
-  - localStorage `activity-charts-overlaid-metrics` (array)
-  - Défaut au premier mount : `hr, watts, speed`
-- **Chart combiné** :
-  - Mobile 280 px, desktop 320 px
-  - Background `#000000` mobile / `var(--bg-card2)` desktop
-  - 3 gridlines horizontales discrètes (`rgba(255,255,255,0.05)` mobile / `rgba(0,0,0,0.06)` desktop)
-  - Profil altitude arrière-plan (**toujours visible**, même si Altitude inactive comme courbe)
-  - Lignes 1.8 px, `strokeLinejoin: round`, fill: none
-  - Chaque métrique normalisée sur son propre range (multi-axes invisibles)
-- **Labels axe X commun** identique au format A
+## Étape 4 — Format B : Superposé
+- **Toggles métriques** grille 3 cols × 2 rows. Dot 8 px + label couleur métrique fw 600 fs 10. `opacity: 0.35` si inactif. Persistance `localStorage['activity-charts-overlaid-metrics']` array.
+  - Défaut au 1er mount : `hr, watts, speed`
+- **Chart combiné** 260 px, `var(--bg-card2)` border-radius 10 overflow visible
+  - 3 gridlines horizontales `stroke: var(--border)` opacity 0.5
+  - Profil altitude TOUJOURS visible (`#94a3b8` opacity 0.18)
+  - Lignes 2 px par métrique active (normalisées sur son range)
+- **Crosshair + dots** par métrique active
 
-### 5. Métriques + couleurs sémantiques (fixes)
-| key | label | unit | color | textOnColor (tooltip mobile) |
-|---|---|---|---|---|
-| altitude | Altitude | m | `#94a3b8` | noir |
-| hr | FC | bpm | `#f97316` | noir |
-| watts | Puissance | W | `#6366f1` | blanc |
-| speed | Vitesse | km/h | `#06B6D4` | noir |
-| cadence | Cadence | rpm | `#ec4899` | noir |
-| temp | Température | °C | `#10B981` | noir |
+## Étape 5 — Format C : Mono (nouveau)
+- **Pills horizontales scrollables** : `overflow-x: auto` `gap: 6` `padding-bottom: 4`
+  - Pill inactive : `bg var(--bg-card2)`, color `var(--text-dim)`
+  - Pill active : `bg var(--text)`, color `var(--bg)` (inversion thème)
+  - Persistance `localStorage['activity-charts-mono-metric']`, défaut `hr`
+- **Chart** 280 px area chart couleur métrique fillOpacity 0.65 + altitude background `#94a3b8` 0.2
+- **Crosshair + 1 dot** 10 px
+- **Stats moy / max** : flex space-around + border-top/border-bottom `var(--border)`, valeur 16/700 couleur métrique tabular
 
-### 6. Données manquantes
-Métriques non présentes (data null ou aucune valeur > 0) → exclues automatiquement de `presentKeys` → ni rendues en empilé, ni toggleables en superposé.
+## Étape 6 — Tooltip qui suit le doigt
+### Tooltip neutre (Empilé + Superposé)
+- `var(--bg-card)` + border `var(--border)` + radius 12 + padding 10 14 + shadow 0 4px 16px rgba(0,0,0,0.10)
+- Header `tooltipHeaderRef` : 10 px uppercase letter-spacing 0.08em opacity 0.6
+- Rows : dot 7 px couleur + nom métrique opacity 0.65 + valeur fw 700 couleur métrique tabular
+- Format A : affiche TOUS les `presentKeys`
+- Format B : affiche uniquement `presentKeys ∩ activeMetrics`
 
-Composant retourne `null` si aucune métrique disponible.
+### Tooltip coloré (Mono)
+- Background `monoBg` = couleur sémantique de la métrique sélectionnée
+- Color noir ou blanc selon `textOnColor` du `MetricDef`
+- Radius 12 padding 12 16 shadow 0 4px 16px rgba(0,0,0,0.15)
+- Main `tooltipMonoMainRef` : 22 px fw 700 tabular (ex "176 bpm")
+- Sub `tooltipMonoSubRef` : 11 px opacity 0.75 (ex "15,9 km · 48:32")
+
+### Position
+Position relative AU-DESSUS du chart (`marginBottom: 10`). Reste visible en haut, valeurs internes mises à jour via refs au mouvement du doigt.
+
+## Étape 7 — Performance (refs DOM direct, ZÉRO setState au drag)
+**Refs** :
+- `containerRef` (chart container)
+- `crosshairRef` (la ligne verticale)
+- `dotRefsMap: Map<key, HTMLDivElement>` (un par métrique)
+- `tooltipRef` (la bulle)
+- `tooltipHeaderRef` (header neutre)
+- `tooltipValRefs: Map<key, HTMLSpanElement>` (les `<span>` de valeur dans le neutre)
+- `tooltipMonoMainRef`, `tooltipMonoSubRef` (pour Mono)
+
+**`updateAtClientX(clientX)`** :
+- Calcule `ratio = clamp((clientX - rect.left) / rect.width)` et `idx = round(ratio * (N-1))`
+- `crosshair.style.left = ratio*100%` + opacity 1
+- Pour chaque dot : calcule `yRatio = (v - min) / (max - min)` → `dot.style.left = ratio*100%`, `dot.style.top = (1-yRatio)*100%`, opacity 1
+- Met à jour `tooltipHeader.textContent`, chaque `tooltipValRefs.span.textContent`, et `tooltipMono*.textContent`
+- Toggle `tooltip.style.opacity = '1'`
+
+**`hideHint()`** : remet toutes les opacities à 0.
+
+**Handlers** : `onPointerDown/Move/Up/Leave/Cancel` (PointerEvents unifie touch + mouse).
+- `setPointerCapture` au down → continuer le drag même hors zone
+- Hover desktop (`buttons === 0 && pointerType === 'mouse'`) : on update quand même
+
+**Aucun setState** dans aucun handler de pointage.
+
+## Étape 8 — Mobile vs Desktop
+Aucune différence visuelle. `var(--bg-card2)` partout. PointerEvents gèrent les 2 mode tactile et souris automatiquement.
 
 ## Inchangé
-- `SyncCharts` reste défini dans le fichier (non supprimé) — réutilisable si besoin de rollback. Plus aucun call site actif.
-- Branche desktop strictement intouchée en dehors du swap `SyncCharts → ActivityCurves`
-- MMP, GAP, Decoupling, LapsChart, LapsBikeChart, autres sections : inchangés
+- `smoothSeries`, `MetricDef`, `METRIC_DEFS` (déjà créés au MVP précédent)
+- `series` / `presentKeys` / helper `stats` (mais `statsMap` ajouté en `useMemo`)
+- Section call sites (les 2 `<ActivityCurves />` mobile + desktop)
+- `SyncCharts` toujours présent dans le fichier (non utilisé, mais conservé pour rollback éventuel)
 
-## Limitations connues / suite (à valider)
-Cette implémentation est un MVP solide qui delivers le cœur du spec : toggle 2 formats, lissage 30s, format A empilé avec altitude background, format B superposé multi-axes, persistance localStorage, couleurs sémantiques, fond noir mobile / var(--bg) desktop.
-
-**Non implémenté dans ce MVP** (à venir si besoin) :
-- **Crosshair + tooltip interactif au tap/hover** — la structure refs est en place (`containerRef`) mais le binding scroll/touch n'est pas câblé. Le spec demandait des tooltips couleurs Strava mobile + neutre desktop avec dot blanc cerclé noir 8 px, valeur en grand au-dessus, etc. À ajouter dans un second prompt avec gestion fine du mouse/touch position + ref-based crosshair update (pattern déjà appliqué au sheet draggable pour éviter les re-renders).
-
-Le composant fonctionne et compile (`npm run build` OK). Les courbes s'affichent avec le bon style, le toggle persiste, le profil altitude est en arrière-plan partout — la base est posée pour ajouter l'interactivité dans un prompt suivant ciblé sur ce point.
+## Vérification
+- `npm run build` : ✅ 0 erreur TS
+- Toggle 3 formats visible
+- Persistance localStorage du format choisi + métriques actives + métrique mono
+- **Empilé** : 6 rows collés, label column gauche 60 px, crosshair unique traversant, dot par row
+- **Superposé** : toggles 3×2, chart 260 px, lignes 2 px, crosshair + dots par métrique active
+- **Mono** : pills scrollables, area chart 280 px, tooltip COLORÉ couleur métrique, stats moy/max
+- Tous les fonds via `var(--bg-card2)` / `var(--bg-card)` / `var(--bg)` — **JAMAIS #000 ni #fff fixes**
+- Lissage 30 s appliqué via useMemo
+- Aucun setState dans `updateAtClientX` / `hideHint` / pointer handlers

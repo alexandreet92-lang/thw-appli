@@ -2724,6 +2724,21 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   }, [activeMetrics])
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('activity-charts-mono-metric', monoMetric) }, [monoMetric])
 
+  // ── Détection desktop (souris + hover réel) ────────────────────────
+  const [isDesktop, setIsDesktop] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(hover: hover) and (pointer: fine)')
+    const update = () => setIsDesktop(mq.matches)
+    update()
+    if (mq.addEventListener) mq.addEventListener('change', update)
+    else mq.addListener(update)
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', update)
+      else mq.removeListener(update)
+    }
+  }, [])
+
   // ── Préparation des séries (lissées, useMemo) ──────────────────────
   const series = useMemo(() => {
     if (!s) return null
@@ -2827,7 +2842,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   }
 
   // Met à jour le DOM (crosshair + dots + tooltip) directement, SANS setState
-  function updateAtClientX(clientX: number) {
+  function updateAtPointer(clientX: number, clientY: number) {
     const cont = containerRef.current
     if (!cont) return
     const rect = cont.getBoundingClientRect()
@@ -2876,6 +2891,20 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     if (tooltipMonoSubRef.current) tooltipMonoSubRef.current.textContent = fmtPosition(idx)
     // Tooltip wrapper
     if (tooltipRef.current) tooltipRef.current.style.opacity = '1'
+    // Desktop : repositionne la bulle en position fixed à côté du curseur
+    if (isDesktop && tooltipRef.current) {
+      const bubble = tooltipRef.current
+      const bw = bubble.offsetWidth
+      const bh = bubble.offsetHeight
+      let left = clientX + 12
+      let top  = clientY + 12
+      if (left + bw + 12 > window.innerWidth)  left = clientX - bw - 12
+      if (top  + bh + 12 > window.innerHeight) top  = clientY - bh - 12
+      left = Math.max(8, left)
+      top  = Math.max(8, top)
+      bubble.style.left = `${left}px`
+      bubble.style.top  = `${top}px`
+    }
   }
 
   function hideHint() {
@@ -2886,17 +2915,14 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
 
   // Handlers communs pointer (touch + mouse). PointerEvents unifie les 2.
   function onPointerDown(e: React.PointerEvent) {
-    updateAtClientX(e.clientX)
-    // Capture pour drag continu hors zone
-    e.currentTarget.setPointerCapture(e.pointerId)
+    updateAtPointer(e.clientX, e.clientY)
+    // Capture pour drag continu hors zone (mobile)
+    if (e.pointerType !== 'mouse') {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    }
   }
   function onPointerMove(e: React.PointerEvent) {
-    if (e.buttons === 0 && e.pointerType === 'mouse') {
-      // Hover desktop : update sans bouton tenu
-      updateAtClientX(e.clientX)
-      return
-    }
-    updateAtClientX(e.clientX)
+    updateAtPointer(e.clientX, e.clientY)
   }
   function onPointerLeaveOrUp() { hideHint() }
 
@@ -2961,14 +2987,17 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       ref={tooltipRef}
       style={{
         opacity:       0,
-        transition:    'opacity 0.12s',
+        transition:    'opacity 0.15s',
         background:    'var(--bg-card)',
         border:        '1px solid var(--border)',
         borderRadius:  12,
         padding:       '10px 14px',
-        marginBottom:  10,
         boxShadow:     '0 4px 16px rgba(0,0,0,0.10)',
         pointerEvents: 'none',
+        ...(isDesktop
+          ? { position: 'fixed' as const, left: -9999, top: -9999, zIndex: 1000, marginBottom: 0 }
+          : { position: 'static' as const, marginBottom: 10 }
+        ),
       }}
     >
       <div ref={tooltipHeaderRef} style={{
@@ -3006,14 +3035,17 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       ref={tooltipRef}
       style={{
         opacity:       0,
-        transition:    'opacity 0.12s',
+        transition:    'opacity 0.15s',
         background:    monoBg,
         color:         monoTxtClr,
         borderRadius:  12,
         padding:       '12px 16px',
-        marginBottom:  10,
         boxShadow:     '0 4px 16px rgba(0,0,0,0.15)',
         pointerEvents: 'none',
+        ...(isDesktop
+          ? { position: 'fixed' as const, left: -9999, top: -9999, zIndex: 1000, marginBottom: 0 }
+          : { position: 'static' as const, marginBottom: 10 }
+        ),
       }}
     >
       <div

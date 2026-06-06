@@ -1,107 +1,74 @@
 // ══════════════════════════════════════════════════════════════════
 // POST /api/admin/seed-dishes
-//   Peuple la table `dishes` depuis l'API Spoonacular. Réservé au
-//   créateur (CREATOR_USER_ID). Exécuté côté serveur Vercel → accès
-//   réseau OK vers Spoonacular. Idempotent (upsert sur spoonacular_id).
+//   Reconstruit la table `dishes` à partir du catalogue curé
+//   (src/lib/dish-catalogue.ts) : plats sportifs FR, macros maîtrisées.
+//   Pour chaque plat, va chercher UNE photo représentative sur
+//   Spoonacular (recherche par nom). Réservé au créateur.
 //
-//   Env requis :
-//     SPOONACULAR_API_KEY        — clé Spoonacular (server only)
-//     SUPABASE_SERVICE_ROLE_KEY  — déjà présent (insert bypass RLS)
-//     CREATOR_USER_ID            — déjà présent (gate)
+//   Idempotent : remplace intégralement le contenu de `dishes`.
+//   Env : SPOONACULAR_API_KEY (photos), SUPABASE_SERVICE_ROLE_KEY,
+//         CREATOR_USER_ID.
 // ══════════════════════════════════════════════════════════════════
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { DISH_CATALOGUE, type CatalogueDish } from '@/lib/dish-catalogue'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-interface Nutrient { name: string; amount: number; unit: string }
-interface SpoonResult {
-  id:        number
-  title:     string
-  image?:    string
-  cuisines?: string[]
-  nutrition?: {
-    nutrients?:        Nutrient[]
-    weightPerServing?: { amount: number; unit: string }
-  }
-}
-interface ComplexSearch { results?: SpoonResult[] }
-
 interface DishRow {
-  spoonacular_id:    number
+  spoonacular_id:    null
   name:              string
   category:          string
-  cuisine:           string | null
+  cuisine:           null
   kcal_100g:         number
   prot_100g:         number
   gluc_100g:         number
   lip_100g:          number
   default_portion_g: number
   image_url:         string | null
-  source:            'spoonacular'
+  source:            'manual'
   verified:          boolean
   popularity:        number
 }
 
-const CATEGORIES: Array<{ type: string; category: string }> = [
-  { type: 'breakfast',   category: 'breakfast' },
-  { type: 'main course', category: 'main'      },
-  { type: 'salad',       category: 'salad'     },
-  { type: 'soup',        category: 'soup'      },
-  { type: 'side dish',   category: 'side'      },
-  { type: 'snack',       category: 'snack'     },
-  { type: 'dessert',     category: 'dessert'   },
-  { type: 'appetizer',   category: 'starter'   },
-]
-
-function nutrient(nutrients: Nutrient[] | undefined, name: string): number | null {
-  const n = nutrients?.find(x => x.name === name)
-  return typeof n?.amount === 'number' ? n.amount : null
-}
-
-async function fetchCategory(apiKey: string, type: string, category: string, number: number): Promise<DishRow[]> {
-  const url = new URL('https://api.spoonacular.com/recipes/complexSearch')
-  url.searchParams.set('apiKey', apiKey)
-  url.searchParams.set('type', type)
-  url.searchParams.set('number', String(number))
-  url.searchParams.set('addRecipeNutrition', 'true')
-  url.searchParams.set('sort', 'popularity')
-  url.searchParams.set('instructionsRequired', 'false')
-
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
-  if (!res.ok) throw new Error(`Spoonacular ${type}: HTTP ${res.status}`)
-  const data = await res.json() as ComplexSearch
-
-  const rows: DishRow[] = []
-  for (const r of data.results ?? []) {
-    const nutrients = r.nutrition?.nutrients
-    const weightG   = r.nutrition?.weightPerServing?.amount
-    const cal       = nutrient(nutrients, 'Calories')
-    if (!weightG || weightG <= 0 || cal == null) continue
-
-    const per100 = (v: number | null) => (v == null ? 0 : +(v / weightG * 100).toFixed(2))
-    rows.push({
-      spoonacular_id:    r.id,
-      name:              r.title,
-      category,
-      cuisine:           Array.isArray(r.cuisines) && r.cuisines.length ? r.cuisines[0] : null,
-      kcal_100g:         per100(cal),
-      prot_100g:         per100(nutrient(nutrients, 'Protein')),
-      gluc_100g:         per100(nutrient(nutrients, 'Carbohydrates')),
-      lip_100g:          per100(nutrient(nutrients, 'Fat')),
-      default_portion_g: Math.round(weightG),
-      image_url:         r.image ?? null,
-      source:            'spoonacular',
-      verified:          true,
-      popularity:        0,
-    })
+// Récupère une photo représentative pour un terme (best-effort).
+async function fetchPhoto(apiKey: string, q: string): Promise<string | null> {
+  try {
+    const url = new URL('https://api.spoonacular.com/recipes/complexSearch')
+    url.searchParams.set('apiKey', apiKey)
+    url.searchParams.set('query', q)
+    url.searchParams.set('number', '1')
+    url.searchParams.set('sort', 'popularity')
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) return null
+    const data = await res.json() as { results?: Array<{ image?: string }> }
+    return data.results?.[0]?.image ?? null
+  } catch {
+    return null
   }
-  return rows
 }
 
-export async function POST(req: Request): Promise<NextResponse> {
-  // ── Gate créateur (serveur) ──────────────────────────────────────
+// Mappe une entrée catalogue → ligne dishes (popularité = ordre de liste).
+function toRow(d: CatalogueDish, image: string | null, rank: number): DishRow {
+  return {
+    spoonacular_id:    null,
+    name:              d.name,
+    category:          d.category,
+    cuisine:           null,
+    kcal_100g:         d.kcal,
+    prot_100g:         d.prot,
+    gluc_100g:         d.gluc,
+    lip_100g:          d.lip,
+    default_portion_g: d.portion,
+    image_url:         image,
+    source:            'manual',
+    verified:          true,
+    popularity:        rank,
+  }
+}
+
+export async function POST(): Promise<NextResponse> {
   const sb = await createClient()
   const { data: { user } } = await sb.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
@@ -111,56 +78,42 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Réservé au créateur.' }, { status: 403 })
   }
 
-  const apiKey = process.env.SPOONACULAR_API_KEY
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: 'SPOONACULAR_API_KEY manquante dans les variables d\'environnement Vercel.' },
-      { status: 400 },
-    )
-  }
+  const apiKey = process.env.SPOONACULAR_API_KEY ?? ''
+  const total  = DISH_CATALOGUE.length
 
-  // number/catégorie configurables via body (optionnel)
-  let perCategory = 20
-  try {
-    const body = await req.json() as { number?: number }
-    if (typeof body.number === 'number' && body.number > 0 && body.number <= 100) perCategory = body.number
-  } catch { /* body vide → défaut */ }
-
-  // ── Fetch Spoonacular ────────────────────────────────────────────
-  const breakdown: Array<{ type: string; count: number }> = []
-  let all: DishRow[] = []
-  for (const cat of CATEGORIES) {
-    try {
-      const rows = await fetchCategory(apiKey, cat.type, cat.category, perCategory)
-      breakdown.push({ type: cat.type, count: rows.length })
-      all = all.concat(rows)
-    } catch (e) {
-      breakdown.push({ type: cat.type, count: 0 })
-      console.error('[seed-dishes]', e instanceof Error ? e.message : e)
+  // ── Photos en parallèle (par lots, pour rester rapide) ───────────
+  const images = new Array<string | null>(total).fill(null)
+  if (apiKey) {
+    const BATCH = 8
+    for (let i = 0; i < total; i += BATCH) {
+      const slice = DISH_CATALOGUE.slice(i, i + BATCH)
+      const photos = await Promise.all(slice.map(d => fetchPhoto(apiKey, d.q)))
+      photos.forEach((p, j) => { images[i + j] = p })
     }
   }
 
-  // dédup + popularité décroissante = ordre de fetch (populaires d'abord)
-  const seen = new Map<number, DishRow>()
-  for (const r of all) if (!seen.has(r.spoonacular_id)) seen.set(r.spoonacular_id, r)
-  const unique = [...seen.values()]
-  unique.forEach((r, i) => { r.popularity = unique.length - i })
+  const rows: DishRow[] = DISH_CATALOGUE.map((d, i) => toRow(d, images[i], total - i))
+  const withPhoto = rows.filter(r => r.image_url).length
 
-  if (!unique.length) {
-    return NextResponse.json(
-      { error: 'Aucun plat récupéré — clé invalide ou quota Spoonacular épuisé.', breakdown },
-      { status: 502 },
-    )
-  }
-
-  // ── Upsert (service role, bypass RLS) ────────────────────────────
+  // ── Reconstruction propre : on remplace tout le contenu ──────────
   const admin = createServiceClient()
-  const { error, count } = await admin
-    .from('dishes')
-    .upsert(unique, { onConflict: 'spoonacular_id', count: 'exact' })
-  if (error) {
-    return NextResponse.json({ error: `Supabase: ${error.message}` }, { status: 500 })
-  }
+  const { error: delErr } = await admin.from('dishes').delete().not('id', 'is', null)
+  if (delErr) return NextResponse.json({ error: `Supabase (delete): ${delErr.message}` }, { status: 500 })
 
-  return NextResponse.json({ ok: true, inserted: count ?? unique.length, breakdown })
+  const { error: insErr, count } = await admin.from('dishes').insert(rows, { count: 'exact' })
+  if (insErr) return NextResponse.json({ error: `Supabase (insert): ${insErr.message}` }, { status: 500 })
+
+  // Récap par catégorie
+  const byCat = new Map<string, number>()
+  for (const r of rows) byCat.set(r.category, (byCat.get(r.category) ?? 0) + 1)
+  const breakdown = [...byCat.entries()].map(([type, c]) => ({ type, count: c }))
+
+  return NextResponse.json({
+    ok: true,
+    inserted: count ?? rows.length,
+    photos: withPhoto,
+    total,
+    breakdown,
+    warning: apiKey ? undefined : 'SPOONACULAR_API_KEY absente — plats créés sans photo.',
+  })
 }

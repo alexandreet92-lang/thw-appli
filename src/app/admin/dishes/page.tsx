@@ -19,7 +19,10 @@ function isAdminEmail(email: string | undefined | null): boolean {
 interface SeedResult {
   ok?:        boolean
   inserted?:  number
+  photos?:    number
+  total?:     number
   breakdown?: Array<{ type: string; count: number }>
+  warning?:   string
   error?:     string
 }
 
@@ -27,7 +30,6 @@ export default function SeedDishesPage() {
   const router = useRouter()
   const [authChecked, setAuthChecked] = useState(false)
   const [count, setCount]   = useState<number | null>(null)
-  const [number, setNumber] = useState(20)
   const [running, setRunning] = useState(false)
   const [result, setResult]   = useState<SeedResult | null>(null)
 
@@ -50,11 +52,7 @@ export default function SeedDishesPage() {
   async function runSeed() {
     setRunning(true); setResult(null)
     try {
-      const res  = await fetch('/api/admin/seed-dishes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number }),
-      })
+      const res  = await fetch('/api/admin/seed-dishes', { method: 'POST' })
       const data = await res.json() as SeedResult
       setResult(data)
       if (data.ok) await loadCount()
@@ -82,7 +80,8 @@ export default function SeedDishesPage() {
         Catalogue de plats
       </h1>
       <p style={{ fontFamily: 'DM Sans,sans-serif', fontSize: 13, color: 'var(--text-mid)', margin: '0 0 24px', lineHeight: 1.5 }}>
-        Import one-shot depuis Spoonacular. Rejouable sans doublon (upsert).
+        Reconstruit le catalogue de plats sportifs (français, macros maîtrisées)
+        et va chercher une photo par plat. Rejouable à volonté.
       </p>
 
       {/* État actuel */}
@@ -95,27 +94,17 @@ export default function SeedDishesPage() {
 
       {/* Contrôle */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-          <div style={{ flex: 1 }}>
-            <div style={label}>Plats par catégorie</div>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>× 8 catégories</div>
-          </div>
-          <input type="number" min={1} max={100} value={number}
-            onChange={e => setNumber(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
-            style={{ width: 72, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 15, textAlign: 'center', outline: 'none' }} />
-        </div>
-
         <button onClick={() => void runSeed()} disabled={running}
           style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', minHeight: 44,
             background: running ? 'var(--border)' : `linear-gradient(135deg,${CYAN},#3B82F6)`,
             color: '#fff', fontWeight: 700, fontSize: 14, fontFamily: 'Syne,sans-serif',
             cursor: running ? 'default' : 'pointer' }}>
-          {running ? 'Import en cours…' : 'Importer les plats'}
+          {running ? 'Reconstruction en cours…' : 'Reconstruire le catalogue + photos'}
         </button>
 
         <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '10px 0 0', lineHeight: 1.5 }}>
           Nécessite <code style={{ fontFamily: 'DM Mono,monospace' }}>SPOONACULAR_API_KEY</code> dans les variables
-          d&apos;environnement Vercel. L&apos;import prend ~15&nbsp;s.
+          d&apos;environnement Vercel (pour les photos). L&apos;opération prend ~10&nbsp;s.
         </p>
       </div>
 
@@ -124,9 +113,12 @@ export default function SeedDishesPage() {
         <div style={{ marginTop: 16, background: 'var(--bg-card)', border: `1px solid ${result.ok ? `${CYAN}55` : 'rgba(239,68,68,0.4)'}`, borderRadius: 12, padding: 16 }}>
           {result.ok ? (
             <>
-              <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: CYAN, marginBottom: 10 }}>
-                ✓ {result.inserted} plats importés / mis à jour
+              <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: CYAN, marginBottom: 4 }}>
+                ✓ {result.inserted} plats · {result.photos ?? 0} avec photo
               </div>
+              {result.warning && (
+                <div style={{ fontSize: 11, color: '#f59e0b', marginBottom: 10 }}>{result.warning}</div>
+              )}
               {result.breakdown && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {result.breakdown.map(b => (

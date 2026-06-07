@@ -96,6 +96,8 @@ interface Activity {
   avg_temp_c:       number | null
   rpe:              number | null
   perceived_effort: number | null
+  feeling:          number | null            // 0 à 5, saisi par l'athlète (pas de 0.5)
+  difficulty:       number | null            // 0 à 10, saisi par l'athlète (pas de 0.5)
   notes:            string | null
   description:      string | null
   is_race:          boolean
@@ -5790,6 +5792,226 @@ function RpeModal({ activityId, initialRpe, initialSensation, onClose, onSave }:
 }
 
 // ─────────────────────────────────────────────────────────────
+// JAUGES RESSENTI / DIFFICULTÉ
+// Arcs minimalistes style Whoop/Oura : 3/4 cercle, chiffre central,
+// couleur sémantique selon valeur. Saisie via modal portalisé.
+// ─────────────────────────────────────────────────────────────
+
+const FD_ARC_TOTAL = 217  // 3/4 de circonférence (2π × 46 ≈ 289)
+const FD_ARC_FULL  = 289
+
+const FEELING_THRESHOLDS = [
+  { max: 1.5, color: '#ef4444', label: 'Triste' },
+  { max: 3,   color: '#eab308', label: 'Normal' },
+  { max: 4.5, color: '#10b981', label: 'Bien' },
+  { max: 5,   color: '#06b6d4', label: 'Incroyable' },
+]
+const DIFFICULTY_THRESHOLDS = [
+  { max: 3,   color: '#10b981', label: 'Facile' },
+  { max: 5,   color: '#84cc16', label: 'Modérée' },
+  { max: 6,   color: '#eab308', label: 'Un peu dur' },
+  { max: 7.5, color: '#f97316', label: 'Difficile' },
+  { max: 9,   color: '#ef4444', label: 'Très difficile' },
+  { max: 10,  color: '#991b1b', label: 'Terrible' },
+]
+function feelingDescriptor(v: number)    { return FEELING_THRESHOLDS.find(t => v <= t.max) ?? FEELING_THRESHOLDS[FEELING_THRESHOLDS.length - 1] }
+function difficultyDescriptor(v: number) { return DIFFICULTY_THRESHOLDS.find(t => v <= t.max) ?? DIFFICULTY_THRESHOLDS[DIFFICULTY_THRESHOLDS.length - 1] }
+function fdFormat(v: number): string     { return Number.isInteger(v) ? `${v}` : v.toString().replace('.', ',') }
+
+function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit }: {
+  value:      number | null
+  max:        number
+  denomLabel: string
+  label:      string
+  descriptor: { color: string; label: string } | null
+  onEdit:     () => void
+}) {
+  const isSet  = value != null
+  const ratio  = isSet ? Math.max(0, Math.min(1, (value as number) / max)) : 0
+  const filled = ratio * FD_ARC_TOTAL
+  const color  = isSet && descriptor ? descriptor.color : 'var(--border)'
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+      <div style={{ position: 'relative', width: 110, height: 110 }}>
+        <svg width={110} height={110} viewBox="0 0 110 110">
+          <circle cx={55} cy={55} r={46}
+                  stroke="var(--border)" strokeWidth={6} fill="none"
+                  strokeDasharray={`${FD_ARC_TOTAL} ${FD_ARC_FULL}`}
+                  transform="rotate(135 55 55)" strokeLinecap="round" />
+          {isSet && (
+            <circle cx={55} cy={55} r={46}
+                    stroke={color} strokeWidth={6} fill="none"
+                    strokeDasharray={`${filled} ${FD_ARC_FULL}`}
+                    transform="rotate(135 55 55)" strokeLinecap="round" />
+          )}
+        </svg>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{
+            fontSize: 32, fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+            color: isSet ? 'var(--text)' : 'var(--text-dim)',
+          }}>{isSet ? fdFormat(value as number) : '—'}</div>
+          {isSet && (
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontWeight: 500 }}>
+              {denomLabel}
+            </div>
+          )}
+        </div>
+      </div>
+      <div style={{
+        fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em',
+        color: 'var(--text-dim)', marginTop: 4,
+      }}>{label}</div>
+      <div style={{
+        fontSize: 13, fontWeight: 600,
+        color: isSet ? 'var(--text)' : 'var(--text-dim)',
+        fontStyle: isSet ? 'normal' : 'italic',
+      }}>{isSet && descriptor ? descriptor.label : 'Non renseigné'}</div>
+      <button onClick={onEdit} style={{
+        fontSize: 10, color: '#06b6d4', textDecoration: 'underline',
+        cursor: 'pointer', background: 'none', border: 'none', padding: 0, marginTop: 2,
+      }}>{isSet ? 'Modifier' : 'Ajouter'}</button>
+    </div>
+  )
+}
+
+function GaugeEditModal({ open, kind, value, onClose, onSave }: {
+  open:    boolean
+  kind:    'feeling' | 'difficulty'
+  value:   number | null
+  onClose: () => void
+  onSave:  (v: number) => Promise<void>
+}) {
+  const max = kind === 'feeling' ? 5 : 10
+  const [draft,  setDraft]  = useState<number>(value ?? max / 2)
+  const [saving, setSaving] = useState(false)
+  useEffect(() => { setDraft(value ?? max / 2); setSaving(false) }, [value, open, max])
+  if (!open || typeof document === 'undefined') return null
+  const descriptor = kind === 'feeling' ? feelingDescriptor(draft) : difficultyDescriptor(draft)
+  const color  = descriptor.color
+  const filled = (draft / max) * FD_ARC_TOTAL
+  const title  = kind === 'feeling' ? 'Ressenti' : 'Difficulté'
+  return createPortal(
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, zIndex: 700,
+        background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+      }} />
+      <div style={{
+        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 701,
+        background: 'var(--bg)', borderRadius: '18px 18px 0 0',
+        padding: '20px 24px 28px', boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+        maxWidth: 480, marginLeft: 'auto', marginRight: 'auto',
+        fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{title}</div>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--text-dim)', fontSize: 20, padding: 4,
+          }}>✕</button>
+        </div>
+        {/* Aperçu gauge en grand */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
+          <div style={{ position: 'relative', width: 140, height: 140 }}>
+            <svg width={140} height={140} viewBox="0 0 110 110" preserveAspectRatio="xMidYMid meet">
+              <circle cx={55} cy={55} r={46}
+                      stroke="var(--border)" strokeWidth={6} fill="none"
+                      strokeDasharray={`${FD_ARC_TOTAL} ${FD_ARC_FULL}`}
+                      transform="rotate(135 55 55)" strokeLinecap="round" />
+              <circle cx={55} cy={55} r={46}
+                      stroke={color} strokeWidth={6} fill="none"
+                      strokeDasharray={`${filled} ${FD_ARC_FULL}`}
+                      transform="rotate(135 55 55)" strokeLinecap="round" />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{
+                fontSize: 36, fontWeight: 700,
+                fontVariantNumeric: 'tabular-nums', lineHeight: 1, color: 'var(--text)',
+              }}>{fdFormat(draft)}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>sur {max}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginTop: 8 }}>
+            {descriptor.label}
+          </div>
+        </div>
+        {/* Slider 0.5 step */}
+        <input
+          type="range" min={0} max={max} step={0.5} value={draft}
+          onChange={e => setDraft(parseFloat(e.target.value))}
+          style={{ width: '100%', accentColor: color, marginBottom: 6 }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-dim)', marginBottom: 20 }}>
+          <span>0</span><span>{max}</span>
+        </div>
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button onClick={onClose} disabled={saving} style={{
+            flex: 1, padding: '12px 16px', borderRadius: 10,
+            background: 'var(--bg-card2)', border: '1px solid var(--border)',
+            color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}>Annuler</button>
+          <button
+            onClick={async () => { setSaving(true); await onSave(draft) }}
+            disabled={saving}
+            style={{
+              flex: 1, padding: '12px 16px', borderRadius: 10,
+              background: '#06b6d4', border: 'none',
+              color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              opacity: saving ? 0.6 : 1, fontFamily: 'inherit',
+            }}
+          >{saving ? '…' : 'Enregistrer'}</button>
+        </div>
+      </div>
+    </>,
+    document.body,
+  )
+}
+
+function FeelingDifficultyCard({ activity }: { activity: Activity }) {
+  const { showToast } = useToast()
+  const [feeling,    setFeeling]    = useState<number | null>(typeof activity.feeling === 'number'    ? activity.feeling    : null)
+  const [difficulty, setDifficulty] = useState<number | null>(typeof activity.difficulty === 'number' ? activity.difficulty : null)
+  const [editing,    setEditing]    = useState<null | 'feeling' | 'difficulty'>(null)
+
+  async function save(kind: 'feeling' | 'difficulty', v: number) {
+    const sb = createClient()
+    const { error } = await sb.from('activities').update({ [kind]: v }).eq('id', activity.id)
+    if (error) {
+      showToast('Échec de la sauvegarde')
+      return
+    }
+    if (kind === 'feeling') setFeeling(v); else setDifficulty(v)
+    setEditing(null)
+    showToast('Enregistré')
+  }
+
+  const fDesc = feeling    !== null ? feelingDescriptor(feeling)       : null
+  const dDesc = difficulty !== null ? difficultyDescriptor(difficulty) : null
+
+  return (
+    <div style={{
+      background: 'var(--bg-card2)', borderRadius: 14, padding: 20,
+      margin: '16px 0',
+      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16,
+    }}>
+      <GaugeArc value={feeling}    max={5}  denomLabel="sur 5"  label="RESSENTI"   descriptor={fDesc} onEdit={() => setEditing('feeling')} />
+      <GaugeArc value={difficulty} max={10} denomLabel="sur 10" label="DIFFICULTÉ" descriptor={dDesc} onEdit={() => setEditing('difficulty')} />
+
+      <GaugeEditModal
+        open={editing !== null}
+        kind={editing ?? 'feeling'}
+        value={editing === 'feeling' ? feeling : difficulty}
+        onClose={() => setEditing(null)}
+        onSave={async v => { if (editing) await save(editing, v) }}
+      />
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 // ACTIVITY DETAIL
 // ─────────────────────────────────────────────────────────────
 function ActivityDetail({ a, onClose, zones, profile }: {
@@ -6720,6 +6942,11 @@ conseil pour la prochaine séance similaire.`
             </p>
           </div>
 
+          {/* Jauges Ressenti / Difficulté (mobile) */}
+          <div style={{ padding: '0 16px' }}>
+            <FeelingDifficultyCard activity={a} />
+          </div>
+
           {/* Records battus — sous la carte (mobile) */}
           <div style={{ padding: '0 16px' }}>
             <RecordsBeaten activityId={a.id} isBike={isBike} />
@@ -7132,6 +7359,9 @@ conseil pour la prochaine séance similaire.`
             </div>
           </div>
         )}
+
+        {/* ── Jauges Ressenti / Difficulté (desktop) ── */}
+        <FeelingDifficultyCard activity={a} />
 
         {/* ── Records battus — sous la carte (desktop) ── */}
         <RecordsBeaten activityId={a.id} isBike={isBike} />

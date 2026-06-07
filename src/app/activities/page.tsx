@@ -2724,6 +2724,12 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   }, [activeMetrics])
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('activity-charts-mono-metric', monoMetric) }, [monoMetric])
 
+  // ── Drag-to-select (desktop uniquement) ─────────────────────────────
+  const [selection, setSelection] = useState<[number, number] | null>(null)
+  const [showSelModal, setShowSelModal] = useState(false)
+  const isSelectingRef = useRef(false)
+  const dragStartIdxRef = useRef<number | null>(null)
+
   // ── Détection desktop (souris + hover réel) ────────────────────────
   const [isDesktop, setIsDesktop] = useState(false)
   useEffect(() => {
@@ -2913,8 +2919,28 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     if (tooltipRef.current) tooltipRef.current.style.opacity = '0'
   }
 
+  // Helper : convertit clientX en indice de données
+  function idxFromClientX(clientX: number): number {
+    const cont = containerRef.current
+    if (!cont) return 0
+    const rect = cont.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    return Math.round(ratio * (N - 1))
+  }
+
   // Handlers communs pointer (touch + mouse). PointerEvents unifie les 2.
   function onPointerDown(e: React.PointerEvent) {
+    // Desktop : clic gauche démarre le drag-to-select
+    if (isDesktop && e.pointerType === 'mouse' && e.button === 0) {
+      isSelectingRef.current = true
+      const idx = idxFromClientX(e.clientX)
+      dragStartIdxRef.current = idx
+      setSelection([idx, idx])
+      setShowSelModal(false)
+      hideHint()
+      e.currentTarget.setPointerCapture(e.pointerId)
+      return
+    }
     updateAtPointer(e.clientX, e.clientY)
     // Capture pour drag continu hors zone (mobile)
     if (e.pointerType !== 'mouse') {
@@ -2922,9 +2948,29 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     }
   }
   function onPointerMove(e: React.PointerEvent) {
+    // Drag-to-select actif : étend la sélection, pas de crosshair/tooltip
+    if (isSelectingRef.current) {
+      const idx = idxFromClientX(e.clientX)
+      const start = dragStartIdxRef.current ?? idx
+      setSelection([Math.min(start, idx), Math.max(start, idx)])
+      return
+    }
     updateAtPointer(e.clientX, e.clientY)
   }
-  function onPointerLeaveOrUp() { hideHint() }
+  function onPointerLeaveOrUp() {
+    if (isSelectingRef.current) {
+      isSelectingRef.current = false
+      dragStartIdxRef.current = null
+      setSelection(cur => {
+        if (cur && cur[1] - cur[0] > 5) {
+          setShowSelModal(true)
+          return cur
+        }
+        return null
+      })
+    }
+    hideHint()
+  }
 
   // Couleurs sémantiques fixes (pour le tooltip colored mono)
   const monoDef     = METRIC_DEFS.find(d => d.key === monoMetric) ?? METRIC_DEFS[1]
@@ -3077,6 +3123,47 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       ? createPortal(TooltipColoredNode, document.body)
       : TooltipColoredNode
 
+  // Overlay rectangulaire de sélection (rendu absolu dans le wrapper de chart)
+  const SelectionOverlay = selection && N > 1 ? (
+    <div
+      style={{
+        position:      'absolute',
+        top:           0,
+        bottom:        0,
+        left:          `${(selection[0] / (N - 1)) * 100}%`,
+        width:         `${((selection[1] - selection[0]) / (N - 1)) * 100}%`,
+        background:    'rgba(99, 102, 241, 0.15)',
+        borderLeft:    '1px solid #6366f1',
+        borderRight:   '1px solid #6366f1',
+        pointerEvents: 'none',
+        zIndex:        4,
+      }}
+    />
+  ) : null
+
+  // Sheet de stats portion sélectionnée (déjà portalisé sur document.body)
+  const SelSheetNode =
+    showSelModal && selection && series
+      ? (
+        <SelectionSheet
+          sel={selection}
+          time={series.time ?? []}
+          distance={series.distance ?? null}
+          watts={series.watts ?? null}
+          hr={series.hr ?? null}
+          velocity={s?.velocity ?? null}
+          alt={series.altitude ?? null}
+          cadence={series.cadence ?? null}
+          temp={series.temp ?? null}
+          ftp={activity.ftp_at_time ?? null}
+          onClose={() => {
+            setShowSelModal(false)
+            setSelection(null)
+          }}
+        />
+      )
+      : null
+
   const W = 1000
   const ROW_H = 70    // hauteur fixe par row (Format A collé)
 
@@ -3167,6 +3254,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
 
           {/* Colonne charts + crosshair */}
           <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+            {SelectionOverlay}
             {/* Crosshair vertical traversant TOUS les rows */}
             <div
               ref={crosshairRef}
@@ -3240,6 +3328,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         }}>
           {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
         </div>
+        {SelSheetNode}
       </div>
     )
   }
@@ -3327,6 +3416,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
               <path d={mainPath} fill={def.color} fillOpacity={0.65} strokeLinejoin="round" />
             )}
           </svg>
+          {SelectionOverlay}
           <div
             ref={crosshairRef}
             style={{
@@ -3406,6 +3496,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         }}>
           {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
         </div>
+        {SelSheetNode}
       </div>
     )
   }
@@ -3518,6 +3609,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
             )
           })}
         </svg>
+        {SelectionOverlay}
         {/* Crosshair */}
         <div
           ref={crosshairRef}
@@ -3565,6 +3657,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       }}>
         {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
       </div>
+      {SelSheetNode}
     </div>
   )
 }

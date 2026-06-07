@@ -1755,6 +1755,7 @@ function computeBestWindows(rawWatts: number[], N: number): BestWindow[] {
 // ── Panneau de sélection (slide-up depuis le bas) ──────────────────
 interface SelectionSheetProps {
   sel:         [number, number]
+  activity:    Activity                       // pour réutiliser ActivityCurves avec streams sliced
   time:        number[]
   distance:    number[] | null
   watts:       number[] | null
@@ -1768,10 +1769,80 @@ interface SelectionSheetProps {
   onClose:     () => void
 }
 
+// ── Zones de puissance Coggan (% FTP) ──
+const POWER_ZONES_DEF = [
+  { z: 1, label: 'Z1', range: '<55%',    min: 0,    max: 0.55, color: '#94a3b8' },
+  { z: 2, label: 'Z2', range: '56-75%',  min: 0.55, max: 0.75, color: '#06B6D4' },
+  { z: 3, label: 'Z3', range: '76-90%',  min: 0.75, max: 0.90, color: '#10B981' },
+  { z: 4, label: 'Z4', range: '91-105%', min: 0.90, max: 1.05, color: '#F59E0B' },
+  { z: 5, label: 'Z5', range: '106-120%',min: 1.05, max: 1.20, color: '#F97316' },
+  { z: 6, label: 'Z6', range: '121-150%',min: 1.20, max: 1.50, color: '#EF4444' },
+  { z: 7, label: 'Z7', range: '>150%',   min: 1.50, max: 99,   color: '#7C2D12' },
+]
+const HR_ZONE_COLORS = ['#06B6D4', '#10B981', '#F59E0B', '#F97316', '#EF4444']
+
+function _polarXY(cx: number, cy: number, r: number, angle: number) {
+  return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
+}
+function _donutArcPath(cx: number, cy: number, rOut: number, rIn: number, startAng: number, endAng: number): string {
+  const lg = endAng - startAng > Math.PI ? 1 : 0
+  const os = _polarXY(cx, cy, rOut, startAng), oe = _polarXY(cx, cy, rOut, endAng)
+  const is = _polarXY(cx, cy, rIn, startAng),  ie = _polarXY(cx, cy, rIn, endAng)
+  return [
+    `M ${os.x.toFixed(2)} ${os.y.toFixed(2)}`,
+    `A ${rOut} ${rOut} 0 ${lg} 1 ${oe.x.toFixed(2)} ${oe.y.toFixed(2)}`,
+    `L ${ie.x.toFixed(2)} ${ie.y.toFixed(2)}`,
+    `A ${rIn} ${rIn} 0 ${lg} 0 ${is.x.toFixed(2)} ${is.y.toFixed(2)}`,
+    'Z',
+  ].join(' ')
+}
+
+interface ZoneArc { label: string; pct: number; color: string }
+function ZoneDonut({ data, title }: { data: ZoneArc[]; title: string }) {
+  const totalPct = data.reduce((s, d) => s + d.pct, 0)
+  if (totalPct <= 0) {
+    return (
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 16 }}>{title}</div>
+        <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>—</div>
+      </div>
+    )
+  }
+  const CX = 75, CY = 75, R_OUT = 65, R_IN = 46
+  let cum = 0
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 16 }}>
+        {title}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+        <svg viewBox="0 0 150 150" style={{ width: 150, height: 150, flexShrink: 0 }}>
+          {data.map((d, i) => {
+            if (d.pct <= 0) return null
+            const frac = d.pct / totalPct
+            const startAng = -Math.PI / 2 + (cum / totalPct) * 2 * Math.PI
+            const endAng   = -Math.PI / 2 + ((cum + d.pct) / totalPct) * 2 * Math.PI
+            cum += d.pct
+            return <path key={i} d={_donutArcPath(CX, CY, R_OUT, R_IN, startAng, endAng)} fill={d.color} />
+          })}
+        </svg>
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text)' }}>
+          {data.map((d, i) => (
+            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: d.color, flexShrink: 0 }} />
+              <span style={{ fontWeight: 600, minWidth: 28 }}>{d.label}</span>
+              <span style={{ color: 'var(--text-dim)' }}>{Math.round((d.pct / totalPct) * 100)}%</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
 function SelectionSheet(props: SelectionSheetProps) {
-  const { sel, time, distance, watts, hr, velocity, alt, cadence, temp, ftp, hrZones, onClose } = props
-  const [closing, setClosing]   = useState(false)
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const { sel, activity, time, distance, watts, hr, velocity, alt, cadence, temp, ftp, hrZones, onClose } = props
+  const [closing, setClosing] = useState(false)
 
   const [i1, i2] = sel
   const len = Math.max(1, i2 - i1 + 1)
@@ -1864,49 +1935,121 @@ function SelectionSheet(props: SelectionSheetProps) {
     ] },
   ]
 
-  // ── 6 mini-courbes ──
-  const charts: { name: string; color: string; data: number[] | null; unit: string; d: number; mode: 'max' | 'min' }[] = [
-    { name: 'Altitude',    color: '#64748b', data: aS,  unit: 'm',    d: 0, mode: 'max' },
-    { name: 'FC',          color: '#EF4444', data: hrS, unit: 'bpm',  d: 0, mode: 'max' },
-    { name: 'Puissance',   color: '#8B5CF6', data: wS,  unit: 'W',    d: 0, mode: 'max' },
-    { name: 'Vitesse',     color: '#06B6D4', data: vS,  unit: 'km/h', d: 1, mode: 'max' },
-    { name: 'Cadence',     color: '#EC4899', data: cS,  unit: 'rpm',  d: 0, mode: 'max' },
-    { name: 'Température',  color: '#10B981', data: tS,  unit: '°C',   d: 0, mode: 'min' },
-  ]
-
-  // ── Zones puissance (polarisation) ──
-  const pol = (() => {
-    if (!wS || !ftp || ftp <= 0) return null
-    let low = 0, mid = 0, high = 0
-    wS.forEach(w => { const p = w / ftp; if (p < 0.75) low++; else if (p < 0.90) mid++; else high++ })
+  // ── Zones de PUISSANCE (7 zones Coggan) ──
+  const pwDist: ZoneArc[] = (() => {
+    if (!wS || !ftp || ftp <= 0) return []
+    const counts = POWER_ZONES_DEF.map(() => 0)
+    wS.forEach(w => {
+      const r = w / ftp
+      for (let i = 0; i < POWER_ZONES_DEF.length; i++) {
+        if (r < POWER_ZONES_DEF[i].max) { counts[i]++; break }
+      }
+    })
     const tot = wS.length || 1
-    return [
-      { label: 'Z1-Z2', pct: Math.round((low / tot) * 100),  color: '#10B981' },
-      { label: 'Z3',    pct: Math.round((mid / tot) * 100),  color: '#F97316' },
-      { label: 'Z4-Z5', pct: Math.round((high / tot) * 100), color: '#EF4444' },
-    ]
+    return POWER_ZONES_DEF.map((z, i) => ({
+      label: z.label, pct: (counts[i] / tot) * 100, color: z.color,
+    }))
   })()
 
-  // ── Zones FC ──
-  const hrZoneColors = ['#06B6D4', '#10B981', '#F97316', '#EF4444', '#7C3AED']
-  const hrBars = (() => {
-    if (!hrS || !hrZones || hrZones.length === 0) return null
-    const hz = hrZones.slice(0, 5)
-    const counts = hz.map(() => 0)
+  // ── Zones FC ── (5 zones depuis hrZones config user, sinon fallback 5 buckets %max)
+  const hrDist: ZoneArc[] = (() => {
+    if (!hrS || hrS.length === 0) return []
+    let buckets: { min: number; max: number; label: string; color: string }[] = []
+    if (hrZones && hrZones.length >= 5) {
+      buckets = hrZones.slice(0, 5).map((z, idx) => ({
+        min:   z.min,
+        max:   idx === 4 ? Infinity : (z.max ?? Infinity),
+        label: z.label || `Z${idx + 1}`,
+        color: HR_ZONE_COLORS[idx],
+      }))
+    } else {
+      const hrMax = Math.max(...hrS)
+      const thresholds = [0.6, 0.7, 0.8, 0.9].map(p => p * hrMax)
+      buckets = [
+        { min: 0,             max: thresholds[0], label: 'Z1', color: HR_ZONE_COLORS[0] },
+        { min: thresholds[0], max: thresholds[1], label: 'Z2', color: HR_ZONE_COLORS[1] },
+        { min: thresholds[1], max: thresholds[2], label: 'Z3', color: HR_ZONE_COLORS[2] },
+        { min: thresholds[2], max: thresholds[3], label: 'Z4', color: HR_ZONE_COLORS[3] },
+        { min: thresholds[3], max: Infinity,      label: 'Z5', color: HR_ZONE_COLORS[4] },
+      ]
+    }
+    const counts = buckets.map(() => 0)
     hrS.forEach(h => {
-      for (let z = 0; z < hz.length; z++) {
-        if (h >= hz[z].min && (h <= hz[z].max || z === hz.length - 1)) { counts[z]++; break }
+      for (let i = 0; i < buckets.length; i++) {
+        if (h < buckets[i].max) { counts[i]++; break }
       }
     })
     const tot = hrS.length || 1
-    return hz.map((z, idx) => ({ label: z.label || `Z${idx + 1}`, pct: Math.round((counts[idx] / tot) * 100), color: hrZoneColors[idx] ?? '#06B6D4' }))
+    return buckets.map((b, i) => ({ label: b.label, pct: (counts[i] / tot) * 100, color: b.color }))
   })()
+
+  // ── Activity sliced pour réutiliser ActivityCurves ──
+  const slicedActivity: Activity = {
+    ...activity,
+    streams: activity.streams ? {
+      time:      activity.streams.time?.slice(i1, i2 + 1),
+      distance:  activity.streams.distance?.slice(i1, i2 + 1),
+      altitude:  activity.streams.altitude?.slice(i1, i2 + 1),
+      heartrate: activity.streams.heartrate?.slice(i1, i2 + 1),
+      velocity:  activity.streams.velocity?.slice(i1, i2 + 1),
+      watts:     activity.streams.watts?.slice(i1, i2 + 1),
+      cadence:   activity.streams.cadence?.slice(i1, i2 + 1),
+      temp:      activity.streams.temp?.slice(i1, i2 + 1),
+    } : null,
+  }
 
   const subtitle = `${fmtClock(time[i1] - time[0])} → ${fmtClock(time[i2] - time[0])}${distM != null ? ` · ${(distM / 1000).toFixed(2).replace('.', ',')} km` : ''}`
 
-  const labelGroup: React.CSSProperties = { fontSize: 8.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 8 }
-  const labelStat: React.CSSProperties = { fontSize: 9, color: 'var(--text-dim)' }
-  const valStat: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }
+  // ── Stats agrégées en 4 colonnes ──
+  const colEffort = [
+    { label: 'Durée',         value: fmtDuration(dur) },
+    { label: 'Distance',      value: distM != null ? `${(distM / 1000).toFixed(2).replace('.', ',')} km` : '—' },
+    { label: 'Vitesse moy.',  value: v(avgOf(vS), 'km/h', 1) },
+    { label: 'Vitesse max.',  value: v(maxOf(vS), 'km/h', 1) },
+  ]
+  const colPuissance = [
+    { label: 'Watts moy.',        value: v(avgOf(wS), 'W') },
+    { label: 'Watts max.',        value: v(maxOf(wS), 'W') },
+    { label: 'Watts normalisés',  value: v(npSeg, 'W') },
+    { label: 'W/kg',              value: '—' },
+  ]
+  const colCadence = [
+    { label: 'Cadence moy.',  value: v(avgOf(cS), 'rpm') },
+    { label: 'Cadence max.',  value: v(maxOf(cS), 'rpm') },
+    { label: 'Roue libre',    value: freeDur != null ? `${fmtClock(freeDur)} (${Math.round((freePct ?? 0) * 100)} %)` : '—' },
+  ]
+  const colTerrain = [
+    { label: 'D+',            value: aS ? `+${Math.round(dPlus)} m` : '—' },
+    { label: 'D−',            value: aS ? `−${Math.round(dMinus)} m` : '—' },
+    { label: 'Altitude max.', value: v(maxOf(aS), 'm') },
+    { label: 'Altitude moy.', value: v(avgOf(aS), 'm') },
+  ]
+  const colTemp = [
+    { label: 'Temp. moy.',    value: v(avgOf(tS), '°C') },
+    { label: 'Temp. max.',    value: v(maxOf(tS), '°C') },
+    { label: 'Temp. min.',    value: v(minOf(tS), '°C') },
+  ]
+
+  // ── Styles partagés ──
+  const sectionTitle: React.CSSProperties = {
+    fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+    textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 12,
+  }
+  const StatBlock = ({ label, value }: { label: string; value: string }) => (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 500, marginBottom: 4 }}>{label}</div>
+      <div
+        className="barlow"
+        style={{
+          fontSize: 24, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+          color: value === '—' ? 'var(--text-dim)' : 'var(--text)',
+          lineHeight: 1.1,
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  )
 
   // Sheet rendu via portal sur document.body pour échapper à tout containing
   // block créé par un ancêtre transformé (ex: bottom-sheet de l'activité).
@@ -1916,25 +2059,27 @@ function SelectionSheet(props: SelectionSheetProps) {
         onClick={handleClose}
         className={closing ? 'sel-sheet-overlay-out' : 'sel-sheet-overlay-in'}
         style={{
-          position:                 'fixed',
-          inset:                    0,
-          zIndex:                   600,
-          background:               'rgba(0,0,0,0.4)',
-          backdropFilter:           'blur(4px)',
-          WebkitBackdropFilter:     'blur(4px)',
+          position:             'fixed',
+          inset:                0,
+          zIndex:               600,
+          background:           'rgba(0,0,0,0.4)',
+          backdropFilter:       'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
         }}
       />
       <div
         className={closing ? 'sel-sheet-out' : 'sel-sheet-in'}
         style={{
-          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 601,
-          background: 'var(--bg)', borderRadius: '18px 18px 0 0',
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
-          maxHeight: '85vh', overflowY: 'auto',
-          padding: '0 0 28px',
+          position:     'fixed', left: 0, right: 0, bottom: 0, zIndex: 601,
+          background:   'var(--bg)',
+          borderRadius: '16px 16px 0 0',
+          boxShadow:    '0 -8px 40px rgba(0,0,0,0.25)',
+          maxHeight:    '90vh',
+          overflowY:    'auto',
+          paddingBottom: 24,
         }}
       >
-        {/* Handle — clic ferme (le clic sur l'overlay et le ✕ ferment aussi) */}
+        {/* Handle */}
         <div
           style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px', cursor: 'pointer' }}
           onClick={handleClose}
@@ -1943,114 +2088,77 @@ function SelectionSheet(props: SelectionSheetProps) {
         </div>
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '4px 20px 12px' }}>
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          padding: '14px 24px 16px', borderBottom: '1px solid var(--border)',
+        }}>
           <div>
-            <div className="barlow" style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Sélection — {fmtDuration(dur)}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{subtitle}</div>
-          </div>
-          <button onClick={handleClose} aria-label="Fermer"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 20, lineHeight: 1, padding: 4 }}>✕</button>
-        </div>
-
-        {/* Stats — 5 groupes */}
-        <div className="sel-groups" style={{ padding: '0 20px 18px' }}>
-          {groups.map((g) => (
-            <div key={g.title} className="sel-group">
-              <div style={labelGroup}>{g.title}</div>
-              <div className="sel-group-items">
-                {g.items.map(it => (
-                  <div key={it.label} style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-                    <span style={labelStat}>{it.label}</span>
-                    <span style={valStat}>{it.value}</span>
-                  </div>
-                ))}
-              </div>
+            <div className="barlow" style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>
+              Sélection — {fmtDuration(dur)}
             </div>
-          ))}
-        </div>
-
-        {/* Mini-courbes */}
-        <div style={{ padding: '0 20px 8px' }}
-          onMouseLeave={() => setHoverIdx(null)}
-        >
-          {charts.filter(c => c.data && c.data.length > 1).map(c => {
-            const data = c.data as number[]
-            const mn = Math.min(...data), mx = Math.max(...data), rg = mx - mn || 1
-            const pts = data.map((val, idx) => `${(idx / (data.length - 1)) * 100},${32 - ((val - mn) / rg) * 30 - 1}`).join('L')
-            const hx = hoverIdx != null ? (Math.min(data.length - 1, hoverIdx) / (data.length - 1)) * 100 : null
-            const hVal = hoverIdx != null ? data[Math.min(data.length - 1, hoverIdx)] : null
-            const stat = c.mode === 'min' ? minOf(data) : maxOf(data)
-            const statLabel = c.mode === 'min' ? 'Min' : 'Max'
-            return (
-              <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderTop: '1px solid var(--border)' }}>
-                <div style={{ width: 68, flexShrink: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: c.color }}>{c.name}</div>
-                  <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{statLabel} {v(stat, '', c.d).replace(' ', '')}</div>
-                  <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>Moy {v(avgOf(data), '', c.d).replace(' ', '')}</div>
-                </div>
-                <div
-                  style={{ position: 'relative', flex: 1, minWidth: 0, height: 32, cursor: 'crosshair' }}
-                  onMouseMove={e => {
-                    const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-                    const p = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width))
-                    setHoverIdx(Math.round(p * (len - 1)))
-                  }}
-                >
-                  <svg viewBox="0 0 100 32" preserveAspectRatio="none" style={{ width: '100%', height: 32, display: 'block', overflow: 'visible' }}>
-                    <path d={`M${pts}`} fill="none" stroke={c.color} strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
-                    {hx != null && (
-                      <line x1={hx} y1={0} x2={hx} y2={32} stroke="var(--text-dim)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                    )}
-                  </svg>
-                  {hx != null && hVal != null && (
-                    <div style={{
-                      position: 'absolute', left: `${hx}%`, top: -26, transform: 'translateX(-50%)',
-                      background: '#1e293b', color: '#fff', fontSize: 10, fontWeight: 600,
-                      padding: '3px 7px', borderRadius: 6, whiteSpace: 'nowrap', pointerEvents: 'none',
-                      fontVariantNumeric: 'tabular-nums', zIndex: 5,
-                    }}>
-                      {c.d ? hVal.toFixed(c.d).replace('.', ',') : Math.round(hVal)} {c.unit}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Zones d'intensité */}
-        {(pol || hrBars) && (
-          <div style={{ display: 'flex', gap: 16, padding: '12px 20px 0', flexWrap: 'wrap' }}>
-            {pol && (
-              <div style={{ flex: 1, minWidth: 150 }}>
-                <div style={labelGroup}>Polarisation puissance</div>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 90 }}>
-                  {pol.map(z => (
-                    <div key={z.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                      <span className="barlow" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{z.pct} %</span>
-                      <div style={{ width: '100%', height: `${Math.max(2, z.pct)}%`, background: z.color, borderRadius: '3px 3px 0 0', minHeight: 2 }} />
-                      <span style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 3 }}>{z.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {hrBars && (
-              <div style={{ flex: 1, minWidth: 150 }}>
-                <div style={labelGroup}>Zones FC</div>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 90 }}>
-                  {hrBars.map(z => (
-                    <div key={z.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                      <span className="barlow" style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{z.pct} %</span>
-                      <div style={{ width: '100%', height: `${Math.max(2, z.pct)}%`, background: z.color, borderRadius: '3px 3px 0 0', minHeight: 2 }} />
-                      <span style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 3 }}>{z.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <div style={{
+              fontSize: 13, color: 'var(--text-dim)', marginTop: 4, fontVariantNumeric: 'tabular-nums',
+            }}>
+              {subtitle}
+            </div>
           </div>
-        )}
+          <button
+            onClick={handleClose} aria-label="Fermer"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text-dim)', fontSize: 22, lineHeight: 1, padding: 4,
+            }}
+          >✕</button>
+        </div>
+
+        {/* HEADER STATS — grille 4 cols (2 cols mobile) */}
+        <div
+          className="sel-stats-grid"
+          style={{
+            display: 'grid',
+            gap: 24,
+            padding: 24,
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          <div>
+            <div style={sectionTitle}>Effort</div>
+            {colEffort.map(s => <StatBlock key={s.label} {...s} />)}
+          </div>
+          <div>
+            <div style={sectionTitle}>Puissance</div>
+            {colPuissance.map(s => <StatBlock key={s.label} {...s} />)}
+          </div>
+          <div>
+            <div style={sectionTitle}>Cadence</div>
+            {colCadence.map(s => <StatBlock key={s.label} {...s} />)}
+          </div>
+          <div>
+            <div style={sectionTitle}>Terrain</div>
+            {colTerrain.map(s => <StatBlock key={s.label} {...s} />)}
+            <div style={{ marginTop: 16, ...sectionTitle }}>Température</div>
+            {colTemp.map(s => <StatBlock key={s.label} {...s} />)}
+          </div>
+        </div>
+
+        {/* DONUTS — grille 2 cols (1 col mobile) */}
+        <div
+          className="sel-donuts-grid"
+          style={{
+            display: 'grid',
+            gap: 24,
+            padding: 24,
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          <ZoneDonut title="Répartition FC" data={hrDist} />
+          <ZoneDonut title="Répartition Puissance" data={pwDist} />
+        </div>
+
+        {/* COURBES — réutilisation ActivityCurves sur la portion sélectionnée */}
+        <div style={{ padding: 24 }}>
+          <ActivityCurves activity={slicedActivity} />
+        </div>
       </div>
     </>
   )
@@ -2331,15 +2439,12 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
         .sel-sheet-out          { animation: selSheetDown 250ms ease-in forwards; }
         .sel-sheet-overlay-in   { animation: selSheetFadeIn 300ms ease-out; }
         .sel-sheet-overlay-out  { animation: selSheetFadeOut 250ms ease-in forwards; }
-        .sel-groups     { display: flex; flex-direction: column; gap: 0; }
-        .sel-group      { padding-top: 12px; }
-        .sel-group + .sel-group { border-top: 1px solid var(--border); }
-        .sel-group-items { display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px 20px; }
+        /* Layout responsive du nouveau SelectionSheet */
+        .sel-stats-grid   { grid-template-columns: repeat(2, 1fr); }
+        .sel-donuts-grid  { grid-template-columns: 1fr; }
         @media (min-width: 768px) {
-          .sel-groups   { flex-direction: row; }
-          .sel-group    { flex: 1; padding: 0 16px; }
-          .sel-group + .sel-group { border-top: none; border-left: 1px solid var(--border); }
-          .sel-group-items { flex-direction: column; gap: 8px; }
+          .sel-stats-grid  { grid-template-columns: repeat(4, 1fr); }
+          .sel-donuts-grid { grid-template-columns: 1fr 1fr; }
         }
       `}</style>
 
@@ -2634,6 +2739,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
       {showSelModal && selection && (
         <SelectionSheet
           sel={selection}
+          activity={activity}
           time={time}
           distance={s.distance ?? null}
           watts={watts}
@@ -2723,6 +2829,27 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     }
   }, [activeMetrics])
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('activity-charts-mono-metric', monoMetric) }, [monoMetric])
+
+  // ── Drag-to-select (desktop uniquement) ─────────────────────────────
+  const [selection, setSelection] = useState<[number, number] | null>(null)
+  const [showSelModal, setShowSelModal] = useState(false)
+  const isSelectingRef = useRef(false)
+  const dragStartIdxRef = useRef<number | null>(null)
+
+  // ── Détection desktop (souris + hover réel) ────────────────────────
+  const [isDesktop, setIsDesktop] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(hover: hover) and (pointer: fine)')
+    const update = () => setIsDesktop(mq.matches)
+    update()
+    if (mq.addEventListener) mq.addEventListener('change', update)
+    else mq.addListener(update)
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', update)
+      else mq.removeListener(update)
+    }
+  }, [])
 
   // ── Préparation des séries (lissées, useMemo) ──────────────────────
   const series = useMemo(() => {
@@ -2827,7 +2954,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   }
 
   // Met à jour le DOM (crosshair + dots + tooltip) directement, SANS setState
-  function updateAtClientX(clientX: number) {
+  function updateAtPointer(clientX: number, clientY: number) {
     const cont = containerRef.current
     if (!cont) return
     const rect = cont.getBoundingClientRect()
@@ -2876,6 +3003,20 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     if (tooltipMonoSubRef.current) tooltipMonoSubRef.current.textContent = fmtPosition(idx)
     // Tooltip wrapper
     if (tooltipRef.current) tooltipRef.current.style.opacity = '1'
+    // Desktop : repositionne la bulle en position fixed à côté du curseur
+    if (isDesktop && tooltipRef.current) {
+      const bubble = tooltipRef.current
+      const bw = bubble.offsetWidth
+      const bh = bubble.offsetHeight
+      let left = clientX + 12
+      let top  = clientY + 12
+      if (left + bw + 12 > window.innerWidth)  left = clientX - bw - 12
+      if (top  + bh + 12 > window.innerHeight) top  = clientY - bh - 12
+      left = Math.max(8, left)
+      top  = Math.max(8, top)
+      bubble.style.left = `${left}px`
+      bubble.style.top  = `${top}px`
+    }
   }
 
   function hideHint() {
@@ -2884,21 +3025,58 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     if (tooltipRef.current) tooltipRef.current.style.opacity = '0'
   }
 
+  // Helper : convertit clientX en indice de données
+  function idxFromClientX(clientX: number): number {
+    const cont = containerRef.current
+    if (!cont) return 0
+    const rect = cont.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    return Math.round(ratio * (N - 1))
+  }
+
   // Handlers communs pointer (touch + mouse). PointerEvents unifie les 2.
   function onPointerDown(e: React.PointerEvent) {
-    updateAtClientX(e.clientX)
-    // Capture pour drag continu hors zone
-    e.currentTarget.setPointerCapture(e.pointerId)
-  }
-  function onPointerMove(e: React.PointerEvent) {
-    if (e.buttons === 0 && e.pointerType === 'mouse') {
-      // Hover desktop : update sans bouton tenu
-      updateAtClientX(e.clientX)
+    // Desktop : clic gauche démarre le drag-to-select
+    if (isDesktop && e.pointerType === 'mouse' && e.button === 0) {
+      isSelectingRef.current = true
+      const idx = idxFromClientX(e.clientX)
+      dragStartIdxRef.current = idx
+      setSelection([idx, idx])
+      setShowSelModal(false)
+      hideHint()
+      e.currentTarget.setPointerCapture(e.pointerId)
       return
     }
-    updateAtClientX(e.clientX)
+    updateAtPointer(e.clientX, e.clientY)
+    // Capture pour drag continu hors zone (mobile)
+    if (e.pointerType !== 'mouse') {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    }
   }
-  function onPointerLeaveOrUp() { hideHint() }
+  function onPointerMove(e: React.PointerEvent) {
+    // Drag-to-select actif : étend la sélection, pas de crosshair/tooltip
+    if (isSelectingRef.current) {
+      const idx = idxFromClientX(e.clientX)
+      const start = dragStartIdxRef.current ?? idx
+      setSelection([Math.min(start, idx), Math.max(start, idx)])
+      return
+    }
+    updateAtPointer(e.clientX, e.clientY)
+  }
+  function onPointerLeaveOrUp() {
+    if (isSelectingRef.current) {
+      isSelectingRef.current = false
+      dragStartIdxRef.current = null
+      setSelection(cur => {
+        if (cur && cur[1] - cur[0] > 5) {
+          setShowSelModal(true)
+          return cur
+        }
+        return null
+      })
+    }
+    hideHint()
+  }
 
   // Couleurs sémantiques fixes (pour le tooltip colored mono)
   const monoDef     = METRIC_DEFS.find(d => d.key === monoMetric) ?? METRIC_DEFS[1]
@@ -2956,19 +3134,23 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   const tooltipNeutralKeys = format === 'overlaid'
     ? presentKeys.filter(k => activeMetrics.has(k))
     : presentKeys
-  const TooltipNeutral = (
+  const TooltipNeutralNode = (
     <div
       ref={tooltipRef}
+      className="curves-tooltip-desktop"
       style={{
         opacity:       0,
-        transition:    'opacity 0.12s',
+        transition:    'opacity 0.15s',
         background:    'var(--bg-card)',
         border:        '1px solid var(--border)',
         borderRadius:  12,
         padding:       '10px 14px',
-        marginBottom:  10,
         boxShadow:     '0 4px 16px rgba(0,0,0,0.10)',
         pointerEvents: 'none',
+        ...(isDesktop
+          ? { position: 'fixed' as const, left: -9999, top: -9999, zIndex: 9999, marginBottom: 0 }
+          : { position: 'static' as const, marginBottom: 10 }
+        ),
       }}
     >
       <div ref={tooltipHeaderRef} style={{
@@ -3000,20 +3182,32 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     </div>
   )
 
+  // Sur desktop : portal vers document.body pour échapper à tout
+  // containing block créé par un ancêtre transformé (sidebar, sheet, etc.).
+  // Sur mobile : rendu inline en flow (style static).
+  const TooltipNeutral =
+    isDesktop && typeof document !== 'undefined'
+      ? createPortal(TooltipNeutralNode, document.body)
+      : TooltipNeutralNode
+
   // Tooltip COLORÉ (Mono)
-  const TooltipColored = (
+  const TooltipColoredNode = (
     <div
       ref={tooltipRef}
+      className="curves-tooltip-desktop"
       style={{
         opacity:       0,
-        transition:    'opacity 0.12s',
+        transition:    'opacity 0.15s',
         background:    monoBg,
         color:         monoTxtClr,
         borderRadius:  12,
         padding:       '12px 16px',
-        marginBottom:  10,
         boxShadow:     '0 4px 16px rgba(0,0,0,0.15)',
         pointerEvents: 'none',
+        ...(isDesktop
+          ? { position: 'fixed' as const, left: -9999, top: -9999, zIndex: 9999, marginBottom: 0 }
+          : { position: 'static' as const, marginBottom: 10 }
+        ),
       }}
     >
       <div
@@ -3030,6 +3224,52 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       >—</div>
     </div>
   )
+  const TooltipColored =
+    isDesktop && typeof document !== 'undefined'
+      ? createPortal(TooltipColoredNode, document.body)
+      : TooltipColoredNode
+
+  // Overlay rectangulaire de sélection (rendu absolu dans le wrapper de chart)
+  const SelectionOverlay = selection && N > 1 ? (
+    <div
+      style={{
+        position:      'absolute',
+        top:           0,
+        bottom:        0,
+        left:          `${(selection[0] / (N - 1)) * 100}%`,
+        width:         `${((selection[1] - selection[0]) / (N - 1)) * 100}%`,
+        background:    'rgba(99, 102, 241, 0.15)',
+        borderLeft:    '1px solid #6366f1',
+        borderRight:   '1px solid #6366f1',
+        pointerEvents: 'none',
+        zIndex:        4,
+      }}
+    />
+  ) : null
+
+  // Sheet de stats portion sélectionnée (déjà portalisé sur document.body)
+  const SelSheetNode =
+    showSelModal && selection && s
+      ? (
+        <SelectionSheet
+          sel={selection}
+          activity={activity}
+          time={s.time ?? []}
+          distance={s.distance ?? null}
+          watts={s.watts ?? null}
+          hr={s.heartrate ?? null}
+          velocity={s.velocity ?? null}
+          alt={s.altitude ?? null}
+          cadence={s.cadence ?? null}
+          temp={s.temp ?? null}
+          ftp={activity.ftp_at_time ?? null}
+          onClose={() => {
+            setShowSelModal(false)
+            setSelection(null)
+          }}
+        />
+      )
+      : null
 
   const W = 1000
   const ROW_H = 70    // hauteur fixe par row (Format A collé)
@@ -3121,6 +3361,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
 
           {/* Colonne charts + crosshair */}
           <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+            {SelectionOverlay}
             {/* Crosshair vertical traversant TOUS les rows */}
             <div
               ref={crosshairRef}
@@ -3194,6 +3435,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         }}>
           {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
         </div>
+        {SelSheetNode}
       </div>
     )
   }
@@ -3281,6 +3523,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
               <path d={mainPath} fill={def.color} fillOpacity={0.65} strokeLinejoin="round" />
             )}
           </svg>
+          {SelectionOverlay}
           <div
             ref={crosshairRef}
             style={{
@@ -3360,6 +3603,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         }}>
           {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
         </div>
+        {SelSheetNode}
       </div>
     )
   }
@@ -3472,6 +3716,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
             )
           })}
         </svg>
+        {SelectionOverlay}
         {/* Crosshair */}
         <div
           ref={crosshairRef}
@@ -3519,6 +3764,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       }}>
         {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
       </div>
+      {SelSheetNode}
     </div>
   )
 }

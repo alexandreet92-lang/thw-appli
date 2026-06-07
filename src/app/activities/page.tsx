@@ -5916,15 +5916,20 @@ function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit }: {
             <circle cx={55} cy={55} r={46}
                     stroke={color} strokeWidth={6} fill="none"
                     strokeDasharray={`${filled} ${FD_ARC_FULL}`}
-                    transform="rotate(135 55 55)" strokeLinecap="round" />
+                    transform="rotate(135 55 55)" strokeLinecap="round"
+                    style={{ transition: 'stroke-dasharray 0.4s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s ease' }} />
           )}
         </svg>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{
-            fontSize: 32, fontWeight: 700,
-            fontVariantNumeric: 'tabular-nums', lineHeight: 1,
-            color: isSet ? 'var(--text)' : 'var(--text-dim)',
-          }}>{isSet ? fdFormat(value as number) : '—'}</div>
+          <div
+            key={isSet ? String(value) : 'empty'}
+            style={{
+              fontSize: 32, fontWeight: 700,
+              fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+              color: isSet ? 'var(--text)' : 'var(--text-dim)',
+              animation: isSet ? 'fdGaugePulse 0.3s ease-out' : undefined,
+            }}
+          >{isSet ? fdFormat(value as number) : '—'}</div>
           {isSet && (
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontWeight: 500 }}>
               {denomLabel}
@@ -5940,6 +5945,7 @@ function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit }: {
         fontSize: 13, fontWeight: 600,
         color: isSet ? 'var(--text)' : 'var(--text-dim)',
         fontStyle: isSet ? 'normal' : 'italic',
+        transition: 'color 0.3s ease',
       }}>{isSet && descriptor ? descriptor.label : 'Non renseigné'}</div>
       <button onClick={onEdit} style={{
         fontSize: 10, color: '#06b6d4', textDecoration: 'underline',
@@ -5967,17 +5973,29 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
   const title  = kind === 'feeling' ? 'Ressenti' : 'Difficulté'
   return createPortal(
     <>
+      <style>{`
+        @keyframes fdGaugePulse  { 0%{transform:scale(0.92);opacity:0.6} 50%{transform:scale(1.05);opacity:1} 100%{transform:scale(1);opacity:1} }
+        @keyframes fdModalBackdrop { from{opacity:0} to{opacity:1} }
+        @keyframes fdModalEnter  { from{opacity:0;transform:translate(-50%,-46%) scale(0.96)} to{opacity:1;transform:translate(-50%,-50%) scale(1)} }
+      `}</style>
       <div onClick={onClose} style={{
-        position: 'fixed', inset: 0, zIndex: 700,
+        position: 'fixed', inset: 0, zIndex: 9998,
         background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+        animation: 'fdModalBackdrop 0.2s ease-out',
       }} />
-      <div style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 701,
-        background: 'var(--bg)', borderRadius: '18px 18px 0 0',
-        padding: '20px 24px 28px', boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
-        maxWidth: 480, marginLeft: 'auto', marginRight: 'auto',
-        fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-      }}>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          position: 'fixed', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 9999,
+          background: 'var(--bg)', borderRadius: 16,
+          padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+          width: '90vw', maxWidth: 380,
+          fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+          animation: 'fdModalEnter 0.22s cubic-bezier(0.32,0.72,0,1)',
+        }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{title}</div>
           <button onClick={onClose} style={{
@@ -5996,17 +6014,25 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
               <circle cx={55} cy={55} r={46}
                       stroke={color} strokeWidth={6} fill="none"
                       strokeDasharray={`${filled} ${FD_ARC_FULL}`}
-                      transform="rotate(135 55 55)" strokeLinecap="round" />
+                      transform="rotate(135 55 55)" strokeLinecap="round"
+                      style={{ transition: 'stroke-dasharray 0.4s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s ease' }} />
             </svg>
             <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{
-                fontSize: 36, fontWeight: 700,
-                fontVariantNumeric: 'tabular-nums', lineHeight: 1, color: 'var(--text)',
-              }}>{fdFormat(draft)}</div>
+              <div
+                key={String(draft)}
+                style={{
+                  fontSize: 36, fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums', lineHeight: 1, color: 'var(--text)',
+                  animation: 'fdGaugePulse 0.3s ease-out',
+                }}
+              >{fdFormat(draft)}</div>
               <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>sur {max}</div>
             </div>
           </div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginTop: 8 }}>
+          <div style={{
+            fontSize: 14, fontWeight: 600, color: 'var(--text)', marginTop: 8,
+            transition: 'color 0.3s ease',
+          }}>
             {descriptor.label}
           </div>
         </div>
@@ -6044,24 +6070,11 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
   )
 }
 
-function FeelingDifficultyCard({ activity }: { activity: Activity }) {
-  const { showToast } = useToast()
-  const [feeling,    setFeeling]    = useState<number | null>(typeof activity.feeling === 'number'    ? activity.feeling    : null)
-  const [difficulty, setDifficulty] = useState<number | null>(typeof activity.difficulty === 'number' ? activity.difficulty : null)
-  const [editing,    setEditing]    = useState<null | 'feeling' | 'difficulty'>(null)
-
-  async function save(kind: 'feeling' | 'difficulty', v: number) {
-    const sb = createClient()
-    const { error } = await sb.from('activities').update({ [kind]: v }).eq('id', activity.id)
-    if (error) {
-      showToast('Échec de la sauvegarde')
-      return
-    }
-    if (kind === 'feeling') setFeeling(v); else setDifficulty(v)
-    setEditing(null)
-    showToast('Enregistré')
-  }
-
+function FeelingDifficultyCard({ feeling, difficulty, onEdit }: {
+  feeling:    number | null
+  difficulty: number | null
+  onEdit:     (kind: 'feeling' | 'difficulty') => void
+}) {
   const fDesc = feeling    !== null ? feelingDescriptor(feeling)       : null
   const dDesc = difficulty !== null ? difficultyDescriptor(difficulty) : null
 
@@ -6071,16 +6084,8 @@ function FeelingDifficultyCard({ activity }: { activity: Activity }) {
       margin: '16px 0',
       display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16,
     }}>
-      <GaugeArc value={feeling}    max={5}  denomLabel="sur 5"  label="RESSENTI"   descriptor={fDesc} onEdit={() => setEditing('feeling')} />
-      <GaugeArc value={difficulty} max={10} denomLabel="sur 10" label="DIFFICULTÉ" descriptor={dDesc} onEdit={() => setEditing('difficulty')} />
-
-      <GaugeEditModal
-        open={editing !== null}
-        kind={editing ?? 'feeling'}
-        value={editing === 'feeling' ? feeling : difficulty}
-        onClose={() => setEditing(null)}
-        onSave={async v => { if (editing) await save(editing, v) }}
-      />
+      <GaugeArc value={feeling}    max={5}  denomLabel="sur 5"  label="RESSENTI"   descriptor={fDesc} onEdit={() => onEdit('feeling')} />
+      <GaugeArc value={difficulty} max={10} denomLabel="sur 10" label="DIFFICULTÉ" descriptor={dDesc} onEdit={() => onEdit('difficulty')} />
     </div>
   )
 }
@@ -6442,6 +6447,27 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const [showRpeModal, setShowRpeModal] = useState(false)
   const [localRpe, setLocalRpe]         = useState<number | null>(rpeVal)
   const [localSensation, setLocalSensation] = useState<number | null>(sensation)
+
+  // ── Jauges Ressenti / Difficulté (single source of truth dans ActivityDetail) ──
+  const { showToast: fdToast } = useToast()
+  const [localFeeling,    setLocalFeeling]    = useState<number | null>(typeof a.feeling    === 'number' ? a.feeling    : null)
+  const [localDifficulty, setLocalDifficulty] = useState<number | null>(typeof a.difficulty === 'number' ? a.difficulty : null)
+  const [fdEditing,       setFdEditing]       = useState<null | 'feeling' | 'difficulty'>(null)
+  async function saveFdValue(kind: 'feeling' | 'difficulty', v: number) {
+    const sb = createClient()
+    // eslint-disable-next-line no-console
+    console.log('[JAUGES] Saving:', { activityId: a.id, field: kind, value: v })
+    const { data, error } = await sb.from('activities').update({ [kind]: v }).eq('id', a.id).select()
+    // eslint-disable-next-line no-console
+    console.log('[JAUGES] Save result:', { data, error })
+    if (error) {
+      fdToast(`Échec : ${error.message}`)
+      return
+    }
+    if (kind === 'feeling') setLocalFeeling(v); else setLocalDifficulty(v)
+    setFdEditing(null)
+    fdToast('Enregistré')
+  }
 
   const powerTimesZ = useMemo(() => {
     if (!bikeZones || !a.streams?.watts) return null
@@ -7018,7 +7044,7 @@ conseil pour la prochaine séance similaire.`
 
           {/* Jauges Ressenti / Difficulté (mobile) */}
           <div style={{ padding: '0 16px' }}>
-            <FeelingDifficultyCard activity={a} />
+            <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} />
           </div>
 
           {/* Records battus — sous la carte (mobile) */}
@@ -7435,7 +7461,7 @@ conseil pour la prochaine séance similaire.`
         )}
 
         {/* ── Jauges Ressenti / Difficulté (desktop) ── */}
-        <FeelingDifficultyCard activity={a} />
+        <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} />
 
         {/* ── Records battus — sous la carte (desktop) ── */}
         <RecordsBeaten activityId={a.id} isBike={isBike} />
@@ -7520,9 +7546,9 @@ conseil pour la prochaine séance similaire.`
                     )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
                       <span style={{ color: 'var(--text-muted)' }}>Ressenti</span>
-                      {localSensation != null
-                        ? <span style={{ fontWeight: 500, color: 'var(--text)' }}>{localSensation}/5</span>
-                        : <button onClick={() => setShowRpeModal(true)} style={{ fontSize: 11, color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Saisir</button>
+                      {localFeeling != null
+                        ? <button onClick={() => setFdEditing('feeling')} style={{ fontWeight: 500, color: 'var(--text)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, fontFamily: 'inherit' }}>{fdFormat(localFeeling)} / 5</button>
+                        : <button onClick={() => setFdEditing('feeling')} style={{ fontSize: 11, color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Saisir</button>
                       }
                     </div>
                   </>
@@ -7570,6 +7596,14 @@ conseil pour la prochaine séance similaire.`
                   </div>
                 ))
               })()}
+              {/* Difficulté — éditable via modal partagé */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+                <span style={{ color: 'var(--text-muted)' }}>Difficulté</span>
+                {localDifficulty != null
+                  ? <button onClick={() => setFdEditing('difficulty')} style={{ fontWeight: 500, color: 'var(--text)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, fontFamily: 'inherit' }}>{fdFormat(localDifficulty)} / 10</button>
+                  : <button onClick={() => setFdEditing('difficulty')} style={{ fontSize: 11, color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Saisir</button>
+                }
+              </div>
             </div>
 
           </div>
@@ -7809,6 +7843,15 @@ conseil pour la prochaine séance similaire.`
       </div>
 
       {sharedModals}
+
+      {/* Modal jauges Ressenti / Difficulté — partagé entre carte gauges + lignes du tableau */}
+      <GaugeEditModal
+        open={fdEditing !== null}
+        kind={fdEditing ?? 'feeling'}
+        value={fdEditing === 'feeling' ? localFeeling : localDifficulty}
+        onClose={() => setFdEditing(null)}
+        onSave={async v => { if (fdEditing) await saveFdValue(fdEditing, v) }}
+      />
     </div>
   )
 }

@@ -1784,15 +1784,26 @@ const POWER_ZONES_DEF = [
 const HR_ZONE_COLORS = ['#3b82f6', '#10b981', '#eab308', '#f97316', '#ef4444']
 const HR_ZONE_NAMES  = ['Z1 Récup', 'Z2 Aérobie', 'Z3 Tempo', 'Z4 Seuil', 'Z5 VO2max']
 
-// ── Tranches de vitesse (km/h) ──
-const SPEED_ZONES_DEF: { label: string; min: number; max: number; color: string }[] = [
-  { label: 'À l\'arrêt', min: NaN,        max: NaN,        color: '#1e293b' },  // marqueur spécial pour NaN/null
-  { label: '0-10 km/h',  min: 0,          max: 10,         color: '#475569' },
-  { label: '11-20 km/h', min: 10,         max: 20,         color: '#06b6d4' },
-  { label: '20-25 km/h', min: 20,         max: 25,         color: '#3b82f6' },
-  { label: '25-30 km/h', min: 25,         max: 30,         color: '#8b5cf6' },
-  { label: '30-35 km/h', min: 30,         max: 35,         color: '#ec4899' },
-  { label: '> 35 km/h',  min: 35,         max: Infinity,   color: '#ef4444' },
+// ── Tranches de température (°C) ──
+const TEMP_ZONES_DEF: { label: string; min: number; max: number; color: string }[] = [
+  { label: '< 10 °C',   min: -Infinity, max: 10,       color: '#1e40af' },
+  { label: '10-15 °C',  min: 10,        max: 15,       color: '#3b82f6' },
+  { label: '15-20 °C',  min: 15,        max: 20,       color: '#06b6d4' },
+  { label: '20-25 °C',  min: 20,        max: 25,       color: '#10b981' },
+  { label: '25-30 °C',  min: 25,        max: 30,       color: '#eab308' },
+  { label: '30-35 °C',  min: 30,        max: 35,       color: '#f97316' },
+  { label: '> 35 °C',   min: 35,        max: Infinity, color: '#ef4444' },
+]
+
+// ── Tranches de cadence (rpm), 0 rpm exclu (roue libre) ──
+const CADENCE_ZONES_DEF: { label: string; min: number; max: number; color: string }[] = [
+  { label: '< 50 rpm',  min: 0.01, max: 50,       color: '#1e293b' },
+  { label: '50-60 rpm', min: 50,   max: 60,       color: '#475569' },
+  { label: '61-70 rpm', min: 60,   max: 70,       color: '#06b6d4' },
+  { label: '71-80 rpm', min: 70,   max: 80,       color: '#3b82f6' },
+  { label: '81-90 rpm', min: 80,   max: 90,       color: '#10b981' },
+  { label: '91-100 rpm',min: 90,   max: 100,      color: '#eab308' },
+  { label: '> 100 rpm', min: 100,  max: Infinity, color: '#f97316' },
 ]
 
 function _polarXY(cx: number, cy: number, r: number, angle: number) {
@@ -1817,48 +1828,40 @@ function ZoneDonut({ data, title }: { data: ZoneArc[]; title: string }) {
   const titleStyle: React.CSSProperties = {
     fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
     textTransform: 'uppercase', color: 'var(--text-dim)',
-    marginBottom: 16, textAlign: 'center',
+    marginBottom: 12, textAlign: 'center',
   }
-  if (totalPct <= 0) {
-    return (
-      <div>
-        <div style={titleStyle}>{title}</div>
-        <div style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center' }}>—</div>
-      </div>
-    )
-  }
-  const CX = 65, CY = 65, R_OUT = 60, R_IN = 42
+  if (totalPct <= 0) return null    // PAS de placeholder '—' : on retire le donut entier
+  const CX = 50, CY = 50, R_OUT = 45, R_IN = 32
   let cum = 0
   const visible = data.filter(d => d.pct > 0)
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
       <div style={titleStyle}>{title}</div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, flexWrap: 'wrap' }}>
-        <svg viewBox="0 0 130 130" style={{ width: 130, height: 130, flexShrink: 0 }}>
-          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="var(--bg-card2)" strokeWidth={R_OUT - R_IN} />
-          {data.map((d, i) => {
-            if (d.pct <= 0) return null
-            const startAng = -Math.PI / 2 + (cum / totalPct) * 2 * Math.PI
-            const endAng   = -Math.PI / 2 + ((cum + d.pct) / totalPct) * 2 * Math.PI
-            cum += d.pct
-            return <path key={i} d={_donutArcPath(CX, CY, R_OUT, R_IN, startAng, endAng)} fill={d.color} />
-          })}
-        </svg>
-        <ul style={{
-          listStyle: 'none', margin: 0, padding: 0,
-          display: 'flex', flexDirection: 'column', gap: 4,
-          fontSize: 11, color: 'var(--text)',
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          {visible.map((d, i) => (
-            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 9, height: 9, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-              <span style={{ color: 'var(--text-dim)', flex: 1 }}>{d.label}</span>
-              <span style={{ fontWeight: 700, color: 'var(--text)' }}>{Math.round((d.pct / totalPct) * 100)}%</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <svg viewBox="0 0 100 100" style={{ width: 100, height: 100, flexShrink: 0 }}>
+        <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="var(--bg-card2)" strokeWidth={R_OUT - R_IN} />
+        {data.map((d, i) => {
+          if (d.pct <= 0) return null
+          const startAng = -Math.PI / 2 + (cum / totalPct) * 2 * Math.PI
+          const endAng   = -Math.PI / 2 + ((cum + d.pct) / totalPct) * 2 * Math.PI
+          cum += d.pct
+          return <path key={i} d={_donutArcPath(CX, CY, R_OUT, R_IN, startAng, endAng)} fill={d.color} />
+        })}
+      </svg>
+      <ul style={{
+        listStyle: 'none', margin: 0, padding: 0,
+        width: '100%',
+        display: 'flex', flexDirection: 'column', gap: 3,
+        fontSize: 10, color: 'var(--text)',
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {visible.map((d, i) => (
+          <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
+            <span style={{ color: 'var(--text-dim)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label}</span>
+            <span style={{ fontWeight: 700, color: 'var(--text)' }}>{Math.round((d.pct / totalPct) * 100)}%</span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -1958,17 +1961,36 @@ function SelectionSheet(props: SelectionSheetProps) {
     ] },
   ]
 
-  // ── Zones de PUISSANCE (7 zones Coggan) ──
+  // ── Diagnostic Puissance — log conditions de calcul (gardé pour traçabilité) ──
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line no-console
+    console.log('[SelectionSheet][DIAG Power]', {
+      hasStreams: !!activity.streams,
+      streamsKeys: activity.streams ? Object.keys(activity.streams) : [],
+      wattsSamples: wS?.slice(0, 5),
+      wattsLen: wS?.length ?? 0,
+      ftp,
+      ftp_at_time: activity.ftp_at_time,
+      hasAnyPositive: wS?.some(w => w != null && w > 0) ?? false,
+    })
+  }
+
+  // ── Données puissance présentes ? ──
+  const hasPowerData = !!wS && wS.length > 0 && wS.some(w => w != null && w > 0)
+
+  // ── Zones de PUISSANCE (7 zones Coggan) — fallback FTP 200 W si non défini ──
+  const ftpForZones = (ftp && ftp > 0) ? ftp : 200
   const pwDist: ZoneArc[] = (() => {
-    if (!wS || !ftp || ftp <= 0) return []
+    if (!hasPowerData) return []
     const counts = POWER_ZONES_DEF.map(() => 0)
-    wS.forEach(w => {
-      const r = w / ftp
+    wS!.forEach(w => {
+      if (w == null || isNaN(w)) return
+      const r = w / ftpForZones
       for (let i = 0; i < POWER_ZONES_DEF.length; i++) {
         if (r < POWER_ZONES_DEF[i].max) { counts[i]++; break }
       }
     })
-    const tot = wS.length || 1
+    const tot = wS!.length || 1
     return POWER_ZONES_DEF.map((z, i) => ({
       label: z.label, pct: (counts[i] / tot) * 100, color: z.color,
     }))
@@ -2005,23 +2027,41 @@ function SelectionSheet(props: SelectionSheetProps) {
     return buckets.map((b, i) => ({ label: b.label, pct: (counts[i] / tot) * 100, color: b.color }))
   })()
 
-  // ── Tranches de VITESSE ── (7 tranches y compris "à l'arrêt" pour les NaN)
-  const vitDist: ZoneArc[] = (() => {
-    if (!vS || vS.length === 0) return []
-    // Pour les samples sans capteur valide, on regarde le stream brut velocity
-    const counts = SPEED_ZONES_DEF.map(() => 0)
-    vS.forEach(v => {
-      if (v == null || isNaN(v) || v < 0) { counts[0]++; return }
-      // Tranches numériques à partir d'idx 1
-      let placed = false
-      for (let i = 1; i < SPEED_ZONES_DEF.length; i++) {
-        const def = SPEED_ZONES_DEF[i]
-        if (v >= def.min && v < def.max) { counts[i]++; placed = true; break }
+  // ── Présence de données température + cadence ──
+  const hasTempData = !!tS && tS.length > 0 && tS.some(v => v != null && !isNaN(v))
+  const hasCadData  = !!cS && cS.length > 0 && cS.some(v => v != null && !isNaN(v) && v > 0)
+  const hasHrData   = !!hrS && hrS.length > 0 && hrS.some(v => v != null && !isNaN(v) && v > 0)
+
+  // ── Tranches de TEMPÉRATURE (°C) ──
+  const tempDist: ZoneArc[] = (() => {
+    if (!hasTempData) return []
+    const counts = TEMP_ZONES_DEF.map(() => 0)
+    tS!.forEach(t => {
+      if (t == null || isNaN(t)) return
+      for (let i = 0; i < TEMP_ZONES_DEF.length; i++) {
+        const def = TEMP_ZONES_DEF[i]
+        if (t >= def.min && t < def.max) { counts[i]++; break }
       }
-      if (!placed) counts[SPEED_ZONES_DEF.length - 1]++
     })
-    const tot = vS.length || 1
-    return SPEED_ZONES_DEF.map((d, i) => ({ label: d.label, pct: (counts[i] / tot) * 100, color: d.color }))
+    const tot = (tS!.filter(t => t != null && !isNaN(t)).length) || 1
+    return TEMP_ZONES_DEF.map((d, i) => ({ label: d.label, pct: (counts[i] / tot) * 100, color: d.color }))
+  })()
+
+  // ── Tranches de CADENCE (rpm) — samples 0 rpm exclus (roue libre) ──
+  const cadDist: ZoneArc[] = (() => {
+    if (!hasCadData) return []
+    const counts = CADENCE_ZONES_DEF.map(() => 0)
+    let tot = 0
+    cS!.forEach(c => {
+      if (c == null || isNaN(c) || c <= 0) return     // exclut roue libre + capteur off
+      tot++
+      for (let i = 0; i < CADENCE_ZONES_DEF.length; i++) {
+        const def = CADENCE_ZONES_DEF[i]
+        if (c >= def.min && c < def.max) { counts[i]++; break }
+      }
+    })
+    if (tot === 0) return []
+    return CADENCE_ZONES_DEF.map((d, i) => ({ label: d.label, pct: (counts[i] / tot) * 100, color: d.color }))
   })()
 
   // ── Activity sliced pour réutiliser ActivityCurves ──
@@ -2130,10 +2170,42 @@ function SelectionSheet(props: SelectionSheetProps) {
     </div>
   )
 
+  // Compte les donuts visibles pour ajuster le layout
+  const visibleDonuts: { title: string; data: ZoneArc[] }[] = []
+  if (hasHrData)    visibleDonuts.push({ title: 'Répartition FC',          data: hrDist   })
+  if (hasPowerData) visibleDonuts.push({ title: 'Répartition Puissance',   data: pwDist   })
+  if (hasTempData)  visibleDonuts.push({ title: 'Répartition Température', data: tempDist })
+  if (hasCadData)   visibleDonuts.push({ title: 'Répartition Cadence',     data: cadDist  })
+
   // Sheet rendu via portal sur document.body pour échapper à tout containing
   // block créé par un ancêtre transformé (ex: bottom-sheet de l'activité).
   const sheetNode = (
     <>
+      {/* Animations + responsive grids — injectés via le portal car SyncCharts
+          (qui hébergeait ces règles auparavant) n'est plus monté. */}
+      <style>{`
+        @keyframes selSheetFadeIn  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes selSheetFadeOut { from { opacity: 1 } to { opacity: 0 } }
+        @keyframes selSheetUp      { from { transform: translateY(100%) } to { transform: translateY(0) } }
+        @keyframes selSheetDown    { from { transform: translateY(0) } to { transform: translateY(100%) } }
+        .sel-sheet-in           { animation: selSheetUp 300ms ease-out; }
+        .sel-sheet-out          { animation: selSheetDown 250ms ease-in forwards; }
+        .sel-sheet-overlay-in   { animation: selSheetFadeIn 300ms ease-out; }
+        .sel-sheet-overlay-out  { animation: selSheetFadeOut 250ms ease-in forwards; }
+        /* Grilles : repeat(2) sur petit, repeat(4) sur ≥ 1024px */
+        .sel-hero-grid    { grid-template-columns: repeat(2, 1fr); row-gap: 24px; }
+        .sel-details-grid { grid-template-columns: 1fr; }
+        .sel-donuts-grid  { grid-template-columns: 1fr; }
+        @media (min-width: 640px) {
+          .sel-details-grid { grid-template-columns: repeat(2, 1fr); }
+          .sel-donuts-grid  { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (min-width: 1024px) {
+          .sel-hero-grid    { grid-template-columns: repeat(4, 1fr); row-gap: 0; }
+          .sel-details-grid { grid-template-columns: repeat(4, 1fr); }
+          .sel-donuts-grid  { grid-template-columns: repeat(${Math.max(1, visibleDonuts.length)}, 1fr); }
+        }
+      `}</style>
       <div
         onClick={handleClose}
         className={closing ? 'sel-sheet-overlay-out' : 'sel-sheet-overlay-in'}
@@ -2233,19 +2305,21 @@ function SelectionSheet(props: SelectionSheetProps) {
           </div>
         </div>
 
-        {/* 3 DONUTS — FC / Puissance / Vitesse */}
-        <div
-          className="sel-donuts-grid"
-          style={{
-            display: 'grid', gap: 32,
-            padding: 28,
-            borderBottom: '1px solid var(--border)',
-          }}
-        >
-          <ZoneDonut title="Répartition FC" data={hrDist} />
-          <ZoneDonut title="Répartition Puissance" data={pwDist} />
-          <ZoneDonut title="Répartition Vitesse" data={vitDist} />
-        </div>
+        {/* DONUTS — FC / Puissance / Température / Cadence (masquage auto si pas de data) */}
+        {visibleDonuts.length > 0 && (
+          <div
+            className="sel-donuts-grid"
+            style={{
+              display: 'grid', gap: 24,
+              padding: 28,
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
+            {visibleDonuts.map(d => (
+              <ZoneDonut key={d.title} title={d.title} data={d.data} />
+            ))}
+          </div>
+        )}
 
         {/* COURBES — réutilisation ActivityCurves sur la portion sélectionnée */}
         <div style={{ padding: 28 }}>

@@ -1769,17 +1769,29 @@ interface SelectionSheetProps {
   onClose:     () => void
 }
 
-// ── Zones de puissance Coggan (% FTP) ──
+// ── Zones de puissance Coggan (% FTP) — violet gradient pâle → foncé ──
 const POWER_ZONES_DEF = [
-  { z: 1, label: 'Z1', range: '<55%',    min: 0,    max: 0.55, color: '#94a3b8' },
-  { z: 2, label: 'Z2', range: '56-75%',  min: 0.55, max: 0.75, color: '#06B6D4' },
-  { z: 3, label: 'Z3', range: '76-90%',  min: 0.75, max: 0.90, color: '#10B981' },
-  { z: 4, label: 'Z4', range: '91-105%', min: 0.90, max: 1.05, color: '#F59E0B' },
-  { z: 5, label: 'Z5', range: '106-120%',min: 1.05, max: 1.20, color: '#F97316' },
-  { z: 6, label: 'Z6', range: '121-150%',min: 1.20, max: 1.50, color: '#EF4444' },
-  { z: 7, label: 'Z7', range: '>150%',   min: 1.50, max: 99,   color: '#7C2D12' },
+  { z: 1, label: 'Z1', range: '<55%',    min: 0,    max: 0.55, color: '#ddd6fe' },
+  { z: 2, label: 'Z2', range: '56-75%',  min: 0.55, max: 0.75, color: '#c4b5fd' },
+  { z: 3, label: 'Z3', range: '76-90%',  min: 0.75, max: 0.90, color: '#a78bfa' },
+  { z: 4, label: 'Z4', range: '91-105%', min: 0.90, max: 1.05, color: '#8b5cf6' },
+  { z: 5, label: 'Z5', range: '106-120%',min: 1.05, max: 1.20, color: '#7c3aed' },
+  { z: 6, label: 'Z6', range: '121-150%',min: 1.20, max: 1.50, color: '#6b21a8' },
+  { z: 7, label: 'Z7', range: '>150%',   min: 1.50, max: 99,   color: '#581c87' },
 ]
-const HR_ZONE_COLORS = ['#06B6D4', '#10B981', '#F59E0B', '#F97316', '#EF4444']
+const HR_ZONE_COLORS = ['#3b82f6', '#10b981', '#eab308', '#f97316', '#ef4444']
+const HR_ZONE_NAMES  = ['Z1 Récup', 'Z2 Aérobie', 'Z3 Tempo', 'Z4 Seuil', 'Z5 VO2max']
+
+// ── Tranches de vitesse (km/h) ──
+const SPEED_ZONES_DEF: { label: string; min: number; max: number; color: string }[] = [
+  { label: 'À l\'arrêt', min: NaN,        max: NaN,        color: '#1e293b' },  // marqueur spécial pour NaN/null
+  { label: '0-10 km/h',  min: 0,          max: 10,         color: '#475569' },
+  { label: '11-20 km/h', min: 10,         max: 20,         color: '#06b6d4' },
+  { label: '20-25 km/h', min: 20,         max: 25,         color: '#3b82f6' },
+  { label: '25-30 km/h', min: 25,         max: 30,         color: '#8b5cf6' },
+  { label: '30-35 km/h', min: 30,         max: 35,         color: '#ec4899' },
+  { label: '> 35 km/h',  min: 35,         max: Infinity,   color: '#ef4444' },
+]
 
 function _polarXY(cx: number, cy: number, r: number, angle: number) {
   return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
@@ -1800,38 +1812,47 @@ function _donutArcPath(cx: number, cy: number, rOut: number, rIn: number, startA
 interface ZoneArc { label: string; pct: number; color: string }
 function ZoneDonut({ data, title }: { data: ZoneArc[]; title: string }) {
   const totalPct = data.reduce((s, d) => s + d.pct, 0)
+  const titleStyle: React.CSSProperties = {
+    fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
+    textTransform: 'uppercase', color: 'var(--text-dim)',
+    marginBottom: 16, textAlign: 'center',
+  }
   if (totalPct <= 0) {
     return (
       <div>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 16 }}>{title}</div>
-        <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>—</div>
+        <div style={titleStyle}>{title}</div>
+        <div style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center' }}>—</div>
       </div>
     )
   }
-  const CX = 75, CY = 75, R_OUT = 65, R_IN = 46
+  const CX = 65, CY = 65, R_OUT = 60, R_IN = 42
   let cum = 0
+  const visible = data.filter(d => d.pct > 0)
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 16 }}>
-        {title}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-        <svg viewBox="0 0 150 150" style={{ width: 150, height: 150, flexShrink: 0 }}>
+      <div style={titleStyle}>{title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, flexWrap: 'wrap' }}>
+        <svg viewBox="0 0 130 130" style={{ width: 130, height: 130, flexShrink: 0 }}>
+          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="var(--bg-card2)" strokeWidth={R_OUT - R_IN} />
           {data.map((d, i) => {
             if (d.pct <= 0) return null
-            const frac = d.pct / totalPct
             const startAng = -Math.PI / 2 + (cum / totalPct) * 2 * Math.PI
             const endAng   = -Math.PI / 2 + ((cum + d.pct) / totalPct) * 2 * Math.PI
             cum += d.pct
             return <path key={i} d={_donutArcPath(CX, CY, R_OUT, R_IN, startAng, endAng)} fill={d.color} />
           })}
         </svg>
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text)' }}>
-          {data.map((d, i) => (
-            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontVariantNumeric: 'tabular-nums' }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-              <span style={{ fontWeight: 600, minWidth: 28 }}>{d.label}</span>
-              <span style={{ color: 'var(--text-dim)' }}>{Math.round((d.pct / totalPct) * 100)}%</span>
+        <ul style={{
+          listStyle: 'none', margin: 0, padding: 0,
+          display: 'flex', flexDirection: 'column', gap: 4,
+          fontSize: 11, color: 'var(--text)',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {visible.map((d, i) => (
+            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 9, height: 9, borderRadius: 2, background: d.color, flexShrink: 0 }} />
+              <span style={{ color: 'var(--text-dim)', flex: 1 }}>{d.label}</span>
+              <span style={{ fontWeight: 700, color: 'var(--text)' }}>{Math.round((d.pct / totalPct) * 100)}%</span>
             </li>
           ))}
         </ul>
@@ -1959,19 +1980,18 @@ function SelectionSheet(props: SelectionSheetProps) {
       buckets = hrZones.slice(0, 5).map((z, idx) => ({
         min:   z.min,
         max:   idx === 4 ? Infinity : (z.max ?? Infinity),
-        label: z.label || `Z${idx + 1}`,
+        label: z.label || HR_ZONE_NAMES[idx],
         color: HR_ZONE_COLORS[idx],
       }))
     } else {
       const hrMax = Math.max(...hrS)
       const thresholds = [0.6, 0.7, 0.8, 0.9].map(p => p * hrMax)
-      buckets = [
-        { min: 0,             max: thresholds[0], label: 'Z1', color: HR_ZONE_COLORS[0] },
-        { min: thresholds[0], max: thresholds[1], label: 'Z2', color: HR_ZONE_COLORS[1] },
-        { min: thresholds[1], max: thresholds[2], label: 'Z3', color: HR_ZONE_COLORS[2] },
-        { min: thresholds[2], max: thresholds[3], label: 'Z4', color: HR_ZONE_COLORS[3] },
-        { min: thresholds[3], max: Infinity,      label: 'Z5', color: HR_ZONE_COLORS[4] },
-      ]
+      buckets = HR_ZONE_NAMES.map((name, idx) => ({
+        min:   idx === 0 ? 0 : thresholds[idx - 1],
+        max:   idx === 4 ? Infinity : thresholds[idx],
+        label: name,
+        color: HR_ZONE_COLORS[idx],
+      }))
     }
     const counts = buckets.map(() => 0)
     hrS.forEach(h => {
@@ -1981,6 +2001,25 @@ function SelectionSheet(props: SelectionSheetProps) {
     })
     const tot = hrS.length || 1
     return buckets.map((b, i) => ({ label: b.label, pct: (counts[i] / tot) * 100, color: b.color }))
+  })()
+
+  // ── Tranches de VITESSE ── (7 tranches y compris "à l'arrêt" pour les NaN)
+  const vitDist: ZoneArc[] = (() => {
+    if (!vS || vS.length === 0) return []
+    // Pour les samples sans capteur valide, on regarde le stream brut velocity
+    const counts = SPEED_ZONES_DEF.map(() => 0)
+    vS.forEach(v => {
+      if (v == null || isNaN(v) || v < 0) { counts[0]++; return }
+      // Tranches numériques à partir d'idx 1
+      let placed = false
+      for (let i = 1; i < SPEED_ZONES_DEF.length; i++) {
+        const def = SPEED_ZONES_DEF[i]
+        if (v >= def.min && v < def.max) { counts[i]++; placed = true; break }
+      }
+      if (!placed) counts[SPEED_ZONES_DEF.length - 1]++
+    })
+    const tot = vS.length || 1
+    return SPEED_ZONES_DEF.map((d, i) => ({ label: d.label, pct: (counts[i] / tot) * 100, color: d.color }))
   })()
 
   // ── Activity sliced pour réutiliser ActivityCurves ──
@@ -2000,54 +2039,92 @@ function SelectionSheet(props: SelectionSheetProps) {
 
   const subtitle = `${fmtClock(time[i1] - time[0])} → ${fmtClock(time[i2] - time[0])}${distM != null ? ` · ${(distM / 1000).toFixed(2).replace('.', ',')} km` : ''}`
 
-  // ── Stats agrégées en 4 colonnes ──
-  const colEffort = [
-    { label: 'Durée',         value: fmtDuration(dur) },
-    { label: 'Distance',      value: distM != null ? `${(distM / 1000).toFixed(2).replace('.', ',')} km` : '—' },
-    { label: 'Vitesse moy.',  value: v(avgOf(vS), 'km/h', 1) },
-    { label: 'Vitesse max.',  value: v(maxOf(vS), 'km/h', 1) },
+  // ── Hero KPIs (4 stats principales, gros chiffre + unité) ──
+  type Hero = { label: string; value: string; unit: string | null }
+  const heroDistance: Hero  = distM != null
+    ? { label: 'Distance', value: (distM / 1000).toFixed(2).replace('.', ','), unit: 'km' }
+    : { label: 'Distance', value: '—', unit: null }
+  const _wAvg = avgOf(wS)
+  const _vAvg = avgOf(vS)
+  const _hrAvg = avgOf(hrS)
+  const heroPower: Hero = _wAvg != null
+    ? { label: 'Puiss. moy.', value: `${Math.round(_wAvg)}`, unit: 'W' }
+    : (_vAvg != null
+        ? { label: 'Allure moy.', value: fmtClock(1000 / Math.max(0.1, _vAvg / 3.6)), unit: '/km' }
+        : { label: 'Puiss. moy.', value: '—', unit: null })
+  const heroHr: Hero = _hrAvg != null
+    ? { label: 'FC moy.', value: `${Math.round(_hrAvg)}`, unit: 'bpm' }
+    : { label: 'FC moy.', value: '—', unit: null }
+  const heroSpeed: Hero = _vAvg != null
+    ? { label: 'Vit. moy.', value: _vAvg.toFixed(1).replace('.', ','), unit: 'km/h' }
+    : { label: 'Vit. moy.', value: '—', unit: null }
+  const heroStats = [heroDistance, heroPower, heroHr, heroSpeed]
+
+  // ── Détails compacts (4 colonnes catégorisées, lignes label/valeur) ──
+  type Detail = { label: string; value: string }
+  const _aMin = minOf(aS), _aMax = maxOf(aS), _aAvg = avgOf(aS)
+  const _tMin = minOf(tS), _tMax = maxOf(tS), _tAvg = avgOf(tS)
+  const colEffortDetails: Detail[] = [
+    { label: 'Durée',     value: fmtDuration(dur) },
+    { label: 'Vit. max',  value: v(maxOf(vS), 'km/h', 1) },
+    { label: 'Roue libre',value: freeDur != null ? `${fmtClock(freeDur)} (${Math.round((freePct ?? 0) * 100)} %)` : '—' },
   ]
-  const colPuissance = [
-    { label: 'Watts moy.',        value: v(avgOf(wS), 'W') },
-    { label: 'Watts max.',        value: v(maxOf(wS), 'W') },
-    { label: 'Watts normalisés',  value: v(npSeg, 'W') },
-    { label: 'W/kg',              value: '—' },
+  const colPowerDetails: Detail[] = [
+    { label: 'Watts max', value: v(maxOf(wS), 'W') },
+    { label: 'NP',        value: v(npSeg, 'W') },
+    { label: 'W/kg',      value: '—' },
   ]
-  const colCadence = [
-    { label: 'Cadence moy.',  value: v(avgOf(cS), 'rpm') },
-    { label: 'Cadence max.',  value: v(maxOf(cS), 'rpm') },
-    { label: 'Roue libre',    value: freeDur != null ? `${fmtClock(freeDur)} (${Math.round((freePct ?? 0) * 100)} %)` : '—' },
+  const colHrCadDetails: Detail[] = [
+    { label: 'FC max',    value: v(maxOf(hrS), 'bpm') },
+    { label: 'Cad. moy.', value: v(avgOf(cS), 'rpm') },
+    { label: 'Cad. max',  value: v(maxOf(cS), 'rpm') },
   ]
-  const colTerrain = [
-    { label: 'D+',            value: aS ? `+${Math.round(dPlus)} m` : '—' },
-    { label: 'D−',            value: aS ? `−${Math.round(dMinus)} m` : '—' },
-    { label: 'Altitude max.', value: v(maxOf(aS), 'm') },
-    { label: 'Altitude moy.', value: v(avgOf(aS), 'm') },
-  ]
-  const colTemp = [
-    { label: 'Temp. moy.',    value: v(avgOf(tS), '°C') },
-    { label: 'Temp. max.',    value: v(maxOf(tS), '°C') },
-    { label: 'Temp. min.',    value: v(minOf(tS), '°C') },
+  const colTerrainDetails: Detail[] = [
+    { label: 'D+ / D−',   value: aS ? `+${Math.round(dPlus)} / −${Math.round(dMinus)} m` : '—' },
+    { label: 'Alt. moy/max', value: (_aAvg != null && _aMax != null) ? `${Math.round(_aAvg)} / ${Math.round(_aMax)} m` : '—' },
+    { label: 'T moy/max', value: (_tAvg != null && _tMax != null && _tMin != null) ? `${Math.round(_tAvg)} / ${Math.round(_tMax)} °C` : '—' },
   ]
 
   // ── Styles partagés ──
-  const sectionTitle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
-    textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 12,
+  const sectionTitleStyle: React.CSSProperties = {
+    fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
+    textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 10,
   }
-  const StatBlock = ({ label, value }: { label: string; value: string }) => (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 500, marginBottom: 4 }}>{label}</div>
-      <div
-        className="barlow"
-        style={{
-          fontSize: 24, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-          color: value === '—' ? 'var(--text-dim)' : 'var(--text)',
-          lineHeight: 1.1,
-        }}
-      >
-        {value}
+  const HeroCell = ({ stat, last }: { stat: Hero; last: boolean }) => (
+    <div style={{
+      textAlign: 'center',
+      padding: '0 12px',
+      borderRight: last ? 'none' : '1px solid var(--border)',
+    }}>
+      <div style={{
+        fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em',
+        color: 'var(--text-dim)', fontWeight: 600, marginBottom: 8,
+      }}>{stat.label}</div>
+      <div style={{
+        fontSize: 36, fontWeight: 600, lineHeight: 1,
+        fontVariantNumeric: 'tabular-nums',
+        color: stat.value === '—' ? 'var(--text-dim)' : 'var(--text)',
+      }}>
+        {stat.value}
+        {stat.unit && (
+          <span style={{ fontSize: 14, color: 'var(--text-dim)', fontWeight: 500, marginLeft: 4 }}>
+            {stat.unit}
+          </span>
+        )}
       </div>
+    </div>
+  )
+  const DetailLine = ({ label, value }: Detail) => (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between',
+      padding: '4px 0', fontSize: 12,
+    }}>
+      <span style={{ color: 'var(--text-dim)' }}>{label}</span>
+      <span style={{
+        fontWeight: 600, color: 'var(--text)',
+        fontVariantNumeric: 'tabular-nums',
+        textAlign: 'right',
+      }}>{value}</span>
     </div>
   )
 
@@ -2073,10 +2150,11 @@ function SelectionSheet(props: SelectionSheetProps) {
           position:     'fixed', left: 0, right: 0, bottom: 0, zIndex: 601,
           background:   'var(--bg)',
           borderRadius: '16px 16px 0 0',
-          boxShadow:    '0 -8px 40px rgba(0,0,0,0.25)',
+          boxShadow:    '0 10px 40px rgba(0,0,0,0.3)',
           maxHeight:    '90vh',
           overflowY:    'auto',
           paddingBottom: 24,
+          fontFamily:   'Inter, system-ui, -apple-system, sans-serif',
         }}
       >
         {/* Handle */}
@@ -2090,14 +2168,14 @@ function SelectionSheet(props: SelectionSheetProps) {
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-          padding: '14px 24px 16px', borderBottom: '1px solid var(--border)',
+          padding: '14px 28px 20px', borderBottom: '1px solid var(--border)',
         }}>
           <div>
-            <div className="barlow" style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', lineHeight: 1.15 }}>
               Sélection — {fmtDuration(dur)}
             </div>
             <div style={{
-              fontSize: 13, color: 'var(--text-dim)', marginTop: 4, fontVariantNumeric: 'tabular-nums',
+              fontSize: 13, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums',
             }}>
               {subtitle}
             </div>
@@ -2106,57 +2184,69 @@ function SelectionSheet(props: SelectionSheetProps) {
             onClick={handleClose} aria-label="Fermer"
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--text-dim)', fontSize: 22, lineHeight: 1, padding: 4,
+              color: 'var(--text-dim)', fontSize: 18, lineHeight: 1, padding: 6,
+              width: 32, height: 32,
             }}
           >✕</button>
         </div>
 
-        {/* HEADER STATS — grille 4 cols (2 cols mobile) */}
+        {/* HERO KPIs — 4 stats principales gros chiffre + unité */}
         <div
-          className="sel-stats-grid"
+          className="sel-hero-grid"
           style={{
-            display: 'grid',
-            gap: 24,
-            padding: 24,
+            display: 'grid', gap: 0,
+            padding: 28,
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          {heroStats.map((s, i) => (
+            <HeroCell key={s.label} stat={s} last={i === heroStats.length - 1} />
+          ))}
+        </div>
+
+        {/* DÉTAILS COMPACTS — 4 colonnes catégorisées */}
+        <div
+          className="sel-details-grid"
+          style={{
+            display: 'grid', gap: 32,
+            padding: '24px 28px',
             borderBottom: '1px solid var(--border)',
           }}
         >
           <div>
-            <div style={sectionTitle}>Effort</div>
-            {colEffort.map(s => <StatBlock key={s.label} {...s} />)}
+            <div style={sectionTitleStyle}>Effort</div>
+            {colEffortDetails.map(d => <DetailLine key={d.label} {...d} />)}
           </div>
           <div>
-            <div style={sectionTitle}>Puissance</div>
-            {colPuissance.map(s => <StatBlock key={s.label} {...s} />)}
+            <div style={sectionTitleStyle}>Puissance</div>
+            {colPowerDetails.map(d => <DetailLine key={d.label} {...d} />)}
           </div>
           <div>
-            <div style={sectionTitle}>Cadence</div>
-            {colCadence.map(s => <StatBlock key={s.label} {...s} />)}
+            <div style={sectionTitleStyle}>FC & Cadence</div>
+            {colHrCadDetails.map(d => <DetailLine key={d.label} {...d} />)}
           </div>
           <div>
-            <div style={sectionTitle}>Terrain</div>
-            {colTerrain.map(s => <StatBlock key={s.label} {...s} />)}
-            <div style={{ marginTop: 16, ...sectionTitle }}>Température</div>
-            {colTemp.map(s => <StatBlock key={s.label} {...s} />)}
+            <div style={sectionTitleStyle}>Terrain & Temp.</div>
+            {colTerrainDetails.map(d => <DetailLine key={d.label} {...d} />)}
           </div>
         </div>
 
-        {/* DONUTS — grille 2 cols (1 col mobile) */}
+        {/* 3 DONUTS — FC / Puissance / Vitesse */}
         <div
           className="sel-donuts-grid"
           style={{
-            display: 'grid',
-            gap: 24,
-            padding: 24,
+            display: 'grid', gap: 32,
+            padding: 28,
             borderBottom: '1px solid var(--border)',
           }}
         >
           <ZoneDonut title="Répartition FC" data={hrDist} />
           <ZoneDonut title="Répartition Puissance" data={pwDist} />
+          <ZoneDonut title="Répartition Vitesse" data={vitDist} />
         </div>
 
         {/* COURBES — réutilisation ActivityCurves sur la portion sélectionnée */}
-        <div style={{ padding: 24 }}>
+        <div style={{ padding: 28 }}>
           <ActivityCurves activity={slicedActivity} />
         </div>
       </div>
@@ -2439,12 +2529,17 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
         .sel-sheet-out          { animation: selSheetDown 250ms ease-in forwards; }
         .sel-sheet-overlay-in   { animation: selSheetFadeIn 300ms ease-out; }
         .sel-sheet-overlay-out  { animation: selSheetFadeOut 250ms ease-in forwards; }
-        /* Layout responsive du nouveau SelectionSheet */
-        .sel-stats-grid   { grid-template-columns: repeat(2, 1fr); }
+        /* Layout responsive du SelectionSheet — format 3 (hero + détails + 3 donuts) */
+        .sel-hero-grid    { grid-template-columns: repeat(2, 1fr); row-gap: 24px; }
+        .sel-details-grid { grid-template-columns: 1fr; }
         .sel-donuts-grid  { grid-template-columns: 1fr; }
-        @media (min-width: 768px) {
-          .sel-stats-grid  { grid-template-columns: repeat(4, 1fr); }
-          .sel-donuts-grid { grid-template-columns: 1fr 1fr; }
+        @media (min-width: 640px) {
+          .sel-details-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (min-width: 1024px) {
+          .sel-hero-grid    { grid-template-columns: repeat(4, 1fr); row-gap: 0; }
+          .sel-details-grid { grid-template-columns: repeat(4, 1fr); }
+          .sel-donuts-grid  { grid-template-columns: repeat(3, 1fr); }
         }
       `}</style>
 

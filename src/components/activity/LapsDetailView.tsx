@@ -702,20 +702,43 @@ export function LapsDetailView(props: LapsDetailViewProps) {
                   return (
                     <button
                       key={i}
-                      onClick={() => setActiveLap(i)}
-                      style={{
-                        position: 'absolute', bottom: 0,
-                        left: lx + 1,
-                        width: Math.max(0, lw - 2), height: h,
-                        background: isActive ? PURPLE_ACTIVE : purplePale,
-                        opacity: isActive ? 0.95 : (isDark ? 0.7 : 0.85),
-                        border: 'none', borderRadius: '3px 3px 0 0',
-                        cursor: 'pointer', padding: 0,
-                        transition: 'background 0.2s ease, opacity 0.2s ease, left 0.2s ease, width 0.2s ease',
-                        zIndex: 1,
+                      onClick={() => {
+                        console.log('[LAPS] Tap sur barre index:', i)
+                        setActiveLap(i)
                       }}
                       aria-label={`Tour ${i + 1}`}
-                    />
+                      style={{
+                        // Hit target : couvre TOUTE la hauteur de la colonne (240 px)
+                        // pour faciliter le tap mobile au doigt
+                        position: 'absolute', top: 0, bottom: 0,
+                        left: lx, width: lw,
+                        background: 'transparent',
+                        border: 'none', padding: 0, margin: 0,
+                        cursor: 'pointer',
+                        WebkitTapHighlightColor: 'transparent',
+                        WebkitUserSelect: 'none',
+                        userSelect: 'none',
+                        touchAction: 'manipulation',
+                        zIndex: 1,
+                        transition: 'left 0.2s ease, width 0.2s ease',
+                      }}
+                    >
+                      {/* Barre visuelle non interactive — pointer-events:none
+                          pour que le tap traverse jusqu'au <button> parent */}
+                      <span
+                        style={{
+                          position: 'absolute', bottom: 0,
+                          left: 1, right: 1,
+                          height: h,
+                          background: isActive ? PURPLE_ACTIVE : purplePale,
+                          opacity: isActive ? 0.95 : (isDark ? 0.7 : 0.85),
+                          borderRadius: '3px 3px 0 0',
+                          pointerEvents: 'none',
+                          display: 'block',
+                          transition: 'background 0.2s ease, opacity 0.2s ease, height 0.2s ease',
+                        }}
+                      />
+                    </button>
                   )
                 })}
                 {/* Active underline */}

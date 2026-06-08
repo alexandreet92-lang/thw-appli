@@ -183,33 +183,53 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
         Tours · {N}
       </div>
 
-      {/* Wrapper relatif avec aspect-ratio forcé + onClick global qui calcule
-          quel lap a été tapé à partir des coordonnées du tap.
-          Pas d'overlay multi-boutons (compliqué à débugger sur mobile). */}
+      {/* Wrapper relatif avec aspect-ratio forcé.
+          Touch mobile : onTouchEnd avec preventDefault() pour éviter la synth click
+          qui est annulée si le doigt bouge d'1px (interprété comme scroll par iOS).
+          Mouse desktop : onClick standard.
+          touch-action: none → empêche le scroll de la page de cancel le tap. */}
       <div
         onClick={e => {
           const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+          if (rect.width === 0) return
           const fx = (e.clientX - rect.left) / rect.width
           const xViewBox = fx * VBW
           let lapIdx = -1
           for (let i = 0; i < laps.length; i++) {
-            const xStart = xs[i]
-            const xEnd   = xStart + widths[i] + GAP
-            if (xViewBox >= xStart && xViewBox < xEnd) { lapIdx = i; break }
+            if (xViewBox >= xs[i] && xViewBox < xs[i] + widths[i] + GAP) { lapIdx = i; break }
           }
           if (lapIdx < 0 && laps.length > 0) {
-            // tap dans la marge → prend le lap le plus proche
             const dists = laps.map((_, i) => Math.abs(xs[i] + widths[i] / 2 - xViewBox))
             lapIdx = dists.indexOf(Math.min(...dists))
           }
-          console.log('[LAPS] Tap detected at lap idx:', lapIdx, 'xViewBox:', xViewBox.toFixed(0))
+          console.log('[LAPS] Click (mouse) idx:', lapIdx)
+          if (lapIdx >= 0) onLapTap?.(lapIdx)
+        }}
+        onTouchEnd={e => {
+          e.preventDefault()
+          e.stopPropagation()
+          const t = e.changedTouches[0]
+          if (!t) return
+          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+          if (rect.width === 0) return
+          const fx = (t.clientX - rect.left) / rect.width
+          const xViewBox = fx * VBW
+          let lapIdx = -1
+          for (let i = 0; i < laps.length; i++) {
+            if (xViewBox >= xs[i] && xViewBox < xs[i] + widths[i] + GAP) { lapIdx = i; break }
+          }
+          if (lapIdx < 0 && laps.length > 0) {
+            const dists = laps.map((_, i) => Math.abs(xs[i] + widths[i] / 2 - xViewBox))
+            lapIdx = dists.indexOf(Math.min(...dists))
+          }
+          console.log('[LAPS] TouchEnd (mobile) idx:', lapIdx)
           if (lapIdx >= 0) onLapTap?.(lapIdx)
         }}
         style={{
           position: 'relative', width: '100%',
           paddingBottom: `${(SVG_H / VBW) * 100}%`,
           cursor: onLapTap ? 'pointer' : 'default',
-          touchAction: 'manipulation',
+          touchAction: 'none',
           WebkitTapHighlightColor: 'transparent',
           WebkitUserSelect: 'none',
           userSelect: 'none',

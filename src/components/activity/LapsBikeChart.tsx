@@ -25,6 +25,7 @@ interface Props {
   avgWatts?:    number | null
   streams?:     { watts?: number[] | null } | null
   ftp?:         number | null
+  onLapTap?:    (lapIndex: number) => void
 }
 
 // ── Formatters ─────────────────────────────────────────────────────────────
@@ -34,20 +35,6 @@ function fmtDur(s: number): string {
   const sec = Math.floor(s % 60)
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
   return `${m}:${String(sec).padStart(2, '0')}`
-}
-
-function fmtDist(m: number): string {
-  return (m / 1000).toFixed(2).replace('.', ',') + ' km'
-}
-
-function fmtSpeed(mps: number | null | undefined): string {
-  if (!mps) return '—'
-  return (mps * 3.6).toFixed(1).replace('.', ',') + ' km/h'
-}
-
-function fmtVal(v: number | null | undefined, unit: string, round = true): string {
-  if (v == null) return '—'
-  return `${round ? Math.round(v) : v} ${unit}`
 }
 
 // ── Power zones (% FTP → violet shade) ─────────────────────────────────────
@@ -84,63 +71,11 @@ function darken(hex: string, factor = 0.82): string {
   return `#${rr}${gg}${bb}`
 }
 
-// ── Detail panel ───────────────────────────────────────────────────────────
-function LapDetailPanel({ lap, index, ftp, onClose }: { lap: LapData; index: number; ftp?: number | null; onClose: () => void }) {
-  const rows: { label: string; value: string }[] = [
-    { label: 'Distance',    value: fmtDist(lap.distance_m) },
-    { label: 'Durée',       value: fmtDur(lap.moving_time_s) },
-    { label: 'Watts moy.',  value: fmtVal(lap.avg_watts, 'W') },
-    { label: 'FC moy.',     value: fmtVal(lap.avg_hr, 'bpm') },
-    { label: 'RPM moy.',    value: fmtVal(lap.avg_cadence, 'rpm') },
-    { label: 'D+',          value: lap.elevation_gain_m != null ? `+${Math.round(lap.elevation_gain_m)} m` : '—' },
-    { label: 'Vitesse moy.',value: fmtSpeed(lap.avg_speed_ms) },
-    { label: 'Temp. moy.',  value: lap.temp_avg != null ? `${Math.round(lap.temp_avg)} °C` : '—' },
-  ]
-
-  const zoneColor = powerZoneColor(lap.avg_watts ?? 0, ftp)
-
-  return (
-    <div style={{
-      background:    'var(--bg-card)',
-      border:        '0.5px solid var(--border)',
-      borderLeft:    `4px solid ${zoneColor}`,
-      borderRadius:  12,
-      padding:       '16px 20px',
-      marginTop:     16,
-      position:      'relative',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <span className="barlow" style={{ fontSize: 14, fontWeight: 700, color: '#A855F7', fontVariantNumeric: 'tabular-nums' }}>
-          Tour {index + 1}
-        </span>
-        <button
-          onClick={onClose}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 16, lineHeight: 1, padding: 2 }}
-          aria-label="Fermer"
-        >
-          ✕
-        </button>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
-        {rows.map(({ label, value }) => (
-          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '8px 12px', borderBottom: '0.5px solid var(--border)' }}>
-            <span style={{ fontSize: 9.5, color: 'var(--text-dim)', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
-            <span className="barlow" style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
-              {value}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ── Main component ─────────────────────────────────────────────────────────
-export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp }: Props) {
+export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap }: Props) {
   const [laps,        setLaps]        = useState<LapData[]>(cachedLaps && cachedLaps.length > 1 ? cachedLaps : [])
   const [loading,     setLoading]     = useState(!cachedLaps || cachedLaps.length <= 1)
   const [error,       setError]       = useState<string | null>(null)
-  const [selectedLap, setSelectedLap] = useState<number | null>(null)
   const [hoveredLap,  setHoveredLap]  = useState<number | null>(null)
 
   useEffect(() => {
@@ -287,21 +222,20 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp }: Props) 
           const bY       = yOf(w)
           const bX       = xs[i]
           const bW       = widths[i]
-          const sel      = selectedLap === i
           const hov      = hoveredLap === i
           const baseFill = powerZoneColor(w, ftp)
-          const fill     = sel ? darken(baseFill, 0.7) : hov ? darken(baseFill, 0.85) : baseFill
-          const stroke   = sel ? darken(baseFill, 0.55) : 'none'
+          const fill     = hov ? darken(baseFill, 0.85) : baseFill
           const showLabel    = bW >= 18 && bH >= 18 && w > 0
           const showTickName = i % labelStep === 0 || i === N - 1
 
           return (
             <g
               key={i}
-              onClick={() => setSelectedLap(sel ? null : i)}
+              onClick={() => onLapTap?.(i)}
+              onTouchEnd={() => onLapTap?.(i)}
               onMouseEnter={() => setHoveredLap(i)}
               onMouseLeave={() => setHoveredLap(null)}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: onLapTap ? 'pointer' : 'default' }}
             >
               {/* Invisible hit area sur toute la hauteur */}
               <rect x={bX} y={PAD_T} width={bW + GAP} height={CH} fill="transparent" />
@@ -312,8 +246,8 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp }: Props) 
                 width={bW}
                 height={bH}
                 fill={fill}
-                stroke={stroke}
-                strokeWidth={sel ? 1 : 0}
+                stroke="none"
+                strokeWidth={0}
                 vectorEffect="non-scaling-stroke"
                 rx={1.5}
                 style={{ transition: 'fill 0.15s' }}
@@ -326,29 +260,19 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp }: Props) 
                   {Math.round(w)}
                 </text>
               )}
-              {/* Label T_i sous la barre */}
+              {/* Label sous la barre — numéro sans préfixe (cohérent avec LapsDetailView) */}
               {showTickName && (
                 <text x={bX + bW / 2} y={PAD_T + CH + PAD_B - 8}
                   textAnchor="middle" fontSize="10"
-                  fill={sel ? '#7C3AED' : 'var(--text-dim)'}
+                  fill="var(--text-dim)"
                   style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                  T{i + 1}
+                  {i + 1}
                 </text>
               )}
             </g>
           )
         })}
       </svg>
-
-      {/* Detail panel */}
-      {selectedLap !== null && laps[selectedLap] && (
-        <LapDetailPanel
-          lap={laps[selectedLap]}
-          index={selectedLap}
-          ftp={ftp}
-          onClose={() => setSelectedLap(null)}
-        />
-      )}
     </div>
   )
 }

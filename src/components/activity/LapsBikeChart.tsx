@@ -239,11 +239,23 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
               <rect
                 x={bX} y={PAD_T} width={bW + GAP} height={CH}
                 fill="transparent"
-                onClick={() => onLapTap?.(i)}
-                onTouchEnd={e => { e.preventDefault(); onLapTap?.(i) }}
+                onClick={e => {
+                  e.stopPropagation()
+
+                  console.log('[LAPS-FORCE] Barre cliquée index:', i, 'callback définie?', !!onLapTap)
+                  onLapTap?.(i)
+                }}
+                onTouchEnd={e => {
+                  e.preventDefault()
+                  e.stopPropagation()
+
+                  console.log('[LAPS-FORCE] Barre touchée index:', i)
+                  onLapTap?.(i)
+                }}
                 onPointerUp={e => {
-                  // Fallback unifié pour les browsers récents (Pointer Events)
-                  if (e.pointerType === 'mouse') return  // évite double-fire avec onClick
+                  if (e.pointerType === 'mouse') return  // évite double-fire avec onClick desktop
+
+                  console.log('[LAPS-FORCE] Barre pointerUp index:', i, 'type:', e.pointerType)
                   onLapTap?.(i)
                 }}
                 style={{

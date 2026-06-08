@@ -7359,21 +7359,13 @@ conseil pour la prochaine séance similaire.`
                       avgWatts={a.avg_watts}
                       streams={a.streams}
                       ftp={bikeZoneRow?.ftp_watts ?? null}
-                      onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
-                    />
-                    <button
-                      onClick={() => { setLapsViewInitial(0); setLapsViewOpen(true) }}
-                      style={{
-                        marginTop: 12, width: '100%',
-                        padding: '12px 16px',
-                        background: '#7c3aed', color: '#fff',
-                        border: 'none', borderRadius: 10,
-                        fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                        fontFamily: 'inherit',
+                      onLapTap={i => {
+
+                        console.log('[LAPS-FORCE] Callback page reçue, ouvre la vue pour lap', i)
+                        setLapsViewInitial(i)
+                        setLapsViewOpen(true)
                       }}
-                    >
-                      Voir tous les tours ›
-                    </button>
+                    />
                   </>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
@@ -7850,20 +7842,6 @@ conseil pour la prochaine séance similaire.`
                     ftp={bikeZoneRow?.ftp_watts ?? null}
                     onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
                   />
-                  {a.laps && a.laps.length > 1 && (
-                    <button
-                      onClick={() => { setLapsViewInitial(0); setLapsViewOpen(true) }}
-                      style={{
-                        marginTop: 12, padding: '10px 16px',
-                        background: '#7c3aed', color: '#fff',
-                        border: 'none', borderRadius: 10,
-                        fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      Voir tous les tours ›
-                    </button>
-                  )}
                 </>
               )}
 

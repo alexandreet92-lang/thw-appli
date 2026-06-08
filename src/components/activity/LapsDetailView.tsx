@@ -454,6 +454,14 @@ export function LapsDetailView(props: LapsDetailViewProps) {
   const { open, onClose, initialActiveLap, laps, streams, sportLabel,
           totalDistanceM, totalDurationS, ftp, bikeZones, hrZones } = props
 
+
+  console.log('[LAPS-FORCE] LapsDetailView render, props:', {
+    open, initialActiveLap,
+    lapsCount: laps?.length ?? 0,
+    hasStreams: !!streams,
+    hasAltitude: !!streams?.altitude,
+  })
+
   // Dark mode detection (best-effort, recompute au mount)
   const [isDark, setIsDark] = useState(false)
   useEffect(() => {

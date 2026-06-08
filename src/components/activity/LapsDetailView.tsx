@@ -82,9 +82,12 @@ const CADENCE_ZONES_DEF = [
   { label: '91-100',min: 90,   max: 100,      color: '#eab308' },
   { label: '> 100', min: 100,  max: Infinity, color: '#f97316' },
 ]
-const BAR_WIDTH    = 50
-const GRAPH_HEIGHT = 240
-const LABELS_H     = 28
+const GRAPH_HEIGHT          = 240
+const LABELS_H              = 28
+const Y_AXIS_W              = 50      // espace Y axis sticky à gauche
+const MIN_LAP_WIDTH_MOBILE  = 95
+const MIN_LAP_WIDTH_DESKTOP = 30
+const MOBILE_BREAKPOINT     = 768
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -104,6 +107,34 @@ function fmtKm(m: number | null | undefined): string {
 function fmtSpeedKmh(mps: number | null | undefined): string {
   if (mps == null) return '—'
   return `${(mps * 3.6).toFixed(1).replace('.', ',')} km/h`
+}
+
+function computeLapWidths(laps: LapData[], availableWidth: number, isMobile: boolean): number[] {
+  const N = laps.length
+  if (N === 0) return []
+  const totalDur = laps.reduce((s, l) => s + (l.moving_time_s || 0), 0)
+  const minW     = isMobile ? MIN_LAP_WIDTH_MOBILE : MIN_LAP_WIDTH_DESKTOP
+
+  // Étape 1 : largeur proportionnelle pure à la durée
+  const proportional = laps.map(l => (totalDur > 0 ? (l.moving_time_s / totalDur) * availableWidth : availableWidth / N))
+
+  // Étape 2 : appliquer le min
+  const withMin = proportional.map(w => Math.max(w, minW))
+  const totalWithMin = withMin.reduce((s, w) => s + w, 0)
+
+  if (totalWithMin <= availableWidth) {
+    // Tout tient : redistribuer le surplus aux laps non-min, proportionnellement à leur taille actuelle
+    const surplus = availableWidth - totalWithMin
+    const nonMinIdx = withMin.map((w, i) => ({ w, i, isMin: w === minW })).filter(x => !x.isMin)
+    if (nonMinIdx.length === 0) return withMin
+    const nonMinTotal = nonMinIdx.reduce((s, x) => s + x.w, 0) || 1
+    return withMin.map((w) => {
+      if (w === minW) return w
+      return w + (w / nonMinTotal) * surplus
+    })
+  }
+  // Dépasse → scroll horizontal prend le relai
+  return withMin
 }
 
 function cadenceDescriptor(cad: number | null | undefined): string | null {
@@ -482,6 +513,34 @@ export function LapsDetailView(props: LapsDetailViewProps) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const listRowsRef = useRef<Map<number, HTMLButtonElement | null>>(new Map())
 
+  // Largeur disponible mesurée — fournit la pleine largeur sur desktop
+  const [availW, setAvailW] = useState(0)
+  useEffect(() => {
+    const sc = scrollerRef.current
+    if (!sc) return
+    const upd = () => {
+      // largeur visible du scroller = viewport - Y axis sticky
+      setAvailW(Math.max(0, sc.clientWidth))
+    }
+    upd()
+    const ro = new ResizeObserver(upd)
+    ro.observe(sc)
+    window.addEventListener('resize', upd)
+    return () => { ro.disconnect(); window.removeEventListener('resize', upd) }
+  }, [open])
+
+  const isMobile = availW > 0 && availW < MOBILE_BREAKPOINT
+  const lapWidths = useMemo(
+    () => computeLapWidths(laps, availW || 800, isMobile),
+    [laps, availW, isMobile],
+  )
+  const lapPositions = useMemo(() => {
+    const pos: number[] = [0]
+    for (let i = 0; i < lapWidths.length - 1; i++) pos.push(pos[i] + lapWidths[i])
+    return pos
+  }, [lapWidths])
+  const totalGraphW = lapWidths.reduce((s, w) => s + w, 0)
+
   // Range Y du graphique
   const maxYW = useMemo(() => {
     const m = laps.reduce((acc, l) => Math.max(acc, l.avg_watts ?? 0), 0)
@@ -492,29 +551,31 @@ export function LapsDetailView(props: LapsDetailViewProps) {
     return Array.from({ length: steps + 1 }, (_, i) => Math.round(maxYW * (steps - i) / steps))
   }, [maxYW])
 
-  // Profil altitude — normalisé sur l'activité entière
+  // Profil altitude — normalisé sur le totalGraphW dynamique (path viewBox = même W)
   const altPath = useMemo(() => {
     const alt = streams?.altitude
-    if (!alt || alt.length < 2) return ''
+    if (!alt || alt.length < 2 || totalGraphW <= 0) return ''
     const mn = Math.min(...alt), mx = Math.max(...alt), rg = (mx - mn) || 1
-    const W = laps.length * BAR_WIDTH
+    const W = totalGraphW
     const pts = alt.map((v, i) => {
       const x = (i / (alt.length - 1)) * W
       const y = (1 - (v - mn) / rg) * GRAPH_HEIGHT
       return `${x.toFixed(1)},${y.toFixed(1)}`
     })
     return `M0,${GRAPH_HEIGHT}L${pts.join('L')}L${W},${GRAPH_HEIGHT}Z`
-  }, [streams?.altitude, laps.length])
+  }, [streams?.altitude, totalGraphW])
 
-  // Auto-scroll vers la barre active
+  // Auto-scroll vers la barre active (positions dynamiques)
   useEffect(() => {
     const sc = scrollerRef.current
     if (!sc) return
-    const target = activeLap * BAR_WIDTH - sc.clientWidth / 2 + BAR_WIDTH / 2
+    const left = (lapPositions[activeLap] ?? 0)
+    const w    = (lapWidths[activeLap] ?? 0)
+    const target = left + w / 2 - sc.clientWidth / 2
     sc.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
     const row = listRowsRef.current.get(activeLap)
     row?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [activeLap])
+  }, [activeLap, lapPositions, lapWidths])
 
   const aLap = laps[activeLap] ?? laps[0]
   const aWatts = aLap?.avg_watts != null ? Math.round(aLap.avg_watts) : null
@@ -523,7 +584,6 @@ export function LapsDetailView(props: LapsDetailViewProps) {
 
   const altBgColor   = isDark ? ALT_BG_NGT      : ALT_BG_DAY
   const purplePale   = isDark ? PURPLE_PALE_NGT : PURPLE_PALE_DAY
-  const containerW   = laps.length * BAR_WIDTH
 
   if (!open || typeof document === 'undefined') return null
 
@@ -614,19 +674,19 @@ export function LapsDetailView(props: LapsDetailViewProps) {
             ref={scrollerRef}
             className="laps-scroller"
             style={{
-              marginLeft: 50, overflowX: 'auto', overflowY: 'hidden',
+              marginLeft: Y_AXIS_W, overflowX: 'auto', overflowY: 'hidden',
               WebkitOverflowScrolling: 'touch',
             }}
           >
-            <div style={{ position: 'relative', width: containerW, paddingRight: 16 }}>
+            <div style={{ position: 'relative', width: totalGraphW || '100%', paddingRight: 16 }}>
               {/* Container des barres + altitude */}
               <div style={{
-                position: 'relative', width: containerW, height: GRAPH_HEIGHT,
+                position: 'relative', width: totalGraphW || '100%', height: GRAPH_HEIGHT,
                 overflow: 'hidden',
               }}>
-                {altPath && (
+                {altPath && totalGraphW > 0 && (
                   <svg
-                    viewBox={`0 0 ${containerW} ${GRAPH_HEIGHT}`}
+                    viewBox={`0 0 ${totalGraphW} ${GRAPH_HEIGHT}`}
                     preserveAspectRatio="none"
                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
                   >
@@ -637,19 +697,21 @@ export function LapsDetailView(props: LapsDetailViewProps) {
                   const w = lap.avg_watts ?? 0
                   const h = w > 0 ? (w / maxYW) * GRAPH_HEIGHT : 2
                   const isActive = i === activeLap
+                  const lw = lapWidths[i] ?? 0
+                  const lx = lapPositions[i] ?? 0
                   return (
                     <button
                       key={i}
                       onClick={() => setActiveLap(i)}
                       style={{
                         position: 'absolute', bottom: 0,
-                        left: i * BAR_WIDTH + 2,
-                        width: BAR_WIDTH - 4, height: h,
+                        left: lx + 1,
+                        width: Math.max(0, lw - 2), height: h,
                         background: isActive ? PURPLE_ACTIVE : purplePale,
                         opacity: isActive ? 0.95 : (isDark ? 0.7 : 0.85),
                         border: 'none', borderRadius: '3px 3px 0 0',
                         cursor: 'pointer', padding: 0,
-                        transition: 'background 0.2s ease, opacity 0.2s ease',
+                        transition: 'background 0.2s ease, opacity 0.2s ease, left 0.2s ease, width 0.2s ease',
                         zIndex: 1,
                       }}
                       aria-label={`Tour ${i + 1}`}
@@ -660,34 +722,38 @@ export function LapsDetailView(props: LapsDetailViewProps) {
                 <div
                   style={{
                     position: 'absolute',
-                    bottom: 0, left: activeLap * BAR_WIDTH + 2,
-                    width: BAR_WIDTH - 4, height: 4,
+                    bottom: 0,
+                    left: (lapPositions[activeLap] ?? 0) + 2,
+                    width: Math.max(0, (lapWidths[activeLap] ?? 0) - 4),
+                    height: 4,
                     background: isDark ? PURPLE_PALE_NGT : PURPLE_ACTIVE,
                     borderRadius: 2,
-                    transition: 'left 0.3s cubic-bezier(0.4,0,0.2,1)',
+                    transition: 'left 0.3s cubic-bezier(0.4,0,0.2,1), width 0.3s cubic-bezier(0.4,0,0.2,1)',
                     zIndex: 3, pointerEvents: 'none',
                   }}
                 />
               </div>
               {/* X labels */}
               <div style={{
-                position: 'relative', width: containerW, height: LABELS_H,
+                position: 'relative', width: totalGraphW || '100%', height: LABELS_H,
                 background: 'var(--bg)',
               }}>
                 {laps.map((_, i) => {
                   const isActive = i === activeLap
+                  const lw = lapWidths[i] ?? 0
+                  const lx = lapPositions[i] ?? 0
                   return (
                     <span
                       key={i}
                       style={{
                         position: 'absolute',
-                        left: i * BAR_WIDTH, top: 6,
-                        width: BAR_WIDTH, textAlign: 'center',
+                        left: lx, top: 6,
+                        width: lw, textAlign: 'center',
                         fontSize: isActive ? 13 : 12,
                         fontWeight: isActive ? 800 : 600,
                         color: isActive ? 'var(--text)' : 'var(--text-dim)',
                         fontVariantNumeric: 'tabular-nums',
-                        transition: 'color 0.2s, font-weight 0.2s',
+                        transition: 'color 0.2s, font-weight 0.2s, left 0.2s, width 0.2s',
                       }}
                     >{i + 1}</span>
                   )
@@ -750,30 +816,31 @@ export function LapsDetailView(props: LapsDetailViewProps) {
           })}
         </div>
 
-        {/* CTA Détails */}
+        {/* CTA Détails — compact aligné à droite */}
         <div style={{
-          padding: '14px 16px',
+          padding: '12px 16px',
           borderTop: '1px solid var(--border)',
           background: 'var(--bg)',
           display: 'flex',
+          justifyContent: 'flex-end',
         }}>
           <button
             onClick={() => setDetailsOpen(true)}
-            onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.98)' }}
+            onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.97)' }}
             onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = '' }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = '' }}
             style={{
-              flex: 1,
               background: PURPLE_ACTIVE,
               color: '#fff',
-              padding: 14,
-              borderRadius: 12, border: 'none',
-              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              padding: '10px 18px',
+              borderRadius: 8, border: 'none',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
               transition: 'background 0.15s ease, transform 0.1s ease',
               fontFamily: 'inherit',
+              whiteSpace: 'nowrap',
             }}
-            onFocus={e => { e.currentTarget.style.background = PURPLE_ACTIVE_2 }}
-            onBlur={e => { e.currentTarget.style.background = PURPLE_ACTIVE }}
+            onMouseEnter={e => { e.currentTarget.style.background = PURPLE_ACTIVE_2 }}
+            onMouseOut={e => { e.currentTarget.style.background = PURPLE_ACTIVE }}
           >
             Détails du tour {activeLap + 1} ›
           </button>

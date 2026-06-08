@@ -764,10 +764,27 @@ const BIKE_DUR_TO_IDX: Record<string, number> = {
   '6h':    20, // 21600s
 }
 
-function PowerCurveChart({ watts, activityId, activityDurationS }: {
+// ── Zones de puissance Coggan (% FTP) pour overlay arrière-plan MMP ──
+const MMP_POWER_ZONES = [
+  { z: 1, label: 'Z1 Récup',     min: 0,    max: 0.55, color: '#94a3b8' },
+  { z: 2, label: 'Z2 Endurance', min: 0.55, max: 0.75, color: '#06B6D4' },
+  { z: 3, label: 'Z3 Tempo',     min: 0.75, max: 0.90, color: '#10b981' },
+  { z: 4, label: 'Z4 Seuil',     min: 0.90, max: 1.05, color: '#eab308' },
+  { z: 5, label: 'Z5 VO2max',    min: 1.05, max: 1.20, color: '#f97316' },
+  { z: 6, label: 'Z6 Anaér.',    min: 1.20, max: 1.50, color: '#ef4444' },
+  { z: 7, label: 'Z7 Neuromusc', min: 1.50, max: 99,   color: '#7c2d12' },
+]
+function getPowerZone(watts: number, ftp: number | null): typeof MMP_POWER_ZONES[number] | null {
+  if (!ftp || ftp <= 0 || watts <= 0) return null
+  const ratio = watts / ftp
+  return MMP_POWER_ZONES.find(z => ratio < z.max) ?? MMP_POWER_ZONES[MMP_POWER_ZONES.length - 1]
+}
+
+function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
   watts:             number[]
   activityId:        string
   activityDurationS: number
+  ftp?:              number | null
 }) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const N = watts.length
@@ -912,8 +929,43 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
     }
   }
 
+  // Smoothing léger de la courbe record pour éviter les pics anguleux (3-point moving avg)
+  const recordCurveSmooth = useMemo(() => {
+    if (!recordCurve) return null
+    return recordCurve.map((v, i) => {
+      const vals = [
+        recordCurve[Math.max(0, i - 1)],
+        v,
+        recordCurve[Math.min(recordCurve.length - 1, i + 1)],
+      ].filter(x => x > 0)
+      return vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : v
+    })
+  }, [recordCurve])
+
   const { fill: fillPath, line: linePath } = buildCurvePaths(mmp)
-  const recPaths = recordCurve ? buildCurvePaths(recordCurve) : null
+  const recPaths = recordCurveSmooth ? buildCurvePaths(recordCurveSmooth) : null
+
+  // Zones où mmp[i] > recordCurve[i] → mise en valeur visuelle (segments verts)
+  const recordBeatSegments = useMemo(() => {
+    if (!recordCurve) return []
+    const segs: { x: number; y: number }[][] = []
+    let cur: { x: number; y: number }[] = []
+    for (let i = 0; i < DURATIONS.length; i++) {
+      if (mmp[i] > (recordCurve[i] ?? 0) && recordCurve[i] > 0) {
+        cur.push({ x: sqrtX(DURATIONS[i]), y: yOf(mmp[i]) })
+      } else {
+        if (cur.length > 0) { segs.push(cur); cur = [] }
+      }
+    }
+    if (cur.length > 0) segs.push(cur)
+    return segs
+  }, [mmp, recordCurve]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Durées clés pour marqueurs : 5s, 1', 5', 20', 1h (les indices à highlight)
+  const KEY_DURATIONS_S = [5, 60, 300, 1200, 3600]
+  const keyDurIndices = KEY_DURATIONS_S
+    .map(d => DURATIONS.indexOf(d))
+    .filter(idx => idx >= 0 && mmp[idx] > 0)
 
   // Sqrt-aware hit detection: find nearest DURATION to cursor position in sqrt space
   const sqrtIdx = useMemo((): number | null => {
@@ -984,6 +1036,24 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
             </linearGradient>
           </defs>
 
+          {/* Zones FTP en arrière-plan (bandes horizontales subtiles) */}
+          {ftp && ftp > 0 && MMP_POWER_ZONES.map(z => {
+            const wMin = z.min * ftp
+            const wMax = Math.min(z.max * ftp, Y_MAX)
+            if (wMax <= Y_MIN) return null
+            const yTop    = yOf(Math.min(wMax, Y_MAX))
+            const yBottom = yOf(Math.max(wMin, Y_MIN))
+            const h = yBottom - yTop
+            if (h < 1) return null
+            return (
+              <rect
+                key={z.z}
+                x={0} y={yTop} width={W} height={h}
+                fill={z.color} fillOpacity={0.07}
+              />
+            )
+          })}
+
           {/* Gridlines Y (échelle log) : 100, 200, 300, 500, 1000, 1500 */}
           {yTicks.map(w => {
             const y = yOf(w)
@@ -1006,9 +1076,45 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
             <path d={recPaths.line} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="5,3"
               strokeLinecap="round" strokeLinejoin="round"/>
           )}
+          {/* Mise en valeur des segments où séance > record (trait vert épais sous la ligne séance) */}
+          {recordBeatSegments.map((seg, si) => {
+            if (seg.length < 2) return null
+            const d = `M${seg.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L')}`
+            return (
+              <path key={`beat-${si}`} d={d} fill="none" stroke="#10b981" strokeWidth="5"
+                strokeLinecap="round" strokeLinejoin="round" opacity={0.45} />
+            )
+          })}
+
           {/* Ligne séance pleine — au-dessus de tout */}
           <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="2.5"
             strokeLinecap="round" strokeLinejoin="round"/>
+
+          {/* Marqueurs sur les durées CLÉS (5s, 1', 5', 20', 1h) — point + label valeur */}
+          {keyDurIndices.map(i => {
+            const cx = sqrtX(DURATIONS[i])
+            const cy = yOf(mmp[i])
+            const w  = mmp[i]
+            // Position du label : au-dessus si record battu (déjà trophée), sinon à droite
+            const isBeaten = trophies.some(t => t.i === i)
+            const labelY = isBeaten ? cy - 28 : cy - 10
+            return (
+              <g key={`key-${i}`}>
+                <circle cx={cx} cy={cy} r={3.5} fill="#6366f1" stroke="var(--bg)" strokeWidth={1.5} />
+                <text
+                  x={cx} y={labelY}
+                  textAnchor="middle"
+                  fontSize={9.5}
+                  fontWeight={700}
+                  fill="#6366f1"
+                  style={{ fontFamily: 'DM Mono, monospace', fontVariantNumeric: 'tabular-nums' }}
+                  pointerEvents="none"
+                >
+                  {w}
+                </text>
+              </g>
+            )
+          })}
 
           {/* Trophées 🏆 (gold = All Time, cyan = Année) sur la courbe séance */}
           {trophies.map(({ i, kind }) => {
@@ -1047,70 +1153,114 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
           )}
         </svg>
 
-        {/* MMP tooltip — durée + séance + record + delta */}
+        {/* MMP tooltip — refondu : header large + Séance + Record + Δ + zone FTP */}
         {sqrtIdx !== null && mmpMousePos && (() => {
           const sessW = mmp[sqrtIdx]
-          const recW  = recordCurve?.[sqrtIdx] ?? 0
+          const recW  = recordCurveSmooth?.[sqrtIdx] ?? 0
           const delta = sessW - recW
-          const pct   = recW > 0 ? Math.round((sessW / recW) * 100) : null
+          const tpct  = recW > 0 ? Math.round((sessW / recW) * 100) : null
           const isBeat = recW > 0 && sessW > recW
+          const zone   = getPowerZone(sessW, ftp ?? null)
+          const ftpPct = ftp && ftp > 0 ? Math.round((sessW / ftp) * 100) : null
           return (
             <div style={{
               position:      'absolute',
-              left:          Math.max(4, Math.min((mmpContainerRef.current?.clientWidth ?? 400) - 168, mmpMousePos.x + 14)),
-              top:           Math.max(4, mmpMousePos.y - 84),
+              left:          Math.max(4, Math.min((mmpContainerRef.current?.clientWidth ?? 400) - 200, mmpMousePos.x + 14)),
+              top:           Math.max(4, mmpMousePos.y - 110),
               background:    'var(--bg-card)',
               border:        '1px solid var(--border)',
-              borderRadius:  8,
-              padding:       '8px 10px',
-              fontSize:      10,
-              boxShadow:     '0 4px 16px rgba(0,0,0,0.4)',
+              borderRadius:  10,
+              padding:       '10px 12px',
+              fontSize:      11,
+              boxShadow:     '0 4px 20px rgba(0,0,0,0.45)',
               pointerEvents: 'none',
               zIndex:        20,
               whiteSpace:    'nowrap',
-              minWidth:      150,
+              minWidth:      180,
+              fontFamily:    'Inter, system-ui, -apple-system, sans-serif',
             }}>
-              <div style={{
-                fontSize:       9,
-                fontWeight:     700,
-                letterSpacing:  '0.08em',
-                textTransform:  'uppercase',
-                color:          'var(--text-dim)',
-                marginBottom:   6,
-              }}>
-                {fmtDuration(DURATIONS[sqrtIdx])}
+              {/* Header durée large + record battu badge */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{
+                  fontSize:       14,
+                  fontWeight:     700,
+                  color:          'var(--text)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {fmtDuration(DURATIONS[sqrtIdx])}
+                </span>
+                {isBeat && (
+                  <span style={{
+                    fontSize: 9, fontWeight: 700,
+                    background: '#10b981', color: '#fff',
+                    padding: '2px 6px', borderRadius: 4,
+                    textTransform: 'uppercase', letterSpacing: '0.05em',
+                  }}>🏆 Record</span>
+                )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6366f1' }} />
-                <span style={{ flex: 1, color: 'var(--text-mid)' }}>Séance</span>
-                <span style={{ color: '#6366f1', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{sessW} W</span>
+
+              {/* Séance */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#6366f1' }} />
+                <span style={{ flex: 1, color: 'var(--text-dim)', opacity: 0.8 }}>Séance</span>
+                <span style={{
+                  color: '#6366f1', fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums', fontSize: 13,
+                }}>{sessW} W</span>
               </div>
+
+              {/* Record */}
               {recW > 0 && (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />
-                    <span style={{ flex: 1, color: 'var(--text-mid)' }}>Record</span>
-                    <span style={{ color: '#ef4444', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{recW} W</span>
-                  </div>
-                  <div style={{
-                    fontSize:           9.5,
-                    fontWeight:         600,
-                    color:              isBeat ? '#10B981' : 'var(--text-dim)',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}>
-                    {delta > 0 ? '+' : ''}{delta} W{pct !== null ? ` (${pct}% du record)` : ''}
-                  </div>
-                </>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444' }} />
+                  <span style={{ flex: 1, color: 'var(--text-dim)', opacity: 0.8 }}>Record</span>
+                  <span style={{
+                    color: '#ef4444', fontWeight: 700,
+                    fontVariantNumeric: 'tabular-nums', fontSize: 13,
+                  }}>{recW} W</span>
+                </div>
+              )}
+
+              {/* Delta */}
+              {recW > 0 && (
+                <div style={{
+                  fontSize:           10,
+                  fontWeight:         600,
+                  color:              isBeat ? '#10b981' : 'var(--text-dim)',
+                  fontVariantNumeric: 'tabular-nums',
+                  marginTop:          4,
+                  paddingTop:         4,
+                  borderTop:          '1px solid var(--border)',
+                }}>
+                  {delta > 0 ? '+' : ''}{delta} W {tpct !== null ? `(${tpct}% du record)` : ''}
+                </div>
+              )}
+
+              {/* Zone FTP — affichée uniquement si FTP configurée */}
+              {zone && ftpPct !== null && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  marginTop: 4, paddingTop: 4,
+                  borderTop: recW > 0 ? 'none' : '1px solid var(--border)',
+                }}>
+                  <span style={{ width: 7, height: 7, borderRadius: 2, background: zone.color }} />
+                  <span style={{ flex: 1, color: 'var(--text-dim)', opacity: 0.8, fontSize: 10 }}>{zone.label}</span>
+                  <span style={{
+                    color: zone.color, fontWeight: 700,
+                    fontVariantNumeric: 'tabular-nums', fontSize: 11,
+                  }}>{ftpPct}% FTP</span>
+                </div>
               )}
             </div>
           )
         })()}
       </div>
 
-      {/* Légende compacte */}
+      {/* Légende refondue : courbes + trophées + zones FTP si dispo */}
       <div style={{
         display:       'flex',
         flexWrap:      'wrap',
+        alignItems:    'center',
         gap:           14,
         marginTop:     10,
         paddingTop:    10,
@@ -1119,7 +1269,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
         color:         'var(--text-dim)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ width: 16, height: 2, background: '#6366f1', display: 'inline-block', borderRadius: 1 }}/>
+          <span style={{ width: 16, height: 2.5, background: '#6366f1', display: 'inline-block', borderRadius: 1 }}/>
           Cette séance
         </div>
         {recordCurve && (
@@ -1133,12 +1283,27 @@ function PowerCurveChart({ watts, activityId, activityDurationS }: {
             Record All Time
           </div>
         )}
+        {recordBeatSegments.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 16, height: 4, background: '#10b981', display: 'inline-block', borderRadius: 2, opacity: 0.55 }}/>
+            Record battu
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ color: '#06B6D4' }}>🏆</span> Record année
+          <span style={{ color: '#06B6D4' }}>🏆</span> Année
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ color: '#eab308' }}>🏆</span> All Time
         </div>
+        {ftp && ftp > 0 && (
+          <div style={{
+            marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5,
+            color: 'var(--text-dim)', fontSize: 9, fontWeight: 600,
+            letterSpacing: '0.05em',
+          }}>
+            Zones FTP {ftp} W
+          </div>
+        )}
       </div>
 
       {/* Records vs Session table */}
@@ -7828,6 +7993,7 @@ conseil pour la prochaine séance similaire.`
                   watts={s.watts}
                   activityId={a.id}
                   activityDurationS={a.moving_time_s ?? s.watts.length}
+                  ftp={bikeZoneRow?.ftp_watts ?? null}
                 />
               )}
 

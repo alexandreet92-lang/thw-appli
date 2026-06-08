@@ -234,28 +234,15 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
               onMouseEnter={() => setHoveredLap(i)}
               onMouseLeave={() => setHoveredLap(null)}
             >
-              {/* Hit area transparente sur toute la hauteur — porte les handlers
-                  pour fiabilité tactile (les events sur <g> SVG sont incompat sur certains browsers iOS) */}
+              {/* Hit area transparente sur toute la hauteur — onClick UNIQUEMENT
+                  (React synthétise les events touch + mouse dans onClick). Pas de
+                  onTouchEnd ni de e.preventDefault() qui bloque la propagation. */}
               <rect
                 x={bX} y={PAD_T} width={bW + GAP} height={CH}
                 fill="transparent"
                 onClick={e => {
                   e.stopPropagation()
-
-                  console.log('[LAPS-FORCE] Barre cliquée index:', i, 'callback définie?', !!onLapTap)
-                  onLapTap?.(i)
-                }}
-                onTouchEnd={e => {
-                  e.preventDefault()
-                  e.stopPropagation()
-
-                  console.log('[LAPS-FORCE] Barre touchée index:', i)
-                  onLapTap?.(i)
-                }}
-                onPointerUp={e => {
-                  if (e.pointerType === 'mouse') return  // évite double-fire avec onClick desktop
-
-                  console.log('[LAPS-FORCE] Barre pointerUp index:', i, 'type:', e.pointerType)
+                  console.log('[LAPS] Tap sur barre index:', i)
                   onLapTap?.(i)
                 }}
                 style={{

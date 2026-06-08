@@ -1429,56 +1429,97 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
         )}
       </div>
 
-      <div ref={decoupContainerRef} style={{ position: 'relative', cursor: 'crosshair' }}>
+      <div
+        ref={decoupContainerRef}
+        style={{
+          position: 'relative', cursor: 'crosshair',
+          background: 'var(--bg-card2)', borderRadius: 10,
+          overflow: 'hidden',
+        }}
+      >
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}
           preserveAspectRatio="none"
           onMouseMove={handleDecoupMove} onMouseLeave={handleDecoupLeave}
           onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
-          <path d={buildNormPath(sWatts, wMin, wRange, false)} fill="none" stroke="#5b6fff" strokeWidth="2" strokeLinejoin="round"/>
-          <path d={buildNormPath(sHr, hMin, hRange, false)} fill="none" stroke="#ef4444" strokeWidth="2" strokeLinejoin="round" strokeDasharray="6,3"/>
+          {/* Profil altitude en arrière-plan (si dispo) */}
+          {altitude && altitude.length > 1 && (() => {
+            const altMin = Math.min(...altitude), altMax = Math.max(...altitude)
+            const range = (altMax - altMin) || 1
+            const pts = altitude.map((v, i) => {
+              const x = (i / (altitude.length - 1)) * W
+              const y = H - pad - ((v - altMin) / range) * (H - pad * 2)
+              return `${x.toFixed(1)},${y.toFixed(1)}`
+            })
+            return <path d={`M0,${H}L${pts.join('L')}L${W},${H}Z`} fill="#94a3b8" fillOpacity={0.18} />
+          })()}
+          {/* Aires de remplissage cohérentes avec ActivityCurves */}
+          <path d={buildNormPath(sWatts, wMin, wRange, true)} fill="#6366f1" fillOpacity={0.18} />
+          <path d={buildNormPath(sWatts, wMin, wRange, false)} fill="none" stroke="#6366f1" strokeWidth="2" strokeLinejoin="round"/>
+          <path d={buildNormPath(sHr, hMin, hRange, false)} fill="none" stroke="#f97316" strokeWidth="2" strokeLinejoin="round" strokeDasharray="6,3"/>
           {sTemp && (
-            <path d={buildNormPath(sTemp, tMin, tRange, false)} fill="none" stroke="#6EE7B7" strokeWidth="1.5" strokeLinejoin="round" opacity="0.7"/>
+            <path d={buildNormPath(sTemp, tMin, tRange, false)} fill="none" stroke="#10b981" strokeWidth="1.5" strokeLinejoin="round" opacity="0.7"/>
           )}
           {pct !== null && (
-            <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
+            <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke="var(--border-mid)" strokeWidth="1"/>
           )}
         </svg>
 
-        {/* Cursor tooltip positioned at mouse */}
+        {/* Tooltip neutre multi-lignes, cohérent avec ActivityCurves */}
         {idx !== null && decoupMousePos && (
           <div data-chart-tooltip="" style={{
             position: 'absolute',
-            left: decoupMousePos.x > 400 ? decoupMousePos.x - 150 : decoupMousePos.x + 12,
-            top: Math.max(0, decoupMousePos.y - 80),
-            background: T.surface,
-            border: `1px solid ${T.border}`,
-            borderRadius: 8,
-            padding: '6px 10px',
+            left: decoupMousePos.x > 400 ? decoupMousePos.x - 170 : decoupMousePos.x + 12,
+            top: Math.max(0, decoupMousePos.y - 90),
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '10px 14px',
             pointerEvents: 'none',
             zIndex: 20,
             whiteSpace: 'nowrap',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.10)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+            fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
           }}>
-            {/* Temps */}
             {time && time[idx] != null && (
-              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 4 }}>
+              <div style={{
+                fontSize: 10, opacity: 0.6, textTransform: 'uppercase',
+                letterSpacing: '0.08em', marginBottom: 5, color: 'var(--text)',
+              }}>
                 {(() => { const t = time[idx] - time[0]; const m = Math.floor(t/60); const s = t%60; return `${m}:${String(s).padStart(2,'0')}` })()}
               </div>
             )}
-            <div style={{ fontSize: 12, color: '#5b6fff', fontWeight: 700, fontFamily: T.fontMono }}>{Math.round(sWatts[idx])} W</div>
-            <div style={{ fontSize: 11, color: '#ef4444', fontFamily: T.fontMono }}>{Math.round(sHr[idx])} bpm</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#6366f1', flexShrink: 0 }} />
+              <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>Puissance</span>
+              <span style={{ fontWeight: 700, color: '#6366f1', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{Math.round(sWatts[idx])} W</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f97316', flexShrink: 0 }} />
+              <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>FC</span>
+              <span style={{ fontWeight: 700, color: '#f97316', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{Math.round(sHr[idx])} bpm</span>
+            </div>
             {altitude?.[idx] != null && (
-              <div style={{ fontSize: 11, color: '#94A3B8', fontFamily: T.fontMono }}>{Math.round(altitude[idx])} m</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#94a3b8', flexShrink: 0 }} />
+                <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>Altitude</span>
+                <span style={{ fontWeight: 700, color: '#94a3b8', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{Math.round(altitude[idx])} m</span>
+              </div>
             )}
             {sTemp?.[idx] != null && (
-              <div style={{ fontSize: 11, color: '#6EE7B7', fontFamily: T.fontMono }}>{Math.round(sTemp[idx])} °C</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
+                <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>Temp.</span>
+                <span style={{ fontWeight: 700, color: '#10b981', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{Math.round(sTemp[idx])} °C</span>
+              </div>
             )}
             {avgEF > 0 && sHr[idx] > 0 && (() => {
               const efNow = sWatts[idx] / sHr[idx]
               const d = ((efNow - avgEF) / avgEF) * 100
+              const color = d >= 0 ? '#22c55e' : '#ef4444'
               return (
-                <div style={{ fontSize: 11, color: d >= 0 ? '#22c55e' : '#ef4444', fontFamily: T.fontMono }}>
-                  {d >= 0 ? '+' : ''}{d.toFixed(1)}% EF
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0 0', borderTop: '1px solid var(--border)', marginTop: 4 }}>
+                  <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>EF Δ</span>
+                  <span style={{ fontWeight: 700, color, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{d >= 0 ? '+' : ''}{d.toFixed(1)}%</span>
                 </div>
               )
             })()}
@@ -1490,10 +1531,10 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
 
       <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
-          <span style={{ width: 12, height: 2, background: '#5b6fff', display: 'inline-block', borderRadius: 1 }}/>Puissance (normalisée)
+          <span style={{ width: 12, height: 2, background: '#6366f1', display: 'inline-block', borderRadius: 1 }}/>Puissance (normalisée)
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
-          <span style={{ width: 12, height: 2, background: '#ef4444', display: 'inline-block', borderRadius: 1, borderTop: '2px dashed #ef4444' }}/>FC (normalisée)
+          <span style={{ width: 12, height: 2, background: '#f97316', display: 'inline-block', borderRadius: 1, borderTop: '2px dashed #f97316' }}/>FC (normalisée)
         </div>
         {sTemp && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
@@ -1605,42 +1646,58 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
         Durée cumulée par FC
       </div>
 
-      <div ref={containerRef2} style={{ position: 'relative', cursor: 'crosshair' }}>
+      <div
+        ref={containerRef2}
+        style={{
+          position: 'relative', cursor: 'crosshair',
+          background: 'var(--bg-card2)', borderRadius: 10,
+          overflow: 'hidden',
+        }}
+      >
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}
           preserveAspectRatio="none"
           onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}
           onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
           <defs>
             <linearGradient id="hrCumFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.2"/>
-              <stop offset="100%" stopColor="#ef4444" stopOpacity="0.02"/>
+              <stop offset="0%" stopColor="#f97316" stopOpacity="0.4"/>
+              <stop offset="100%" stopColor="#f97316" stopOpacity="0.05"/>
             </linearGradient>
           </defs>
           <path d={fillPath} fill="url(#hrCumFill)"/>
-          <path d={linePath} fill="none" stroke="#ef4444" strokeWidth="2" strokeLinejoin="round"/>
+          <path d={linePath} fill="none" stroke="#f97316" strokeWidth="2" strokeLinejoin="round"/>
           {pct !== null && (
-            <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke={T.text} strokeWidth="1" strokeDasharray="3,3"/>
+            <line x1={pct * W} y1={0} x2={pct * W} y2={H} stroke="var(--border-mid)" strokeWidth="1"/>
           )}
         </svg>
 
-        {/* Cursor tooltip positioned at mouse */}
+        {/* Tooltip neutre multi-lignes, cohérent avec ActivityCurves */}
         {idx !== null && mousePos && (
           <div style={{
             position: 'absolute',
             left: Math.min(mousePos.x + 12, 999),
-            top: Math.max(0, mousePos.y - 52),
-            background: T.surface,
-            border: `1px solid ${T.border}`,
-            borderRadius: 7,
-            padding: '5px 10px',
+            top: Math.max(0, mousePos.y - 70),
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '10px 14px',
             pointerEvents: 'none',
             zIndex: 20,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
             whiteSpace: 'nowrap',
+            fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
           }}>
-            <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 700, fontFamily: T.fontMono }}>{bpmRange[idx]} bpm</div>
-            <div style={{ fontSize: 11, color: T.text, fontFamily: T.fontMono }}>{fmtCumTime(cumulative[idx])}</div>
-            <div style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{Math.round((Number(bpmRange[idx])/maxHrEst)*100)}% FC max</div>
+            <div style={{
+              fontSize: 10, opacity: 0.6, textTransform: 'uppercase',
+              letterSpacing: '0.08em', marginBottom: 5, color: 'var(--text)',
+            }}>
+              {bpmRange[idx]} bpm · {Math.round((Number(bpmRange[idx])/maxHrEst)*100)}% FC max
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f97316', flexShrink: 0 }} />
+              <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>Durée cumulée</span>
+              <span style={{ fontWeight: 700, color: '#f97316', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtCumTime(cumulative[idx])}</span>
+            </div>
           </div>
         )}
       </div>
@@ -6371,13 +6428,22 @@ function ActivityDetail({ a, onClose, zones, profile }: {
 
   // ── FIX 4 : nouvelles données ──
 
-  // Durée Z2 : secondes passées en FC zone 2 (120-150 bpm par défaut)
+  // Durée Z2 PUISSANCE : secondes passées en zone 2 de puissance (basée FTP).
+  // Masqué si pas de stream watts ou pas de zones de puissance configurées.
   const z2DurationS = useMemo(() => {
-    const hrStream = a.streams?.heartrate
-    if (!hrStream || !hrStream.length) return null
-    const z2 = hrZones[1] // index 1 = Z2
-    return hrStream.filter(v => v >= z2.min && v < z2.max).length
-  }, [a.streams?.heartrate])
+    const wattsStream = a.streams?.watts
+    if (!wattsStream || !wattsStream.length || !bikeZones || bikeZones.length < 2) return null
+    const z2 = bikeZones[1]
+    const time = a.streams?.time
+    // Détection du pas de temps (en s) pour multiplier le nombre de samples
+    let dt = 1
+    if (time && time.length > 10) {
+      dt = (time[10] - time[0]) / 10
+      if (!dt || dt <= 0) dt = 1
+    }
+    const samples = wattsStream.filter(v => v != null && v >= z2.min && v < z2.max).length
+    return Math.round(samples * dt)
+  }, [a.streams?.watts, a.streams?.time, bikeZones])
 
   // NP calculé depuis stream puissance si non stocké (RMS 30s)
   const computedNp = useMemo(() => {
@@ -7327,11 +7393,16 @@ conseil pour la prochaine séance similaire.`
             {/* DELETE */}
             <div style={{ marginTop: 32, paddingBottom: 8 }}>
               <button
+                className="thw-delete-activity-btn"
                 onClick={() => setShowDeleteConfirm(true)}
                 style={{
-                  width: '100%', padding: '14px 0', borderRadius: 12,
-                  background: 'none', border: '1.5px solid #EF4444',
-                  color: '#EF4444', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                  display: 'block', width: '100%',
+                  padding: '16px 20px', margin: '0 auto',
+                  background: 'transparent', color: '#ef4444',
+                  border: '2px solid #ef4444', borderRadius: 12,
+                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  transition: 'background 0.15s ease, transform 0.1s ease',
+                  fontFamily: 'inherit',
                 }}
               >
                 Supprimer l&apos;activité
@@ -7376,10 +7447,18 @@ conseil pour la prochaine séance similaire.`
           {a.is_race && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#ef4444', background: '#ef444415', padding: '2px 8px', borderRadius: 20 }}>Compétition</span>}
         </span>
         <div style={{ flex: 1 }} />
-        <button onClick={() => setShowDeleteConfirm(true)} style={{
-          fontSize: 12, color: '#EF4444', border: '1px solid #EF4444',
-          borderRadius: 5, padding: '3px 10px', background: 'none', cursor: 'pointer', flexShrink: 0,
-        }}>
+        <button
+          className="thw-delete-activity-btn"
+          onClick={() => setShowDeleteConfirm(true)}
+          style={{
+            fontSize: 13, fontWeight: 600,
+            color: '#ef4444', background: 'transparent',
+            border: '2px solid #ef4444', borderRadius: 8,
+            padding: '6px 14px', cursor: 'pointer', flexShrink: 0,
+            transition: 'background 0.15s ease, transform 0.1s ease',
+            fontFamily: 'inherit',
+          }}
+        >
           Supprimer
         </button>
       </div>
@@ -7540,7 +7619,7 @@ conseil pour la prochaine séance similaire.`
                     )}
                     {z2DurationS != null && z2DurationS > 30 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Durée Z2</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Durée Z2 (puissance)</span>
                         <span style={{ fontWeight: 500, color: '#06B6D4' }}>{fmtDur(z2DurationS)}</span>
                       </div>
                     )}

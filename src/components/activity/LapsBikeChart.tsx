@@ -182,10 +182,12 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
         Tours · {N}
       </div>
 
+      {/* Wrapper relatif → contient le SVG visuel + overlay HTML buttons pour le tap mobile */}
+      <div style={{ position: 'relative', width: '100%' }}>
       {/* SVG chart — largeur 100% du conteneur, jamais de scroll horizontal */}
       <svg
         viewBox={`0 0 ${VBW} ${SVG_H}`}
-        style={{ width: '100%', height: 'auto', display: 'block' }}
+        style={{ width: '100%', height: 'auto', display: 'block', pointerEvents: 'none' }}
         preserveAspectRatio="xMidYMid meet"
       >
         {/* Y-axis grid + labels */}
@@ -229,28 +231,8 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
           const showTickName = i % labelStep === 0 || i === N - 1
 
           return (
-            <g
-              key={i}
-              onMouseEnter={() => setHoveredLap(i)}
-              onMouseLeave={() => setHoveredLap(null)}
-            >
-              {/* Hit area transparente sur toute la hauteur — onClick UNIQUEMENT
-                  (React synthétise les events touch + mouse dans onClick). Pas de
-                  onTouchEnd ni de e.preventDefault() qui bloque la propagation. */}
-              <rect
-                x={bX} y={PAD_T} width={bW + GAP} height={CH}
-                fill="transparent"
-                onClick={e => {
-                  e.stopPropagation()
-                  console.log('[LAPS] Tap sur barre index:', i)
-                  onLapTap?.(i)
-                }}
-                style={{
-                  cursor: onLapTap ? 'pointer' : 'default',
-                  pointerEvents: 'all',
-                }}
-              />
-              {/* Bar */}
+            <g key={i}>
+              {/* Bar (purement visuel — le tap est géré par l'overlay HTML après le SVG) */}
               <rect
                 x={bX}
                 y={bY}
@@ -284,6 +266,44 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
           )
         })}
       </svg>
+
+      {/* Overlay HTML — chaque <button> couvre la COLONNE entière du lap,
+          positionné en pourcentage du viewBox SVG pour suivre le scaling.
+          C'est lui qui capture le tap (mobile + desktop), pas le SVG. */}
+      {laps.map((lap, i) => {
+        const leftPct = (xs[i] / VBW) * 100
+        const widthPct = ((widths[i] + GAP) / VBW) * 100
+        const topPct = (PAD_T / SVG_H) * 100
+        const heightPct = (CH / SVG_H) * 100
+        return (
+          <button
+            key={`hit-${i}`}
+            onClick={() => {
+              console.log('[LAPS] Tap sur barre index:', i)
+              onLapTap?.(i)
+            }}
+            onMouseEnter={() => setHoveredLap(i)}
+            onMouseLeave={() => setHoveredLap(null)}
+            aria-label={`Tour ${i + 1}`}
+            style={{
+              position: 'absolute',
+              left: `${leftPct}%`,
+              width: `${widthPct}%`,
+              top: `${topPct}%`,
+              height: `${heightPct}%`,
+              background: 'transparent',
+              border: 'none', padding: 0, margin: 0,
+              cursor: onLapTap ? 'pointer' : 'default',
+              WebkitTapHighlightColor: 'transparent',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
+              touchAction: 'manipulation',
+              zIndex: 2,
+            }}
+          />
+        )
+      })}
+      </div>
     </div>
   )
 }

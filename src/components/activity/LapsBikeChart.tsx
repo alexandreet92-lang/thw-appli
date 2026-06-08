@@ -231,14 +231,26 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
           return (
             <g
               key={i}
-              onClick={() => onLapTap?.(i)}
-              onTouchEnd={() => onLapTap?.(i)}
               onMouseEnter={() => setHoveredLap(i)}
               onMouseLeave={() => setHoveredLap(null)}
-              style={{ cursor: onLapTap ? 'pointer' : 'default' }}
             >
-              {/* Invisible hit area sur toute la hauteur */}
-              <rect x={bX} y={PAD_T} width={bW + GAP} height={CH} fill="transparent" />
+              {/* Hit area transparente sur toute la hauteur — porte les handlers
+                  pour fiabilité tactile (les events sur <g> SVG sont incompat sur certains browsers iOS) */}
+              <rect
+                x={bX} y={PAD_T} width={bW + GAP} height={CH}
+                fill="transparent"
+                onClick={() => onLapTap?.(i)}
+                onTouchEnd={e => { e.preventDefault(); onLapTap?.(i) }}
+                onPointerUp={e => {
+                  // Fallback unifié pour les browsers récents (Pointer Events)
+                  if (e.pointerType === 'mouse') return  // évite double-fire avec onClick
+                  onLapTap?.(i)
+                }}
+                style={{
+                  cursor: onLapTap ? 'pointer' : 'default',
+                  pointerEvents: 'all',
+                }}
+              />
               {/* Bar */}
               <rect
                 x={bX}
@@ -250,13 +262,13 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
                 strokeWidth={0}
                 vectorEffect="non-scaling-stroke"
                 rx={1.5}
-                style={{ transition: 'fill 0.15s' }}
+                style={{ transition: 'fill 0.15s', pointerEvents: 'none' }}
               />
               {/* Watts au-dessus si place */}
               {showLabel && (
                 <text x={bX + bW / 2} y={bY - 4} textAnchor="middle"
                   fontSize="9" fill="#7C3AED" fontWeight="600"
-                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif', pointerEvents: 'none' }}>
                   {Math.round(w)}
                 </text>
               )}
@@ -265,7 +277,7 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
                 <text x={bX + bW / 2} y={PAD_T + CH + PAD_B - 8}
                   textAnchor="middle" fontSize="10"
                   fill="var(--text-dim)"
-                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                  style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif', pointerEvents: 'none' }}>
                   {i + 1}
                 </text>
               )}

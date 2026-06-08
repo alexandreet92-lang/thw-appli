@@ -7359,6 +7359,7 @@ conseil pour la prochaine séance similaire.`
                       avgWatts={a.avg_watts}
                       streams={a.streams}
                       ftp={bikeZoneRow?.ftp_watts ?? null}
+                      onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
                     />
                     <button
                       onClick={() => { setLapsViewInitial(0); setLapsViewOpen(true) }}
@@ -7847,6 +7848,7 @@ conseil pour la prochaine séance similaire.`
                     avgWatts={a.avg_watts}
                     streams={a.streams}
                     ftp={bikeZoneRow?.ftp_watts ?? null}
+                    onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
                   />
                   {a.laps && a.laps.length > 1 && (
                     <button

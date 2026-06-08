@@ -23,6 +23,7 @@ import { ActivityMapCard } from '@/components/activity/ActivityMapCard'
 import { LapsChart } from '@/components/activity/LapsChart'
 import { LapsTable } from '@/components/activity/LapsTable'
 import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
+import { LapsDetailView } from '@/components/activity/LapsDetailView'
 import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
 import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
 import { PowerDistribution } from '@/components/activity/PowerDistribution'
@@ -6519,6 +6520,8 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const [localFeeling,    setLocalFeeling]    = useState<number | null>(typeof a.feeling    === 'number' ? a.feeling    : null)
   const [localDifficulty, setLocalDifficulty] = useState<number | null>(typeof a.difficulty === 'number' ? a.difficulty : null)
   const [fdEditing,       setFdEditing]       = useState<null | 'feeling' | 'difficulty'>(null)
+  const [lapsViewOpen,    setLapsViewOpen]    = useState(false)
+  const [lapsViewInitial, setLapsViewInitial] = useState(0)
   async function saveFdValue(kind: 'feeling' | 'difficulty', v: number) {
     const sb = createClient()
     // eslint-disable-next-line no-console
@@ -7349,13 +7352,28 @@ conseil pour la prochaine séance similaire.`
             {a.laps && a.laps.length > 1 && (
               <Section title={`Intervalles — ${a.laps.length} tours`}>
                 {isBike && a.streams?.watts && a.streams.watts.length >= 2 ? (
-                  <LapsBikeChart
-                    activityId={a.id}
-                    cachedLaps={a.laps}
-                    avgWatts={a.avg_watts}
-                    streams={a.streams}
-                    ftp={bikeZoneRow?.ftp_watts ?? null}
-                  />
+                  <>
+                    <LapsBikeChart
+                      activityId={a.id}
+                      cachedLaps={a.laps}
+                      avgWatts={a.avg_watts}
+                      streams={a.streams}
+                      ftp={bikeZoneRow?.ftp_watts ?? null}
+                    />
+                    <button
+                      onClick={() => { setLapsViewInitial(0); setLapsViewOpen(true) }}
+                      style={{
+                        marginTop: 12, width: '100%',
+                        padding: '12px 16px',
+                        background: '#7c3aed', color: '#fff',
+                        border: 'none', borderRadius: 10,
+                        fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      Voir tous les tours ›
+                    </button>
+                  </>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -7822,13 +7840,29 @@ conseil pour la prochaine séance similaire.`
 
               {/* Laps bar chart — cyclisme uniquement, sous la courbe de puissance */}
               {isBike && (
-                <LapsBikeChart
-                  activityId={a.id}
-                  cachedLaps={a.laps}
-                  avgWatts={a.avg_watts}
-                  streams={a.streams}
-                  ftp={bikeZoneRow?.ftp_watts ?? null}
-                />
+                <>
+                  <LapsBikeChart
+                    activityId={a.id}
+                    cachedLaps={a.laps}
+                    avgWatts={a.avg_watts}
+                    streams={a.streams}
+                    ftp={bikeZoneRow?.ftp_watts ?? null}
+                  />
+                  {a.laps && a.laps.length > 1 && (
+                    <button
+                      onClick={() => { setLapsViewInitial(0); setLapsViewOpen(true) }}
+                      style={{
+                        marginTop: 12, padding: '10px 16px',
+                        background: '#7c3aed', color: '#fff',
+                        border: 'none', borderRadius: 10,
+                        fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      Voir tous les tours ›
+                    </button>
+                  )}
+                </>
               )}
 
               {isRun && s.velocity && s.altitude && s.distance && s.velocity.length > 60 && (
@@ -7930,6 +7964,22 @@ conseil pour la prochaine séance similaire.`
         value={fdEditing === 'feeling' ? localFeeling : localDifficulty}
         onClose={() => setFdEditing(null)}
         onSave={async v => { if (fdEditing) await saveFdValue(fdEditing, v) }}
+      />
+
+      {/* Vue détaillée des laps (slide droite, portal sur body) */}
+      <LapsDetailView
+        open={lapsViewOpen}
+        onClose={() => setLapsViewOpen(false)}
+        initialActiveLap={lapsViewInitial}
+        laps={a.laps ?? []}
+        streams={a.streams ?? null}
+        sportLabel={SPORT_LABEL[a.sport_type] ?? a.sport_type}
+        totalDistanceM={a.distance_m ?? null}
+        totalDurationS={a.moving_time_s ?? null}
+        ftp={bikeZoneRow?.ftp_watts ?? null}
+        bikeZones={bikeZones}
+        hrZones={hrZones}
+        maxHrEst={estimateMaxHr(profile.birth_date)}
       />
     </div>
   )

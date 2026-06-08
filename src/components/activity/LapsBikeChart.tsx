@@ -76,7 +76,8 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
   const [laps,        setLaps]        = useState<LapData[]>(cachedLaps && cachedLaps.length > 1 ? cachedLaps : [])
   const [loading,     setLoading]     = useState(!cachedLaps || cachedLaps.length <= 1)
   const [error,       setError]       = useState<string | null>(null)
-  const [hoveredLap,  setHoveredLap]  = useState<number | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [hoveredLap, _setHoveredLap] = useState<number | null>(null)
 
   useEffect(() => {
     if (cachedLaps && cachedLaps.length > 1) return
@@ -182,13 +183,58 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
         Tours · {N}
       </div>
 
-      {/* Wrapper relatif avec aspect-ratio forcé (paddingBottom)
-          → garantit que les <button> overlay aient leur height % bien résolue.
-          Sinon iOS Safari calcule height:0 sur les boutons absolus et la hitbox disparait. */}
-      <div style={{
-        position: 'relative', width: '100%',
-        paddingBottom: `${(SVG_H / VBW) * 100}%`,
-      }}>
+      {/* Wrapper relatif avec aspect-ratio forcé.
+          Touch mobile : onTouchEnd avec preventDefault() pour éviter la synth click
+          qui est annulée si le doigt bouge d'1px (interprété comme scroll par iOS).
+          Mouse desktop : onClick standard.
+          touch-action: none → empêche le scroll de la page de cancel le tap. */}
+      <div
+        onClick={e => {
+          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+          if (rect.width === 0) return
+          const fx = (e.clientX - rect.left) / rect.width
+          const xViewBox = fx * VBW
+          let lapIdx = -1
+          for (let i = 0; i < laps.length; i++) {
+            if (xViewBox >= xs[i] && xViewBox < xs[i] + widths[i] + GAP) { lapIdx = i; break }
+          }
+          if (lapIdx < 0 && laps.length > 0) {
+            const dists = laps.map((_, i) => Math.abs(xs[i] + widths[i] / 2 - xViewBox))
+            lapIdx = dists.indexOf(Math.min(...dists))
+          }
+          console.log('[LAPS] Click (mouse) idx:', lapIdx)
+          if (lapIdx >= 0) onLapTap?.(lapIdx)
+        }}
+        onTouchEnd={e => {
+          e.preventDefault()
+          e.stopPropagation()
+          const t = e.changedTouches[0]
+          if (!t) return
+          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+          if (rect.width === 0) return
+          const fx = (t.clientX - rect.left) / rect.width
+          const xViewBox = fx * VBW
+          let lapIdx = -1
+          for (let i = 0; i < laps.length; i++) {
+            if (xViewBox >= xs[i] && xViewBox < xs[i] + widths[i] + GAP) { lapIdx = i; break }
+          }
+          if (lapIdx < 0 && laps.length > 0) {
+            const dists = laps.map((_, i) => Math.abs(xs[i] + widths[i] / 2 - xViewBox))
+            lapIdx = dists.indexOf(Math.min(...dists))
+          }
+          console.log('[LAPS] TouchEnd (mobile) idx:', lapIdx)
+          if (lapIdx >= 0) onLapTap?.(lapIdx)
+        }}
+        style={{
+          position: 'relative', width: '100%',
+          paddingBottom: `${(SVG_H / VBW) * 100}%`,
+          cursor: onLapTap ? 'pointer' : 'default',
+          touchAction: 'none',
+          WebkitTapHighlightColor: 'transparent',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+        }}
+      >
       {/* SVG chart — superposé absolu, fill 100% du wrapper */}
       <svg
         viewBox={`0 0 ${VBW} ${SVG_H}`}
@@ -276,43 +322,6 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
           )
         })}
       </svg>
-
-      {/* Overlay HTML — chaque <button> couvre la COLONNE entière du lap,
-          positionné en pourcentage du viewBox SVG pour suivre le scaling.
-          C'est lui qui capture le tap (mobile + desktop), pas le SVG. */}
-      {laps.map((lap, i) => {
-        const leftPct = (xs[i] / VBW) * 100
-        const widthPct = ((widths[i] + GAP) / VBW) * 100
-        const topPct = (PAD_T / SVG_H) * 100
-        const heightPct = (CH / SVG_H) * 100
-        return (
-          <button
-            key={`hit-${i}`}
-            onClick={() => {
-              console.log('[LAPS] Tap sur barre index:', i)
-              onLapTap?.(i)
-            }}
-            onMouseEnter={() => setHoveredLap(i)}
-            onMouseLeave={() => setHoveredLap(null)}
-            aria-label={`Tour ${i + 1}`}
-            style={{
-              position: 'absolute',
-              left: `${leftPct}%`,
-              width: `${widthPct}%`,
-              top: `${topPct}%`,
-              height: `${heightPct}%`,
-              background: 'transparent',
-              border: 'none', padding: 0, margin: 0,
-              cursor: onLapTap ? 'pointer' : 'default',
-              WebkitTapHighlightColor: 'transparent',
-              WebkitUserSelect: 'none',
-              userSelect: 'none',
-              touchAction: 'manipulation',
-              zIndex: 2,
-            }}
-          />
-        )
-      })}
       </div>
     </div>
   )

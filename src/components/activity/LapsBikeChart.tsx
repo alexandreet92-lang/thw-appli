@@ -182,12 +182,22 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
         Tours · {N}
       </div>
 
-      {/* Wrapper relatif → contient le SVG visuel + overlay HTML buttons pour le tap mobile */}
-      <div style={{ position: 'relative', width: '100%' }}>
-      {/* SVG chart — largeur 100% du conteneur, jamais de scroll horizontal */}
+      {/* Wrapper relatif avec aspect-ratio forcé (paddingBottom)
+          → garantit que les <button> overlay aient leur height % bien résolue.
+          Sinon iOS Safari calcule height:0 sur les boutons absolus et la hitbox disparait. */}
+      <div style={{
+        position: 'relative', width: '100%',
+        paddingBottom: `${(SVG_H / VBW) * 100}%`,
+      }}>
+      {/* SVG chart — superposé absolu, fill 100% du wrapper */}
       <svg
         viewBox={`0 0 ${VBW} ${SVG_H}`}
-        style={{ width: '100%', height: 'auto', display: 'block', pointerEvents: 'none' }}
+        style={{
+          position: 'absolute', inset: 0,
+          width: '100%', height: '100%',
+          display: 'block',
+          pointerEvents: 'none',
+        }}
         preserveAspectRatio="xMidYMid meet"
       >
         {/* Y-axis grid + labels */}

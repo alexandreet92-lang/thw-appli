@@ -2099,6 +2099,7 @@ const CADENCE_ZONES_DEF: { label: string; min: number; max: number; color: strin
   { label: '91-100 rpm',min: 90,   max: 100,      color: '#eab308' },
   { label: '> 100 rpm', min: 100,  max: Infinity, color: '#f97316' },
 ]
+const CADENCE_BIKE_ZONES_PARSED: ParsedZone[] = CADENCE_ZONES_DEF.map(z => ({ label: z.label, min: z.min, max: z.max, color: z.color }))
 
 function _polarXY(cx: number, cy: number, r: number, angle: number) {
   return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
@@ -8100,6 +8101,41 @@ conseil pour la prochaine séance similaire.`
                 Répartitions
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
+                {donuts.map(d => (
+                  <div key={d.title}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 10 }}>{d.title}</div>
+                    <DonutChart zones={d.zones} timesS={d.times} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* ── DONUTS CYCLISME — Puissance / FC / Cadence / Altitude / Température ── */}
+        {isBike && (() => {
+          const n = a.streams?.watts?.length ?? a.streams?.heartrate?.length ?? a.streams?.altitude?.length ?? 0
+          const dt = streamDt(a.streams, n)
+          const cadTimes  = zoneTimesFromStream(a.streams?.cadence, CADENCE_BIKE_ZONES_PARSED, dt)
+          const altTimes  = zoneTimesFromStream(a.streams?.altitude, ALTITUDE_ZONES_DEF, dt)
+          const tempTimes = zoneTimesFromStream(a.streams?.temp, TEMP_ZONES_PARSED, dt)
+          const donuts: { title: string; zones: ParsedZone[]; times: number[] }[] = []
+          if (bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0)) donuts.push({ title: 'Puissance', zones: bikeZones, times: powerTimesZ })
+          if (hrTimesZ && hrTimesZ.some(t => t > 0))                    donuts.push({ title: 'FC zones',  zones: hrZones, times: hrTimesZ })
+          if (cadTimes.some(t => t > 0))                                donuts.push({ title: 'Cadence',   zones: CADENCE_BIKE_ZONES_PARSED, times: cadTimes })
+          if (altTimes.some(t => t > 0))                                donuts.push({ title: 'Altitude',  zones: ALTITUDE_ZONES_DEF, times: altTimes })
+          if (tempTimes.some(t => t > 0))                               donuts.push({ title: 'Température', zones: TEMP_ZONES_PARSED, times: tempTimes })
+          if (!donuts.length) return null
+          return (
+            <div style={{ marginBottom: 32, paddingTop: 24 }}>
+              <style>{`
+                .cyc-donuts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+                @media (min-width: 768px) { .cyc-donuts-grid { grid-template-columns: repeat(3, 1fr); } }
+              `}</style>
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+                Répartitions
+              </div>
+              <div className="cyc-donuts-grid">
                 {donuts.map(d => (
                   <div key={d.title}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 10 }}>{d.title}</div>

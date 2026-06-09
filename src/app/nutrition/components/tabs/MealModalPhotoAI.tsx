@@ -112,6 +112,14 @@ export default function MealModalPhotoAI({ onSave }: Props) {
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  // Photo IA : ouvre directement le sélecteur de fichiers (desktop) ou la
+  // caméra (mobile) dès l'affichage, sans écran intermédiaire.
+  useEffect(() => {
+    const mobile = window.innerWidth < 768
+    requestAnimationFrame(() => { (mobile ? cameraRef : galleryRef).current?.click() })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ── Auto-analyse on file select ───────────────────────────────
   async function handleFile(f: File) {
     setPreview(URL.createObjectURL(f))

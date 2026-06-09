@@ -3,9 +3,9 @@
 // ══════════════════════════════════════════════════════════════════
 // DayFoodJournal — journal alimentaire du jour.
 // 6 créneaux dépliables. Chaque créneau se logge via 3 méthodes :
-//   📷 Photo IA  (/api/analyze-meal-photo)
-//   🔍 Recherche (bibliothèque foods + OpenFoodFacts)
-//   ✏️ Manuel
+//   Photo IA  (/api/analyze-meal-photo)
+//   Recherche (bibliothèque foods + OpenFoodFacts)
+//   Manuel
 // Les macros sont calculées et accumulées par créneau, puis remontées
 // au Bilan du jour via le hook useDailyMeals (porté par le parent).
 // ══════════════════════════════════════════════════════════════════
@@ -17,16 +17,13 @@ import {
   type MealSlotKey, type DailyMealEntry, type MealIngredient,
 } from '@/hooks/useDailyMeals'
 import type { FoodItem } from '@/lib/food-search'
-import { dishMacros, type DishItem } from '@/lib/dish-search'
 
 const FoodSearchSheet = dynamic(
   () => import('@/components/nutrition/FoodSearchSheet').then(m => ({ default: m.FoodSearchSheet })),
   { ssr: false },
 )
-const DishPickerSheet = dynamic(
-  () => import('@/components/nutrition/DishPickerSheet').then(m => ({ default: m.DishPickerSheet })),
-  { ssr: false },
-)
+// NB : le backend "Plats" (DishPickerSheet / dish-catalogue / seed-dishes) est
+// conservé mais n'est plus utilisé ici (méthode Plats retirée de l'entrée repas).
 
 const CYAN = '#06B6D4'
 
@@ -90,7 +87,13 @@ interface Props {
 
 export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expandSignal = 0 }: Props) {
   const [expanded, setExpanded] = useState<MealSlotKey | null>(null)
-  const [method, setMethod]     = useState<'photo' | 'search' | 'dishes' | 'manual' | null>(null)
+  const [method, setMethod]     = useState<'photo' | 'search' | 'manual' | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.matchMedia('(max-width: 767px)').matches || !window.matchMedia('(hover: hover) and (pointer: fine)').matches)
+    check(); window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // ── Déclenchement externe : déplie le 1er créneau vide (raccourci Bilan) ──
   useEffect(() => {
@@ -222,18 +225,6 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
     })
   }
 
-  // ── Plats (catalogue dishes) ──────────────────────────────────────
-  async function addSearchDish(slot: MealSlotKey, dish: DishItem, grams: number) {
-    const m = dishMacros(dish, grams)
-    await addToSlot(slot, {
-      name: dish.name + (grams !== dish.default_portion_g ? ` (${grams}g)` : ''),
-      kcal: m.kcal, prot: m.prot, gluc: m.gluc, lip: m.lip,
-      ingredient: { name: dish.name, qty: String(grams), unit: 'g' },
-      photo_url: dish.image_url ?? null,
-      source: 'dish', replace: false,
-    })
-  }
-
   // ── Styles ─────────────────────────────────────────────────────────
   const methodBtn = (active: boolean): React.CSSProperties => ({
     flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
@@ -326,7 +317,11 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
 
                 {/* Choix de méthode */}
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                  <button style={methodBtn(method === 'photo')} onClick={() => setMethod('photo')}>
+                  {/* Inputs fichier/caméra toujours montés : Photo IA déclenche
+                      directement le sélecteur (desktop) ou la caméra (mobile). */}
+                  <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={onPhotoInput} style={{ display: 'none' }} />
+                  <input ref={galleryRef} type="file" accept="image/*" onChange={onPhotoInput} style={{ display: 'none' }} />
+                  <button style={methodBtn(method === 'photo')} onClick={() => { setMethod('photo'); (isMobile ? cameraRef : galleryRef).current?.click() }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
                     Photo IA
                   </button>
@@ -334,31 +329,15 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                     Recherche
                   </button>
-                  <button style={methodBtn(method === 'dishes')} onClick={() => setMethod('dishes')}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3 11h18M5 11V7a2 2 0 012-2h10a2 2 0 012 2v4M4 11l1 8a2 2 0 002 2h10a2 2 0 002-2l1-8"/></svg>
-                    Plats
-                  </button>
                   <button style={methodBtn(method === 'manual')} onClick={() => setMethod('manual')}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Manuel
                   </button>
                 </div>
 
-                {/* ── Méthode Photo ── */}
-                {method === 'photo' && (
+                {/* ── Méthode Photo (preview / analyse / ajout) ── */}
+                {method === 'photo' && (preview || analyzing || photoErr || result) && (
                   <div style={{ marginTop: 12 }}>
-                    <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={onPhotoInput} style={{ display: 'none' }} />
-                    <input ref={galleryRef} type="file" accept="image/*" onChange={onPhotoInput} style={{ display: 'none' }} />
-                    {!preview && (
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => cameraRef.current?.click()} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: `linear-gradient(135deg,${CYAN},#5b6fff)`, color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                          Prendre une photo
-                        </button>
-                        <button onClick={() => galleryRef.current?.click()} style={{ flex: 1, padding: '10px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                          Galerie
-                        </button>
-                      </div>
-                    )}
                     {preview && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={preview} alt="repas" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 10, marginBottom: 10 }} />
@@ -384,14 +363,6 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
                   <FoodSearchSheet
                     onClose={() => setMethod(null)}
                     onSelect={(food, grams) => { void addSearchFood(slot, food, grams) }}
-                  />
-                )}
-
-                {/* ── Méthode Plats ── */}
-                {method === 'dishes' && (
-                  <DishPickerSheet
-                    onClose={() => setMethod(null)}
-                    onSelect={(dish, grams) => { void addSearchDish(slot, dish, grams); setMethod(null) }}
                   />
                 )}
 

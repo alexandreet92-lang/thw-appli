@@ -23,6 +23,7 @@ import { ActivityMapCard } from '@/components/activity/ActivityMapCard'
 import { LapsChart } from '@/components/activity/LapsChart'
 import { LapsTable } from '@/components/activity/LapsTable'
 import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
+import { LapsRunChart } from '@/components/activity/LapsRunChart'
 import { LapsDetailView } from '@/components/activity/LapsDetailView'
 import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
 import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
@@ -7532,6 +7533,13 @@ conseil pour la prochaine séance similaire.`
                       }}
                     />
                   </>
+                ) : isRun ? (
+                  <LapsRunChart
+                    activityId={a.id}
+                    cachedLaps={a.laps}
+                    avgSpeedMs={a.distance_m && a.moving_time_s ? a.distance_m / a.moving_time_s : null}
+                    onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
+                  />
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -8015,6 +8023,16 @@ conseil pour la prochaine séance similaire.`
                 <GapChart velocity={s.velocity} altitude={s.altitude} distance={s.distance} />
               )}
 
+              {/* Laps bar chart — course à pied, sous la comparaison d'allure */}
+              {isRun && a.laps && a.laps.length > 1 && (
+                <LapsRunChart
+                  activityId={a.id}
+                  cachedLaps={a.laps}
+                  avgSpeedMs={a.distance_m && a.moving_time_s ? a.distance_m / a.moving_time_s : null}
+                  onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
+                />
+              )}
+
               {/* A — DÉCOUPLAGE P/FC — pleine largeur */}
               {showDec && (
                 <div style={{ marginBottom: 32, paddingTop: 8 }}>
@@ -8126,6 +8144,7 @@ conseil pour la prochaine séance similaire.`
         bikeZones={bikeZones}
         hrZones={hrZones}
         maxHrEst={estimateMaxHr(profile.birth_date)}
+        sport={isRun ? 'running' : 'cycling'}
       />
     </div>
   )

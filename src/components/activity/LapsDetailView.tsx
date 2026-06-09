@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { formatPace, speedMsToPace } from '@/lib/utils/pace'
+
+type Sport = 'cycling' | 'running'
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -41,6 +44,7 @@ export interface LapsDetailViewProps {
   bikeZones:       ParsedZone[] | null    // Z1-Z5 puissance utilisateur
   hrZones:         ParsedZone[] | null    // Z1-Z5 FC utilisateur
   maxHrEst:        number | null
+  sport?:          Sport                  // 'cycling' (défaut) | 'running'
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -82,6 +86,15 @@ const CADENCE_ZONES_DEF = [
   { label: '91-100',min: 90,   max: 100,      color: '#eab308' },
   { label: '> 100', min: 100,  max: Infinity, color: '#f97316' },
 ]
+// Cadence running (spm) — tranches spécifiques course à pied.
+const CADENCE_ZONES_RUN_DEF = [
+  { label: '< 150',   min: 0.01, max: 150,      color: '#94a3b8' },
+  { label: '150-160', min: 150,  max: 160,      color: '#cbd5e1' },
+  { label: '161-170', min: 160,  max: 170,      color: '#06b6d4' },
+  { label: '171-180', min: 170,  max: 180,      color: '#10b981' },
+  { label: '181-190', min: 180,  max: 190,      color: '#eab308' },
+  { label: '> 190',   min: 190,  max: Infinity, color: '#f97316' },
+]
 const GRAPH_HEIGHT          = 240
 const LABELS_H              = 28
 const Y_AXIS_W              = 50      // espace Y axis sticky à gauche
@@ -107,6 +120,12 @@ function fmtKm(m: number | null | undefined): string {
 function fmtSpeedKmh(mps: number | null | undefined): string {
   if (mps == null) return '—'
   return `${(mps * 3.6).toFixed(1).replace('.', ',')} km/h`
+}
+// Vitesse moy d'un tour (m/s), reconstituée depuis distance/durée si absente.
+function lapSpeedMs(lap: LapData): number {
+  if (lap.avg_speed_ms && lap.avg_speed_ms > 0) return lap.avg_speed_ms
+  if (lap.distance_m > 0 && lap.moving_time_s > 0) return lap.distance_m / lap.moving_time_s
+  return 0
 }
 
 function computeLapWidths(laps: LapData[], availableWidth: number, isMobile: boolean): number[] {
@@ -264,20 +283,20 @@ function distrTemp(tSlice: number[] | null): ZoneArc[] {
   if (tot === 0) return []
   return TEMP_ZONES_DEF.map((d, i) => ({ label: d.label, pct: (cnt[i] / tot) * 100, color: d.color }))
 }
-function distrCad(cSlice: number[] | null): ZoneArc[] {
+function distrCad(cSlice: number[] | null, sport: Sport = 'cycling'): ZoneArc[] {
   if (!cSlice || cSlice.length === 0) return []
-  const cnt = CADENCE_ZONES_DEF.map(() => 0)
+  const def = sport === 'running' ? CADENCE_ZONES_RUN_DEF : CADENCE_ZONES_DEF
+  const cnt = def.map(() => 0)
   let tot = 0
   cSlice.forEach(c => {
     if (c == null || isNaN(c) || c <= 0) return
     tot++
-    for (let i = 0; i < CADENCE_ZONES_DEF.length; i++) {
-      const d = CADENCE_ZONES_DEF[i]
-      if (c >= d.min && c < d.max) { cnt[i]++; break }
+    for (let i = 0; i < def.length; i++) {
+      if (c >= def[i].min && c < def[i].max) { cnt[i]++; break }
     }
   })
   if (tot === 0) return []
-  return CADENCE_ZONES_DEF.map((d, i) => ({ label: d.label, pct: (cnt[i] / tot) * 100, color: d.color }))
+  return def.map((d, i) => ({ label: d.label, pct: (cnt[i] / tot) * 100, color: d.color }))
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -314,7 +333,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones, hrZones }: {
+function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones, hrZones, sport }: {
   open:      boolean
   onClose:   () => void
   lap:       LapData
@@ -323,8 +342,10 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
   ftp:       number | null
   bikeZones: ParsedZone[] | null
   hrZones:   ParsedZone[] | null
+  sport:     Sport
 }) {
   void bikeZones
+  const isRun = sport === 'running'
   const [closing, setClosing] = useState(false)
   useEffect(() => { if (open) setClosing(false) }, [open])
   function doClose() { setClosing(true); setTimeout(onClose, 280) }
@@ -361,13 +382,36 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
     return non0.length ? non0.reduce((s, v) => s + v, 0) / non0.length : null
   })()
 
+  // ── Running : allure moy / max / ajustée (GAP) ──
+  const vSlice = sliceArr(streams?.velocity, i1, i2)
+  const avgPaceMin = lap.avg_speed_ms && lap.avg_speed_ms > 0
+    ? speedMsToPace(lap.avg_speed_ms)
+    : (lap.distance_m > 0 && lap.moving_time_s > 0 ? (lap.moving_time_s / 60) / (lap.distance_m / 1000) : Infinity)
+  // Allure max = vitesse instantanée la plus rapide (filtrée des spikes GPS < 2'/km).
+  const maxPaceMin = (() => {
+    if (!vSlice || !vSlice.length) return Infinity
+    const mx = Math.max(...vSlice.filter(v => v > 0))
+    if (!isFinite(mx) || mx <= 0) return Infinity
+    const p = speedMsToPace(mx)
+    return p < 2 ? Infinity : p   // ignore les valeurs irréalistes
+  })()
+  // Allure ajustée (GAP) via pente nette du tour (approx. Minetti).
+  const gapPaceMin = (() => {
+    if (!isFinite(avgPaceMin) || avgPaceMin <= 0 || !altSlice || altSlice.length < 2 || lap.distance_m <= 0) return null
+    const net = altSlice[altSlice.length - 1] - altSlice[0]
+    const g = net / lap.distance_m
+    if (Math.abs(g) < 0.002) return avgPaceMin
+    const factor = 1 + g * 5.43 + g * g * 18.84
+    return avgPaceMin / Math.max(0.5, Math.min(2.5, factor))
+  })()
+
   const hrDist = distrHr(hrSlice, hrZones)
   const pwDist = distrPower(wSlice, ftp)
   const tDist  = distrTemp(tSlice)
-  const cDist  = distrCad(cSlice)
+  const cDist  = distrCad(cSlice, sport)
   const donuts: { title: string; data: ZoneArc[] }[] = []
   if (hrDist.length > 0) donuts.push({ title: 'FC zones',    data: hrDist })
-  if (pwDist.length > 0) donuts.push({ title: 'Puissance',   data: pwDist })
+  if (!isRun && pwDist.length > 0) donuts.push({ title: 'Puissance',   data: pwDist })
   if (tDist.length  > 0) donuts.push({ title: 'Température', data: tDist  })
   if (cDist.length  > 0) donuts.push({ title: 'Cadence',     data: cDist  })
 
@@ -410,7 +454,8 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Tour {lapIndex + 1} — Détails</div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-              {fmtKm(lap.distance_m)} · {fmtDur(lap.moving_time_s)} · {powerZoneLabel(lap.avg_watts, ftp)}
+              {fmtKm(lap.distance_m)} · {fmtDur(lap.moving_time_s)}
+              {isRun ? ` · ${formatPace(avgPaceMin)}/km` : ` · ${powerZoneLabel(lap.avg_watts, ftp)}`}
             </div>
           </div>
           <button
@@ -435,23 +480,31 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
             <HeroStat label="Distance"  value={lap.distance_m != null ? (lap.distance_m / 1000).toFixed(2).replace('.', ',') : '—'} unit="km" />
           </div>
           <div>
-            <HeroStat label="Watts moy." value={lap.avg_watts != null ? `${Math.round(lap.avg_watts)}` : '—'} unit="W" color={PURPLE_ACTIVE} />
+            {isRun
+              ? <HeroStat label="Allure moy." value={formatPace(avgPaceMin)} unit="/km" color="#10b981" />
+              : <HeroStat label="Watts moy." value={lap.avg_watts != null ? `${Math.round(lap.avg_watts)}` : '—'} unit="W" color={PURPLE_ACTIVE} />}
           </div>
           <div style={{ borderRight: '1px solid var(--border)', borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 14 }}>
             <HeroStat label="FC moy."    value={lap.avg_hr != null ? `${Math.round(lap.avg_hr)}` : '—'} unit="bpm" color="#f97316" />
           </div>
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 14 }}>
-            <HeroStat label="Vit. moy."  value={lap.avg_speed_ms != null ? (lap.avg_speed_ms * 3.6).toFixed(1).replace('.', ',') : '—'} unit="km/h" color="#06b6d4" />
+            {isRun
+              ? (gapPaceMin != null
+                  ? <HeroStat label="Allure ajustée" value={formatPace(gapPaceMin)} unit="/km" color="#7c3aed" />
+                  : <HeroStat label="Allure max" value={formatPace(maxPaceMin)} unit="/km" color="#7c3aed" />)
+              : <HeroStat label="Vit. moy."  value={lap.avg_speed_ms != null ? (lap.avg_speed_ms * 3.6).toFixed(1).replace('.', ',') : '—'} unit="km/h" color="#06b6d4" />}
           </div>
         </div>
 
         {/* Détails */}
         <div style={{ padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
           <DetailRow label="Durée"         value={fmtDur(lap.moving_time_s)} />
-          <DetailRow label="Watts normalisés (NP)" value={npSeg != null ? `${npSeg} W` : '—'} />
+          {isRun
+            ? <DetailRow label="Allure max" value={isFinite(maxPaceMin) ? `${formatPace(maxPaceMin)}/km` : '—'} />
+            : <DetailRow label="Watts normalisés (NP)" value={npSeg != null ? `${npSeg} W` : '—'} />}
           <DetailRow label="D+"            value={altSlice ? `+${Math.round(dPlus)} m` : '—'} />
           <DetailRow label="D−"            value={altSlice ? `−${Math.round(dMinus)} m` : '—'} />
-          <DetailRow label="Cadence moy."  value={cAvgPedal != null ? `${Math.round(cAvgPedal)} rpm` : '—'} />
+          <DetailRow label="Cadence moy."  value={cAvgPedal != null ? `${Math.round(cAvgPedal)} ${isRun ? 'spm' : 'rpm'}` : '—'} />
           <DetailRow label="Temp. moy."    value={tAvg != null ? `${Math.round(tAvg)} °C` : '—'} />
         </div>
 
@@ -484,6 +537,9 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
 export function LapsDetailView(props: LapsDetailViewProps) {
   const { open, onClose, initialActiveLap, laps, streams, sportLabel,
           totalDistanceM, totalDurationS, ftp, bikeZones, hrZones } = props
+  const isRun = props.sport === 'running'
+  // Valeur d'un tour pilotant la hauteur des barres : vitesse (run) ou watts (vélo).
+  const metricOf = (l: LapData): number => isRun ? lapSpeedMs(l) : (l.avg_watts ?? 0)
 
 
   console.log('[LAPS-FORCE] LapsDetailView render, props:', {
@@ -541,15 +597,20 @@ export function LapsDetailView(props: LapsDetailViewProps) {
   }, [lapWidths])
   const totalGraphW = lapWidths.reduce((s, w) => s + w, 0)
 
-  // Range Y du graphique
+  // Range Y du graphique (max de la métrique : vitesse run / watts vélo)
   const maxYW = useMemo(() => {
-    const m = laps.reduce((acc, l) => Math.max(acc, l.avg_watts ?? 0), 0)
+    const m = laps.reduce((acc, l) => Math.max(acc, metricOf(l)), 0)
+    if (isRun) return m > 0 ? m * 1.05 : 1
     return Math.max(60, Math.ceil((m + 20) / 10) * 10)
-  }, [laps])
+  }, [laps, isRun]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Étiquettes Y : allure (run, rapide en haut) ou watts (vélo).
   const yLabels = useMemo(() => {
     const steps = 5
-    return Array.from({ length: steps + 1 }, (_, i) => Math.round(maxYW * (steps - i) / steps))
-  }, [maxYW])
+    return Array.from({ length: steps + 1 }, (_, i) => {
+      const val = maxYW * (steps - i) / steps
+      return isRun ? (val > 0 ? formatPace(speedMsToPace(val)) : '—') : String(Math.round(val))
+    })
+  }, [maxYW, isRun])
 
   // Profil altitude — normalisé sur le totalGraphW dynamique (path viewBox = même W)
   const altPath = useMemo(() => {
@@ -581,6 +642,19 @@ export function LapsDetailView(props: LapsDetailViewProps) {
   const aWatts = aLap?.avg_watts != null ? Math.round(aLap.avg_watts) : null
   const aCadDesc = cadenceDescriptor(aLap?.avg_cadence)
   const aZone = powerZoneLabel(aLap?.avg_watts, ftp)
+  // Running : allure du tour actif + cadence spm + zone FC (si dispo).
+  const aPace = aLap ? speedMsToPace(lapSpeedMs(aLap)) : Infinity
+  const aSpm  = aLap?.avg_cadence != null && aLap.avg_cadence > 0 ? Math.round(aLap.avg_cadence) : null
+  const aHrZone = (() => {
+    if (!isRun || aLap?.avg_hr == null || !hrZones || hrZones.length < 5) return null
+    const hr = aLap.avg_hr
+    for (let i = 0; i < 5; i++) {
+      const z = hrZones[i]
+      const max = i === 4 ? Infinity : (z.max ?? Infinity)
+      if (hr >= z.min && hr < max) return `Zone ${i + 1}`
+    }
+    return null
+  })()
 
   const altBgColor   = isDark ? ALT_BG_NGT      : ALT_BG_DAY
   const purplePale   = isDark ? PURPLE_PALE_NGT : PURPLE_PALE_DAY
@@ -640,15 +714,37 @@ export function LapsDetailView(props: LapsDetailViewProps) {
         }}>
           <strong style={{ color: 'var(--text)' }}>Tour {activeLap + 1}</strong>
           <span style={{ color: 'var(--text-dim)' }}>·</span>
-          <span style={{ color: PURPLE_ACTIVE, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-            {aWatts != null ? `${aWatts} W` : '—'}
-          </span>
-          <span style={{ color: 'var(--text-dim)' }}>·</span>
-          <span>{aZone}</span>
-          {aCadDesc && (
+          {isRun ? (
             <>
+              <span style={{ color: PURPLE_ACTIVE, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                {isFinite(aPace) ? `${formatPace(aPace)}/km` : '—'}
+              </span>
+              {aHrZone && (
+                <>
+                  <span style={{ color: 'var(--text-dim)' }}>·</span>
+                  <span>{aHrZone}</span>
+                </>
+              )}
+              {aSpm != null && (
+                <>
+                  <span style={{ color: 'var(--text-dim)' }}>·</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{aSpm} spm</span>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <span style={{ color: PURPLE_ACTIVE, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                {aWatts != null ? `${aWatts} W` : '—'}
+              </span>
               <span style={{ color: 'var(--text-dim)' }}>·</span>
-              <span>{aCadDesc}</span>
+              <span>{aZone}</span>
+              {aCadDesc && (
+                <>
+                  <span style={{ color: 'var(--text-dim)' }}>·</span>
+                  <span>{aCadDesc}</span>
+                </>
+              )}
             </>
           )}
         </div>
@@ -662,8 +758,8 @@ export function LapsDetailView(props: LapsDetailViewProps) {
             display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
             zIndex: 3, pointerEvents: 'none',
           }}>
-            {yLabels.map(v => (
-              <span key={v} style={{
+            {yLabels.map((v, i) => (
+              <span key={i} style={{
                 fontSize: 9, color: 'var(--text-dim)',
                 fontVariantNumeric: 'tabular-nums',
                 textAlign: 'right',
@@ -694,7 +790,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
                   </svg>
                 )}
                 {laps.map((lap, i) => {
-                  const w = lap.avg_watts ?? 0
+                  const w = metricOf(lap)
                   const h = w > 0 ? (w / maxYW) * GRAPH_HEIGHT : 2
                   const isActive = i === activeLap
                   const lw = lapWidths[i] ?? 0
@@ -833,7 +929,9 @@ export function LapsDetailView(props: LapsDetailViewProps) {
                 <span style={{
                   fontSize: 13, fontWeight: 600, textAlign: 'center',
                   color: PURPLE_ACTIVE, fontVariantNumeric: 'tabular-nums',
-                }}>{lap.avg_watts != null ? `${Math.round(lap.avg_watts)} W` : '—'}</span>
+                }}>{isRun
+                  ? `${formatPace(speedMsToPace(lapSpeedMs(lap)))}/km`
+                  : (lap.avg_watts != null ? `${Math.round(lap.avg_watts)} W` : '—')}</span>
               </button>
             )
           })}
@@ -880,6 +978,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
         ftp={ftp}
         bikeZones={bikeZones}
         hrZones={hrZones}
+        sport={isRun ? 'running' : 'cycling'}
       />
     </>,
     document.body,

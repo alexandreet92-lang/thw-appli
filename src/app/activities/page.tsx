@@ -26,6 +26,7 @@ import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
 import { LapsDetailView } from '@/components/activity/LapsDetailView'
 import { ClimbDescentSection, detectSegments } from '@/components/activity/ClimbDescentSection'
 import { WorkoutTypeBadges } from '@/components/activity/WorkoutTypeBadges'
+import { MuscuActivityView } from '@/components/activity/MuscuActivityView'
 import { RunningLapsSection } from '@/components/activity/RunningLapsSection'
 import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin, formatPaceSwim } from '@/lib/utils/pace'
 import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
@@ -7797,6 +7798,18 @@ conseil pour la prochaine séance similaire.`
           <WorkoutTypeBadges activityId={a.id} sport={isHyrox ? 'hyrox' : 'gym'} />
         )}
 
+        {/* ── MUSCU : layout dédié (remplace entièrement le générique cardio) ── */}
+        {isGym && (
+          <MuscuActivityView
+            activity={a}
+            z2DurationS={z2DurationS}
+            jauges={<FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} />}
+          />
+        )}
+
+        {/* ── Autres sports : layout générique ── */}
+        {!isGym && (<>
+
         {/* ── Bandeaux aviron indoor / natation (type d'eau) ── */}
         {isRowing && !isRowingOutdoor && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10, marginBottom: 14, fontSize: 12, color: 'var(--text)' }}>
@@ -8473,6 +8486,7 @@ conseil pour la prochaine séance similaire.`
           </div>
         )}
 
+        </>)}{/* fin layout générique (!isGym) */}
 
       </div>
 

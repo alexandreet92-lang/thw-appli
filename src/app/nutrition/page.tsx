@@ -17,6 +17,7 @@ import { useProfile } from '@/hooks/useProfile'
 import { DayFoodJournal } from '@/app/nutrition/components/DayFoodJournal'
 import { PlanShoppingList } from '@/app/nutrition/components/plan/PlanShoppingList'
 import { SuiviSection } from '@/app/nutrition/components/suivi/SuiviSection'
+import { NutritionRail } from '@/app/nutrition/components/NutritionRail'
 import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -1265,7 +1266,7 @@ export default function NutritionPage() {
   const next14Days = Array.from({ length: 14 }, (_, i) => addDays(today, i))
 
   return (
-    <div className="max-w-screen-2xl mx-auto" style={{ padding: '0 0 80px' }}>
+    <div className={isDesktop ? '' : 'max-w-screen-2xl mx-auto'} style={{ padding: '0 0 80px' }}>
       <PageHelp config={NUTRITION_ONBOARDING} show={show} onDismiss={dismiss} />
       {/* ── Scanner code-barres (mobile uniquement via CSS) ────── */}
       {scannerOpen && (
@@ -1336,9 +1337,13 @@ export default function NutritionPage() {
         </div>
       )}
 
-      <div className="px-4 md:px-8 pt-5 md:pt-8" style={{ paddingBottom: 0 }}>
+      {/* Desktop : rail latéral gauche (comme Planning) + contenu pleine largeur.
+          Mobile : onglets en haut (inchangés). */}
+      <div style={{ display: isDesktop ? 'flex' : 'block', alignItems: 'flex-start', width: '100%' }}>
+        {isDesktop && <NutritionRail tab={tab} onChange={changeTab} />}
+        <div className="px-4 md:px-8 pt-5 md:pt-8" style={{ paddingBottom: 0, flex: 1, minWidth: 0 }}>
 
-        <NutritionTabs tab={tab} onChange={changeTab} />
+        {!isDesktop && <NutritionTabs tab={tab} onChange={changeTab} />}
 
         <AnimatePresence mode="wait" initial={false}>
         <motion.div
@@ -2042,7 +2047,8 @@ export default function NutritionPage() {
 
         </motion.div>
         </AnimatePresence>{/* end animated tab content */}
-      </div>
+        </div>{/* end content column */}
+      </div>{/* end desktop rail + content flex */}
 
       {/* ══════════════════════════════════════════════════════════ */}
       {/* DAY DETAIL MODAL — portal, centered desktop / bottom mobile */}

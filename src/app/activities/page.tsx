@@ -7558,24 +7558,7 @@ conseil pour la prochaine séance similaire.`
               </Section>
             )}
 
-            {/* ZONES */}
-            {((isBike && bikeZones && powerTimesZ?.some(t => t > 0)) ||
-              (isRun && runZones && paceTimesZ?.some(t => t > 0)) ||
-              hrTimesZ?.some(t => t > 0)) && (
-              <Section title="Zones">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  {isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0) && (
-                    <ZonesSection label="Puissance" zones={bikeZones} timesS={powerTimesZ} />
-                  )}
-                  {isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0) && (
-                    <ZonesSection label="Allure" zones={runZones} timesS={paceTimesZ} />
-                  )}
-                  {hrTimesZ && hrTimesZ.some(t => t > 0) && (
-                    <ZonesSection label="Fréquence cardiaque" zones={hrZones} timesS={hrTimesZ} />
-                  )}
-                </div>
-              </Section>
-            )}
+            {/* ZONES (jauges Z1-Z5 + toggle) — supprimée : donuts « Répartitions » conservés */}
 
             {/* GRAPHIQUES AVANCÉS */}
             {a.streams && (() => {
@@ -7628,7 +7611,8 @@ conseil pour la prochaine séance similaire.`
                       </div>
                     </div>
                   )}
-                  {(isBike || isRun) && s.heartrate && s.heartrate.length > 60 && (
+                  {/* Durée cumulée par FC — cyclisme uniquement (retiré du running) */}
+                  {isBike && s.heartrate && s.heartrate.length > 60 && (
                     <div style={{ marginBottom: 18 }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
                         <button onClick={() => setShowHrCumulative(v => !v)} style={{
@@ -8138,28 +8122,7 @@ conseil pour la prochaine séance similaire.`
           </div>
         ) : null}
 
-        {/* ── ZONES ── */}
-        {((isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0)) ||
-          (isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0)) ||
-          (hrTimesZ && hrTimesZ.some(t => t > 0))) ? (
-          <div style={{ marginBottom: 32, paddingTop: 24 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
-              textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-              Zones
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              {isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0) && (
-                <ZonesSection label="Puissance" zones={bikeZones} timesS={powerTimesZ} />
-              )}
-              {isRun && runZones && paceTimesZ && paceTimesZ.some(t => t > 0) && (
-                <ZonesSection label="Allure" zones={runZones} timesS={paceTimesZ} />
-              )}
-              {hrTimesZ && hrTimesZ.some(t => t > 0) && (
-                <ZonesSection label="Fréquence cardiaque" zones={hrZones} timesS={hrTimesZ} />
-              )}
-            </div>
-          </div>
-        ) : null}
+        {/* ── ZONES (jauges Z1-Z5 + toggle) — supprimée : on garde les donuts « Répartitions » ── */}
 
         {/* ── DONUTS course/trail — FC + (Altitude trail | Cadence run) + Température ── */}
         {isRun && (() => {
@@ -8339,7 +8302,7 @@ conseil pour la prochaine séance similaire.`
           const s = a.streams
           const maxHrEst = estimateMaxHr(profile.birth_date)
           const showDec      = isBike && !!s.watts && !!s.heartrate && s.watts.length > 120
-          const showHrCum    = (isBike || isRun) && !!s.heartrate && s.heartrate.length > 60
+          const showHrCum    = isBike && !!s.heartrate && s.heartrate.length > 60
           const showDistrib  = isBike && !!s.watts && s.watts.length > 120
           const showAerobicE = isBike && !!s.watts && !!s.heartrate && s.watts.length > 400
           return (

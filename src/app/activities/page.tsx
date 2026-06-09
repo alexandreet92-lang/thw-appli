@@ -26,7 +26,8 @@ import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
 import { LapsDetailView } from '@/components/activity/LapsDetailView'
 import { ClimbDescentSection, detectSegments } from '@/components/activity/ClimbDescentSection'
 import { RunningLapsSection } from '@/components/activity/RunningLapsSection'
-import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin } from '@/lib/utils/pace'
+import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin, formatPaceSwim } from '@/lib/utils/pace'
+import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
 import { computeVapKmh, avgAdjustedPaceMinKm } from '@/lib/utils/vap'
 import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
 import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
@@ -2036,6 +2037,22 @@ const ALTITUDE_ZONES_DEF: ParsedZone[] = [
 ]
 const TEMP_ZONES_PARSED: ParsedZone[] = TEMP_ZONES_DEF.map(z => ({ label: z.label, min: z.min, max: z.max, color: z.color }))
 
+// ── Tranches SPM aviron — donut, 0 exclu ──
+const SPM_ROWING_ZONES_DEF: ParsedZone[] = [
+  { label: '< 18',  min: 0.01, max: 18,       color: '#cbd5e1' },
+  { label: '18-22', min: 18,   max: 22,       color: '#06b6d4' },
+  { label: '22-26', min: 22,   max: 26,       color: '#10b981' },
+  { label: '26-30', min: 26,   max: 30,       color: '#eab308' },
+  { label: '30-34', min: 30,   max: 34,       color: '#f97316' },
+  { label: '> 34',  min: 34,   max: Infinity, color: '#ef4444' },
+]
+// ── Tranches cadence natation (c/min) — donut, 0 exclu ──
+const CADENCE_SWIM_ZONES_DEF: ParsedZone[] = [
+  { label: '< 45',  min: 0.01, max: 45,       color: '#cbd5e1' },
+  { label: '45-50', min: 45,   max: 50,       color: '#06b6d4' },
+  { label: '50-55', min: 50,   max: 55,       color: '#10b981' },
+  { label: '> 55',  min: 55,   max: Infinity, color: '#eab308' },
+]
 // ── Tranches de cadence running (spm) — donut, 0 exclu ──
 const CADENCE_RUN_ZONES_DEF: ParsedZone[] = [
   { label: '< 150',   min: 0.01, max: 150,      color: '#94a3b8' },
@@ -3280,16 +3297,24 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   // Course à pied : pas de piste puissance, vitesse affichée en ALLURE
   // (min/km), cadence en spm. La donnée vitesse reste stockée en km/h
   // (géométrie « rapide = haut » naturelle) ; seul l'affichage change.
-  const isRunSport = ['run', 'trail_run'].includes(activity.sport_type)
+  const isRunSport  = ['run', 'trail_run'].includes(activity.sport_type)
+  const isRowSport  = activity.sport_type === 'rowing'
+  const isSwimSport = activity.sport_type === 'swim'
   const metricDefs = useMemo<MetricDef[]>(() => {
-    if (!isRunSport) return METRIC_DEFS
+    if (!isRunSport && !isRowSport && !isSwimSport) return METRIC_DEFS
     return METRIC_DEFS.map(d => {
-      if (d.key === 'speed')   return { ...d, label: 'Allure', unit: '/km', color: '#10B981',
-        fmt: (kmh: number) => kmh > 0 ? fmtPaceMinKm(kmhToPaceMin(kmh)) : '—' }
-      if (d.key === 'cadence') return { ...d, unit: 'spm' }
+      if (d.key === 'speed') {
+        if (isRunSport)  return { ...d, label: 'Allure', unit: '/km',  color: '#10B981', fmt: (kmh: number) => kmh > 0 ? fmtPaceMinKm(kmhToPaceMin(kmh)) : '—' }
+        if (isRowSport)  return { ...d, label: 'Split',  unit: '/500', color: '#06B6D4', fmt: (kmh: number) => kmh > 0 ? formatSplit(speedKmhToSplit500(kmh)) : '—' }
+        if (isSwimSport) return { ...d, label: 'Allure', unit: '/100', color: '#0EA5E9', fmt: (kmh: number) => kmh > 0 ? formatPaceSwim(100 / (kmh / 3.6)) : '—' }
+      }
+      if (d.key === 'cadence') {
+        if (isSwimSport) return { ...d, unit: 'c/min' }
+        if (isRunSport || isRowSport) return { ...d, unit: 'spm' }
+      }
       return d
     })
-  }, [isRunSport])
+  }, [isRunSport, isRowSport, isSwimSport])
   const defOf = (key: MetricDef['key']) => metricDefs.find(d => d.key === key)!
 
   // ── Format + métriques actives + métrique mono — persistés localStorage ─
@@ -3373,14 +3398,14 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     const keys: MetricDef['key'][] = []
     if (series.altitude && series.altitude.some(v => v > 0)) keys.push('altitude')
     if (series.hr       && series.hr.some(v => v > 0))       keys.push('hr')
-    // Course à pied : aucune donnée de puissance n'est affichée.
-    if (!isRunSport && series.watts && series.watts.some(v => v > 0)) keys.push('watts')
+    // Course & natation : aucune donnée de puissance affichée (vélo/aviron : oui).
+    if (!isRunSport && !isSwimSport && series.watts && series.watts.some(v => v > 0)) keys.push('watts')
     if (series.speed    && series.speed.some(v => v > 0))    keys.push('speed')
     if (isRunSport && series.vap && series.vap.some(v => v > 0)) keys.push('vap')
     if (series.temp     && series.temp.some(v => v > 0))     keys.push('temp')
     if (series.cadence  && series.cadence.some(v => v > 0))  keys.push('cadence')
     return keys
-  }, [series, isRunSport])
+  }, [series, isRunSport, isSwimSport])
 
   // Si la métrique mono persistée n'est plus disponible (ex. watts en course),
   // bascule sur la première métrique présente.
@@ -3852,7 +3877,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
                       marginTop:          2,
                       fontVariantNumeric: 'tabular-nums',
                     }}>
-                      {(key === 'vap' || (isRunSport && key === 'speed'))
+                      {(key === 'vap' || ((isRunSport || isRowSport || isSwimSport) && key === 'speed'))
                         ? `${def.fmt(st.max)} – ${def.fmt(st.min)}`
                         : `${def.fmt(st.min)} – ${def.fmt(st.max)}`} {def.unit}
                     </span>
@@ -6645,6 +6670,13 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const isTrail = a.sport_type === 'trail_run'
   const isSwim = a.sport_type === 'swim'
   const isGym  = a.sport_type === 'gym'
+  const isRowing = a.sport_type === 'rowing'
+  // Natation : eau libre si tracé GPS présent, sinon piscine.
+  const hasGpsTrace = (a.streams?.latlng?.length ?? 0) > 0 || !!a.summary_polyline
+  const isOpenWater = isSwim && hasGpsTrace
+  const isPool = isSwim && !isOpenWater
+  // Aviron : indoor si pas de tracé GPS.
+  const isRowingOutdoor = isRowing && hasGpsTrace
 
   const paceS = a.avg_pace_s_km
     ?? (a.moving_time_s && a.distance_m && a.distance_m > 100 ? (a.moving_time_s / a.distance_m) * 1000 : null)
@@ -7758,6 +7790,20 @@ conseil pour la prochaine séance similaire.`
 
       <div style={{ padding: '20px 24px' }}>
 
+        {/* ── Bandeaux aviron indoor / natation (type d'eau) ── */}
+        {isRowing && !isRowingOutdoor && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10, marginBottom: 14, fontSize: 12, color: 'var(--text)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#06b6d4', flexShrink: 0 }} />
+            <span><strong>Aviron indoor</strong> · ergomètre</span>
+          </div>
+        )}
+        {isSwim && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10, marginBottom: 14, fontSize: 12, color: 'var(--text)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0ea5e9', flexShrink: 0 }} />
+            <span><strong>{isOpenWater ? 'Eau libre' : 'Piscine'}</strong>{a.avg_temp_c != null ? ` · ${Math.round(Number(a.avg_temp_c))} °C` : ''}</span>
+          </div>
+        )}
+
         {/* ── PARTIE 3 : Hero row (carte | stats) ── */}
         {mapExpanded ? (
           <div style={{ height: 400, borderRadius: 10, overflow: 'hidden', marginBottom: 20 }}>
@@ -7790,6 +7836,8 @@ conseil pour la prochaine séance similaire.`
                   : (paceS && paceS > 0) ? (3600/paceS).toFixed(1) : null
                 // Course à pied : 6 stats dédiées (Distance / Allure / D+ / FC / TSS / Allure ajustée).
                 const adjPace = isRun ? avgAdjustedPaceMinKm(a.streams?.velocity, a.streams?.altitude, a.streams?.distance) : 0
+                const avgMs = a.avg_speed_ms ? Number(a.avg_speed_ms) : 0
+                const distAuto = a.distance_m ? (Number(a.distance_m) < 1000 ? `${Math.round(Number(a.distance_m))} m` : `${km} km`) : '—'
                 const STATS_MAIN = isRun ? [
                   { label: 'Distance',       value: km ? `${km} km` : '—' },
                   { label: 'Allure moy.',    value: paceS ? fmtPace(paceS) : '—', color: '#10b981' },
@@ -7797,6 +7845,20 @@ conseil pour la prochaine séance similaire.`
                   { label: 'FC moy.',        value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
                   { label: 'TSS',            value: a.tss ? Math.round(Number(a.tss)).toString() : '—', color: '#ef4444' },
                   { label: 'Allure ajustée', value: adjPace > 0 ? `${fmtPaceMinKm(adjPace)}/km` : '—', color: '#7c3aed' },
+                ] : isRowing ? [
+                  { label: 'Distance',  value: distAuto },
+                  { label: 'Durée',     value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
+                  { label: 'Split moy', value: avgMs > 0 ? `${formatSplit(500 / avgMs)}/500` : '—', color: '#06b6d4' },
+                  { label: 'SPM moy',   value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))}` : '—', color: '#ec4899' },
+                  { label: 'FC moy.',   value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
+                  { label: 'Puiss. moy', value: a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : '—', color: '#6366f1' },
+                ] : isSwim ? [
+                  { label: 'Distance',     value: distAuto },
+                  { label: 'Durée',        value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
+                  { label: 'Allure /100m', value: avgMs > 0 ? formatPaceSwim(100 / avgMs) : '—', color: '#0ea5e9' },
+                  { label: 'FC moy.',      value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
+                  { label: 'Cadence',      value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} c/min` : '—', color: '#ec4899' },
+                  { label: 'TSS',          value: a.tss ? Math.round(Number(a.tss)).toString() : '—', color: '#ef4444' },
                 ] : [
                   { label: 'Distance',  value: km ? `${km} km` : '—' },
                   { label: 'Durée',     value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
@@ -8136,6 +8198,57 @@ conseil pour la prochaine séance similaire.`
                 Répartitions
               </div>
               <div className="cyc-donuts-grid">
+                {donuts.map(d => (
+                  <div key={d.title}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 10 }}>{d.title}</div>
+                    <DonutChart zones={d.zones} timesS={d.times} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* ── DONUTS AVIRON — FC / SPM / Température ── */}
+        {isRowing && (() => {
+          const n = a.streams?.heartrate?.length ?? a.streams?.cadence?.length ?? a.streams?.watts?.length ?? 0
+          const dt = streamDt(a.streams, n)
+          const spmTimes  = zoneTimesFromStream(a.streams?.cadence, SPM_ROWING_ZONES_DEF, dt)
+          const tempTimes = zoneTimesFromStream(a.streams?.temp, TEMP_ZONES_PARSED, dt)
+          const donuts: { title: string; zones: ParsedZone[]; times: number[] }[] = []
+          if (hrTimesZ && hrTimesZ.some(t => t > 0)) donuts.push({ title: 'FC zones', zones: hrZones, times: hrTimesZ })
+          if (spmTimes.some(t => t > 0))  donuts.push({ title: 'SPM',         zones: SPM_ROWING_ZONES_DEF, times: spmTimes })
+          if (tempTimes.some(t => t > 0)) donuts.push({ title: 'Température', zones: TEMP_ZONES_PARSED,    times: tempTimes })
+          if (!donuts.length) return null
+          return (
+            <div style={{ marginBottom: 32, paddingTop: 24 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>Répartitions</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
+                {donuts.map(d => (
+                  <div key={d.title}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 10 }}>{d.title}</div>
+                    <DonutChart zones={d.zones} timesS={d.times} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* ── DONUTS NATATION — Cadence / Température (pas de FC zones) ── */}
+        {isSwim && (() => {
+          const n = a.streams?.cadence?.length ?? a.streams?.heartrate?.length ?? 0
+          const dt = streamDt(a.streams, n)
+          const cadTimes  = zoneTimesFromStream(a.streams?.cadence, CADENCE_SWIM_ZONES_DEF, dt)
+          const tempTimes = zoneTimesFromStream(a.streams?.temp, TEMP_ZONES_PARSED, dt)
+          const donuts: { title: string; zones: ParsedZone[]; times: number[] }[] = []
+          if (cadTimes.some(t => t > 0))  donuts.push({ title: 'Cadence',    zones: CADENCE_SWIM_ZONES_DEF, times: cadTimes })
+          if (tempTimes.some(t => t > 0)) donuts.push({ title: 'Température', zones: TEMP_ZONES_PARSED,      times: tempTimes })
+          if (!donuts.length) return null
+          return (
+            <div style={{ marginBottom: 32, paddingTop: 24 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>Répartitions</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
                 {donuts.map(d => (
                   <div key={d.title}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 10 }}>{d.title}</div>

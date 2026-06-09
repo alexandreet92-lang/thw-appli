@@ -16,6 +16,7 @@ import { useHydration } from '@/hooks/useHydration'
 import { useProfile } from '@/hooks/useProfile'
 import { DayFoodJournal } from '@/app/nutrition/components/DayFoodJournal'
 import { PlanShoppingList } from '@/app/nutrition/components/plan/PlanShoppingList'
+import { SuiviSection } from '@/app/nutrition/components/suivi/SuiviSection'
 import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -1799,97 +1800,13 @@ export default function NutritionPage() {
         {/* ══════════════════════════════════════════════════════ */}
         {tab === 'tracking' && (
         <div style={cardStyle}>
-          <p style={sectionTitle}>Historique</p>
-
-          {/* Range toggle */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {(['7j', '14j', '30j'] as HistRange[]).map(r => (
-              <button
-                key={r}
-                onClick={() => setHistRange(r)}
-                style={{
-                  padding: '5px 12px', borderRadius: 8,
-                  border: '1px solid var(--border)',
-                  background: histRange === r ? 'rgba(6,182,212,0.12)' : 'var(--bg-card2)',
-                  color: histRange === r ? '#06B6D4' : 'var(--text-dim)',
-                  fontWeight: histRange === r ? 700 : 400,
-                  fontSize: 12, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
-                }}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-
-          {/* Résumé adhérence + moyennes */}
-          {(() => {
-            const tr = computeTracking(dailyLogs, histRange === '7j' ? 7 : histRange === '14j' ? 14 : 30, activePlan?.plan_data ?? null, today)
-            if (tr.daysLogged === 0) return null
-            const adhColor = tr.inTargetPct == null ? 'var(--text-dim)' : tr.inTargetPct >= 70 ? '#22c55e' : tr.inTargetPct >= 40 ? '#eab308' : '#ef4444'
-            return (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 20 }}>
-                <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, fontFamily: 'DM Sans,sans-serif' }}>Adhérence</div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
-                    <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: adhColor }}>
-                      {tr.inTargetPct == null ? '—' : `${tr.inTargetPct}%`}
-                    </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-                      {tr.inTargetPct == null ? 'pas de plan' : `${tr.withPlanCount} j vs plan`}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, fontFamily: 'DM Sans,sans-serif' }}>Moyenne / jour</div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
-                    <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: '#06B6D4' }}>{tr.avgKcal}</span>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>kcal · {tr.daysLogged} j</span>
-                  </div>
-                  <div style={{ fontSize: 9, color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace', marginTop: 3 }}>
-                    P {tr.avgP} · G {tr.avgG} · L {tr.avgL}
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
-
-          {/* Graph 1 — Kcal history */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
-              Kcal consommees vs planifiees
-            </div>
-            {dailyLogs.length === 0 ? (
-              <NutritionEmpty icon="chart" text="Aucun historique" hint="Tes journées validées apparaîtront ici." />
-            ) : (
-              <KcalHistoryChart
-                logs={dailyLogs}
-                range={histRange}
-                activePlan={activePlan?.plan_data ?? null}
-              />
-            )}
-            <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 12, height: 8, borderRadius: 2, background: '#06B6D4' }} />
-                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Consomme</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 12, height: 8, borderRadius: 2, background: 'var(--border)' }} />
-                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Planifie</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Graph 2 — Macros 7j */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>Macros 7 derniers jours (g)</div>
-            {dailyLogs.length === 0 ? (
-              <NutritionEmpty icon="chart" text="Aucun historique" />
-            ) : (
-              <MacrosChart logs={dailyLogs} activePlan={activePlan?.plan_data ?? null} />
-            )}
-          </div>
+          <SuiviSection
+            dailyLogs={dailyLogs}
+            plan={activePlan?.plan_data ?? null}
+            weightKg={profile?.weight_kg ?? null}
+            today={today}
+          />
         </div>
-
         )}
 
         {/* Weight section */}

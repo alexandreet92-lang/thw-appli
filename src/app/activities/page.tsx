@@ -23,10 +23,11 @@ import { ActivityMapCard } from '@/components/activity/ActivityMapCard'
 import { LapsChart } from '@/components/activity/LapsChart'
 import { LapsTable } from '@/components/activity/LapsTable'
 import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
-import { LapsRunChart } from '@/components/activity/LapsRunChart'
 import { LapsDetailView } from '@/components/activity/LapsDetailView'
 import { ClimbDescentSection, detectSegments } from '@/components/activity/ClimbDescentSection'
+import { RunningLapsSection } from '@/components/activity/RunningLapsSection'
 import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin } from '@/lib/utils/pace'
+import { computeVapKmh, avgAdjustedPaceMinKm } from '@/lib/utils/vap'
 import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
 import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
 import { PowerDistribution } from '@/components/activity/PowerDistribution'
@@ -2035,6 +2036,16 @@ const ALTITUDE_ZONES_DEF: ParsedZone[] = [
 ]
 const TEMP_ZONES_PARSED: ParsedZone[] = TEMP_ZONES_DEF.map(z => ({ label: z.label, min: z.min, max: z.max, color: z.color }))
 
+// ── Tranches de cadence running (spm) — donut, 0 exclu ──
+const CADENCE_RUN_ZONES_DEF: ParsedZone[] = [
+  { label: '< 150',   min: 0.01, max: 150,      color: '#94a3b8' },
+  { label: '150-160', min: 150,  max: 160,      color: '#cbd5e1' },
+  { label: '161-170', min: 160,  max: 170,      color: '#06b6d4' },
+  { label: '171-180', min: 170,  max: 180,      color: '#10b981' },
+  { label: '181-190', min: 180,  max: 190,      color: '#eab308' },
+  { label: '> 190',   min: 190,  max: Infinity, color: '#f97316' },
+]
+
 // Intervalle d'échantillonnage (s) d'un flux d'activité.
 function streamDt(s: { time?: number[] | null } | null | undefined, n: number): number {
   const t = s?.time
@@ -3254,20 +3265,6 @@ const METRIC_DEFS: MetricDef[] = [
   { key: 'temp',     label: 'Température',  unit: '°C',   color: '#10B981', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
 ]
 
-// VAP : vitesse ajustée par la pente (Minetti), renvoyée en km/h.
-function computeVapKmh(velocityMs: number[], altitude: number[], distance: number[]): number[] {
-  const n = velocityMs.length
-  return velocityMs.map((v, i) => {
-    if (v <= 0) return 0
-    const a = Math.max(0, i - 5), b = Math.min(n - 1, i + 5)
-    const dAlt = (altitude[b] ?? altitude[i]) - (altitude[a] ?? altitude[i])
-    const dDist = (distance[b] ?? distance[i]) - (distance[a] ?? distance[i])
-    const g = dDist > 0 ? dAlt / dDist : 0
-    const cost = 1 + g * 5.43 + g * g * 18.84
-    return v * Math.max(0.5, Math.min(2.5, cost)) * 3.6
-  })
-}
-
 interface ActivityCurvesProps {
   activity: Activity
 }
@@ -3283,7 +3280,6 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   // (min/km), cadence en spm. La donnée vitesse reste stockée en km/h
   // (géométrie « rapide = haut » naturelle) ; seul l'affichage change.
   const isRunSport = ['run', 'trail_run'].includes(activity.sport_type)
-  const isTrailSport = activity.sport_type === 'trail_run'
   const metricDefs = useMemo<MetricDef[]>(() => {
     if (!isRunSport) return METRIC_DEFS
     return METRIC_DEFS.map(d => {
@@ -3361,14 +3357,14 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
 
     // VAP (trail) : vitesse ajustée par la pente, en km/h, puis lissée.
     let vap: number[] | null = null
-    if (isTrailSport && s.velocity && s.velocity.length > 1 && s.altitude && s.altitude.length > 1) {
+    if (isRunSport && s.velocity && s.velocity.length > 1 && s.altitude && s.altitude.length > 1) {
       let dist = s.distance
       if (!dist) { dist = []; let acc = 0; for (const v of s.velocity) { acc += v > 0 ? v : 0; dist.push(acc) } }
       vap = smoothSeries(computeVapKmh(s.velocity, s.altitude, dist), win)
     }
 
     return { altitude, hr, watts, speed, vap, cadence, temp, time: s.time ?? null, distance: s.distance ?? null }
-  }, [s, isTrailSport])
+  }, [s, isRunSport])
 
   // Métriques effectivement présentes (data non-null + au moins quelques valeurs > 0)
   const presentKeys = useMemo<MetricDef['key'][]>(() => {
@@ -3379,11 +3375,11 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     // Course à pied : aucune donnée de puissance n'est affichée.
     if (!isRunSport && series.watts && series.watts.some(v => v > 0)) keys.push('watts')
     if (series.speed    && series.speed.some(v => v > 0))    keys.push('speed')
-    if (isTrailSport && series.vap && series.vap.some(v => v > 0)) keys.push('vap')
+    if (isRunSport && series.vap && series.vap.some(v => v > 0)) keys.push('vap')
     if (series.temp     && series.temp.some(v => v > 0))     keys.push('temp')
     if (series.cadence  && series.cadence.some(v => v > 0))  keys.push('cadence')
     return keys
-  }, [series, isRunSport, isTrailSport])
+  }, [series, isRunSport])
 
   // Si la métrique mono persistée n'est plus disponible (ex. watts en course),
   // bascule sur la première métrique présente.
@@ -7646,11 +7642,11 @@ conseil pour la prochaine séance similaire.`
                     />
                   </>
                 ) : isRun ? (
-                  <LapsRunChart
+                  <RunningLapsSection
                     activityId={a.id}
                     cachedLaps={a.laps}
+                    streams={a.streams}
                     avgSpeedMs={a.distance_m && a.moving_time_s ? a.distance_m / a.moving_time_s : null}
-                    onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
                   />
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
@@ -7791,7 +7787,16 @@ conseil pour la prochaine séance similaire.`
                 const avgSpeedKmh = a.avg_speed_ms
                   ? (Number(a.avg_speed_ms)*3.6).toFixed(1)
                   : (paceS && paceS > 0) ? (3600/paceS).toFixed(1) : null
-                const STATS_MAIN = [
+                // Course à pied : 6 stats dédiées (Distance / Allure / D+ / FC / TSS / Allure ajustée).
+                const adjPace = isRun ? avgAdjustedPaceMinKm(a.streams?.velocity, a.streams?.altitude, a.streams?.distance) : 0
+                const STATS_MAIN = isRun ? [
+                  { label: 'Distance',       value: km ? `${km} km` : '—' },
+                  { label: 'Allure moy.',    value: paceS ? fmtPace(paceS) : '—', color: '#10b981' },
+                  { label: 'D+',             value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' },
+                  { label: 'FC moy.',        value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
+                  { label: 'TSS',            value: a.tss ? Math.round(Number(a.tss)).toString() : '—', color: '#ef4444' },
+                  { label: 'Allure ajustée', value: adjPace > 0 ? `${fmtPaceMinKm(adjPace)}/km` : '—', color: '#7c3aed' },
+                ] : [
                   { label: 'Distance',  value: km ? `${km} km` : '—' },
                   { label: 'Durée',     value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
                   { label: 'Vitesse',   value: avgSpeedKmh ? `${avgSpeedKmh} km/h` : '—' },
@@ -8018,8 +8023,15 @@ conseil pour la prochaine séance similaire.`
           </div>
         )}
 
-        {/* ── LAPS ── */}
-        {a.laps && a.laps.length > 1 && (
+        {/* ── LAPS ── (running/trail : section inline dédiée ; vélo : LapsChart/Table watts) */}
+        {isRun ? (
+          <RunningLapsSection
+            activityId={a.id}
+            cachedLaps={a.laps}
+            streams={a.streams}
+            avgSpeedMs={a.distance_m && a.moving_time_s ? a.distance_m / a.moving_time_s : null}
+          />
+        ) : a.laps && a.laps.length > 1 ? (
           <div style={{ marginBottom: 32, paddingTop: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
               textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
@@ -8041,7 +8053,7 @@ conseil pour la prochaine séance similaire.`
               onHoverLap={setHoveredLapBar}
             />
           </div>
-        )}
+        ) : null}
 
         {/* ── ZONES ── */}
         {((isBike && bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0)) ||
@@ -8066,16 +8078,21 @@ conseil pour la prochaine séance similaire.`
           </div>
         ) : null}
 
-        {/* ── DONUTS TRAIL (FC / Altitude / Température) ── */}
-        {isTrail && (() => {
-          const n = a.streams?.altitude?.length ?? a.streams?.heartrate?.length ?? 0
+        {/* ── DONUTS course/trail — FC + (Altitude trail | Cadence run) + Température ── */}
+        {isRun && (() => {
+          const n = a.streams?.altitude?.length ?? a.streams?.heartrate?.length ?? a.streams?.cadence?.length ?? 0
           const dt = streamDt(a.streams, n)
-          const altTimes  = zoneTimesFromStream(a.streams?.altitude, ALTITUDE_ZONES_DEF, dt)
           const tempTimes = zoneTimesFromStream(a.streams?.temp, TEMP_ZONES_PARSED, dt)
           const donuts: { title: string; zones: ParsedZone[]; times: number[] }[] = []
           if (hrTimesZ && hrTimesZ.some(t => t > 0)) donuts.push({ title: 'FC zones', zones: hrZones, times: hrTimesZ })
-          if (altTimes.some(t => t > 0))  donuts.push({ title: 'Altitude',    zones: ALTITUDE_ZONES_DEF, times: altTimes })
-          if (tempTimes.some(t => t > 0)) donuts.push({ title: 'Température', zones: TEMP_ZONES_PARSED,   times: tempTimes })
+          if (isTrail) {
+            const altTimes = zoneTimesFromStream(a.streams?.altitude, ALTITUDE_ZONES_DEF, dt)
+            if (altTimes.some(t => t > 0)) donuts.push({ title: 'Altitude', zones: ALTITUDE_ZONES_DEF, times: altTimes })
+          } else {
+            const cadTimes = zoneTimesFromStream(a.streams?.cadence, CADENCE_RUN_ZONES_DEF, dt)
+            if (cadTimes.some(t => t > 0)) donuts.push({ title: 'Cadence', zones: CADENCE_RUN_ZONES_DEF, times: cadTimes })
+          }
+          if (tempTimes.some(t => t > 0)) donuts.push({ title: 'Température', zones: TEMP_ZONES_PARSED, times: tempTimes })
           if (!donuts.length) return null
           return (
             <div style={{ marginBottom: 32, paddingTop: 24 }}>
@@ -8214,17 +8231,8 @@ conseil pour la prochaine séance similaire.`
                 )
               })()}
 
-              {/* Laps bar chart — course à pied. Monté en permanence (comme le
-                  vélo) : LapsRunChart va chercher les tours via l'API même si
-                  a.laps n'est pas en cache, et ne s'affiche que s'il y a > 1 tour. */}
-              {isRun && (
-                <LapsRunChart
-                  activityId={a.id}
-                  cachedLaps={a.laps}
-                  avgSpeedMs={a.distance_m && a.moving_time_s ? a.distance_m / a.moving_time_s : null}
-                  onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
-                />
-              )}
+              {/* Les tours running/trail sont rendus en INLINE (RunningLapsSection,
+                  section LAPS ci-dessus) — pas de vue slide pour la course. */}
 
               {/* A — DÉCOUPLAGE P/FC — pleine largeur */}
               {showDec && (

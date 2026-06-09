@@ -15,6 +15,7 @@ import { useDailyMeals } from '@/hooks/useDailyMeals'
 import { useHydration } from '@/hooks/useHydration'
 import { useProfile } from '@/hooks/useProfile'
 import { DayFoodJournal } from '@/app/nutrition/components/DayFoodJournal'
+import { PlanShoppingList } from '@/app/nutrition/components/plan/PlanShoppingList'
 import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -1014,6 +1015,8 @@ export default function NutritionPage() {
     else { window.localStorage.removeItem('thw_goal_weight'); setGoalWeight(null) }
   }, [goalInput])
   const [dayDetailOpen, setDayDetailOpen] = useState<PlanDay | null>(null)
+  const [shoppingOpen, setShoppingOpen] = useState(false)
+  const [regenConfirm, setRegenConfirm] = useState(false)
   const [weightInputDate, setWeightInputDate] = useState<string>(today)
   const [weightInput, setWeightInput] = useState<string>('')
   const [mgInput, setMgInput] = useState<string>('')
@@ -1689,34 +1692,54 @@ export default function NutritionPage() {
               </div>
 
               {/* Actions plan */}
-              <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+                {/* Modifier avec l'IA — ouvre le panneau IA (cf. .md : pas de
+                    référence de conversation d'origine stockée dans le plan). */}
                 <button
                   onClick={() => setAiPanelOpen(true)}
                   style={{
-                    flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    flex: '1 1 160px', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
                     padding: '10px', borderRadius: 11,
                     border: '1px solid rgba(91,111,255,0.35)',
                     background: 'linear-gradient(135deg,rgba(6,182,212,0.12),rgba(91,111,255,0.18))',
                     color: 'var(--text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
                   }}
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
-                  </svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                  Modifier avec l&apos;IA
+                </button>
+                <button
+                  onClick={() => setShoppingOpen(true)}
+                  style={{
+                    flex: '1 1 160px', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    padding: '10px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)',
+                    color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+                  Liste de courses
+                </button>
+                <button
+                  onClick={() => setRegenConfirm(true)}
+                  style={{
+                    flex: '1 1 130px', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    padding: '10px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)',
+                    color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
                   Régénérer
                 </button>
+                {/* Supprimer — démoté en bouton ghost secondaire */}
                 <button
                   onClick={() => void handleDeletePlan()}
                   style={{
-                    minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                    padding: '10px 16px', borderRadius: 11,
-                    border: '1px solid rgba(239,68,68,0.3)', background: 'transparent',
-                    color: '#ef4444', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                    minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    padding: '10px 14px', borderRadius: 11, border: 'none', background: 'transparent',
+                    color: 'var(--text-dim)', fontWeight: 500, fontSize: 12.5, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
                   }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/>
-                  </svg>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
                   Supprimer
                 </button>
               </div>
@@ -2065,6 +2088,10 @@ export default function NutritionPage() {
           dayDetailOpen.lipides,
           modalMealSet,
         )
+        // Interconnexion : séance(s) du jour qui justifient le type de jour.
+        const dow = new Date(dayDetailOpen.date + 'T00:00:00').getDay()
+        const dayIdx = dow === 0 ? 6 : dow - 1
+        const daySess = sessions.filter(s => s.day_index === dayIdx)
         return createPortal(
         <div
           style={{
@@ -2102,6 +2129,14 @@ export default function NutritionPage() {
                 }}>
                   {DAY_COLORS[dayDetailOpen.type_jour].label}
                 </div>
+                {/* Interconnexion → séance qui justifie le type de jour */}
+                {daySess.length > 0 ? (
+                  <a href="/planning" style={{ display: 'block', marginTop: 8, fontSize: 12, color: '#06B6D4', fontFamily: 'DM Sans,sans-serif', fontWeight: 600, textDecoration: 'none' }}>
+                    {daySess.map(s => s.title).filter(Boolean).join(' · ') || 'Séance prévue'} →
+                  </a>
+                ) : (
+                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Aucune séance liée ce jour</div>
+                )}
               </div>
               <button
                 onClick={() => { setDayDetailOpen(null); setEditSlot(null) }}
@@ -2359,6 +2394,35 @@ export default function NutritionPage() {
         document.body,
         )
       })()}
+
+      {/* Liste de courses (dérivée des repas réels du plan) */}
+      {shoppingOpen && activePlan && (
+        <PlanShoppingList
+          plan={activePlan.plan_data}
+          variant={planVariant}
+          selectedDate={dayDetailOpen?.date ?? null}
+          isDesktop={isDesktop}
+          onClose={() => setShoppingOpen(false)}
+        />
+      )}
+
+      {/* Confirmation de régénération (consommation tokens : cf. .md, système
+          de crédits non localisé → garde-fou à brancher quand dispo). */}
+      {regenConfirm && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setRegenConfirm(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 16, padding: 22 }}>
+            <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, color: 'var(--text)', margin: '0 0 8px' }}>Régénérer le plan ?</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, margin: '0 0 18px' }}>
+              Un nouveau plan sera généré selon ton planning. L&apos;ancien plan actif sera remplacé.
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setRegenConfirm(false)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Annuler</button>
+              <button onClick={() => { setRegenConfirm(false); setAiPanelOpen(true) }} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#06B6D4,#5b6fff)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Régénérer</button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {/* Bouton Mes repas types */}
       {tab === 'plan' && (

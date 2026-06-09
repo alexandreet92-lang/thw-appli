@@ -69,7 +69,9 @@ const POWER_ZONES_DEF = [
   { label: 'Z7', min: 1.50, max: 99,   color: '#581c87' },
 ]
 const TEMP_ZONES_DEF = [
-  { label: '< 10 °C',  min: -Infinity, max: 10,       color: '#1e40af' },
+  { label: '< 0 °C',   min: -Infinity, max: 0,        color: '#1e1b4b' },
+  { label: '0-5 °C',   min: 0,         max: 5,        color: '#312e81' },
+  { label: '5-10 °C',  min: 5,         max: 10,       color: '#1e40af' },
   { label: '10-15 °C', min: 10,        max: 15,       color: '#3b82f6' },
   { label: '15-20 °C', min: 15,        max: 20,       color: '#06b6d4' },
   { label: '20-25 °C', min: 20,        max: 25,       color: '#10b981' },

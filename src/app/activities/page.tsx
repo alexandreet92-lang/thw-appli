@@ -25,6 +25,7 @@ import { LapsTable } from '@/components/activity/LapsTable'
 import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
 import { LapsRunChart } from '@/components/activity/LapsRunChart'
 import { LapsDetailView } from '@/components/activity/LapsDetailView'
+import { ClimbDescentSection, detectSegments } from '@/components/activity/ClimbDescentSection'
 import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin } from '@/lib/utils/pace'
 import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
 import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
@@ -558,7 +559,7 @@ function DonutChart({ zones, timesS, onZoneClick }: {
         ))}
       </svg>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {segments.map((seg, i) => (
+        {segments.filter(seg => seg.time > 0).map((seg, i) => (
           <div key={i}
             style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: onZoneClick ? 'pointer' : 'default' }}
             onClick={() => onZoneClick?.(seg.zone)}
@@ -2009,9 +2010,11 @@ const POWER_ZONES_DEF = [
 const HR_ZONE_COLORS = ['#3b82f6', '#10b981', '#eab308', '#f97316', '#ef4444']
 const HR_ZONE_NAMES  = ['Z1 Récup', 'Z2 Aérobie', 'Z3 Tempo', 'Z4 Seuil', 'Z5 VO2max']
 
-// ── Tranches de température (°C) ──
+// ── Tranches de température (°C) — 9 tranches (dont < 0 °C et > 35 °C) ──
 const TEMP_ZONES_DEF: { label: string; min: number; max: number; color: string }[] = [
-  { label: '< 10 °C',   min: -Infinity, max: 10,       color: '#1e40af' },
+  { label: '< 0 °C',    min: -Infinity, max: 0,        color: '#1e1b4b' },
+  { label: '0-5 °C',    min: 0,         max: 5,        color: '#312e81' },
+  { label: '5-10 °C',   min: 5,         max: 10,       color: '#1e40af' },
   { label: '10-15 °C',  min: 10,        max: 15,       color: '#3b82f6' },
   { label: '15-20 °C',  min: 15,        max: 20,       color: '#06b6d4' },
   { label: '20-25 °C',  min: 20,        max: 25,       color: '#10b981' },
@@ -2019,6 +2022,61 @@ const TEMP_ZONES_DEF: { label: string; min: number; max: number; color: string }
   { label: '30-35 °C',  min: 30,        max: 35,       color: '#f97316' },
   { label: '> 35 °C',   min: 35,        max: Infinity, color: '#ef4444' },
 ]
+
+// ── Tranches d'altitude (m) — donut trail (couleurs intuitives effort) ──
+const ALTITUDE_ZONES_DEF: ParsedZone[] = [
+  { label: '0-500 m',    min: -Infinity, max: 500,      color: '#10b981' },
+  { label: '501-1000',   min: 500,       max: 1000,     color: '#84cc16' },
+  { label: '1001-1500',  min: 1000,      max: 1500,     color: '#eab308' },
+  { label: '1501-1800',  min: 1500,      max: 1800,     color: '#f97316' },
+  { label: '1801-2000',  min: 1800,      max: 2000,     color: '#ef4444' },
+  { label: '2001-2500',  min: 2000,      max: 2500,     color: '#7c2d12' },
+  { label: '> 2500 m',   min: 2500,      max: Infinity, color: '#1e1b4b' },
+]
+const TEMP_ZONES_PARSED: ParsedZone[] = TEMP_ZONES_DEF.map(z => ({ label: z.label, min: z.min, max: z.max, color: z.color }))
+
+// Intervalle d'échantillonnage (s) d'un flux d'activité.
+function streamDt(s: { time?: number[] | null } | null | undefined, n: number): number {
+  const t = s?.time
+  if (t && t.length > 1 && n > 1) { const d = (t[t.length - 1] - t[0]) / (t.length - 1); if (d > 0) return d }
+  return 1
+}
+// VAM (m/h) = D+ cumulé en montée (pente > 2 %) / temps passé en montée.
+function trailVam(s: { altitude?: number[] | null; distance?: number[] | null; time?: number[] | null } | null | undefined): number {
+  const alt = s?.altitude, dist = s?.distance
+  if (!alt || !dist || alt.length < 2) return 0
+  const n = Math.min(alt.length, dist.length)
+  const dt = streamDt(s, n)
+  let gain = 0, climbTime = 0
+  for (let i = 1; i < n; i++) {
+    const dd = dist[i] - dist[i - 1], da = alt[i] - alt[i - 1]
+    if (dd > 0 && da / dd > 0.02) { gain += da; climbTime += dt }
+  }
+  return climbTime > 0 ? Math.round(gain / (climbTime / 3600)) : 0
+}
+// Temps (s) + % au-dessus d'un seuil d'altitude.
+function trailTimeAbove(s: { altitude?: number[] | null; time?: number[] | null } | null | undefined, thr: number): { sec: number; pct: number } {
+  const alt = s?.altitude
+  if (!alt || !alt.length) return { sec: 0, pct: 0 }
+  const dt = streamDt(s, alt.length)
+  let above = 0
+  for (const a of alt) if (a != null && a > thr) above += dt
+  const total = alt.length * dt
+  return { sec: above, pct: total > 0 ? Math.round((above / total) * 100) : 0 }
+}
+
+// Temps (s) passé par tranche pour un flux continu + intervalle d'échantillonnage.
+function zoneTimesFromStream(stream: number[] | null | undefined, zones: ParsedZone[], dt: number): number[] {
+  const times = zones.map(() => 0)
+  if (!stream) return times
+  for (const raw of stream) {
+    if (raw == null || isNaN(raw)) continue
+    for (let i = 0; i < zones.length; i++) {
+      if (raw >= zones[i].min && raw < zones[i].max) { times[i] += dt; break }
+    }
+  }
+  return times
+}
 
 // ── Tranches de cadence (rpm), 0 rpm exclu (roue libre) ──
 const CADENCE_ZONES_DEF: { label: string; min: number; max: number; color: string }[] = [
@@ -3175,7 +3233,7 @@ function smoothSeries(values: number[], windowSize: number): number[] {
 }
 
 interface MetricDef {
-  key:        'altitude' | 'hr' | 'watts' | 'speed' | 'cadence' | 'temp'
+  key:        'altitude' | 'hr' | 'watts' | 'speed' | 'vap' | 'cadence' | 'temp'
   label:      string
   unit:       string
   color:      string
@@ -3184,14 +3242,31 @@ interface MetricDef {
   fmt:        (v: number) => string
 }
 
+// VAP stockée en km/h ajustée (géométrie « rapide = haut »), affichée en allure.
+const vapFmt = (kmh: number) => kmh > 0 ? fmtPaceMinKm(kmhToPaceMin(kmh)) : '—'
 const METRIC_DEFS: MetricDef[] = [
   { key: 'altitude', label: 'Altitude',     unit: 'm',    color: '#94a3b8', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
   { key: 'hr',       label: 'FC',           unit: 'bpm',  color: '#f97316', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
   { key: 'watts',    label: 'Puissance',    unit: 'W',    color: '#6366f1', textOnColor: '#ffffff', fmt: v => `${Math.round(v)}` },
   { key: 'speed',    label: 'Vitesse',      unit: 'km/h', color: '#06B6D4', textOnColor: '#000000', fmt: v => v.toFixed(1).replace('.', ',') },
+  { key: 'vap',      label: 'VAP',          unit: '/km',  color: '#7c3aed', textOnColor: '#ffffff', fmt: vapFmt },
   { key: 'cadence',  label: 'Cadence',      unit: 'rpm',  color: '#ec4899', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
   { key: 'temp',     label: 'Température',  unit: '°C',   color: '#10B981', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
 ]
+
+// VAP : vitesse ajustée par la pente (Minetti), renvoyée en km/h.
+function computeVapKmh(velocityMs: number[], altitude: number[], distance: number[]): number[] {
+  const n = velocityMs.length
+  return velocityMs.map((v, i) => {
+    if (v <= 0) return 0
+    const a = Math.max(0, i - 5), b = Math.min(n - 1, i + 5)
+    const dAlt = (altitude[b] ?? altitude[i]) - (altitude[a] ?? altitude[i])
+    const dDist = (distance[b] ?? distance[i]) - (distance[a] ?? distance[i])
+    const g = dDist > 0 ? dAlt / dDist : 0
+    const cost = 1 + g * 5.43 + g * g * 18.84
+    return v * Math.max(0.5, Math.min(2.5, cost)) * 3.6
+  })
+}
 
 interface ActivityCurvesProps {
   activity: Activity
@@ -3208,6 +3283,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   // (min/km), cadence en spm. La donnée vitesse reste stockée en km/h
   // (géométrie « rapide = haut » naturelle) ; seul l'affichage change.
   const isRunSport = ['run', 'trail_run'].includes(activity.sport_type)
+  const isTrailSport = activity.sport_type === 'trail_run'
   const metricDefs = useMemo<MetricDef[]>(() => {
     if (!isRunSport) return METRIC_DEFS
     return METRIC_DEFS.map(d => {
@@ -3283,8 +3359,16 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     const cadence  = s.cadence && s.cadence.length > 1 ? smoothSeries(s.cadence, win) : null
     const temp     = s.temp && s.temp.length > 1 ? smoothSeries(s.temp, win) : null
 
-    return { altitude, hr, watts, speed, cadence, temp, time: s.time ?? null, distance: s.distance ?? null }
-  }, [s])
+    // VAP (trail) : vitesse ajustée par la pente, en km/h, puis lissée.
+    let vap: number[] | null = null
+    if (isTrailSport && s.velocity && s.velocity.length > 1 && s.altitude && s.altitude.length > 1) {
+      let dist = s.distance
+      if (!dist) { dist = []; let acc = 0; for (const v of s.velocity) { acc += v > 0 ? v : 0; dist.push(acc) } }
+      vap = smoothSeries(computeVapKmh(s.velocity, s.altitude, dist), win)
+    }
+
+    return { altitude, hr, watts, speed, vap, cadence, temp, time: s.time ?? null, distance: s.distance ?? null }
+  }, [s, isTrailSport])
 
   // Métriques effectivement présentes (data non-null + au moins quelques valeurs > 0)
   const presentKeys = useMemo<MetricDef['key'][]>(() => {
@@ -3295,10 +3379,11 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     // Course à pied : aucune donnée de puissance n'est affichée.
     if (!isRunSport && series.watts && series.watts.some(v => v > 0)) keys.push('watts')
     if (series.speed    && series.speed.some(v => v > 0))    keys.push('speed')
-    if (series.cadence  && series.cadence.some(v => v > 0))  keys.push('cadence')
+    if (isTrailSport && series.vap && series.vap.some(v => v > 0)) keys.push('vap')
     if (series.temp     && series.temp.some(v => v > 0))     keys.push('temp')
+    if (series.cadence  && series.cadence.some(v => v > 0))  keys.push('cadence')
     return keys
-  }, [series, isRunSport])
+  }, [series, isRunSport, isTrailSport])
 
   // Si la métrique mono persistée n'est plus disponible (ex. watts en course),
   // bascule sur la première métrique présente.
@@ -3770,7 +3855,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
                       marginTop:          2,
                       fontVariantNumeric: 'tabular-nums',
                     }}>
-                      {isRunSport && key === 'speed'
+                      {(key === 'vap' || (isRunSport && key === 'speed'))
                         ? `${def.fmt(st.max)} – ${def.fmt(st.min)}`
                         : `${def.fmt(st.min)} – ${def.fmt(st.max)}`} {def.unit}
                     </span>
@@ -6560,6 +6645,7 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   }
   const isBike = ['bike','virtual_bike'].includes(a.sport_type)
   const isRun  = ['run','trail_run'].includes(a.sport_type)
+  const isTrail = a.sport_type === 'trail_run'
   const isSwim = a.sport_type === 'swim'
   const isGym  = a.sport_type === 'gym'
 
@@ -7793,6 +7879,7 @@ conseil pour la prochaine séance similaire.`
               ] : [
                 { label: 'Durée',        value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
                 { label: 'Allure moy.',  value: paceS ? fmtPace(paceS) : null },
+                ...(isTrail ? (() => { const vam = trailVam(a.streams); return [{ label: 'VAM', value: vam > 0 ? `${vam} m/h` : null }] })() : []),
                 { label: 'Cadence moy.', value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} spm` : null },
                 { label: 'Cadence max',  value: maxCad ? `${maxCad} spm` : null },
                 { label: 'Distance',     value: a.distance_m ? fmtDist(a.distance_m) : null },
@@ -7861,6 +7948,28 @@ conseil pour la prochaine séance similaire.`
                   <span style={{ fontWeight: 500, color: 'var(--text)' }}>{r.value}</span>
                 </div>
               ))}
+              {/* Lignes trail : au-delà 2000 m + nb montées/descentes (mises en avant) */}
+              {isTrail && (() => {
+                const above = trailTimeAbove(a.streams, 2000)
+                let dist = a.streams?.distance
+                if (!dist && a.streams?.velocity) { dist = []; let acc = 0; for (const v of a.streams.velocity) { acc += v > 0 ? v : 0; dist.push(acc) } }
+                const segs = (a.streams?.altitude && dist) ? detectSegments(a.streams.altitude, dist, a.streams.time, a.streams.velocity, a.streams.heartrate) : []
+                const nClimbs = segs.filter(s => s.type === 'climb').length
+                const nDesc   = segs.filter(s => s.type === 'descent').length
+                const HL = (bg: string, fg: string, label: string, value: string) => (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', margin: '3px -4px', borderRadius: 4, background: bg, fontSize: 12 }}>
+                    <span style={{ color: fg }}>{label}</span>
+                    <span style={{ fontWeight: 700, color: fg }}>{value}</span>
+                  </div>
+                )
+                return (
+                  <>
+                    {above.sec > 0 && HL('rgba(234,179,8,0.16)', '#b45309', 'Au-delà 2000 m', `${fmtDur(above.sec)} (${above.pct}%)`)}
+                    {HL('rgba(239,68,68,0.14)',  '#dc2626', 'Montées',   String(nClimbs))}
+                    {HL('rgba(59,130,246,0.14)', '#2563eb', 'Descentes', String(nDesc))}
+                  </>
+                )
+              })()}
             </div>
 
             {/* ── CONDITIONS ── */}
@@ -7956,6 +8065,34 @@ conseil pour la prochaine séance similaire.`
             </div>
           </div>
         ) : null}
+
+        {/* ── DONUTS TRAIL (FC / Altitude / Température) ── */}
+        {isTrail && (() => {
+          const n = a.streams?.altitude?.length ?? a.streams?.heartrate?.length ?? 0
+          const dt = streamDt(a.streams, n)
+          const altTimes  = zoneTimesFromStream(a.streams?.altitude, ALTITUDE_ZONES_DEF, dt)
+          const tempTimes = zoneTimesFromStream(a.streams?.temp, TEMP_ZONES_PARSED, dt)
+          const donuts: { title: string; zones: ParsedZone[]; times: number[] }[] = []
+          if (hrTimesZ && hrTimesZ.some(t => t > 0)) donuts.push({ title: 'FC zones', zones: hrZones, times: hrTimesZ })
+          if (altTimes.some(t => t > 0))  donuts.push({ title: 'Altitude',    zones: ALTITUDE_ZONES_DEF, times: altTimes })
+          if (tempTimes.some(t => t > 0)) donuts.push({ title: 'Température', zones: TEMP_ZONES_PARSED,   times: tempTimes })
+          if (!donuts.length) return null
+          return (
+            <div style={{ marginBottom: 32, paddingTop: 24 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+                Répartitions
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
+                {donuts.map(d => (
+                  <div key={d.title}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 10 }}>{d.title}</div>
+                    <DonutChart zones={d.zones} timesS={d.times} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ── ANALYSE AUTOMATIQUE ── */}
         {(() => {
@@ -8055,6 +8192,26 @@ conseil pour la prochaine séance similaire.`
                   for (const v of s.velocity) { acc += v > 0 ? v : 0; dist.push(acc) }
                 }
                 return <GapChart velocity={s.velocity} altitude={s.altitude} distance={dist} />
+              })()}
+
+              {/* Montées & descentes — trail uniquement, entre la comparaison
+                  d'allure (VAP) et les tours. Distance recalculée si absente. */}
+              {isTrail && s.altitude && s.altitude.length > 10 && (() => {
+                let dist = s.distance
+                if (!dist) {
+                  dist = []; let acc = 0
+                  for (const v of (s.velocity ?? [])) { acc += v > 0 ? v : 0; dist.push(acc) }
+                }
+                if (!dist || dist.length < 10) return null
+                return (
+                  <ClimbDescentSection
+                    altitude={s.altitude}
+                    distance={dist}
+                    time={s.time}
+                    velocity={s.velocity}
+                    heartrate={s.heartrate}
+                  />
+                )
               })()}
 
               {/* Laps bar chart — course à pied. Monté en permanence (comme le

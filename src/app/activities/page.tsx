@@ -27,6 +27,7 @@ import { LapsDetailView } from '@/components/activity/LapsDetailView'
 import { ClimbDescentSection, detectSegments } from '@/components/activity/ClimbDescentSection'
 import { WorkoutTypeBadges } from '@/components/activity/WorkoutTypeBadges'
 import { MuscuActivityView } from '@/components/activity/MuscuActivityView'
+import ProgressionHub from '@/app/progression/page'
 import { RunningLapsSection } from '@/components/activity/RunningLapsSection'
 import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin, formatPaceSwim } from '@/lib/utils/pace'
 import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
@@ -9831,7 +9832,7 @@ function TrainingPageInner() {
           {/* Sections */}
           {!loading && !error && section === 'donnees'     && <div className="fade-up"><ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal></div>}
           {!loading && !error && section === 'analyse'     && <div className="fade-up"><ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal></div>}
-          {!loading && !error && section === 'progression' && <div className="fade-up"><ScrollReveal><SectionProgression activities={activities} /></ScrollReveal></div>}
+          {section === 'progression' && <div className="fade-up"><ProgressionHub /></div>}
         </main>
       </div>
 

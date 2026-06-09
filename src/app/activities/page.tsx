@@ -25,6 +25,7 @@ import { LapsTable } from '@/components/activity/LapsTable'
 import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
 import { LapsDetailView } from '@/components/activity/LapsDetailView'
 import { ClimbDescentSection, detectSegments } from '@/components/activity/ClimbDescentSection'
+import { WorkoutTypeBadges } from '@/components/activity/WorkoutTypeBadges'
 import { RunningLapsSection } from '@/components/activity/RunningLapsSection'
 import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin, formatPaceSwim } from '@/lib/utils/pace'
 import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
@@ -6670,6 +6671,7 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const isTrail = a.sport_type === 'trail_run'
   const isSwim = a.sport_type === 'swim'
   const isGym  = a.sport_type === 'gym'
+  const isHyrox = a.sport_type === 'hyrox'
   const isRowing = a.sport_type === 'rowing'
   // Natation : eau libre si tracé GPS présent, sinon piscine.
   const hasGpsTrace = (a.streams?.latlng?.length ?? 0) > 0 || !!a.summary_polyline
@@ -7789,6 +7791,11 @@ conseil pour la prochaine séance similaire.`
       </div>
 
       <div style={{ padding: '20px 24px' }}>
+
+        {/* ── Badges de type d'entraînement (muscu / hyrox) — sélection manuelle ── */}
+        {(isGym || isHyrox) && (
+          <WorkoutTypeBadges activityId={a.id} sport={isHyrox ? 'hyrox' : 'gym'} />
+        )}
 
         {/* ── Bandeaux aviron indoor / natation (type d'eau) ── */}
         {isRowing && !isRowingOutdoor && (

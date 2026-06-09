@@ -25,6 +25,7 @@ import { LapsTable } from '@/components/activity/LapsTable'
 import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
 import { LapsRunChart } from '@/components/activity/LapsRunChart'
 import { LapsDetailView } from '@/components/activity/LapsDetailView'
+import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin } from '@/lib/utils/pace'
 import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
 import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
 import { PowerDistribution } from '@/components/activity/PowerDistribution'
@@ -3202,6 +3203,22 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   void useWindowWidth() // force re-render au resize, mais on s'en sert pas autrement
   const s = activity.streams ?? null
 
+  // ── Adaptation au sport ─────────────────────────────────────────────
+  // Course à pied : pas de piste puissance, vitesse affichée en ALLURE
+  // (min/km), cadence en spm. La donnée vitesse reste stockée en km/h
+  // (géométrie « rapide = haut » naturelle) ; seul l'affichage change.
+  const isRunSport = ['run', 'trail_run'].includes(activity.sport_type)
+  const metricDefs = useMemo<MetricDef[]>(() => {
+    if (!isRunSport) return METRIC_DEFS
+    return METRIC_DEFS.map(d => {
+      if (d.key === 'speed')   return { ...d, label: 'Allure', unit: '/km', color: '#10B981',
+        fmt: (kmh: number) => kmh > 0 ? fmtPaceMinKm(kmhToPaceMin(kmh)) : '—' }
+      if (d.key === 'cadence') return { ...d, unit: 'spm' }
+      return d
+    })
+  }, [isRunSport])
+  const defOf = (key: MetricDef['key']) => metricDefs.find(d => d.key === key)!
+
   // ── Format + métriques actives + métrique mono — persistés localStorage ─
   const [format,        setFormat]        = useState<CurvesFormat>('stacked')
   const [activeMetrics, setActiveMetrics] = useState<Set<string>>(new Set(['hr', 'watts', 'speed']))
@@ -3275,12 +3292,19 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     const keys: MetricDef['key'][] = []
     if (series.altitude && series.altitude.some(v => v > 0)) keys.push('altitude')
     if (series.hr       && series.hr.some(v => v > 0))       keys.push('hr')
-    if (series.watts    && series.watts.some(v => v > 0))    keys.push('watts')
+    // Course à pied : aucune donnée de puissance n'est affichée.
+    if (!isRunSport && series.watts && series.watts.some(v => v > 0)) keys.push('watts')
     if (series.speed    && series.speed.some(v => v > 0))    keys.push('speed')
     if (series.cadence  && series.cadence.some(v => v > 0))  keys.push('cadence')
     if (series.temp     && series.temp.some(v => v > 0))     keys.push('temp')
     return keys
-  }, [series])
+  }, [series, isRunSport])
+
+  // Si la métrique mono persistée n'est plus disponible (ex. watts en course),
+  // bascule sur la première métrique présente.
+  useEffect(() => {
+    if (presentKeys.length > 0 && !presentKeys.includes(monoMetric)) setMonoMetric(presentKeys[0])
+  }, [presentKeys, monoMetric])
 
   if (!series || presentKeys.length === 0) return null
 
@@ -3381,14 +3405,14 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     tooltipValRefs.current.forEach((span, key) => {
       if (!span) return
       const data = getData(key as MetricDef['key'])
-      const def  = METRIC_DEFS.find(d => d.key === key)
+      const def  = defOf(key as MetricDef['key'])
       if (!data || !def) return
       const v = data[idx]
       span.textContent = v != null && !isNaN(v) ? `${def.fmt(v)} ${def.unit}` : '—'
     })
     // Tooltip — Mono : main + sub
     if (tooltipMonoMainRef.current) {
-      const def = METRIC_DEFS.find(d => d.key === monoMetric)
+      const def = defOf(monoMetric)
       const data = def ? getData(def.key) : null
       if (def && data) {
         const v = data[idx]
@@ -3474,7 +3498,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   }
 
   // Couleurs sémantiques fixes (pour le tooltip colored mono)
-  const monoDef     = METRIC_DEFS.find(d => d.key === monoMetric) ?? METRIC_DEFS[1]
+  const monoDef     = metricDefs.find(d => d.key === monoMetric) ?? metricDefs[1]
   const monoBg      = monoDef.color
   const monoTxtClr  = monoDef.textOnColor
 
@@ -3557,7 +3581,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         color:          'var(--text)',
       }}>—</div>
       {tooltipNeutralKeys.map(key => {
-        const def = METRIC_DEFS.find(d => d.key === key)!
+        const def = defOf(key)
         return (
           <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: def.color, flexShrink: 0 }} />
@@ -3725,7 +3749,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
             background:    'var(--bg-card2)',
           }}>
             {presentKeys.map((key, i) => {
-              const def = METRIC_DEFS.find(m => m.key === key)!
+              const def = defOf(key)
               const st  = statsMap[key]
               return (
                 <div key={key} style={{
@@ -3746,7 +3770,9 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
                       marginTop:          2,
                       fontVariantNumeric: 'tabular-nums',
                     }}>
-                      {def.fmt(st.min)} – {def.fmt(st.max)} {def.unit}
+                      {isRunSport && key === 'speed'
+                        ? `${def.fmt(st.max)} – ${def.fmt(st.min)}`
+                        : `${def.fmt(st.min)} – ${def.fmt(st.max)}`} {def.unit}
                     </span>
                   )}
                 </div>
@@ -3773,7 +3799,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
               }}
             />
             {presentKeys.map((key, i) => {
-              const def  = METRIC_DEFS.find(m => m.key === key)!
+              const def  = defOf(key)
               const data = getData(key)
               const st   = statsMap[key]
               if (!data || !st) return null
@@ -3862,7 +3888,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
           marginBottom:  10,
           scrollbarWidth: 'none',
         }}>
-          {METRIC_DEFS.filter(d => presentKeys.includes(d.key)).map(d => {
+          {metricDefs.filter(d => presentKeys.includes(d.key)).map(d => {
             const active = monoMetric === d.key
             return (
               <button
@@ -6980,7 +7006,7 @@ conseil pour la prochaine séance similaire.`
             <span style={{ fontSize: 12, fontWeight: 600, color: '#F87171', fontFamily: T.fontMono }}>{fmtDur(z2DurationS)}</span>
           </div>
         )}
-        {decoupling != null && (
+        {decoupling != null && !isRun && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: 12, color: T.textMuted }}>Découplage P/FC</span>
             <span style={{ fontSize: 12, fontWeight: 600, fontFamily: T.fontMono,
@@ -7105,7 +7131,7 @@ conseil pour la prochaine séance similaire.`
                 </span>
               </div>
             )}
-            {decoupling != null && (
+            {decoupling != null && !isRun && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: T.textMuted }}>Découplage</span>
                 <span style={{ fontSize: 12, fontWeight: 600, fontFamily: T.fontMono,
@@ -7379,7 +7405,7 @@ conseil pour la prochaine séance similaire.`
                   { label: 'W/kg',          value: wkgMoy ? `${wkgMoy} w/kg` : null },
                   { label: 'Roue libre',    value: isBike && freewheelPowerS && freewheelPowerS > 60 ? `${fmtDur(freewheelPowerS)} (${freewheelPowerPct}%)` : null },
                   { label: 'Durée Z2',      value: z2DurationS && z2DurationS > 60 ? fmtDur(z2DurationS) : null },
-                  { label: 'Découplage P/FC', value: decoupling != null ? `${decoupling.toFixed(1)}%` : null },
+                  { label: 'Découplage P/FC', value: (!isRun && decoupling != null) ? `${decoupling.toFixed(1)}%` : null },
                   { label: 'FC max',        value: (a.max_hr ?? maxHrStream) != null ? `${a.max_hr ?? maxHrStream} bpm (${Math.round((Number(a.max_hr ?? maxHrStream)/maxHrEst)*100)}%)` : null },
                   { label: 'D+',            value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
                   { label: 'Alt. max.',     value: maxAlt != null ? `${maxAlt} m` : null },
@@ -7703,7 +7729,7 @@ conseil pour la prochaine séance similaire.`
                         </div>
                       ))}
                     </div>
-                    {decoupling !== null && (
+                    {decoupling !== null && !isRun && (
                       <div style={{
                         background: decoupling < 5 ? 'var(--zone-good-bg)' : decoupling < 10 ? 'var(--zone-med-bg)' : 'var(--zone-bad-bg)',
                         border: `1px solid ${decoupling < 5 ? 'var(--zone-good-border)' : decoupling < 10 ? 'var(--zone-med-border)' : 'var(--zone-bad-border)'}`,
@@ -7795,13 +7821,13 @@ conseil pour la prochaine séance similaire.`
                         <span style={{ fontWeight: 500, color: 'var(--text)' }}>{maxHrVal} bpm{maxHrPct ? <span style={{ color: 'var(--text-muted)', fontSize: 11 }}> ({maxHrPct}%)</span> : null}</span>
                       </div>
                     )}
-                    {decoupling !== null && (
+                    {decoupling !== null && !isRun && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
                         <span style={{ color: 'var(--text-muted)' }}>Découplage P/FC</span>
                         <span style={{ fontWeight: 500, color: decoupling < 5 ? '#10B981' : 'var(--text)' }}>{decoupling.toFixed(1)}%</span>
                       </div>
                     )}
-                    {z2DurationS != null && z2DurationS > 30 && (
+                    {z2DurationS != null && z2DurationS > 30 && !isRun && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
                         <span style={{ color: 'var(--text-muted)' }}>Durée Z2 (puissance)</span>
                         <span style={{ fontWeight: 500, color: '#06B6D4' }}>{fmtDur(z2DurationS)}</span>
@@ -7934,7 +7960,7 @@ conseil pour la prochaine séance similaire.`
         {/* ── ANALYSE AUTOMATIQUE ── */}
         {(() => {
           const insights: { type: 'good' | 'neutral' | 'warn'; text: string }[] = []
-          if (decoupling !== null) {
+          if (decoupling !== null && !isRun) {
             if (decoupling < 5)        insights.push({ type: 'good',    text: `Bonne résistance aérobie — découplage FC/puissance de ${decoupling.toFixed(1)}% (< 5% : excellent)` })
             else if (decoupling < 10)  insights.push({ type: 'neutral', text: `Légère dérive cardiaque — découplage de ${decoupling.toFixed(1)}% (normal sur les sorties longues)` })
             else                       insights.push({ type: 'warn',    text: `Dérive cardiaque élevée — découplage de ${decoupling.toFixed(1)}% → fatigue ou base aérobie insuffisante` })
@@ -8019,12 +8045,22 @@ conseil pour la prochaine séance similaire.`
                 </>
               )}
 
-              {isRun && s.velocity && s.altitude && s.distance && s.velocity.length > 60 && (
-                <GapChart velocity={s.velocity} altitude={s.altitude} distance={s.distance} />
-              )}
+              {/* VAP / allure ajustée (GAP) — la distance est recalculée depuis
+                  la vitesse si le flux distance est absent (≈ 1 échantillon/s). */}
+              {isRun && s.velocity && s.altitude && s.velocity.length > 60 && (() => {
+                let dist = s.distance
+                if (!dist) {
+                  dist = []
+                  let acc = 0
+                  for (const v of s.velocity) { acc += v > 0 ? v : 0; dist.push(acc) }
+                }
+                return <GapChart velocity={s.velocity} altitude={s.altitude} distance={dist} />
+              })()}
 
-              {/* Laps bar chart — course à pied, sous la comparaison d'allure */}
-              {isRun && a.laps && a.laps.length > 1 && (
+              {/* Laps bar chart — course à pied. Monté en permanence (comme le
+                  vélo) : LapsRunChart va chercher les tours via l'API même si
+                  a.laps n'est pas en cache, et ne s'affiche que s'il y a > 1 tour. */}
+              {isRun && (
                 <LapsRunChart
                   activityId={a.id}
                   cachedLaps={a.laps}

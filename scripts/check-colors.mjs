@@ -58,6 +58,8 @@ const ENFORCED_PATHS = [
   'src/app/nutrition/components/composition/MeasureForm.tsx',
   'src/app/nutrition/components/composition/compositionData.ts',
   'src/app/planning/components/training/TrainingSummary.tsx',
+  'src/app/calendar/components/GoalBanner.tsx',
+  'src/app/calendar/components/AnnualView.tsx',
 ]
 // Dossiers ignorés sous les SCAN_DIRS.
 const IGNORE_DIRS = new Set(['node_modules', '.next', 'dist', 'build'])

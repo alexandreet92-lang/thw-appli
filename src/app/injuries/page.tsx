@@ -17,7 +17,7 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 export default function InjuriesPage() {
-  const { injuries, logs, loading, tableMissing, add, update, resolve, addLog } = useInjuries()
+  const { injuries, logs, loading, tableMissing, errorCode, add, update, resolve, addLog, reload } = useInjuries()
   const [tab, setTab] = useState<Tab>('apercu')
   const [report, setReport] = useState(false)
   const [trackId, setTrackId] = useState<string | null>(null)
@@ -38,11 +38,13 @@ export default function InjuriesPage() {
         <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</p>
       ) : tableMissing ? (
         <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-6)' }}>
-          <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: 0 }}>Fonctionnalité prête — base à initialiser</p>
-          <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 'var(--space-2) 0 0', lineHeight: 1.5 }}>
-            La table des blessures n&apos;existe pas encore. Applique la migration proposée
-            (<span className="tnum">supabase/migrations/PROPOSED_blessures.sql</span>) pour activer le suivi.
+          <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: 0 }}>Suivi non disponible pour l&apos;instant</p>
+          <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 'var(--space-2) 0 var(--space-4)', lineHeight: 1.5 }}>
+            {errorCode === 'PGRST205'
+              ? "Le cache de schéma Supabase n'est pas à jour (la table existe mais l'API ne la voit pas encore). Exécute « notify pgrst, 'reload schema'; » dans le SQL Editor, puis Réessayer."
+              : <>La table des blessures est introuvable via l&apos;API{errorCode ? <> (<span className="tnum">{errorCode}</span>)</> : ''}. Vérifie que la migration est appliquée sur le projet ciblé par l&apos;app, puis Réessayer.</>}
           </p>
+          <button onClick={() => void reload()} style={{ height: 36, padding: '0 16px', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Réessayer</button>
         </div>
       ) : (
         <>

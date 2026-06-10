@@ -38,6 +38,7 @@ export function useInjuries() {
   const [logs, setLogs] = useState<InjuryLog[]>([])
   const [loading, setLoading] = useState(true)
   const [tableMissing, setTableMissing] = useState(false)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -45,8 +46,20 @@ export function useInjuries() {
     const { data: { user } } = await sb.auth.getUser()
     if (!user) { setLoading(false); return }
     const { data: inj, error } = await sb.from('injuries').select('*').eq('user_id', user.id).order('onset_date', { ascending: false })
-    if (error) { setTableMissing(true); setInjuries([]); setLogs([]); setLoading(false); return }
-    setTableMissing(false)
+    if (error) {
+      const code = (error as { code?: string }).code ?? ''
+      const msg = error.message ?? ''
+      // Diagnostic (Phase 0) : code + message + projet interrogé.
+      console.warn('[useInjuries] injuries query error:', code, msg, '· url:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+      // « table absente » UNIQUEMENT sur une vraie absence / cache de schéma non rechargé.
+      // Toute autre erreur (RLS, réseau, transitoire) → page fonctionnelle, état vide normal.
+      const absent = code === '42P01' || code === 'PGRST205' || /schema cache|does not exist/i.test(msg)
+      setTableMissing(absent)
+      setErrorCode(code || msg.slice(0, 80) || 'unknown')
+      setInjuries([]); setLogs([]); setLoading(false)
+      return
+    }
+    setTableMissing(false); setErrorCode(null)
     const list = (inj ?? []) as Row[]
     setInjuries(list.map(mapInjury))
     const ids = list.map(i => String(i.id))
@@ -84,5 +97,5 @@ export function useInjuries() {
     await load()
   }, [load])
 
-  return { injuries, logs, loading, tableMissing, add, update, resolve, addLog, reload: load }
+  return { injuries, logs, loading, tableMissing, errorCode, add, update, resolve, addLog, reload: load }
 }

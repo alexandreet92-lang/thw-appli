@@ -21,6 +21,7 @@ import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PERFORMANCE_ONBOARDING } from '@/onboarding/configs/performance.config'
 import { ProfilGlobalGrid } from '@/app/performance/components/profil/ProfilGlobalGrid'
 import { TestCard } from '@/app/performance/components/tests/TestCard'
+import { TabbedPageLayout } from '@/components/ui/TabbedPageLayout'
 import { ProfilSpecific } from '@/app/performance/components/profil/ProfilSpecific'
 import { LevelBars } from '@/app/performance/components/profil/LevelBars'
 import { BenchmarkSheet } from '@/app/performance/components/profil/BenchmarkSheet'
@@ -2055,54 +2056,26 @@ export default function PerformancePage() {
     }
   }
 
-  const TABS: { id: PerfTab; label: string; short: string; color: string; bg: string }[] = [
-    { id:'profil', label:'Profil', short:'Profil', color:'#06B6D4', bg:'rgba(6,182,212,0.10)'  },
-    { id:'datas',  label:'Datas',  short:'Datas',  color:'#f97316', bg:'rgba(249,115,22,0.10)' },
-    { id:'tests',  label:'Tests',  short:'Tests',  color:'#22c55e', bg:'rgba(34,197,94,0.10)'  },
-  ]
-
   return (
-    <div style={{ padding: isMobile ? '16px 12px' : '24px 28px' }}>
+    <div className="px-[var(--space-5)] md:px-[var(--space-8)]" style={{ paddingTop: 'var(--space-5)', paddingBottom: 'var(--space-8)' }}>
       <PageHelp config={PERFORMANCE_ONBOARDING} show={show} onDismiss={dismiss} />
-      {/* ── En-tête ── */}
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:20, gap:12 }}>
-        <div>
-          <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>Performance</h1>
-          <p style={{ fontSize:12.5, color:'var(--text-dim)', margin:'5px 0 0' }}>Profil · Zones · Records · Tests</p>
-        </div>
-        <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:4 }}>?</button>
-      </div>
 
-      {/* ── Tab bar ── */}
-      <div style={{ display:'flex', gap:6, marginBottom:20, flexWrap:'wrap' as const }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`tab-btn${tab===t.id?' active':''}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Contenu ── */}
-      {tab === 'profil' && (
-        <ProfilTab
-          onSelect={onSelectDatum}
-          selectedDatum={selectedDatum}
-          profile={profile}
-          setProfile={setProfile}
-          onAnalyzeProfile={handleAnalyzeProfile}
-        />
-      )}
-      {tab === 'datas'  && <DatasTab  onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} onOpenAI={prompt => { setAiPrefill(prompt); setAiOpen(true) }} onNavigateToTests={() => setTab('tests')} />}
-      {tab === 'tests'  && (
-        <TestsTab
-          profile={profile}
-          onAnalyzeTest={handleAnalyzeTest}
-          initialSport={initialTest?.sport}
-          initialTestId={initialTest?.testId}
-          onFtpUpdate={ftp => setProfile(prev => ({ ...prev, ftp }))}
-        />
-      )}
+      {/* ── Sous-navigation de page (composant réutilisable) ── */}
+      <TabbedPageLayout
+        title="Performance"
+        headerExtra={<button onClick={reopen} aria-label="Aide" style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--primary-dim)', border: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>}
+        tabs={[{ id: 'profil', label: 'Profil' }, { id: 'datas', label: 'Datas' }, { id: 'tests', label: 'Tests' }]}
+        active={tab}
+        onChange={setTab}
+      >
+        {tab === 'profil' ? (
+          <ProfilTab onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} setProfile={setProfile} onAnalyzeProfile={handleAnalyzeProfile} />
+        ) : tab === 'datas' ? (
+          <DatasTab onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} onOpenAI={prompt => { setAiPrefill(prompt); setAiOpen(true) }} onNavigateToTests={() => setTab('tests')} />
+        ) : (
+          <TestsTab profile={profile} onAnalyzeTest={handleAnalyzeTest} initialSport={initialTest?.sport} initialTestId={initialTest?.testId} onFtpUpdate={ftp => setProfile(prev => ({ ...prev, ftp }))} />
+        )}
+      </TabbedPageLayout>
 
       {/* ── Bulle flottante de sélection ── */}
       {selectedDatum && (

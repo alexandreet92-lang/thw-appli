@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/check-colors.mjs --enforce && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check:colors": "node scripts/check-colors.mjs",
+    "check:colors:enforce": "node scripts/check-colors.mjs --enforce"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",

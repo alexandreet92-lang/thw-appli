@@ -14,10 +14,12 @@ import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
 import { useDailyMeals } from '@/hooks/useDailyMeals'
 import { useHydration } from '@/hooks/useHydration'
 import { useProfile } from '@/hooks/useProfile'
-import { DayFoodJournal } from '@/app/nutrition/components/DayFoodJournal'
+import { TodayTab } from '@/app/nutrition/components/today/TodayTab'
+import { CompositionTab } from '@/app/nutrition/components/composition/CompositionTab'
 import { PlanShoppingList } from '@/app/nutrition/components/plan/PlanShoppingList'
 import { SuiviSection } from '@/app/nutrition/components/suivi/SuiviSection'
 import { NutritionRail } from '@/app/nutrition/components/NutritionRail'
+import { PlanTab } from '@/app/nutrition/components/plan/PlanTab'
 import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -37,7 +39,6 @@ import { NUTRITION_ONBOARDING } from '@/onboarding/configs/nutrition.config'
 // TYPES
 // ══════════════════════════════════════════════════════════════════
 type DayType      = 'low' | 'mid' | 'hard'
-type WeightMetric = 'weight_kg' | 'fat_mass_percent' | 'muscle_mass_kg' | 'ffmi' | 'bmi'
 type HistRange    = '7j' | '14j' | '30j'
 type MealKey      = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
 type PlanVariant  = 'A' | 'B'
@@ -341,170 +342,6 @@ function MacrosChart({ logs, activePlan }: { logs: DailyLog[]; activePlan: Nutri
 }
 
 // ── Empty state réutilisable (cohérent design system) ───────────
-function NutritionEmpty({ icon, text, hint }: { icon: 'chart' | 'scale'; text: string; hint?: string }) {
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      gap: 8, padding: '32px 16px', textAlign: 'center',
-      border: '1px dashed var(--border)', borderRadius: 14, background: 'var(--bg-card2)',
-    }}>
-      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(6,182,212,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#06B6D4' }}>
-        {icon === 'chart' ? (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 4-5"/></svg>
-        ) : (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-        )}
-      </div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>{text}</div>
-      {hint && <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>{hint}</div>}
-    </div>
-  )
-}
-
-// Valeur d'une mesure pour la métrique demandée (bmi = poids / taille²).
-function weightMetricValue(l: WeightLog, metric: WeightMetric, heightCm: number | null): number | null {
-  if (metric === 'bmi') {
-    if (l.weight_kg && heightCm) { const h = heightCm / 100; return +(l.weight_kg / (h * h)).toFixed(1) }
-    return null
-  }
-  if (metric === 'ffmi') {
-    // FFMI = masse maigre / taille². Masse maigre = poids × (1 − MG%/100).
-    if (l.weight_kg && heightCm && l.fat_mass_percent != null) {
-      const h = heightCm / 100
-      const lean = l.weight_kg * (1 - l.fat_mass_percent / 100)
-      return +(lean / (h * h)).toFixed(1)
-    }
-    return null
-  }
-  if (metric === 'weight_kg')        return l.weight_kg
-  if (metric === 'fat_mass_percent') return l.fat_mass_percent
-  return l.muscle_mass_kg
-}
-
-// Stats de composition pour la métrique : actuel, min, max, variation, tendance/semaine.
-function computeBodyStats(logs: WeightLog[], metric: WeightMetric, heightCm: number | null) {
-  const sorted = [...logs].sort((a, b) => a.measured_at.localeCompare(b.measured_at))
-  const pts = sorted
-    .map(l => ({ t: new Date(l.measured_at).getTime(), v: weightMetricValue(l, metric, heightCm) }))
-    .filter((p): p is { t: number; v: number } => p.v != null)
-  if (!pts.length) return null
-  const vals = pts.map(p => p.v)
-  const current = vals[vals.length - 1]
-  let trendPerWeek: number | null = null
-  const last = pts.slice(-4)
-  if (last.length >= 2) {
-    const t0 = last[0].t
-    const xs = last.map(p => (p.t - t0) / 86400000)
-    const ys = last.map(p => p.v)
-    const meanX = xs.reduce((a, b) => a + b, 0) / xs.length
-    const meanY = ys.reduce((a, b) => a + b, 0) / ys.length
-    let num = 0, den = 0
-    for (let i = 0; i < xs.length; i++) { num += (xs[i] - meanX) * (ys[i] - meanY); den += (xs[i] - meanX) ** 2 }
-    if (den !== 0) trendPerWeek = +((num / den) * 7).toFixed(2)
-  }
-  return {
-    current,
-    min: Math.min(...vals),
-    max: Math.max(...vals),
-    deltaTotal: +(current - vals[0]).toFixed(1),
-    trendPerWeek,
-    count: vals.length,
-  }
-}
-
-const METRIC_UNIT: Record<WeightMetric, string> = {
-  weight_kg: 'kg', fat_mass_percent: '%', muscle_mass_kg: 'kg', ffmi: '', bmi: '',
-}
-
-function WeightChart({ logs, metric, heightCm, goal }: { logs: WeightLog[]; metric: WeightMetric; heightCm: number | null; goal: number | null }) {
-  if (!logs.length) {
-    return <NutritionEmpty icon="scale" text="Aucune mesure enregistrée" hint="Ajoute ta première mesure ci-dessous." />
-  }
-
-  const sorted = [...logs].sort((a, b) => a.measured_at.localeCompare(b.measured_at))
-  const vals = sorted.map(l => weightMetricValue(l, metric, heightCm))
-  const nonNull = vals.filter((v): v is number => v !== null)
-  if (!nonNull.length) {
-    return <NutritionEmpty icon="scale" text="Aucune donnée pour cette métrique" hint={metric === 'bmi' ? "Renseigne ta taille dans le profil." : undefined} />
-  }
-
-  const showGoal = metric === 'weight_kg' && goal != null && goal > 0
-  const minV = Math.min(...nonNull, ...(showGoal ? [goal as number] : []))
-  const maxV = Math.max(...nonNull, ...(showGoal ? [goal as number] : []))
-  const range = maxV - minV || 1
-  const chartH = 160
-  const chartW = 300
-  const leftPad = 40
-  const n = sorted.length
-  // Axe X chronologique (proportionnel au temps, pas à l'index).
-  const ts = sorted.map(l => new Date(l.measured_at).getTime())
-  const t0 = ts[0], tSpan = (ts[n - 1] - t0) || 1
-
-  function toX(i: number) {
-    return n === 1 ? leftPad + chartW / 2 : leftPad + ((ts[i] - t0) / tSpan) * chartW
-  }
-  function toY(v: number) {
-    return chartH - ((v - minV) / range) * chartH * 0.8 - chartH * 0.1
-  }
-
-  // Courbe lissée : moyenne mobile (fenêtre 3) sur les valeurs non nulles.
-  const smoothed: (number | null)[] = vals.map((v, i) => {
-    if (v === null) return null
-    const win: number[] = []
-    for (let k = i - 1; k <= i + 1; k++) { const w = vals[k]; if (w != null) win.push(w) }
-    return win.length ? +(win.reduce((a, b) => a + b, 0) / win.length).toFixed(2) : v
-  })
-  const smoothPoints = smoothed
-    .map((v, i) => (v !== null ? `${toX(i)},${toY(v)}` : null))
-    .filter(Boolean)
-    .join(' ')
-
-  const yLabels = [minV, (minV + maxV) / 2, maxV]
-
-  return (
-    <svg viewBox={`0 0 ${chartW + leftPad} ${chartH + 28}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-      {yLabels.map((v, i) => {
-        const y = toY(v)
-        return (
-          <g key={i}>
-            <line x1={leftPad} y1={y} x2={chartW + leftPad} y2={y} stroke="var(--border)" strokeWidth={1} />
-            <text x={leftPad - 4} y={y + 4} textAnchor="end" fill="var(--text-dim)" fontSize={9} fontFamily="DM Mono,monospace">
-              {v.toFixed(1)}
-            </text>
-          </g>
-        )
-      })}
-      {showGoal && (() => {
-        const gy = toY(goal as number)
-        return (
-          <g>
-            <line x1={leftPad} y1={gy} x2={chartW + leftPad} y2={gy} stroke="#22c55e" strokeWidth={1.5} strokeDasharray="5 4" />
-            <text x={chartW + leftPad} y={gy - 4} textAnchor="end" fill="#22c55e" fontSize={9} fontFamily="DM Mono,monospace" fontWeight={700}>
-              cible {(goal as number).toFixed(1)}
-            </text>
-          </g>
-        )
-      })()}
-      {/* Points de mesure bruts — discrets */}
-      {sorted.map((_, i) => {
-        const v = vals[i]
-        if (v === null) return null
-        return <circle key={i} cx={toX(i)} cy={toY(v)} r={2.5} fill="#94a3b8" opacity={0.7} />
-      })}
-      {/* Courbe lissée (moyenne mobile) — par-dessus */}
-      {smoothPoints && <polyline points={smoothPoints} fill="none" stroke="#06B6D4" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />}
-      {sorted.map((entry, i) => {
-        if (i % Math.ceil(n / 5) !== 0 && i !== n - 1) return null
-        return (
-          <text key={entry.measured_at} x={toX(i)} y={chartH + 16} textAnchor="middle" fill="var(--text-dim)" fontSize={8} fontFamily="DM Sans,sans-serif">
-            {`${entry.measured_at.slice(8, 10)}/${entry.measured_at.slice(5, 7)}`}
-          </text>
-        )
-      })}
-    </svg>
-  )
-}
-
 // ══════════════════════════════════════════════════════════════════
 // SECTION STYLES
 // ══════════════════════════════════════════════════════════════════
@@ -1023,28 +860,9 @@ export default function NutritionPage() {
   }, [tab])
   const [planVariant, setPlanVariant] = useState<PlanVariant>('A')
   const [histRange, setHistRange] = useState<HistRange>('7j')
-  const [weightMetric, setWeightMetric] = useState<WeightMetric>('weight_kg')
-  const [bodyRangeDays, setBodyRangeDays] = useState<number>(90)
-  const [goalWeight, setGoalWeight] = useState<number | null>(null)
-  // Mesures filtrées sur la période sélectionnée (graphe + tuiles).
-  const bodyLogs = weightLogs.filter(l => new Date(l.measured_at).getTime() >= Date.now() - bodyRangeDays * 86400000)
-  const [goalInput, setGoalInput] = useState('')
-  useEffect(() => {
-    const v = typeof window !== 'undefined' ? window.localStorage.getItem('thw_goal_weight') : null
-    if (v) { setGoalWeight(parseFloat(v)); setGoalInput(v) }
-  }, [])
-  const saveGoalWeight = useCallback(() => {
-    const v = parseFloat(goalInput)
-    if (!isNaN(v) && v > 0) { window.localStorage.setItem('thw_goal_weight', String(v)); setGoalWeight(v) }
-    else { window.localStorage.removeItem('thw_goal_weight'); setGoalWeight(null) }
-  }, [goalInput])
   const [dayDetailOpen, setDayDetailOpen] = useState<PlanDay | null>(null)
   const [shoppingOpen, setShoppingOpen] = useState(false)
   const [regenConfirm, setRegenConfirm] = useState(false)
-  const [weightInputDate, setWeightInputDate] = useState<string>(today)
-  const [weightInput, setWeightInput] = useState<string>('')
-  const [mgInput, setMgInput] = useState<string>('')
-  const [mmInput, setMmInput] = useState<string>('')
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
@@ -1073,7 +891,6 @@ export default function NutritionPage() {
 
   // ── Journal alimentaire du jour (indépendant du plan) ─────────
   const dayMeals  = useDailyMeals(today)
-  const yesterdayMeals = useDailyMeals(addDays(today, -1))
   const hydration = useHydration(today)
   const [mealJumpSignal, setMealJumpSignal] = useState(0)
   const jumpToMeals = useCallback(() => {
@@ -1208,21 +1025,6 @@ export default function NutritionPage() {
     todayMealSet,
   )
 
-  // ── Save weight log ────────────────────────────────────────────
-  const handleSaveWeight = useCallback(async () => {
-    if (!weightInput && !mgInput && !mmInput) return
-    const log: Omit<WeightLog, 'id'> = {
-      measured_at: weightInputDate,
-      weight_kg: weightInput ? parseFloat(weightInput) : null,
-      fat_mass_percent: mgInput ? parseFloat(mgInput) : null,
-      muscle_mass_kg: mmInput ? parseFloat(mmInput) : null,
-      source: 'manual',
-    }
-    await saveWeightLog(log)
-    setWeightInput('')
-    setMgInput('')
-    setMmInput('')
-  }, [weightInputDate, weightInput, mgInput, mmInput, saveWeightLog])
 
   // ── Supprimer (désactiver) le plan actif ────────────────────────
   const handleDeletePlan = useCallback(async () => {
@@ -1355,694 +1157,65 @@ export default function NutritionPage() {
         >
 
         {tab === 'today' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION 1 — Bilan du jour                             */}
-        {/* ══════════════════════════════════════════════════════ */}
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 12 }}>
-            <div>
-              <p style={{ ...sectionTitle, marginBottom: 0 }}>Bilan du jour</p>
-              {yesterdayMeals.totals.kcal > 0 && (() => {
-                const delta = Math.round(dayMeals.totals.kcal - yesterdayMeals.totals.kcal)
-                const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '='
-                return (
-                  <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif', marginTop: 4 }}>
-                    {arrow} {Math.abs(delta)} kcal <span style={{ opacity: 0.7 }}>vs hier</span>
-                  </div>
-                )
-              })()}
-            </div>
-            <div style={{
-              padding: '5px 12px',
-              borderRadius: 8,
-              background: DAY_COLORS[todayType].bg,
-              border: `1px solid ${DAY_COLORS[todayType].border}`,
-              color: DAY_COLORS[todayType].text,
-              fontSize: 11,
-              fontFamily: 'Syne,sans-serif',
-              fontWeight: 700,
-              flexShrink: 0,
-            }}>
-              {DAY_COLORS[todayType].label}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 18, rowGap: 24, justifyContent: 'space-around', flexWrap: 'wrap', padding: '4px 0' }}>
-            <MacroDonut
-              label="Calories"
-              consumed={dayMeals.totals.kcal}
-              objective={todayKcalObj}
-              unit="kcal"
-              color="#06B6D4"
-              size={96}
-              statusLabel={macroStatus(dayMeals.totals.kcal, todayKcalObj)?.label}
-              statusColor={macroStatus(dayMeals.totals.kcal, todayKcalObj)?.color}
-            />
-            <MacroDonut
-              label="Proteines"
-              consumed={dayMeals.totals.prot}
-              objective={todayMacroObj.proteines}
-              unit="g"
-              color="#22c55e"
-              size={96}
-              statusLabel={macroStatus(dayMeals.totals.prot, todayMacroObj.proteines)?.label}
-              statusColor={macroStatus(dayMeals.totals.prot, todayMacroObj.proteines)?.color}
-            />
-            <MacroDonut
-              label="Glucides"
-              consumed={dayMeals.totals.gluc}
-              objective={todayMacroObj.glucides}
-              unit="g"
-              color="#eab308"
-              size={96}
-              statusLabel={macroStatus(dayMeals.totals.gluc, todayMacroObj.glucides)?.label}
-              statusColor={macroStatus(dayMeals.totals.gluc, todayMacroObj.glucides)?.color}
-            />
-            <MacroDonut
-              label="Lipides"
-              consumed={dayMeals.totals.lip}
-              objective={todayMacroObj.lipides}
-              unit="g"
-              color="#f97316"
-              size={96}
-              statusLabel={macroStatus(dayMeals.totals.lip, todayMacroObj.lipides)?.label}
-              statusColor={macroStatus(dayMeals.totals.lip, todayMacroObj.lipides)?.color}
-            />
-          </div>
-
-          {/* Bandeau « il te reste » */}
-          {todayKcalObj > 0 ? (
-            <div style={{
-              marginTop: 18, padding: '12px 16px', borderRadius: 12,
-              background: 'var(--bg-card2)', border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
-            }}>
-              <span style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Il te reste</span>
-              <span style={{ fontSize: 16, fontWeight: 800, color: '#06B6D4', fontFamily: 'DM Mono,monospace' }}>
-                {Math.max(0, Math.round(todayKcalObj - dayMeals.totals.kcal))} kcal
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>
-                · {Math.max(0, Math.round(todayMacroObj.proteines - dayMeals.totals.prot))}g prot
-                · {Math.max(0, Math.round(todayMacroObj.glucides - dayMeals.totals.gluc))}g gluc
-                · {Math.max(0, Math.round(todayMacroObj.lipides - dayMeals.totals.lip))}g lip
-              </span>
-            </div>
-          ) : (
-            <div style={{
-              marginTop: 18, padding: '12px 16px', borderRadius: 12,
-              background: 'var(--bg-card2)', border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
-            }}>
-              <span style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Consommé aujourd&apos;hui</span>
-              <span style={{ fontSize: 16, fontWeight: 800, color: '#06B6D4', fontFamily: 'DM Mono,monospace' }}>
-                {Math.round(dayMeals.totals.kcal)} kcal
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>
-                · {Math.round(dayMeals.totals.prot)}g prot
-                · {Math.round(dayMeals.totals.gluc)}g gluc
-                · {Math.round(dayMeals.totals.lip)}g lip
-              </span>
-            </div>
-          )}
-
-          {/* Raccourci ajouter un repas → ouvre le journal */}
-          <button
-            onClick={jumpToMeals}
-            style={{
-              marginTop: 12, width: '100%', minHeight: 44,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              padding: '11px', borderRadius: 11,
-              border: '1px solid rgba(6,182,212,0.3)', background: 'rgba(6,182,212,0.08)',
-              color: '#06B6D4', fontWeight: 700, fontSize: 13,
-              cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Ajouter un repas
-          </button>
-        </div>
-
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION — Hydratation                                  */}
-        {/* ══════════════════════════════════════════════════════ */}
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <p style={{ ...sectionTitle, marginBottom: 0 }}>Hydratation</p>
-            <span style={{ fontSize: 18, fontWeight: 800, color: '#06B6D4', fontFamily: 'DM Mono,monospace' }}>
-              {hydration.liters.toFixed(2).replace(/\.?0+$/, '')} L
-            </span>
-          </div>
-          {/* Jauge */}
-          <svg width="100%" height={10} style={{ borderRadius: 5, display: 'block', marginBottom: 14 }}>
-            <rect x={0} y={0} width="100%" height={10} fill="var(--border)" rx={5} />
-            <rect x={0} y={0} width={`${Math.min(100, (hydration.liters / 2.5) * 100)}%`} height={10} fill="#06B6D4" rx={5} style={{ transition: 'width 0.4s ease' }} />
-          </svg>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {[0.25, 0.5].map(d => (
-              <button key={d} onClick={() => void hydration.addLiters(d)}
-                style={{ flex: 1, padding: '10px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', minHeight: 44 }}>
-                + {d * 100} cl
-              </button>
-            ))}
-            <button onClick={() => void hydration.setLiters(Math.max(0, hydration.liters - 0.25))}
-              style={{ width: 52, padding: '10px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontWeight: 700, fontSize: 16, cursor: 'pointer', minHeight: 44 }}>
-              −
-            </button>
-          </div>
-        </div>
-
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION 2 — Seance du jour                            */}
-        {/* ══════════════════════════════════════════════════════ */}
-        <div style={cardStyle}>
-          <p style={sectionTitle}>Seance du jour</p>
-          {todaySessions.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>Jour de repos</p>
-          ) : (
-            todaySessions.map(s => (
-              <div key={s.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '10px 12px',
-                borderRadius: 10,
-                background: 'var(--bg-card2)',
-                border: '1px solid var(--border)',
-                marginBottom: 8,
-              }}>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  background: 'rgba(6,182,212,0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontFamily: 'Syne,sans-serif',
-                  fontWeight: 700,
-                  fontSize: 11,
-                  color: '#06B6D4',
-                  flexShrink: 0,
-                }}>
-                  {s.sport.slice(0, 3).toUpperCase()}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>
-                    {s.title}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
-                    {s.duration_min} min
-                    {s.intensity ? ` · ${s.intensity}` : ''}
-                    {s.tss != null ? ` · TSS ${s.tss}` : ''}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        </div>
+          <TodayTab
+            today={today}
+            todayType={todayType}
+            todayKcalObj={todayKcalObj}
+            todayMacroObj={todayMacroObj}
+            dayMeals={dayMeals}
+            hydration={hydration}
+            todaySessions={todaySessions}
+            weightKg={profile?.weight_kg ?? null}
+            mealJumpSignal={mealJumpSignal}
+            suggestion={suggestion}
+            suggesting={suggesting}
+            onSuggest={() => void handleSuggestMeal()}
+            isDesktop={isDesktop}
+          />
         )}
 
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 3 — Plan nutritionnel                         */}
         {/* ══════════════════════════════════════════════════════ */}
         {tab === 'plan' && (
-        <div style={cardStyle}>
-          <p style={sectionTitle}>Plan nutritionnel</p>
-
-          {/* 3A. Ouvrir le plan IA */}
-          {!activePlan && (
-            <button
-              onClick={() => setAiPanelOpen(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '12px 18px',
-                borderRadius: 12,
-                background: 'linear-gradient(135deg,rgba(6,182,212,0.12),rgba(91,111,255,0.18))',
-                border: '1px solid rgba(91,111,255,0.35)',
-                color: 'var(--text)',
-                fontFamily: 'DM Sans,sans-serif',
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: 'pointer',
-                marginBottom: 12,
-                transition: 'opacity 0.15s',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.85' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M12 2a10 10 0 110 20 10 10 0 010-20z" opacity="0.2" fill="currentColor" stroke="none"/>
-                <path d="M12 8v4l3 3"/>
-                <circle cx="12" cy="12" r="10"/>
-              </svg>
-              Créer mon plan avec l&apos;IA
-            </button>
-          )}
-
-          {/* 3C. 14-day calendar grid */}
-          {activePlan && (
-            <div style={{ marginTop: 0 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 12 }}>
-                Plan actif : {activePlan.type} — {formatDate(today)}
-              </div>
-
-              {/* Résumé objectifs Low / Mid / Hard */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
-                {([
-                  { t: 'low'  as DayType, kcal: activePlan.plan_data?.calories_low,  m: activePlan.plan_data?.macros_low },
-                  { t: 'mid'  as DayType, kcal: activePlan.plan_data?.calories_mid,  m: activePlan.plan_data?.macros_mid },
-                  { t: 'hard' as DayType, kcal: activePlan.plan_data?.calories_hard, m: activePlan.plan_data?.macros_hard },
-                ]).map(({ t, kcal, m }) => (
-                  <div key={t} style={{
-                    padding: '10px 8px', borderRadius: 12,
-                    background: DAY_COLORS[t].bg, border: `1px solid ${DAY_COLORS[t].border}`,
-                    textAlign: 'center',
-                  }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, fontFamily: 'Syne,sans-serif', color: DAY_COLORS[t].text, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      {DAY_COLORS[t].label.replace('Jour ', '')}
-                    </div>
-                    <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--text)', margin: '3px 0 1px' }}>
-                      {kcal ?? 0}
-                    </div>
-                    <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', marginBottom: 4 }}>kcal</div>
-                    <div style={{ fontSize: 9, color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace', lineHeight: 1.4 }}>
-                      P {m?.proteines ?? 0} · G {m?.glucides ?? 0} · L {m?.lipides ?? 0}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Sélecteur variante A / B */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Variante de repas</span>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {(['A', 'B'] as PlanVariant[]).map(v => (
-                    <button
-                      key={v}
-                      onClick={() => setPlanVariant(v)}
-                      style={{
-                        width: 34, padding: '5px 0', borderRadius: 8,
-                        border: '1px solid var(--border)',
-                        background: planVariant === v ? 'rgba(6,182,212,0.14)' : 'var(--bg-card2)',
-                        color: planVariant === v ? '#06B6D4' : 'var(--text-dim)',
-                        fontWeight: 700, fontSize: 12, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
-                      }}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: 6,
-              }}>
-                {next14Days.map(date => {
-                  const planDay = activePlan.plan_data?.jours?.find(j => j.date === date)
-                  const dayType: DayType = planDay?.type_jour ?? (
-                    date === today ? todayType : 'low'
-                  )
-                  const colors = DAY_COLORS[dayType]
-                  const kcal = planDay?.kcal ?? 0
-                  const isToday = date === today
-                  const daySessions = sessions.filter(s => {
-                    const dow = new Date(date + 'T00:00:00').getDay()
-                    const idx = dow === 0 ? 6 : dow - 1
-                    return s.day_index === idx
-                  })
-                  return (
-                    <button
-                      key={date}
-                      onClick={() => planDay ? setDayDetailOpen(planDay) : undefined}
-                      style={{
-                        padding: '8px 4px',
-                        borderRadius: 10,
-                        background: isToday ? colors.bg : 'var(--bg-card2)',
-                        border: isToday ? `2px solid ${colors.border}` : '1px solid var(--border)',
-                        cursor: planDay ? 'pointer' : 'default',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <div style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif', marginBottom: 2 }}>
-                        {formatDate(date)}
-                      </div>
-                      <div style={{
-                        fontSize: 9, fontFamily: 'Syne,sans-serif', fontWeight: 700,
-                        color: colors.text, marginBottom: 2,
-                      }}>
-                        {dayType.toUpperCase()}
-                      </div>
-                      {kcal > 0 && (
-                        <div style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', color: 'var(--text-mid)' }}>
-                          {kcal}
-                        </div>
-                      )}
-                      {daySessions.length > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2 }}>
-                          {daySessions.map(s => (
-                            <div key={s.id} style={{ width: 4, height: 4, borderRadius: '50%', background: '#06B6D4' }} />
-                          ))}
-                        </div>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Actions plan */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
-                {/* Modifier avec l'IA — ouvre le panneau IA (cf. .md : pas de
-                    référence de conversation d'origine stockée dans le plan). */}
-                <button
-                  onClick={() => setAiPanelOpen(true)}
-                  style={{
-                    flex: '1 1 160px', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                    padding: '10px', borderRadius: 11,
-                    border: '1px solid rgba(91,111,255,0.35)',
-                    background: 'linear-gradient(135deg,rgba(6,182,212,0.12),rgba(91,111,255,0.18))',
-                    color: 'var(--text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-                  }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-                  Modifier avec l&apos;IA
-                </button>
-                <button
-                  onClick={() => setShoppingOpen(true)}
-                  style={{
-                    flex: '1 1 160px', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                    padding: '10px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)',
-                    color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-                  }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
-                  Liste de courses
-                </button>
-                <button
-                  onClick={() => setRegenConfirm(true)}
-                  style={{
-                    flex: '1 1 130px', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                    padding: '10px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)',
-                    color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-                  }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-                  Régénérer
-                </button>
-                {/* Supprimer — démoté en bouton ghost secondaire */}
-                <button
-                  onClick={() => void handleDeletePlan()}
-                  style={{
-                    minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    padding: '10px 14px', borderRadius: 11, border: 'none', background: 'transparent',
-                    color: 'var(--text-dim)', fontWeight: 500, fontSize: 12.5, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-                  }}
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
-                  Supprimer
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION 4 — Repas de la journee                       */}
-        {/* ══════════════════════════════════════════════════════ */}
-        {tab === 'today' && (
-        <div style={cardStyle} id="repas-du-jour">
-          <p style={sectionTitle}>Repas de la journee</p>
-
-          <DayFoodJournal
-            entries={dayMeals.entries}
-            loading={dayMeals.loading}
-            saveEntry={dayMeals.saveEntry}
-            deleteEntry={dayMeals.deleteEntry}
-            expandSignal={mealJumpSignal}
+          <PlanTab
+            activePlan={activePlan}
+            today={today}
+            todayType={todayType}
+            todayKcalObj={todayKcalObj}
+            todayMacroObj={todayMacroObj}
+            todaySessions={todaySessions}
+            next14Days={next14Days}
+            onOpenDay={setDayDetailOpen}
+            onOpenAI={() => setAiPanelOpen(true)}
+            onOpenShopping={() => setShoppingOpen(true)}
+            onRegen={() => setRegenConfirm(true)}
+            onDelete={() => void handleDeletePlan()}
+            isDesktop={isDesktop}
           />
-
-          {/* Suggestion IA du prochain repas */}
-          <div style={{ marginTop: 18 }}>
-            <button
-              onClick={() => void handleSuggestMeal()}
-              disabled={suggesting}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                width: '100%', padding: '12px', borderRadius: 11, minHeight: 44,
-                border: '1px solid rgba(139,92,246,0.3)', background: 'rgba(139,92,246,0.08)',
-                color: '#8b5cf6', fontWeight: 700, fontSize: 13,
-                cursor: suggesting ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 3l1.9 4.8L18.5 9l-4.6 1.2L12 15l-1.9-4.8L5.5 9l4.6-1.2z" /><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z" />
-              </svg>
-              {suggesting ? 'Réflexion…' : 'Suggérer mon prochain repas (IA)'}
-            </button>
-            {suggestion && (
-              <div style={{ marginTop: 10, padding: '14px 16px', borderRadius: 12, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)' }}>
-                <p style={{ margin: 0, fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{suggestion.title}</p>
-                <p style={{ margin: '4px 0 8px', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5 }}>{suggestion.description}</p>
-                <p style={{ margin: 0, fontSize: 11, fontFamily: 'DM Mono,monospace', color: '#8b5cf6' }}>
-                  {suggestion.kcal} kcal · P {suggestion.prot}g · G {suggestion.gluc}g · L {suggestion.lip}g
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
         )}
 
         {/* ══════════════════════════════════════════════════════ */}
         {/* SECTION 5 — Historique et graphiques                  */}
         {/* ══════════════════════════════════════════════════════ */}
         {tab === 'tracking' && (
-        <div style={cardStyle}>
           <SuiviSection
             dailyLogs={dailyLogs}
             plan={activePlan?.plan_data ?? null}
             weightKg={profile?.weight_kg ?? null}
             today={today}
           />
-        </div>
         )}
 
         {/* Weight section */}
         {tab === 'body' && (
-        <div style={cardStyle}>
-          <p style={sectionTitle}>Poids et composition</p>
-
-          {/* État de la source de mesures (générique). Détection : présence de
-              mesures issues d'une balance connectée. Sinon, bannière d'invite. */}
-          {weightLogs.some(l => l.source === 'connected_scale') ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', marginBottom: 16, fontSize: 12, color: 'var(--text)' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
-              <span>Synchronisé · balance connectée</span>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', marginBottom: 16, fontSize: 12, color: 'var(--text-mid)' }}>
-              <span>Aucune balance connectée — la saisie ci-dessous remplit le suivi.</span>
-              <a href="/connections" style={{ color: '#06B6D4', fontWeight: 600, fontFamily: 'DM Sans,sans-serif', textDecoration: 'none', whiteSpace: 'nowrap' }}>Connecter →</a>
-            </div>
-          )}
-
-          {/* Sélecteur de période */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {([['30 j', 30], ['3 mois', 90], ['1 an', 365]] as const).map(([lbl, d]) => (
-              <button key={d} onClick={() => setBodyRangeDays(d)} style={{
-                padding: '5px 12px', borderRadius: 8, border: '1px solid var(--border)',
-                background: bodyRangeDays === d ? 'rgba(6,182,212,0.12)' : 'var(--bg-card2)',
-                color: bodyRangeDays === d ? '#06B6D4' : 'var(--text-dim)', fontWeight: bodyRangeDays === d ? 700 : 400,
-                fontSize: 12, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
-              }}>{lbl}</button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2">
-          {/* Metric toggle */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-            {([
-              { key: 'weight_kg' as WeightMetric, label: 'Poids' },
-              { key: 'fat_mass_percent' as WeightMetric, label: 'Masse grasse' },
-              { key: 'muscle_mass_kg' as WeightMetric, label: 'Masse musculaire' },
-              { key: 'ffmi' as WeightMetric, label: 'FFMI' },
-              { key: 'bmi' as WeightMetric, label: 'IMC' },
-            ]).map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setWeightMetric(key)}
-                style={{
-                  padding: '5px 12px', borderRadius: 8,
-                  border: '1px solid var(--border)',
-                  background: weightMetric === key ? 'rgba(6,182,212,0.12)' : 'var(--bg-card2)',
-                  color: weightMetric === key ? '#06B6D4' : 'var(--text-dim)',
-                  fontWeight: weightMetric === key ? 700 : 400,
-                  fontSize: 11, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Résumé stats + tendance */}
-          {(() => {
-            const st = computeBodyStats(bodyLogs, weightMetric, profile?.height_cm ?? null)
-            if (!st) return null
-            const u = METRIC_UNIT[weightMetric]
-            const goalGap = weightMetric === 'weight_kg' && goalWeight ? +(st.current - goalWeight).toFixed(1) : null
-            const cell = (label: string, value: string, color?: string) => (
-              <div style={{ flex: 1, minWidth: 64 }}>
-                <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans,sans-serif' }}>{label}</div>
-                <div style={{ fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: color ?? 'var(--text)', marginTop: 2 }}>{value}</div>
-              </div>
-            )
-            return (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', marginBottom: 16 }}>
-                {cell('Actuel', `${st.current}${u}`, '#06B6D4')}
-                {cell('Min', `${st.min}${u}`)}
-                {cell('Max', `${st.max}${u}`)}
-                {cell('Variation', `${st.deltaTotal > 0 ? '+' : ''}${st.deltaTotal}${u}`)}
-                {st.trendPerWeek != null && cell('Tendance/sem', `${st.trendPerWeek > 0 ? '+' : st.trendPerWeek < 0 ? '−' : ''}${Math.abs(st.trendPerWeek)}${u}/sem`)}
-                {goalGap != null && cell('Écart objectif', `${goalGap > 0 ? '−' : '+'}${Math.abs(goalGap)}kg`, '#06B6D4')}
-              </div>
-            )
-          })()}
-
-          <WeightChart logs={bodyLogs} metric={weightMetric} heightCm={profile?.height_cm ?? null} goal={goalWeight} />
-          </div>{/* end xl:col-span-2 */}
-
-          <div>
-          {/* Weight input form */}
-          <div style={{ marginTop: 20 }}>
-            <div style={{ fontSize: 12, fontFamily: 'Syne,sans-serif', fontWeight: 700, marginBottom: 10, color: 'var(--text)' }}>
-              Ajouter une mesure
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 10 }}>
-              <div>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Date</label>
-                <input
-                  type="date"
-                  value={weightInputDate}
-                  onChange={e => setWeightInputDate(e.target.value)}
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Poids (kg)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={weightInput}
-                  onChange={e => setWeightInput(e.target.value)}
-                  placeholder="ex: 78.5"
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                    fontFamily: 'DM Mono,monospace',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Masse grasse (%)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={mgInput}
-                  onChange={e => setMgInput(e.target.value)}
-                  placeholder="ex: 14.2"
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                    fontFamily: 'DM Mono,monospace',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Masse musculaire (kg)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={mmInput}
-                  onChange={e => setMmInput(e.target.value)}
-                  placeholder="ex: 62.1"
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                    fontFamily: 'DM Mono,monospace',
-                  }}
-                />
-              </div>
-            </div>
-            <Button
-              variant="secondary"
-              onClick={() => void handleSaveWeight()}
-              style={{ width: '100%', justifyContent: 'center' }}
-            >
-              Sauvegarder la mesure
-            </Button>
-          </div>
-
-          {/* Objectif de poids */}
-          <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 12, fontFamily: 'Syne,sans-serif', fontWeight: 700, marginBottom: 4, color: 'var(--text)' }}>
-              Objectif de poids
-            </div>
-            {/* Interconnexion → Mon plan (l'objectif du plan donne le sens de la cible) */}
-            <button
-              onClick={() => setTab('plan')}
-              style={{ background: 'none', border: 'none', padding: 0, marginBottom: 10, cursor: 'pointer',
-                fontSize: 11, color: '#06B6D4', fontFamily: 'DM Sans,sans-serif', fontWeight: 600, textAlign: 'left' }}
-            >
-              Relié à Mon plan →
-            </button>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Poids cible (kg)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={goalInput}
-                  onChange={e => setGoalInput(e.target.value)}
-                  placeholder="ex: 75.0"
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                    fontFamily: 'DM Sans,sans-serif',
-                  }}
-                />
-              </div>
-              <Button variant="secondary" onClick={saveGoalWeight} style={{ justifyContent: 'center' }}>
-                Définir
-              </Button>
-            </div>
-            {goalWeight != null && (
-              <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0', fontFamily: 'DM Sans,sans-serif' }}>
-                Cible tracée en vert sur le graphe « Poids ».
-              </p>
-            )}
-          </div>
-          </div>{/* end form column */}
-          </div>{/* end xl:grid-cols-3 */}
-        </div>
+          <CompositionTab
+            weightLogs={weightLogs}
+            heightCm={profile?.height_cm ?? null}
+            saveWeightLog={saveWeightLog}
+            onGoToPlan={() => setTab('plan')}
+            isDesktop={isDesktop}
+          />
         )}
 
         </motion.div>

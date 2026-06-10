@@ -1,217 +1,154 @@
-# THW Coaching — Design System
+# THW Coaching — Langage de design
 
-> App de coaching sportif premium : triathlon, Hyrox, endurance.
-> Stack : Next.js 15 · TypeScript strict · Tailwind CSS · Supabase.
-
----
-
-## 1. Philosophie
-
-**Densité + clarté.** L'athlète lit des chiffres sous l'effort — chaque pixel compte.
-- Linear pour la précision de la grille et l'absence d'ornement inutile
-- Strava pour la densité de data et l'affordance mobile
-- Strong pour le dark mode et les badges sport colorés
-
-Pas de composants décoratifs. Pas de gradient gratuitement. Pas de spinner.
+> Source de vérité unique pour l'esthétique de l'app. À lire avant toute UI.
+> Les valeurs de tokens ici doivent correspondre **exactement** à `globals.css`.
+> En cas de divergence, `globals.css` est la vérité technique et doit être aligné.
 
 ---
 
-## 2. Tokens de couleur
+## 0. Principe directeur
 
-### 2.1 Primaires app
+**Le calme par soustraction.** L'app a l'air premium quand elle est disciplinée,
+pas quand elle est décorée. Chaque élément doit justifier sa présence. Le niveau
+supérieur vient de ce qu'on retire — couleurs, bordures, tailles, répétitions —
+pas de ce qu'on ajoute. Si une vue a l'air « excitante » ou « chargée », elle est
+ratée : l'élégance se lit comme du calme.
 
-```css
---primary:       #00c8e0;   /* cyan THW — CTA, liens, focus */
---primary-dim:   rgba(0,200,224,0.12);
---primary-text:  #0891b2;   /* variante texte sur fond clair */
-```
-
-### 2.2 Accent Coach IA (distinct du primaire)
-
-```css
---ai-accent:     #8b5cf6;   /* violet — exclusif UI Coach IA */
---ai-accent-dim: rgba(139,92,246,0.12);
---ai-gradient:   linear-gradient(135deg, #8b5cf6, #5b6fff);
-```
-
-> **Règle absolue :** `--ai-accent` n'est jamais utilisé hors des composants Coach IA.
-> Les boutons, liens et indicateurs app utilisent `--primary`.
-
-### 2.3 Badges sport — fixes et immuables
-
-| Sport | Hex | Usage |
-|-------|-----|-------|
-| `run` | `#f97316` | Orange |
-| `bike` | `#3b82f6` | Bleu |
-| `swim` | `#06b6d4` | Cyan |
-| `gym` | `#8b5cf6` | Violet |
-| `hyrox` | `#ec4899` | Rose |
-| `rowing` | `#14b8a6` | Teal |
-
-Backgrounds de badge : couleur à 13% d'opacité (`hex` + `22` en RGBA).
-Bordure de badge : couleur pleine à 100%.
-
-```ts
-// Exemple d'implémentation (planning/page.tsx pattern)
-const SPORT_BORDER: Record<SportType, string> = {
-  run:    '#f97316',
-  bike:   '#3b82f6',
-  swim:   '#06b6d4',
-  gym:    '#8b5cf6',
-  hyrox:  '#ec4899',
-  rowing: '#14b8a6',
-}
-const SPORT_BG: Record<SportType, string> = {
-  run:    'rgba(249,115,22,0.13)',
-  bike:   'rgba(59,130,246,0.13)',
-  swim:   'rgba(6,182,212,0.13)',
-  gym:    'rgba(139,92,246,0.13)',
-  hyrox:  'rgba(236,72,153,0.13)',
-  rowing: 'rgba(20,184,166,0.13)',
-}
-```
-
-> ⚠️ Note : le fichier `planning/page.tsx` utilise actuellement `run:#22c55e` (vert) et `swim:#38bdf8` (bleu clair) — à migrer vers les tokens ci-dessus lors de la prochaine refonte de la page Planning.
-
-### 2.4 Zones d'intensité — fixes et immuables
-
-Ces couleurs apparaissent sur les charts SVG, les blocs de séance et les indicateurs de charge.
-
-| Zone | Nom | Hex | Sémantique |
-|------|-----|-----|------------|
-| Z1 | Récupération | `#9ca3af` | Gris neutre |
-| Z2 | Endurance | `#22c55e` | Vert — aérobie facile |
-| Z3 | Tempo | `#eab308` | Jaune — seuil aérobie |
-| Z4 | Seuil | `#f97316` | Orange — seuil lactique |
-| Z5 | VO2max | `#ef4444` | Rouge — intense |
-
-```ts
-const ZONE_COLORS = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444'] // index = zone-1
-```
+Trois inspirations : la rigueur de grille de Linear, la densité lisible de Whoop,
+la retenue éditoriale d'un bon magazine.
 
 ---
 
-## 3. Typographie
+## 1. Typographie
 
-### 3.1 Familles
+Deux voix, jamais plus.
 
-| Rôle | Famille | Usage |
-|------|---------|-------|
-| Titres / branding | `Syne` | H1–H3, labels nav, noms de feature |
-| Corps / UI | `DM Sans` | Labels, descriptions, boutons, toasts |
-| **Métriques** | `DM Mono` | **TSS, watts, pace, FC, distance, temps** |
+| Voix | Police | Token | Usage |
+|------|--------|-------|-------|
+| Éditoriale | Fraunces (serif) | `--font-display` | Titres de page, accroches, titres de section — **casse normale**, taille ≥ 15px |
+| Fonctionnelle | Inter (sans) | `--font-body` | Tout le reste : labels, boutons, corps, métadonnées, **et tous les chiffres** |
 
-> **Règle monospace :** toute valeur numérique de performance est rendue en `DM Mono`.
-> Ne jamais afficher `"42:30/km"` ou `"285w"` en DM Sans.
+**Règles dures :**
+- Fraunces n'apparaît **jamais** sous 15px, jamais sur un label, jamais sur une donnée.
+- Tous les chiffres sont en Inter **tabulaire**, **zéro non barré** :
+  `font-variant-numeric: tabular-nums; font-feature-settings: 'zero' 0;`
+- La police est appelée par **token** (`var(--font-display)` / `var(--font-body)`),
+  jamais en littéral `'Inter'` / `'Fraunces'` dans les composants.
+- **Polices interdites / supprimées** : DM Mono, Syne, Nunito, Bebas Neue,
+  Roboto Mono, Barlow Condensed. Aucun monospace.
 
-### 3.2 Échelle
+**Échelle de tailles** (ne pas inventer de taille hors échelle) :
 
-| Token | taille | Poids | Usage |
-|-------|--------|-------|-------|
-| `text-display` | 26–32px | 700 | Titres de page |
-| `text-section` | 18–20px | 700 | Titres de section |
-| `text-body` | 13–14px | 400 | Corps de texte |
-| `text-label` | 11–12px | 500–600 | Labels, badges |
-| `text-micro` | 9–10px | 500–700 | Métadonnées, abbrev. |
-
----
-
-## 4. Espacement & grille
-
-- Grille de base : **4px** (multiples de 4 pour padding, gap, margin)
-- Card padding : `16px` desktop / `12px` mobile
-- Gap entre éléments de liste : `4–8px`
-- Radius standard : `8px` (micro), `12px` (card), `16px` (modal/panel)
-
----
-
-## 5. Touch targets & accessibilité
-
-- **Minimum 44 × 44 px** sur tous les éléments interactifs (boutons, toggles, liens)
-- Les icônes seules (< 44px) ont une zone de hit invisible via `padding` ou `::after`
-- Contraste minimum WCAG AA sur fond clair et fond sombre
-- Focus visible sur tous les éléments keyboard-navigables
+| Rôle | Police | Taille | Poids |
+|------|--------|--------|-------|
+| Titre de page | Fraunces | 28 (24 mobile) | 600 |
+| Accroche / lead | Fraunces | 17 | 500 |
+| Titre de section | Fraunces | 15 | 600 |
+| Corps | Inter | 14 | 400–500 |
+| Label | Inter | 12–13 | 500–600 |
+| Micro / méta | Inter | 11 | 500 |
+| Métrique focale | Inter tab. | 40–42 (38 mobile) | 600 |
+| Métrique | Inter tab. | 22–23 (19 mobile) | 600 |
 
 ---
 
-## 6. États de chargement
+## 2. Couleur — budget strict
 
-| ❌ Interdit | ✅ Requis |
-|------------|----------|
-| Spinner / loader animé | Skeleton screen |
-| `Loading...` texte nu | Placeholder shimmer aux dimensions du contenu |
-| Flash de layout au chargement | Dimensions réservées dès le premier render |
+**Une vue = neutres + au plus UN accent + points sémantiques.** Rien d'autre.
 
-Les skeleton screens reprennent exactement la forme du composant cible (même hauteur, même nombre de lignes).
+- **Aucune surface colorée.** Jamais de carte, bloc ou bouton à fond coloré plein
+  ni à bordure colorée pleine. La sémantique se porte par un **point de 7px** ou un
+  **texte teinté**, jamais par une surface.
+- **Accent unique** : `--primary` (cyan), réservé à l'action principale, aux liens
+  et au focus. Au plus un accent visible par vue.
+- `--ai-accent` (violet) est **exclusif aux composants Coach IA**. Jamais ailleurs.
+- **Aucune couleur en dur** dans le code feature (hex/rgb/hsl). Toujours `var()`.
+  Vérifié par le check de build (voir le repo `scripts/check-colors.mjs`).
 
----
+**Neutres** (tokens thémés clair/sombre, déjà dans `globals.css`) :
+`--bg`, `--bg-card`, `--bg-card2`, `--text`, `--text-mid`, `--text-dim`, `--border`.
 
-## 7. Composants récurrents
+**Sémantique de charge** (points uniquement) :
+`low #22c55e` · `mid #eab308` · `hard #ef4444`.
 
-### Card de séance (planning)
-
-```
-┌─────────────────────────────────┐
-│ [BADGE] Titre séance            │  ← DM Sans 9px bold
-│ 09:00 · 1h30                    │  ← DM Mono 8px, opacity 0.7
-│ ████░░░░ (blocs zone)           │  ← SVG, 6px hauteur
-└─────────────────────────────────┘
-Border-left: 2px solid SPORT_BORDER[sport]
-Background: SPORT_BG[sport]
-```
-
-### Badge sport
-
-```
-[RUN]  ← 7–8px, bold, background dim, texte couleur sport
-```
-
-### Métrique KPI
-
-```
-285              ← DM Mono, 24–32px, bold
-watts            ← DM Sans, 10px, text-dim, uppercase
-```
-
-### Indicateur de zone (chart SVG)
-
-```
-─────  ← stroke couleur ZONE_COLORS[zone-1], strokeWidth 1.5
-```
+**Immuables** (référence, ne changent jamais — définis comme constantes
+sanctionnées, exemptées du check) : couleurs **sport** (`--sport-*`) et **zones
+d'intensité** (`--zone-1..5`). Voir annexe.
 
 ---
 
-## 8. Thème light / dark
+## 3. Structure & espace
 
-Les composants n'utilisent **jamais** de valeurs de couleur hardcodées inline pour le fond, le texte ou les bordures structurelles. Ils passent par les variables CSS :
-
-```css
-/* Fond */
---bg:        /* blanc L / gris très foncé D */
---bg-card:   /* blanc cassé L / gris foncé D */
---bg-card2:  /* gris très clair L / gris moyen D */
-
-/* Texte */
---text:      /* quasi-noir L / blanc D */
---text-mid:  /* gris moyen L/D */
---text-dim:  /* gris clair L / gris D */
-
-/* Structure */
---border:    /* gris clair L / gris foncé D */
---shadow-card: /* ombre légère L / nulle D */
-```
-
-Les couleurs **sport**, **zones** et **IA** sont identiques en light et dark (elles sont suffisamment saturées).
+- **La séparation se fait par l'espace et le fond**, pas par la bordure.
+  Un bloc se détache en passant sur `--bg-card2`, pas en se faisant encadrer.
+- **Bordures** : autorisées uniquement sur les **inputs** et l'état **focus**.
+  Aucune bordure décorative sur cartes, boutons, pilules, cases.
+- **Radius** : `--r-sm: 8px` · `--r-md: 14px` · `--r-lg: 20px`. Rien d'autre.
+- **Espacement** : grille 4px via `--space-*`. Pas de valeur d'espacement arbitraire.
 
 ---
 
-## 9. Règles absolues (ne jamais violer)
+## 4. Hiérarchie
 
-1. **Zéro librairie de chart** — recharts, chart.js, d3 non installables. SVG raw uniquement.
-2. **Zéro `any` TypeScript** — strict mode, toujours.
-3. **Zéro mock data en production** — Supabase ou rien.
-4. Les couleurs de **zone** et de **sport** ne changent jamais, même pour un one-off.
-5. Les métriques numériques sont **toujours** en `DM Mono`.
-6. Les skeleton screens **remplacent** les spinners, sans exception.
-7. Touch targets : **≥ 44px** sur mobile.
-8. L'accent IA (`#8b5cf6`) n'apparaît **jamais** hors des composants Coach IA.
+- **Une focale par vue.** Un seul élément domine (le hero) ; tout le reste se
+  subordonne en taille et en poids. Pas trois blocs de même poids qui se battent.
+- **Pas de répétition de chrome.** Quatre badges identiques, quatre anneaux à zéro :
+  c'est du bruit. Fusionner ou supprimer.
+
+---
+
+## 5. Élément signature
+
+Chaque famille de page mérite **un** moment mémorable, et un seul.
+Pour les données dans le temps : un micro-graphe SVG brut qui révèle une forme
+d'un coup d'œil (ex. le **rythme de la semaine** de Mon Plan : barres dont la
+hauteur encode la charge, qui donnent à voir la périodisation). Pas de lib de chart.
+
+---
+
+## 6. États
+
+- **Skeleton, jamais de spinner.** Le skeleton reprend la forme exacte du contenu.
+- **Vide = invitation à agir**, dans la voix de l'interface. Une erreur explique
+  quoi s'est passé et comment le corriger ; elle ne s'excuse pas, ne reste pas vague.
+- Touch targets **≥ 44px**. Focus visible. `prefers-reduced-motion` respecté.
+
+---
+
+## 7. Règles absolues (binaires — ne jamais violer)
+
+1. Zéro couleur en dur dans le code feature → toujours `var(--token)`.
+2. Zéro surface à fond ou bordure colorée pleine.
+3. `--ai-accent` jamais hors Coach IA.
+4. Police toujours via `var(--font-display)` / `var(--font-body)`.
+5. Chiffres toujours Inter tabulaire, zéro non barré.
+6. Aucune police hors Fraunces / Inter (les anciennes sont supprimées).
+7. Bordure uniquement sur input/focus.
+8. Tailles, radius, espacements : uniquement les tokens de l'échelle.
+9. Zéro lib de chart (SVG brut). Zéro `any`. Zéro mock data.
+10. Skeleton, pas spinner.
+
+---
+
+## 8. Exemple de référence — Mon Plan
+
+Anatomie validée, à imiter :
+- **En-tête éditorial** : « Mon plan » (Fraunces 28) + état discret à droite (Inter).
+- **Hero focal** : sur `--bg-card2`, sans bordure. Accroche Fraunces « Aujourd'hui,
+  mercredi 10 » + point de charge, puis la **métrique focale** (kcal du jour, Inter
+  tab. 42), macros en sous-texte, et le lien cyan « calé sur ta séance → » qui
+  expose le différenciateur (la nutrition qui connaît l'entraînement).
+- **Cibles par type de jour** : trois colonnes nues, séparées par l'espace,
+  chacune un point de couleur + le nombre. Aucune carte, aucune bordure.
+- **Rythme des 14 jours** (signature) : barres SVG, hauteur = charge, couleur de
+  charge en points/tons ; aujourd'hui surligné par un fond `--bg-card2`, pas une bordure.
+- **Actions** : une seule action principale en cyan (compacte, 36px), le reste en
+  texte simple ; « Supprimer » démoté en gris.
+
+---
+
+## Annexe — couleurs immuables (référence)
+
+Sport : `run #f97316` · `bike #3b82f6` · `swim #06b6d4` · `gym #8b5cf6` ·
+`hyrox #ec4899` · `rowing #14b8a6`.
+Zones : `Z1 #9ca3af` · `Z2 #22c55e` · `Z3 #eab308` · `Z4 #f97316` · `Z5 #ef4444`.

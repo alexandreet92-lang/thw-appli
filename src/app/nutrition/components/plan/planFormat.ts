@@ -41,3 +41,9 @@ export function dayShort(dateStr: string): { wd: string; day: number } {
   const d = parse(dateStr)
   return { wd: WD_SHORT[d.getDay()], day: d.getDate() }
 }
+
+// « mercredi 10 juin » (date longue, sans préfixe).
+export function dateLabel(dateStr: string): string {
+  const d = parse(dateStr)
+  return `${WD[d.getDay()]} ${d.getDate()} ${MO[d.getMonth()]}`
+}

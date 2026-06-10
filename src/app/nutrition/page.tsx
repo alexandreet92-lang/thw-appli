@@ -14,7 +14,7 @@ import { useMealLogs, type MealLog } from '@/hooks/useMealLogs'
 import { useDailyMeals } from '@/hooks/useDailyMeals'
 import { useHydration } from '@/hooks/useHydration'
 import { useProfile } from '@/hooks/useProfile'
-import { DayFoodJournal } from '@/app/nutrition/components/DayFoodJournal'
+import { TodayTab } from '@/app/nutrition/components/today/TodayTab'
 import { PlanShoppingList } from '@/app/nutrition/components/plan/PlanShoppingList'
 import { SuiviSection } from '@/app/nutrition/components/suivi/SuiviSection'
 import { NutritionRail } from '@/app/nutrition/components/NutritionRail'
@@ -1074,7 +1074,6 @@ export default function NutritionPage() {
 
   // ── Journal alimentaire du jour (indépendant du plan) ─────────
   const dayMeals  = useDailyMeals(today)
-  const yesterdayMeals = useDailyMeals(addDays(today, -1))
   const hydration = useHydration(today)
   const [mealJumpSignal, setMealJumpSignal] = useState(0)
   const jumpToMeals = useCallback(() => {
@@ -1356,217 +1355,21 @@ export default function NutritionPage() {
         >
 
         {tab === 'today' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION 1 — Bilan du jour                             */}
-        {/* ══════════════════════════════════════════════════════ */}
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 12 }}>
-            <div>
-              <p style={{ ...sectionTitle, marginBottom: 0 }}>Bilan du jour</p>
-              {yesterdayMeals.totals.kcal > 0 && (() => {
-                const delta = Math.round(dayMeals.totals.kcal - yesterdayMeals.totals.kcal)
-                const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '='
-                return (
-                  <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif', marginTop: 4 }}>
-                    {arrow} {Math.abs(delta)} kcal <span style={{ opacity: 0.7 }}>vs hier</span>
-                  </div>
-                )
-              })()}
-            </div>
-            <div style={{
-              padding: '5px 12px',
-              borderRadius: 8,
-              background: DAY_COLORS[todayType].bg,
-              border: `1px solid ${DAY_COLORS[todayType].border}`,
-              color: DAY_COLORS[todayType].text,
-              fontSize: 11,
-              fontFamily: 'Syne,sans-serif',
-              fontWeight: 700,
-              flexShrink: 0,
-            }}>
-              {DAY_COLORS[todayType].label}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 18, rowGap: 24, justifyContent: 'space-around', flexWrap: 'wrap', padding: '4px 0' }}>
-            <MacroDonut
-              label="Calories"
-              consumed={dayMeals.totals.kcal}
-              objective={todayKcalObj}
-              unit="kcal"
-              color="#06B6D4"
-              size={96}
-              statusLabel={macroStatus(dayMeals.totals.kcal, todayKcalObj)?.label}
-              statusColor={macroStatus(dayMeals.totals.kcal, todayKcalObj)?.color}
-            />
-            <MacroDonut
-              label="Proteines"
-              consumed={dayMeals.totals.prot}
-              objective={todayMacroObj.proteines}
-              unit="g"
-              color="#22c55e"
-              size={96}
-              statusLabel={macroStatus(dayMeals.totals.prot, todayMacroObj.proteines)?.label}
-              statusColor={macroStatus(dayMeals.totals.prot, todayMacroObj.proteines)?.color}
-            />
-            <MacroDonut
-              label="Glucides"
-              consumed={dayMeals.totals.gluc}
-              objective={todayMacroObj.glucides}
-              unit="g"
-              color="#eab308"
-              size={96}
-              statusLabel={macroStatus(dayMeals.totals.gluc, todayMacroObj.glucides)?.label}
-              statusColor={macroStatus(dayMeals.totals.gluc, todayMacroObj.glucides)?.color}
-            />
-            <MacroDonut
-              label="Lipides"
-              consumed={dayMeals.totals.lip}
-              objective={todayMacroObj.lipides}
-              unit="g"
-              color="#f97316"
-              size={96}
-              statusLabel={macroStatus(dayMeals.totals.lip, todayMacroObj.lipides)?.label}
-              statusColor={macroStatus(dayMeals.totals.lip, todayMacroObj.lipides)?.color}
-            />
-          </div>
-
-          {/* Bandeau « il te reste » */}
-          {todayKcalObj > 0 ? (
-            <div style={{
-              marginTop: 18, padding: '12px 16px', borderRadius: 12,
-              background: 'var(--bg-card2)', border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
-            }}>
-              <span style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Il te reste</span>
-              <span style={{ fontSize: 16, fontWeight: 800, color: '#06B6D4', fontFamily: 'DM Mono,monospace' }}>
-                {Math.max(0, Math.round(todayKcalObj - dayMeals.totals.kcal))} kcal
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>
-                · {Math.max(0, Math.round(todayMacroObj.proteines - dayMeals.totals.prot))}g prot
-                · {Math.max(0, Math.round(todayMacroObj.glucides - dayMeals.totals.gluc))}g gluc
-                · {Math.max(0, Math.round(todayMacroObj.lipides - dayMeals.totals.lip))}g lip
-              </span>
-            </div>
-          ) : (
-            <div style={{
-              marginTop: 18, padding: '12px 16px', borderRadius: 12,
-              background: 'var(--bg-card2)', border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
-            }}>
-              <span style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Consommé aujourd&apos;hui</span>
-              <span style={{ fontSize: 16, fontWeight: 800, color: '#06B6D4', fontFamily: 'DM Mono,monospace' }}>
-                {Math.round(dayMeals.totals.kcal)} kcal
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace' }}>
-                · {Math.round(dayMeals.totals.prot)}g prot
-                · {Math.round(dayMeals.totals.gluc)}g gluc
-                · {Math.round(dayMeals.totals.lip)}g lip
-              </span>
-            </div>
-          )}
-
-          {/* Raccourci ajouter un repas → ouvre le journal */}
-          <button
-            onClick={jumpToMeals}
-            style={{
-              marginTop: 12, width: '100%', minHeight: 44,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              padding: '11px', borderRadius: 11,
-              border: '1px solid rgba(6,182,212,0.3)', background: 'rgba(6,182,212,0.08)',
-              color: '#06B6D4', fontWeight: 700, fontSize: 13,
-              cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Ajouter un repas
-          </button>
-        </div>
-
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION — Hydratation                                  */}
-        {/* ══════════════════════════════════════════════════════ */}
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <p style={{ ...sectionTitle, marginBottom: 0 }}>Hydratation</p>
-            <span style={{ fontSize: 18, fontWeight: 800, color: '#06B6D4', fontFamily: 'DM Mono,monospace' }}>
-              {hydration.liters.toFixed(2).replace(/\.?0+$/, '')} L
-            </span>
-          </div>
-          {/* Jauge */}
-          <svg width="100%" height={10} style={{ borderRadius: 5, display: 'block', marginBottom: 14 }}>
-            <rect x={0} y={0} width="100%" height={10} fill="var(--border)" rx={5} />
-            <rect x={0} y={0} width={`${Math.min(100, (hydration.liters / 2.5) * 100)}%`} height={10} fill="#06B6D4" rx={5} style={{ transition: 'width 0.4s ease' }} />
-          </svg>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {[0.25, 0.5].map(d => (
-              <button key={d} onClick={() => void hydration.addLiters(d)}
-                style={{ flex: 1, padding: '10px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', minHeight: 44 }}>
-                + {d * 100} cl
-              </button>
-            ))}
-            <button onClick={() => void hydration.setLiters(Math.max(0, hydration.liters - 0.25))}
-              style={{ width: 52, padding: '10px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontWeight: 700, fontSize: 16, cursor: 'pointer', minHeight: 44 }}>
-              −
-            </button>
-          </div>
-        </div>
-
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION 2 — Seance du jour                            */}
-        {/* ══════════════════════════════════════════════════════ */}
-        <div style={cardStyle}>
-          <p style={sectionTitle}>Seance du jour</p>
-          {todaySessions.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>Jour de repos</p>
-          ) : (
-            todaySessions.map(s => (
-              <div key={s.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '10px 12px',
-                borderRadius: 10,
-                background: 'var(--bg-card2)',
-                border: '1px solid var(--border)',
-                marginBottom: 8,
-              }}>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  background: 'rgba(6,182,212,0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontFamily: 'Syne,sans-serif',
-                  fontWeight: 700,
-                  fontSize: 11,
-                  color: '#06B6D4',
-                  flexShrink: 0,
-                }}>
-                  {s.sport.slice(0, 3).toUpperCase()}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>
-                    {s.title}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
-                    {s.duration_min} min
-                    {s.intensity ? ` · ${s.intensity}` : ''}
-                    {s.tss != null ? ` · TSS ${s.tss}` : ''}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        </div>
+          <TodayTab
+            today={today}
+            todayType={todayType}
+            todayKcalObj={todayKcalObj}
+            todayMacroObj={todayMacroObj}
+            dayMeals={dayMeals}
+            hydration={hydration}
+            todaySessions={todaySessions}
+            weightKg={profile?.weight_kg ?? null}
+            mealJumpSignal={mealJumpSignal}
+            suggestion={suggestion}
+            suggesting={suggesting}
+            onSuggest={() => void handleSuggestMeal()}
+            isDesktop={isDesktop}
+          />
         )}
 
         {/* ══════════════════════════════════════════════════════ */}
@@ -1588,52 +1391,6 @@ export default function NutritionPage() {
             onDelete={() => void handleDeletePlan()}
             isDesktop={isDesktop}
           />
-        )}
-
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION 4 — Repas de la journee                       */}
-        {/* ══════════════════════════════════════════════════════ */}
-        {tab === 'today' && (
-        <div style={cardStyle} id="repas-du-jour">
-          <p style={sectionTitle}>Repas de la journee</p>
-
-          <DayFoodJournal
-            entries={dayMeals.entries}
-            loading={dayMeals.loading}
-            saveEntry={dayMeals.saveEntry}
-            deleteEntry={dayMeals.deleteEntry}
-            expandSignal={mealJumpSignal}
-          />
-
-          {/* Suggestion IA du prochain repas */}
-          <div style={{ marginTop: 18 }}>
-            <button
-              onClick={() => void handleSuggestMeal()}
-              disabled={suggesting}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                width: '100%', padding: '12px', borderRadius: 11, minHeight: 44,
-                border: '1px solid rgba(139,92,246,0.3)', background: 'rgba(139,92,246,0.08)',
-                color: '#8b5cf6', fontWeight: 700, fontSize: 13,
-                cursor: suggesting ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 3l1.9 4.8L18.5 9l-4.6 1.2L12 15l-1.9-4.8L5.5 9l4.6-1.2z" /><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z" />
-              </svg>
-              {suggesting ? 'Réflexion…' : 'Suggérer mon prochain repas (IA)'}
-            </button>
-            {suggestion && (
-              <div style={{ marginTop: 10, padding: '14px 16px', borderRadius: 12, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)' }}>
-                <p style={{ margin: 0, fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{suggestion.title}</p>
-                <p style={{ margin: '4px 0 8px', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5 }}>{suggestion.description}</p>
-                <p style={{ margin: 0, fontSize: 11, fontFamily: 'DM Mono,monospace', color: '#8b5cf6' }}>
-                  {suggestion.kcal} kcal · P {suggestion.prot}g · G {suggestion.gluc}g · L {suggestion.lip}g
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
         )}
 
         {/* ══════════════════════════════════════════════════════ */}

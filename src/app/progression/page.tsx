@@ -36,14 +36,15 @@ const SPORTS: (SportDef & { x: number; y: number })[] = RAW_SPORTS.map((s, i) =>
   return { ...s, x, y, pos: { left: `calc(${x}% - 40px)`, top: `calc(${y}% - 40px)` }, floatDelay: `${(i * 0.4).toFixed(1)}s` }
 })
 
-export default function ProgressionHub() {
+export default function ProgressionHub({ onSelectSport }: { onSelectSport?: (id: string) => void } = {}) {
   const router = useRouter()
   const [soon, setSoon] = useState(false)
 
   function handleClick(sport: SportDef, el: HTMLButtonElement) {
     if (sport.comingSoon) { setSoon(true); setTimeout(() => setSoon(false), 2200); return }
     el.classList.add('prog-bubble-exploding')
-    setTimeout(() => router.push(`/progression/${sport.id}`), 480)
+    // Rendu inline dans /activities (garde la nav) si callback fourni, sinon route.
+    setTimeout(() => { if (onSelectSport) onSelectSport(sport.id); else router.push(`/progression/${sport.id}`) }, 480)
   }
 
   return (

@@ -27,7 +27,7 @@ export function ShurikenAnimated() {
   return (
     <div className="shuriken-container" aria-hidden>
       <style>{`
-        .shuriken-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 320px; height: 320px; z-index: 2; filter: drop-shadow(0 10px 24px rgba(6,182,212,0.30)); }
+        .shuriken-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 210px; height: 210px; z-index: 2; filter: drop-shadow(0 10px 24px rgba(6,182,212,0.30)); }
         .shuriken-halo { position: absolute; inset: -8%; border-radius: 50%; background: radial-gradient(circle, rgba(6,182,212,0.22) 0%, rgba(6,182,212,0) 70%); animation: thw-halo 6.5s ease-in-out infinite; }
         .shuriken-rotor { position: absolute; inset: 0; animation: thw-rotor 6.5s cubic-bezier(0.45,0,0.2,1) infinite; }
         .shuriken-branch { position: absolute; inset: 0; background-image: url('${LOGO}'); background-size: contain; background-position: center; background-repeat: no-repeat; will-change: transform; }
@@ -47,22 +47,22 @@ export function ShurikenAnimated() {
            Phase 4 (85-100%) : pause, puis boucle */
         @keyframes thw-br-top {
           0%, 38%   { transform: translate(0, 0) rotate(0deg); }
-          62%       { transform: translate(0, -34%) rotate(360deg); }
+          62%       { transform: translate(0, -28%) rotate(360deg); }
           85%, 100% { transform: translate(0, 0) rotate(720deg); }
         }
         @keyframes thw-br-right {
           0%, 38%   { transform: translate(0, 0) rotate(0deg); }
-          62%       { transform: translate(34%, 0) rotate(360deg); }
+          62%       { transform: translate(28%, 0) rotate(360deg); }
           85%, 100% { transform: translate(0, 0) rotate(720deg); }
         }
         @keyframes thw-br-bottom {
           0%, 38%   { transform: translate(0, 0) rotate(0deg); }
-          62%       { transform: translate(0, 34%) rotate(360deg); }
+          62%       { transform: translate(0, 28%) rotate(360deg); }
           85%, 100% { transform: translate(0, 0) rotate(720deg); }
         }
         @keyframes thw-br-left {
           0%, 38%   { transform: translate(0, 0) rotate(0deg); }
-          62%       { transform: translate(-34%, 0) rotate(360deg); }
+          62%       { transform: translate(-28%, 0) rotate(360deg); }
           85%, 100% { transform: translate(0, 0) rotate(720deg); }
         }
         @keyframes thw-halo {
@@ -71,7 +71,7 @@ export function ShurikenAnimated() {
           50%      { transform: scale(1.18); opacity: 1; }
           85%      { transform: scale(0.95); opacity: 0.8; }
         }
-        @media (max-width: 768px) { .shuriken-container { width: 200px; height: 200px; } }
+        @media (max-width: 768px) { .shuriken-container { width: 165px; height: 165px; } }
         @media (prefers-reduced-motion: reduce) { .shuriken-rotor, .shuriken-branch, .shuriken-halo { animation: none; } }
       `}</style>
       <div className="shuriken-halo" />

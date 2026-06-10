@@ -28,6 +28,7 @@ import { ClimbDescentSection, detectSegments } from '@/components/activity/Climb
 import { WorkoutTypeBadges } from '@/components/activity/WorkoutTypeBadges'
 import { MuscuActivityView } from '@/components/activity/MuscuActivityView'
 import ProgressionHub from '@/app/progression/page'
+import { ProgressionSportView } from '@/app/progression/components/ProgressionSportView'
 import { RunningLapsSection } from '@/components/activity/RunningLapsSection'
 import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin, formatPaceSwim } from '@/lib/utils/pace'
 import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
@@ -9422,6 +9423,7 @@ function TrainingPageInner() {
   const zones   = useTrainingZones()
   const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
+  const [progSport, setProgSport]   = useState<string | null>(null)
   const [sectionOpen, setSectionOpen] = useState(false)
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
   const sidebarLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -9832,7 +9834,13 @@ function TrainingPageInner() {
           {/* Sections */}
           {!loading && !error && section === 'donnees'     && <div className="fade-up"><ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal></div>}
           {!loading && !error && section === 'analyse'     && <div className="fade-up"><ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal></div>}
-          {section === 'progression' && <div className="fade-up"><ProgressionHub /></div>}
+          {section === 'progression' && (
+            <div className="fade-up">
+              {progSport
+                ? <ProgressionSportView sport={progSport} onBack={() => setProgSport(null)} />
+                : <ProgressionHub onSelectSport={setProgSport} />}
+            </div>
+          )}
         </main>
       </div>
 

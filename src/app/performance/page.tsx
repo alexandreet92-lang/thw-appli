@@ -19,6 +19,7 @@ const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PERFORMANCE_ONBOARDING } from '@/onboarding/configs/performance.config'
+import { ProfilGlobalGrid } from '@/app/performance/components/profil/ProfilGlobalGrid'
 
 // ── Types ───────────────────────────────────────────────────────
 type PerfTab = 'profil' | 'datas' | 'tests'
@@ -582,16 +583,16 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
             <TInput label="CSS" value={p.css} onChange={v => setP({...p,css:v})} placeholder="1:28"/>
           </div>
         ) : (
-          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap:10 }}>
-            <PremiumStatCard label="FTP"          value={p.ftp}           unit="W"         sub={`${wkg} W/kg`}  color="#3B82F6" onSelect={() => onSelect('FTP', `${p.ftp} W`)}                   selected={isSel('FTP', p.ftp, 'W')}                         onAnalyze={() => onSelect('FTP', `${p.ftp} W`)}/>
-            <PremiumStatCard label="Allure seuil" value={p.thresholdPace} unit="/km"                            color="#10B981" onSelect={() => onSelect('Allure seuil', `${p.thresholdPace}/km`)} selected={selectedDatum?.label==='Allure seuil'}             onAnalyze={() => onSelect('Allure seuil', `${p.thresholdPace}/km`)}/>
-            <PremiumStatCard label="VMA"           value={p.vma}           unit="km/h"                           color="#8B5CF6" onSelect={() => onSelect('VMA', `${p.vma} km/h`)}                 selected={isSel('VMA', p.vma, 'km/h')}                      onAnalyze={() => onSelect('VMA', `${p.vma} km/h`)}/>
-            <PremiumStatCard label="CSS"           value={p.css}           unit="/100m"                          color="#06B6D4" onSelect={() => onSelect('CSS', `${p.css}/100m`)}                 selected={selectedDatum?.label==='CSS'}                      onAnalyze={() => onSelect('CSS', `${p.css}/100m`)}/>
-            <PremiumStatCard label="FC max"        value={p.hrMax}         unit="bpm"                            color="#EF4444" onSelect={() => onSelect('FC max', `${p.hrMax} bpm`)}             selected={isSel('FC max', p.hrMax, 'bpm')}                  onAnalyze={() => onSelect('FC max', `${p.hrMax} bpm`)}/>
-            <PremiumStatCard label="FC repos"      value={p.hrRest}        unit="bpm"                            color="#F59E0B" onSelect={() => onSelect('FC repos', `${p.hrRest} bpm`)}          selected={isSel('FC repos', p.hrRest, 'bpm')}               onAnalyze={() => onSelect('FC repos', `${p.hrRest} bpm`)}/>
-            <PremiumStatCard label="LTHR"          value={p.lthr}          unit="bpm"                            color="#F97316" onSelect={() => onSelect('LTHR', `${p.lthr} bpm`)}               selected={isSel('LTHR', p.lthr, 'bpm')}                     onAnalyze={() => onSelect('LTHR', `${p.lthr} bpm`)}/>
-            <PremiumStatCard label="VO2max"        value={p.vo2max}        unit="ml/kg/min"                      color="#EC4899" onSelect={() => onSelect('VO2max', `${p.vo2max} ml/kg/min`)}      selected={isSel('VO2max', p.vo2max, 'ml/kg/min')}           onAnalyze={() => onSelect('VO2max', `${p.vo2max} ml/kg/min`)}/>
-          </div>
+          <ProfilGlobalGrid isMobile={isMobile} metrics={[
+            { label:'FTP',          value:p.ftp,           unit:'W',         sub:`${wkg} W/kg`, selected:isSel('FTP', p.ftp, 'W'),                onSelect:()=>onSelect('FTP', `${p.ftp} W`) },
+            { label:'Allure seuil', value:p.thresholdPace, unit:'/km',       selected:selectedDatum?.label==='Allure seuil',                    onSelect:()=>onSelect('Allure seuil', `${p.thresholdPace}/km`) },
+            { label:'VMA',          value:p.vma,           unit:'km/h',      selected:isSel('VMA', p.vma, 'km/h'),                              onSelect:()=>onSelect('VMA', `${p.vma} km/h`) },
+            { label:'CSS',          value:p.css,           unit:'/100m',     selected:selectedDatum?.label==='CSS',                             onSelect:()=>onSelect('CSS', `${p.css}/100m`) },
+            { label:'FC max',       value:p.hrMax,         unit:'bpm',       selected:isSel('FC max', p.hrMax, 'bpm'),                          onSelect:()=>onSelect('FC max', `${p.hrMax} bpm`) },
+            { label:'FC repos',     value:p.hrRest,        unit:'bpm',       selected:isSel('FC repos', p.hrRest, 'bpm'),                       onSelect:()=>onSelect('FC repos', `${p.hrRest} bpm`) },
+            { label:'LTHR',         value:p.lthr,          unit:'bpm',       selected:isSel('LTHR', p.lthr, 'bpm'),                             onSelect:()=>onSelect('LTHR', `${p.lthr} bpm`) },
+            { label:'VO2max',       value:p.vo2max,        unit:'ml/kg/min', selected:isSel('VO2max', p.vo2max, 'ml/kg/min'),                   onSelect:()=>onSelect('VO2max', `${p.vo2max} ml/kg/min`) },
+          ]}/>
         )}
       </Card>
 

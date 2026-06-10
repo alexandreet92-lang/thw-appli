@@ -1263,8 +1263,6 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
   }
   const color      = COLOR[sport] ?? '#5b6fff'
   const sportLabel = SPORT_LABEL[sport] ?? sport
-  const bg         = `${color}12`
-  const bgSec      = `${color}08`
 
   // ── Calculations ─────────────────────────────────────────────
   const timeSec = toSec(draft)
@@ -1297,40 +1295,38 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
   // ── Styles ────────────────────────────────────────────────────
   const inp: React.CSSProperties = {
     width: '100%', padding: '10px 12px', borderRadius: 10,
-    border: `1px solid ${color}44`, background: 'var(--input-bg)',
-    color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 13,
+    border: '1px solid var(--border-mid)', background: 'var(--input-bg)',
+    color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13,
     outline: 'none', boxSizing: 'border-box',
   }
-  const secBox = (secBg: string): React.CSSProperties => ({
-    background: secBg, border: `1px solid ${color}20`,
-    borderRadius: 12, padding: '14px 16px', marginBottom: 12,
+  const secBox = (): React.CSSProperties => ({
+    background: 'var(--bg-card2)', border: 'none',
+    borderRadius: 14, padding: '14px 16px', marginBottom: 12,
   })
   const secHdr: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
   }
   const secLbl: React.CSSProperties = {
-    fontFamily: 'Syne,sans-serif', fontSize: 11, fontWeight: 700,
-    textTransform: 'uppercase', letterSpacing: '0.07em', color,
+    fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600,
+    textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)',
   }
   const lbl10: React.CSSProperties = {
-    fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+    fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
     letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 5, marginTop: 0,
   }
   const tog = (active: boolean): React.CSSProperties => ({
     padding: '6px 13px', borderRadius: 8, border: 'none', cursor: 'pointer',
-    fontSize: 11, fontWeight: active ? 700 : 400,
-    background: active ? color : 'var(--bg-card2)',
-    color: active ? '#000' : 'var(--text-dim)',
+    fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: active ? 600 : 500,
+    background: active ? 'var(--bg-elev)' : 'transparent',
+    color: active ? 'var(--text)' : 'var(--text-dim)',
     transition: 'all 0.15s',
   })
   const calc = (txt: string) => (
-    <div style={{
+    <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 5,
-      padding: '4px 10px', borderRadius: 6,
-      background: `${color}18`, border: `1px solid ${color}30`,
-      fontFamily: 'DM Mono,monospace', fontSize: 12, fontWeight: 700, color,
-      marginTop: 6, marginRight: 6,
-    }}>⟶ {txt}</div>
+      fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500, color: 'var(--text-mid)',
+      marginTop: 6, marginRight: 14,
+    }} className="tnum">→ {txt}</span>
   )
 
   // ── Per-sport sections ────────────────────────────────────────
@@ -1340,9 +1336,9 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
 
   if (sport === 'run') {
     perfSec = (
-      <div style={secBox(bg)}>
+      <div style={secBox()}>
         <div style={secHdr}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
           <span style={secLbl}>Performance</span>
         </div>
         <p style={lbl10}>Temps (hh:mm:ss)</p>
@@ -1356,9 +1352,9 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
       </div>
     )
     condSec = (
-      <div style={secBox(bgSec)}>
+      <div style={secBox()}>
         <div style={secHdr}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg>
           <span style={secLbl}>Conditions</span>
         </div>
         <p style={lbl10}>Surface</p>
@@ -1386,9 +1382,9 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
 
   if (sport === 'swim') {
     perfSec = (
-      <div style={secBox(bg)}>
+      <div style={secBox()}>
         <div style={secHdr}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
           <span style={secLbl}>Performance</span>
         </div>
         <p style={lbl10}>Temps (mm:ss)</p>
@@ -1397,9 +1393,9 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
       </div>
     )
     condSec = (
-      <div style={secBox(bgSec)}>
+      <div style={secBox()}>
         <div style={secHdr}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><path d="M2 18c1.4-1.4 3-2 5-2s3.6.6 5 2 3 2 5 2 3.6-.6 5-2"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><path d="M2 18c1.4-1.4 3-2 5-2s3.6.6 5 2 3 2 5 2 3.6-.6 5-2"/></svg>
           <span style={secLbl}>Conditions</span>
         </div>
         <p style={lbl10}>Bassin</p>
@@ -1426,9 +1422,9 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
 
   if (sport === 'rowing') {
     perfSec = (
-      <div style={secBox(bg)}>
+      <div style={secBox()}>
         <div style={secHdr}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
           <span style={secLbl}>Performance</span>
         </div>
         <p style={lbl10}>Temps (mm:ss ou hh:mm:ss)</p>
@@ -1440,9 +1436,9 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
       </div>
     )
     condSec = (
-      <div style={secBox(bgSec)}>
+      <div style={secBox()}>
         <div style={secHdr}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><path d="M5 19l14-14M5 5l7 7M12 12l7 7"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><path d="M5 19l14-14M5 5l7 7M12 12l7 7"/></svg>
           <span style={secLbl}>Conditions</span>
         </div>
         <p style={lbl10}>Support</p>
@@ -1466,9 +1462,9 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
 
   if (sport === 'bike') {
     perfSec = (
-      <div style={secBox(bg)}>
+      <div style={secBox()}>
         <div style={secHdr}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
           <span style={secLbl}>Performance</span>
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
@@ -1477,7 +1473,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
             <input style={inp} type="number" value={draft} onChange={e => setDraft(e.target.value)} placeholder="ex : 250" autoFocus />
             {bikeWkg && <div>{calc(`${bikeWkg} W/kg`)}</div>}
             {!bikeWkg && draft && profile.weight === 0 && (
-              <p style={{ fontSize:10, color:'#f59e0b', marginTop:6 }}>Renseignez votre poids dans le profil.</p>
+              <p style={{ fontFamily:'var(--font-body)', fontSize:10, color:'var(--text-dim)', marginTop:6 }}>Renseignez votre poids dans le profil.</p>
             )}
           </div>
           <div>
@@ -1491,9 +1487,9 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
       </div>
     )
     condSec = (
-      <div style={secBox(bgSec)}>
+      <div style={secBox()}>
         <div style={secHdr}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5}><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-10h4l4 10M9 7h6"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-10h4l4 10M9 7h6"/></svg>
           <span style={secLbl}>Conditions</span>
         </div>
         <p style={lbl10}>Environnement</p>
@@ -1530,28 +1526,30 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
     >
       <div
         onClick={e => e.stopPropagation()}
+        className="rec-drawer"
         style={{
           width:'100%', maxHeight:'92vh',
           background:'var(--bg-card)', borderRadius:'20px 20px 0 0',
-          border:`1px solid ${color}30`,
+          border:'1px solid var(--border)',
           display:'flex', flexDirection:'column', overflow:'hidden',
         }}
       >
         {/* Header */}
         <div style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
-          padding:'16px 20px', background:`${color}10`,
-          borderBottom:`1px solid ${color}25`, flexShrink:0, flexWrap:'wrap', gap:8,
+          padding:'16px 20px', background:'transparent',
+          borderBottom:'1px solid var(--border)', flexShrink:0, flexWrap:'wrap', gap:8,
         }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-            <span style={{ padding:'4px 10px', borderRadius:8, background:`${color}20`, border:`1px solid ${color}40`, fontSize:11, fontWeight:700, color }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:7, fontFamily:'var(--font-body)', fontSize:12, fontWeight:600, color:'var(--text-mid)' }}>
+              <span style={{ width:7, height:7, borderRadius:'50%', background:color, flexShrink:0 }} />
               {sportLabel}
             </span>
-            <span style={{ padding:'4px 10px', borderRadius:8, background:'var(--bg-card2)', border:'1px solid var(--border)', fontSize:11, fontWeight:600, color:'var(--text-mid)' }}>
+            <span style={{ padding:'3px 9px', borderRadius:8, background:'var(--bg-card2)', fontFamily:'var(--font-body)', fontSize:11, fontWeight:600, color:'var(--text-mid)' }}>
               {distLabel}
             </span>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>
-              Record {sportLabel}
+            <h2 style={{ fontFamily:'var(--font-display)', fontSize:17, fontWeight:600, color:'var(--text)', margin:0 }}>
+              Modifier le record
             </h2>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -1568,16 +1566,15 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
 
           {/* Résumé */}
           {validItems.length > 0 && (
-            <div style={{ background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:12, padding:'14px 16px' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2.5}><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.07em', color:'#22c55e' }}>Résumé</span>
+            <div style={{ background:'var(--bg-card2)', border:'none', borderRadius:14, padding:'14px 16px' }}>
+              <div style={{ marginBottom:12 }}>
+                <span style={{ fontFamily:'var(--font-body)', fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)' }}>Résumé</span>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:10 }}>
                 {validItems.map(item => (
                   <div key={item.label}>
-                    <p style={{ fontSize:9, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 2px' }}>{item.label}</p>
-                    <p style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700, margin:0, color:item.hi?color:'var(--text)' }}>{item.value}</p>
+                    <p style={{ fontFamily:'var(--font-body)', fontSize:9, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 2px' }}>{item.label}</p>
+                    <p className="tnum" style={{ fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, margin:0, color:'var(--text)' }}>{item.value}</p>
                   </div>
                 ))}
               </div>
@@ -1586,17 +1583,17 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
         </div>
 
         {/* Fixed save */}
-        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:`1px solid ${color}20` }}>
+        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:'1px solid var(--border)' }}>
           <button
             onClick={() => void onConfirm()}
             disabled={!canSave || saving}
             style={{
               width:'100%', padding:'14px',
-              borderRadius:12, border:'none',
+              borderRadius:'var(--r-sm)', border:'none',
               cursor: canSave && !saving ? 'pointer' : 'not-allowed',
-              background: canSave && !saving ? `linear-gradient(135deg,${color},${color}cc)` : 'var(--bg-card2)',
-              color: canSave && !saving ? '#000' : 'var(--text-dim)',
-              fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700,
+              background: canSave && !saving ? 'var(--primary)' : 'var(--bg-card2)',
+              color: canSave && !saving ? 'var(--on-primary)' : 'var(--text-dim)',
+              fontFamily:'var(--font-body)', fontSize:14, fontWeight:600,
               transition:'all 0.15s',
             }}
           >
@@ -2839,24 +2836,6 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <defs>
-          {yearsToRender.map(yr => {
-            const color = getPCColor(yr, sortedDesc)
-            return (
-              <linearGradient key={yr} id={`pcg-${yr}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-                <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-              </linearGradient>
-            )
-          })}
-          {selectedYear === 'All Time' && (
-            <linearGradient id="pcg-alltime" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.20" />
-              <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.02" />
-            </linearGradient>
-          )}
-        </defs>
-
         {/* Grid */}
         {yGridVals.map(w => (
           <line key={w}
@@ -2868,14 +2847,18 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
         {/* Y axis labels */}
         {yGridVals.filter(w => w % 100 === 0).map(w => (
           <text key={w} x={leftMargin - 6} y={polyY(w) + 4} textAnchor="end"
-            style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
+            className="tnum" style={{ fontSize: 10, fontFamily: 'var(--font-body)', fill: 'var(--text-dim)' }}>
             {w}W
           </text>
         ))}
 
-        {/* Year curves + dots */}
+        {/* Year curves + dots — lignes fines, année active nette en --primary,
+            les autres en retrait (pas d'aplat de remplissage). */}
         {yearsToRender.map(yr => {
-          const color = getPCColor(yr, sortedDesc)
+          // Active = année sélectionnée explicitement, ou la plus récente en mode « All Time ».
+          const isActive = selectedYear === 'All Time' ? yr === sortedDesc[0] : yr === selectedYear
+          const stroke = isActive ? 'var(--primary)' : getPCColor(yr, sortedDesc)
+          const lineOpacity = isActive ? 1 : 0.4
           const bestForYear = getBestForYear(yr)
           const points = BIKE_DURS.map(dur => {
             const w = bestForYear[dur] ?? 0
@@ -2885,20 +2868,19 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
           if (points.length === 0) return null
 
           const polylineStr = points.map(p => `${p.x},${p.y}`).join(' ')
-          const fillStr = `${leftMargin},${H - bottomMargin} ${polylineStr} ${points[points.length - 1].x},${H - bottomMargin}`
 
           return (
-            <g key={yr}>
-              <polygon points={fillStr} fill={`url(#pcg-${yr})`} />
-              <polyline points={polylineStr} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+            <g key={yr} opacity={lineOpacity}>
+              <polyline points={polylineStr} fill="none" stroke={stroke} strokeWidth={isActive ? 1.75 : 1.25} strokeLinejoin="round" strokeLinecap="round" />
               {points.map(p => {
                 const isHovered = cursor?.dur === p.dur
+                if (!isActive && !isHovered) return null
                 return (
                   <g key={p.dur} style={{ pointerEvents: 'none' }}>
                     {isHovered && (
-                      <circle cx={p.x} cy={p.y} r={11} fill={color} opacity={0.18} />
+                      <circle cx={p.x} cy={p.y} r={10} fill={stroke} opacity={0.16} />
                     )}
-                    <circle cx={p.x} cy={p.y} r={isHovered ? 6 : 4.5} fill={color} stroke={isHovered ? '#fff' : 'none'} strokeWidth={isHovered ? 1.5 : 0}>
+                    <circle cx={p.x} cy={p.y} r={isHovered ? 5 : 3} fill={stroke} stroke={isHovered ? 'var(--bg-card)' : 'none'} strokeWidth={isHovered ? 1.5 : 0}>
                       {!isHovered && <title>{yr} · {p.dur} · {p.w}W</title>}
                     </circle>
                   </g>
@@ -2913,7 +2895,7 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
           <line
             x1={cursor.svgX} y1={10}
             x2={cursor.svgX} y2={H - bottomMargin}
-            stroke="rgba(255,255,255,0.30)" strokeWidth="1" strokeDasharray="4 3"
+            stroke="var(--border-mid)" strokeWidth="1" strokeDasharray="4 3"
             style={{ pointerEvents: 'none' }}
           />
         )}
@@ -2924,7 +2906,7 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
           if (!secs) return null
           return (
             <text key={dur} x={logX(secs)} y={H - 10} textAnchor="middle"
-              style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', fill: 'var(--text-dim)' }}>
+              className="tnum" style={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: 'var(--text-dim)' }}>
               {dur}
             </text>
           )
@@ -2949,15 +2931,15 @@ function PowerCurveLogSVG({ bikeByYear, hiddenYears, selectedYear, weight }: {
           minWidth: 172,
           boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
         }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
             {cursor.dur}
           </div>
           {tooltipRows.map(row => (
             <div key={row.yr} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
               <span style={{ width: 9, height: 9, borderRadius: '50%', background: row.color, flexShrink: 0, display: 'inline-block' }} />
-              <span style={{ fontSize: 12, color: 'var(--text-dim)', width: 34 }}>{row.yr}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Mono,monospace', marginLeft: 'auto' }}>{row.w}W</span>
-              <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>{row.wkg} W/kg</span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', width: 34 }}>{row.yr}</span>
+              <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text)', marginLeft: 'auto' }}>{row.w}W</span>
+              <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)' }}>{row.wkg} W/kg</span>
             </div>
           ))}
         </div>

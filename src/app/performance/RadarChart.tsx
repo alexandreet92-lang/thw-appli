@@ -581,36 +581,14 @@ interface TooltipState {
 
 interface RadarSVGProps {
   axes: AxisData[]
-  sportColor: string
   onHover: (state: TooltipState | null) => void
 }
 
-function useDarkMode() {
-  const [dark, setDark] = useState(true)
-  useEffect(() => {
-    const check = () => setDark(document.documentElement.classList.contains('dark'))
-    check()
-    const obs = new MutationObserver(check)
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => obs.disconnect()
-  }, [])
-  return dark
-}
-
-function RadarSVG({ axes, sportColor, onHover }: RadarSVGProps) {
+function RadarSVG({ axes, onHover }: RadarSVGProps) {
   const n = axes.length
   if (n < 3) return null
   const scores = axes.map(a => a.score)
   const ringLevels = [5, 6, 7, 8, 9, 10]
-  const isDark = useDarkMode()
-
-  // Couleurs adaptées au thème
-  const axisStroke   = isDark ? 'rgba(255,255,255,0.08)' : '#94A3B8'
-  const labelActive  = isDark ? 'rgba(255,255,255,0.88)' : '#374151'
-  const labelInactive = isDark ? 'rgba(255,255,255,0.32)' : '#94A3B8'
-  const dotEmpty     = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)'
-  const dotStroke    = isDark ? '#fff' : '#374151'
-  const dotEmptyStroke = isDark ? 'rgba(255,255,255,0.3)' : '#94A3B8'
 
   return (
     <svg
@@ -626,34 +604,32 @@ function RadarSVG({ axes, sportColor, onHover }: RadarSVGProps) {
             x1={CX} y1={CY}
             x2={CX + MAX_R * Math.cos(angle)}
             y2={CY + MAX_R * Math.sin(angle)}
-            stroke={axisStroke} strokeWidth={1}
+            stroke="var(--border)" strokeWidth={1}
           />
         )
       })}
 
-      {/* Level rings (dashed) */}
+      {/* Anneaux de niveau — pointillés neutres, le 10 (cible) un peu plus marqué */}
       {ringLevels.map(lv => {
-        const lvEntry = LEVELS.find(l => l.score === lv)
         const arr = Array(n).fill(lv) as number[]
         return (
           <polygon key={lv}
             points={polarPts(arr)}
             fill="none"
-            stroke={lvEntry?.color ?? (isDark ? '#fff' : '#94A3B8')}
-            strokeOpacity={lv === 10 ? 0.4 : 0.18}
+            stroke={lv === 10 ? 'var(--border-mid)' : 'var(--border)'}
             strokeWidth={lv === 10 ? 1 : 0.75}
-            strokeDasharray={lv === 10 ? undefined : '3 4'}
+            strokeDasharray="3 4"
           />
         )
       })}
 
-      {/* Athlete polygon */}
+      {/* Polygone athlète — accent unique de l'app */}
       <polygon
         points={polarPts(scores)}
-        fill={sportColor}
-        fillOpacity={0.2}
-        stroke={sportColor}
-        strokeWidth={2.5}
+        fill="var(--primary)"
+        fillOpacity={0.14}
+        stroke="var(--primary)"
+        strokeWidth={2}
         strokeLinejoin="round"
       />
 
@@ -665,9 +641,9 @@ function RadarSVG({ axes, sportColor, onHover }: RadarSVGProps) {
         const x = CX + rad * Math.cos(angle)
         const y = CY + rad * Math.sin(angle)
         return (
-          <circle key={i} cx={x} cy={y} r={s > 0 ? 4.5 : 3}
-            fill={s > 0 ? sportColor : dotEmpty}
-            stroke={s > 0 ? dotStroke : dotEmptyStroke}
+          <circle key={i} cx={x} cy={y} r={s > 0 ? 4 : 3}
+            fill={s > 0 ? 'var(--primary)' : 'var(--bg-elev)'}
+            stroke={s > 0 ? 'var(--bg-card)' : 'var(--border-mid)'}
             strokeWidth={1.5}
             style={{ cursor: 'pointer' }}
             onMouseEnter={e => onHover({ axis, x: e.clientX, y: e.clientY })}
@@ -689,8 +665,8 @@ function RadarSVG({ axes, sportColor, onHover }: RadarSVGProps) {
         return (
           <text key={i} x={x} y={y + dy}
             textAnchor={anchor}
-            fontSize={10} fontFamily="DM Sans, sans-serif" fontWeight={600}
-            fill={axis.score > 0 ? labelActive : labelInactive}
+            fontSize={10} fontFamily="var(--font-body)" fontWeight={600}
+            fill={axis.score > 0 ? 'var(--text)' : 'var(--text-dim)'}
           >
             {axis.label}
           </text>
@@ -1324,7 +1300,7 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
       </div>
 
       {/* SVG */}
-      <RadarSVG axes={axes} sportColor={sportColor} onHover={setTooltip} />
+      <RadarSVG axes={axes} onHover={setTooltip} />
 
       {/* Level legend */}
       <div style={{

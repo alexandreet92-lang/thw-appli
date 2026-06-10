@@ -52,6 +52,11 @@
   --charge-mid:  #eab308;
   --charge-hard: #ef4444;
 
+  /* ── Catégories calendrier — fonctionnel, support minimal (DESIGN_SYSTEM.md §2.1) ── */
+  --cat-race:  #ef4444;
+  --cat-pro:   #3b82f6;
+  --cat-perso: #a855f7;
+
   /* ── Brand ────────────────────────────────────── */
   --primary:      #06B6D4;
   --primary-dim:  rgba(6,182,212,0.12);

@@ -19,6 +19,7 @@ import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
 import { Dumbbell, CalendarDays } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
+import { TrainingSummary } from '@/app/planning/components/training/TrainingSummary'
 
 // ── Types ─────────────────────────────────────────
 type PlanVariant   = 'A' | 'B'
@@ -3972,71 +3973,19 @@ function TrainingTab() {
         @media (max-width: 767px) { #tr-ctrl-desktop { display: none !important; } }
       `}</style>
 
-      {/* KPI */}
-      <ScrollRevealGroup style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
-        <ScrollRevealItem style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>Volume</p>
-            <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:6,background:'rgba(6,182,212,0.10)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
-          </div>
-          <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {formatHM(plannedMin)}</p>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#06B6D4',margin:'0 0 8px' }}>{formatHM(doneMin)}</p>
-          <AnimatedBar pct={plannedMin?Math.min(doneMin/plannedMin*100,100):0} color="#06B6D4" height={5} className="mb-1.5" />
-          <p style={{ fontSize:10,color:'var(--text-dim)',margin:0 }}>{plannedMin?Math.round(doneMin/plannedMin*100):0}% réalisé</p>
-        </ScrollRevealItem>
-        <ScrollRevealItem style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>Séances</p>
-          <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {plannedN}</p>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#ffb340',margin:'0 0 8px' }}><CountUp value={doneN} /></p>
-          <AnimatedBar pct={plannedN?Math.min(doneN/plannedN*100,100):0} color="#ffb340" height={5} className="mb-1.5" />
-          <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const,marginTop:4 }}>
-            {sportCounts.map(s=><span key={s.sport} style={{ fontSize:9,color:SPORT_BORDER[s.sport],fontFamily:'DM Mono,monospace',display:'flex',alignItems:'center',gap:3 }}><SportBadge sport={s.sport} size="xs"/> {s.done}/{s.planned}</span>)}
-          </div>
-        </ScrollRevealItem>
-        <ScrollRevealItem style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)',gridColumn:'span 2' }}>
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:0 }}>TSS</p>
-            <button onClick={()=>setShow10w(true)} style={{ fontSize:9,padding:'2px 7px',borderRadius:6,background:'rgba(91,111,255,0.10)',border:'1px solid rgba(91,111,255,0.25)',color:'#5b6fff',cursor:'pointer',fontWeight:600 }}>Last 10W</button>
-          </div>
-          <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px',fontFamily:'DM Mono,monospace' }}>Prévu {plannedTSS} pts</p>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#5b6fff',margin:'0 0 8px' }}><CountUp value={doneTSS} /> pts</p>
-          <AnimatedBar pct={plannedTSS?Math.min(doneTSS/plannedTSS*100,100):0} color="#5b6fff" height={5} />
-        </ScrollRevealItem>
-      </ScrollRevealGroup>
+      {/* Résumé Entraînement (refonte design system) */}
+      <TrainingSummary
+        plannedMin={plannedMin} doneMin={doneMin}
+        plannedN={plannedN} doneN={doneN}
+        plannedTSS={plannedTSS} doneTSS={doneTSS}
+        sportCounts={sportCounts} sportStats={sportStats}
+        today={week[todayIdx] ? { day: week[todayIdx].day, date: week[todayIdx].date } : null}
+        todaySessions={todaySessions}
+        onOpen10w={() => setShow10w(true)}
+        onOpenSession={(s) => setDetailModal(s)}
+        isModified={(s) => isSessionModified(s)}
+      />
 
-      {/* Volume par discipline */}
-      {sportStats.length>0 && (
-        <div className="card-enter card-enter-3" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 12px' }}>Volume par discipline</p>
-          {sportStats.map(s=>{ const pct=s.plannedH>0?Math.min(s.doneH/s.plannedH*100,100):0; const c=SPORT_BORDER[s.sport]; return (
-            <div key={s.sport} style={{ marginBottom:10 }}>
-              <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4 }}>
-                <span style={{ fontSize:12,display:'flex',alignItems:'center',gap:5 }}><SportBadge sport={s.sport} size="xs"/><span style={{ fontWeight:500,color:'var(--text-mid)' }}>{SPORT_LABEL[s.sport]}</span></span>
-                <span style={{ fontSize:10,fontFamily:'DM Mono,monospace',color:c,fontWeight:600 }}>{s.doneH.toFixed(1)}h <span style={{ color:'var(--text-dim)',fontWeight:400 }}>/ {s.plannedH.toFixed(1)}h</span></span>
-              </div>
-              <AnimatedBar pct={pct} gradient={`linear-gradient(90deg,${c}bb,${c})`} height={6} />
-            </div>
-          )})}
-        </div>
-      )}
-
-      {/* Aujourd'hui */}
-      {todaySessions.length>0 && (
-        <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 10px' }}>Aujourd'hui — {week[todayIdx]?.day} {week[todayIdx]?.date}</p>
-          {todaySessions.map(s=>(
-            <div key={s.id} onClick={()=>setDetailModal(s)} style={{ display:'flex',alignItems:'center',gap:10,padding:'10px 13px',borderRadius:10,background:SPORT_BG[s.sport],borderLeft:`3px solid ${SPORT_BORDER[s.sport]}`,cursor:'pointer',marginBottom:7,position:'relative' }}>
-              <SportBadge sport={s.sport} size="sm"/>
-              <div style={{ flex:1 }}>
-                <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:0 }}>{s.title}</p>
-                <p style={{ fontSize:11,color:'var(--text-dim)',margin:'2px 0 0' }}>{s.time} · {formatHM(s.durationMin)}{s.tss?` · ${s.tss} TSS`:''}</p>
-              </div>
-              {s.status!=='done' && isSessionModified(s) && <span title="Modifié par toi" style={{ width:7,height:7,borderRadius:'50%',background:'#f97316',flexShrink:0 }} />}
-              <span style={{ padding:'4px 10px',borderRadius:20,background:s.status==='done'?`${SPORT_BORDER[s.sport]}22`:'var(--bg-card2)',border:`1px solid ${s.status==='done'?SPORT_BORDER[s.sport]:'var(--border)'}`,color:s.status==='done'?SPORT_BORDER[s.sport]:'var(--text-dim)',fontSize:10,fontWeight:600 }}>{s.status==='done'?'FAIT':'À faire'}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
 
       {/* View switch */}

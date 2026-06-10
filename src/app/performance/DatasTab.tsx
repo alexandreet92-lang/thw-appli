@@ -5786,34 +5786,26 @@ function YearDatasSubTab() {
 // ════════════════════════════════════════════════
 // MAIN COMPONENT
 // ════════════════════════════════════════════════
-export default function DatasTab({ onSelect, selectedDatum, profile, onOpenAI, onNavigateToTests }: Props) {
-  type SubTab = 'zones' | 'records' | 'yeardata'
-  const [subTab, setSubTab] = useState<SubTab>('zones')
+export default function DatasTab({ onSelect, selectedDatum, profile, onNavigateToTests }: Props) {
+  type SubTab = 'records' | 'yeardata'
+  const [subTab, setSubTab] = useState<SubTab>('records')
 
-  const SUB_TABS: { id: SubTab; label: string; color: string; bg: string }[] = [
-    { id: 'zones',    label: 'Zones',      color: '#06B6D4', bg: 'rgba(6,182,212,0.10)' },
-    { id: 'records',  label: 'Records',    color: '#f97316', bg: 'rgba(249,115,22,0.10)' },
-    { id: 'yeardata', label: 'Year Datas', color: '#a855f7', bg: 'rgba(168,85,247,0.10)' },
+  const SUB_TABS: { id: SubTab; label: string }[] = [
+    { id: 'records',  label: 'Records' },
+    { id: 'yeardata', label: 'Year Datas' },
   ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* Sub-tab bar */}
+      {/* Sub-tab bar — classe partagée .tab-btn (tokenisée) */}
       <div style={{ display: 'flex', gap: 6 }}>
         {SUB_TABS.map(t => (
-          <button key={t.id} onClick={() => setSubTab(t.id)} style={{
-            flex: 1, padding: '10px 8px', borderRadius: 12, border: '1px solid', cursor: 'pointer',
-            borderColor: subTab === t.id ? t.color : 'var(--border)',
-            background: subTab === t.id ? t.bg : 'var(--bg-card)',
-            color: subTab === t.id ? t.color : 'var(--text-mid)',
-            fontFamily: 'Syne,sans-serif', fontSize: 12, fontWeight: subTab === t.id ? 700 : 400,
-          }}>
+          <button key={t.id} onClick={() => setSubTab(t.id)} className={`tab-btn${subTab === t.id ? ' active' : ''}`} style={{ flex: 1 }}>
             {t.label}
           </button>
         ))}
       </div>
 
-      {subTab === 'zones'    && <ZonesSubTab profile={profile} onSelect={onSelect} selectedDatum={selectedDatum} onOpenAI={onOpenAI} />}
       {subTab === 'records'  && <RecordsSubTab onSelect={onSelect} selectedDatum={selectedDatum} profile={profile} onNavigateToTests={onNavigateToTests} />}
       {subTab === 'yeardata' && <YearDatasSubTab />}
     </div>

@@ -19,6 +19,8 @@ const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PERFORMANCE_ONBOARDING } from '@/onboarding/configs/performance.config'
+import { ProfilGlobalGrid } from '@/app/performance/components/profil/ProfilGlobalGrid'
+import { TestCard } from '@/app/performance/components/tests/TestCard'
 
 // ── Types ───────────────────────────────────────────────────────
 type PerfTab = 'profil' | 'datas' | 'tests'
@@ -582,16 +584,16 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
             <TInput label="CSS" value={p.css} onChange={v => setP({...p,css:v})} placeholder="1:28"/>
           </div>
         ) : (
-          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap:10 }}>
-            <PremiumStatCard label="FTP"          value={p.ftp}           unit="W"         sub={`${wkg} W/kg`}  color="#3B82F6" onSelect={() => onSelect('FTP', `${p.ftp} W`)}                   selected={isSel('FTP', p.ftp, 'W')}                         onAnalyze={() => onSelect('FTP', `${p.ftp} W`)}/>
-            <PremiumStatCard label="Allure seuil" value={p.thresholdPace} unit="/km"                            color="#10B981" onSelect={() => onSelect('Allure seuil', `${p.thresholdPace}/km`)} selected={selectedDatum?.label==='Allure seuil'}             onAnalyze={() => onSelect('Allure seuil', `${p.thresholdPace}/km`)}/>
-            <PremiumStatCard label="VMA"           value={p.vma}           unit="km/h"                           color="#8B5CF6" onSelect={() => onSelect('VMA', `${p.vma} km/h`)}                 selected={isSel('VMA', p.vma, 'km/h')}                      onAnalyze={() => onSelect('VMA', `${p.vma} km/h`)}/>
-            <PremiumStatCard label="CSS"           value={p.css}           unit="/100m"                          color="#06B6D4" onSelect={() => onSelect('CSS', `${p.css}/100m`)}                 selected={selectedDatum?.label==='CSS'}                      onAnalyze={() => onSelect('CSS', `${p.css}/100m`)}/>
-            <PremiumStatCard label="FC max"        value={p.hrMax}         unit="bpm"                            color="#EF4444" onSelect={() => onSelect('FC max', `${p.hrMax} bpm`)}             selected={isSel('FC max', p.hrMax, 'bpm')}                  onAnalyze={() => onSelect('FC max', `${p.hrMax} bpm`)}/>
-            <PremiumStatCard label="FC repos"      value={p.hrRest}        unit="bpm"                            color="#F59E0B" onSelect={() => onSelect('FC repos', `${p.hrRest} bpm`)}          selected={isSel('FC repos', p.hrRest, 'bpm')}               onAnalyze={() => onSelect('FC repos', `${p.hrRest} bpm`)}/>
-            <PremiumStatCard label="LTHR"          value={p.lthr}          unit="bpm"                            color="#F97316" onSelect={() => onSelect('LTHR', `${p.lthr} bpm`)}               selected={isSel('LTHR', p.lthr, 'bpm')}                     onAnalyze={() => onSelect('LTHR', `${p.lthr} bpm`)}/>
-            <PremiumStatCard label="VO2max"        value={p.vo2max}        unit="ml/kg/min"                      color="#EC4899" onSelect={() => onSelect('VO2max', `${p.vo2max} ml/kg/min`)}      selected={isSel('VO2max', p.vo2max, 'ml/kg/min')}           onAnalyze={() => onSelect('VO2max', `${p.vo2max} ml/kg/min`)}/>
-          </div>
+          <ProfilGlobalGrid isMobile={isMobile} metrics={[
+            { label:'FTP',          value:p.ftp,           unit:'W',         sub:`${wkg} W/kg`, selected:isSel('FTP', p.ftp, 'W'),                onSelect:()=>onSelect('FTP', `${p.ftp} W`) },
+            { label:'Allure seuil', value:p.thresholdPace, unit:'/km',       selected:selectedDatum?.label==='Allure seuil',                    onSelect:()=>onSelect('Allure seuil', `${p.thresholdPace}/km`) },
+            { label:'VMA',          value:p.vma,           unit:'km/h',      selected:isSel('VMA', p.vma, 'km/h'),                              onSelect:()=>onSelect('VMA', `${p.vma} km/h`) },
+            { label:'CSS',          value:p.css,           unit:'/100m',     selected:selectedDatum?.label==='CSS',                             onSelect:()=>onSelect('CSS', `${p.css}/100m`) },
+            { label:'FC max',       value:p.hrMax,         unit:'bpm',       selected:isSel('FC max', p.hrMax, 'bpm'),                          onSelect:()=>onSelect('FC max', `${p.hrMax} bpm`) },
+            { label:'FC repos',     value:p.hrRest,        unit:'bpm',       selected:isSel('FC repos', p.hrRest, 'bpm'),                       onSelect:()=>onSelect('FC repos', `${p.hrRest} bpm`) },
+            { label:'LTHR',         value:p.lthr,          unit:'bpm',       selected:isSel('LTHR', p.lthr, 'bpm'),                             onSelect:()=>onSelect('LTHR', `${p.lthr} bpm`) },
+            { label:'VO2max',       value:p.vo2max,        unit:'ml/kg/min', selected:isSel('VO2max', p.vo2max, 'ml/kg/min'),                   onSelect:()=>onSelect('VO2max', `${p.vo2max} ml/kg/min`) },
+          ]}/>
         )}
       </Card>
 
@@ -2087,49 +2089,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
   )
 }
 
-function TestCard({ test, accentColor, onOpen }: { test: TestDef; accentColor: string; onOpen: () => void }) {
-  const diffColor = DIFFICULTY_COLOR[test.difficulty]
-  return (
-    <div
-      className="card-enter"
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onOpen() }}
-      onMouseEnter={e => {
-        const el = e.currentTarget as HTMLDivElement
-        el.style.borderColor = `${accentColor}55`
-        el.style.boxShadow   = `0 0 0 1px ${accentColor}20, var(--shadow-card)`
-      }}
-      onMouseLeave={e => {
-        const el = e.currentTarget as HTMLDivElement
-        el.style.borderColor = 'var(--border)'
-        el.style.boxShadow   = 'var(--shadow-card)'
-      }}
-      style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:'18px 20px', boxShadow:'var(--shadow-card)', display:'flex', flexDirection:'column', gap:12, cursor:'pointer', transition:'border-color 0.15s, box-shadow 0.15s' }}
-    >
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' as const, marginBottom:6 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0, color:'var(--text)', letterSpacing:'-0.01em' }}>{test.name}</h3>
-          <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:20, background:`${diffColor}20`, color:diffColor, textTransform:'uppercase' as const, letterSpacing:'0.07em', flexShrink:0 }}>{test.difficulty}</span>
-        </div>
-        <p style={{ fontSize:12, color:'var(--text-dim)', margin:0, lineHeight:1.6, display:'-webkit-box', WebkitBoxOrient:'vertical' as const, WebkitLineClamp:2, overflow:'hidden' }}>
-          {test.desc}
-        </p>
-      </div>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          <span style={{ fontSize:11, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{test.duration}</span>
-        </div>
-        <span style={{ fontSize:11, color:accentColor, fontWeight:600, display:'flex', alignItems:'center', gap:4, opacity:0.8 }}>
-          Voir le protocole
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M9 18l6-6-6-6"/></svg>
-        </span>
-      </div>
-    </div>
-  )
-}
+// TestCard extrait dans components/tests/TestCard.tsx (patron unique, neutre).
 
 // ════════════════════════════════════════════════
 // HISTORIQUE TESTS GLOBAL
@@ -2331,7 +2291,7 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
       {/* Cards grid */}
       <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap:12 }}>
         {tests.map(test => (
-          <TestCard key={test.id} test={test} accentColor={cfg.color} onOpen={() => setOpenTest({ sport:testSport, test })}/>
+          <TestCard key={test.id} test={test} onOpen={() => setOpenTest({ sport:testSport, test })}/>
         ))}
       </div>
 

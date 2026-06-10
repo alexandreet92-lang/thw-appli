@@ -61,17 +61,6 @@ function buildAIMessage(datum: SelectedDatum): string {
 }
 
 // ── UI primitives ────────────────────────────────────────────────
-function Card({ children, style, delay }: { children: React.ReactNode; style?: React.CSSProperties; delay?: number }) {
-  return (
-    <div
-      className="card-enter"
-      style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, padding:20, boxShadow:'var(--shadow-card)', animationDelay: delay ? `${delay}ms` : undefined, ...style }}
-    >
-      {children}
-    </div>
-  )
-}
-
 function StatBox({ label, value, unit, sub, color, onSelect, selected }: {
   label: string; value: string|number; unit?: string; sub?: string; color?: string;
   onSelect?: () => void; selected?: boolean;
@@ -235,114 +224,6 @@ const SPORT_SPEC_TABS: { id: SportSpecId; label: string; color: string }[] = [
 ]
 
 // ── Premium stat card ────────────────────────────────────────────
-function PremiumStatCard({ label, value, unit, sub, color, onSelect, selected, onAnalyze }: {
-  label: string; value: string|number; unit?: string; sub?: string; color: string;
-  onSelect?: () => void; selected?: boolean; onAnalyze?: () => void;
-}) {
-  const isInt = typeof value === 'number' && Number.isInteger(value)
-  return (
-    <div onClick={onSelect} style={{
-      background: selected ? `${color}10` : 'var(--bg-card)',
-      border: `1px solid ${selected ? color + '55' : 'var(--border)'}`,
-      borderRadius: 12, padding: '16px', cursor: onSelect ? 'pointer' : undefined,
-      boxShadow: '0 1px 3px rgba(0,0,0,0.06)', position: 'relative',
-      transition: 'border-color 0.15s, background 0.15s', userSelect: 'none' as const,
-    }}>
-      {onAnalyze && (
-        <button onClick={e => { e.stopPropagation(); onAnalyze() }} title="Analyser avec l'IA"
-          style={{ position:'absolute', top:10, right:10, background:'none', border:'none', cursor:'pointer', padding:3, borderRadius:4, color:'#D1D5DB', display:'flex', alignItems:'center', lineHeight:1, transition:'color 0.15s' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = color }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#D1D5DB' }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        </button>
-      )}
-      <p style={{ fontSize:11, fontWeight:500, textTransform:'uppercase' as const, letterSpacing:'0.05em', color:'#9CA3AF', margin:'0 0 8px' }}>{label}</p>
-      <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
-        <span style={{ fontFamily:'DM Mono,monospace', fontSize:24, fontWeight:700, color, lineHeight:1 }}>
-          {isInt ? <CountUp value={value as number} /> : value}
-        </span>
-        {unit && <span style={{ fontSize:14, fontWeight:400, color:'#9CA3AF' }}>{unit}</span>}
-      </div>
-      {sub && <p style={{ fontSize:12, color:'#6B7280', margin:'4px 0 0' }}>{sub}</p>}
-    </div>
-  )
-}
-
-// ── Semi-circular gauge ───────────────────────────────────────────
-function SemiGauge({ value, max, label, display, color, levelLabel }: {
-  value: number; max: number; label: string; display: string; color: string; levelLabel: string;
-}) {
-  const W = 150, H = 86, CX = W / 2, CY = H - 4, R = 62, STROKE = 10
-  const pct = Math.min(Math.max(value / max, 0), 0.999)
-  const currentAngle = Math.PI - pct * Math.PI
-
-  function arcPath(fromA: number, toA: number): string {
-    const x1 = CX + R * Math.cos(fromA), y1 = CY - R * Math.sin(fromA)
-    const x2 = CX + R * Math.cos(toA),   y2 = CY - R * Math.sin(toA)
-    const sweep = fromA > toA ? 1 : 0
-    const largeArc = Math.abs(fromA - toA) > Math.PI ? 1 : 0
-    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 ${largeArc} ${sweep} ${x2.toFixed(2)} ${y2.toFixed(2)}`
-  }
-
-  const ZONE_COLORS = [
-    { pct: 0.25, col: '#9CA3AF' }, { pct: 0.50, col: '#3b82f6' },
-    { pct: 0.70, col: '#22c55e' }, { pct: 0.85, col: '#eab308' },
-    { pct: 0.95, col: '#f97316' }, { pct: 1.00, col: '#ef4444' },
-  ]
-
-  const nx = CX + (R - 6) * Math.cos(currentAngle)
-  const ny = CY - (R - 6) * Math.sin(currentAngle)
-
-  return (
-    <div style={{ textAlign:'center' }}>
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display:'block', margin:'0 auto' }}>
-        <path d={arcPath(Math.PI, 0.001)} fill="none" stroke="#F3F4F6" strokeWidth={STROKE} strokeLinecap="round"/>
-        {ZONE_COLORS.map(({ pct: zp, col }, i, arr) => {
-          const prev = i === 0 ? 0 : arr[i-1].pct
-          return <path key={i} d={arcPath(Math.PI - prev*Math.PI, Math.PI - zp*Math.PI)} fill="none" stroke={col} strokeWidth={STROKE} strokeLinecap="butt" opacity="0.22"/>
-        })}
-        {pct > 0.005 && <path d={arcPath(Math.PI, currentAngle)} fill="none" stroke={color} strokeWidth={STROKE} strokeLinecap="round"/>}
-        {pct > 0.005 && <line x1={CX} y1={CY} x2={nx.toFixed(2)} y2={ny.toFixed(2)} stroke={color} strokeWidth={2.5} strokeLinecap="round"/>}
-        <circle cx={CX} cy={CY} r={5} fill="var(--bg-card)" stroke={color} strokeWidth={2}/>
-      </svg>
-      <p style={{ fontFamily:'DM Mono,monospace', fontSize:18, fontWeight:700, color, margin:'-4px 0 4px', lineHeight:1 }}>{display}</p>
-      <span style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:`${color}20`, color, fontWeight:600 }}>{levelLabel}</span>
-      <p style={{ fontSize:10, color:'#9CA3AF', margin:'6px 0 0', textTransform:'uppercase' as const, letterSpacing:'0.05em' }}>{label}</p>
-    </div>
-  )
-}
-
-// ── Mini radar compact ────────────────────────────────────────────
-function MiniRadar({ scores, labels, color }: { scores: number[]; labels: string[]; color: string }) {
-  const CX = 60, CY = 60, R = 44, N = scores.length
-  function pt(i: number, pct: number): [number, number] {
-    const a = (i / N) * Math.PI * 2 - Math.PI / 2
-    return [CX + R * pct * Math.cos(a), CY + R * pct * Math.sin(a)]
-  }
-  const poly = scores.map((s, i) => pt(i, Math.max(0.1, s / 100))).map(([x,y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
-  return (
-    <svg width={120} height={120} viewBox="0 0 120 120">
-      {[0.25, 0.5, 0.75, 1].map(f => (
-        <polygon key={f} points={Array.from({length:N},(_,i)=>pt(i,f)).map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}
-          fill="none" stroke="#F3F4F6" strokeWidth="1"/>
-      ))}
-      {Array.from({length:N},(_,i) => { const [x,y] = pt(i,1); return <line key={i} x1={CX} y1={CY} x2={x.toFixed(1)} y2={y.toFixed(1)} stroke="#F3F4F6" strokeWidth="1"/> })}
-      <polygon points={poly} fill={`${color}25`} stroke={color} strokeWidth="1.5"/>
-      {scores.map((s, i) => {
-        const [x, y] = pt(i, Math.max(0.1, s / 100))
-        return <circle key={i} cx={x.toFixed(1)} cy={y.toFixed(1)} r="3" fill={color}/>
-      })}
-      {labels.map((l, i) => {
-        const [x, y] = pt(i, 1.25)
-        return <text key={i} x={x.toFixed(1)} y={y.toFixed(1)} textAnchor="middle" dominantBaseline="middle" style={{ fontSize:8, fill:'#9CA3AF', fontWeight:'500' }}>{l}</text>
-      })}
-    </svg>
-  )
-}
-
-// ════════════════════════════════════════════════
-// ONGLET PROFIL
-// ════════════════════════════════════════════════
 function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAnalyzeProfile }: {
   onSelect: (label: string, value: string) => void
   selectedDatum: SelectedDatum | null
@@ -507,7 +388,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', paddingTop: 'var(--space-2)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-10)', paddingTop: 'var(--space-4)' }}>
 
       {profileEmpty && (
         <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
@@ -521,7 +402,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
 
       {/* Profil Global */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-5)' }}>
           <div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Profil Global</h2>
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>Paramètres physiologiques transversaux</p>

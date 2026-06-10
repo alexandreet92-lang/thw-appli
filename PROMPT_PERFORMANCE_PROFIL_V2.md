@@ -1,56 +1,46 @@
-# CORRECTIF — Performance / onglet Profil : refonte réellement appliquée (V2)
+# CORRECTIF — Performance / onglet Profil (V2) : vérification + aération + nettoyage
 
-## Constat initial (juste)
-Le passage précédent n'avait extrait que la *grille d'affichage* de Profil Global.
-Le reste de `ProfilTab` (cartes bordées, titres à barre colorée, formulaire de
-benchmarks en ligne, jauges rondes multicolores) était intact. Ce passage **réécrit
-le rendu de `ProfilTab`** (page.tsx) et extrait les sections en composants enforced.
+## Constat clé (preuve, à lire en premier)
+La refonte du Profil **est déjà dans le code ET sur `main`** (commit `b6b6a99`, mergé
+dans `main` = `a7625c0`). Vérifié objectivement :
+- `grep "<Card"` dans `page.tsx` → **0** · `grep "<SemiGauge"` → **0** ·
+  `grep "linear-gradient(180deg"` → **0**.
+- `ProfilSpecific` / `LevelBars` / `BenchmarkSheet` sont **câblés** dans `ProfilTab`,
+  qui est rendu par `PerformancePage`.
+- `git ls-tree origin/main` liste bien les 7 fichiers `components/profil/`.
 
-## Changements appliqués (AVANT → APRÈS)
-1. **Cartes** : les 3 `<Card>` (Global/Spécifique/Niveau) supprimées → sections séparées
-   par `var(--space-8)`. `grep "<Card>"` dans le rendu = **0**.
-2. **Titres** : `<h2>` en `var(--font-display)` (Fraunces) 15px, **plus de barre
-   verticale colorée** (`grep linear-gradient(180deg` dans le rendu = **0**).
-3. **Analyser / Modifier** : liens discrets (`var(--primary)` / neutre), plus de bouton
-   orange plein.
-4. **Profil Global** : `ProfilGlobalGrid` (nue, 4 col desktop / **2 col mobile, les 8**).
-5. **Onglets sport** : texte neutre + **point** couleur du sport (`--sport-*`), plus de
-   pill pleine (`ProfilSpecific`).
-6. **Sélecteur de type de zone (ajouté)** : Running FC/Allure · Cyclisme FC/Puissance ·
-   Natation FC/Allure · Hyrox FC. Un seul jeu visible.
-7. **Barres de zones animées (ajouté)** : `ZoneBars` + `AnimatedBar` (clé `sport-ztype`
-   → réanime au changement). Couleurs de zone = tokens. Respecte reduced-motion.
-8. **Sous-métriques VMA/LTHR/VO2max** : `var(--text)` neutres, rangée nue à filets.
-9. **Formulaire de benchmarks → feuille** : `BenchmarkSheet` via `createPortal`
-   (réutilise `Sheet`), ouvert par « Modifier les benchmarks → ». Inputs arrondis 10px,
-   **unité intégrée à droite**, focus `var(--primary)` + halo `var(--primary-dim)`.
-   Bouton « Enregistrer » en `var(--primary)` plein. Le formulaire inline est supprimé.
-10. **Niveau estimé** : `SemiGauge` (jauges rondes) **retiré du rendu** (`grep <SemiGauge`
-    = 0) → `LevelBars` : échelle Débutant→Élite, piste neutre, repère `var(--primary)`
-    **animé** à sa position, qualificatif en tag.
+→ **Le code source n'est PAS l'ancien.** Si la page affichée ressemble encore à
+l'ancienne, c'est le **déploiement Vercel qui n'a pas été régénéré** (problème récurrent
+de ce projet, déjà constaté : « sur vercel ça ne s'est pas mis à jour »). Le code sur
+`main` est la nouvelle version ; vérifier l'onglet Deployments de Vercel pour le commit
+`a7625c0` (build en cours / échoué / non déclenché). Aucune correction de code ne peut
+faire apparaître la refonte si Vercel sert un ancien build.
 
-## Checklist d'acceptation
-- [x] Aucune carte bordée/ombrée (Global/Spécifique/Niveau).
-- [x] Titres Fraunces, plus aucune barre verticale colorée.
-- [x] « Analyser » n'est plus un bouton orange plein.
-- [x] Mobile : les **8** métriques de Profil Global visibles (2 colonnes).
-- [x] Onglets sport neutres + point de couleur.
-- [x] Toggle de type de zone fonctionnel (FC/Allure/Puissance selon sport).
-- [x] Cyclisme affiche **7** zones de puissance (`powerZones`).
-- [x] Barres de zones animées au montage et au changement.
-- [x] VMA/LTHR/VO2max en `var(--text)` — aucune couleur sur ces chiffres.
+## Ce que ce passage ajoute réellement
+1. **Aération** (nouvelle exigence de cette version du prompt) : rythme vertical
+   augmenté — espace entre sections `var(--space-8)` → **`var(--space-10)`** (40px),
+   padding haut `var(--space-2)` → `var(--space-4)`, en-tête Profil Global +`space-5`,
+   Profil Spécifique gap `space-5→space-6` et colonne contenu `space-4→space-5`, barres
+   de zones `space-2→space-3`. La page respire davantage.
+2. **Nettoyage (#10 « désimporter »)** : les définitions mortes `SemiGauge`, `MiniRadar`,
+   `Card`, `PremiumStatCard` sont **physiquement supprimées** de `page.tsx`
+   (`grep "function SemiGauge("` → 0, etc.). Plus aucun composant de jauge présent.
+
+## Checklist d'acceptation (re-vérifiée sur le code courant)
+- [x] Aucune carte bordée/ombrée (Global/Spécifique/Niveau) — `<Card`=0.
+- [x] Titres Fraunces, aucune barre verticale colorée — `linear-gradient(180deg`=0.
+- [x] « Analyser » = lien `var(--primary)`, plus de bouton orange.
+- [x] Mobile : 8 métriques Profil Global (grille 2 colonnes).
+- [x] Onglets sport neutres + point couleur.
+- [x] Toggle de type de zone (FC/Allure/Puissance selon sport).
+- [x] Cyclisme = 7 zones de puissance (`powerZones`).
+- [x] Barres de zones animées au montage et au changement (clé `sport-ztype`).
+- [x] VMA/LTHR/VO2max en `var(--text)` (aucune couleur sur ces chiffres).
 - [x] Formulaire de benchmarks en **feuille** (createPortal) via « Modifier les benchmarks ».
-- [x] Inputs arrondis + unité intégrée + focus `var(--primary)`.
-- [x] Bouton d'enregistrement en `var(--primary)` plein.
-- [x] Jauges rondes disparues → barres de niveau animées.
-
-## Caveat documenté (honnêteté)
-Les **définitions** des anciens composants `SemiGauge`, `MiniRadar`, `Card`,
-`PremiumStatCard` **restent présentes** dans `page.tsx` (≈ 2 500 l.) mais ne sont **plus
-rendues ni importées** (dead code, avertissements lint « unused » non bloquants). Je ne
-les supprime pas dans ce passage pour limiter le risque sur ce gros fichier — à
-garbage-collecter dans un commit dédié.
+- [x] Inputs arrondis 10px + unité intégrée + focus `var(--primary)` + halo.
+- [x] Bouton d'enregistrement `var(--primary)` plein.
+- [x] Jauges rondes disparues → `LevelBars` animées ; **defs SemiGauge supprimées**.
 
 ## Garde-fou
-6 nouveaux fichiers `components/profil/` ajoutés à `ENFORCED_PATHS`. Vérifié :
-enforce **0 couleur en dur (34 fichiers)**, `npm run build` OK. Commit local, pas de push.
+Fichiers `components/profil/` dans `ENFORCED_PATHS`. Vérifié : enforce **0 couleur en dur
+(34 fichiers)**, `npm run build` OK. Commit local, pas de push.

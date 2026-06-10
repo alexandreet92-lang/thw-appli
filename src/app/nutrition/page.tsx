@@ -15,6 +15,7 @@ import { useDailyMeals } from '@/hooks/useDailyMeals'
 import { useHydration } from '@/hooks/useHydration'
 import { useProfile } from '@/hooks/useProfile'
 import { TodayTab } from '@/app/nutrition/components/today/TodayTab'
+import { CompositionTab } from '@/app/nutrition/components/composition/CompositionTab'
 import { PlanShoppingList } from '@/app/nutrition/components/plan/PlanShoppingList'
 import { SuiviSection } from '@/app/nutrition/components/suivi/SuiviSection'
 import { NutritionRail } from '@/app/nutrition/components/NutritionRail'
@@ -38,7 +39,6 @@ import { NUTRITION_ONBOARDING } from '@/onboarding/configs/nutrition.config'
 // TYPES
 // ══════════════════════════════════════════════════════════════════
 type DayType      = 'low' | 'mid' | 'hard'
-type WeightMetric = 'weight_kg' | 'fat_mass_percent' | 'muscle_mass_kg' | 'ffmi' | 'bmi'
 type HistRange    = '7j' | '14j' | '30j'
 type MealKey      = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
 type PlanVariant  = 'A' | 'B'
@@ -342,170 +342,6 @@ function MacrosChart({ logs, activePlan }: { logs: DailyLog[]; activePlan: Nutri
 }
 
 // ── Empty state réutilisable (cohérent design system) ───────────
-function NutritionEmpty({ icon, text, hint }: { icon: 'chart' | 'scale'; text: string; hint?: string }) {
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      gap: 8, padding: '32px 16px', textAlign: 'center',
-      border: '1px dashed var(--border)', borderRadius: 14, background: 'var(--bg-card2)',
-    }}>
-      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(6,182,212,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#06B6D4' }}>
-        {icon === 'chart' ? (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 4-5"/></svg>
-        ) : (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-        )}
-      </div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>{text}</div>
-      {hint && <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>{hint}</div>}
-    </div>
-  )
-}
-
-// Valeur d'une mesure pour la métrique demandée (bmi = poids / taille²).
-function weightMetricValue(l: WeightLog, metric: WeightMetric, heightCm: number | null): number | null {
-  if (metric === 'bmi') {
-    if (l.weight_kg && heightCm) { const h = heightCm / 100; return +(l.weight_kg / (h * h)).toFixed(1) }
-    return null
-  }
-  if (metric === 'ffmi') {
-    // FFMI = masse maigre / taille². Masse maigre = poids × (1 − MG%/100).
-    if (l.weight_kg && heightCm && l.fat_mass_percent != null) {
-      const h = heightCm / 100
-      const lean = l.weight_kg * (1 - l.fat_mass_percent / 100)
-      return +(lean / (h * h)).toFixed(1)
-    }
-    return null
-  }
-  if (metric === 'weight_kg')        return l.weight_kg
-  if (metric === 'fat_mass_percent') return l.fat_mass_percent
-  return l.muscle_mass_kg
-}
-
-// Stats de composition pour la métrique : actuel, min, max, variation, tendance/semaine.
-function computeBodyStats(logs: WeightLog[], metric: WeightMetric, heightCm: number | null) {
-  const sorted = [...logs].sort((a, b) => a.measured_at.localeCompare(b.measured_at))
-  const pts = sorted
-    .map(l => ({ t: new Date(l.measured_at).getTime(), v: weightMetricValue(l, metric, heightCm) }))
-    .filter((p): p is { t: number; v: number } => p.v != null)
-  if (!pts.length) return null
-  const vals = pts.map(p => p.v)
-  const current = vals[vals.length - 1]
-  let trendPerWeek: number | null = null
-  const last = pts.slice(-4)
-  if (last.length >= 2) {
-    const t0 = last[0].t
-    const xs = last.map(p => (p.t - t0) / 86400000)
-    const ys = last.map(p => p.v)
-    const meanX = xs.reduce((a, b) => a + b, 0) / xs.length
-    const meanY = ys.reduce((a, b) => a + b, 0) / ys.length
-    let num = 0, den = 0
-    for (let i = 0; i < xs.length; i++) { num += (xs[i] - meanX) * (ys[i] - meanY); den += (xs[i] - meanX) ** 2 }
-    if (den !== 0) trendPerWeek = +((num / den) * 7).toFixed(2)
-  }
-  return {
-    current,
-    min: Math.min(...vals),
-    max: Math.max(...vals),
-    deltaTotal: +(current - vals[0]).toFixed(1),
-    trendPerWeek,
-    count: vals.length,
-  }
-}
-
-const METRIC_UNIT: Record<WeightMetric, string> = {
-  weight_kg: 'kg', fat_mass_percent: '%', muscle_mass_kg: 'kg', ffmi: '', bmi: '',
-}
-
-function WeightChart({ logs, metric, heightCm, goal }: { logs: WeightLog[]; metric: WeightMetric; heightCm: number | null; goal: number | null }) {
-  if (!logs.length) {
-    return <NutritionEmpty icon="scale" text="Aucune mesure enregistrée" hint="Ajoute ta première mesure ci-dessous." />
-  }
-
-  const sorted = [...logs].sort((a, b) => a.measured_at.localeCompare(b.measured_at))
-  const vals = sorted.map(l => weightMetricValue(l, metric, heightCm))
-  const nonNull = vals.filter((v): v is number => v !== null)
-  if (!nonNull.length) {
-    return <NutritionEmpty icon="scale" text="Aucune donnée pour cette métrique" hint={metric === 'bmi' ? "Renseigne ta taille dans le profil." : undefined} />
-  }
-
-  const showGoal = metric === 'weight_kg' && goal != null && goal > 0
-  const minV = Math.min(...nonNull, ...(showGoal ? [goal as number] : []))
-  const maxV = Math.max(...nonNull, ...(showGoal ? [goal as number] : []))
-  const range = maxV - minV || 1
-  const chartH = 160
-  const chartW = 300
-  const leftPad = 40
-  const n = sorted.length
-  // Axe X chronologique (proportionnel au temps, pas à l'index).
-  const ts = sorted.map(l => new Date(l.measured_at).getTime())
-  const t0 = ts[0], tSpan = (ts[n - 1] - t0) || 1
-
-  function toX(i: number) {
-    return n === 1 ? leftPad + chartW / 2 : leftPad + ((ts[i] - t0) / tSpan) * chartW
-  }
-  function toY(v: number) {
-    return chartH - ((v - minV) / range) * chartH * 0.8 - chartH * 0.1
-  }
-
-  // Courbe lissée : moyenne mobile (fenêtre 3) sur les valeurs non nulles.
-  const smoothed: (number | null)[] = vals.map((v, i) => {
-    if (v === null) return null
-    const win: number[] = []
-    for (let k = i - 1; k <= i + 1; k++) { const w = vals[k]; if (w != null) win.push(w) }
-    return win.length ? +(win.reduce((a, b) => a + b, 0) / win.length).toFixed(2) : v
-  })
-  const smoothPoints = smoothed
-    .map((v, i) => (v !== null ? `${toX(i)},${toY(v)}` : null))
-    .filter(Boolean)
-    .join(' ')
-
-  const yLabels = [minV, (minV + maxV) / 2, maxV]
-
-  return (
-    <svg viewBox={`0 0 ${chartW + leftPad} ${chartH + 28}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-      {yLabels.map((v, i) => {
-        const y = toY(v)
-        return (
-          <g key={i}>
-            <line x1={leftPad} y1={y} x2={chartW + leftPad} y2={y} stroke="var(--border)" strokeWidth={1} />
-            <text x={leftPad - 4} y={y + 4} textAnchor="end" fill="var(--text-dim)" fontSize={9} fontFamily="DM Mono,monospace">
-              {v.toFixed(1)}
-            </text>
-          </g>
-        )
-      })}
-      {showGoal && (() => {
-        const gy = toY(goal as number)
-        return (
-          <g>
-            <line x1={leftPad} y1={gy} x2={chartW + leftPad} y2={gy} stroke="#22c55e" strokeWidth={1.5} strokeDasharray="5 4" />
-            <text x={chartW + leftPad} y={gy - 4} textAnchor="end" fill="#22c55e" fontSize={9} fontFamily="DM Mono,monospace" fontWeight={700}>
-              cible {(goal as number).toFixed(1)}
-            </text>
-          </g>
-        )
-      })()}
-      {/* Points de mesure bruts — discrets */}
-      {sorted.map((_, i) => {
-        const v = vals[i]
-        if (v === null) return null
-        return <circle key={i} cx={toX(i)} cy={toY(v)} r={2.5} fill="#94a3b8" opacity={0.7} />
-      })}
-      {/* Courbe lissée (moyenne mobile) — par-dessus */}
-      {smoothPoints && <polyline points={smoothPoints} fill="none" stroke="#06B6D4" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />}
-      {sorted.map((entry, i) => {
-        if (i % Math.ceil(n / 5) !== 0 && i !== n - 1) return null
-        return (
-          <text key={entry.measured_at} x={toX(i)} y={chartH + 16} textAnchor="middle" fill="var(--text-dim)" fontSize={8} fontFamily="DM Sans,sans-serif">
-            {`${entry.measured_at.slice(8, 10)}/${entry.measured_at.slice(5, 7)}`}
-          </text>
-        )
-      })}
-    </svg>
-  )
-}
-
 // ══════════════════════════════════════════════════════════════════
 // SECTION STYLES
 // ══════════════════════════════════════════════════════════════════
@@ -1024,28 +860,9 @@ export default function NutritionPage() {
   }, [tab])
   const [planVariant, setPlanVariant] = useState<PlanVariant>('A')
   const [histRange, setHistRange] = useState<HistRange>('7j')
-  const [weightMetric, setWeightMetric] = useState<WeightMetric>('weight_kg')
-  const [bodyRangeDays, setBodyRangeDays] = useState<number>(90)
-  const [goalWeight, setGoalWeight] = useState<number | null>(null)
-  // Mesures filtrées sur la période sélectionnée (graphe + tuiles).
-  const bodyLogs = weightLogs.filter(l => new Date(l.measured_at).getTime() >= Date.now() - bodyRangeDays * 86400000)
-  const [goalInput, setGoalInput] = useState('')
-  useEffect(() => {
-    const v = typeof window !== 'undefined' ? window.localStorage.getItem('thw_goal_weight') : null
-    if (v) { setGoalWeight(parseFloat(v)); setGoalInput(v) }
-  }, [])
-  const saveGoalWeight = useCallback(() => {
-    const v = parseFloat(goalInput)
-    if (!isNaN(v) && v > 0) { window.localStorage.setItem('thw_goal_weight', String(v)); setGoalWeight(v) }
-    else { window.localStorage.removeItem('thw_goal_weight'); setGoalWeight(null) }
-  }, [goalInput])
   const [dayDetailOpen, setDayDetailOpen] = useState<PlanDay | null>(null)
   const [shoppingOpen, setShoppingOpen] = useState(false)
   const [regenConfirm, setRegenConfirm] = useState(false)
-  const [weightInputDate, setWeightInputDate] = useState<string>(today)
-  const [weightInput, setWeightInput] = useState<string>('')
-  const [mgInput, setMgInput] = useState<string>('')
-  const [mmInput, setMmInput] = useState<string>('')
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
@@ -1208,21 +1025,6 @@ export default function NutritionPage() {
     todayMealSet,
   )
 
-  // ── Save weight log ────────────────────────────────────────────
-  const handleSaveWeight = useCallback(async () => {
-    if (!weightInput && !mgInput && !mmInput) return
-    const log: Omit<WeightLog, 'id'> = {
-      measured_at: weightInputDate,
-      weight_kg: weightInput ? parseFloat(weightInput) : null,
-      fat_mass_percent: mgInput ? parseFloat(mgInput) : null,
-      muscle_mass_kg: mmInput ? parseFloat(mmInput) : null,
-      source: 'manual',
-    }
-    await saveWeightLog(log)
-    setWeightInput('')
-    setMgInput('')
-    setMmInput('')
-  }, [weightInputDate, weightInput, mgInput, mmInput, saveWeightLog])
 
   // ── Supprimer (désactiver) le plan actif ────────────────────────
   const handleDeletePlan = useCallback(async () => {
@@ -1407,211 +1209,13 @@ export default function NutritionPage() {
 
         {/* Weight section */}
         {tab === 'body' && (
-        <div style={cardStyle}>
-          <p style={sectionTitle}>Poids et composition</p>
-
-          {/* État de la source de mesures (générique). Détection : présence de
-              mesures issues d'une balance connectée. Sinon, bannière d'invite. */}
-          {weightLogs.some(l => l.source === 'connected_scale') ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 12px', marginBottom: 16, fontSize: 12, color: 'var(--text)' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
-              <span>Synchronisé · balance connectée</span>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', marginBottom: 16, fontSize: 12, color: 'var(--text-mid)' }}>
-              <span>Aucune balance connectée — la saisie ci-dessous remplit le suivi.</span>
-              <a href="/connections" style={{ color: '#06B6D4', fontWeight: 600, fontFamily: 'DM Sans,sans-serif', textDecoration: 'none', whiteSpace: 'nowrap' }}>Connecter →</a>
-            </div>
-          )}
-
-          {/* Sélecteur de période */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {([['30 j', 30], ['3 mois', 90], ['1 an', 365]] as const).map(([lbl, d]) => (
-              <button key={d} onClick={() => setBodyRangeDays(d)} style={{
-                padding: '5px 12px', borderRadius: 8, border: '1px solid var(--border)',
-                background: bodyRangeDays === d ? 'rgba(6,182,212,0.12)' : 'var(--bg-card2)',
-                color: bodyRangeDays === d ? '#06B6D4' : 'var(--text-dim)', fontWeight: bodyRangeDays === d ? 700 : 400,
-                fontSize: 12, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
-              }}>{lbl}</button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2">
-          {/* Metric toggle */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-            {([
-              { key: 'weight_kg' as WeightMetric, label: 'Poids' },
-              { key: 'fat_mass_percent' as WeightMetric, label: 'Masse grasse' },
-              { key: 'muscle_mass_kg' as WeightMetric, label: 'Masse musculaire' },
-              { key: 'ffmi' as WeightMetric, label: 'FFMI' },
-              { key: 'bmi' as WeightMetric, label: 'IMC' },
-            ]).map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setWeightMetric(key)}
-                style={{
-                  padding: '5px 12px', borderRadius: 8,
-                  border: '1px solid var(--border)',
-                  background: weightMetric === key ? 'rgba(6,182,212,0.12)' : 'var(--bg-card2)',
-                  color: weightMetric === key ? '#06B6D4' : 'var(--text-dim)',
-                  fontWeight: weightMetric === key ? 700 : 400,
-                  fontSize: 11, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Résumé stats + tendance */}
-          {(() => {
-            const st = computeBodyStats(bodyLogs, weightMetric, profile?.height_cm ?? null)
-            if (!st) return null
-            const u = METRIC_UNIT[weightMetric]
-            const goalGap = weightMetric === 'weight_kg' && goalWeight ? +(st.current - goalWeight).toFixed(1) : null
-            const cell = (label: string, value: string, color?: string) => (
-              <div style={{ flex: 1, minWidth: 64 }}>
-                <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans,sans-serif' }}>{label}</div>
-                <div style={{ fontSize: 14, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: color ?? 'var(--text)', marginTop: 2 }}>{value}</div>
-              </div>
-            )
-            return (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', marginBottom: 16 }}>
-                {cell('Actuel', `${st.current}${u}`, '#06B6D4')}
-                {cell('Min', `${st.min}${u}`)}
-                {cell('Max', `${st.max}${u}`)}
-                {cell('Variation', `${st.deltaTotal > 0 ? '+' : ''}${st.deltaTotal}${u}`)}
-                {st.trendPerWeek != null && cell('Tendance/sem', `${st.trendPerWeek > 0 ? '+' : st.trendPerWeek < 0 ? '−' : ''}${Math.abs(st.trendPerWeek)}${u}/sem`)}
-                {goalGap != null && cell('Écart objectif', `${goalGap > 0 ? '−' : '+'}${Math.abs(goalGap)}kg`, '#06B6D4')}
-              </div>
-            )
-          })()}
-
-          <WeightChart logs={bodyLogs} metric={weightMetric} heightCm={profile?.height_cm ?? null} goal={goalWeight} />
-          </div>{/* end xl:col-span-2 */}
-
-          <div>
-          {/* Weight input form */}
-          <div style={{ marginTop: 20 }}>
-            <div style={{ fontSize: 12, fontFamily: 'Syne,sans-serif', fontWeight: 700, marginBottom: 10, color: 'var(--text)' }}>
-              Ajouter une mesure
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 10 }}>
-              <div>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Date</label>
-                <input
-                  type="date"
-                  value={weightInputDate}
-                  onChange={e => setWeightInputDate(e.target.value)}
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Poids (kg)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={weightInput}
-                  onChange={e => setWeightInput(e.target.value)}
-                  placeholder="ex: 78.5"
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                    fontFamily: 'DM Mono,monospace',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Masse grasse (%)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={mgInput}
-                  onChange={e => setMgInput(e.target.value)}
-                  placeholder="ex: 14.2"
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                    fontFamily: 'DM Mono,monospace',
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Masse musculaire (kg)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={mmInput}
-                  onChange={e => setMmInput(e.target.value)}
-                  placeholder="ex: 62.1"
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                    fontFamily: 'DM Mono,monospace',
-                  }}
-                />
-              </div>
-            </div>
-            <Button
-              variant="secondary"
-              onClick={() => void handleSaveWeight()}
-              style={{ width: '100%', justifyContent: 'center' }}
-            >
-              Sauvegarder la mesure
-            </Button>
-          </div>
-
-          {/* Objectif de poids */}
-          <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 12, fontFamily: 'Syne,sans-serif', fontWeight: 700, marginBottom: 4, color: 'var(--text)' }}>
-              Objectif de poids
-            </div>
-            {/* Interconnexion → Mon plan (l'objectif du plan donne le sens de la cible) */}
-            <button
-              onClick={() => setTab('plan')}
-              style={{ background: 'none', border: 'none', padding: 0, marginBottom: 10, cursor: 'pointer',
-                fontSize: 11, color: '#06B6D4', fontFamily: 'DM Sans,sans-serif', fontWeight: 600, textAlign: 'left' }}
-            >
-              Relié à Mon plan →
-            </button>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 10, color: 'var(--text-dim)', display: 'block', marginBottom: 3 }}>Poids cible (kg)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={goalInput}
-                  onChange={e => setGoalInput(e.target.value)}
-                  placeholder="ex: 75.0"
-                  style={{
-                    width: '100%', background: 'var(--input-bg)',
-                    border: '1px solid var(--border)', borderRadius: 7,
-                    padding: '6px 8px', fontSize: 12, color: 'var(--text)',
-                    fontFamily: 'DM Sans,sans-serif',
-                  }}
-                />
-              </div>
-              <Button variant="secondary" onClick={saveGoalWeight} style={{ justifyContent: 'center' }}>
-                Définir
-              </Button>
-            </div>
-            {goalWeight != null && (
-              <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '8px 0 0', fontFamily: 'DM Sans,sans-serif' }}>
-                Cible tracée en vert sur le graphe « Poids ».
-              </p>
-            )}
-          </div>
-          </div>{/* end form column */}
-          </div>{/* end xl:grid-cols-3 */}
-        </div>
+          <CompositionTab
+            weightLogs={weightLogs}
+            heightCm={profile?.height_cm ?? null}
+            saveWeightLog={saveWeightLog}
+            onGoToPlan={() => setTab('plan')}
+            isDesktop={isDesktop}
+          />
         )}
 
         </motion.div>

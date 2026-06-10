@@ -5019,7 +5019,7 @@ function YearDatasSubTab() {
             return (
               <div key={mk} style={{ background: 'var(--bg-card2)', borderRadius: 10, padding: '10px 12px' }}>
                 <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{m.label}</p>
-                <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 15, fontWeight: 700, color: sportDef.color, margin: 0 }}>
+                <p className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
                   {val > 0 ? m.fmt(val) : <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 12 }}>—</span>}
                 </p>
               </div>
@@ -5559,7 +5559,7 @@ function YearDatasSubTab() {
       {(chartVals.some(v => v > 0) || allYears.length > 0) && (
         <Card>
           <div className="yd-reveal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
               Comparaison par année — {sportDef.label}
             </h3>
             <select value={validMetric} onChange={e => setChartMetric(e.target.value)}
@@ -5642,14 +5642,14 @@ function YearDatasSubTab() {
       {/* ════ Chart 3 — Volume global toutes disciplines ════ */}
       {hasC3Data && (
         <Card>
-          <h3 className="yd-reveal" style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: '0 0 14px' }}>
+          <h3 className="yd-reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 14px' }}>
             Volume global — Toutes disciplines
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {([
-              { key: 'heures'     as const, label: 'Heures',        color: '#06B6D4', max: Math.max(1, ...c3Stats.map(s => s.heures)),     fmt: (v: number) => `${v.toFixed(0)}h`  },
-              { key: 'nb_sorties' as const, label: 'Sorties',       color: '#f97316', max: Math.max(1, ...c3Stats.map(s => s.nb_sorties)), fmt: (v: number) => `${v}`              },
-              { key: 'km'         as const, label: 'Distance (km)', color: '#3b82f6', max: Math.max(1, ...c3Stats.map(s => s.km)),         fmt: (v: number) => `${v}km`             },
+              { key: 'heures'     as const, label: 'Heures',        color: 'var(--metric-heures)',   max: Math.max(1, ...c3Stats.map(s => s.heures)),     fmt: (v: number) => `${v.toFixed(0)}h`  },
+              { key: 'nb_sorties' as const, label: 'Sorties',       color: 'var(--metric-sorties)',  max: Math.max(1, ...c3Stats.map(s => s.nb_sorties)), fmt: (v: number) => `${v}`              },
+              { key: 'km'         as const, label: 'Distance (km)', color: 'var(--metric-distance)', max: Math.max(1, ...c3Stats.map(s => s.km)),         fmt: (v: number) => `${v}km`             },
             ]).map(({ key, label, color, max, fmt }) => (
               <div key={key}>
                 <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>
@@ -5675,9 +5675,9 @@ function YearDatasSubTab() {
                           className="yd-bar"
                           style={{ animation: `ydBarEnter 400ms ease-out ${i * 30}ms both` }}
                         />
-                        {bh > 24 && (
-                          <text x={cx} y={by + bh / 2 + 4} textAnchor="middle"
-                            style={{ fontSize: 10, fill: '#fff', fontFamily: 'DM Mono,monospace', fontWeight: '700' }}>
+                        {val > 0 && (
+                          <text x={cx} y={by - 4} textAnchor="middle" className="tnum"
+                            style={{ fontSize: 9, fill: 'var(--text)', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
                             {fmt(val)}
                           </text>
                         )}

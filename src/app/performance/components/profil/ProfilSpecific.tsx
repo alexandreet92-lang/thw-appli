@@ -46,7 +46,7 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, onEditBench
   const tabBtn = (active: boolean): React.CSSProperties => ({ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px 0', fontFamily: FB, fontSize: 13, fontWeight: active ? 600 : 500, color: active ? 'var(--text)' : 'var(--text-dim)' })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
         {SPORTS.map(s => (
           <button key={s.id} onClick={() => onSport(s.id)} style={{ ...tabBtn(s.id === specSport), display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -57,7 +57,7 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, onEditBench
 
       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'var(--space-6)', alignItems: 'start' }}>
         <Radar scores={radar.scores} labels={radar.labels} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
               {ZTABS[specSport].map(z => (

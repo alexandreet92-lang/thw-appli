@@ -63,9 +63,9 @@ function useWindowWidth(): number {
 
 // ── Power Curve: couleurs par rang (plus récent = index 0) ──────
 const PC_COLORS = ['#60B4FF', '#2563EB', '#EAB308', '#F97316', '#EF4444'] as const
-function getPCColor(yr: string, sortedDesc: string[]): string {
-  const idx = sortedDesc.indexOf(yr)
-  return idx >= 0 && idx < PC_COLORS.length ? PC_COLORS[idx] : YEAR_DEFAULT_COLOR
+const YEAR_VAR: Record<string, string> = { '2026': 'var(--year-2026)', '2025': 'var(--year-2025)', '2024': 'var(--year-2024)', '2023': 'var(--year-2023)' }
+function getPCColor(yr: string, _sortedDesc: string[]): string {
+  return YEAR_VAR[yr] ?? 'var(--year-default)'
 }
 
 // ── Chart helpers ────────────────────────────────────────────────
@@ -463,8 +463,9 @@ function TimeBarChart({ records, chartDists, color }: {
               return (
                 <g key={yr} onMouseEnter={() => setHovIdx(i)} onMouseLeave={() => setHovIdx(null)}>
                   <rect x={x} y={y} width={barW} height={h}
-                    fill={`${col}${isHov ? 'ee' : '88'}`} stroke={col}
-                    strokeWidth={isBest ? 2 : 1} rx={3} />
+                    fill={col} fillOpacity={isHov ? 0.95 : 0.6} stroke={col}
+                    strokeWidth={isBest ? 2 : 1} rx={3}
+                    style={{ transformBox: 'fill-box', transformOrigin: 'bottom', animation: 'chartBarEnter 0.9s cubic-bezier(0.25,1,0.5,1) both' }} />
                   {isBest && <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={7} fill={col} fontWeight="bold">★</text>}
                   {(isHov || isBest) && (
                     <text x={x + barW / 2} y={y - (isBest ? 15 : 6)} textAnchor="middle" fontSize={8} fill={col} fontWeight="600">
@@ -1189,10 +1190,10 @@ function RecordRow({ label, rec24, rec23, sub, onSelect, selected, actions }: {
     <div
       onClick={rec24 !== '—' ? onSelect : undefined}
       style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 9,
-        background: selected ? 'rgba(6,182,212,0.06)' : 'var(--bg-card2)',
-        border: `1px solid ${selected ? '#06B6D4' : 'var(--border)'}`,
-        marginBottom: 5,
+        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 'var(--r-sm)',
+        background: selected ? 'var(--bg-card2)' : 'transparent',
+        border: 'none',
+        marginBottom: 4,
         cursor: (onSelect && rec24 !== '—') ? 'pointer' : undefined,
         transition: 'border-color 0.15s, background 0.15s',
         userSelect: 'none',
@@ -1201,12 +1202,12 @@ function RecordRow({ label, rec24, rec23, sub, onSelect, selected, actions }: {
       <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-mid)', minWidth: 72, flexShrink: 0 }}>{label}</span>
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 13, fontWeight: 700, color: '#06B6D4' }}>{rec24}</span>
-          {isPR && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'rgba(6,182,212,0.15)', color: '#06B6D4', fontWeight: 700 }}>PR</span>}
+          <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{rec24}</span>
+          {isPR && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'transparent', color: 'var(--primary)', fontWeight: 700 }}>PR</span>}
           {sub && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{sub}</span>}
         </div>
         {rec23 && rec23 !== '—' && (
-          <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)' }}>Préc. : {rec23}</span>
+          <span className="tnum" style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--text-dim)' }}>Préc. : {rec23}</span>
         )}
       </div>
       {actions && <div onClick={e => e.stopPropagation()}>{actions}</div>}
@@ -5018,7 +5019,7 @@ function YearDatasSubTab() {
             return (
               <div key={mk} style={{ background: 'var(--bg-card2)', borderRadius: 10, padding: '10px 12px' }}>
                 <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 3px' }}>{m.label}</p>
-                <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 15, fontWeight: 700, color: sportDef.color, margin: 0 }}>
+                <p className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
                   {val > 0 ? m.fmt(val) : <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 12 }}>—</span>}
                 </p>
               </div>
@@ -5558,7 +5559,7 @@ function YearDatasSubTab() {
       {(chartVals.some(v => v > 0) || allYears.length > 0) && (
         <Card>
           <div className="yd-reveal" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: 0 }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
               Comparaison par année — {sportDef.label}
             </h3>
             <select value={validMetric} onChange={e => setChartMetric(e.target.value)}
@@ -5641,14 +5642,14 @@ function YearDatasSubTab() {
       {/* ════ Chart 3 — Volume global toutes disciplines ════ */}
       {hasC3Data && (
         <Card>
-          <h3 className="yd-reveal" style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: '0 0 14px' }}>
+          <h3 className="yd-reveal" style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 14px' }}>
             Volume global — Toutes disciplines
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {([
-              { key: 'heures'     as const, label: 'Heures',        color: '#06B6D4', max: Math.max(1, ...c3Stats.map(s => s.heures)),     fmt: (v: number) => `${v.toFixed(0)}h`  },
-              { key: 'nb_sorties' as const, label: 'Sorties',       color: '#f97316', max: Math.max(1, ...c3Stats.map(s => s.nb_sorties)), fmt: (v: number) => `${v}`              },
-              { key: 'km'         as const, label: 'Distance (km)', color: '#3b82f6', max: Math.max(1, ...c3Stats.map(s => s.km)),         fmt: (v: number) => `${v}km`             },
+              { key: 'heures'     as const, label: 'Heures',        color: 'var(--metric-heures)',   max: Math.max(1, ...c3Stats.map(s => s.heures)),     fmt: (v: number) => `${v.toFixed(0)}h`  },
+              { key: 'nb_sorties' as const, label: 'Sorties',       color: 'var(--metric-sorties)',  max: Math.max(1, ...c3Stats.map(s => s.nb_sorties)), fmt: (v: number) => `${v}`              },
+              { key: 'km'         as const, label: 'Distance (km)', color: 'var(--metric-distance)', max: Math.max(1, ...c3Stats.map(s => s.km)),         fmt: (v: number) => `${v}km`             },
             ]).map(({ key, label, color, max, fmt }) => (
               <div key={key}>
                 <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>
@@ -5674,9 +5675,9 @@ function YearDatasSubTab() {
                           className="yd-bar"
                           style={{ animation: `ydBarEnter 400ms ease-out ${i * 30}ms both` }}
                         />
-                        {bh > 24 && (
-                          <text x={cx} y={by + bh / 2 + 4} textAnchor="middle"
-                            style={{ fontSize: 10, fill: '#fff', fontFamily: 'DM Mono,monospace', fontWeight: '700' }}>
+                        {val > 0 && (
+                          <text x={cx} y={by - 4} textAnchor="middle" className="tnum"
+                            style={{ fontSize: 9, fill: 'var(--text)', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
                             {fmt(val)}
                           </text>
                         )}

@@ -57,6 +57,18 @@
   --cat-pro:   #3b82f6;
   --cat-perso: #a855f7;
 
+  /* ── Palette par année (records) — fonctionnel modéré (DESIGN_SYSTEM.md §2.1) ── */
+  --year-2026:   #06b6d4;
+  --year-2025:   #6366f1;
+  --year-2024:   #f59e0b;
+  --year-2023:   #94a3b8;
+  --year-default:#94a3b8;
+
+  /* ── Métriques Year Datas — barres « Volume global » (DESIGN_SYSTEM.md §2.1) ── */
+  --metric-heures:   #06b6d4;
+  --metric-sorties:  #f97316;
+  --metric-distance: #3b82f6;
+
   /* ── Brand ────────────────────────────────────── */
   --primary:      #06B6D4;
   --primary-dim:  rgba(6,182,212,0.12);

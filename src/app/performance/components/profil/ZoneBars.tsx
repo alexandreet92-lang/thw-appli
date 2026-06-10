@@ -8,7 +8,7 @@ const FB = 'var(--font-body)'
 
 export function ZoneBars({ zones, animKey }: { zones: Zone[]; animKey: string }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
       {zones.map(z => (
         <div key={z.z} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
           <span className="tnum" style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, color: 'var(--text-mid)', width: 20, flexShrink: 0 }}>{z.z}</span>

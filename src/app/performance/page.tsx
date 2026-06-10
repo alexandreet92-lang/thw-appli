@@ -22,6 +22,7 @@ import { PERFORMANCE_ONBOARDING } from '@/onboarding/configs/performance.config'
 import { ProfilGlobalGrid } from '@/app/performance/components/profil/ProfilGlobalGrid'
 import { TestCard } from '@/app/performance/components/tests/TestCard'
 import { TabbedPageLayout } from '@/components/ui/TabbedPageLayout'
+import { User, Database, FlaskConical } from 'lucide-react'
 import { ProfilSpecific } from '@/app/performance/components/profil/ProfilSpecific'
 import { LevelBars } from '@/app/performance/components/profil/LevelBars'
 import { BenchmarkSheet } from '@/app/performance/components/profil/BenchmarkSheet'
@@ -2057,14 +2058,14 @@ export default function PerformancePage() {
   }
 
   return (
-    <div className="px-[var(--space-5)] md:px-[var(--space-8)]" style={{ paddingTop: 'var(--space-5)', paddingBottom: 'var(--space-8)' }}>
+    <>
       <PageHelp config={PERFORMANCE_ONBOARDING} show={show} onDismiss={dismiss} />
 
       {/* ── Sous-navigation de page (composant réutilisable) ── */}
       <TabbedPageLayout
         title="Performance"
         headerExtra={<button onClick={reopen} aria-label="Aide" style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--primary-dim)', border: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>}
-        tabs={[{ id: 'profil', label: 'Profil' }, { id: 'datas', label: 'Datas' }, { id: 'tests', label: 'Tests' }]}
+        tabs={[{ id: 'profil', label: 'Profil', subtitle: 'Zones & benchmarks', icon: User }, { id: 'datas', label: 'Datas', subtitle: 'Records & volume', icon: Database }, { id: 'tests', label: 'Tests', subtitle: 'Protocoles', icon: FlaskConical }]}
         active={tab}
         onChange={setTab}
       >
@@ -2096,6 +2097,6 @@ export default function PerformancePage() {
         initialAssistantMsg={aiInitMsg}
         context={{ page:'performance', profile }}
       />
-    </div>
+    </>
   )
 }

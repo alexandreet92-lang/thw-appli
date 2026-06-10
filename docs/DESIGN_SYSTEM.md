@@ -142,9 +142,10 @@ Toute page possédant des **onglets de page** (ex. Profil/Datas/Tests,
 Aperçu/Historique/Analyse) présente ces onglets via le composant unique
 **`TabbedPageLayout`** (`src/components/ui/TabbedPageLayout.tsx`) — jamais une nav
 réimplémentée page par page :
-- **Desktop** : sous-nav **verticale en sidebar à gauche** (~200px), séparée du contenu
-  par un filet `var(--border)`. Actif = fond `var(--primary-dim)` + texte `var(--primary)` ;
-  inactif = `var(--text-mid)`, hover `var(--bg-hover)`.
+- **Desktop** : sous-nav **verticale en rail à gauche** (identique à Planning/Calendar —
+  56px replié → ~220px au survol : icône + libellé + sous-titre + indicateur actif), au
+  bord gauche, le contenu prend le reste de la largeur. Actif = fond `var(--primary-dim)`
+  + `var(--primary)` ; inactif = `var(--text-mid)`, hover `var(--bg-hover)`.
 - **Mobile** : onglets **horizontaux en haut**, soulignement de l'actif (2px `var(--text)`).
 - **Transition de contenu** au changement d'onglet : léger glissement + fondu (~0,28 s,
   `translateX 10→0`, `opacity 0→1`). Respecter `prefers-reduced-motion` (fondu seul, 0 s).

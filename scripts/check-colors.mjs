@@ -62,6 +62,16 @@ const ENFORCED_PATHS = [
   'src/app/calendar/components/AnnualView.tsx',
   'src/app/performance/components/profil/ProfilGlobalGrid.tsx',
   'src/app/performance/components/tests/TestCard.tsx',
+  'src/app/injuries/types.ts',
+  'src/app/injuries/lib.ts',
+  'src/app/injuries/useInjuries.ts',
+  'src/app/injuries/page.tsx',
+  'src/app/injuries/components/Sheet.tsx',
+  'src/app/injuries/components/ReportSheet.tsx',
+  'src/app/injuries/components/OverviewTab.tsx',
+  'src/app/injuries/components/HistoryTab.tsx',
+  'src/app/injuries/components/AnalysisTab.tsx',
+  'src/app/injuries/components/TrackSheet.tsx',
 ]
 // Dossiers ignorés sous les SCAN_DIRS.
 const IGNORE_DIRS = new Set(['node_modules', '.next', 'dist', 'build'])

@@ -1,9 +1,16 @@
 -- ════════════════════════════════════════════════════════════════════
--- PROPOSITION DE SCHÉMA — page « Blessures » (NON APPLIQUÉE)
--- Relue par l'humain puis exécutée manuellement. Ne pas lancer automatiquement.
+-- Schéma « Blessures » — APPLIQUÉ sur le projet thw-v2 (sfrcnyzntgrxlwlmwifi).
+-- ⚠️ Contient des DROP TABLE (destructif). NE PAS ré-exécuter tel quel sur une
+-- base contenant des données : les `drop` ci-dessous écraseraient injuries/injury_logs.
+-- Contexte : une table `injuries` LEGACY (ancienne feature 3D : zone_id/type/date…)
+-- existait et bloquait l'app (erreur 42703). Elle était vide (0 ligne) → recréée
+-- proprement ci-dessous avec le bon schéma + RLS.
 -- ════════════════════════════════════════════════════════════════════
 
-create table if not exists public.injuries (
+drop table if exists public.injury_logs cascade;
+drop table if exists public.injuries cascade;
+
+create table public.injuries (
   id                   uuid primary key default gen_random_uuid(),
   user_id              uuid not null references auth.users(id) on delete cascade,
   severity             text not null check (severity in ('gene','douleur','blessure')),
@@ -25,13 +32,13 @@ create table if not exists public.injuries (
   resolved_date        date,
   practitioner         text,
   next_appointment     date,
-  rehab                jsonb not null default '[]'::jsonb,  -- [{ nom, detail, done }]
+  rehab                jsonb not null default '[]'::jsonb,   -- [{ nom, detail, done }]
   impact               jsonb not null default '{"avoid":[],"ok":[]}'::jsonb,
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now()
 );
 
-create table if not exists public.injury_logs (
+create table public.injury_logs (
   id               uuid primary key default gen_random_uuid(),
   injury_id        uuid not null references public.injuries(id) on delete cascade,
   log_date         date not null default current_date,
@@ -41,10 +48,9 @@ create table if not exists public.injury_logs (
   created_at       timestamptz not null default now()
 );
 
-create index if not exists injuries_user_idx     on public.injuries(user_id, status);
-create index if not exists injury_logs_inj_idx   on public.injury_logs(injury_id, log_date);
+create index injuries_user_idx   on public.injuries(user_id, status);
+create index injury_logs_inj_idx on public.injury_logs(injury_id, log_date);
 
--- RLS
 alter table public.injuries    enable row level security;
 alter table public.injury_logs enable row level security;
 
@@ -52,8 +58,8 @@ create policy "injuries_owner" on public.injuries
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "injury_logs_owner" on public.injury_logs
-  for all using (
-    auth.uid() = (select user_id from public.injuries i where i.id = injury_id)
-  ) with check (
-    auth.uid() = (select user_id from public.injuries i where i.id = injury_id)
-  );
+  for all using (auth.uid() = (select user_id from public.injuries i where i.id = injury_id))
+          with check (auth.uid() = (select user_id from public.injuries i where i.id = injury_id));
+
+-- Recharge le cache de schéma PostgREST pour que l'API REST voie les tables.
+notify pgrst, 'reload schema';

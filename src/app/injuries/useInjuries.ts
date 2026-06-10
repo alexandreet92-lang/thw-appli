@@ -53,7 +53,9 @@ export function useInjuries() {
       console.warn('[useInjuries] injuries query error:', code, msg, '· url:', process.env.NEXT_PUBLIC_SUPABASE_URL)
       // « table absente » UNIQUEMENT sur une vraie absence / cache de schéma non rechargé.
       // Toute autre erreur (RLS, réseau, transitoire) → page fonctionnelle, état vide normal.
-      const absent = code === '42P01' || code === 'PGRST205' || /schema cache|does not exist/i.test(msg)
+      // « table absente » seulement : table introuvable / cache de schéma. Une erreur
+      // de COLONNE (42703) n'est PAS une absence de table → ne pas l'y confondre.
+      const absent = code === '42P01' || code === 'PGRST205' || /could not find the table|schema cache/i.test(msg)
       setTableMissing(absent)
       setErrorCode(code || msg.slice(0, 80) || 'unknown')
       setInjuries([]); setLogs([]); setLoading(false)

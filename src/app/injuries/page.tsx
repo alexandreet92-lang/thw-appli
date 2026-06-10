@@ -18,38 +18,45 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 export default function InjuriesPage() {
-  const { injuries, logs, loading, tableMissing, errorCode, add, update, resolve, addLog, reload } = useInjuries()
+  const { injuries, logs, loading, errorCode, add, update, resolve, addLog, reload } = useInjuries()
   const [tab, setTab] = useState<Tab>('apercu')
   const [report, setReport] = useState(false)
   const [trackId, setTrackId] = useState<string | null>(null)
   const trackInj = trackId ? injuries.find(i => i.id === trackId) ?? null : null
 
+  const signaler = (
+    <button onClick={() => setReport(true)} style={{ height: 36, padding: '0 16px', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Signaler</button>
+  )
+
   return (
     <div className="px-[var(--space-5)] md:px-[var(--space-8)]" style={{ paddingTop: 'var(--space-5)', paddingBottom: 'var(--space-8)', maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-5)' }}>
-        <h1 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Blessures</h1>
-        <button onClick={() => setReport(true)} style={{ height: 36, padding: '0 16px', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Signaler</button>
-      </div>
-
-      {loading ? (
-        <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</p>
-      ) : tableMissing ? (
-        <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-6)' }}>
-          <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: 0 }}>Suivi non disponible pour l&apos;instant</p>
-          <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 'var(--space-2) 0 var(--space-4)', lineHeight: 1.5 }}>
-            {errorCode === 'PGRST205'
-              ? "Le cache de schéma Supabase n'est pas à jour (la table existe mais l'API ne la voit pas encore). Exécute « notify pgrst, 'reload schema'; » dans le SQL Editor, puis Réessayer."
-              : <>La table des blessures est introuvable via l&apos;API{errorCode ? <> (<span className="tnum">{errorCode}</span>)</> : ''}. Vérifie que la migration est appliquée sur le projet ciblé par l&apos;app, puis Réessayer.</>}
-          </p>
-          <button onClick={() => void reload()} style={{ height: 36, padding: '0 16px', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Réessayer</button>
-        </div>
-      ) : (
-        <TabbedPageLayout tabs={TABS} active={tab} onChange={setTab}>
-          {tab === 'apercu' ? <OverviewTab injuries={injuries} onOpen={i => setTrackId(i.id)} onCheckin={(inj, r, e) => addLog({ injury_id: inj.id, log_date: new Date().toISOString().slice(0, 10), note: null, intensity_rest: r, intensity_effort: e })} />
-            : tab === 'historique' ? <HistoryTab injuries={injuries} onOpen={i => setTrackId(i.id)} />
-            : <AnalysisTab injuries={injuries} />}
-        </TabbedPageLayout>
-      )}
+      {/* Sous-nav TOUJOURS visible (sidebar desktop / onglets mobile) : l'état d'erreur
+          est rendu DANS le layout, pas à la place de la nav. */}
+      <TabbedPageLayout title="Blessures" headerExtra={signaler} tabs={TABS} active={tab} onChange={setTab}>
+        {loading ? (
+          <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</p>
+        ) : errorCode ? (
+          <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-6)' }}>
+            <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: 0 }}>Suivi indisponible</p>
+            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 'var(--space-2) 0 var(--space-4)', lineHeight: 1.5 }}>
+              {errorCode === 'PGRST205'
+                ? "Cache de schéma Supabase non à jour. Exécute « notify pgrst, 'reload schema'; » dans le SQL Editor, puis Réessayer."
+                : errorCode === '42703'
+                  ? <>La table « injuries » existe mais avec un <strong>schéma incompatible</strong> (ancienne version — colonne manquante, <span className="tnum">42703</span>). Le schéma doit être migré : « create table if not exists » n&apos;a rien fait car la table existait déjà.</>
+                  : errorCode === '42P01'
+                    ? "La table des blessures n'existe pas dans le projet ciblé par l'app."
+                    : <>Erreur de chargement (<span className="tnum">{errorCode}</span>).</>}
+            </p>
+            <button onClick={() => void reload()} style={{ height: 36, padding: '0 16px', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Réessayer</button>
+          </div>
+        ) : tab === 'apercu' ? (
+          <OverviewTab injuries={injuries} onOpen={i => setTrackId(i.id)} onCheckin={(inj, r, e) => addLog({ injury_id: inj.id, log_date: new Date().toISOString().slice(0, 10), note: null, intensity_rest: r, intensity_effort: e })} />
+        ) : tab === 'historique' ? (
+          <HistoryTab injuries={injuries} onOpen={i => setTrackId(i.id)} />
+        ) : (
+          <AnalysisTab injuries={injuries} />
+        )}
+      </TabbedPageLayout>
 
       {report && <ReportSheet onClose={() => setReport(false)} onSave={add} />}
       {trackInj && <TrackSheet injury={trackInj} logs={logs} onClose={() => setTrackId(null)} onUpdate={update} onAddLog={addLog} onResolve={resolve} />}

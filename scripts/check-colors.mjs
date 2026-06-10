@@ -78,6 +78,7 @@ const ENFORCED_PATHS = [
   'src/app/injuries/components/HistoryTab.tsx',
   'src/app/injuries/components/AnalysisTab.tsx',
   'src/app/injuries/components/TrackSheet.tsx',
+  'src/components/ui/TabbedPageLayout.tsx',
 ]
 // Dossiers ignorés sous les SCAN_DIRS.
 const IGNORE_DIRS = new Set(['node_modules', '.next', 'dist', 'build'])

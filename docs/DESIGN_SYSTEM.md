@@ -136,6 +136,27 @@ Champs soignés :
   déjà (barre d'onglets mobile, sidebar active desktop). L'en-tête porte un **contexte
   utile** (date, période, état) en `var(--font-display)`, pas un label redondant.
 
+### 4.1 Sous-navigation des pages à onglets
+
+Toute page possédant des **onglets de page** (ex. Profil/Datas/Tests,
+Aperçu/Historique/Analyse) présente ces onglets via le composant unique
+**`TabbedPageLayout`** (`src/components/ui/TabbedPageLayout.tsx`) — jamais une nav
+réimplémentée page par page :
+- **Desktop** : sous-nav **verticale en sidebar à gauche** (~200px), séparée du contenu
+  par un filet `var(--border)`. Actif = fond `var(--primary-dim)` + texte `var(--primary)` ;
+  inactif = `var(--text-mid)`, hover `var(--bg-hover)`.
+- **Mobile** : onglets **horizontaux en haut**, soulignement de l'actif (2px `var(--text)`).
+- **Transition de contenu** au changement d'onglet : léger glissement + fondu (~0,28 s,
+  `translateX 10→0`, `opacity 0→1`). Respecter `prefers-reduced-motion` (fondu seul, 0 s).
+
+Cette sous-nav est **distincte de la nav GLOBALE** de l'app (sidebar globale desktop /
+bottom-bar mobile, dans `layout.tsx`) : elle s'**ajoute**, ne la remplace ni ne la duplique.
+
+**Adoption par défaut** : `TabbedPageLayout` est **transparent tant qu'une page a moins
+de 2 onglets** (il rend seulement le contenu, sans sous-nav). On peut donc l'adopter sur
+n'importe quelle page sans risque : **dès qu'on lui passe ≥ 2 onglets, la sous-nav
+apparaît automatiquement** au bon format. Toute nouvelle page à onglets doit passer par lui.
+
 ---
 
 ## 5. Élément signature

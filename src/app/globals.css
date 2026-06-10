@@ -47,9 +47,15 @@
   --zone-4: #f97316; /* Seuil        */
   --zone-5: #ef4444; /* VO2max       */
 
+  /* ── Charge sémantique — points uniquement (DESIGN_SYSTEM.md §2) ── */
+  --charge-low:  #22c55e;
+  --charge-mid:  #eab308;
+  --charge-hard: #ef4444;
+
   /* ── Brand ────────────────────────────────────── */
   --primary:      #06B6D4;
   --primary-dim:  rgba(6,182,212,0.12);
+  --on-primary:   #ffffff;   /* texte sur surface --primary (bouton cyan) */
   --ai-accent:    #9D7DFF;
   --ai-accent-dim:rgba(157,125,255,0.12);
 
@@ -254,6 +260,12 @@ body {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'zero' 0;
   transition: background-color 0.5s ease, color 0.3s ease;
+}
+
+/* Chiffres tabulaires, zéro non barré (DESIGN_SYSTEM.md §1) */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'zero' 0;
 }
 
 /* Barlow Condensed utility — grands chiffres */

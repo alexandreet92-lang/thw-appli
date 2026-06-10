@@ -18,6 +18,7 @@ import { DayFoodJournal } from '@/app/nutrition/components/DayFoodJournal'
 import { PlanShoppingList } from '@/app/nutrition/components/plan/PlanShoppingList'
 import { SuiviSection } from '@/app/nutrition/components/suivi/SuiviSection'
 import { NutritionRail } from '@/app/nutrition/components/NutritionRail'
+import { PlanTab } from '@/app/nutrition/components/plan/PlanTab'
 import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -1572,208 +1573,21 @@ export default function NutritionPage() {
         {/* SECTION 3 — Plan nutritionnel                         */}
         {/* ══════════════════════════════════════════════════════ */}
         {tab === 'plan' && (
-        <div style={cardStyle}>
-          <p style={sectionTitle}>Plan nutritionnel</p>
-
-          {/* 3A. Ouvrir le plan IA */}
-          {!activePlan && (
-            <button
-              onClick={() => setAiPanelOpen(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '12px 18px',
-                borderRadius: 12,
-                background: 'linear-gradient(135deg,rgba(6,182,212,0.12),rgba(91,111,255,0.18))',
-                border: '1px solid rgba(91,111,255,0.35)',
-                color: 'var(--text)',
-                fontFamily: 'DM Sans,sans-serif',
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: 'pointer',
-                marginBottom: 12,
-                transition: 'opacity 0.15s',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.85' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M12 2a10 10 0 110 20 10 10 0 010-20z" opacity="0.2" fill="currentColor" stroke="none"/>
-                <path d="M12 8v4l3 3"/>
-                <circle cx="12" cy="12" r="10"/>
-              </svg>
-              Créer mon plan avec l&apos;IA
-            </button>
-          )}
-
-          {/* 3C. 14-day calendar grid */}
-          {activePlan && (
-            <div style={{ marginTop: 0 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 12 }}>
-                Plan actif : {activePlan.type} — {formatDate(today)}
-              </div>
-
-              {/* Résumé objectifs Low / Mid / Hard */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
-                {([
-                  { t: 'low'  as DayType, kcal: activePlan.plan_data?.calories_low,  m: activePlan.plan_data?.macros_low },
-                  { t: 'mid'  as DayType, kcal: activePlan.plan_data?.calories_mid,  m: activePlan.plan_data?.macros_mid },
-                  { t: 'hard' as DayType, kcal: activePlan.plan_data?.calories_hard, m: activePlan.plan_data?.macros_hard },
-                ]).map(({ t, kcal, m }) => (
-                  <div key={t} style={{
-                    padding: '10px 8px', borderRadius: 12,
-                    background: DAY_COLORS[t].bg, border: `1px solid ${DAY_COLORS[t].border}`,
-                    textAlign: 'center',
-                  }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, fontFamily: 'Syne,sans-serif', color: DAY_COLORS[t].text, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      {DAY_COLORS[t].label.replace('Jour ', '')}
-                    </div>
-                    <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--text)', margin: '3px 0 1px' }}>
-                      {kcal ?? 0}
-                    </div>
-                    <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', marginBottom: 4 }}>kcal</div>
-                    <div style={{ fontSize: 9, color: 'var(--text-mid)', fontFamily: 'DM Mono,monospace', lineHeight: 1.4 }}>
-                      P {m?.proteines ?? 0} · G {m?.glucides ?? 0} · L {m?.lipides ?? 0}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Sélecteur variante A / B */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Variante de repas</span>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {(['A', 'B'] as PlanVariant[]).map(v => (
-                    <button
-                      key={v}
-                      onClick={() => setPlanVariant(v)}
-                      style={{
-                        width: 34, padding: '5px 0', borderRadius: 8,
-                        border: '1px solid var(--border)',
-                        background: planVariant === v ? 'rgba(6,182,212,0.14)' : 'var(--bg-card2)',
-                        color: planVariant === v ? '#06B6D4' : 'var(--text-dim)',
-                        fontWeight: 700, fontSize: 12, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
-                      }}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: 6,
-              }}>
-                {next14Days.map(date => {
-                  const planDay = activePlan.plan_data?.jours?.find(j => j.date === date)
-                  const dayType: DayType = planDay?.type_jour ?? (
-                    date === today ? todayType : 'low'
-                  )
-                  const colors = DAY_COLORS[dayType]
-                  const kcal = planDay?.kcal ?? 0
-                  const isToday = date === today
-                  const daySessions = sessions.filter(s => {
-                    const dow = new Date(date + 'T00:00:00').getDay()
-                    const idx = dow === 0 ? 6 : dow - 1
-                    return s.day_index === idx
-                  })
-                  return (
-                    <button
-                      key={date}
-                      onClick={() => planDay ? setDayDetailOpen(planDay) : undefined}
-                      style={{
-                        padding: '8px 4px',
-                        borderRadius: 10,
-                        background: isToday ? colors.bg : 'var(--bg-card2)',
-                        border: isToday ? `2px solid ${colors.border}` : '1px solid var(--border)',
-                        cursor: planDay ? 'pointer' : 'default',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <div style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif', marginBottom: 2 }}>
-                        {formatDate(date)}
-                      </div>
-                      <div style={{
-                        fontSize: 9, fontFamily: 'Syne,sans-serif', fontWeight: 700,
-                        color: colors.text, marginBottom: 2,
-                      }}>
-                        {dayType.toUpperCase()}
-                      </div>
-                      {kcal > 0 && (
-                        <div style={{ fontSize: 9, fontFamily: 'DM Mono,monospace', color: 'var(--text-mid)' }}>
-                          {kcal}
-                        </div>
-                      )}
-                      {daySessions.length > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2 }}>
-                          {daySessions.map(s => (
-                            <div key={s.id} style={{ width: 4, height: 4, borderRadius: '50%', background: '#06B6D4' }} />
-                          ))}
-                        </div>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Actions plan */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
-                {/* Modifier avec l'IA — ouvre le panneau IA (cf. .md : pas de
-                    référence de conversation d'origine stockée dans le plan). */}
-                <button
-                  onClick={() => setAiPanelOpen(true)}
-                  style={{
-                    flex: '1 1 160px', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                    padding: '10px', borderRadius: 11,
-                    border: '1px solid rgba(91,111,255,0.35)',
-                    background: 'linear-gradient(135deg,rgba(6,182,212,0.12),rgba(91,111,255,0.18))',
-                    color: 'var(--text)', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-                  }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-                  Modifier avec l&apos;IA
-                </button>
-                <button
-                  onClick={() => setShoppingOpen(true)}
-                  style={{
-                    flex: '1 1 160px', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                    padding: '10px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)',
-                    color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-                  }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
-                  Liste de courses
-                </button>
-                <button
-                  onClick={() => setRegenConfirm(true)}
-                  style={{
-                    flex: '1 1 130px', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                    padding: '10px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card2)',
-                    color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-                  }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-                  Régénérer
-                </button>
-                {/* Supprimer — démoté en bouton ghost secondaire */}
-                <button
-                  onClick={() => void handleDeletePlan()}
-                  style={{
-                    minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    padding: '10px 14px', borderRadius: 11, border: 'none', background: 'transparent',
-                    color: 'var(--text-dim)', fontWeight: 500, fontSize: 12.5, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-                  }}
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
-                  Supprimer
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+          <PlanTab
+            activePlan={activePlan}
+            today={today}
+            todayType={todayType}
+            todayKcalObj={todayKcalObj}
+            todayMacroObj={todayMacroObj}
+            todaySessions={todaySessions}
+            next14Days={next14Days}
+            onOpenDay={setDayDetailOpen}
+            onOpenAI={() => setAiPanelOpen(true)}
+            onOpenShopping={() => setShoppingOpen(true)}
+            onRegen={() => setRegenConfirm(true)}
+            onDelete={() => void handleDeletePlan()}
+            isDesktop={isDesktop}
+          />
         )}
 
         {/* ══════════════════════════════════════════════════════ */}

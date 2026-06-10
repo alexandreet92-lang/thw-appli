@@ -40,7 +40,14 @@ const SANCTIONED = new Set([
 // par le gate de build (mode --enforce). À remplir au fur et à mesure de la
 // refonte des pages (préfixes de chemin relatif au repo, ex. 'src/app/nutrition').
 // Liste VIDE = aucun chemin enforced = le gate de build passe toujours.
-const ENFORCED_PATHS = []
+// On enforced fichier par fichier (et non le dossier plan/ entier) car
+// PlanShoppingList.tsx y conserve de la dette ; page.tsx mélange 4 onglets dont
+// 3 non refondus → non enforçable tel quel.
+const ENFORCED_PATHS = [
+  'src/app/nutrition/components/plan/PlanTab.tsx',
+  'src/app/nutrition/components/plan/PlanRhythm.tsx',
+  'src/app/nutrition/components/plan/planFormat.ts',
+]
 // Dossiers ignorés sous les SCAN_DIRS.
 const IGNORE_DIRS = new Set(['node_modules', '.next', 'dist', 'build'])
 

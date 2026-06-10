@@ -9,12 +9,15 @@ import { HistoryTab } from './components/HistoryTab'
 import { AnalysisTab } from './components/AnalysisTab'
 import { ReportSheet } from './components/ReportSheet'
 import { TrackSheet } from './components/TrackSheet'
-import { TabbedPageLayout } from '@/components/ui/TabbedPageLayout'
+import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout'
+import { LayoutDashboard, History, LineChart } from 'lucide-react'
 
 type Tab = 'apercu' | 'historique' | 'analyse'
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'apercu', label: 'Aperçu' }, { id: 'historique', label: 'Historique' }, { id: 'analyse', label: 'Analyse' },
+const TABS: PageTab<Tab>[] = [
+  { id: 'apercu', label: 'Aperçu', subtitle: 'En cours', icon: LayoutDashboard },
+  { id: 'historique', label: 'Historique', subtitle: 'Épisodes', icon: History },
+  { id: 'analyse', label: 'Analyse', subtitle: 'Tendances', icon: LineChart },
 ]
 
 export default function InjuriesPage() {
@@ -29,8 +32,8 @@ export default function InjuriesPage() {
   )
 
   return (
-    <div className="px-[var(--space-5)] md:px-[var(--space-8)]" style={{ paddingTop: 'var(--space-5)', paddingBottom: 'var(--space-8)' }}>
-      {/* Sous-nav TOUJOURS visible (sidebar desktop / onglets mobile) : l'état d'erreur
+    <>
+      {/* Sous-nav TOUJOURS visible (rail desktop / onglets mobile) : l'état d'erreur
           est rendu DANS le layout, pas à la place de la nav. */}
       <TabbedPageLayout title="Blessures" headerExtra={signaler} tabs={TABS} active={tab} onChange={setTab}>
         {loading ? (
@@ -60,6 +63,6 @@ export default function InjuriesPage() {
 
       {report && <ReportSheet onClose={() => setReport(false)} onSave={add} />}
       {trackInj && <TrackSheet injury={trackInj} logs={logs} onClose={() => setTrackId(null)} onUpdate={update} onAddLog={addLog} onResolve={resolve} />}
-    </div>
+    </>
   )
 }

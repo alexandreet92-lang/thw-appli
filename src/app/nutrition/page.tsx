@@ -1640,14 +1640,12 @@ export default function NutritionPage() {
         {/* SECTION 5 — Historique et graphiques                  */}
         {/* ══════════════════════════════════════════════════════ */}
         {tab === 'tracking' && (
-        <div style={cardStyle}>
           <SuiviSection
             dailyLogs={dailyLogs}
             plan={activePlan?.plan_data ?? null}
             weightKg={profile?.weight_kg ?? null}
             today={today}
           />
-        </div>
         )}
 
         {/* Weight section */}

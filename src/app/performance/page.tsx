@@ -21,6 +21,9 @@ import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PERFORMANCE_ONBOARDING } from '@/onboarding/configs/performance.config'
 import { ProfilGlobalGrid } from '@/app/performance/components/profil/ProfilGlobalGrid'
 import { TestCard } from '@/app/performance/components/tests/TestCard'
+import { ProfilSpecific } from '@/app/performance/components/profil/ProfilSpecific'
+import { LevelBars } from '@/app/performance/components/profil/LevelBars'
+import { BenchmarkSheet } from '@/app/performance/components/profil/BenchmarkSheet'
 
 // ── Types ───────────────────────────────────────────────────────
 type PerfTab = 'profil' | 'datas' | 'tests'
@@ -362,6 +365,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
   })
   const [specSaving, setSpecSaving] = useState(false)
   const [specSavedOk,setSpecSavedOk]= useState(false)
+  const [benchOpen,   setBenchOpen]  = useState(false)
 
   const wkg = (p.ftp / p.weight).toFixed(2)
 
@@ -503,330 +507,94 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
   }
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', paddingTop: 'var(--space-2)' }}>
 
-      {/* ── Bannière profil non configuré ── */}
       {profileEmpty && (
-        <div style={{
-          background:'rgba(234,179,8,0.07)', border:'1px solid rgba(234,179,8,0.3)',
-          borderRadius:12, padding:'12px 16px',
-          display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' as const,
-        }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth={2} style={{ flexShrink:0 }}>
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <div style={{ flex:1 }}>
-            <p style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'#eab308', margin:'0 0 2px' }}>Profil non configuré</p>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>Les valeurs affichées sont des exemples. Renseigne ton profil pour des analyses personnalisées.</p>
+        <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Profil non configuré</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>Les valeurs affichées sont des exemples. Renseigne ton profil pour des analyses personnalisées.</p>
           </div>
-          <button onClick={() => setEditing(true)} style={{
-            padding:'7px 14px', borderRadius:8,
-            background:'rgba(234,179,8,0.15)', border:'1px solid rgba(234,179,8,0.4)',
-            color:'#eab308', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' as const,
-          }}>
-            Compléter mon profil →
-          </button>
+          <button onClick={() => setEditing(true)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>Compléter →</button>
         </div>
       )}
 
-      {/* ── Profil Global ── */}
-      <Card>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap' as const, gap:8 }}>
+      {/* Profil Global */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
           <div>
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
-              <div style={{ width:3, height:16, borderRadius:2, background:'linear-gradient(180deg,#06B6D4,#5b6fff)' }}/>
-              <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Profil Global</h2>
-            </div>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0 11px' }}>Paramètres physiologiques transversaux</p>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Profil Global</h2>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>Paramètres physiologiques transversaux</p>
           </div>
-          <div style={{ display:'flex', gap:8 }}>
+          <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'baseline' }}>
             {!editing && onAnalyzeProfile && (
-              <button
-                onClick={() => { setAnalyzing(true); onAnalyzeProfile().finally(() => setAnalyzing(false)) }}
-                disabled={analyzing}
-                style={{ padding:'6px 14px', borderRadius:9, background:'linear-gradient(135deg,#f97316,#fb923c)', border:'1px solid transparent', color:'#fff', fontSize:12, cursor:analyzing?'not-allowed':'pointer', fontWeight:600, opacity:analyzing?0.7:1, display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' as const }}
-              >
-                {analyzing ? <><span style={{ width:11, height:11, border:'2px solid rgba(255,255,255,0.4)', borderTopColor:'#fff', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>Analyse…</> : 'Analyser'}
-              </button>
+              <button onClick={() => { setAnalyzing(true); onAnalyzeProfile().finally(() => setAnalyzing(false)) }} disabled={analyzing} style={{ border: 'none', background: 'transparent', cursor: analyzing ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)', opacity: analyzing ? 0.6 : 1 }}>{analyzing ? 'Analyse…' : 'Analyser'}</button>
             )}
             {editing ? (
               <>
-                <button onClick={() => setEditing(false)}
-                  style={{ padding:'6px 12px', borderRadius:9, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:12, cursor:'pointer', fontWeight:600 }}>
-                  Annuler
-                </button>
-                <button
-                  onClick={() => { void handleSaveGlobal() }}
-                  disabled={saving}
-                  style={{ padding:'6px 14px', borderRadius:9, background:savedOk?'rgba(34,197,94,0.25)':'linear-gradient(135deg,#06B6D4,#5b6fff)', border:`1px solid ${savedOk?'rgba(34,197,94,0.5)':'transparent'}`, color:savedOk?'#22c55e':'#fff', fontSize:12, cursor:saving?'not-allowed':'pointer', fontWeight:600, opacity:saving?0.7:1 }}>
-                  {saving ? 'Enregistrement…' : savedOk ? '✓ Enregistré' : 'Enregistrer'}
-                </button>
+                <button onClick={() => setEditing(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text-dim)' }}>Annuler</button>
+                <button onClick={() => { void handleSaveGlobal() }} disabled={saving} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)', opacity: saving ? 0.6 : 1 }}>{saving ? 'Enregistrement…' : savedOk ? 'Enregistré' : 'Enregistrer'}</button>
               </>
             ) : (
-              <button onClick={() => setEditing(true)}
-                style={{ padding:'6px 14px', borderRadius:9, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-mid)', fontSize:12, cursor:'pointer', fontWeight:600 }}>
-                Modifier
-              </button>
+              <button onClick={() => setEditing(true)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text-mid)' }}>Modifier</button>
             )}
           </div>
         </div>
         {editing ? (
-          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap:10 }}>
-            <NInput label="FTP" unit="W" value={p.ftp} onChange={v => setP({...p,ftp:v})}/>
-            <NInput label="Poids" unit="kg" value={p.weight} onChange={v => setP({...p,weight:v})} step={0.5}/>
-            <NInput label="Age" value={p.age} onChange={v => setP({...p,age:v})}/>
-            <NInput label="FC max" unit="bpm" value={p.hrMax} onChange={v => setP({...p,hrMax:v})}/>
-            <NInput label="FC repos" unit="bpm" value={p.hrRest} onChange={v => setP({...p,hrRest:v})}/>
-            <NInput label="LTHR" unit="bpm" value={p.lthr} onChange={v => setP({...p,lthr:v})}/>
-            <NInput label="VMA" unit="km/h" value={p.vma} onChange={v => setP({...p,vma:v})} step={0.5}/>
-            <NInput label="VO2max" value={p.vo2max} onChange={v => setP({...p,vo2max:v})}/>
-            <TInput label="Allure seuil" value={p.thresholdPace} onChange={v => setP({...p,thresholdPace:v})} placeholder="4:08"/>
-            <TInput label="CSS" value={p.css} onChange={v => setP({...p,css:v})} placeholder="1:28"/>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
+            <NInput label="FTP" unit="W" value={p.ftp} onChange={v => setP({ ...p, ftp: v })} />
+            <NInput label="Poids" unit="kg" value={p.weight} onChange={v => setP({ ...p, weight: v })} step={0.5} />
+            <NInput label="Age" value={p.age} onChange={v => setP({ ...p, age: v })} />
+            <NInput label="FC max" unit="bpm" value={p.hrMax} onChange={v => setP({ ...p, hrMax: v })} />
+            <NInput label="FC repos" unit="bpm" value={p.hrRest} onChange={v => setP({ ...p, hrRest: v })} />
+            <NInput label="LTHR" unit="bpm" value={p.lthr} onChange={v => setP({ ...p, lthr: v })} />
+            <NInput label="VMA" unit="km/h" value={p.vma} onChange={v => setP({ ...p, vma: v })} step={0.5} />
+            <NInput label="VO2max" value={p.vo2max} onChange={v => setP({ ...p, vo2max: v })} />
+            <TInput label="Allure seuil" value={p.thresholdPace} onChange={v => setP({ ...p, thresholdPace: v })} placeholder="4:08" />
+            <TInput label="CSS" value={p.css} onChange={v => setP({ ...p, css: v })} placeholder="1:28" />
           </div>
         ) : (
           <ProfilGlobalGrid isMobile={isMobile} metrics={[
-            { label:'FTP',          value:p.ftp,           unit:'W',         sub:`${wkg} W/kg`, selected:isSel('FTP', p.ftp, 'W'),                onSelect:()=>onSelect('FTP', `${p.ftp} W`) },
-            { label:'Allure seuil', value:p.thresholdPace, unit:'/km',       selected:selectedDatum?.label==='Allure seuil',                    onSelect:()=>onSelect('Allure seuil', `${p.thresholdPace}/km`) },
-            { label:'VMA',          value:p.vma,           unit:'km/h',      selected:isSel('VMA', p.vma, 'km/h'),                              onSelect:()=>onSelect('VMA', `${p.vma} km/h`) },
-            { label:'CSS',          value:p.css,           unit:'/100m',     selected:selectedDatum?.label==='CSS',                             onSelect:()=>onSelect('CSS', `${p.css}/100m`) },
-            { label:'FC max',       value:p.hrMax,         unit:'bpm',       selected:isSel('FC max', p.hrMax, 'bpm'),                          onSelect:()=>onSelect('FC max', `${p.hrMax} bpm`) },
-            { label:'FC repos',     value:p.hrRest,        unit:'bpm',       selected:isSel('FC repos', p.hrRest, 'bpm'),                       onSelect:()=>onSelect('FC repos', `${p.hrRest} bpm`) },
-            { label:'LTHR',         value:p.lthr,          unit:'bpm',       selected:isSel('LTHR', p.lthr, 'bpm'),                             onSelect:()=>onSelect('LTHR', `${p.lthr} bpm`) },
-            { label:'VO2max',       value:p.vo2max,        unit:'ml/kg/min', selected:isSel('VO2max', p.vo2max, 'ml/kg/min'),                   onSelect:()=>onSelect('VO2max', `${p.vo2max} ml/kg/min`) },
-          ]}/>
+            { label: 'FTP', value: p.ftp, unit: 'W', sub: `${wkg} W/kg`, selected: isSel('FTP', p.ftp, 'W'), onSelect: () => onSelect('FTP', `${p.ftp} W`) },
+            { label: 'Allure seuil', value: p.thresholdPace, unit: '/km', selected: selectedDatum?.label === 'Allure seuil', onSelect: () => onSelect('Allure seuil', `${p.thresholdPace}/km`) },
+            { label: 'VMA', value: p.vma, unit: 'km/h', selected: isSel('VMA', p.vma, 'km/h'), onSelect: () => onSelect('VMA', `${p.vma} km/h`) },
+            { label: 'CSS', value: p.css, unit: '/100m', selected: selectedDatum?.label === 'CSS', onSelect: () => onSelect('CSS', `${p.css}/100m`) },
+            { label: 'FC max', value: p.hrMax, unit: 'bpm', selected: isSel('FC max', p.hrMax, 'bpm'), onSelect: () => onSelect('FC max', `${p.hrMax} bpm`) },
+            { label: 'FC repos', value: p.hrRest, unit: 'bpm', selected: isSel('FC repos', p.hrRest, 'bpm'), onSelect: () => onSelect('FC repos', `${p.hrRest} bpm`) },
+            { label: 'LTHR', value: p.lthr, unit: 'bpm', selected: isSel('LTHR', p.lthr, 'bpm'), onSelect: () => onSelect('LTHR', `${p.lthr} bpm`) },
+            { label: 'VO2max', value: p.vo2max, unit: 'ml/kg/min', selected: isSel('VO2max', p.vo2max, 'ml/kg/min'), onSelect: () => onSelect('VO2max', `${p.vo2max} ml/kg/min`) },
+          ]} />
         )}
-      </Card>
+      </div>
 
-      {/* ── Profil Spécifique ── */}
-      <Card>
-        <div style={{ marginBottom:14 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
-            <div style={{ width:3, height:16, borderRadius:2, background:'linear-gradient(180deg,#f97316,#ef4444)' }}/>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Profil Spécifique</h2>
-          </div>
-          <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0 11px' }}>Benchmarks personnels par discipline — références de forme actuelles</p>
-        </div>
+      {/* Profil Spécifique */}
+      <div>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Profil Spécifique</h2>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-1) 0 var(--space-4)' }}>Benchmarks personnels par discipline</p>
+        <ProfilSpecific p={p} wkg={wkg} specSport={specSport} onSport={setSpecSport} params={specParams[specSport]} onEditBenchmarks={() => setBenchOpen(true)} />
+      </div>
 
-        {/* Sport tabs */}
-        <div style={{ display:'flex', gap:5, flexWrap:'wrap' as const, marginBottom:16 }}>
-          {SPORT_SPEC_TABS.map(t => (
-            <button key={t.id} onClick={() => setSpecSport(t.id)} style={{
-              padding:'5px 13px', borderRadius:8, border:'1px solid',
-              borderColor: specSport === t.id ? t.color : 'var(--border)',
-              background: specSport === t.id ? `${t.color}15` : 'var(--bg-card2)',
-              color: specSport === t.id ? t.color : 'var(--text-mid)',
-              fontSize:11, fontWeight: specSport === t.id ? 700 : 400, cursor:'pointer', transition:'all 0.15s',
-            }}>{t.label}</button>
-          ))}
-        </div>
+      {/* Niveau estimé */}
+      <div>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-4)' }}>Niveau estimé</h2>
+        <LevelBars metrics={[
+          { label: 'W/kg', display: wkg, pct: Math.min(parseFloat(wkg) / 6 * 100, 100), qualifier: parseFloat(wkg) >= 4.5 ? 'Expert' : parseFloat(wkg) >= 3.5 ? 'Avancé' : parseFloat(wkg) >= 2.5 ? 'Intermédiaire' : 'Débutant', selected: selectedDatum?.label === 'W/kg', onSelect: () => onSelect('W/kg', `${wkg} W/kg`) },
+          { label: 'VO2max', display: `${p.vo2max}`, pct: Math.min(p.vo2max / 80 * 100, 100), qualifier: p.vo2max >= 65 ? 'Élite' : p.vo2max >= 55 ? 'Élevé' : p.vo2max >= 45 ? 'Bon' : 'Moyen', selected: selectedDatum?.label === 'VO2max', onSelect: () => onSelect('VO2max', `${p.vo2max} ml/kg/min`) },
+          { label: 'FC repos', display: `${p.hrRest}`, pct: Math.min(Math.max(0, 80 - p.hrRest) / 50 * 100, 100), qualifier: p.hrRest <= 40 ? 'Élite' : p.hrRest <= 50 ? 'Élevé' : p.hrRest <= 60 ? 'Bon' : 'Moyen', selected: selectedDatum?.label === 'FC repos', onSelect: () => onSelect('FC repos', `${p.hrRest} bpm`) },
+        ]} />
+      </div>
 
-        {/* ── Profil en un coup d'œil ── */}
-        {(() => {
-          const st = SPORT_SPEC_TABS.find(t => t.id === specSport)!
-          const params = specParams[specSport]
-
-          // Mini radar scores per sport (0-100)
-          const radarData: Record<SportSpecId, { labels: string[]; scores: () => number[] }> = {
-            running: {
-              labels: ['VMA', 'Seuil', 'Endurance'],
-              scores: () => [
-                Math.min(100, ((p.vma - 10) / 12) * 100),
-                Math.min(100, ((p.vma > 0 && p.thresholdPace ? (p.vma * 0.80) / (p.vma) : 0.75) * 100)),
-                Math.min(100, ((p.vo2max - 30) / 40) * 100),
-              ],
-            },
-            cycling: {
-              labels: ['FTP', 'W/kg', 'Endurance'],
-              scores: () => [
-                Math.min(100, ((p.ftp - 100) / 300) * 100),
-                Math.min(100, ((parseFloat(wkg) - 1) / 5) * 100),
-                Math.min(100, ((p.vo2max - 30) / 40) * 100),
-              ],
-            },
-            swimming: {
-              labels: ['CSS', 'Vitesse', 'Endurance'],
-              scores: () => {
-                const cssParts = p.css.split(':').map(Number)
-                const cssSec = cssParts.length === 2 ? cssParts[0] * 60 + (cssParts[1] || 0) : 90
-                return [
-                  Math.min(100, Math.max(0, ((120 - cssSec) / 50) * 100)),
-                  Math.min(100, ((p.vma - 10) / 10) * 100),
-                  Math.min(100, ((p.vo2max - 30) / 40) * 100),
-                ]
-              },
-            },
-            hyrox: {
-              labels: ['Force', 'Cardio', 'Run'],
-              scores: () => {
-                const wallBall = parseFloat(params['wall_ball_max'] ?? '0')
-                return [
-                  Math.min(100, (wallBall / 50) * 100),
-                  Math.min(100, ((p.hrMax - p.hrRest) / 80) * 100),
-                  Math.min(100, ((p.vma - 10) / 12) * 100),
-                ]
-              },
-            },
-          }
-          const rd = radarData[specSport]
-          const scores = rd.scores()
-          const hasScores = scores.some(s => s > 0)
-
-          // Zones d'intensité Karvonen (FC de réserve)
-          const fcReserve = p.hrMax - p.hrRest
-          const zones = [
-            { z: 'Z1', label: 'Récupération', pct: [0.50, 0.60], color: '#22c55e' },
-            { z: 'Z2', label: 'Endurance',     pct: [0.60, 0.70], color: '#3b82f6' },
-            { z: 'Z3', label: 'Tempo',         pct: [0.70, 0.80], color: '#eab308' },
-            { z: 'Z4', label: 'Seuil',         pct: [0.80, 0.90], color: '#f97316' },
-            { z: 'Z5', label: 'VO2max',        pct: [0.90, 1.00], color: '#ef4444' },
-          ].map(z => ({
-            ...z,
-            low:  Math.round(p.hrRest + fcReserve * z.pct[0]),
-            high: Math.round(p.hrRest + fcReserve * z.pct[1]),
-          }))
-
-          // Benchmarks clés par sport
-          type BenchItem = { label: string; value: string | number; unit: string; color: string }
-          const benchmarks: Record<SportSpecId, BenchItem[]> = {
-            running: [
-              { label: 'VMA', value: p.vma, unit: 'km/h', color: '#22c55e' },
-              { label: 'LTHR', value: p.lthr, unit: 'bpm', color: '#f97316' },
-              { label: 'VO2max', value: p.vo2max, unit: 'ml/kg/min', color: '#8B5CF6' },
-            ],
-            cycling: [
-              { label: 'FTP', value: p.ftp, unit: 'W', color: '#3B82F6' },
-              { label: 'W/kg', value: wkg, unit: 'W/kg', color: '#06B6D4' },
-              { label: 'LTHR vélo', value: p.lthr, unit: 'bpm', color: '#f97316' },
-            ],
-            swimming: [
-              { label: 'CSS', value: p.css, unit: '/100m', color: '#06B6D4' },
-              { label: 'FC max', value: p.hrMax, unit: 'bpm', color: '#EF4444' },
-              { label: 'VO2max', value: p.vo2max, unit: 'ml/kg/min', color: '#8B5CF6' },
-            ],
-            hyrox: [
-              { label: 'Wall Ball max', value: params['wall_ball_max'] || '—', unit: 'reps', color: '#ef4444' },
-              { label: 'Run compromised', value: params['run_compromised'] || '—', unit: '/km', color: '#f97316' },
-              { label: 'Farmer max', value: params['farmer_max_m'] ? `${params['farmer_max_m']}` : '—', unit: 'm', color: '#eab308' },
-            ],
-          }
-
-          return (
-            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'auto 1fr', gap:20, marginBottom:16, alignItems:'start' }}>
-              {/* Left: radar + label */}
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, padding:'12px 16px', background:'var(--bg-card2)', borderRadius:12, border:'1px solid var(--border)' }}>
-                <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.08em', color:'#9CA3AF', margin:0 }}>En un coup d&apos;œil</p>
-                {hasScores
-                  ? <MiniRadar scores={scores} labels={rd.labels} color={st.color}/>
-                  : <div style={{ width:120, height:120, display:'flex', alignItems:'center', justifyContent:'center', color:'#D1D5DB', fontSize:10, textAlign:'center' }}>Renseigne ton profil pour voir le radar</div>
-                }
-              </div>
-
-              {/* Right: zones + benchmarks */}
-              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                {/* Zones d'intensité */}
-                <div style={{ padding:'12px 14px', background:'var(--bg-card2)', borderRadius:12, border:'1px solid var(--border)' }}>
-                  <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'#9CA3AF', margin:'0 0 10px' }}>Zones d&apos;intensité FC</p>
-                  <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                    {zones.map(z => (
-                      <div key={z.z} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:9, fontWeight:700, color:z.color, width:18, flexShrink:0 }}>{z.z}</span>
-                        <div style={{ flex:1, height:6, borderRadius:3, background:'var(--border)', overflow:'hidden' }}>
-                          <div style={{ height:'100%', width:`${(z.pct[1] - z.pct[0]) * 200}%`, background:z.color, borderRadius:3, opacity:0.75 }}/>
-                        </div>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:9, color:'var(--text-mid)', width:70, textAlign:'right' as const, flexShrink:0 }}>
-                          {p.hrMax > 0 ? `${z.low}–${z.high} bpm` : '—'}
-                        </span>
-                        <span style={{ fontSize:9, color:'#9CA3AF', width:60, flexShrink:0 }}>{z.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Benchmarks clés */}
-                <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:7 }}>
-                  {benchmarks[specSport].map(b => (
-                    <div key={b.label} style={{ padding:'10px 12px', background:'var(--bg-card2)', borderRadius:10, border:'1px solid var(--border)', textAlign:'center' as const }}>
-                      <p style={{ fontSize:9, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.05em', color:'#9CA3AF', margin:'0 0 4px' }}>{b.label}</p>
-                      <p style={{ fontFamily:'DM Mono,monospace', fontSize:15, fontWeight:700, color:b.color, margin:'0 0 1px' }}>{b.value}</p>
-                      <p style={{ fontSize:9, color:'#9CA3AF', margin:0 }}>{b.unit}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )
-        })()}
-
-        {/* Fields grid */}
-        <div style={{ borderTop:'1px solid var(--border)', paddingTop:14, marginBottom:4 }}>
-          <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'#9CA3AF', margin:'0 0 10px' }}>Renseigner les benchmarks</p>
-          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap:9 }}>
-            {SPORT_SPEC_FIELDS[specSport].map(f => (
-              <div key={f.key} style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                <label style={{ fontSize:10, fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)' }}>
-                  {f.label}{f.unit && <span style={{ fontWeight:400, marginLeft:3, textTransform:'none' as const }}>({f.unit})</span>}
-                </label>
-                <input
-                  type="text"
-                  value={specParams[specSport][f.key] ?? ''}
-                  onChange={e => setSpecField(f.key, e.target.value)}
-                  placeholder={f.placeholder ?? (f.unit ? `En ${f.unit}` : '—')}
-                  style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:12, outline:'none' }}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <button
-          onClick={() => { void handleSaveSpec() }}
-          disabled={specSaving}
-          style={{ marginTop:12, width:'100%', padding:'9px', borderRadius:10, background:specSavedOk?'rgba(34,197,94,0.20)':SPORT_SPEC_TABS.find(t=>t.id===specSport)!.color+'22', color:specSavedOk?'#22c55e':SPORT_SPEC_TABS.find(t=>t.id===specSport)!.color, fontSize:12, fontWeight:700, cursor:specSaving?'not-allowed':'pointer', border:`1px solid ${specSavedOk?'rgba(34,197,94,0.4)':SPORT_SPEC_TABS.find(t=>t.id===specSport)!.color+'40'}`, transition:'all 0.2s' }}
-        >
-          {specSaving ? 'Enregistrement…' : specSavedOk ? '✓ Benchmarks enregistrés' : `Enregistrer benchmarks ${SPORT_SPEC_TABS.find(t=>t.id===specSport)!.label}`}
-        </button>
-      </Card>
-
-      {/* ── Niveau estimé ── */}
-      <Card>
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
-          <div style={{ width:3, height:16, borderRadius:2, background:'linear-gradient(180deg,#8B5CF6,#EC4899)' }}/>
-          <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>Niveau estimé</h2>
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:10 }}>
-          <div
-            onClick={() => onSelect('W/kg', `${wkg} W/kg`)}
-            style={{ cursor:'pointer', padding:'4px 0', borderRadius:12, background: selectedDatum?.label === 'W/kg' ? '#3B82F610' : undefined, border:`1px solid ${ selectedDatum?.label === 'W/kg' ? '#3B82F655' : 'transparent'}`, transition:'all 0.15s' }}
-          >
-            <SemiGauge
-              value={parseFloat(wkg)} max={6}
-              label="W/kg" display={`${wkg}`} color="#3B82F6"
-              levelLabel={parseFloat(wkg) >= 4.5 ? 'Expert' : parseFloat(wkg) >= 3.5 ? 'Avancé' : parseFloat(wkg) >= 2.5 ? 'Intermédiaire' : 'Débutant'}
-            />
-          </div>
-          <div
-            onClick={() => onSelect('VO2max', `${p.vo2max} ml/kg/min`)}
-            style={{ cursor:'pointer', padding:'4px 0', borderRadius:12, background: selectedDatum?.label === 'VO2max' ? '#EC489910' : undefined, border:`1px solid ${ selectedDatum?.label === 'VO2max' ? '#EC489955' : 'transparent'}`, transition:'all 0.15s' }}
-          >
-            <SemiGauge
-              value={p.vo2max} max={80}
-              label="VO2max" display={`${p.vo2max}`} color="#EC4899"
-              levelLabel={p.vo2max >= 65 ? 'Élite' : p.vo2max >= 55 ? 'Élevé' : p.vo2max >= 45 ? 'Bon' : 'Moyen'}
-            />
-          </div>
-          <div
-            onClick={() => onSelect('FC repos', `${p.hrRest} bpm`)}
-            style={{ cursor:'pointer', padding:'4px 0', borderRadius:12, background: selectedDatum?.label === 'FC repos' ? '#22c55e10' : undefined, border:`1px solid ${ selectedDatum?.label === 'FC repos' ? '#22c55e55' : 'transparent'}`, transition:'all 0.15s' }}
-          >
-            <SemiGauge
-              value={Math.max(0, 80 - p.hrRest)} max={50}
-              label="FC repos" display={`${p.hrRest}`} color="#22c55e"
-              levelLabel={p.hrRest <= 40 ? 'Élite' : p.hrRest <= 50 ? 'Élevé' : p.hrRest <= 60 ? 'Bon' : 'Moyen'}
-            />
-          </div>
-        </div>
-        <p style={{ fontSize:10, color:'#9CA3AF', textAlign:'center' as const, margin:'10px 0 0' }}>Estimations basées sur les données de ton profil — mets à jour régulièrement pour un suivi précis.</p>
-      </Card>
+      {benchOpen && (
+        <BenchmarkSheet
+          title={SPORT_SPEC_TABS.find(t => t.id === specSport)!.label}
+          fields={SPORT_SPEC_FIELDS[specSport]}
+          values={specParams[specSport]}
+          onChange={(k, v) => setSpecField(k, v)}
+          onSave={async () => { await handleSaveSpec(); setBenchOpen(false) }}
+          saving={specSaving}
+          onClose={() => setBenchOpen(false)}
+        />
+      )}
     </div>
   )
 }

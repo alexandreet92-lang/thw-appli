@@ -75,7 +75,8 @@ export function WeightGraph({ pts, unit, goal, periodDays, isDesktop }: Props) {
     <div style={{ position: 'relative' }}>
       {isDesktop && chevron(-1, 'M15 18l-6-6 6-6')}
       {isDesktop && chevron(1, 'M9 18l6-6-6-6')}
-      <div ref={scrollRef} style={{ overflowX: 'auto', overflowY: 'hidden' }}>
+      <div ref={scrollRef} style={{ overflowX: 'auto', overflowY: 'hidden',
+        paddingLeft: isDesktop ? 'var(--space-8)' : 'var(--space-1)', paddingRight: isDesktop ? 'var(--space-8)' : 'var(--space-1)' }}>
         <svg width={totalW} height={H} style={{ display: 'block' }}>
           {goal != null && (
             <line x1={0} y1={y(goal)} x2={totalW} y2={y(goal)} stroke="var(--text-dim)" strokeWidth={1} strokeDasharray="5 4" />

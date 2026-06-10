@@ -85,6 +85,11 @@ d'intensité** (`--zone-1..5`). Voir annexe.
   Aucune bordure décorative sur cartes, boutons, pilules, cases.
 - **Radius** : `--r-sm: 8px` · `--r-md: 14px` · `--r-lg: 20px`. Rien d'autre.
 - **Espacement** : grille 4px via `--space-*`. Pas de valeur d'espacement arbitraire.
+- **Padding de contenu** (identique sur toutes les pages) : le conteneur de contenu
+  réserve au moins `var(--space-8)` (32px) horizontalement en desktop et
+  `var(--space-5)` (20px) en mobile. Le contenu ne colle jamais aux bords ; un
+  élément défilable (graphe) garde un padding interne pour que ses contrôles
+  (flèches) ne soient pas rognés et que la donnée ne touche pas le cadre.
 
 ---
 
@@ -94,6 +99,9 @@ d'intensité** (`--zone-1..5`). Voir annexe.
   subordonne en taille et en poids. Pas trois blocs de même poids qui se battent.
 - **Pas de répétition de chrome.** Quatre badges identiques, quatre anneaux à zéro :
   c'est du bruit. Fusionner ou supprimer.
+- **Ne pas répéter le nom de la page/onglet en titre** quand la navigation l'indique
+  déjà (barre d'onglets mobile, sidebar active desktop). L'en-tête porte un **contexte
+  utile** (date, période, état) en `var(--font-display)`, pas un label redondant.
 
 ---
 

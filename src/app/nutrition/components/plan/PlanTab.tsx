@@ -49,14 +49,13 @@ function Dot({ type }: { type: DayType }) {
 export function PlanTab(p: Props) {
   const { activePlan, today, todayType, todayKcalObj, todayMacroObj, todaySessions, next14Days } = p
 
-  const header = (
-    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: p.isDesktop ? 28 : 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Mon plan</h1>
-      {activePlan && (
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>Actif · {weekOf(today)}</span>
-      )}
+  // En-tête de contexte : la semaine du plan (le nom de l'onglet est porté par la nav).
+  const header = activePlan ? (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: p.isDesktop ? 22 : 20, fontWeight: 600, color: 'var(--text)', margin: 0, textTransform: 'capitalize' }}>{weekOf(today)}</h1>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>· actif</span>
     </div>
-  )
+  ) : null
 
   if (!activePlan) {
     return (

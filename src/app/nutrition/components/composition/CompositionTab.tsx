@@ -11,7 +11,7 @@ import { WeightGraph } from './WeightGraph'
 import { AnnualSheet } from './AnnualSheet'
 import { MeasureForm } from './MeasureForm'
 
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
+const FB = 'var(--font-body)'
 const PERIODS: [string, number][] = [['30 j', 30], ['3 mois', 90], ['1 an', 365]]
 const METRICS: { key: WeightMetric; needsHeight?: boolean; dim?: boolean }[] = [
   { key: 'weight_kg' }, { key: 'fat_mass_percent' }, { key: 'muscle_mass_kg' },
@@ -69,9 +69,8 @@ export function CompositionTab(p: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', padding: 'var(--space-2) 0 var(--space-6)' }}>
-      <h1 style={{ fontFamily: FD, fontSize: p.isDesktop ? 28 : 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Composition</h1>
-
-      {/* Bannière balance (lien neutre vers la future page Connexion) */}
+      {/* Pas de titre redondant : la nav indique déjà l'onglet. On démarre sur la
+          bannière balance + les bascules de métrique. */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
         <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>Aucune balance connectée — la saisie ci-dessous remplit le suivi.</span>
         <a href="/connections" style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Connecter une balance →</a>

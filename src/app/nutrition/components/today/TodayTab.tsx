@@ -41,11 +41,8 @@ export function TodayTab(p: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', padding: 'var(--space-2) 0 var(--space-6)' }}>
-      {/* En-tête éditorial */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
-        <h1 style={{ fontFamily: FD, fontSize: p.isDesktop ? 28 : 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Aujourd&apos;hui</h1>
-        <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{dateLabel(p.today)}</span>
-      </div>
+      {/* En-tête de contexte : la date (le nom de l'onglet est déjà porté par la nav) */}
+      <h1 style={{ fontFamily: FD, fontSize: p.isDesktop ? 22 : 20, fontWeight: 600, color: 'var(--text)', margin: 0, textTransform: 'capitalize' }}>{dateLabel(p.today)}</h1>
 
       {/* Hero — anneau unique + barres de macros */}
       <FuelingHero

@@ -76,18 +76,15 @@ export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', padding: 'var(--space-2) 0 var(--space-6)' }}>
-      {/* En-tête éditorial + sélecteur de période en boutons texte */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
-        <h1 style={{ fontFamily: FD, fontSize: 28, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Suivi</h1>
-        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-          {PERIODS.map(p => (
-            <button key={p} onClick={() => setDays(p)} style={{
-              border: 'none', background: 'transparent', cursor: 'pointer', padding: '0 var(--space-1)',
-              fontFamily: FB, fontSize: 13, fontWeight: days === p ? 600 : 500,
-              color: days === p ? 'var(--text)' : 'var(--text-dim)',
-            }}>{p} j</button>
-          ))}
-        </div>
+      {/* Sélecteur de période (le nom de l'onglet est porté par la nav, pas de titre redondant) */}
+      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        {PERIODS.map(p => (
+          <button key={p} onClick={() => setDays(p)} style={{
+            border: 'none', background: 'transparent', cursor: 'pointer', padding: '0 var(--space-1)',
+            fontFamily: FB, fontSize: 13, fontWeight: days === p ? 600 : 500,
+            color: days === p ? 'var(--text)' : 'var(--text-dim)',
+          }}>{p} j</button>
+        ))}
       </div>
 
       {/* Bilan — 4 stats nues */}

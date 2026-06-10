@@ -61,6 +61,7 @@ const ENFORCED_PATHS = [
   'src/app/calendar/components/GoalBanner.tsx',
   'src/app/calendar/components/AnnualView.tsx',
   'src/app/performance/components/profil/ProfilGlobalGrid.tsx',
+  'src/app/performance/components/tests/TestCard.tsx',
 ]
 // Dossiers ignorés sous les SCAN_DIRS.
 const IGNORE_DIRS = new Set(['node_modules', '.next', 'dist', 'build'])

@@ -63,9 +63,9 @@ function useWindowWidth(): number {
 
 // ── Power Curve: couleurs par rang (plus récent = index 0) ──────
 const PC_COLORS = ['#60B4FF', '#2563EB', '#EAB308', '#F97316', '#EF4444'] as const
-function getPCColor(yr: string, sortedDesc: string[]): string {
-  const idx = sortedDesc.indexOf(yr)
-  return idx >= 0 && idx < PC_COLORS.length ? PC_COLORS[idx] : YEAR_DEFAULT_COLOR
+const YEAR_VAR: Record<string, string> = { '2026': 'var(--year-2026)', '2025': 'var(--year-2025)', '2024': 'var(--year-2024)', '2023': 'var(--year-2023)' }
+function getPCColor(yr: string, _sortedDesc: string[]): string {
+  return YEAR_VAR[yr] ?? 'var(--year-default)'
 }
 
 // ── Chart helpers ────────────────────────────────────────────────
@@ -463,8 +463,9 @@ function TimeBarChart({ records, chartDists, color }: {
               return (
                 <g key={yr} onMouseEnter={() => setHovIdx(i)} onMouseLeave={() => setHovIdx(null)}>
                   <rect x={x} y={y} width={barW} height={h}
-                    fill={`${col}${isHov ? 'ee' : '88'}`} stroke={col}
-                    strokeWidth={isBest ? 2 : 1} rx={3} />
+                    fill={col} fillOpacity={isHov ? 0.95 : 0.6} stroke={col}
+                    strokeWidth={isBest ? 2 : 1} rx={3}
+                    style={{ transformBox: 'fill-box', transformOrigin: 'bottom', animation: 'chartBarEnter 0.9s cubic-bezier(0.25,1,0.5,1) both' }} />
                   {isBest && <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={7} fill={col} fontWeight="bold">★</text>}
                   {(isHov || isBest) && (
                     <text x={x + barW / 2} y={y - (isBest ? 15 : 6)} textAnchor="middle" fontSize={8} fill={col} fontWeight="600">
@@ -1189,10 +1190,10 @@ function RecordRow({ label, rec24, rec23, sub, onSelect, selected, actions }: {
     <div
       onClick={rec24 !== '—' ? onSelect : undefined}
       style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 9,
-        background: selected ? 'rgba(6,182,212,0.06)' : 'var(--bg-card2)',
-        border: `1px solid ${selected ? '#06B6D4' : 'var(--border)'}`,
-        marginBottom: 5,
+        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 'var(--r-sm)',
+        background: selected ? 'var(--bg-card2)' : 'transparent',
+        border: 'none',
+        marginBottom: 4,
         cursor: (onSelect && rec24 !== '—') ? 'pointer' : undefined,
         transition: 'border-color 0.15s, background 0.15s',
         userSelect: 'none',
@@ -1201,12 +1202,12 @@ function RecordRow({ label, rec24, rec23, sub, onSelect, selected, actions }: {
       <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-mid)', minWidth: 72, flexShrink: 0 }}>{label}</span>
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 13, fontWeight: 700, color: '#06B6D4' }}>{rec24}</span>
-          {isPR && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'rgba(6,182,212,0.15)', color: '#06B6D4', fontWeight: 700 }}>PR</span>}
+          <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{rec24}</span>
+          {isPR && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'transparent', color: 'var(--primary)', fontWeight: 700 }}>PR</span>}
           {sub && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{sub}</span>}
         </div>
         {rec23 && rec23 !== '—' && (
-          <span style={{ fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)' }}>Préc. : {rec23}</span>
+          <span className="tnum" style={{ fontSize: 10, fontFamily: 'var(--font-body)', color: 'var(--text-dim)' }}>Préc. : {rec23}</span>
         )}
       </div>
       {actions && <div onClick={e => e.stopPropagation()}>{actions}</div>}

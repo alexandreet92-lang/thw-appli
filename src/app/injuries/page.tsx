@@ -29,7 +29,7 @@ export default function InjuriesPage() {
   )
 
   return (
-    <div className="px-[var(--space-5)] md:px-[var(--space-8)]" style={{ paddingTop: 'var(--space-5)', paddingBottom: 'var(--space-8)', maxWidth: 1100, margin: '0 auto' }}>
+    <div className="px-[var(--space-5)] md:px-[var(--space-8)]" style={{ paddingTop: 'var(--space-5)', paddingBottom: 'var(--space-8)' }}>
       {/* Sous-nav TOUJOURS visible (sidebar desktop / onglets mobile) : l'état d'erreur
           est rendu DANS le layout, pas à la place de la nav. */}
       <TabbedPageLayout title="Blessures" headerExtra={signaler} tabs={TABS} active={tab} onChange={setTab}>

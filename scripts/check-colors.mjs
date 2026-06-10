@@ -35,6 +35,12 @@ const BASELINE_PATH = join(ROOT, 'scripts', '.color-baseline.json')
 const SANCTIONED = new Set([
   'src/app/globals.css',
 ])
+
+// Chemins « enforced » : tenus au ZÉRO couleur en dur de façon stricte, vérifiés
+// par le gate de build (mode --enforce). À remplir au fur et à mesure de la
+// refonte des pages (préfixes de chemin relatif au repo, ex. 'src/app/nutrition').
+// Liste VIDE = aucun chemin enforced = le gate de build passe toujours.
+const ENFORCED_PATHS = []
 // Dossiers ignorés sous les SCAN_DIRS.
 const IGNORE_DIRS = new Set(['node_modules', '.next', 'dist', 'build'])
 
@@ -82,6 +88,28 @@ for (const d of SCAN_DIRS) {
 }
 const counts = Object.fromEntries(results.map(r => [r.file, r.hits.length]))
 const total = results.reduce((a, r) => a + r.hits.length, 0)
+
+// ── Mode : enforce (gate de build) ──────────────────────────────────────────
+// Ne vérifie strictement que les fichiers sous ENFORCED_PATHS. Liste vide → OK.
+if (args.has('--enforce')) {
+  if (ENFORCED_PATHS.length === 0) {
+    console.log('✓ check:colors (enforce) — aucun chemin enforced, rien à vérifier.')
+    process.exit(0)
+  }
+  const enforced = results.filter(r => ENFORCED_PATHS.some(p => r.file.startsWith(p)))
+  const enfTotal = enforced.reduce((a, r) => a + r.hits.length, 0)
+  if (enfTotal === 0) {
+    console.log(`✓ check:colors (enforce) — 0 couleur en dur dans ${ENFORCED_PATHS.length} chemin(s) enforced.`)
+    process.exit(0)
+  }
+  console.error('✗ Couleurs en dur dans des chemins enforced (DESIGN_SYSTEM.md §2) :')
+  for (const r of enforced) {
+    console.error(`  ${r.file} (${r.hits.length})`)
+    for (const h of r.hits) console.error(`    ${h.line}: ${h.text}`)
+  }
+  console.error('\nUtilise var(--token), ou annote la ligne `design-allow-color` si justifié.')
+  process.exit(1)
+}
 
 // ── Mode : update baseline ─────────────────────────────────────────────────
 if (args.has('--update-baseline')) {

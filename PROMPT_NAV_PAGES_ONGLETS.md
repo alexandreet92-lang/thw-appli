@@ -38,9 +38,16 @@ remplacés par `<TabbedPageLayout title="Performance" tabs={[Profil,Datas,Tests]
 - [x] Transition animée (slide + fondu) au changement, coupée si `prefers-reduced-motion`.
 - [x] Nav globale intacte (`layout.tsx`/`Sidebar`/`MobileTabBar` non modifiés ; sous-nav additive).
 
-## Suite (hors périmètre de cette tâche, à migrer plus tard)
-Faire passer les autres pages à onglets (Blessures Aperçu/Historique/Analyse, Nutrition,
-Calendar…) par `TabbedPageLayout` pour l'uniformité.
+## Adoption par défaut (transparent sans onglets — « se met à jour tout seul »)
+`TabbedPageLayout` est désormais **transparent quand une page a moins de 2 onglets** :
+il rend seulement le contenu, sans sous-nav. On peut donc l'adopter partout sans risque,
+et **la sous-nav apparaît automatiquement dès qu'on lui passe ≥ 2 onglets**.
+- Migré : **Performance** (Profil/Datas/Tests), **Blessures** (Aperçu/Historique/Analyse).
+- **Nutrition** et **Calendar** ont une nav personnalisée (rail au survol / sélecteur de
+  vue) : leur migration change leur UX → à faire sur validation, séparément, pour éviter
+  une régression visuelle. Toute **nouvelle** page à onglets passe par le composant (DS §4.1).
+- Les pages **mono-vue** n'ont pas besoin d'être enveloppées (aucun gain visible) ; la
+  convention DS garantit l'adoption au moment où des onglets sont ajoutés.
 
 ## Contraintes respectées
 TS strict (aucun any), tokens uniquement (composant enforced), ≤200 l., `npm run build`

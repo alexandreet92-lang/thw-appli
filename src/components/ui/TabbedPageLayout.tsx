@@ -22,6 +22,17 @@ interface Props<T extends string> {
 export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, active, onChange, children }: Props<T>) {
   const reduce = useReducedMotion()
 
+  const header = (title || headerExtra) ? (
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
+      {title && <h1 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{title}</h1>}
+      {headerExtra}
+    </div>
+  ) : null
+
+  // Transparent tant qu'il y a moins de 2 onglets : rend juste le contenu. La sous-nav
+  // (sidebar desktop / onglets mobile) apparaît AUTOMATIQUEMENT dès qu'il y a ≥ 2 onglets.
+  if (tabs.length < 2) return <div>{header}{children}</div>
+
   const deskBtn = (t: PageTab<T>): React.CSSProperties => {
     const on = t.id === active
     return {
@@ -34,12 +45,7 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
 
   return (
     <div>
-      {(title || headerExtra) && (
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
-          {title && <h1 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{title}</h1>}
-          {headerExtra}
-        </div>
-      )}
+      {header}
 
       <div className="md:flex">
         {/* Desktop : sous-nav verticale */}

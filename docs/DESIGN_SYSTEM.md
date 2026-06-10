@@ -152,6 +152,11 @@ réimplémentée page par page :
 Cette sous-nav est **distincte de la nav GLOBALE** de l'app (sidebar globale desktop /
 bottom-bar mobile, dans `layout.tsx`) : elle s'**ajoute**, ne la remplace ni ne la duplique.
 
+**Adoption par défaut** : `TabbedPageLayout` est **transparent tant qu'une page a moins
+de 2 onglets** (il rend seulement le contenu, sans sous-nav). On peut donc l'adopter sur
+n'importe quelle page sans risque : **dès qu'on lui passe ≥ 2 onglets, la sous-nav
+apparaît automatiquement** au bon format. Toute nouvelle page à onglets doit passer par lui.
+
 ---
 
 ## 5. Élément signature

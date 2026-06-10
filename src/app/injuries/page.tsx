@@ -9,6 +9,7 @@ import { HistoryTab } from './components/HistoryTab'
 import { AnalysisTab } from './components/AnalysisTab'
 import { ReportSheet } from './components/ReportSheet'
 import { TrackSheet } from './components/TrackSheet'
+import { TabbedPageLayout } from '@/components/ui/TabbedPageLayout'
 
 type Tab = 'apercu' | 'historique' | 'analyse'
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -30,10 +31,6 @@ export default function InjuriesPage() {
         <button onClick={() => setReport(true)} style={{ height: 36, padding: '0 16px', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Signaler</button>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 'var(--space-6)' }}>
-        {TABS.map(t => <button key={t.id} onClick={() => setTab(t.id)} className={`tab-btn${tab === t.id ? ' active' : ''}`}>{t.label}</button>)}
-      </div>
-
       {loading ? (
         <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</p>
       ) : tableMissing ? (
@@ -47,11 +44,11 @@ export default function InjuriesPage() {
           <button onClick={() => void reload()} style={{ height: 36, padding: '0 16px', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Réessayer</button>
         </div>
       ) : (
-        <>
-          {tab === 'apercu' && <OverviewTab injuries={injuries} onOpen={i => setTrackId(i.id)} onCheckin={(inj, r, e) => addLog({ injury_id: inj.id, log_date: new Date().toISOString().slice(0, 10), note: null, intensity_rest: r, intensity_effort: e })} />}
-          {tab === 'historique' && <HistoryTab injuries={injuries} onOpen={i => setTrackId(i.id)} />}
-          {tab === 'analyse' && <AnalysisTab injuries={injuries} />}
-        </>
+        <TabbedPageLayout tabs={TABS} active={tab} onChange={setTab}>
+          {tab === 'apercu' ? <OverviewTab injuries={injuries} onOpen={i => setTrackId(i.id)} onCheckin={(inj, r, e) => addLog({ injury_id: inj.id, log_date: new Date().toISOString().slice(0, 10), note: null, intensity_rest: r, intensity_effort: e })} />
+            : tab === 'historique' ? <HistoryTab injuries={injuries} onOpen={i => setTrackId(i.id)} />
+            : <AnalysisTab injuries={injuries} />}
+        </TabbedPageLayout>
       )}
 
       {report && <ReportSheet onClose={() => setReport(false)} onSave={add} />}

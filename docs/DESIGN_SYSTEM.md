@@ -75,6 +75,27 @@ Deux voix, jamais plus.
 sanctionnées, exemptées du check) : couleurs **sport** (`--sport-*`) et **zones
 d'intensité** (`--zone-1..5`). Voir annexe.
 
+### 2.1 Couleur sur les pages denses
+
+Sur les pages où la couleur **porte du sens** (sport, zone d'intensité, catégorie
+d'événement), la couleur fonctionnelle est autorisée — mais uniquement via le
+**support minimal** :
+- un **point** (~7px),
+- un **filet vertical de 3px**,
+- un **petit tag**,
+- ou un **fond teinté à très faible opacité**.
+
+**Jamais** une surface saturée pleine. **Jamais** un chiffre coloré. La couleur
+**décorative** (chiffre coloré « pour faire joli », barre de progression teintée
+sans raison, badge dégradé) est **neutralisée** : chiffres et surfaces en tokens
+neutres. L'accent unique reste `var(--primary)`.
+
+**Palettes fonctionnelles sanctionnées** (exemptées du check couleurs, définies
+comme constantes) :
+- **sports** : run / bike / swim / gym / hyrox / rowing ;
+- **zones d'intensité** : 5 FC, 5 allure, 7 puissance ;
+- **catégories calendrier** : race / pro / perso / gty.
+
 ---
 
 ## 3. Structure & espace
@@ -90,6 +111,18 @@ d'intensité** (`--zone-1..5`). Voir annexe.
   `var(--space-5)` (20px) en mobile. Le contenu ne colle jamais aux bords ; un
   élément défilable (graphe) garde un padding interne pour que ses contrôles
   (flèches) ne soient pas rognés et que la donnée ne touche pas le cadre.
+
+### 3.1 Saisie / édition de données
+
+Les formulaires de **saisie ou d'édition volumineux** ne s'affichent **pas en inline**
+sur la page (ça la surcharge). Ils s'ouvrent dans une **feuille coulissante
+(bottom sheet)** via `createPortal` sur `document.body`, déclenchée par un bouton
+« Renseigner » / « Modifier ».
+
+Champs soignés :
+- coins arrondis (`--r-sm` / 10px),
+- **unité intégrée à droite** du champ,
+- focus `var(--primary)` + halo `var(--primary-dim)`.
 
 ---
 
@@ -120,6 +153,13 @@ hauteur encode la charge, qui donnent à voir la périodisation). Pas de lib de 
 - **Vide = invitation à agir**, dans la voix de l'interface. Une erreur explique
   quoi s'est passé et comment le corriger ; elle ne s'excuse pas, ne reste pas vague.
 - Touch targets **≥ 44px**. Focus visible. `prefers-reduced-motion` respecté.
+
+### 6.1 Animation des jauges / barres
+
+Les **barres de zones** et de **progression** s'animent en remplissage
+(largeur `0 → valeur`) au montage **et** à chaque changement de jeu de données.
+Transition ~**0,9 s**, easing doux. Respecter `prefers-reduced-motion` : aucune
+animation si l'utilisateur a réduit les mouvements.
 
 ---
 

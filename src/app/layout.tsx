@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Sidebar } from '@/components/shared/Sidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { MobileShell } from '@/components/shared/MobileShell'
 import MobileTabBar from '@/components/MobileTabBar'
 import OfflineIndicator from '@/components/shared/OfflineIndicator'
 import GlobalOnboardingWrapper from '@/components/onboarding/GlobalOnboardingWrapper'
@@ -54,28 +55,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
           </div>
 
-          {/* Mobile */}
-          <div
-            className="flex flex-col md:hidden"
-            style={{ height: '100vh', overflow: 'hidden' }}
-          >
-            <Sidebar />
-            <main style={{
-              width: '100%',
-              height: 'calc(100vh - var(--header-height))',
-              marginTop: 'var(--header-height)',
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              position: 'relative',
-              zIndex: 10,
-              background: 'var(--bg)',
-              scrollBehavior: 'smooth',
-              WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
-              paddingBottom: 'calc(80px + env(safe-area-inset-bottom))',
-            }}>
-              <PageTransition>{children}</PageTransition>
-            </main>
-          </div>
+          {/* Mobile — chrome « effet Claude » (sidebar fixe dessous, page qui glisse) */}
+          <MobileShell>{children}</MobileShell>
 
           {/* Bottom tab bar — mobile only, position:fixed */}
           <MobileTabBar />

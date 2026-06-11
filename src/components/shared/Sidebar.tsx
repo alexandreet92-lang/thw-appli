@@ -182,7 +182,7 @@ const NAV = [
 
 // ── Avatar helper ──────────────────────────────────────────────
 
-function Avatar({ url, name, size = 40 }: { url: string | null; name: string | null; size?: number }) {
+export function Avatar({ url, name, size = 40 }: { url: string | null; name: string | null; size?: number }) {
   const initials = name
     ? name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
     : '?'
@@ -283,7 +283,7 @@ function NavItem({
 
 // ── Sidebar content (shared desktop + mobile drawer) ───────────
 
-function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?: () => void }) {
+export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: () => void; onOpenAI?: () => void; headerSlot?: React.ReactNode }) {
   const pathname = usePathname()
   const { mode, toggleTheme, label } = useTheme()
   const { profile } = useProfile()
@@ -297,7 +297,8 @@ function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?
       overflowY: 'auto',
     }}>
 
-      {/* ── Profile ── */}
+      {/* ── En-tête (override possible : ex. « Hybrid » + avatar mobile) ── */}
+      {headerSlot !== undefined ? headerSlot : (
       <Link
         href="/profile"
         onClick={onClose}
@@ -358,6 +359,7 @@ function SidebarContent({ onClose, onOpenAI }: { onClose?: () => void; onOpenAI?
           </div>
         </div>
       </Link>
+      )}
 
       {/* ── Nav ── */}
       <nav style={{

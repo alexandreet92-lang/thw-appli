@@ -3798,12 +3798,14 @@ function TrainingTab() {
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-      {/* ── Training Bloc (résumé cliquable → détail) ── */}
-      <TrainingBlockSummary />
-      {/* ── PLAN HEADER + GRAPHIQUES (visible si plan IA actif sur cette semaine) ── */}
+      {/* ── PLAN HEADER + GRAPHIQUES (cartes Volume / Séances / TSS) ── */}
       {aiPlan && (
         <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} nextRace={nextRace} onReload={() => setAiPlanReloadTick(t => t + 1)} />
       )}
+      {/* ── Volume par discipline (VOL. + TSS réels) — juste sous les cartes ── */}
+      <VolumeByDiscipline sessions={sessions} />
+      {/* ── Training Bloc / Training Planification ── */}
+      <TrainingBlockSummary />
       {/* ── BULLE FLOTTANTE COACH IA (visible si plan actif) ── */}
       {aiPlan && <AiPlanBubble plan={aiPlan} />}
       {/* ── BANNIÈRE PLAN À VENIR — visible quand le plan démarre dans une semaine future ── */}
@@ -10422,10 +10424,6 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-      {/* ── Volume par discipline (VOL. + TSS réel) ── */}
-      <VolumeByDiscipline sessions={trainingWeek} />
-      {/* ── Training Bloc (2 onglets : Bloc cartes / Planification) ── */}
-      <TrainingBlockSummary />
       {/* ── Tâches du jour (simple checklist) ── */}
       <div style={{ borderRadius:12,border:'1px solid var(--border)',background:'var(--bg-card2)',overflow:'hidden' }}>
         <div style={{ padding:'10px 14px 8px',borderBottom:'1px solid var(--border)' }}>

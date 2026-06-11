@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import { Sidebar } from '@/components/shared/Sidebar'
-import { PageTransition } from '@/components/ui/PageTransition'
+import { DesktopShell } from '@/components/shared/DesktopShell'
+import { MobileShell } from '@/components/shared/MobileShell'
 import MobileTabBar from '@/components/MobileTabBar'
 import OfflineIndicator from '@/components/shared/OfflineIndicator'
 import GlobalOnboardingWrapper from '@/components/onboarding/GlobalOnboardingWrapper'
@@ -32,50 +32,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ margin: 0, background: 'var(--bg)', height: '100vh', overflow: 'hidden' }}>
         <ClientShell>
 
-          {/* Desktop */}
-          <div
-            className="hidden md:flex"
-            style={{ height: '100vh', overflow: 'hidden' }}
-          >
-            <Sidebar />
-            <main style={{
-              flex: 1,
-              minWidth: 0,
-              height: '100vh',
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              position: 'relative',
-              zIndex: 10,
-              background: 'var(--bg)',
-              scrollBehavior: 'smooth',
-              WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
-            }}>
-              <PageTransition>{children}</PageTransition>
-            </main>
-          </div>
+          {/* Desktop — sidebar ancrée (push) + header flottant */}
+          <DesktopShell>{children}</DesktopShell>
 
-          {/* Mobile */}
-          <div
-            className="flex flex-col md:hidden"
-            style={{ height: '100vh', overflow: 'hidden' }}
-          >
-            <Sidebar />
-            <main style={{
-              width: '100%',
-              height: 'calc(100vh - var(--header-height))',
-              marginTop: 'var(--header-height)',
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              position: 'relative',
-              zIndex: 10,
-              background: 'var(--bg)',
-              scrollBehavior: 'smooth',
-              WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
-              paddingBottom: 'calc(80px + env(safe-area-inset-bottom))',
-            }}>
-              <PageTransition>{children}</PageTransition>
-            </main>
-          </div>
+          {/* Mobile — chrome « effet Claude » (sidebar fixe dessous, page qui glisse) */}
+          <MobileShell>{children}</MobileShell>
 
           {/* Bottom tab bar — mobile only, position:fixed */}
           <MobileTabBar />

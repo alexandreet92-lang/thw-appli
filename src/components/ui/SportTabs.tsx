@@ -1,12 +1,11 @@
 'use client'
 
 /**
- * SportTabs — pills horizontaux style Year Datas.
- * Référence visuelle : docs/CHART_EXAMPLES.tsx
- *
- * Active  : background = tab.color, text blanc
- * Inactive: background = var(--bg-card2), text var(--text-dim)
- * Scrollable horizontalement sur mobile (overflow-x auto)
+ * SportTabs — pills horizontaux neutres (DESIGN_SYSTEM.md §2/§4.1).
+ * La couleur sport est portée par un POINT (7px), jamais par un aplat plein.
+ * Active  : fond neutre élevé (--bg-elev), texte --text, point sport.
+ * Inactive: fond transparent, texte --text-dim, point sport atténué.
+ * Scrollable horizontalement sur mobile (overflow-x auto).
  */
 
 export interface SportTabItem {
@@ -44,19 +43,23 @@ export function SportTabs({ tabs, value, onChange, style, className }: SportTabs
             key={tab.id}
             onClick={() => onChange(tab.id)}
             style={{
+              display: 'flex', alignItems: 'center', gap: 7,
               padding: '6px 14px',
-              borderRadius: 20,
+              borderRadius: 'var(--r-sm)',
               border: 'none',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
               flexShrink: 0,
+              fontFamily: 'var(--font-body)',
               fontSize: 12,
-              fontWeight: active ? 700 : 500,
+              fontWeight: active ? 600 : 500,
               transition: 'background 0.15s, color 0.15s',
-              background: active ? tab.color : 'var(--bg-card2)',
-              color: active ? '#ffffff' : 'var(--text-dim)',
+              background: active ? 'var(--bg-elev)' : 'transparent',
+              color: active ? 'var(--text)' : 'var(--text-dim)',
+              boxShadow: active ? 'var(--shadow-card)' : 'none',
             }}
           >
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: tab.color, flexShrink: 0, opacity: active ? 1 : 0.6 }} />
             {tab.label}
           </button>
         )

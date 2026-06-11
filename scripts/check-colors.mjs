@@ -83,6 +83,11 @@ const ENFORCED_PATHS = [
   'src/app/performance/DistanceRecords.tsx',
   'src/app/performance/SwimRecords.tsx',
   'src/app/performance/RowingRecords.tsx',
+  'src/app/performance/triActivities.ts',
+  'src/app/performance/LinkActivitySheet.tsx',
+  'src/app/performance/TriSegment.tsx',
+  'src/app/performance/TriathlonDrawer.tsx',
+  'src/app/performance/TriathlonRecords.tsx',
 ]
 // Dossiers ignorés sous les SCAN_DIRS.
 const IGNORE_DIRS = new Set(['node_modules', '.next', 'dist', 'build'])

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { Segmented } from '@/components/ui/Segmented'
 
 // ─── Levels ──────────────────────────────────────────────────────────────────
 const LEVELS = [
@@ -369,7 +370,7 @@ const HYROX_STATION_AXES: AxisDef[] = [
 ]
 
 // TRIATHLON — benchmarks par format (H / F)
-type TriFormat = 'M' | '703' | 'full'
+export type TriFormat = 'M' | '703' | 'full'
 
 const TRIATHLON_AXES: Record<TriFormat, AxisDef[]> = {
   M: [
@@ -1265,33 +1266,16 @@ function RadarCard({ dbSport, title, sportColor, axisDefs, defaultValues, extraC
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {extraControls}
-          {/* Gender toggle */}
-          <div style={{ display: 'flex', background: 'var(--bg-card2)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
-            {(['M', 'F'] as const).map(g => (
-              <button key={g} onClick={() => setGender(g)} style={{
-                padding: '4px 11px',
-                background: gender === g ? sportColor : 'transparent',
-                border: 'none', cursor: 'pointer',
-                color: gender === g ? '#fff' : 'var(--text-dim)',
-                fontSize: 11, fontWeight: 700,
-                transition: 'background 0.15s',
-              }}>
-                {g}
-              </button>
-            ))}
-          </div>
-          {/* Barème button */}
+          {/* Gender toggle — neutre */}
+          <Segmented size="sm" ariaLabel="Genre" value={gender} onChange={setGender}
+            options={[{ id: 'M', label: 'H' }, { id: 'F', label: 'F' }]} />
+          {/* Barème — lien cyan */}
           <button
             onClick={() => setShowBenchmark(true)}
             style={{
-              padding: '5px 12px',
-              background: `${sportColor}18`,
-              border: `1px solid ${sportColor}44`,
-              borderRadius: 8,
-              color: sportColor,
-              fontSize: 11, fontWeight: 600,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
+              padding: 0, border: 'none', background: 'transparent',
+              color: 'var(--primary)', fontFamily: 'var(--font-body)',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
             }}
           >
             Barème
@@ -1455,8 +1439,12 @@ const TRI_FORMAT_LABELS: Record<TriFormat, string> = {
   full: 'Full',
 }
 
-export function TriathlonRadar({ profile }: { profile?: ProfileHint }) {
-  const [format, setFormat] = useState<TriFormat>('703')
+// `format`/`onFormat` optionnels : si fournis, le sélecteur est piloté par le parent
+// (la page Records) et le sélecteur interne disparaît.
+export function TriathlonRadar({ profile, format: controlled, onFormat }: { profile?: ProfileHint; format?: TriFormat; onFormat?: (f: TriFormat) => void }) {
+  const [internal, setInternal] = useState<TriFormat>('703')
+  const format = controlled ?? internal
+  const isControlled = controlled != null
 
   const defaults: Record<string, number> = {}
   if (profile?.ftp && profile?.weight && profile.weight > 0) {
@@ -1464,28 +1452,16 @@ export function TriathlonRadar({ profile }: { profile?: ProfileHint }) {
     defaults[`bike_wkg_${format}`] = wkg
   }
 
-  const formatSelector = (
-    <div style={{ display: 'flex', background: 'var(--bg-card2)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
-      {(Object.keys(TRI_FORMAT_LABELS) as TriFormat[]).map(f => (
-        <button key={f} onClick={() => setFormat(f)} style={{
-          padding: '4px 10px',
-          background: format === f ? '#f59e0b' : 'transparent',
-          border: 'none', cursor: 'pointer',
-          color: format === f ? '#000' : 'var(--text-dim)',
-          fontSize: 11, fontWeight: 700,
-          transition: 'background 0.15s',
-        }}>
-          {TRI_FORMAT_LABELS[f]}
-        </button>
-      ))}
-    </div>
+  const formatSelector = isControlled ? undefined : (
+    <Segmented size="sm" ariaLabel="Format" value={format} onChange={f => (onFormat ?? setInternal)(f)}
+      options={(Object.keys(TRI_FORMAT_LABELS) as TriFormat[]).map(f => ({ id: f, label: TRI_FORMAT_LABELS[f] }))} />
   )
 
   return (
     <RadarCard
       dbSport={`triathlon_${format}`}
       title={`Profil Triathlon ${TRI_FORMAT_LABELS[format]}`}
-      sportColor="#f59e0b"
+      sportColor="var(--primary)"
       axisDefs={TRIATHLON_AXES[format]}
       defaultValues={defaults}
       extraControls={formatSelector}

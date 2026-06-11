@@ -82,11 +82,11 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
         </button>
 
-        {/* Shuriken IA — droite */}
+        {/* Shuriken IA — droite (asset classique 4 branches, sur verre neutre pour qu'il ressorte) */}
         <button aria-label="Coach IA" onClick={() => setAiOpen(true)}
-          style={{ ...fab, right: 16, left: 'auto', overflow: 'hidden', border: 'none', background: 'linear-gradient(135deg, var(--primary), var(--ai-accent))' }}>
+          style={{ ...fab, right: 16, left: 'auto', overflow: 'hidden' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logos/logo_4bras.png" alt="Coach IA" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+          <img src="/logos/logo_4bras.png" alt="Coach IA" style={{ width: 24, height: 24, objectFit: 'contain' }} />
         </button>
 
         <PageTransition>{children}</PageTransition>

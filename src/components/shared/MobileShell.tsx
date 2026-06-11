@@ -120,10 +120,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
           </button>
           <button aria-label="Coach IA" onClick={() => setAiOpen(true)}
-            style={{ ...fab, right: 12, borderRadius: 12, overflow: 'hidden', background: 'linear-gradient(135deg, var(--primary), var(--ai-accent))', border: 'none' }}>
-            {/* Shuriken Athéna existant — non redessiné */}
+            style={{ ...fab, right: 12, borderRadius: 12, overflow: 'hidden' }}>
+            {/* Shuriken Athéna classique 4 branches existant — non redessiné, sur verre neutre */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logos/logo_4bras.png" alt="Coach IA" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+            <img src="/logos/logo_4bras.png" alt="Coach IA" style={{ width: 24, height: 24, objectFit: 'contain' }} />
           </button>
         </>}
 

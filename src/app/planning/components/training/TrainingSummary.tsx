@@ -129,19 +129,18 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
       {/* Training Bloc / Planification — juste sous le volume par discipline */}
       {p.belowVolume}
 
-      {/* Aujourd'hui — filet sport 3px, fond neutre, statut en tag discret */}
+      {/* Aujourd'hui — carte sombre, filet gauche sport 3px, statut discret à droite (maquette) */}
       {p.todaySessions.length > 0 && (
         <div>
-          <p style={{ ...label, marginBottom: 'var(--space-3)' }}>Aujourd&apos;hui{p.today ? ` — ${p.today.day} ${p.today.date}` : ''}</p>
+          <p style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px' }}>Aujourd&apos;hui{p.today ? ` — ${p.today.day} ${p.today.date}` : ''}</p>
           {p.todaySessions.map(s => (
-            <div key={s.id} onClick={() => p.onOpenSession(s)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-3)', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', cursor: 'pointer', marginBottom: 'var(--space-2)' }}>
-              <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 999, background: sv(s.sport), flexShrink: 0 }} />
+            <div key={s.id} onClick={() => p.onOpenSession(s)} style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-card2)', borderRadius: 12, padding: '12px 14px', marginBottom: 7, borderLeft: `3px solid ${sv(s.sport)}`, cursor: 'pointer' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontFamily: FB, fontSize: 14, fontWeight: 500, color: 'var(--text)', margin: 0 }}>{s.title}</p>
-                <p className="tnum" style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>{s.time} · {mm(s.durationMin)}{s.tss ? ` · ${s.tss} TSS` : ''}</p>
+                <div style={{ fontFamily: FB, fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>{s.title}</div>
+                <div className="tnum" style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>{s.time} · {mm(s.durationMin)}{s.tss ? ` · ${s.tss} TSS` : ''}</div>
               </div>
               {s.status !== 'done' && p.isModified(s) && <span title="Modifié par toi" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />}
-              <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, color: s.status === 'done' ? 'var(--text-mid)' : 'var(--text-dim)' }}>{s.status === 'done' ? 'Fait' : 'À faire'}</span>
+              <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>{s.status === 'done' ? 'Fait' : 'À faire'}</span>
             </div>
           ))}
         </div>

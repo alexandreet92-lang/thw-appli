@@ -45,7 +45,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   )
 
   const fab: React.CSSProperties = {
-    position: 'fixed', top: 12, width: 38, height: 38, zIndex: 60,
+    position: 'fixed', top: 12, width: 38, height: 38, zIndex: 120,
     display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12,
     border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
     backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',

@@ -44,6 +44,8 @@ const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#f97316', 
 
 const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron', elliptique:'Elliptique' }
 const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW', elliptique:'ELLIP' }
+// Label court (maquette grille semaine) : Run/Bike/Swim/Gym/Hyrox…
+const SPORT_SHORT: Record<SportType,string>  = { run:'Run', bike:'Bike', swim:'Swim', hyrox:'Hyrox', gym:'Gym', rowing:'Row', elliptique:'Ellip' }
 const CYCLING_SUB_LABEL: Record<CyclingSub,string> = { velo:'Vélo route', vtt:'VTT', ht:'Home Trainer' }
 const TRAINING_TYPES: Partial<Record<SportType,string[]>> = {
   run:        ['EF','SL1','SL2','VMA','Strides','Heat Training','Mixte'],
@@ -3672,9 +3674,9 @@ function TrainingTab() {
         <div style={{ display:'grid',gridTemplateColumns:'60px repeat(7,1fr)',borderBottom:'1px solid var(--border)',background:'var(--bg-card2)',minWidth:520 }}>
           <div style={{ padding:'10px 8px' }}/>
           {w.map((d,i)=>{ const cfg=INTENSITY_CONFIG[d.intensity]; const isCurrent = ws===currentWeekStart; const isPickerOpen = isCurrent && intensityPickerDay===i; return (
-            <div key={d.day} style={{ padding:'8px 4px',textAlign:'center' as const,borderLeft:'1px solid var(--border)',minWidth:68 }}>
-              <p style={{ fontSize:10,color:'var(--text-dim)',textTransform:'uppercase' as const,letterSpacing:'0.06em',margin:'0 0 2px',fontWeight:500 }}>{d.day}</p>
-              <p style={{ fontSize:14,fontWeight:700,margin:'0 0 4px',color:i===todayIdx&&isCurrent?'#06B6D4':'var(--text)' }}>{wDates[i]}</p>
+            <div key={d.day} style={{ padding:'9px 6px',textAlign:'center' as const,minWidth:68,margin:'6px 3px',borderRadius:10,background:'#161b22',border:i===todayIdx&&isCurrent?'1px solid rgba(34,211,238,.4)':'1px solid rgba(255,255,255,.06)' }}>
+              <p style={{ fontSize:9.5,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.05em',margin:'0 0 3px',color:'rgba(230,237,243,.25)' }}>{d.day}</p>
+              <p style={{ fontSize:16,fontWeight:700,margin:'0 0 5px',color:i===todayIdx&&isCurrent?'#22d3ee':'#e6edf3' }}>{wDates[i]}</p>
               <div data-intensity-picker style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',position:'relative' as const }}>
                 <button
                   onClick={()=>{ if (isCurrent) setIntensityPickerDay(isPickerOpen?null:i); else setIntensityModal(d.intensity) }}
@@ -3769,16 +3771,22 @@ function TrainingTab() {
                 {/* Planned sessions (hide ones matched by an activity) */}
                 {d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).map(s=>(
                   <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={e=>{e.stopPropagation();onTouchStart(s.id,i,e)}} onTouchMove={onTouchMove} onTouchEnd={onTouchEndPoint} onClick={()=>setDetailModal(s)}
-                    style={{ borderRadius:6,padding:'4px 6px',background:SPORT_BG[s.sport],borderLeft:`2px solid ${SPORT_BORDER[s.sport]}`,cursor:'grab',opacity:s.status==='done'?0.75:1,position:'relative' }}>
-                    {s.status==='done' && <span style={{ position:'absolute',top:2,right:2,fontSize:7,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700 }}>FAIT</span>}
-                    {s.status!=='done' && isSessionModified(s) && <span title="Modifié par toi" style={{ position:'absolute',top:3,right:3,width:5,height:5,borderRadius:'50%',background:'#f97316',flexShrink:0 }} />}
-                    {s.planVariant && <span style={{ position:'absolute',top:2,left:2,fontSize:7,fontWeight:800,color:s.planVariant==='A'?'#06B6D4':'#a78bfa' }}>{s.planVariant}</span>}
-                    <div style={{ display:'flex',alignItems:'center',gap:3,paddingLeft:8 }}>
-                      <SportBadge sport={s.sport} size="xs"/>
-                      <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{s.title}</p>
+                    style={{ borderRadius:8,padding:'7px 9px',marginBottom:4,background:'#1b212b',borderLeft:`2px solid ${SPORT_BORDER[s.sport]}`,cursor:'grab',opacity:s.status==='done'?0.75:1,position:'relative',overflow:'hidden' }}>
+                    {/* teinte de fond par sport — très subtile */}
+                    <div style={{ position:'absolute',inset:0,opacity:.08,background:SPORT_BORDER[s.sport],pointerEvents:'none' }} />
+                    {s.status==='done' && <span style={{ position:'absolute',top:3,right:3,fontSize:7,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700,zIndex:1 }}>FAIT</span>}
+                    {s.status!=='done' && isSessionModified(s) && <span title="Modifié par toi" style={{ position:'absolute',top:4,right:4,width:5,height:5,borderRadius:'50%',background:'#f97316',flexShrink:0,zIndex:1 }} />}
+                    {s.planVariant && <span style={{ position:'absolute',top:3,left:3,fontSize:7,fontWeight:800,color:s.planVariant==='A'?'#06B6D4':'#a78bfa',zIndex:1 }}>{s.planVariant}</span>}
+                    {/* contenu */}
+                    <div style={{ position:'relative' }}>
+                      <div style={{ fontSize:8,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'.04em',color:'rgba(230,237,243,.38)',marginBottom:2 }}>{SPORT_SHORT[s.sport]}</div>
+                      <div style={{ fontSize:11,fontWeight:600,color:'#e6edf3',lineHeight:1.2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{s.title}</div>
+                      <div style={{ fontSize:9.5,color:'rgba(230,237,243,.38)',marginTop:2,fontFamily:'DM Mono,monospace' }}>{s.time} · {formatHM(s.durationMin)}</div>
                     </div>
-                    <p style={{ fontSize:8,opacity:0.7,margin:'1px 0 0',fontFamily:'DM Mono,monospace',paddingLeft:8 }}>{s.time} · {formatHM(s.durationMin)}</p>
-                    {s.blocks.length>0 && <div style={{ display:'flex',gap:1,marginTop:2,height:6,borderRadius:1,overflow:'hidden' }}>{s.blocks.map(b=>{ const bMin=b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?b.reps*(b.effortMin+b.recoveryMin):b.durationMin; return <div key={b.id} style={{ flex:bMin,background:ZONE_COLORS[b.zone-1],opacity:0.8 }}/> })}</div>}
+                    {/* barre de progression (réalisé/prévu) */}
+                    <div style={{ position:'absolute',bottom:0,left:0,right:0,height:2,background:'rgba(255,255,255,.06)' }}>
+                      <div style={{ height:'100%',background:SPORT_BORDER[s.sport],width:`${s.status==='done'?100:0}%` }} />
+                    </div>
                   </div>
                 ))}
                 <div style={{ display:'flex',gap:3,marginTop:2 }}>

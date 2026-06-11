@@ -4,9 +4,12 @@
    desktop 2 colonnes. Le même DOM est réordonné par breakpoint.
    ════════════════════════════════════════════════════════════════ */
 
+/* Pleine largeur : pas de max-width centré (sinon colonne étroite + marges
+   mortes sur desktop). Le souffle vient du padding + des gouttières. */
 .dash-wrap {
-  max-width: 1120px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: var(--space-5) var(--space-5) var(--space-12);
 }
 
@@ -18,6 +21,7 @@
     "today today"
     "nutrition nutrition"
     "week week"
+    "nexts nexts"
     "race last"
     "coach coach"
     "actions actions"
@@ -27,11 +31,33 @@
 .dash-a-today     { grid-area: today; }
 .dash-a-nutrition { grid-area: nutrition; }
 .dash-a-week      { grid-area: week; }
+.dash-a-nexts     { grid-area: nexts; }
 .dash-a-race      { grid-area: race; }
 .dash-a-last      { grid-area: last; }
 .dash-a-coach     { grid-area: coach; }
 .dash-a-actions   { grid-area: actions; }
 .dash-a-records   { grid-area: records; }
+
+/* ── Modèle 2 « Datas » ── */
+.dash-grid-data {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "forme"
+    "kpis"
+    "pmc"
+    "sleep"
+    "today"
+    "nutrition"
+    "week"
+    "race"
+    "coach";
+}
+.dash-a-forme { grid-area: forme; }
+.dash-a-kpis  { grid-area: kpis; }
+.dash-a-pmc   { grid-area: pmc; }
+.dash-a-sleep { grid-area: sleep; }
 
 .dash-desktop-only { display: none; }
 .dash-mobile-only  { display: block; }
@@ -39,13 +65,26 @@
 @media (min-width: 768px) {
   .dash-wrap { padding: var(--space-8) var(--space-8) var(--space-12); }
   .dash-grid {
-    gap: var(--space-5);
+    gap: var(--space-8);
     align-items: start;
+    /* Colonne gauche plus large (contenu dense), droite secondaire. */
+    grid-template-columns: 1.5fr 1fr;
     grid-template-areas:
       "today week"
-      "nutrition race"
-      "last coach"
+      "nutrition nexts"
+      "last race"
       "records coach";
+  }
+  .dash-grid-data {
+    gap: var(--space-8);
+    align-items: start;
+    grid-template-columns: 1.5fr 1fr;
+    grid-template-areas:
+      "forme pmc"
+      "kpis sleep"
+      "today week"
+      "nutrition race"
+      "coach coach";
   }
   .dash-desktop-only { display: block; }
   .dash-mobile-only  { display: none; }

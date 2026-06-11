@@ -2,36 +2,11 @@
 
 import { useMemo, useState, useEffect, useRef } from 'react'
 import type { ActivityRow, PmcPoint } from './types'
-import { estimateTss } from './types'
+import { buildPmc } from '@/lib/training/pmc'
 
 const PERIODS = [{ label:'6 sem', days:42 },{ label:'12 sem', days:84 },{ label:'6 mois', days:180 }]
 
 interface TooltipState { x: number; y: number; point: PmcPoint }
-
-function buildPmc(activities: ActivityRow[], days: number): PmcPoint[] {
-  // Build date → tss map
-  const tssMap: Record<string, number> = {}
-  for (const a of activities) {
-    const d = a.started_at.slice(0, 10)
-    tssMap[d] = (tssMap[d] ?? 0) + estimateTss(a)
-  }
-  const end = new Date(); const start = new Date(end)
-  start.setDate(end.getDate() - days - 42)
-  const pts: PmcPoint[] = []
-  let ctl = 0, atl = 0
-  const K_CTL = 1 - Math.exp(-1/42), K_ATL = 1 - Math.exp(-1/7)
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-    const tss = tssMap[ds] ?? 0
-    ctl = ctl + K_CTL * (tss - ctl)
-    atl = atl + K_ATL * (tss - atl)
-    const tsb = ctl - atl
-    pts.push({ date: ds, tss, ctl: Math.round(ctl*10)/10, atl: Math.round(atl*10)/10, tsb: Math.round(tsb*10)/10 })
-  }
-  const cutoff = new Date(end); cutoff.setDate(end.getDate() - days)
-  const cutStr = `${cutoff.getFullYear()}-${String(cutoff.getMonth()+1).padStart(2,'0')}-${String(cutoff.getDate()).padStart(2,'0')}`
-  return pts.filter(p => p.date >= cutStr)
-}
 
 function buildPath(pts: PmcPoint[], key: 'ctl'|'atl'|'tsb', W: number, H: number, min: number, max: number): string {
   if (!pts.length) return ''

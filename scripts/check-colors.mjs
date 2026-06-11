@@ -80,7 +80,9 @@ const ENFORCED_PATHS = [
   'src/app/injuries/components/TrackSheet.tsx',
   'src/components/ui/TabbedPageLayout.tsx',
   'src/components/ui/Segmented.tsx',
+  'src/app/performance/DistanceRecords.tsx',
   'src/app/performance/SwimRecords.tsx',
+  'src/app/performance/RowingRecords.tsx',
 ]
 // Dossiers ignorés sous les SCAN_DIRS.
 const IGNORE_DIRS = new Set(['node_modules', '.next', 'dist', 'build'])

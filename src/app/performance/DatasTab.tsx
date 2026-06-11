@@ -8,6 +8,7 @@ import type { ZoneSport } from '@/hooks/useTrainingZones'
 import { SportTabs } from '@/components/ui/SportTabs'
 import { Segmented } from '@/components/ui/Segmented'
 import { SwimRecords } from './SwimRecords'
+import { RowingRecords } from './RowingRecords'
 import { CyclingRadar, RunningRadar, HyroxRadar, TriathlonRadar } from './RadarChart'
 import { ClimbsSection } from './ClimbsSection'
 import { RacesSection } from './RacesSection'
@@ -139,15 +140,6 @@ function calcPacePerKm(distKm: number, timeStr: string): string {
   if (!s) return '—'
   const sPerKm = s / distKm
   return `${Math.floor(sPerKm / 60)}:${String(Math.round(sPerKm % 60)).padStart(2, '0')}/km`
-}
-
-function calcSplit500m(distM: number, timeStr: string): string {
-  if (!timeStr || timeStr === '—') return '—'
-  const p = timeStr.split(':').map(Number)
-  const s = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + (p[1] || 0)
-  if (!s) return '—'
-  const sp = (s / distM) * 500
-  return `${Math.floor(sp / 60)}:${String(Math.round(sp % 60)).padStart(2, '0')}/500m`
 }
 
 // ── Zone calculators ─────────────────────────────────────────────
@@ -300,7 +292,6 @@ const RUN_KM: Record<string,number> = { '400m':0.4,'1km':1,'5km':5,'10km':10,'Se
 
 const SWIM_M: Record<string,number> = { '100m':100,'200m':200,'400m':400,'1000m':1000,'1500m':1500,'2000m':2000,'5000m':5000,'10000m':10000 }
 
-const ROW_DISTS = ['500m','1000m','2000m','5000m','10000m','Semi','Marathon']
 const ROW_M: Record<string,number> = { '500m':500,'1000m':1000,'2000m':2000,'5000m':5000,'10000m':10000,'Semi':21097,'Marathon':42195 }
 
 // Formats triathlon avec distances des 3 disciplines
@@ -3615,42 +3606,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
 
       {/* ROWING */}
       {sport === 'rowing' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records aviron</h2>
-            </div>
-            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'rowing')} chartDists={CHART_DISTS.rowing} color="#14b8a6" />
-            {ROW_DISTS.map(d => {
-              const spBest  = getSpBest('rowing', d, recordYear)
-              const prevRec = getSpPrev('rowing', d)
-              const split   = spBest ? calcSplit500m(ROW_M[d] ?? 0, spBest.perf) : '—'
-              const wStr = (() => {
-                if (split === '—') return '—'
-                const pp = split.split('/')[0].split(':').map(Number)
-                const ss = (pp[0] ?? 0) * 60 + (pp[1] ?? 0)
-                return ss > 0 ? `~${Math.round(2.80 / (ss / 500) ** 3)}W` : '—'
-              })()
-              const lbl = d === 'Semi' ? 'Semi (21km)' : d === 'Marathon' ? 'Marathon (42km)' : d
-              const sel = selectedDatum?.label === `Aviron ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
-              return (
-                <RecordRow key={d} label={lbl}
-                  rec24={spBest?.perf ?? '—'}
-                  rec23={prevRec?.perf ?? '—'}
-                  sub={split !== '—' ? `${split} · ${wStr}` : undefined}
-                  onSelect={() => spBest ? onSelect(`Aviron ${d}`, spBest.perf) : undefined}
-                  selected={sel}
-                  actions={
-                    <button onClick={() => openDrawer('rowing', d, spBest?.id ?? null, spBest?.perf ?? '')}
-                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      Modifier
-                    </button>
-                  } />
-              )
-            })}
-            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '10px 0 0' }}>Puissance via formule Concept2 : P = 2.80 / (split/500)³</p>
-          </Card>
-        </div>
+        <RowingRecords
+          getBest={d => getSpBest('rowing', d, recordYear)}
+          getPrev={d => getSpPrev('rowing', d)}
+          onSelect={onSelect}
+          onEdit={(d, id, perf) => openDrawer('rowing', d, id, perf)}
+          selectedPerf={selectedDatum?.label?.startsWith('Aviron ') ? selectedDatum.value : undefined}
+        />
       )}
 
       {/* TRIATHLON */}

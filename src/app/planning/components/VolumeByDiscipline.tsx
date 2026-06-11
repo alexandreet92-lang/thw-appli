@@ -15,8 +15,9 @@ const TOK: Record<string, string> = {
 }
 function col(s: string): string { return `var(${TOK[s.toLowerCase()] ?? '--text-mid'})` }
 
-const lbl: React.CSSProperties = { fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', color: 'var(--text-dim)', minWidth: 30 }
-const val: React.CSSProperties = { fontSize: 10, color: 'var(--text)', minWidth: 86, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }
+const lbl: React.CSSProperties = { width: 36, fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', flexShrink: 0 }
+const val: React.CSSProperties = { width: 110, fontSize: 12, color: 'var(--text-mid)', textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }
+const strong: React.CSSProperties = { color: 'var(--text)', fontWeight: 600 }
 const track: React.CSSProperties = { flex: 1, height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }
 
 export function VolumeByDiscipline({ sessions }: { sessions: S[] }) {
@@ -50,12 +51,12 @@ export function VolumeByDiscipline({ sessions }: { sessions: S[] }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
                 <span style={lbl}>VOL.</span>
                 <div style={track}><div style={{ width: `${volPct}%`, height: '100%', borderRadius: 3, background: c, animation: 'barFill 0.9s cubic-bezier(0.25,1,0.5,1) both' }} /></div>
-                <span style={val}>{formatDuration(e.volD)} / {formatDuration(e.volT)}</span>
+                <span style={val}><strong style={strong}>{formatDuration(e.volD)}</strong> / {formatDuration(e.volT)}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={lbl}>TSS</span>
                 <div style={track}><div style={{ width: `${tssPct}%`, height: '100%', borderRadius: 3, background: c, opacity: 0.55, animation: 'barFill 0.9s cubic-bezier(0.25,1,0.5,1) both' }} /></div>
-                <span style={val}>{Math.round(e.tssD)} / {e.tssT > 0 ? Math.round(e.tssT) : '--'} pts</span>
+                <span style={val}><strong style={strong}>{Math.round(e.tssD)}</strong> / {e.tssT > 0 ? Math.round(e.tssT) : '--'} pts</span>
               </div>
             </div>
           )

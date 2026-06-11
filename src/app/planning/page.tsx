@@ -10424,6 +10424,8 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
       {/* ── Volume par discipline (VOL. + TSS réel) ── */}
       <VolumeByDiscipline sessions={trainingWeek} />
+      {/* ── Training Bloc (2 onglets : Bloc cartes / Planification) ── */}
+      <TrainingBlockSummary />
       {/* ── Tâches du jour (simple checklist) ── */}
       <div style={{ borderRadius:12,border:'1px solid var(--border)',background:'var(--bg-card2)',overflow:'hidden' }}>
         <div style={{ padding:'10px 14px 8px',borderBottom:'1px solid var(--border)' }}>

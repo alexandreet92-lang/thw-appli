@@ -4,8 +4,11 @@
 // Migrations interdites dans ce prompt → persistance via localStorage (données RÉELLES de
 // l'utilisateur, zéro mock). Colonnes DB nécessaires documentées dans le PROMPT pour une
 // future migration. Couleurs sport via tokens --sport-*.
+import { BLOC_TYPES } from '@/lib/constants/blocTypes'
 
 export type BlockSport = 'bike' | 'run' | 'hyrox' | 'swim' | 'gym'
+// Mappe l'id sport interne vers la clé de BLOC_TYPES (maquettes).
+const TYPE_KEY: Record<BlockSport, string> = { bike: 'velo', run: 'running', hyrox: 'hyrox', swim: 'natation', gym: 'muscu' }
 
 export const BLOCK_SPORTS: { id: BlockSport; label: string; color: string }[] = [
   { id: 'bike', label: 'Vélo', color: 'var(--sport-bike)' },
@@ -17,14 +20,8 @@ export const BLOCK_SPORTS: { id: BlockSport; label: string; color: string }[] = 
 export const SPORT_LABEL: Record<BlockSport, string> = Object.fromEntries(BLOCK_SPORTS.map(s => [s.id, s.label])) as Record<BlockSport, string>
 export const SPORT_COLOR: Record<BlockSport, string> = Object.fromEntries(BLOCK_SPORTS.map(s => [s.id, s.color])) as Record<BlockSport, string>
 
-// B3 — listes initiales par sport (extensibles par l'utilisateur).
-const INITIAL_TYPES: Record<BlockSport, string[]> = {
-  bike: ['PMA', 'Threshold SL1', 'Threshold SL2', 'Threshold mixe', 'EF', 'Durability', 'Sprints', 'Anaérobie', 'High z2'],
-  run: ['VMA longue', 'VMA courte', 'VMA mixe', 'Threshold SL1', 'Threshold SL2', 'Threshold mixe', 'EF', 'Strides / Sprints', 'Hills'],
-  hyrox: ['Strength', 'Strength endurance', 'Simulation', 'Ergo', 'Compromised run', 'Sled', 'Explosivity'],
-  swim: ['Technique', 'Threshold', 'Hypoxie', 'EF'],
-  gym: ['Push', 'Pull', 'Leg', 'Strength', 'Explosivity'],
-}
+// Types initiaux = BLOC_TYPES (constante partagée), via la clé mappée.
+function initialFor(sport: BlockSport): string[] { return BLOC_TYPES[TYPE_KEY[sport]] ?? [] }
 
 export interface SportBlock {
   sport: BlockSport
@@ -65,11 +62,11 @@ function customTypes(): Partial<Record<BlockSport, string[]>> {
 export function typesFor(sport: BlockSport): string[] {
   const custom = customTypes()[sport] ?? []
   const seen = new Set<string>()
-  return [...INITIAL_TYPES[sport], ...custom].filter(t => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true })
+  return [...initialFor(sport), ...custom].filter(t => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true })
 }
 export function addCustomType(sport: BlockSport, type: string) {
   const t = type.trim(); if (!t) return
   const all = customTypes()
   const list = all[sport] ?? []
-  if (![...INITIAL_TYPES[sport], ...list].some(x => x.toLowerCase() === t.toLowerCase())) { list.push(t); all[sport] = list; write(TYPES_KEY, all) }
+  if (![...initialFor(sport), ...list].some(x => x.toLowerCase() === t.toLowerCase())) { list.push(t); all[sport] = list; write(TYPES_KEY, all) }
 }

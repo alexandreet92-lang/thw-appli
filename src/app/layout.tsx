@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import { Sidebar } from '@/components/shared/Sidebar'
-import { PageTransition } from '@/components/ui/PageTransition'
+import { DesktopShell } from '@/components/shared/DesktopShell'
 import { MobileShell } from '@/components/shared/MobileShell'
 import MobileTabBar from '@/components/MobileTabBar'
 import OfflineIndicator from '@/components/shared/OfflineIndicator'
@@ -33,27 +32,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ margin: 0, background: 'var(--bg)', height: '100vh', overflow: 'hidden' }}>
         <ClientShell>
 
-          {/* Desktop */}
-          <div
-            className="hidden md:flex"
-            style={{ height: '100vh', overflow: 'hidden' }}
-          >
-            <Sidebar />
-            <main style={{
-              flex: 1,
-              minWidth: 0,
-              height: '100vh',
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              position: 'relative',
-              zIndex: 10,
-              background: 'var(--bg)',
-              scrollBehavior: 'smooth',
-              WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
-            }}>
-              <PageTransition>{children}</PageTransition>
-            </main>
-          </div>
+          {/* Desktop — sidebar ancrée (push) + header flottant */}
+          <DesktopShell>{children}</DesktopShell>
 
           {/* Mobile — chrome « effet Claude » (sidebar fixe dessous, page qui glisse) */}
           <MobileShell>{children}</MobileShell>

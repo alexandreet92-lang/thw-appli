@@ -30,21 +30,16 @@ export const SPORT_LABEL: Record<Sport, string> = {
  * Converts a duration in minutes to a human-readable "Xh YY" format.
  * Examples: 90 → "1h30"  |  45 → "45min"  |  400 → "6h40"  |  60 → "1h"
  */
+// Durée « Xh YY » — toujours heures + minutes, zéro décimale (0h30, 1h40, 3h00, 0h00).
 export function formatDuration(minutes: number): string {
-  const m = Math.round(minutes)
-  if (m <= 0) return '0min'
-  const h = Math.floor(m / 60)
-  const rem = m % 60
-  if (h === 0) return `${rem}min`
-  if (rem === 0) return `${h}h`
-  return `${h}h${String(rem).padStart(2, '0')}`
-}
-
-/** Durée volume « Xh YY » — toujours heures + minutes (0h30, 1h40, 3h00). */
-export function formatHm(minutes: number): string {
   const m = Math.max(0, Math.round(minutes))
   const h = Math.floor(m / 60)
   return `${h}h${String(m % 60).padStart(2, '0')}`
+}
+
+/** Variante prenant des heures (1.5 → 1h30). */
+export function formatHours(hours: number): string {
+  return formatDuration(hours * 60)
 }
 
 export function formatTime(date?: Date): string {

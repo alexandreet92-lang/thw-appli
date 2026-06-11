@@ -43,10 +43,10 @@ export function TrainingBlockDetail({ sport, onClose, onSaved }: { sport: BlockS
           <div>
             <p style={lbl}>Semaine du bloc</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', gap: 5 }}>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 {Array.from({ length: block.weekTotal }, (_, i) => (
                   <button key={i} onClick={() => update({ ...block, weekCurrent: i + 1 })} aria-label={`Semaine ${i + 1}`}
-                    style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', cursor: 'pointer', background: i < block.weekCurrent ? 'var(--primary)' : 'var(--bg-card2)' }} />
+                    style={{ width: 18, height: 5, borderRadius: 5, border: 'none', cursor: 'pointer', background: i < block.weekCurrent ? 'var(--primary)' : 'var(--bg-card2)' }} />
                 ))}
               </div>
               <span className="tnum" style={{ fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>S{block.weekCurrent}/{block.weekTotal}</span>

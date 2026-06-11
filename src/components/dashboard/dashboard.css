@@ -38,6 +38,27 @@
 .dash-a-actions   { grid-area: actions; }
 .dash-a-records   { grid-area: records; }
 
+/* ── Modèle 2 « Datas » ── */
+.dash-grid-data {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "forme"
+    "kpis"
+    "pmc"
+    "sleep"
+    "today"
+    "nutrition"
+    "week"
+    "race"
+    "coach";
+}
+.dash-a-forme { grid-area: forme; }
+.dash-a-kpis  { grid-area: kpis; }
+.dash-a-pmc   { grid-area: pmc; }
+.dash-a-sleep { grid-area: sleep; }
+
 .dash-desktop-only { display: none; }
 .dash-mobile-only  { display: block; }
 
@@ -53,6 +74,17 @@
       "nutrition nexts"
       "last race"
       "records coach";
+  }
+  .dash-grid-data {
+    gap: var(--space-8);
+    align-items: start;
+    grid-template-columns: 1.5fr 1fr;
+    grid-template-areas:
+      "forme pmc"
+      "kpis sleep"
+      "today week"
+      "nutrition race"
+      "coach coach";
   }
   .dash-desktop-only { display: block; }
   .dash-mobile-only  { display: none; }

@@ -21,7 +21,7 @@ export function TrainingBlockSummary() {
 
       {active.length === 0 ? (
         <>
-          <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: '0 0 12px' }}>Aucun bloc configuré — planifier.</p>
+          <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: '0 0 12px' }}>Aucun bloc actif · <span style={{ color: 'var(--primary)', fontWeight: 600 }}>+ Créer un bloc</span></p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {BLOCK_SPORTS.map(s => (
               <button key={s.id} onClick={() => setOpen(s.id)}

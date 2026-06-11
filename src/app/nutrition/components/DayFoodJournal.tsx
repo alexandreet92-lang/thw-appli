@@ -17,6 +17,8 @@ import {
   type MealSlotKey, type DailyMealEntry, type MealIngredient,
 } from '@/hooks/useDailyMeals'
 import type { FoodItem } from '@/lib/food-search'
+import { MealMacros } from './today/MealMacros'
+import { PhotoMealEditor } from './today/PhotoMealEditor'
 
 const FoodSearchSheet = dynamic(
   () => import('@/components/nutrition/FoodSearchSheet').then(m => ({ default: m.FoodSearchSheet })),
@@ -26,43 +28,6 @@ const FoodSearchSheet = dynamic(
 // conservé mais n'est plus utilisé ici (méthode Plats retirée de l'entrée repas).
 
 const CYAN = '#06B6D4'
-
-// ── Photo IA : types + resize (repris de MealModalPhotoAI) ──────────
-interface ApiItem { name: string; qty: number; unit: string; kcal: number }
-interface ApiResult {
-  meal_name:  string
-  items:      ApiItem[]
-  totals:     { kcal: number; prot: number; gluc: number; lip: number }
-  confidence: 'low' | 'medium' | 'high'
-  notes?:     string
-}
-
-async function resizeImage(file: File): Promise<{ base64: string; mimeType: string }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onerror = reject
-    reader.onload = ev => {
-      const img = new Image()
-      img.onerror = reject
-      img.onload = () => {
-        const MAX = 1024
-        let w = img.width, h = img.height
-        if (w > MAX || h > MAX) {
-          if (w >= h) { h = Math.round(h * MAX / w); w = MAX }
-          else { w = Math.round(w * MAX / h); h = MAX }
-        }
-        const canvas = document.createElement('canvas')
-        canvas.width = w; canvas.height = h
-        const ctx = canvas.getContext('2d')
-        if (!ctx) { reject(new Error('canvas ctx null')); return }
-        ctx.drawImage(img, 0, 0, w, h)
-        resolve({ base64: canvas.toDataURL('image/jpeg', 0.82).split(',')[1], mimeType: 'image/jpeg' })
-      }
-      img.src = ev.target?.result as string
-    }
-    reader.readAsDataURL(file)
-  })
-}
 
 interface MacroAdd {
   name: string
@@ -107,11 +72,9 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandSignal])
 
-  // Photo IA state
-  const [preview, setPreview]   = useState<string | null>(null)
-  const [analyzing, setAnalyzing] = useState(false)
-  const [result, setResult]     = useState<ApiResult | null>(null)
-  const [photoErr, setPhotoErr] = useState<string | null>(null)
+  // Photo IA : éditeur dédié (analyse réelle /api/analyze-meal-photo + rectification)
+  const [photoFor, setPhotoFor] = useState<{ slot: MealSlotKey; file: File } | null>(null)
+  const pendingSlot = useRef<MealSlotKey | null>(null)
   const cameraRef  = useRef<HTMLInputElement>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
 
@@ -130,7 +93,6 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
 
   function resetAddState() {
     setMethod(null)
-    setPreview(null); setAnalyzing(false); setResult(null); setPhotoErr(null)
     setMName(''); setMKcal(''); setMProt(''); setMGluc(''); setMLip('')
   }
 
@@ -168,35 +130,10 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
     } finally { setSaving(false) }
   }
 
-  // ── Photo ─────────────────────────────────────────────────────────
-  async function handleFile(f: File) {
-    setPreview(URL.createObjectURL(f))
-    setResult(null); setPhotoErr(null); setAnalyzing(true)
-    try {
-      const { base64, mimeType } = await resizeImage(f)
-      const res = await fetch('/api/analyze-meal-photo', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64, mimeType }),
-      })
-      if (!res.ok) throw new Error(await res.text())
-      setResult(await res.json() as ApiResult)
-    } catch {
-      setPhotoErr('Analyse impossible. Réessaie avec une photo plus nette.')
-    } finally { setAnalyzing(false) }
-  }
+  // ── Photo IA : ouvre l'éditeur dédié avec le fichier choisi ───────
   function onPhotoInput(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; e.target.value = ''
-    if (f) void handleFile(f)
-  }
-
-  async function savePhoto(slot: MealSlotKey) {
-    if (!result) return
-    await addToSlot(slot, {
-      name: result.meal_name,
-      kcal: result.totals.kcal, prot: result.totals.prot,
-      gluc: result.totals.gluc, lip:  result.totals.lip,
-      source: 'photo_ai', replace: false,
-    })
+    if (f && pendingSlot.current) setPhotoFor({ slot: pendingSlot.current, file: f })
   }
 
   // ── Manuel ─────────────────────────────────────────────────────────
@@ -300,12 +237,12 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
             {/* ── Expanded ── */}
             {isOpen && (
               <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border)' }}>
-                {/* Aliment loggé : détail macros + suppression */}
+                {/* Donut kcal + jauges macros du repas (0 si vide) */}
+                <div style={{ padding: '14px 0' }}>
+                  <MealMacros kcal={entry?.actual_kcal ?? 0} prot={entry?.actual_prot ?? 0} gluc={entry?.actual_gluc ?? 0} lip={entry?.actual_lip ?? 0} />
+                </div>
                 {hasFood && entry && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0' }}>
-                    <div style={{ flex: 1, fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)' }}>
-                      P {entry.actual_prot ?? 0}g · G {entry.actual_gluc ?? 0}g · L {entry.actual_lip ?? 0}g
-                    </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
                     <button
                       onClick={() => entry.id && void deleteEntry(entry.id)}
                       style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', color: '#ef4444', fontSize: 11, cursor: 'pointer' }}
@@ -321,7 +258,7 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
                       directement le sélecteur (desktop) ou la caméra (mobile). */}
                   <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={onPhotoInput} style={{ display: 'none' }} />
                   <input ref={galleryRef} type="file" accept="image/*" onChange={onPhotoInput} style={{ display: 'none' }} />
-                  <button style={methodBtn(method === 'photo')} onClick={() => { setMethod('photo'); (isMobile ? cameraRef : galleryRef).current?.click() }}>
+                  <button style={methodBtn(false)} onClick={() => { setMethod(null); pendingSlot.current = slot; (isMobile ? cameraRef : galleryRef).current?.click() }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
                     Photo IA
                   </button>
@@ -334,29 +271,6 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
                     Manuel
                   </button>
                 </div>
-
-                {/* ── Méthode Photo (preview / analyse / ajout) ── */}
-                {method === 'photo' && (preview || analyzing || photoErr || result) && (
-                  <div style={{ marginTop: 12 }}>
-                    {preview && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={preview} alt="repas" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 10, marginBottom: 10 }} />
-                    )}
-                    {analyzing && <p style={{ fontSize: 12, color: CYAN, fontWeight: 600 }}>Analyse en cours…</p>}
-                    {photoErr && <p style={{ fontSize: 12, color: '#ef4444' }}>{photoErr}</p>}
-                    {result && (
-                      <div>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>{result.meal_name}</p>
-                        <p style={{ fontSize: 11, fontFamily: 'DM Mono,monospace', color: 'var(--text-dim)', margin: '0 0 10px' }}>
-                          {result.totals.kcal} kcal · P {result.totals.prot}g · G {result.totals.gluc}g · L {result.totals.lip}g
-                        </p>
-                        <button disabled={saving} onClick={() => void savePhoto(slot)} style={{ width: '100%', padding: '10px', borderRadius: 9, border: 'none', background: `linear-gradient(135deg,${CYAN},#5b6fff)`, color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                          {saving ? 'Ajout…' : 'Ajouter au repas'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {/* ── Méthode Recherche ── */}
                 {method === 'search' && (
@@ -388,6 +302,18 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry, expan
           </div>
         )
       })}
+
+      {photoFor && (
+        <PhotoMealEditor
+          file={photoFor.file}
+          onCancel={() => setPhotoFor(null)}
+          onConfirm={r => {
+            const slot = photoFor.slot
+            setPhotoFor(null)
+            void addToSlot(slot, { name: r.meal_name, kcal: r.kcal, prot: r.prot, gluc: r.gluc, lip: r.lip, source: 'photo_ai', replace: false })
+          }}
+        />
+      )}
     </div>
   )
 }

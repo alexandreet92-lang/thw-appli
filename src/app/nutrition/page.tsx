@@ -843,7 +843,12 @@ function NutritionTabs({ tab, onChange }: { tab: NutritionTab; onChange: (t: Nut
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════
 export default function NutritionPage() {
-  const today = new Date().toISOString().split('T')[0]
+  const realToday = new Date().toISOString().split('T')[0]
+  // « today » = jour SÉLECTIONNÉ dans la frise (par défaut aujourd'hui) ; tout le wiring
+  // du jour (repas, hydratation, séances, target) suit ce jour automatiquement.
+  const [today, setSelDay] = useState(realToday)
+  const [dayDir, setDayDir] = useState<'right' | 'left'>('right')
+  const selectDay = useCallback((d: string) => { setDayDir(d >= today ? 'right' : 'left'); setSelDay(d) }, [today])
   const { show, dismiss, reopen } = usePageOnboarding(NUTRITION_ONBOARDING.pageId, NUTRITION_ONBOARDING.version)
 
   const { activePlan, dailyLogs, weightLogs, loading: nutLoading, saveDailyLog, saveWeightLog, deactivatePlan } = useNutrition()
@@ -1159,6 +1164,9 @@ export default function NutritionPage() {
         {tab === 'today' && (
           <TodayTab
             today={today}
+            realToday={realToday}
+            dayDir={dayDir}
+            onSelectDay={selectDay}
             todayType={todayType}
             todayKcalObj={todayKcalObj}
             todayMacroObj={todayMacroObj}

@@ -19,10 +19,12 @@ const SPORT_LABEL: Record<string, string> = {
   gym: 'Musculation', rowing: 'Aviron', elliptique: 'Elliptique',
 }
 const sv = (s: string) => SPORT_VAR[s] ?? 'var(--text-mid)'
-const hh = (h: number) => `${h.toFixed(1).replace('.', ',')} h`
-const mm = (min: number) => hh(min / 60)
+// Durée « Xh YY » — toujours heures + minutes, zéro décimale (1.5h → 1h30, 9.6h → 9h36).
+const hms = (min: number) => { const m = Math.max(0, Math.round(min)); return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}` }
+const hh = (h: number) => hms(h * 60)
+const mm = (min: number) => hms(min)
 
-interface SportStat { sport: string; doneH: number; plannedH: number }
+interface SportStat { sport: string; doneH: number; plannedH: number; doneTSS: number; plannedTSS: number }
 interface SportCount { sport: string; done: number; planned: number }
 interface Sess { id: string; sport: string; title: string; time: string; durationMin: number; tss?: number | null; status: string }
 
@@ -37,12 +39,18 @@ interface Props<S extends Sess> {
   onOpen10w: () => void
   onOpenSession: (s: S) => void
   isModified: (s: S) => boolean
+  /** Slot rendu entre « Volume par discipline » et « Aujourd'hui » (ex. Training Bloc). */
+  belowVolume?: React.ReactNode
 }
 
 const label: React.CSSProperties = { fontFamily: FB, fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: 0 }
 const prevu: React.CSSProperties = { fontFamily: FB, fontSize: 10, color: 'var(--text-dim)', margin: '0 0 var(--space-1)' }
 const big: React.CSSProperties = { fontFamily: FB, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-2)' }
 const w10: React.CSSProperties = { border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: FB, fontSize: 10, color: 'var(--text-dim)', padding: 0 }
+const miniLbl: React.CSSProperties = { width: 36, fontFamily: FB, fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', flexShrink: 0 }
+const track: React.CSSProperties = { flex: 1, height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }
+const valS: React.CSSProperties = { width: 110, textAlign: 'right', fontFamily: FB, fontSize: 11, color: 'var(--text-mid)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }
+const strongS: React.CSSProperties = { color: 'var(--text)', fontWeight: 600 }
 
 function Dot({ sport, size = 7 }: { sport: string; size?: number }) {
   return <span style={{ width: size, height: size, borderRadius: '50%', background: sv(sport), display: 'inline-block', flexShrink: 0 }} />
@@ -89,24 +97,37 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
         </div>
       </div>
 
-      {/* Volume par discipline — couleur sport en remplissage (fonctionnel) */}
+      {/* Volume par discipline — 2 barres par sport (VOL. + TSS), à plat (pas de carte) */}
       {p.sportStats.length > 0 && (
         <div>
           <p style={{ ...label, marginBottom: 'var(--space-3)' }}>Volume par discipline</p>
           {p.sportStats.map(s => {
-            const pct = s.plannedH > 0 ? Math.min(s.doneH / s.plannedH * 100, 100) : 0
+            const volPct = s.plannedH > 0 ? Math.min(s.doneH / s.plannedH * 100, 100) : 0
+            const tssPct = s.plannedTSS > 0 ? Math.min(s.doneTSS / s.plannedTSS * 100, 100) : 0
+            const c = sv(s.sport)
             return (
-              <div key={s.sport} style={{ marginBottom: 'var(--space-3)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-1)' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}><Dot sport={s.sport} />{SPORT_LABEL[s.sport] ?? s.sport}</span>
-                  <span className="tnum" style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-mid)' }}>{hh(s.doneH)} <span style={{ color: 'var(--text-dim)' }}>/ {hh(s.plannedH)}</span></span>
+              <div key={s.sport} style={{ marginBottom: 'var(--space-4)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+                  <Dot sport={s.sport} /><span style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{SPORT_LABEL[s.sport] ?? s.sport}</span>
                 </div>
-                <AnimatedBar pct={pct} color={sv(s.sport)} height={6} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+                  <span style={miniLbl}>Vol.</span>
+                  <div style={track}><div style={{ width: `${volPct}%`, height: '100%', borderRadius: 3, background: c, animation: 'barFill 0.9s cubic-bezier(0.25,1,0.5,1) both' }} /></div>
+                  <span className="tnum" style={valS}><strong style={strongS}>{hh(s.doneH)}</strong> / {hh(s.plannedH)}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                  <span style={miniLbl}>TSS</span>
+                  <div style={track}><div style={{ width: `${tssPct}%`, height: '100%', borderRadius: 3, background: c, opacity: 0.55, animation: 'barFill 0.9s cubic-bezier(0.25,1,0.5,1) both' }} /></div>
+                  <span className="tnum" style={valS}><strong style={strongS}>{Math.round(s.doneTSS)}</strong> / {s.plannedTSS > 0 ? Math.round(s.plannedTSS) : '--'} pts</span>
+                </div>
               </div>
             )
           })}
         </div>
       )}
+
+      {/* Training Bloc / Planification — juste sous le volume par discipline */}
+      {p.belowVolume}
 
       {/* Aujourd'hui — filet sport 3px, fond neutre, statut en tag discret */}
       {p.todaySessions.length > 0 && (

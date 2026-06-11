@@ -11,7 +11,6 @@ import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 import { formatDuration } from '@/lib/utils'
 import { TrainingBlockSummary } from '@/app/planning/components/TrainingBlockSummary'
-import { VolumeByDiscipline } from '@/app/planning/components/VolumeByDiscipline'
 import { segmentElevationProfile, getSignificantClimbs } from '@/lib/gpx/parser'
 import type { ParsedSegment } from '@/lib/gpx/parser'
 import nDynamic from 'next/dynamic'
@@ -3651,7 +3650,9 @@ function TrainingTab() {
     sport:sp,
     plannedH: allSess.filter(s=>s.sport===sp).reduce((a,x)=>a+x.durationMin/60,0),
     doneH: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+x.durationMin/60,0)
-          + allActs.filter(a=>normalizeSportType(a.sport)===sp).reduce((a,x)=>a+x.elapsedTime/3600,0)
+          + allActs.filter(a=>normalizeSportType(a.sport)===sp).reduce((a,x)=>a+x.elapsedTime/3600,0),
+    plannedTSS: allSess.filter(s=>s.sport===sp).reduce((a,x)=>a+(x.tss||0),0),
+    doneTSS: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+(x.tss||0),0)
   })).filter(s=>s.plannedH>0||s.doneH>0)
 
   const todaySessions = week[todayIdx]?.sessions??[]
@@ -3798,14 +3799,10 @@ function TrainingTab() {
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-      {/* ── PLAN HEADER + GRAPHIQUES (cartes Volume / Séances / TSS) ── */}
+      {/* ── PLAN HEADER + GRAPHIQUES (visible si plan IA actif) ── */}
       {aiPlan && (
         <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} nextRace={nextRace} onReload={() => setAiPlanReloadTick(t => t + 1)} />
       )}
-      {/* ── Volume par discipline (VOL. + TSS réels) — juste sous les cartes ── */}
-      <VolumeByDiscipline sessions={sessions} />
-      {/* ── Training Bloc / Training Planification ── */}
-      <TrainingBlockSummary />
       {/* ── BULLE FLOTTANTE COACH IA (visible si plan actif) ── */}
       {aiPlan && <AiPlanBubble plan={aiPlan} />}
       {/* ── BANNIÈRE PLAN À VENIR — visible quand le plan démarre dans une semaine future ── */}
@@ -3990,6 +3987,7 @@ function TrainingTab() {
         onOpen10w={() => setShow10w(true)}
         onOpenSession={(s) => setDetailModal(s)}
         isModified={(s) => isSessionModified(s)}
+        belowVolume={<TrainingBlockSummary />}
       />
 
 

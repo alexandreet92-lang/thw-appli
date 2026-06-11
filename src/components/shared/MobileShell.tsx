@@ -134,10 +134,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             </svg>
           </Link>
           <button aria-label="Coach IA" onClick={() => setAiOpen(true)}
-            style={{ ...fab, right: 12, borderRadius: 12, overflow: 'hidden', background: 'linear-gradient(135deg, var(--primary), var(--ai-accent))', border: 'none' }}>
-            {/* Shuriken Athéna existant — non redessiné */}
+            style={{ ...fab, right: 12, borderRadius: 12, overflow: 'hidden' }}>
+            {/* Shuriken Athéna classique 4 branches existant — non redessiné, sur verre neutre */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logos/logo_4bras.png" alt="Coach IA" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+            <img src="/logos/logo_4bras.png" alt="Coach IA" style={{ width: 24, height: 24, objectFit: 'contain' }} />
           </button>
         </>}
 

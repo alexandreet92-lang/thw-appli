@@ -40,6 +40,13 @@ export function formatDuration(minutes: number): string {
   return `${h}h${String(rem).padStart(2, '0')}`
 }
 
+/** Durée volume « Xh YY » — toujours heures + minutes (0h30, 1h40, 3h00). */
+export function formatHm(minutes: number): string {
+  const m = Math.max(0, Math.round(minutes))
+  const h = Math.floor(m / 60)
+  return `${h}h${String(m % 60).padStart(2, '0')}`
+}
+
 export function formatTime(date?: Date): string {
   const d = date ?? new Date()
   return `${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`

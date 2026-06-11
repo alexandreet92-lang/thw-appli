@@ -9,6 +9,7 @@ import type { useHydration } from '@/hooks/useHydration'
 import type { PlannedSession } from '@/hooks/usePlanning'
 import { DayFoodJournal } from '@/app/nutrition/components/DayFoodJournal'
 import { FuelingHero } from './FuelingHero'
+import { DayStrip } from './DayStrip'
 import { dateLabel, type DayType } from '../plan/planFormat'
 
 interface Macro { proteines: number; glucides: number; lipides: number }
@@ -16,6 +17,9 @@ interface Suggestion { title: string; description: string; kcal: number; prot: n
 
 interface Props {
   today:         string
+  realToday:     string
+  dayDir:        'right' | 'left'
+  onSelectDay:   (date: string) => void
   todayType:     DayType
   todayKcalObj:  number
   todayMacroObj: Macro
@@ -40,7 +44,18 @@ export function TodayTab(p: Props) {
   const hydroPct = Math.min(hydration.liters / 2.5, 1)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', padding: 'var(--space-2) 0 var(--space-6)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', padding: 'var(--space-2) 0 var(--space-6)' }}>
+      <style>{`
+        @keyframes ntSlideR { from { transform: translateX(26px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
+        @keyframes ntSlideL { from { transform: translateX(-26px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
+        .nt-slide { animation: ntSlide${p.dayDir === 'right' ? 'R' : 'L'} 0.3s cubic-bezier(0.32,0.72,0,1) }
+        @media (prefers-reduced-motion: reduce) { .nt-slide { animation: none } }
+      `}</style>
+
+      {/* Frise des 6 derniers jours */}
+      <DayStrip today={p.realToday} selected={p.today} targetKcal={p.todayKcalObj} onSelect={p.onSelectDay} />
+
+      <div key={p.today} className="nt-slide" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
       {/* En-tête de contexte : la date (le nom de l'onglet est déjà porté par la nav) */}
       <h1 style={{ fontFamily: FD, fontSize: p.isDesktop ? 22 : 20, fontWeight: 600, color: 'var(--text)', margin: 0, textTransform: 'capitalize' }}>{dateLabel(p.today)}</h1>
 
@@ -123,6 +138,7 @@ export function TodayTab(p: Props) {
             </p>
           </div>
         )}
+      </div>
       </div>
     </div>
   )

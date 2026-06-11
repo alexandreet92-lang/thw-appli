@@ -10,6 +10,7 @@ import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
 import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 import { formatDuration } from '@/lib/utils'
+import { TrainingBlockSummary } from '@/app/planning/components/TrainingBlockSummary'
 import { segmentElevationProfile, getSignificantClimbs } from '@/lib/gpx/parser'
 import type { ParsedSegment } from '@/lib/gpx/parser'
 import nDynamic from 'next/dynamic'
@@ -3796,6 +3797,8 @@ function TrainingTab() {
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
+      {/* ── Training Bloc (résumé cliquable → détail) ── */}
+      <TrainingBlockSummary />
       {/* ── PLAN HEADER + GRAPHIQUES (visible si plan IA actif sur cette semaine) ── */}
       {aiPlan && (
         <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} nextRace={nextRace} onReload={() => setAiPlanReloadTick(t => t + 1)} />

@@ -1,43 +1,46 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useCallback } from 'react'
+// ══════════════════════════════════════════════════════════════
+// / — Dashboard (page d'accueil). Modèle « Plan & progression ».
+// La racine est exemptée du middleware (cf. middleware.ts) → on
+// reproduit ici la garde minimale (session / abonnement / onboarding),
+// puis on rend le contenu dans le layout existant (sidebar/header/tab).
+// ══════════════════════════════════════════════════════════════
+
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { SplashScreen } from '@/components/auth/SplashScreen'
+import { DashboardContent } from '@/components/dashboard/DashboardContent'
 
-export default function RootPage() {
+const BLOCKED = ['trial_expired', 'cancelled', 'canceled']
+
+export default function DashboardPage() {
   const router = useRouter()
+  const [ready, setReady] = useState(false)
 
-  const checkAndRedirect = useCallback(async () => {
-    const supabase = createClient()
-    const { data: { session } } = await supabase.auth.getSession()
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.replace('/auth'); return }
 
-    if (!session) {
-      router.replace('/auth')
-      return
-    }
+      const [{ data: sub }, { data: profile }] = await Promise.all([
+        supabase.from('user_subscriptions').select('status').eq('user_id', user.id).maybeSingle(),
+        supabase.from('profiles').select('onboarding_completed').eq('id', user.id).maybeSingle(),
+      ])
+      if (cancelled) return
 
-    const lastAuth = localStorage.getItem('last_auth_date')
-    const daysSince = lastAuth
-      ? (Date.now() - parseInt(lastAuth)) / (1000 * 60 * 60 * 24)
-      : 999
+      if (sub && BLOCKED.includes((sub as { status: string }).status)) { router.replace('/access-expired'); return }
+      if (profile && (profile as { onboarding_completed: boolean }).onboarding_completed === false) { router.replace('/onboarding'); return }
 
-    if (daysSince > 30) {
-      await supabase.auth.signOut()
-      router.replace('/auth?expired=1')
-      return
-    }
-
-    // Check profile completed
-    const profileDone = localStorage.getItem('profile_completed')
-    if (!profileDone) {
-      router.replace('/auth/profile')
-      return
-    }
-
-    router.replace('/activities')
+      setReady(true)
+    })()
+    return () => { cancelled = true }
   }, [router])
 
-  return <SplashScreen onDone={checkAndRedirect} />
+  if (!ready) return <div aria-busy="true" style={{ minHeight: '60vh' }} />
+
+  return <DashboardContent />
 }

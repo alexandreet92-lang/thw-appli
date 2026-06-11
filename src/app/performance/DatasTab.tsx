@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import type { ZoneSport } from '@/hooks/useTrainingZones'
 import { SportTabs } from '@/components/ui/SportTabs'
+import { Segmented } from '@/components/ui/Segmented'
+import { SwimRecords } from './SwimRecords'
 import { CyclingRadar, RunningRadar, HyroxRadar, TriathlonRadar } from './RadarChart'
 import { ClimbsSection } from './ClimbsSection'
 import { RacesSection } from './RacesSection'
@@ -296,7 +298,6 @@ const DUR_SECS: Record<string, number> = {
 const RUN_DISTS = ['400m','1km','5km','10km','Semi','Marathon','50km','100km']
 const RUN_KM: Record<string,number> = { '400m':0.4,'1km':1,'5km':5,'10km':10,'Semi':21.1,'Marathon':42.195,'50km':50,'100km':100 }
 
-const SWIM_DISTS = ['100m','200m','400m','1000m','1500m','2000m','5000m','10000m']
 const SWIM_M: Record<string,number> = { '100m':100,'200m':200,'400m':400,'1000m':1000,'1500m':1500,'2000m':2000,'5000m':5000,'10000m':10000 }
 
 const ROW_DISTS = ['500m','1000m','2000m','5000m','10000m','Semi','Marathon']
@@ -3443,25 +3444,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
         onChange={(id) => setSport(id as RecordSport)}
       />
 
-      {/* Year pills DS §16 */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {(['All Time', ...allRecordYears] as string[]).map(yr => {
-          const active = recordYear === yr
-          const color  = yr === 'All Time' ? '#5b6fff' : (YEAR_COLORS[yr] ?? YEAR_DEFAULT_COLOR)
-          return (
-            <button key={yr} onClick={() => setRecordYear(yr)} style={{
-              padding: '5px 12px', borderRadius: 20, border: 'none',
-              cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-              fontSize: 12, fontWeight: active ? 700 : 500,
-              transition: 'background 0.15s, color 0.15s',
-              background: active ? color : 'var(--bg-card2)',
-              color: active ? '#ffffff' : 'var(--text-dim)',
-            }}>
-              {yr}
-            </button>
-          )
-        })}
-      </div>
+      {/* Période (All Time / années) — segmented control neutre */}
+      <Segmented
+        ariaLabel="Période"
+        value={recordYear}
+        onChange={setRecordYear}
+        options={(['All Time', ...allRecordYears] as string[]).map(yr => ({ id: yr, label: yr }))}
+      />
 
       {/* BIKE */}
       {sport === 'bike' && (
@@ -3615,34 +3604,13 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
 
       {/* SWIM */}
       {sport === 'swim' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records natation</h2>
-            </div>
-            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'swim')} chartDists={CHART_DISTS.swim} color="#38bdf8" />
-            {SWIM_DISTS.map(d => {
-              const spBest  = getSpBest('swim', d, recordYear)
-              const prevRec = getSpPrev('swim', d)
-              const split   = spBest ? calcSplit500m(SWIM_M[d] ?? 0, spBest.perf).replace('/500m', '/100m') : '—'
-              const sel = selectedDatum?.label === `Natation ${d}` && selectedDatum?.value === (spBest?.perf ?? '—')
-              return (
-                <RecordRow key={d} label={d}
-                  rec24={spBest?.perf ?? '—'}
-                  rec23={prevRec?.perf ?? '—'}
-                  sub={split !== '—' ? split : undefined}
-                  onSelect={() => spBest ? onSelect(`Natation ${d}`, spBest.perf) : undefined}
-                  selected={sel}
-                  actions={
-                    <button onClick={() => openDrawer('swim', d, spBest?.id ?? null, spBest?.perf ?? '')}
-                      style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      Modifier
-                    </button>
-                  } />
-              )
-            })}
-          </Card>
-        </div>
+        <SwimRecords
+          getBest={d => getSpBest('swim', d, recordYear)}
+          getPrev={d => getSpPrev('swim', d)}
+          onSelect={onSelect}
+          onEdit={(d, id, perf) => openDrawer('swim', d, id, perf)}
+          selectedPerf={selectedDatum?.label?.startsWith('Natation ') ? selectedDatum.value : undefined}
+        />
       )}
 
       {/* ROWING */}

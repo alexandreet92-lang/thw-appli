@@ -13,6 +13,7 @@ import { CyclingRadar, RunningRadar, HyroxRadar } from './RadarChart'
 import { TriathlonDrawer } from './TriathlonDrawer'
 import { TriathlonRecords } from './TriathlonRecords'
 import { HyroxRecords } from './HyroxRecords'
+import { GymRecords } from './GymRecords'
 import { ClimbsSection } from './ClimbsSection'
 import { RacesSection } from './RacesSection'
 
@@ -312,16 +313,6 @@ const TRI_DIST: Record<string, { swimM: number; runKm: number }> = {
   '70.3':    { swimM: 1900, runKm: 21.1 },
   'Ironman': { swimM: 3800, runKm: 42.2 },
 }
-
-const GYM_MOVES = [
-  { name:'Bench Press',    recs:[{l:'1RM',v:0},{l:'3RM',v:0},{l:'5RM',v:0},{l:'10RM',v:0},{l:'Max reps PDC',v:0}] },
-  { name:'Squat',          recs:[{l:'1RM',v:0},{l:'3RM',v:0},{l:'5RM',v:0},{l:'10RM',v:0},{l:'Max reps PDC',v:0}] },
-  { name:'Deadlift',       recs:[{l:'1RM',v:0},{l:'3RM',v:0},{l:'5RM',v:0},{l:'10RM',v:0},{l:'Max reps PDC',v:0}] },
-  { name:'Tractions',      recs:[{l:'Max reps PDC',v:0},{l:'1RM+charge',v:0}] },
-  { name:'Dips',           recs:[{l:'Max reps PDC',v:0},{l:'1RM+charge',v:0}] },
-  { name:'Dev. militaire', recs:[{l:'Max charge',v:0}] },
-  { name:'Pompes',         recs:[{l:'Max reps',v:0}] },
-]
 
 // ── Sports Records Types ─────────────────────────────────────────
 interface SpRecord {
@@ -2922,76 +2913,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
 
       {/* GYM */}
       {sport === 'gym' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <SectionHeader label="Records muscu" gradient="linear-gradient(180deg,#fb923c,#f97316)" />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap: 12 }}>
-            {GYM_MOVES.map(m => (
-              <Card key={m.name} style={{ padding: 16 }}>
-                <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, margin: '0 0 10px', color: '#f97316' }}>{m.name}</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  {m.recs.map(r => {
-                    const distLabel = `${m.name} — ${r.l}`
-                    const editKey   = `gym-${distLabel}`
-                    const isEditing = activeEdit === editKey
-                    const unit      = r.l.includes('reps') ? 'reps' : 'kg'
-                    const spBest    = getSpBest('gym', distLabel, recordYear)
-                    const displayVal = spBest ? `${spBest.perf}${unit === 'reps' ? ' reps' : ' kg'}` : '—'
-                    const sel = selectedDatum?.label === distLabel && selectedDatum?.value === displayVal
-
-                    if (isEditing) {
-                      return (
-                        <div key={r.l} style={{
-                          display: 'flex', alignItems: 'center', gap: 8, padding: '6px 9px', borderRadius: 7, marginBottom: 3,
-                          background: 'rgba(249,115,22,0.06)', border: '1px solid #f97316',
-                        }}>
-                          <span style={{ fontSize: 11, flex: 1, color: 'var(--text-mid)' }}>{r.l}</span>
-                          <input type="number" value={editDraft} onChange={e => setEditDraft(e.target.value)} autoFocus
-                            placeholder={unit}
-                            style={{ width: 64, padding: '3px 7px', borderRadius: 6, border: '1px solid #f97316', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 12, outline: 'none' }}
-                            onKeyDown={e => { if (e.key === 'Enter') void confirmSpRecord('gym', distLabel, unit); if (e.key === 'Escape') cancelEdit() }} />
-                          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{unit}</span>
-                          <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)}
-                            style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 10, outline: 'none' }} />
-                          <button onClick={() => void confirmSpRecord('gym', distLabel, unit)} disabled={recordSaving}
-                            style={{ padding: '3px 9px', borderRadius: 6, border: 'none', background: '#f97316', color: '#000', fontSize: 10, fontWeight: 700, cursor: 'pointer', opacity: recordSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-                            {recordSaving ? '…' : 'OK'}
-                          </button>
-                          <button onClick={cancelEdit}
-                            style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer' }}>
-                            ✕
-                          </button>
-                        </div>
-                      )
-                    }
-                    return (
-                      <div key={r.l} onClick={() => displayVal !== '—' ? onSelect(distLabel, displayVal) : undefined} style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '5px 9px', borderRadius: 7,
-                        background: sel ? 'rgba(249,115,22,0.14)' : 'rgba(249,115,22,0.07)',
-                        border: `1px solid ${sel ? 'rgba(249,115,22,0.50)' : 'rgba(249,115,22,0.15)'}`,
-                        cursor: displayVal !== '—' ? 'pointer' : undefined,
-                        transition: 'background 0.15s, border-color 0.15s',
-                      }}>
-                        <span style={{ fontSize: 11, color: 'var(--text-mid)' }}>{r.l}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 13, fontWeight: 700, color: displayVal !== '—' ? '#f97316' : 'var(--text-dim)' }}>
-                            {displayVal}
-                          </span>
-                          <button onClick={e => { e.stopPropagation(); tryEdit(editKey, spBest?.perf ?? '', spBest?.id ?? null) }}
-                            style={{ padding: '2px 7px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 9, cursor: 'pointer', flexShrink: 0 }}>
-                            Modifier
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
+        <GymRecords recordYear={recordYear} onSelect={onSelect} selectedDatum={selectedDatum} />
       )}
     </div>
   )

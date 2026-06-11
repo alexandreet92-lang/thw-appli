@@ -1,0 +1,73 @@
+/* ════════════════════════════════════════════════════════════════
+   Dashboard — disposition responsive via grid-template-areas.
+   Couleurs en var() uniquement. Mobile 1 col (paire race|last),
+   desktop 2 colonnes. Le même DOM est réordonné par breakpoint.
+   ════════════════════════════════════════════════════════════════ */
+
+.dash-wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-5) var(--space-12);
+}
+
+.dash-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "today today"
+    "nutrition nutrition"
+    "week week"
+    "race last"
+    "coach coach"
+    "actions actions"
+    "records records";
+}
+
+.dash-a-today     { grid-area: today; }
+.dash-a-nutrition { grid-area: nutrition; }
+.dash-a-week      { grid-area: week; }
+.dash-a-race      { grid-area: race; }
+.dash-a-last      { grid-area: last; }
+.dash-a-coach     { grid-area: coach; }
+.dash-a-actions   { grid-area: actions; }
+.dash-a-records   { grid-area: records; }
+
+.dash-desktop-only { display: none; }
+.dash-mobile-only  { display: block; }
+
+@media (min-width: 768px) {
+  .dash-wrap { padding: var(--space-8) var(--space-8) var(--space-12); }
+  .dash-grid {
+    gap: var(--space-5);
+    align-items: start;
+    grid-template-areas:
+      "today week"
+      "nutrition race"
+      "last coach"
+      "records coach";
+  }
+  .dash-desktop-only { display: block; }
+  .dash-mobile-only  { display: none; }
+}
+
+/* Skeleton — shimmer (pas de spinner). */
+.dash-skel { position: relative; overflow: hidden; }
+.dash-skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--bg-hover), transparent);
+  animation: dash-shimmer 1.4s infinite;
+}
+@keyframes dash-shimmer { to { transform: translateX(100%); } }
+
+/* Retour tactile discret sur les surfaces cliquables. */
+.dash-tap { transition: background 0.15s ease; }
+.dash-tap:active { background: var(--bg-elev); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-skel::after { animation: none; }
+  .dash-tap { transition: none; }
+}

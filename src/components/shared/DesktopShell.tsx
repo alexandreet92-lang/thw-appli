@@ -28,6 +28,13 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     return () => m.removeEventListener('change', f)
   }, [])
 
+  // Le Dashboard ouvre le chat IA via cet event (réutilise AIPanel, pas de doublon).
+  useEffect(() => {
+    const open = () => setAiOpen(true)
+    window.addEventListener('thw:open-coach', open)
+    return () => window.removeEventListener('thw:open-coach', open)
+  }, [])
+
   // /topup : page autonome (lien email), aucun chrome.
   if (pathname?.startsWith('/topup')) {
     return <div className="hidden md:block" style={{ height: '100vh', overflowY: 'auto', background: 'var(--bg)' }}>{children}</div>
@@ -81,6 +88,15 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           style={{ ...fab, left: open ? W + 12 : 12, flexDirection: 'column', gap: 4 }}>
           {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
         </button>
+
+        {/* Cloche notifications — à gauche du shuriken (entrée seulement) */}
+        <Link href="/notifications" aria-label="Notifications"
+          style={{ ...fab, right: 62, left: 'auto' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+        </Link>
 
         {/* Shuriken IA — droite */}
         <button aria-label="Coach IA" onClick={() => setAiOpen(true)}

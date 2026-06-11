@@ -4,9 +4,10 @@
 // SPORT_COLORS pour les teintes sport. createPortal côté overlay.
 import { useState } from 'react'
 import { TrainingBlockDetail } from './TrainingBlockDetail'
+import { FriseV1 } from '@/components/planning/FriseV1'
 import { loadBlocks, BLOCK_SPORTS, SPORT_LABEL, SPORT_COLOR, type BlockSport } from '../trainingBlocks'
 
-const FB = 'var(--font-body)', FD = 'var(--font-display)'
+const FB = 'var(--font-body)'
 
 export function TrainingBlockSummary() {
   const [tab, setTab] = useState<'bloc' | 'plan'>('bloc')
@@ -18,19 +19,21 @@ export function TrainingBlockSummary() {
 
   return (
     <section style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)', overflow: 'hidden' }}>
-      {/* Onglets */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
-        {(['bloc', 'plan'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            style={{ flex: 1, padding: '15px 18px', fontSize: 13.5, fontWeight: 600, border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: FB, transition: 'color .15s',
-              color: tab === t ? 'var(--text)' : 'var(--text-dim)', borderBottom: tab === t ? '2px solid var(--text)' : '2px solid transparent' }}>
-            {t === 'bloc' ? 'Training Bloc' : 'Training Planification'}
-          </button>
-        ))}
+      {/* Onglets — segmented pill (pas d'underline) */}
+      <div style={{ padding: '16px 16px 0' }}>
+        <div style={{ display: 'inline-flex', gap: 0, background: 'var(--bg-card2)', borderRadius: 12, padding: 4 }}>
+          {(['bloc', 'plan'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              style={{ padding: '8px 18px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: FB, borderRadius: 9, transition: 'all .15s',
+                background: tab === t ? 'var(--bg-card)' : 'transparent', color: tab === t ? 'var(--text)' : 'var(--text-dim)', boxShadow: tab === t ? 'var(--shadow-card)' : 'none' }}>
+              {t === 'bloc' ? 'Training Bloc' : 'Training Planification'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === 'bloc' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12, padding: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, padding: 16 }}>
           {active.map(s => {
             const b = blocks[s.id]!
             return (
@@ -75,23 +78,17 @@ export function TrainingBlockSummary() {
 
       {tab === 'plan' && (
         <div style={{ padding: '16px 20px 20px' }}>
-          <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 14px', fontFamily: FB }}>Aperçu de la planification (Gantt éditable à venir).</p>
-          {/* Aperçu lecture seule : règle de semaines + blocs actifs */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {active.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: 0, fontFamily: FB }}>Aucun bloc à planifier.</p>
-            ) : active.map(s => {
-              const b = blocks[s.id]!
-              return (
-                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ width: 70, fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', flexShrink: 0, fontFamily: FB }}>{SPORT_LABEL[s.id]}</span>
-                  <div style={{ flex: 1, height: 22, borderRadius: 20, background: SPORT_COLOR[s.id], opacity: 0.85, display: 'flex', alignItems: 'center', padding: '0 12px' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--on-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: FB }}>{b.focus[0] ?? SPORT_LABEL[s.id]} · S{b.weekCurrent}/{b.weekTotal}</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          {active.length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: 0, fontFamily: FB }}>Aucun bloc à planifier.</p>
+          ) : (
+            // Frise lecture seule — clic n'importe où → détail du 1er bloc (édition Gantt = lot dédié)
+            <div onClick={() => setOpen(active[0].id)} style={{ cursor: 'pointer', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <FriseV1 blocs={active.map(s => {
+                const b = blocks[s.id]!
+                return { sport: s.id, weekCurrent: b.weekCurrent, weekTotal: b.weekTotal, focus: b.focus, color: SPORT_COLOR[s.id], label: SPORT_LABEL[s.id] }
+              })} />
+            </div>
+          )}
         </div>
       )}
 

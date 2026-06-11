@@ -59,6 +59,16 @@ export function TrainingBlockDetail({ sport, activeSports, onClose, onSaved }: {
           </div>
         </div>
 
+        {/* Durée du bloc */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
+          <span style={secLbl}>Durée du bloc</span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', background: 'var(--bg-card2)', borderRadius: 999 }}>
+            <button onClick={() => update({ ...block, weekTotal: Math.max(1, block.weekTotal - 1), weekCurrent: Math.min(block.weekCurrent, Math.max(1, block.weekTotal - 1)) })} style={step}>−</button>
+            <span className="tnum" style={{ minWidth: 56, textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: FB }}>{block.weekTotal} sem.</span>
+            <button onClick={() => update({ ...block, weekTotal: Math.min(16, block.weekTotal + 1) })} style={step}>+</button>
+          </div>
+        </div>
+
         {/* Focus */}
         <div style={{ ...secLbl, marginBottom: 9 }}>Focus du bloc</div>
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 22 }}>

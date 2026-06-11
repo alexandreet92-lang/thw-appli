@@ -14,7 +14,8 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
-import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen, Menu, AlignJustify, LayoutGrid, Square } from 'lucide-react'
+import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen, Menu, AlignJustify, LayoutGrid, Square, type LucideIcon } from 'lucide-react'
+import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout'
 import { ActivityTitle } from '@/components/activity/ActivityTitle'
 import { Spinner } from '@/components/ui/Spinner'
 import { SkeletonFitnessCards } from '@/components/ui/Skeleton'
@@ -9423,8 +9424,6 @@ function TrainingPageInner() {
   const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
   const [sectionOpen, setSectionOpen] = useState(false)
-  const [sidebarExpanded, setSidebarExpanded] = useState(false)
-  const sidebarLeaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [syncing, setSyncing]           = useState(false)
   const [syncingPolar, setSyncingPolar] = useState(false)
   const [syncMsg, setSyncMsg]           = useState<string | null>(null)
@@ -9526,7 +9525,6 @@ function TrainingPageInner() {
   }
   const width   = useWindowWidth()
   const isMobile = width < 768
-  const active  = NAV.find(n => n.id === section)!
   // Deep-link depuis Planning : ?id=<activity_id> → ouvre directement la section analyse
   const [deepLinkId, setDeepLinkId] = useState<string|null>(null)
   useEffect(() => {
@@ -9575,28 +9573,8 @@ function TrainingPageInner() {
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [])
 
-  return (
-    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: T.fontBody }}>
-
-      {/* ── TOP BAR — section dropdown + boutons ── */}
-      <div data-training-topbar="" style={{ position: 'sticky', top: 0, zIndex: 100, background: T.bg }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 16px',
-        }}>
-          {/* Gauche : logo mobile / label desktop */}
-          <div>
-            {isMobile ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logos/logo_4bras.png" alt="THW" width={24} height={24} style={{ objectFit: 'contain', opacity: 0.9 }} />
-              </div>
-            ) : (
-              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{active.label}</span>
-            )}
-          </div>
-
-          {/* Droite : statuts de sync + boutons */}
+  const tabs: PageTab<Section>[] = NAV.map(n => ({ id: n.id, label: n.label, subtitle: n.desc, icon: n.Icon as unknown as LucideIcon }))
+  const topControls = (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {loading && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>Chargement…</span>}
             {syncing && <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#FC4C02', fontWeight: 600 }}><Spinner size={12} color="#FC4C02" /> Strava</span>}
@@ -9702,118 +9680,10 @@ function TrainingPageInner() {
               <BookOpen size={15} color="var(--text)" strokeWidth={1.75} />
             </button>
           </div>
-        </div>
-
-        {/* ── STRAVA TABS — mobile uniquement ── */}
-        {isMobile && (
-          <div data-training-tabs="" style={{
-            display: 'flex', overflowX: 'auto',
-            background: T.bg, padding: '0 4px 0',
-            scrollbarWidth: 'none',
-          }}>
-            <style>{`.strava-tabs::-webkit-scrollbar{display:none}`}</style>
-            {NAV.map(n => {
-              const isAct = n.id === section
-              return (
-                <button
-                  key={n.id}
-                  onClick={() => setSection(n.id)}
-                  style={{
-                    padding: '12px 16px', fontSize: 14, fontWeight: 600, border: 'none',
-                    background: 'transparent', cursor: 'pointer', whiteSpace: 'nowrap',
-                    color: isAct ? '#06B6D4' : 'var(--text-dim)',
-                    position: 'relative', flexShrink: 0,
-                    transition: 'color 250ms',
-                  }}
-                >
-                  {n.label}
-                  {isAct && (
-                    <span style={{
-                      position: 'absolute', bottom: 0, left: '50%',
-                      transform: 'translateX(-50%)',
-                      width: '70%', height: 2.5, borderRadius: 2,
-                      background: 'linear-gradient(90deg, #06B6D4, #3B82F6)',
-                      display: 'block',
-                    }} />
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', maxWidth: 1400, margin: '0 auto', position: 'relative' }}>
-
-        {/* ── SIDEBAR desktop — Supabase style (toujours visible, icons + hover expand) ── */}
-        {!isMobile && (
-          <aside
-            onMouseEnter={() => {
-              if (sidebarLeaveTimer.current) clearTimeout(sidebarLeaveTimer.current)
-              setSidebarExpanded(true)
-            }}
-            onMouseLeave={() => {
-              sidebarLeaveTimer.current = setTimeout(() => setSidebarExpanded(false), 150)
-            }}
-            style={{
-              position: 'fixed',
-              top: 0, left: 0,
-              height: '100vh',
-              width: sidebarExpanded ? 220 : 52,
-              zIndex: 100,
-              background: 'var(--bg)',
-              borderRight: '1px solid var(--border)',
-              display: 'flex', flexDirection: 'column',
-              gap: 4,
-              padding: '72px 0 20px',
-              overflow: 'hidden',
-              transition: 'width 250ms cubic-bezier(0.32,0.72,0,1)',
-              flexShrink: 0,
-            }}
-          >
-            {NAV.map(n => {
-              const isActive = n.id === section
-              return (
-                <button
-                  key={n.id}
-                  onClick={() => setSection(n.id)}
-                  style={{
-                    height: 44, display: 'flex', alignItems: 'center',
-                    padding: '0 8px', gap: 10,
-                    cursor: 'pointer', border: 'none',
-                    borderLeft: `3px solid ${isActive ? '#06B6D4' : 'transparent'}`,
-                    background: isActive ? 'rgba(6,182,212,0.08)' : 'transparent',
-                    whiteSpace: 'nowrap',
-                    transition: 'background 0.12s',
-                    width: '100%', textAlign: 'left',
-                  }}
-                  onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = T.bgAlt }}
-                  onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                >
-                  {/* Icon wrapper */}
-                  <div style={{
-                    width: 36, height: 36, flexShrink: 0,
-                    borderRadius: 8,
-                    background: isActive ? 'transparent' : 'var(--bg-card2)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <n.Icon size={18} color={isActive ? '#06B6D4' : T.textSub} />
-                  </div>
-                  {/* Labels */}
-                  <div style={{ overflow: 'hidden' }}>
-                    <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? '#06B6D4' : T.text, fontFamily: T.fontDisplay }}>
-                      {n.label}
-                    </div>
-                    <div style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontBody }}>{n.desc}</div>
-                  </div>
-                </button>
-              )
-            })}
-          </aside>
-        )}
-
-        {/* ── CONTENT ── */}
-        <main style={{ flex: 1, minWidth: 0, padding: isMobile ? '14px 12px' : '22px 28px 22px 72px' }}>
+  )
+  return (
+    <>
+      <TabbedPageLayout title="Training" headerExtra={topControls} tabs={tabs} active={section} onChange={setSection}>
 
           {/* Error */}
           {error && (
@@ -9833,8 +9703,8 @@ function TrainingPageInner() {
           {!loading && !error && section === 'donnees'     && <div className="fade-up"><ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal></div>}
           {!loading && !error && section === 'analyse'     && <div className="fade-up"><ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal></div>}
           {section === 'progression' && <div className="fade-up"><ProgressionHub /></div>}
-        </main>
-      </div>
+      </TabbedPageLayout>
+
 
       <PageHelp config={TRAINING_ONBOARDING} show={showHelp} onDismiss={dismissHelp} />
 
@@ -9849,6 +9719,6 @@ function TrainingPageInner() {
         table { border-spacing: 0; }
       `}</style>
 
-    </div>
+    </>
   )
 }

@@ -1,98 +1,61 @@
 'use client'
-// Section Training Bloc — deux onglets : « Training Bloc » (grille de cartes par sport,
-// clic → overlay détail) et « Training Planification » (aperçu lecture seule). Tokens +
-// SPORT_COLORS pour les teintes sport. createPortal côté overlay.
+// Section Training Bloc — sans encadré parent (onglets + contenu directement dans le flux).
+// Onglet « Training Bloc » = grille 3 colonnes de cartes ; « Training Planification » = frise
+// lecture seule cliquable (→ surpage). Surpage = BlocDetailOverlay (createPortal).
 import { useState } from 'react'
-import { TrainingBlockDetail } from './TrainingBlockDetail'
 import { FriseV1 } from '@/components/planning/FriseV1'
-import { loadBlocks, BLOCK_SPORTS, SPORT_LABEL, SPORT_COLOR, type BlockSport } from '../trainingBlocks'
+import { BlocSummaryView } from '@/components/planning/BlocSummaryView'
+import { BlocDetailOverlay } from '@/components/planning/BlocDetailOverlay'
+import { SPORT_LABELS, SPORT_COLORS, BLOC_SPORT_KEYS } from '@/lib/constants/blocTypes'
+import { currentWeekInBloc } from '@/lib/utils/weekDates'
+import { loadBlocs, upsertBloc, newBloc } from '@/app/planning/trainingBlocks'
 
-const FB = 'var(--font-body)'
+const T = '#e6edf3' // design-allow-color : maquette dark
 
 export function TrainingBlockSummary() {
   const [tab, setTab] = useState<'bloc' | 'plan'>('bloc')
-  const [blocks, setBlocks] = useState(() => loadBlocks())
-  const [open, setOpen] = useState<BlockSport | null>(null)
-  const [creating, setCreating] = useState(false)
-  const reload = () => setBlocks(loadBlocks())
-  const active = BLOCK_SPORTS.filter(s => blocks[s.id])
+  const [blocs, setBlocs] = useState(() => loadBlocs())
+  const [open, setOpen] = useState(false)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const reload = () => setBlocs(loadBlocs())
+
+  function openBloc(id: string) { setActiveId(id); setOpen(true) }
+  function createBloc() {
+    const firstSport = blocs[0]?.sport ?? BLOC_SPORT_KEYS[0]
+    const b = newBloc(firstSport); upsertBloc(b); reload(); openBloc(b.id)
+  }
+  function openPlan() { if (blocs[0]) openBloc(blocs[0].id); else createBloc() }
 
   return (
-    <section style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)', overflow: 'hidden' }}>
-      {/* Onglets — segmented pill (pas d'underline) */}
-      <div style={{ padding: '16px 16px 0' }}>
-        <div style={{ display: 'inline-flex', gap: 0, background: 'var(--bg-card2)', borderRadius: 12, padding: 4 }}>
+    <section>
+      {/* Onglets segmented — sans border autour */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,.05)', borderRadius: 10, padding: 3, gap: 2 }}>
           {(['bloc', 'plan'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              style={{ padding: '8px 18px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: FB, borderRadius: 9, transition: 'all .15s',
-                background: tab === t ? 'var(--bg-card)' : 'transparent', color: tab === t ? 'var(--text)' : 'var(--text-dim)', boxShadow: tab === t ? 'var(--shadow-card)' : 'none' }}>
+            <button key={t} onClick={() => setTab(t)} style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', borderRadius: 8, transition: 'all .18s', background: tab === t ? '#1b212b' : 'transparent', color: tab === t ? T : 'rgba(230,237,243,.35)', boxShadow: tab === t ? '0 1px 4px rgba(0,0,0,.3)' : 'none' }}>
               {t === 'bloc' ? 'Training Bloc' : 'Training Planification'}
             </button>
           ))}
         </div>
       </div>
 
-      {tab === 'bloc' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, padding: 16 }}>
-          {active.map(s => {
-            const b = blocks[s.id]!
-            return (
-              <div key={s.id} onClick={() => setOpen(s.id)}
-                style={{ border: '1.5px solid var(--border)', borderRadius: 13, padding: '14px 16px', cursor: 'pointer', transition: 'border-color .15s, box-shadow .15s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 2px 12px var(--primary-dim)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: SPORT_COLOR[s.id], flexShrink: 0 }} />
-                  <span style={{ fontSize: 14, fontWeight: 700, flex: 1, color: 'var(--text)', fontFamily: FB }}>{SPORT_LABEL[s.id]}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    {Array.from({ length: b.weekTotal }, (_, i) => (
-                      <span key={i} style={{ width: 12, height: 4, borderRadius: 4, background: i < b.weekCurrent ? 'var(--primary)' : 'var(--bg-card2)' }} />
-                    ))}
-                    <span className="tnum" style={{ fontSize: 10.5, color: 'var(--text-dim)', marginLeft: 5 }}>S<strong style={{ color: 'var(--text-mid)' }}>{b.weekCurrent}</strong>/{b.weekTotal}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10, minHeight: 22 }}>
-                  {b.focus.map(q => (
-                    <span key={q} style={{ fontSize: 11, fontWeight: 600, background: 'var(--bg-card2)', color: 'var(--text-mid)', borderRadius: 999, padding: '3px 9px', fontFamily: FB }}>{q}</span>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: FB }}><strong className="tnum" style={{ color: 'var(--text)' }}>{b.sessions.length}</strong> séances</span>
-                  <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>›</span>
-                </div>
-              </div>
-            )
-          })}
-          {active.length === 0 && !creating && (
-            <div style={{ gridColumn: '1/-1', padding: '20px 4px', color: 'var(--text-dim)', fontSize: 13, fontFamily: FB }}>
-              Aucun bloc actif · <span style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 600 }} onClick={() => setCreating(true)}>+ Créer un bloc</span>
-            </div>
-          )}
-          {active.length === 0 && creating && BLOCK_SPORTS.map(s => (
-            <button key={s.id} onClick={() => setOpen(s.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'transparent', cursor: 'pointer', fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color }} />{s.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {tab === 'bloc' && <BlocSummaryView blocs={blocs} onOpen={openBloc} onCreate={createBloc} />}
 
       {tab === 'plan' && (
-        <div style={{ padding: '16px 20px 20px' }}>
-          {active.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: 0, fontFamily: FB }}>Aucun bloc à planifier.</p>
-          ) : (
-            // Frise lecture seule — clic n'importe où → détail du 1er bloc (édition Gantt = lot dédié)
-            <div onClick={() => setOpen(active[0].id)} style={{ cursor: 'pointer', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <FriseV1 blocs={active.map(s => {
-                const b = blocks[s.id]!
-                return { sport: s.id, weekCurrent: b.weekCurrent, weekTotal: b.weekTotal, focus: b.focus, color: SPORT_COLOR[s.id], label: SPORT_LABEL[s.id] }
-              })} />
-            </div>
-          )}
+        <div onClick={openPlan} style={{ padding: '14px 16px 18px', cursor: 'pointer' }}>
+          <p style={{ fontSize: 11.5, color: 'rgba(230,237,243,.28)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ color: '#22d3ee' }}>↔</span>
+            12 semaines · <strong style={{ color: 'rgba(230,237,243,.45)' }}>Clique pour modifier</strong>
+          </p>
+          {blocs.length === 0
+            ? <p style={{ fontSize: 13, color: 'rgba(230,237,243,.45)', margin: 0 }}>Aucun bloc à planifier.</p>
+            : <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <FriseV1 blocs={blocs.map(b => ({ sport: b.sport, weekCurrent: currentWeekInBloc(b.startWeek, b.durationWeeks), weekTotal: b.durationWeeks, focus: b.focus, color: SPORT_COLORS[b.sport], label: SPORT_LABELS[b.sport] }))} />
+              </div>}
         </div>
       )}
 
-      {open && <TrainingBlockDetail sport={open} activeSports={active.map(s => s.id)} onClose={() => { setOpen(null); setCreating(false); reload() }} onSaved={reload} />}
+      <BlocDetailOverlay open={open} blocId={activeId} onClose={() => { setOpen(false); reload() }} onChanged={reload} />
     </section>
   )
 }

@@ -1,72 +1,74 @@
 'use client'
-// Données « Training Bloc » (A3 + B). Phase 0 : aucune table de blocs en base
-// (training_plans / planned_sessions / planned_races existent, mais pas de table bloc).
-// Migrations interdites dans ce prompt → persistance via localStorage (données RÉELLES de
-// l'utilisateur, zéro mock). Colonnes DB nécessaires documentées dans le PROMPT pour une
-// future migration. Couleurs sport via tokens --sport-*.
-import { BLOC_TYPES } from '@/lib/constants/blocTypes'
+// Persistance des blocs d'entraînement (V1). Phase 0 : aucune table `training_blocs` en base
+// (training_plans / planned_sessions / planned_races existent uniquement) et les migrations
+// sont hors périmètre de ce lot → stockage localStorage, données RÉELLES de l'utilisateur,
+// zéro mock. Modèle = tableau de TrainingBlocData (plusieurs blocs par sport possibles).
+import { BLOC_TYPES, BLOC_SPORT_KEYS } from '@/lib/constants/blocTypes'
+import { getCurrentWeek } from '@/lib/utils/weekDates'
+import type { TrainingBlocData } from '@/types/trainingBloc'
 
-export type BlockSport = 'bike' | 'run' | 'hyrox' | 'swim' | 'gym'
-// Mappe l'id sport interne vers la clé de BLOC_TYPES (maquettes).
-const TYPE_KEY: Record<BlockSport, string> = { bike: 'velo', run: 'running', hyrox: 'hyrox', swim: 'natation', gym: 'muscu' }
+export type { TrainingBlocData, SessionEntry } from '@/types/trainingBloc'
+export const SPORT_KEYS = BLOC_SPORT_KEYS
 
-export const BLOCK_SPORTS: { id: BlockSport; label: string; color: string }[] = [
-  { id: 'bike', label: 'Vélo', color: 'var(--sport-bike)' },
-  { id: 'run', label: 'Running', color: 'var(--sport-run)' },
-  { id: 'hyrox', label: 'Hyrox', color: 'var(--sport-hyrox)' },
-  { id: 'swim', label: 'Natation', color: 'var(--sport-swim)' },
-  { id: 'gym', label: 'Muscu', color: 'var(--sport-gym)' },
-]
-export const SPORT_LABEL: Record<BlockSport, string> = Object.fromEntries(BLOCK_SPORTS.map(s => [s.id, s.label])) as Record<BlockSport, string>
-export const SPORT_COLOR: Record<BlockSport, string> = Object.fromEntries(BLOCK_SPORTS.map(s => [s.id, s.color])) as Record<BlockSport, string>
-
-// Types initiaux = BLOC_TYPES (constante partagée), via la clé mappée.
-function initialFor(sport: BlockSport): string[] { return BLOC_TYPES[TYPE_KEY[sport]] ?? [] }
-
-export interface SportBlock {
-  sport: BlockSport
-  weekCurrent: number
-  weekTotal: number
-  focus: string[]
-  sessions: (string | null)[]
-}
-
-const BLOCKS_KEY = 'thw_training_blocks_v1'
-const TYPES_KEY = 'thw_block_custom_types_v1'
+const BLOCS_KEY = 'thw_training_blocs_v2'
+const TYPES_KEY = 'thw_block_custom_types_v2'
 
 function read<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback
   try { const v = JSON.parse(localStorage.getItem(key) ?? 'null'); return v ?? fallback } catch { return fallback }
 }
 function write(key: string, v: unknown) { if (typeof window !== 'undefined') localStorage.setItem(key, JSON.stringify(v)) }
-
-export function loadBlocks(): Partial<Record<BlockSport, SportBlock>> {
-  return read<Partial<Record<BlockSport, SportBlock>>>(BLOCKS_KEY, {})
-}
-export function saveBlock(b: SportBlock) {
-  const all = loadBlocks()
-  all[b.sport] = b
-  write(BLOCKS_KEY, all)
-}
-export function deleteBlock(sport: BlockSport) {
-  const all = loadBlocks(); delete all[sport]; write(BLOCKS_KEY, all)
-}
-export function emptyBlock(sport: BlockSport): SportBlock {
-  return { sport, weekCurrent: 1, weekTotal: 4, focus: [], sessions: [null, null, null] }
+function genId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
+  return `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-// Types = initiaux + customs persistés.
-function customTypes(): Partial<Record<BlockSport, string[]>> {
-  return read<Partial<Record<BlockSport, string[]>>>(TYPES_KEY, {})
+export function loadBlocs(): TrainingBlocData[] {
+  return read<TrainingBlocData[]>(BLOCS_KEY, [])
 }
-export function typesFor(sport: BlockSport): string[] {
+export function saveBlocs(list: TrainingBlocData[]) { write(BLOCS_KEY, list) }
+
+export function upsertBloc(b: TrainingBlocData): TrainingBlocData[] {
+  const list = loadBlocs()
+  const i = list.findIndex(x => x.id === b.id)
+  if (i >= 0) list[i] = b; else list.push(b)
+  saveBlocs(list)
+  return list
+}
+export function deleteBloc(id: string): TrainingBlocData[] {
+  const list = loadBlocs().filter(b => b.id !== id)
+  saveBlocs(list)
+  return list
+}
+
+// Nouveau bloc : démarre la semaine ISO courante, 4 semaines, 3 séances non définies.
+export function newBloc(sport: string): TrainingBlocData {
+  const { year, week } = getCurrentWeek()
+  return {
+    id: genId(), sport, name: 'Nouveau bloc',
+    startYear: year, startWeek: week, durationWeeks: 4,
+    focus: [], sessions: [{ type: null }, { type: null }, { type: null }],
+    createdAt: new Date().toISOString(),
+  }
+}
+
+export function blocsCountBySport(list: TrainingBlocData[]): Record<string, number> {
+  return list.reduce<Record<string, number>>((acc, b) => { acc[b.sport] = (acc[b.sport] ?? 0) + 1; return acc }, {})
+}
+
+// Types = initiaux (BLOC_TYPES) + customs persistés par sport.
+function customTypes(): Record<string, string[]> { return read<Record<string, string[]>>(TYPES_KEY, {}) }
+export function typesFor(sport: string): string[] {
+  const initial = BLOC_TYPES[sport] ?? []
   const custom = customTypes()[sport] ?? []
   const seen = new Set<string>()
-  return [...initialFor(sport), ...custom].filter(t => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true })
+  return [...initial, ...custom].filter(t => { const k = t.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true })
 }
-export function addCustomType(sport: BlockSport, type: string) {
+export function addCustomType(sport: string, type: string) {
   const t = type.trim(); if (!t) return
   const all = customTypes()
   const list = all[sport] ?? []
-  if (![...initialFor(sport), ...list].some(x => x.toLowerCase() === t.toLowerCase())) { list.push(t); all[sport] = list; write(TYPES_KEY, all) }
+  if (![...(BLOC_TYPES[sport] ?? []), ...list].some(x => x.toLowerCase() === t.toLowerCase())) {
+    list.push(t); all[sport] = list; write(TYPES_KEY, all)
+  }
 }

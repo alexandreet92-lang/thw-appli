@@ -3850,18 +3850,16 @@ function TrainingTab() {
         />
       )}
       {detailModal && (
-        <div onClick={()=>setDetailModal(null)} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
-          <SessionEditor
-            mode="edit"
-            session={detailModal}
-            onClose={()=>setDetailModal(null)}
-            onSave={handleSaveSession}
-            onDelete={handleDelete}
-            onValidate={handleValidate}
-            onAutoSave={handleAutoSaveSession}
-            onDuplicate={(dayIdx, s) => { addSession({ ...s, dayIndex: dayIdx, planVariant: s.planVariant ?? activePlan }); setDetailModal(null) }}
-          />
-        </div>
+        <SessionEditor
+          mode="edit"
+          session={detailModal}
+          onClose={()=>setDetailModal(null)}
+          onSave={handleSaveSession}
+          onDelete={handleDelete}
+          onValidate={handleValidate}
+          onAutoSave={handleAutoSaveSession}
+          onDuplicate={(dayIdx, s) => { addSession({ ...s, dayIndex: dayIdx, planVariant: s.planVariant ?? activePlan }); setDetailModal(null) }}
+        />
       )}
       {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}
 
@@ -7222,20 +7220,33 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
   return (
     <>
-      <style>{`@keyframes slideUpModal{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+      <style>{`@keyframes sheetFade{from{opacity:0}to{opacity:1}}@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
 
+      {/* Backdrop flouté — clic = fermeture */}
+      <div onClick={onClose} style={{
+        position: 'fixed' as const, inset: 0, zIndex: 998,
+        background: 'rgba(0,0,0,.3)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
+        animation: 'sheetFade .3s ease-out',
+      }} />
+
+      {/* Bottom sheet — coulisse depuis le bas */}
       <div onClick={e => e.stopPropagation()} style={{
-        position: 'fixed' as const, inset: 0, zIndex: 999,
-        background: 'var(--bg)',
+        position: 'fixed' as const, bottom: 0, left: 0, right: 0, height: '96dvh', zIndex: 999,
+        background: 'var(--bg)', borderRadius: '20px 20px 0 0',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.15)',
         overflowY: 'auto' as const,
-        animation: 'slideUpModal 0.2s ease-out',
+        animation: 'sheetUp .38s cubic-bezier(.2,.8,.2,1)',
       }}>
+
+        {/* Poignée */}
+        <div style={{ width: 36, height: 4, borderRadius: 4, background: 'var(--border)', margin: '10px auto 0', flexShrink: 0 }} />
 
         {/* HEADER STICKY */}
         <div style={{
           padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderBottom: '1px solid var(--border)',
           position: 'sticky' as const, top: 0, zIndex: 10,
+          borderRadius: '20px 20px 0 0',
           background: 'var(--bg)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

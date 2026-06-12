@@ -8,8 +8,8 @@ import { createPortal } from 'react-dom'
 import { MacroDonut } from './MacroDonut'
 
 interface Item { name: string; qty: number; unit: string; kcal: number }
-interface ApiResult { meal_name: string; items: Item[]; totals: { kcal: number; prot: number; gluc: number; lip: number }; confidence: string; notes?: string | null }
-export interface PhotoConfirm { meal_name: string; kcal: number; prot: number; gluc: number; lip: number; items: Item[]; photoUrl: string }
+interface ApiResult { meal_name: string; items: Item[]; totals: { kcal: number; prot: number; gluc: number; lip: number }; confidence: string; notes?: string | null; score?: number | null; advice?: string | null }
+export interface PhotoConfirm { meal_name: string; kcal: number; prot: number; gluc: number; lip: number; items: Item[]; photoUrl: string; score: number | null; advice: string | null }
 
 async function resize(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((res, rej) => {
@@ -39,6 +39,8 @@ export function PhotoMealEditor({ file, onCancel, onConfirm }: { file: File; onC
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [items, setItems] = useState<Item[]>([])
+  const [score, setScore] = useState<number | null>(null)
+  const [advice, setAdvice] = useState<string | null>(null)
   const base = useRef<{ qty: number[]; kcal: number[]; totals: { kcal: number; prot: number; gluc: number; lip: number } } | null>(null)
 
   useEffect(() => {
@@ -54,6 +56,8 @@ export function PhotoMealEditor({ file, onCancel, onConfirm }: { file: File; onC
         const its = data.items ?? []
         base.current = { qty: its.map(i => i.qty || 0), kcal: its.map(i => i.kcal || 0), totals: data.totals }
         setName(data.meal_name || 'Repas'); setItems(its)
+        setScore(typeof data.score === 'number' ? data.score : null)
+        setAdvice(data.advice ?? null)
       } catch { if (!cancel) setError('Analyse indisponible. Réessaie avec une photo plus nette.') }
       finally { if (!cancel) setAnalyzing(false) }
     })()
@@ -117,6 +121,15 @@ export function PhotoMealEditor({ file, onCancel, onConfirm }: { file: File; onC
                 ))}
               </div>
               <p className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', margin: 'var(--space-4) 0 0' }}>{totalKcal} kcal · P {macros.prot} · G {macros.gluc} · L {macros.lip} g</p>
+              {advice && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/logos/logo_4bras.png" alt="" style={{ width: 15, height: 15, objectFit: 'contain', flexShrink: 0, marginTop: 1, opacity: 0.85 }} />
+                  <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5 }}>
+                    {score != null && <span className="tnum" style={{ fontWeight: 600, color: 'var(--text)' }}>{score}/10 — </span>}{advice}
+                  </span>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -124,7 +137,7 @@ export function PhotoMealEditor({ file, onCancel, onConfirm }: { file: File; onC
         <div style={{ display: 'flex', gap: 'var(--space-2)', padding: '12px 20px 20px', borderTop: '1px solid var(--border)' }}>
           <button onClick={onCancel} style={{ flex: 1, padding: '13px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
           <button disabled={analyzing || !!error || totalKcal <= 0}
-            onClick={() => onConfirm({ meal_name: name.trim() || 'Repas', kcal: totalKcal, prot: macros.prot, gluc: macros.gluc, lip: macros.lip, items, photoUrl: preview })}
+            onClick={() => onConfirm({ meal_name: name.trim() || 'Repas', kcal: totalKcal, prot: macros.prot, gluc: macros.gluc, lip: macros.lip, items, photoUrl: preview, score, advice })}
             style={{ flex: 2, padding: '13px', borderRadius: 'var(--r-sm)', border: 'none', cursor: analyzing || error || totalKcal <= 0 ? 'not-allowed' : 'pointer', background: analyzing || error || totalKcal <= 0 ? 'var(--bg-card2)' : 'var(--primary)', color: analyzing || error || totalKcal <= 0 ? 'var(--text-dim)' : 'var(--on-primary)', fontFamily: FB, fontSize: 14, fontWeight: 600 }}>Confirmer</button>
         </div>
       </div>

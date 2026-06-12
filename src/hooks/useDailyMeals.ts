@@ -6,6 +6,11 @@ export interface MealIngredient {
   name: string
   qty:  string
   unit: string
+  // Macros par aliment — stockées dans la colonne jsonb `ingredients` (aucune migration).
+  kcal?: number
+  prot?: number
+  gluc?: number
+  lip?:  number
 }
 
 export interface DailyMealEntry {

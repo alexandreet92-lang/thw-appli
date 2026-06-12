@@ -3,7 +3,10 @@ import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 
 // ── POST /api/analyze-meal-photo ─────────────────────────────────
 // Receives JSON { base64: string, mimeType: string }.
-// Returns detailed meal analysis: meal_name, items[], totals, confidence, notes.
+// Returns detailed meal analysis: meal_name, items[], totals, confidence, notes, + une
+// note /10 (score) et un avis (advice) renvoyés DANS LA MÊME réponse (aucun appel en plus).
+// Modèle : MODELS.fast (Haiku, tier le moins cher). Cette route ne décompte PAS le quota IA
+// de l'utilisateur (aucun import check-quota / recordTokenUsage — inchangé).
 // ─────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
@@ -19,9 +22,13 @@ export async function POST(req: NextRequest) {
     const client   = getAnthropicClient()
     const response = await client.messages.create({
       model:      MODELS.fast,
-      max_tokens: 600,
-      system: `Tu es un nutritionniste expert en analyse d'images de repas.
-Tu réponds UNIQUEMENT avec un objet JSON valide. Zéro texte avant ou après. Zéro commentaire.`,
+      max_tokens: 700,
+      system: `Tu es un coach nutrition de la performance. Tu analyses des images de repas.
+Tu réponds UNIQUEMENT avec un objet JSON valide. Zéro texte avant ou après. Zéro commentaire.
+RÈGLE ABSOLUE sur "advice" : c'est un conseil de PERFORMANCE constructif et bienveillant
+(ex : "vise +15 g de protéines pour optimiser la récup"). JAMAIS de jugement moral, JAMAIS
+de culpabilisation sur la nourriture, JAMAIS de remarque sur le poids. Une seule phrase.
+"score" = qualité nutritionnelle pour la performance sportive, entier de 1 à 10.`,
       messages: [{
         role:    'user',
         content: [
@@ -40,7 +47,9 @@ Retourne EXACTEMENT ce JSON (valeurs entières, confidence = "low"|"medium"|"hig
   ],
   "totals": { "kcal": 0, "prot": 0, "gluc": 0, "lip": 0 },
   "confidence": "medium",
-  "notes": "Remarque optionnelle courte ou null"
+  "notes": "Remarque optionnelle courte ou null",
+  "score": 7,
+  "advice": "Conseil de performance constructif en une phrase"
 }`,
           },
         ],
@@ -64,6 +73,8 @@ Retourne EXACTEMENT ce JSON (valeurs entières, confidence = "low"|"medium"|"hig
       totals:     { kcal: number; prot: number; gluc: number; lip: number }
       confidence: 'low' | 'medium' | 'high'
       notes?:     string | null
+      score?:     number | null
+      advice?:    string | null
     }
 
     const items = (parsed.items ?? []).map(it => ({
@@ -89,12 +100,18 @@ Retourne EXACTEMENT ce JSON (valeurs entières, confidence = "low"|"medium"|"hig
       ? parsed.confidence
       : 'medium'
 
+    const rawScore = Number(parsed.score)
+    const score = Number.isFinite(rawScore) ? Math.min(10, Math.max(1, Math.round(rawScore))) : null
+    const advice = typeof parsed.advice === 'string' && parsed.advice.trim() ? parsed.advice.trim() : null
+
     return NextResponse.json({
       meal_name:  parsed.meal_name ?? 'Repas',
       items,
       totals,
       confidence,
       notes: parsed.notes ?? null,
+      score,
+      advice,
     })
   } catch (err) {
     console.error('[analyze-meal-photo]', err)

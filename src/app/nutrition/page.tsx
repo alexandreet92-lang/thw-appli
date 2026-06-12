@@ -1169,6 +1169,7 @@ export default function NutritionPage() {
             onSelectDay={selectDay}
             todayType={todayType}
             todayKcalObj={todayKcalObj}
+            baseKcal={activePlan?.plan_data?.calories_low ?? null}
             todayMacroObj={todayMacroObj}
             dayMeals={dayMeals}
             hydration={hydration}

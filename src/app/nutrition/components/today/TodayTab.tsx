@@ -22,6 +22,7 @@ interface Props {
   onSelectDay:   (date: string) => void
   todayType:     DayType
   todayKcalObj:  number
+  baseKcal:      number | null
   todayMacroObj: Macro
   dayMeals:      ReturnType<typeof useDailyMeals>
   hydration:     ReturnType<typeof useHydration>
@@ -64,6 +65,7 @@ export function TodayTab(p: Props) {
         todayType={p.todayType}
         consumedKcal={dayMeals.totals.kcal}
         targetKcal={p.todayKcalObj}
+        baseKcal={p.baseKcal}
         consumed={{ prot: dayMeals.totals.prot, gluc: dayMeals.totals.gluc, lip: dayMeals.totals.lip }}
         target={p.todayMacroObj}
         weightKg={p.weightKg}

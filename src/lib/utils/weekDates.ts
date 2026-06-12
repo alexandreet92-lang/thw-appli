@@ -27,6 +27,21 @@ export function formatWeekStart(year: number, week: number): string {
   return fmtDM(getWeekStart(year, week))
 }
 
+// « 31 mai » (dimanche de la semaine)
+export function formatWeekEnd(year: number, week: number): string {
+  return fmtDM(getWeekEnd(year, week))
+}
+
+// Phase d'un bloc relative à aujourd'hui (dates réelles, robuste cross-année).
+export function blocPhase(startYear: number, startWeek: number, durationWeeks: number): 'past' | 'current' | 'future' {
+  const start = getWeekStart(startYear, startWeek)
+  const end = getWeekEnd(startYear, startWeek + durationWeeks - 1)
+  const now = new Date(); now.setHours(0, 0, 0, 0)
+  if (now.getTime() > end.getTime()) return 'past'
+  if (now.getTime() < start.getTime()) return 'future'
+  return 'current'
+}
+
 // « 25 mai – 21 jun » (départ → fin du bloc)
 export function formatBlocRange(startYear: number, startWeek: number, durationWeeks: number): string {
   const start = getWeekStart(startYear, startWeek)

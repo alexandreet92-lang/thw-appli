@@ -8,7 +8,7 @@ import { createPortal } from 'react-dom'
 import { BLOC_SPORT_KEYS, SPORT_LABELS, SPORT_COLORS } from '@/lib/constants/blocTypes'
 import { loadBlocs, upsertBloc, deleteBloc, newBloc } from '@/app/planning/trainingBlocks'
 import type { TrainingBlocData } from '@/types/trainingBloc'
-import { weekStartOptions, formatWeekStart, currentWeekInBloc, type WeekOption } from '@/lib/utils/weekDates'
+import { weekStartOptions, formatWeekStart, formatWeekEnd, currentWeekInBloc, blocPhase, getWeekStart, type WeekOption } from '@/lib/utils/weekDates'
 import { useWindowWidth } from '@/hooks/useWindowWidth'
 import { FocusPicker } from './FocusPicker'
 import { BlocStartWeekPicker } from './BlocStartWeekPicker'
@@ -39,7 +39,16 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged }: {
   }, [open, blocId])
   if (!open) return null
 
-  const forSport = blocs.filter(b => b.sport === sport)
+  const sportBlocs = blocs.filter(b => b.sport === sport)
+  const startTs = (b: TrainingBlocData) => getWeekStart(b.startYear, b.startWeek).getTime()
+  const phaseOf = (b: TrainingBlocData) => blocPhase(b.startYear, b.startWeek, b.durationWeeks)
+  const pastAll = sportBlocs.filter(b => phaseOf(b) === 'past').sort((a, b) => startTs(b) - startTs(a))
+  // Onglets blocs : max 10 passés (récents d'abord) + en cours + à venir.
+  const forSport = [
+    ...pastAll.slice(0, 10),
+    ...sportBlocs.filter(b => phaseOf(b) === 'current').sort((a, b) => startTs(a) - startTs(b)),
+    ...sportBlocs.filter(b => phaseOf(b) === 'future').sort((a, b) => startTs(a) - startTs(b)),
+  ]
   const bloc = blocs.find(b => b.id === activeId) ?? null
   const sync = (list: TrainingBlocData[]) => { setBlocs(list); onChanged() }
   const patch = (p: Partial<TrainingBlocData>) => { if (bloc) sync(upsertBloc({ ...bloc, ...p })) }
@@ -77,6 +86,7 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged }: {
             <button key={b.id} onClick={() => setActiveId(b.id)} style={{ padding: '5px 11px', fontSize: 11.5, fontWeight: 600, borderRadius: 8, border: '1px solid', borderColor: activeId === b.id ? 'rgba(34,211,238,.25)' : 'var(--border)', background: activeId === b.id ? 'rgba(34,211,238,.12)' : 'transparent', color: activeId === b.id ? CY : 'var(--text-dim)', cursor: 'pointer' }}>{b.name}</button>
           ))}
           <button onClick={create} style={{ padding: '5px 11px', fontSize: 11.5, fontWeight: 600, borderRadius: 8, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}>+ Nouveau</button>
+          {pastAll.length > 10 && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', padding: '5px 8px' }}>+{pastAll.length - 10} blocs archivés</span>}
           {bloc && <button onClick={remove} style={{ padding: '5px 9px', fontSize: 11, borderRadius: 8, border: 'none', background: 'rgba(239,68,68,.1)', color: '#ef4444', cursor: 'pointer', marginLeft: 'auto' }}>Supprimer</button>}
         </div>
 
@@ -90,7 +100,7 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged }: {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
             <div style={card}>
               <div style={lbl}>Début du bloc</div>
-              <BlocStartWeekPicker options={options} selectedKey={`${bloc.startYear}-${bloc.startWeek}`} onSelect={(o: WeekOption) => patch({ startYear: o.year, startWeek: o.week })} />
+              <BlocStartWeekPicker options={options} startKey={`${bloc.startYear}-${bloc.startWeek}`} durationWeeks={bloc.durationWeeks} onSelect={(o: WeekOption) => patch({ startYear: o.year, startWeek: o.week })} />
             </div>
             <div style={card}>
               <div style={lbl}>Durée</div>
@@ -111,7 +121,7 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged }: {
               <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
                 <span style={{ color: 'var(--text)', fontWeight: 600 }}>{formatWeekStart(bloc.startYear, bloc.startWeek)}</span>
                 {' → '}
-                <span style={{ color: 'var(--text)', fontWeight: 600 }}>{formatWeekStart(bloc.startYear, bloc.startWeek + bloc.durationWeeks - 1)}</span>
+                <span style={{ color: 'var(--text)', fontWeight: 600 }}>{formatWeekEnd(bloc.startYear, bloc.startWeek + bloc.durationWeeks - 1)}</span>
               </div>
             </div>
           </div>

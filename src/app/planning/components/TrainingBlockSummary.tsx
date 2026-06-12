@@ -7,7 +7,6 @@ import { FriseV1 } from '@/components/planning/FriseV1'
 import { BlocSummaryView } from '@/components/planning/BlocSummaryView'
 import { BlocDetailOverlay } from '@/components/planning/BlocDetailOverlay'
 import { GanttOverlay } from '@/components/planning/GanttOverlay'
-import { BLOC_SPORT_KEYS } from '@/lib/constants/blocTypes'
 import { loadBlocs, upsertBloc, newBloc } from '@/app/planning/trainingBlocks'
 
 const T = 'var(--text)' // surface/texte = tokens de thème
@@ -22,9 +21,8 @@ export function TrainingBlockSummary() {
   const reload = () => { setBlocs(loadBlocs()); setVersion(v => v + 1) }
 
   function openBloc(id: string) { setActiveId(id); setOpen(true) }
-  function createBloc() {
-    const firstSport = blocs[0]?.sport ?? BLOC_SPORT_KEYS[0]
-    const b = newBloc(firstSport); upsertBloc(b); reload(); openBloc(b.id)
+  function createBloc(sport: string) {
+    const b = newBloc(sport); upsertBloc(b); reload(); openBloc(b.id)
   }
 
   return (

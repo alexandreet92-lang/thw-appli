@@ -1,78 +1,45 @@
 'use client'
-// Vue « Training Bloc » : grille 3 colonnes de cartes. Chaque carte = sport + nom + pips +
-// PLAGE DE DATES réelle (jamais de numéro de semaine ISO) + qualités + séances déroulantes.
-// Couleurs de surface/texte = tokens de thème (jour/nuit). Cyan/sport = couleurs assumées.
-import { useState } from 'react'
-import { SPORT_LABELS, SPORT_COLORS } from '@/lib/constants/blocTypes'
-import { currentWeekInBloc, formatBlocRange } from '@/lib/utils/weekDates'
-import { blocsCountBySport } from '@/app/planning/trainingBlocks'
+// Vue « Training Bloc » : une colonne par sport, carousel horizontal (flèches ← → si les
+// colonnes dépassent la largeur, masquées sinon). Tokens de thème.
+import { useEffect, useRef, useState } from 'react'
+import { BLOC_SPORT_KEYS } from '@/lib/constants/blocTypes'
 import type { TrainingBlocData } from '@/types/trainingBloc'
+import { SportColumn } from './SportColumn'
 
-const CY = '#22d3ee' // today/primary = couleur fonctionnelle assumée
+const COL_W = 290 // 280px colonne + 10px gap
+
+const arrow = (side: 'left' | 'right'): React.CSSProperties => ({
+  position: 'absolute', [side]: -17, top: '50%', transform: 'translateY(-50%)', zIndex: 10,
+  width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--border)',
+  cursor: 'pointer', fontSize: 13, color: 'var(--text-mid)', boxShadow: 'var(--shadow-card)',
+})
 
 export function BlocSummaryView({ blocs, onOpen, onCreate }: {
-  blocs: TrainingBlocData[]; onOpen: (id: string) => void; onCreate: () => void
+  blocs: TrainingBlocData[]; onOpen: (id: string) => void; onCreate: (sport: string) => void
 }) {
-  const [sessOpen, setSessOpen] = useState<Record<string, boolean>>({})
-  const counts = blocsCountBySport(blocs)
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const [vw, setVw] = useState(0)
+  const [offset, setOffset] = useState(0)
+  useEffect(() => {
+    const f = () => setVw(viewportRef.current?.clientWidth ?? 0); f()
+    window.addEventListener('resize', f); return () => window.removeEventListener('resize', f)
+  }, [])
+
+  const maxOffset = Math.max(0, BLOC_SPORT_KEYS.length * COL_W - vw)
+  const clamped = Math.min(offset, maxOffset)
+  const slide = (dir: 1 | -1) => setOffset(p => Math.max(0, Math.min(maxOffset, p + dir * COL_W)))
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 22 }}>
-      {blocs.map(b => {
-        const cwb = currentWeekInBloc(b.startWeek, b.durationWeeks)
-        const range = formatBlocRange(b.startYear, b.startWeek, b.durationWeeks)
-        return (
-          <div key={b.id} onClick={() => onOpen(b.id)} style={{ border: '1px solid var(--border)', borderRadius: 13, padding: 14, cursor: 'pointer', background: 'var(--bg-card)', transition: 'border-color .15s' }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = CY)} onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
-              <span style={{ width: 9, height: 9, borderRadius: '50%', background: SPORT_COLORS[b.sport], flexShrink: 0 }} />
-              <span style={{ fontSize: 13, fontWeight: 700, flex: 1, color: 'var(--text)' }}>{SPORT_LABELS[b.sport]}</span>
-              <span style={{ fontSize: 10.5, color: 'var(--text-dim)', background: 'var(--bg-card2)', borderRadius: 5, padding: '2px 7px', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</span>
-              {counts[b.sport] > 1 && <span style={{ fontSize: 10, background: `${SPORT_COLORS[b.sport]}22`, color: SPORT_COLORS[b.sport], borderRadius: 5, padding: '2px 6px' }}>+{counts[b.sport] - 1}</span>}
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 9 }}>
-              <div style={{ display: 'flex', gap: 3 }}>
-                {Array.from({ length: b.durationWeeks }).map((_, i) => (
-                  <span key={i} style={{ width: 11, height: 4, borderRadius: 4, background: i < cwb ? CY : 'var(--border-mid)' }} />
-                ))}
-              </div>
-              <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>sem. <strong style={{ color: 'var(--text)' }}>{cwb}</strong>/{b.durationWeeks}</span>
-              <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{range}</span>
-            </div>
-
-            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10, minHeight: 18 }}>
-              {b.focus.map(q => (
-                <span key={q} style={{ fontSize: 10.5, fontWeight: 600, background: 'var(--bg-card2)', color: 'var(--text-mid)', borderRadius: 999, padding: '2px 8px' }}>{q}</span>
-              ))}
-            </div>
-
-            <div>
-              <div onClick={e => { e.stopPropagation(); setSessOpen(o => ({ ...o, [b.id]: !o[b.id] })) }}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '5px 0', borderTop: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-dim)' }}><strong style={{ color: 'var(--text)' }}>{b.sessions.length}</strong> séances</span>
-                <span style={{ fontSize: 9, color: 'var(--text-dim)', display: 'inline-block', transition: 'transform .2s', transform: sessOpen[b.id] ? 'rotate(180deg)' : 'rotate(0)' }}>▾</span>
-              </div>
-              {sessOpen[b.id] && (
-                <div>
-                  {b.sessions.map((s, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 0', borderTop: '1px solid var(--border)' }}>
-                      <span style={{ width: 16, height: 16, borderRadius: 4, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', flexShrink: 0 }}>{i + 1}</span>
-                      <span style={{ fontSize: 11, color: s.type ? 'var(--text-mid)' : 'var(--text-dim)', fontStyle: s.type ? 'normal' : 'italic' }}>{s.type || 'Non défini'}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )
-      })}
-
-      {blocs.length === 0 && (
-        <div style={{ gridColumn: '1/-1', padding: '18px 14px', color: 'var(--text-dim)', fontSize: 13 }}>
-          Aucun bloc actif · <span style={{ color: CY, cursor: 'pointer', fontWeight: 600 }} onClick={onCreate}>+ Créer un bloc</span>
+    <div style={{ position: 'relative', marginBottom: 22 }}>
+      {clamped > 0 && <button onClick={() => slide(-1)} style={arrow('left')}>←</button>}
+      <div ref={viewportRef} style={{ overflow: 'hidden' }}>
+        <div style={{ display: 'flex', gap: 10, transition: 'transform .35s cubic-bezier(.2,.8,.2,1)', transform: `translateX(-${clamped}px)` }}>
+          {BLOC_SPORT_KEYS.map(s => (
+            <SportColumn key={s} sport={s} blocs={blocs.filter(b => b.sport === s)} onOpen={onOpen} onCreate={onCreate} />
+          ))}
         </div>
-      )}
+      </div>
+      {clamped < maxOffset && <button onClick={() => slide(1)} style={arrow('right')}>→</button>}
     </div>
   )
 }

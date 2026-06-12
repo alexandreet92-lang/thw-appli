@@ -1,13 +1,13 @@
 'use client'
 // Section Training Bloc — sans encadré parent (onglets + contenu directement dans le flux).
-// Onglet « Training Bloc » = grille 3 colonnes de cartes ; « Training Planification » = frise
-// lecture seule cliquable (→ surpage). Surpage = BlocDetailOverlay (createPortal).
+// Onglet « Training Bloc » = grille 3 colonnes de cartes (→ BlocDetailOverlay) ; « Training
+// Planification » = frise lecture seule cliquable (→ GanttOverlay éditable). createPortal.
 import { useState } from 'react'
 import { FriseV1 } from '@/components/planning/FriseV1'
 import { BlocSummaryView } from '@/components/planning/BlocSummaryView'
 import { BlocDetailOverlay } from '@/components/planning/BlocDetailOverlay'
-import { SPORT_LABELS, SPORT_COLORS, BLOC_SPORT_KEYS } from '@/lib/constants/blocTypes'
-import { currentWeekInBloc } from '@/lib/utils/weekDates'
+import { GanttOverlay } from '@/components/planning/GanttOverlay'
+import { BLOC_SPORT_KEYS } from '@/lib/constants/blocTypes'
 import { loadBlocs, upsertBloc, newBloc } from '@/app/planning/trainingBlocks'
 
 const T = '#e6edf3' // design-allow-color : maquette dark
@@ -15,16 +15,17 @@ const T = '#e6edf3' // design-allow-color : maquette dark
 export function TrainingBlockSummary() {
   const [tab, setTab] = useState<'bloc' | 'plan'>('bloc')
   const [blocs, setBlocs] = useState(() => loadBlocs())
+  const [version, setVersion] = useState(0)
   const [open, setOpen] = useState(false)
+  const [gantt, setGantt] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const reload = () => setBlocs(loadBlocs())
+  const reload = () => { setBlocs(loadBlocs()); setVersion(v => v + 1) }
 
   function openBloc(id: string) { setActiveId(id); setOpen(true) }
   function createBloc() {
     const firstSport = blocs[0]?.sport ?? BLOC_SPORT_KEYS[0]
     const b = newBloc(firstSport); upsertBloc(b); reload(); openBloc(b.id)
   }
-  function openPlan() { if (blocs[0]) openBloc(blocs[0].id); else createBloc() }
 
   return (
     <section>
@@ -42,20 +43,19 @@ export function TrainingBlockSummary() {
       {tab === 'bloc' && <BlocSummaryView blocs={blocs} onOpen={openBloc} onCreate={createBloc} />}
 
       {tab === 'plan' && (
-        <div onClick={openPlan} style={{ padding: '14px 16px 18px', cursor: 'pointer' }}>
+        <div onClick={() => setGantt(true)} style={{ padding: '14px 16px 18px', cursor: 'pointer' }}>
           <p style={{ fontSize: 11.5, color: 'rgba(230,237,243,.28)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ color: '#22d3ee' }}>↔</span>
             12 semaines · <strong style={{ color: 'rgba(230,237,243,.45)' }}>Clique pour modifier</strong>
           </p>
-          {blocs.length === 0
-            ? <p style={{ fontSize: 13, color: 'rgba(230,237,243,.45)', margin: 0 }}>Aucun bloc à planifier.</p>
-            : <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                <FriseV1 blocs={blocs.map(b => ({ sport: b.sport, weekCurrent: currentWeekInBloc(b.startWeek, b.durationWeeks), weekTotal: b.durationWeeks, focus: b.focus, color: SPORT_COLORS[b.sport], label: SPORT_LABELS[b.sport] }))} />
-              </div>}
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingTop: 50 }}>
+            <FriseV1 readOnly reloadToken={version} />
+          </div>
         </div>
       )}
 
       <BlocDetailOverlay open={open} blocId={activeId} onClose={() => { setOpen(false); reload() }} onChanged={reload} />
+      <GanttOverlay open={gantt} onClose={() => { setGantt(false); reload() }} onChanged={reload} />
     </section>
   )
 }

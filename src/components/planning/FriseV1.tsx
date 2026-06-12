@@ -1,75 +1,147 @@
 'use client'
-// Frise de périodisation (lecture seule). 12 semaines : bande mois + numéros de semaine +
-// trait « aujourd'hui ». Une pilule par sport, positionnée d'après weekCurrent/weekTotal
-// du bloc (donnée réelle, relative à aujourd'hui). Pas de mock. SVG/CSS brut, tokens +
-// var(--primary) pour le cyan. (Courses + édition = lot Gantt dédié.)
-const FB = 'var(--font-body)'
-const COLS = 12
-const TODAY_COL = 4
-const LABEL_W = 64
+// Frise de périodisation. readOnly (page) = lecture seule. Éditable (surpage Gantt) = drag
+// move + poignées resize, pilotés en refs DOM + pointermove (60 fps, jamais de setState
+// pendant le move ; persistance au pointerup, calage sur la grille des semaines). Mois +
+// semaines (jour/mois, aucun numéro ISO) + courses réelles (planned_races) + segments blocs.
+import { useMemo, useRef, useState, useEffect } from 'react'
+import { BLOC_SPORT_KEYS, SPORT_LABELS, SPORT_COLORS } from '@/lib/constants/blocTypes'
+import { getWeekStart, getWeekEnd, isoWeekYear } from '@/lib/utils/weekDates'
+import { loadBlocs, upsertBloc } from '@/app/planning/trainingBlocks'
+import type { TrainingBlocData } from '@/types/trainingBloc'
+import { buildFriseWindow, LABEL_WIDTH, COLS, TODAY_INDEX } from './friseModel'
+import { usePlannedRaces } from './usePlannedRaces'
 
-export interface FriseBloc { sport: string; weekCurrent: number; weekTotal: number; focus: string[]; color: string; label: string }
+const RED = '#ef4444', CY = '#22d3ee' // design-allow-color : maquette dark
+const GRID = `${LABEL_WIDTH}px repeat(${COLS},1fr)`
+const fmt = (d: Date) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 
-function mondayOf(d: Date): Date { const x = new Date(d); const day = (x.getDay() + 6) % 7; x.setDate(x.getDate() - day); x.setHours(0, 0, 0, 0); return x }
-function isoWeek(d: Date): number {
-  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const dn = (t.getUTCDay() + 6) % 7
-  t.setUTCDate(t.getUTCDate() - dn + 3); const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 4))
-  return 1 + Math.round(((t.getTime() - y0.getTime()) / 86400000 - 3 + ((y0.getUTCDay() + 6) % 7)) / 7)
-}
-const MONTHS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc']
+export function FriseV1({ readOnly = true, reloadToken = 0, onEdited }: { readOnly?: boolean; reloadToken?: number; onEdited?: () => void }) {
+  const W = useMemo(() => buildFriseWindow(), [])
+  const { races } = usePlannedRaces()
+  const [blocs, setBlocs] = useState<TrainingBlocData[]>(() => loadBlocs())
+  useEffect(() => { setBlocs(loadBlocs()) }, [reloadToken])
+  const drag = useRef<{ id: string; mode: 'move' | 'l' | 'r'; startX: number; colW: number; s0: number; w0: number; el: HTMLElement } | null>(null)
 
-export function FriseV1({ blocs }: { blocs: FriseBloc[] }) {
-  const base = mondayOf(new Date())
-  const weeks = Array.from({ length: COLS }, (_, i) => { const d = new Date(base); d.setDate(d.getDate() + (i - TODAY_COL) * 7); return d })
-  const colW = `calc((100% - ${LABEL_W}px) / ${COLS})`
-  // Bornes mois : 1re colonne de chaque mois
-  const monthSpans: { month: number; start: number; span: number }[] = []
-  weeks.forEach((d, i) => { const last = monthSpans[monthSpans.length - 1]; if (last && weeks[last.start].getMonth() === d.getMonth()) last.span++; else monthSpans.push({ month: d.getMonth(), start: i, span: 1 }) })
+  function compute(d: NonNullable<typeof drag.current>, clientX: number) {
+    const delta = Math.round((clientX - d.startX) / d.colW)
+    let s = d.s0, w = d.w0
+    if (d.mode === 'move') s = d.s0 + delta
+    else if (d.mode === 'l') { s = d.s0 + delta; w = d.w0 - delta; if (w < 1) { w = 1; s = d.s0 + d.w0 - 1 } }
+    else w = Math.max(1, d.w0 + delta)
+    return { s, w }
+  }
+  function onMove(e: PointerEvent) {
+    const d = drag.current; if (!d) return
+    const { s, w } = compute(d, e.clientX)
+    d.el.style.left = `${(s / COLS) * 100}%`; d.el.style.width = `${(w / COLS) * 100}%`
+  }
+  function onUp(e: PointerEvent) {
+    const d = drag.current; if (!d) return
+    window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp)
+    const { s, w } = compute(d, e.clientX)
+    const { year, week } = isoWeekYear(W.mondayAtIndex(s))
+    const cur = loadBlocs().find(b => b.id === d.id)
+    if (cur) { setBlocs(upsertBloc({ ...cur, startYear: year, startWeek: week, durationWeeks: w })); onEdited?.() }
+    drag.current = null
+  }
+  function onDown(e: React.PointerEvent, b: TrainingBlocData, mode: 'move' | 'l' | 'r') {
+    if (readOnly) return
+    e.preventDefault(); e.stopPropagation()
+    const seg = (e.currentTarget as HTMLElement).closest('[data-seg]') as HTMLElement
+    const track = seg.parentElement as HTMLElement
+    drag.current = { id: b.id, mode, startX: e.clientX, colW: track.getBoundingClientRect().width / COLS, s0: W.indexOfBloc(b.startYear, b.startWeek), w0: b.durationWeeks, el: seg }
+    window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp)
+  }
 
-  const cell: React.CSSProperties = { width: colW, flexShrink: 0, textAlign: 'center', fontFamily: FB }
+  const handle = (side: 'l' | 'r', b: TrainingBlocData) => (
+    <span onPointerDown={e => onDown(e, b, side)} style={{ position: 'absolute', [side === 'l' ? 'left' : 'right']: 0, top: 0, bottom: 0, width: 9, cursor: 'ew-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'none' }}>
+      <span style={{ width: 2, height: 12, background: 'rgba(255,255,255,.4)', borderRadius: 2 }} />
+    </span>
+  )
 
   return (
-    <div style={{ minWidth: 680, position: 'relative' }}>
+    <div style={{ position: 'relative', minWidth: 680 }}>
       {/* Mois */}
-      <div style={{ display: 'flex', marginBottom: 4 }}>
-        <span style={{ width: LABEL_W, flexShrink: 0 }} />
-        {monthSpans.map(m => (
-          <span key={m.start} style={{ width: `calc(${colW} * ${m.span})`, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: FB, textAlign: 'left', paddingLeft: 2 }}>{MONTHS[m.month]}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: GRID, marginBottom: 3 }}>
+        <div />
+        {W.months.map(m => (
+          <div key={m.key} style={{ gridColumn: `span ${m.count}`, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: m.isActive ? '#888' : '#bbb', textAlign: 'center' }}>{m.label}</div>
         ))}
       </div>
-      {/* Semaines */}
-      <div style={{ display: 'flex', marginBottom: 8 }}>
-        <span style={{ width: LABEL_W, flexShrink: 0 }} />
-        {weeks.map((d, i) => (
-          <span key={i} style={{ ...cell, fontSize: 10 }}>
-            <span className="tnum" style={{ display: 'inline-block', padding: '1px 4px', borderRadius: 5, fontWeight: i === TODAY_COL ? 700 : 400, background: i === TODAY_COL ? 'var(--primary)' : 'transparent', color: i === TODAY_COL ? 'var(--on-primary)' : 'var(--text-dim)' }}>{isoWeek(d)}</span>
-          </span>
+      {/* Semaines (jour / mois) */}
+      <div style={{ display: 'grid', gridTemplateColumns: GRID, marginBottom: 10 }}>
+        <div />
+        {W.cols.map(c => (
+          <div key={c.idx} style={{ textAlign: 'center', padding: '3px 2px', borderRadius: 6, background: c.isCurrent ? CY : 'transparent' }}>
+            <span style={{ fontSize: 10, fontWeight: c.isCurrent ? 800 : 700, color: c.isCurrent ? '#fff' : '#bbb', display: 'block' }}>{c.day}</span>
+            <span style={{ fontSize: 8.5, display: 'block', marginTop: 1, color: c.isCurrent ? 'rgba(255,255,255,.75)' : '#ccc' }}>{c.month}</span>
+          </div>
         ))}
       </div>
-
+      {/* Courses */}
+      <div style={{ display: 'grid', gridTemplateColumns: GRID, marginBottom: 8 }}>
+        <div />
+        <div style={{ gridColumn: '2 / span 12', position: 'relative', height: 28 }}>
+          {races.length === 0 && <span style={{ fontSize: 9.5, color: 'rgba(230,237,243,.28)' }}>Aucune course — ajoute des courses dans le Calendrier</span>}
+          {races.map(r => {
+            const idx = W.indexOfDate(r.date); if (idx < 0 || idx >= COLS) return null
+            const m = new Date(r.date); m.setDate(m.getDate() - ((m.getDay() + 6) % 7))
+            const sun = new Date(m); sun.setDate(m.getDate() + 6)
+            return (
+              <div key={r.id} style={{ position: 'absolute', top: 0, left: `${((idx + 0.5) / COLS) * 100}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ fontSize: 8.5, fontWeight: 700, color: RED, background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)', borderRadius: 4, padding: '2px 7px', whiteSpace: 'nowrap' }}>{r.name} · {fmt(m)}–{fmt(sun)}</div>
+                <div style={{ width: 1.5, height: 8, background: 'rgba(239,68,68,.5)', marginTop: 2 }} />
+              </div>
+            )
+          })}
+        </div>
+      </div>
       {/* Pistes sport */}
-      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {blocs.map(b => {
-          const startCol = Math.max(0, TODAY_COL - (b.weekCurrent - 1))
-          const endCol = Math.min(COLS, startCol + b.weekTotal)
-          const span = Math.max(1, endCol - startCol)
+      <div style={{ position: 'relative' }}>
+        {BLOC_SPORT_KEYS.map(sport => {
+          const list = blocs.filter(b => b.sport === sport); if (list.length === 0) return null
+          const color = SPORT_COLORS[sport]
           return (
-            <div key={b.sport} style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ width: LABEL_W, flexShrink: 0, fontSize: 11, fontWeight: 600, color: 'var(--text-mid)', fontFamily: FB }}>{b.label}</span>
-              <div style={{ flex: 1, position: 'relative', height: 34, background: 'var(--bg-card2)', borderRadius: 7 }}>
-                <div style={{ position: 'absolute', top: 5, bottom: 5, left: `${(startCol / COLS) * 100}%`, width: `${(span / COLS) * 100}%`, borderRadius: 14, background: b.color, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px', overflow: 'hidden' }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--on-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: FB }}>{b.focus[0] ?? b.label}</span>
-                  <span className="tnum" style={{ fontSize: 8.5, color: 'var(--on-primary)', opacity: 0.7, whiteSpace: 'nowrap', marginLeft: 8, flexShrink: 0, fontFamily: FB }}>S{b.weekCurrent}/{b.weekTotal}</span>
-                </div>
+            <div key={sport} style={{ display: 'grid', gridTemplateColumns: GRID, marginBottom: 5 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: 'rgba(230,237,243,.5)', height: 34 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: color }} />{SPORT_LABELS[sport]}
+              </div>
+              <div style={{ gridColumn: '2 / span 12', position: 'relative', height: 34, borderRadius: 7, background: 'rgba(255,255,255,.03)' }}>
+                {races.map(r => { const idx = W.indexOfDate(r.date); if (idx < 0 || idx >= COLS) return null
+                  return <div key={r.id} style={{ position: 'absolute', top: 0, bottom: 0, left: `${(idx / COLS) * 100}%`, width: `${(1 / COLS) * 100}%`, background: 'rgba(239,68,68,.06)', borderLeft: '1px dashed rgba(239,68,68,.2)', borderRight: '1px dashed rgba(239,68,68,.2)', pointerEvents: 'none' }} /> })}
+                {list.map(b => {
+                  const segStart = W.indexOfBloc(b.startYear, b.startWeek), segEnd = segStart + b.durationWeeks
+                  if (segEnd <= 0 || segStart >= COLS) return null
+                  const cs = Math.max(0, segStart), ce = Math.min(COLS, segEnd)
+                  const left = `${(cs / COLS) * 100}%`, width = `${((ce - cs) / COLS) * 100}%`
+                  const future = segStart > TODAY_INDEX
+                  const range = `${fmt(getWeekStart(b.startYear, b.startWeek))} – ${fmt(getWeekEnd(b.startYear, b.startWeek + b.durationWeeks - 1))}`
+                  const label = b.name || b.focus[0] || '—'
+                  const base: React.CSSProperties = { position: 'absolute', top: 5, bottom: 5, left, width, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', overflow: 'hidden', cursor: readOnly ? 'default' : 'grab', touchAction: 'none' }
+                  if (future) return (
+                    <div key={b.id} data-seg onPointerDown={e => onDown(e, b, 'move')} style={{ ...base, border: `1.5px dashed ${color}` }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(230,237,243,.4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+                      <span style={{ fontSize: 8.5, color: 'rgba(230,237,243,.25)', marginLeft: 7, flexShrink: 0, whiteSpace: 'nowrap' }}>{range}</span>
+                    </div>
+                  )
+                  return (
+                    <div key={b.id} data-seg onPointerDown={e => onDown(e, b, 'move')} style={{ ...base, background: `linear-gradient(90deg, ${color}cc, ${color})` }}>
+                      {!readOnly && handle('l', b)}
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: readOnly ? 0 : 6 }}>{label}</span>
+                      <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,.6)', marginLeft: 7, flexShrink: 0, whiteSpace: 'nowrap' }}>{range}</span>
+                      {!readOnly && handle('r', b)}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )
         })}
-      </div>
-
-      {/* Aujourd'hui */}
-      <div style={{ position: 'absolute', top: 18, bottom: 0, left: `calc(${LABEL_W}px + (100% - ${LABEL_W}px) * ${(TODAY_COL + 0.5) / COLS})`, width: 2, background: 'var(--primary)', borderRadius: 2, pointerEvents: 'none' }}>
-        <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--primary)', boxShadow: '0 0 0 3px var(--primary-dim)', marginLeft: -4, marginTop: -5 }} />
+        {/* Aujourd'hui */}
+        <div style={{ position: 'absolute', top: -46, bottom: 0, left: `calc(${LABEL_WIDTH}px + (100% - ${LABEL_WIDTH}px) * ${(TODAY_INDEX + 0.5) / COLS})`, pointerEvents: 'none', zIndex: 20 }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: CY, marginLeft: -4, boxShadow: '0 0 0 3px rgba(34,211,238,.2)' }} />
+          <div style={{ width: 2, height: 'calc(100% - 10px)', background: CY, borderRadius: 2 }} />
+        </div>
       </div>
     </div>
   )

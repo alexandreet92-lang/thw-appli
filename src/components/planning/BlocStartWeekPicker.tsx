@@ -14,7 +14,7 @@ export function BlocStartWeekPicker({ options, selectedKey, onSelect }: {
         const on = opt.key === selectedKey
         return (
           <div key={opt.key} onClick={() => onSelect(opt)}
-            style={{ padding: '5px 4px', textAlign: 'center', fontSize: 10, fontWeight: 600, borderRadius: 6, cursor: 'pointer', lineHeight: 1.3, background: on ? C_CYAN : 'rgba(255,255,255,.04)', color: on ? C_ON : 'rgba(230,237,243,.35)', transition: 'all .12s' }}>
+            style={{ padding: '5px 4px', textAlign: 'center', fontSize: 10, fontWeight: 600, borderRadius: 6, cursor: 'pointer', lineHeight: 1.3, background: on ? C_CYAN : 'var(--bg-card2)', color: on ? C_ON : 'var(--text-dim)', transition: 'all .12s' }}>
             <span style={{ fontSize: 11, fontWeight: 700, display: 'block' }}>{opt.day}</span>
             <span style={{ fontSize: 9, display: 'block', opacity: .8 }}>{opt.month}</span>
           </div>

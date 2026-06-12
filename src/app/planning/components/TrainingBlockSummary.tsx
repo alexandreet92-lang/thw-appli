@@ -10,7 +10,7 @@ import { GanttOverlay } from '@/components/planning/GanttOverlay'
 import { BLOC_SPORT_KEYS } from '@/lib/constants/blocTypes'
 import { loadBlocs, upsertBloc, newBloc } from '@/app/planning/trainingBlocks'
 
-const T = '#e6edf3' // design-allow-color : maquette dark
+const T = 'var(--text)' // surface/texte = tokens de thème
 
 export function TrainingBlockSummary() {
   const [tab, setTab] = useState<'bloc' | 'plan'>('bloc')
@@ -31,9 +31,9 @@ export function TrainingBlockSummary() {
     <section>
       {/* Onglets segmented — sans border autour */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,.05)', borderRadius: 10, padding: 3, gap: 2 }}>
+        <div style={{ display: 'inline-flex', background: 'var(--bg-card2)', borderRadius: 10, padding: 3, gap: 2 }}>
           {(['bloc', 'plan'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', borderRadius: 8, transition: 'all .18s', background: tab === t ? '#1b212b' : 'transparent', color: tab === t ? T : 'rgba(230,237,243,.35)', boxShadow: tab === t ? '0 1px 4px rgba(0,0,0,.3)' : 'none' }}>
+            <button key={t} onClick={() => setTab(t)} style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', borderRadius: 8, transition: 'all .18s', background: tab === t ? 'var(--bg-card)' : 'transparent', color: tab === t ? T : 'var(--text-dim)', boxShadow: tab === t ? 'var(--shadow-card)' : 'none' }}>
               {t === 'bloc' ? 'Training Bloc' : 'Training Planification'}
             </button>
           ))}
@@ -44,9 +44,9 @@ export function TrainingBlockSummary() {
 
       {tab === 'plan' && (
         <div onClick={() => setGantt(true)} style={{ padding: '14px 16px 18px', cursor: 'pointer' }}>
-          <p style={{ fontSize: 11.5, color: 'rgba(230,237,243,.28)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 5 }}>
+          <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ color: '#22d3ee' }}>↔</span>
-            12 semaines · <strong style={{ color: 'rgba(230,237,243,.45)' }}>Clique pour modifier</strong>
+            12 semaines · <strong style={{ color: 'var(--text-mid)' }}>Clique pour modifier</strong>
           </p>
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingTop: 50 }}>
             <FriseV1 readOnly reloadToken={version} />

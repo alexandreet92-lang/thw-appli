@@ -312,7 +312,22 @@ function parsePace(s:string):number { const p=s.replace(',',':').split(':'); ret
 function localDateStr(d:Date):string {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
-function getWeekStart():string { const now=new Date(); const dow=now.getDay()===0?6:now.getDay()-1; const m=new Date(now); m.setDate(now.getDate()-dow); return localDateStr(m) }
+function getWeekStart():string {
+  const now=new Date(); const dow=now.getDay()===0?6:now.getDay()-1;
+  const m=new Date(now); m.setDate(now.getDate()-dow);
+  const ws = localDateStr(m)
+  // Debug — comparer entre appareils. Doit retourner la même chaîne YYYY-MM-DD
+  // sur Windows, iPhone, Mac. Si différent → timezone shift.
+  if (typeof window !== 'undefined') {
+    console.log('[weekStart debug]', {
+      weekStart: ws,
+      nowISO: now.toISOString(),
+      tzOffsetMin: now.getTimezoneOffset(),
+      dow,
+    })
+  }
+  return ws
+}
 
 // Mappe le sport interne → nom attendu par /api/session-builder
 const SPORT_TO_BUILDER: Record<SportType, string> = {
@@ -524,15 +539,28 @@ function getWeekLabel(ws:string):string {
   return `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} – ${e.getDate()} ${MONTH_SHORT[e.getMonth()]}`
 }
 function normalizeSportType(s:string):SportType {
-  const lower = (s??'').toLowerCase()
+  const lower = (s??'').toLowerCase().trim()
   const m:Record<string,SportType>={
-    running:'run', run:'run', trail_run:'run', trail_running:'run', hike:'run', walk:'run', trailrun:'run',
-    cycling:'bike', ride:'bike', bike:'bike', virtual_ride:'bike', virtual_bike:'bike', virtualride:'bike',
-    swimming:'swim', swim:'swim',
-    weighttraining:'gym', weight_training:'gym', gym:'gym', workout:'gym', strengthtraining:'gym', strength_training:'gym',
-    rowing:'rowing', row:'rowing',
+    // Course / Trail
+    running:'run', run:'run', course:'run', 'course à pied':'run', 'course a pied':'run',
+    trail:'run', trail_run:'run', trail_running:'run', trailrun:'run',
+    hike:'run', walk:'run', randonnée:'run', randonnee:'run',
+    // Vélo
+    cycling:'bike', ride:'bike', bike:'bike', velo:'bike', vélo:'bike',
+    cyclisme:'bike', virtual_ride:'bike', virtual_bike:'bike', virtualride:'bike',
+    // Natation
+    swimming:'swim', swim:'swim', natation:'swim',
+    // Muscu
+    weighttraining:'gym', weight_training:'gym', gym:'gym', workout:'gym',
+    strengthtraining:'gym', strength_training:'gym', strength:'gym',
+    musculation:'gym', muscu:'gym',
+    // Aviron
+    rowing:'rowing', row:'rowing', aviron:'rowing', rameur:'rowing',
+    // Elliptique
     elliptical:'elliptique', elliptique:'elliptique',
-    hyrox:'hyrox',
+    // Hyrox
+    hyrox:'hyrox', hrx:'hyrox',
+    // Multisport
     triathlon:'run',
   }
   return m[lower]??((['run','bike','swim','hyrox','gym','rowing','elliptique'] as SportType[]).includes(lower as SportType)?lower as SportType:'run')
@@ -583,13 +611,14 @@ function matchStatus(plannedMin:number, doneMin:number):{label:string;color:stri
 
 // ── SportBadge component ──────────────────────────
 function SportBadge({ sport, size='sm' }:{ sport:SportType; size?:'sm'|'xs' }) {
-  const col = SPORT_BORDER[sport]
+  const col = SPORT_BORDER[sport] ?? '#9ca3af'  // fallback gris si sport inconnu
+  const abbr = SPORT_ABBR[sport] ?? '???'
   const sz = size==='xs'
     ? { fontSize:7, padding:'1px 4px', borderRadius:3 }
     : { fontSize:8, padding:'2px 5px', borderRadius:4 }
   return (
     <span style={{ background:`${col}22`, color:col, fontWeight:800, letterSpacing:'0.04em', ...sz }}>
-      {SPORT_ABBR[sport]}
+      {abbr}
     </span>
   )
 }

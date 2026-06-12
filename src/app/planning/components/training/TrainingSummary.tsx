@@ -58,7 +58,15 @@ function Dot({ sport, size = 7 }: { sport: string; size?: number }) {
 
 export function TrainingSummary<S extends Sess>(p: Props<S>) {
   const volPct = p.plannedMin ? Math.min(p.doneMin / p.plannedMin * 100, 100) : 0
-  const tssPct = p.plannedTSS ? Math.min(p.doneTSS / p.plannedTSS * 100, 100) : 0
+  // Si doneTSS=0 (séances pas encore done + pas d'activités Strava), on affiche la charge
+  // planifiée dans la jauge pour qu'elle ne reste pas vide. Sinon ratio done/planned classique.
+  const tssPct = p.plannedTSS > 0
+    ? Math.min((p.doneTSS > 0 ? p.doneTSS : p.plannedTSS) / p.plannedTSS * 100, 100)
+    : 0
+  // Debug — à retirer une fois validé sur 3 semaines réelles
+  if (typeof window !== 'undefined') {
+    console.log('[TSS debug]', { plannedTSS: p.plannedTSS, doneTSS: p.doneTSS, tssPct })
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
@@ -103,7 +111,10 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
           <p style={{ ...label, marginBottom: 'var(--space-3)' }}>Volume par discipline</p>
           {p.sportStats.map(s => {
             const volPct = s.plannedH > 0 ? Math.min(s.doneH / s.plannedH * 100, 100) : 0
-            const tssPct = s.plannedTSS > 0 ? Math.min(s.doneTSS / s.plannedTSS * 100, 100) : 0
+            // Fallback: si doneTSS=0 sur ce sport, on remplit avec la charge planifiée
+            const tssPct = s.plannedTSS > 0
+              ? Math.min((s.doneTSS > 0 ? s.doneTSS : s.plannedTSS) / s.plannedTSS * 100, 100)
+              : 0
             const c = sv(s.sport)
             return (
               <div key={s.sport} style={{ marginBottom: 'var(--space-4)' }}>

@@ -24,7 +24,22 @@ function genId(): string {
 }
 
 export function loadBlocs(): TrainingBlocData[] {
-  return read<TrainingBlocData[]>(BLOCS_KEY, [])
+  const list = read<TrainingBlocData[]>(BLOCS_KEY, [])
+  // ⚠ BUG 2 — Training Blocs : stockage localStorage = données locales à l'appareil.
+  // Symptôme reporté : "blocs créés sur Windows n'apparaissent pas sur iPhone/Mac".
+  // CAUSE RÉELLE : pas une question de week_start ni de filtre Supabase — il n'y a
+  // simplement AUCUNE table Supabase pour les Training Blocs. Solution permanente :
+  // créer table `training_blocs` + migrer ce module vers Supabase (hors périmètre).
+  if (typeof window !== 'undefined') {
+    console.log('[training blocs]', {
+      storage: 'localStorage',
+      key: BLOCS_KEY,
+      count: list.length,
+      sync: 'NON — local à cet appareil seulement',
+      fixRequired: 'créer table Supabase training_blocs + migrer trainingBlocks.ts',
+    })
+  }
+  return list
 }
 export function saveBlocs(list: TrainingBlocData[]) { write(BLOCS_KEY, list) }
 

@@ -7249,12 +7249,28 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           borderRadius: '20px 20px 0 0',
           background: 'var(--bg)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '4px 10px 4px 8px', borderRadius: 99,
+            background: `${accent}12`, border: `1px solid ${accent}30`,
+          }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: accent }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>{isEdit ? 'Modifier la séance' : 'Nouvelle séance'}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: accent, letterSpacing: '0.02em' }}>{isEdit ? 'Modifier la séance' : 'Nouvelle séance'}</span>
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              color: selPlan === 'A' ? '#06B6D4' : '#a78bfa',
+              background: selPlan === 'A' ? 'rgba(6,182,212,0.10)' : 'rgba(167,139,250,0.10)',
+              border: `1px solid ${selPlan === 'A' ? 'rgba(6,182,212,0.30)' : 'rgba(167,139,250,0.30)'}`,
+              padding: '3px 9px', borderRadius: 99,
+            }}>Plan {selPlan}</span>
+            <button onClick={onClose} style={{
+              width: 30, height: 30, borderRadius: '50%',
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              color: 'var(--text-dim)', fontSize: 17, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0,
+            }}>×</button>
           </div>
         </div>
 
@@ -7485,11 +7501,19 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           {/* DROITE */}
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 24 }}>
             {/* RPE */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={lbl}>Effort perçu</span>
-                <span style={{ fontSize: 20, fontWeight: 800, color: rpeCol, fontFamily: 'DM Mono, monospace' }}>
-                  {rpe}<span style={{ fontSize: 10, color: 'var(--text-dim)' }}>/10</span>
+            <div style={{
+              padding: '14px 16px', borderRadius: 12,
+              border: `1px solid ${rpeCol}25`, background: `${rpeCol}06`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div>
+                  <span style={lbl}>Effort perçu</span>
+                  <p style={{ fontSize: 11, color: rpeCol, fontWeight: 600, margin: '2px 0 0', letterSpacing: '0.01em' }}>
+                    {rpe <= 2 ? 'Très facile' : rpe <= 4 ? 'Facile' : rpe <= 6 ? 'Modéré' : rpe <= 8 ? 'Difficile' : 'Maximal'}
+                  </p>
+                </div>
+                <span style={{ fontSize: 28, fontWeight: 800, color: rpeCol, fontFamily: 'DM Mono, monospace', lineHeight: 1, letterSpacing: '-0.02em' }}>
+                  {rpe}<span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 600 }}>/10</span>
                 </span>
               </div>
               <div style={{ background: 'var(--border)', borderRadius: 99, height: 5, position: 'relative' as const, overflow: 'hidden' }}>
@@ -9448,8 +9472,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         {/* SÉPARATEUR — avant barre d'actions */}
         <div style={{ height: 1, background: 'var(--border)', margin: mobile ? '0 16px 10px' : '0 24px 12px', opacity: 0.5 }} />
 
-        {/* ACTIONS + PLAN A/B — barre unifiée */}
-        <div style={{ padding: mobile ? '0 16px 28px' : '0 24px 32px' }}>
+        {/* ACTIONS + PLAN A/B — footer sticky */}
+        <div style={{
+          position: 'sticky' as const, bottom: 0, zIndex: 10,
+          background: 'var(--bg)',
+          borderTop: '1px solid var(--border)',
+          padding: mobile ? '12px 16px' : '14px 24px',
+          boxShadow: '0 -4px 16px rgba(0,0,0,0.04)',
+        }}>
           {isEdit ? (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
               {/* ── Tout à gauche : Fermer ── */}
@@ -9598,10 +9628,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 } catch (e) { console.error('[Save]', e) }
                 finally { setSaving(false) }
               }} style={{
-                padding: '8px 18px', borderRadius: 8,
-                border: 'none', background: saved ? '#22c55e' : '#111827',
+                padding: '10px 22px', borderRadius: 9,
+                border: 'none',
+                background: saved ? '#22c55e' : `linear-gradient(135deg, ${accent}, ${accent}cc)`,
                 color: '#fff', fontSize: 12, fontWeight: 700, cursor: saving ? 'wait' : 'pointer',
-                transition: 'background 0.3s',
+                boxShadow: saved ? 'none' : `0 4px 14px ${accent}40`,
+                transition: 'background 0.3s, box-shadow 0.2s',
+                fontFamily: 'Syne, sans-serif', letterSpacing: '0.01em',
               }}>{saving ? '…' : saved ? '✓ Enregistré' : 'Enregistrer →'}</button>
             </div>
           ) : (

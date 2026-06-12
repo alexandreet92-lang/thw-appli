@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic'
 import { useProfile } from '@/hooks/useProfile'
 import { SidebarContent, Avatar } from '@/components/shared/Sidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { NotificationsOverlay } from '@/components/shared/NotificationsOverlay'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
@@ -22,6 +23,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const { profile } = useProfile()
   const [open, setOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
   const [reduce, setReduce] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0 })
@@ -125,14 +127,14 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           <button aria-label="Menu" onClick={() => settle(!open)} style={{ ...fab, left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
             {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
           </button>
-          {/* Cloche notifications — à gauche du shuriken (entrée seulement) */}
-          <Link href="/notifications" aria-label="Notifications" onClick={() => setOpen(false)}
+          {/* Cloche notifications — ouvre une surpage centrée (sans quitter la page) */}
+          <button aria-label="Notifications" onClick={() => { setOpen(false); setNotifOpen(true) }}
             style={{ ...fab, right: 58, borderRadius: 12 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
-          </Link>
+          </button>
           <button aria-label="Coach IA" onClick={() => setAiOpen(true)}
             style={{ ...fab, right: 12, borderRadius: 12, overflow: 'hidden' }}>
             {/* Shuriken Athéna classique 4 branches existant — non redessiné, sur verre neutre */}
@@ -150,6 +152,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />
+      <NotificationsOverlay open={notifOpen} onClose={() => setNotifOpen(false)} />
     </div>
   )
 }

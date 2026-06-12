@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic'
 import { useProfile } from '@/hooks/useProfile'
 import { SidebarContent, Avatar } from '@/components/shared/Sidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { NotificationsOverlay } from '@/components/shared/NotificationsOverlay'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
@@ -20,6 +21,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   const { profile } = useProfile()
   const [open, setOpen] = useState(true)
   const [aiOpen, setAiOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
   const [reduce, setReduce] = useState(false)
 
   useEffect(() => {
@@ -89,14 +91,14 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
         </button>
 
-        {/* Cloche notifications — à gauche du shuriken (entrée seulement) */}
-        <Link href="/notifications" aria-label="Notifications"
+        {/* Cloche notifications — ouvre une surpage centrée (sans quitter la page) */}
+        <button aria-label="Notifications" onClick={() => setNotifOpen(true)}
           style={{ ...fab, right: 62, left: 'auto' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
-        </Link>
+        </button>
 
         {/* Shuriken IA — droite (asset classique 4 branches, sur verre neutre pour qu'il ressorte) */}
         <button aria-label="Coach IA" onClick={() => setAiOpen(true)}
@@ -109,6 +111,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       </main>
 
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />
+      <NotificationsOverlay open={notifOpen} onClose={() => setNotifOpen(false)} />
     </div>
   )
 }

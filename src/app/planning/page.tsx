@@ -2489,12 +2489,12 @@ function TrainingTab() {
           <span style={{ fontSize:10,fontWeight:700,color:planColor,letterSpacing:'0.08em',textTransform:'uppercase' as const }}>{labelTag}</span>
           <span style={{ fontSize:10,color:'var(--text-dim)' }}>{getWeekLabel(ws)}</span>
         </div>}
-        <div style={{ display:'grid',gridTemplateColumns:'60px repeat(7,1fr)',borderBottom:'1px solid var(--border)',background:'var(--bg-card2)',minWidth:520 }}>
-          <div style={{ padding:'10px 8px' }}/>
+        <div style={{ display:'grid',gridTemplateColumns:'60px repeat(7,1fr)',borderBottom:'1px solid var(--border)',background:'transparent',minWidth:520 }}>
+          <div style={{ padding:'10px 8px', background:'transparent' }}/>
           {w.map((d,i)=>{ const cfg=INTENSITY_CONFIG[d.intensity]; const isCurrent = ws===currentWeekStart; const isPickerOpen = isCurrent && intensityPickerDay===i; return (
-            <div key={d.day} style={{ padding:'9px 6px',textAlign:'center' as const,minWidth:68,margin:'6px 3px',borderRadius:10,background:'#161b22',border:i===todayIdx&&isCurrent?'1px solid rgba(34,211,238,.4)':'1px solid rgba(255,255,255,.06)' }}>
-              <p style={{ fontSize:9.5,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.05em',margin:'0 0 3px',color:'rgba(230,237,243,.25)' }}>{d.day}</p>
-              <p style={{ fontSize:16,fontWeight:700,margin:'0 0 5px',color:i===todayIdx&&isCurrent?'#22d3ee':'#e6edf3' }}>{wDates[i]}</p>
+            <div key={d.day} style={{ padding:'9px 6px',textAlign:'center' as const,minWidth:68,margin:'6px 3px',borderRadius:10,background:'var(--bg-card)',border:i===todayIdx&&isCurrent?'1px solid rgba(34,211,238,.4)':'1px solid var(--border)' }}>
+              <p style={{ fontSize:9.5,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.05em',margin:'0 0 3px',color:'var(--text-dim)' }}>{d.day}</p>
+              <p style={{ fontSize:16,fontWeight:700,margin:'0 0 5px',color:i===todayIdx&&isCurrent?'#22d3ee':'var(--text)' }}>{wDates[i]}</p>
               <div data-intensity-picker style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',position:'relative' as const }}>
                 <button
                   onClick={()=>{ if (isCurrent) setIntensityPickerDay(isPickerOpen?null:i); else setIntensityModal(d.intensity) }}

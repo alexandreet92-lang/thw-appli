@@ -91,7 +91,7 @@ export default function HomeTrainerScreen({ onExit, onFinished }: Props) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', maxWidth: 340 }}>
             {[
               { l: 'Distance', v: `${(distM/1000).toFixed(2)} km` }, { l: 'Durée', v: fmt(stopwatch.seconds) },
-              { l: 'Watts moy.', v: `${avgWatts} w` }, { l: 'TSS', v: String(TSS) },
+              { l: 'Watts moy.', v: `${avgWatts} w` }, { l: 'SM', v: String(TSS) },
               { l: 'IF', v: IF.toFixed(2) }, { l: 'Calories', v: `${calories} kcal` },
             ].map(({ l, v }) => (
               <div key={l} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '14px', textAlign: 'center' }}>

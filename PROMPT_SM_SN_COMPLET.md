@@ -91,7 +91,26 @@ Branche `claude/nutrition-mobile-layout-sitzpl`. `src/lib/sync/strava.ts` **non 
 - **UI câblée** : `ActivityCard` (résumé d'activité) affiche désormais **SM · SN** (calcul réel
   par activité) à la place du TSS, avec « ? » d'aide.
 
-### ⏳ RESTE À CÂBLER (TSS encore présent — prochaines passes, pour ne pas casser le build)
+### ✅ PASSE UI 1 (faite, build vert) — « TSS » retiré de :
+- `ActivityCard` (SM·SN réel), `LastActivityCard` (SM·SN réel), `TodayCard` (chip charge retiré,
+  séance planifiée), `MuscuActivityView` (SM/SN réel), `LoadKpis` (CTL/ATL/TSB **SM + SN** via
+  `useTrainingLoad` + verdict), `FitnessCards` (textes d'aide), `recovery/TrainingLoad`
+  (labels SM 7j/28j…), `types/cycling` (champ home-trainer), `planning/TrainingSummary` +
+  `planning/page` (chip), `briefing`, `performance/RacesSection` + `DatasTab`,
+  `record/HomeTrainerScreen` + `SessionSummaryPage2`.
+
+### ⏳ RESTE À CÂBLER (TSS encore présent — prochaine passe)
+- **Page Activités** (monolithe ~9k lignes) : grilles de détail par activité (run/bike/swim/gym/
+  other), totaux « TSS période/Total », **heatmap** + **PMC propre** (`computePMCSeries`),
+  tooltip TSS, prompts IA internes. → calculer SM·SN par `a` (un `useSmSn` par composant de détail)
+  + sommes SM/SN ; PMC/heatmap sur SM.
+- **Dashboard `PmcChart`** + **recovery `PmcChart`** : passer sur `pmcDual` (2 courbes SM/SN).
+- **AIPanel.tsx** (~20k lignes, ~50 réf.) : surtout des **prompts** envoyés au LLM (contexte
+  charge) + ~8 cartes UI « TSS ». À convertir prudemment (change le comportement du coach).
+- **SessionEditor** : TSS de séance **planifiée** (`computeParcoursFlowTSS`) = formule SM
+  puissance → relabel « SM » (séance future, pas d'actuals).
+- **Chart PMC 2 courbes** (SM cyan / SN violet) : `pmcDual`/`PMC_COLORS` prêts, SVG à écrire.
+- **Backfill p5s** : job serveur.
 - **Page Activités** : grilles stats inline (`5091,7456,7853,7868,7877,8063`) + **son PMC/heatmap
   propre** (`computePMCSeries` basé `tss`) → à brancher sur `useTrainingLoad`/`pmcDual`.
 - **Recovery** (`TrainingLoad.tsx`, PMC), **Training** (`FitnessCards`), **Dashboard**

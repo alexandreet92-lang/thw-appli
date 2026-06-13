@@ -156,11 +156,11 @@ export function FitnessCards({ ctl, atl, tsb }: FitnessCardsProps) {
           <p style={{ fontSize:14, lineHeight:1.7,
                       color:'var(--text-body)' }}>
             {k==='CTL' &&
-              'Chronic Training Load sur 42 jours. Mesure votre forme à long terme via la moyenne exponentielle du TSS quotidien. Plus la valeur est haute, meilleure est votre condition de base.'}
+              'Charge chronique sur 42 jours. Mesure votre forme à long terme via la moyenne exponentielle de la charge quotidienne (SM/SN). Plus la valeur est haute, meilleure est votre condition de base.'}
             {k==='ATL' &&
-              'Acute Training Load sur 7 jours. Mesure la fatigue récente. Plus la valeur est haute, plus vous êtes fatigué. Surveiller quand ATL dépasse largement CTL.'}
+              'Charge aiguë sur 7 jours. Mesure la fatigue récente. Plus la valeur est haute, plus vous êtes fatigué. Surveiller quand ATL dépasse largement CTL.'}
             {k==='TSB' &&
-              'Training Stress Balance = CTL – ATL. Positif = forme fraîche. Négatif = fatigue accumulée. Zone idéale pour la compétition : entre +5 et +25.'}
+              'Balance de charge = CTL – ATL. Positif = forme fraîche. Négatif = fatigue accumulée. Zone idéale pour la compétition : entre +5 et +25.'}
           </p>
         </BottomSheet>
       ))}

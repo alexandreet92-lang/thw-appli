@@ -74,7 +74,7 @@ export const ALL_FIELDS: DataField[] = [
   { id: 'lap_power',         label: 'Watts lap',             unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
   { id: 'prev_lap_power',    label: 'Watts lap préc.',       unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
   { id: 'ftp_percent',       label: '% FTP',                 unit: '%', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
-  { id: 'tss',               label: 'TSS',                              category: 'puissance', type: 'numeric', requiresSensor: 'power' },
+  { id: 'tss',               label: 'SM',                               category: 'puissance', type: 'numeric', requiresSensor: 'power' },
   { id: 'if',                label: 'IF',                               category: 'puissance', type: 'numeric', requiresSensor: 'power' },
   { id: 'lr_balance',        label: 'Équilibre G/D',         unit: '%', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
   { id: 'power_chart',       label: 'Courbe de puissance',              category: 'puissance', type: 'chart',   requiresSensor: 'power' },

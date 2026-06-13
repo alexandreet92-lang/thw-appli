@@ -12,7 +12,7 @@ import { sportColor, sportLabel } from '@/components/recovery/helpers'
 import { Card, SectionTitle, SportDot, Skeleton, EmptyState, useReducedMotion } from './primitives'
 import { FD, FB, NUM, formatDuration, weekStartIso, currentDayIndex } from './lib'
 
-interface Session { id: string; sport: string; title: string; duration_min: number | null; tss: number | null; intensity: string | null; notes: string | null }
+interface Session { id: string; sport: string; title: string; duration_min: number | null; intensity: string | null; notes: string | null }
 interface Task { id: string; title: string; completed: boolean }
 
 const ZONE_LABEL: Record<string, string> = { low: 'Facile', recovery: 'Récup', moderate: 'Modéré', mid: 'Modéré', high: 'Intense', hard: 'Intense', max: 'Max' }
@@ -32,7 +32,7 @@ export function TodayCard() {
       if (!user) { if (!cancelled) setLoading(false); return }
       const ws = weekStartIso(); const di = currentDayIndex()
       const [s, t] = await Promise.all([
-        supabase.from('planned_sessions').select('id, sport, title, duration_min, tss, intensity, notes')
+        supabase.from('planned_sessions').select('id, sport, title, duration_min, intensity, notes')
           .eq('user_id', user.id).eq('week_start', ws).eq('day_index', di).eq('status', 'planned')
           .order('time', { ascending: true, nullsFirst: false }).limit(1).maybeSingle(),
         supabase.from('week_tasks').select('id, title, completed')
@@ -58,7 +58,7 @@ export function TodayCard() {
 
   const zone = session?.intensity ? (ZONE_LABEL[session.intensity] ?? session.intensity) : null
   const meta = session
-    ? [formatDuration(session.duration_min), zone, session.tss != null ? `TSS ${session.tss}` : null].filter(Boolean).join(' · ')
+    ? [formatDuration(session.duration_min), zone].filter(Boolean).join(' · ')
     : ''
 
   return (

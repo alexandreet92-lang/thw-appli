@@ -23,7 +23,7 @@ export function DataGrid() {
   return (
     <div className="dash-grid-data">
       <div className="dash-a-forme"><FormeArc activities={activities} loading={loading} /></div>
-      <div className="dash-a-kpis"><LoadKpis activities={activities} loading={loading} /></div>
+      <div className="dash-a-kpis"><LoadKpis /></div>
       <div className="dash-a-pmc"><PmcChart activities={activities} loading={loading} /></div>
       <div className="dash-a-sleep"><SleepCard /></div>
       <div className="dash-a-today"><TodayCard /></div>

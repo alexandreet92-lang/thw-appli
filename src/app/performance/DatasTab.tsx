@@ -3027,7 +3027,7 @@ const YD_METRICS: Record<string, YDMetric> = {
   heures:        { key: 'heures',        label: 'Heures',     fmt: v => fmtHhMM(v),           fromAuto: s => s.heures,      fromManual: e => e.heures,        manualKey: 'heures',        step: '0.1' },
   denivele:      { key: 'denivele',      label: 'D+',         fmt: v => `${Math.round(v)} m`, fromAuto: s => s.denivele,    fromManual: e => e.denivele,      manualKey: 'denivele',      step: '1'   },
   nb_sorties:    { key: 'nb_sorties',    label: 'Sorties',    fmt: v => `${Math.round(v)}`,   fromAuto: s => s.nb_sorties,  fromManual: e => e.nb_sorties,    manualKey: 'nb_sorties',    step: '1'   },
-  tss:           { key: 'tss',           label: 'TSS',        fmt: v => `${Math.round(v)}`,   fromAuto: s => s.tss,         fromManual: e => e.tss,           manualKey: 'tss',           step: '1'   },
+  tss:           { key: 'tss',           label: 'SM',         fmt: v => `${Math.round(v)}`,   fromAuto: s => s.tss,         fromManual: e => e.tss,           manualKey: 'tss',           step: '1'   },
   volume_tonnes: { key: 'volume_tonnes', label: 'Volume (t)', fmt: v => `${v.toFixed(1)} t`,  fromAuto: _ => 0,             fromManual: e => e.volume_tonnes, manualKey: 'volume_tonnes', step: '0.1' },
 }
 

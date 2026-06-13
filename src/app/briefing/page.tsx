@@ -695,7 +695,7 @@ export default function BriefingPage() {
                     <Metric label="Durée"    value={`${s.duration_min} min`} />
                   )}
                   {s.tss != null && (
-                    <Metric label="TSS"      value={String(s.tss)} />
+                    <Metric label="SM"       value={String(s.tss)} />
                   )}
                   {s.intensity && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

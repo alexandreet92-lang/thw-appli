@@ -1315,7 +1315,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
                 { lbl:'NP Watts', val: wattsNp ? `${wattsNp} W` : '—' },
                 { lbl:'NP W/kg',  val: wpkgNp  ? wpkgNp.toFixed(2) : '—' },
                 { lbl:'Moy Watts',val: wattsAvgStr || race.watts_avg ? `${wattsAvgStr || race.watts_avg} W` : '—' },
-                { lbl:'TSS',      val: tssStr || race.tss ? `${tssStr || race.tss?.toFixed(0)}` : '—' },
+                { lbl:'SM',       val: tssStr || race.tss ? `${tssStr || race.tss?.toFixed(0)}` : '—' },
                 { lbl:'IF',       val: race.if_score ? race.if_score.toFixed(2) : '—' },
                 { lbl:'Durée',    val: durSec ? secToHMS(durSec) : '—' },
               ].map(({ lbl, val }) => (

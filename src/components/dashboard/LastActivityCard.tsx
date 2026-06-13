@@ -9,12 +9,20 @@ import { createClient } from '@/lib/supabase/client'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
 import { Card, SectionTitle, SportDot, Skeleton, EmptyState } from './primitives'
 import { FD, FB, NUM, formatShortDate, formatDuration, formatDistance } from './lib'
+import { useSmSn } from '@/hooks/useSmSn'
 
-interface Act { id: string; sport_type: string | null; title: string | null; started_at: string; moving_time_s: number | null; distance_m: number | null; tss: number | null }
+interface Act {
+  id: string; sport_type: string | null; title: string | null; started_at: string
+  moving_time_s: number | null; elapsed_time_s: number | null; distance_m: number | null
+  normalized_watts: number | null; ftp_at_time: number | null; avg_hr: number | null
+  avg_temp_c: number | null; elevation_gain_m: number | null; total_descent_m: number | null; elevation_loss_m: number | null
+}
+const SELECT = 'id, sport_type, title, started_at, moving_time_s, elapsed_time_s, distance_m, normalized_watts, ftp_at_time, avg_hr, avg_temp_c, elevation_gain_m, total_descent_m, elevation_loss_m'
 
 export function LastActivityCard() {
   const [loading, setLoading] = useState(true)
   const [act, setAct] = useState<Act | null>(null)
+  const { compute } = useSmSn()
 
   useEffect(() => {
     let cancelled = false
@@ -24,7 +32,7 @@ export function LastActivityCard() {
       if (!user) { if (!cancelled) setLoading(false); return }
       const { data } = await supabase
         .from('activities')
-        .select('id, sport_type, title, started_at, moving_time_s, distance_m, tss')
+        .select(SELECT)
         .eq('user_id', user.id)
         .order('started_at', { ascending: false })
         .limit(1)
@@ -39,8 +47,9 @@ export function LastActivityCard() {
   if (loading) return <Skeleton height={120} />
 
   const sport = act?.sport_type ?? 'workout'
+  const smsn = act ? compute(act) : null
   const meta = act
-    ? [formatDistance(act.distance_m), formatDuration(act.moving_time_s ? Math.round(act.moving_time_s / 60) : null), act.tss != null ? `TSS ${Math.round(act.tss)}` : null]
+    ? [formatDistance(act.distance_m), formatDuration(act.moving_time_s ? Math.round(act.moving_time_s / 60) : null), smsn ? `SM ${smsn.sm} · SN ${smsn.sn}` : null]
         .filter(v => v && v !== '—').join(' · ')
     : ''
 

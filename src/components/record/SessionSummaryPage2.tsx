@@ -54,7 +54,7 @@ export default function SessionSummaryPage2({ session, theme, dataFontFamily }: 
     { label: 'WATTS NOR.',   value: '--',                                          unit: 'w',    dim: true },
     { label: 'FC MOYENNE',   value: '--',                                          unit: 'bpm',  dim: true },
     { label: 'FC MAX',       value: '--',                                          unit: 'bpm',  dim: true },
-    { label: 'TSS',          value: '--',                                          unit: '',     dim: true },
+    { label: 'SM',           value: '--',                                          unit: '',     dim: true },
     { label: 'IF',           value: '--',                                          unit: '',     dim: true },
     { label: 'VITESSE MAX',  value: session.max_speed_kmh.toFixed(1),             unit: 'km/h' },
     { label: 'CALORIES',     value: String(session.calories),                     unit: 'kcal' },

@@ -101,8 +101,8 @@ export default function TrainingLoad({ activities }: { activities: ActivityRow[]
             <span>0.0</span><span>0.8</span><span>1.3</span><span>1.5</span><span>2.0</span>
           </div>
           <div style={{ display:'flex',gap:16,marginTop:12 }}>
-            <div><p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px' }}>TSS 7j</p><p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,color:'var(--text)' }}>{tss7}</p></div>
-            <div><p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px' }}>TSS 28j</p><p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,color:'var(--text)' }}>{tss28}</p></div>
+            <div><p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px' }}>SM 7j</p><p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,color:'var(--text)' }}>{tss7}</p></div>
+            <div><p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px' }}>SM 28j</p><p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,color:'var(--text)' }}>{tss28}</p></div>
           </div>
         </div>
 
@@ -116,12 +116,12 @@ export default function TrainingLoad({ activities }: { activities: ActivityRow[]
                 <span style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:800,color:monoLabel.c }}>{monotony > 0 ? monotony.toFixed(1) : '—'}</span>
                 {monotony > 0 && <span style={{ padding:'2px 8px',borderRadius:20,background:`${monoLabel.c}22`,color:monoLabel.c,fontSize:10,fontWeight:600 }}>{monoLabel.l}</span>}
               </div>
-              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',lineHeight:1.4 }}>TSS moy / écart-type</p>
+              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',lineHeight:1.4 }}>SM moy / écart-type</p>
             </div>
             <div>
               <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 4px' }}>Strain</p>
               <span style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:800,color:'var(--text)' }}>{strain > 0 ? strain : '—'}</span>
-              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',lineHeight:1.4 }}>TSS semaine × monotonie</p>
+              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',lineHeight:1.4 }}>SM semaine × monotonie</p>
             </div>
           </div>
         </div>

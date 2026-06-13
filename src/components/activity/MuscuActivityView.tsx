@@ -14,6 +14,8 @@
 // ══════════════════════════════════════════════════════════════════
 
 import type { ReactNode } from 'react'
+import { useSmSn } from '@/hooks/useSmSn'
+import { smSnFromRow } from '@/lib/metrics/smSn'
 
 interface MuscuActivity {
   moving_time_s?: number | null
@@ -78,13 +80,15 @@ export function MuscuActivityView({ activity, z2DurationS, jauges }: Props) {
   const a = activity
   const hr = a.streams?.heartrate ?? null
   const hasHr = !!hr && hr.length > 1
+  const { benchmarks } = useSmSn()
+  const smsn = smSnFromRow({ sport_type: 'gym', moving_time_s: a.moving_time_s ?? null, avg_hr: a.avg_hr ?? null, avg_temp_c: a.avg_temp_c ?? null }, benchmarks)
 
   const kpis: { label: string; value: string; color?: string }[] = [
     { label: 'Durée',    value: fmtDur(a.moving_time_s) },
     { label: 'FC moy',   value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
     { label: 'FC max',   value: a.max_hr ? `${Math.round(Number(a.max_hr))} bpm` : '—', color: '#f97316' },
     { label: 'Calories', value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
-    { label: 'TSS',      value: a.tss ? `${Math.round(Number(a.tss))}` : '—', color: '#ef4444' },
+    { label: 'SM',       value: String(smsn.sm) },
     { label: 'Durée Z2', value: z2DurationS != null ? fmtDur(z2DurationS) : '—' },
   ]
 
@@ -96,7 +100,7 @@ export function MuscuActivityView({ activity, z2DurationS, jauges }: Props) {
   const seance: { label: string; value: string }[] = [
     { label: 'Temp. moy',  value: a.avg_temp_c != null ? `${Math.round(Number(a.avg_temp_c))} °C` : '—' },
     { label: 'Calories',   value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
-    { label: 'TSS',        value: a.tss ? `${Math.round(Number(a.tss))}` : '—' },
+    { label: 'SN',         value: String(smsn.sn) },
     { label: 'Difficulté', value: a.difficulty != null ? `${a.difficulty} / 10` : '—' },
   ]
   const notes = a.notes ?? a.description

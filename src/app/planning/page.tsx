@@ -890,7 +890,7 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
             { label:'Heure',   value:`${String(activity.startHour).padStart(2,'0')}:${String(activity.startMin).padStart(2,'0')}`, mono:true },
             { label:'Durée',   value:formatDur(durationMin), mono:true },
             ...(distKm ? [{ label:'Distance', value:`${distKm} km`, mono:true }] : []),
-            ...(activity.tss ? [{ label:'TSS', value:`${Math.round(activity.tss)} pts`, mono:true, color:'#5b6fff' }] : []),
+            ...(activity.tss ? [{ label:'SM', value:`${Math.round(activity.tss)}`, mono:true, color:'#5b6fff' }] : []),
           ].map(({ label, value, mono, small, color })=>(
             <div key={label} style={{ background:'var(--bg-card2)',borderRadius:10,padding:'10px 12px' }}>
               <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 3px',textTransform:'uppercase' as const,letterSpacing:'0.07em' }}>{label}</p>

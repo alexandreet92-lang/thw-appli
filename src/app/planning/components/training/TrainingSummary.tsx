@@ -148,7 +148,7 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
             <div key={s.id} onClick={() => p.onOpenSession(s)} style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-card2)', borderRadius: 12, padding: '12px 14px', marginBottom: 7, borderLeft: `3px solid ${sv(s.sport)}`, cursor: 'pointer' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: FB, fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>{s.title}</div>
-                <div className="tnum" style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>{s.time} · {mm(s.durationMin)}{s.tss ? ` · ${s.tss} TSS` : ''}</div>
+                <div className="tnum" style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>{s.time} · {mm(s.durationMin)}{s.tss ? ` · SM ${s.tss}` : ''}</div>
               </div>
               {s.status !== 'done' && p.isModified(s) && <span title="Modifié par toi" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />}
               <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>{s.status === 'done' ? 'Fait' : 'À faire'}</span>

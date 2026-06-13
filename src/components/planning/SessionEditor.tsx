@@ -4566,59 +4566,84 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
   return (
     <>
-      <style>{`@keyframes sheetFade{from{opacity:0}to{opacity:1}}@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+      <style>{`
+        @keyframes sheetUp {
+          from { transform: translateY(100%); opacity: 0.5; }
+          to   { transform: translateY(0);    opacity: 1; }
+        }
+      `}</style>
 
-      {/* Backdrop flouté — clic = fermeture */}
+      {/* Backdrop */}
       <div onClick={onClose} style={{
         position: 'fixed' as const, inset: 0, zIndex: 998,
-        background: 'rgba(0,0,0,.3)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
-        animation: 'sheetFade .3s ease-out',
+        background: 'rgba(0,0,0,0.45)',
+        backdropFilter: 'blur(4px)',
       }} />
 
-      {/* Bottom sheet — coulisse depuis le bas */}
+      {/* Bottom sheet — flex column */}
       <div onClick={e => e.stopPropagation()} style={{
         position: 'fixed' as const, bottom: 0, left: 0, right: 0, height: '96dvh', zIndex: 999,
-        background: 'var(--bg)', borderRadius: '20px 20px 0 0',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.15)',
-        overflowY: 'auto' as const,
-        animation: 'sheetUp .38s cubic-bezier(.2,.8,.2,1)',
+        background: 'var(--card)', borderRadius: '20px 20px 0 0',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
+        display: 'flex', flexDirection: 'column' as const,
+        overflow: 'hidden',
+        animation: 'sheetUp .38s cubic-bezier(.2,.8,.2,1) forwards',
       }}>
 
         {/* Poignée */}
         <div style={{ width: 36, height: 4, borderRadius: 4, background: 'var(--border)', margin: '10px auto 0', flexShrink: 0 }} />
 
-        {/* HEADER STICKY */}
+        {/* HEADER */}
         <div style={{
-          padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '12px 24px',
           borderBottom: '1px solid var(--border)',
-          position: 'sticky' as const, top: 0, zIndex: 10,
-          borderRadius: '20px 20px 0 0',
-          background: 'var(--bg)',
+          flexShrink: 0,
+          background: 'var(--card)',
         }}>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            padding: '4px 10px 4px 8px', borderRadius: 99,
-            background: `${accent}12`, border: `1px solid ${accent}30`,
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            padding: '5px 12px', borderRadius: 10,
+            background: `${accent}18`, border: `1px solid ${accent}35`,
+            flexShrink: 0,
           }}>
-            <div style={{ width: 7, height: 7, borderRadius: '50%', background: accent }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: accent, letterSpacing: '0.02em' }}>{isEdit ? 'Modifier la séance' : 'Nouvelle séance'}</span>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: accent, display: 'inline-block' }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: accent }}>{SPORT_LABEL[sport]}</span>
           </div>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{
-              fontSize: 10, fontWeight: 700,
-              color: selPlan === 'A' ? '#06B6D4' : '#a78bfa',
-              background: selPlan === 'A' ? 'rgba(6,182,212,0.10)' : 'rgba(167,139,250,0.10)',
-              border: `1px solid ${selPlan === 'A' ? 'rgba(6,182,212,0.30)' : 'rgba(167,139,250,0.30)'}`,
-              padding: '3px 9px', borderRadius: 99,
-            }}>Plan {selPlan}</span>
-            <button onClick={onClose} style={{
-              width: 30, height: 30, borderRadius: '50%',
-              background: 'var(--bg-card)', border: '1px solid var(--border)',
-              color: 'var(--text-dim)', fontSize: 17, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: 0,
-            }}>×</button>
-          </div>
+
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder={`${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`}
+            style={{
+              flex: 1, background: 'none', border: 'none',
+              color: 'var(--foreground)',
+              fontSize: mobile ? 16 : 18,
+              fontWeight: 700, outline: 'none', padding: 0,
+              minWidth: 0,
+            }}
+          />
+
+          <span style={{
+            fontSize: 11, fontWeight: 700, flexShrink: 0,
+            color: selPlan === 'A' ? '#22d3ee' : '#a78bfa',
+            background: selPlan === 'A' ? 'rgba(34,211,238,0.1)' : 'rgba(167,139,250,0.1)',
+            border: `1px solid ${selPlan === 'A' ? 'rgba(34,211,238,0.25)' : 'rgba(167,139,250,0.25)'}`,
+            borderRadius: 6, padding: '3px 10px',
+          }}>Plan {selPlan}</span>
+
+          <button onClick={onClose} style={{
+            width: 32, height: 32, borderRadius: '50%',
+            border: '1px solid var(--border)',
+            background: 'transparent', cursor: 'pointer',
+            color: 'var(--muted-foreground)', fontSize: 16,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>✕</button>
         </div>
+
+        {/* BODY scrollable */}
+        <div style={{ flex: 1, overflowY: 'auto' as const, padding: mobile ? '20px 16px 40px' : '24px 28px 40px' }}>
 
         {/* Hidden file input — shared by all Parcours buttons */}
         <input
@@ -6815,19 +6840,19 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           </div>
         )}
 
-        {/* SÉPARATEUR — avant barre d'actions */}
-        <div style={{ height: 1, background: 'var(--border)', margin: mobile ? '0 16px 10px' : '0 24px 12px', opacity: 0.5 }} />
+        </div>{/* fin BODY scrollable */}
 
-        {/* ACTIONS + PLAN A/B — footer sticky */}
+        {/* FOOTER */}
         <div style={{
-          position: 'sticky' as const, bottom: 0, zIndex: 10,
-          background: 'var(--bg)',
+          padding: mobile ? '12px 16px' : '13px 24px',
           borderTop: '1px solid var(--border)',
-          padding: mobile ? '12px 16px' : '14px 24px',
-          boxShadow: '0 -4px 16px rgba(0,0,0,0.04)',
+          background: 'var(--card)',
+          display: 'flex', alignItems: 'center', gap: 8,
+          flexShrink: 0,
+          flexWrap: 'wrap' as const,
         }}>
           {isEdit ? (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const, width: '100%' }}>
               {/* ── Tout à gauche : Fermer ── */}
               <button
                 onClick={() => { if (isDirty) { setShowCloseModal(true) } else { onClose() } }}

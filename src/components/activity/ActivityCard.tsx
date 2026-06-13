@@ -8,6 +8,7 @@
 
 import { useState } from 'react'
 import { formatRecordDuration, durationRank } from '@/lib/records/format'
+import { SmSnStat } from '@/components/metrics/SmSnStat'
 
 // ── Couleurs sémantiques fixes ─────────────────────────────────────────
 const GOLD = '#eab308'
@@ -24,7 +25,8 @@ export interface ActivityCardData {
   distance_m:        number | null
   moving_time_s:     number | null
   elevation_gain_m:  number | null
-  tss:               number | null
+  sm:                number | null  // Score Métabolique
+  sn:                number | null  // Score Neuromusculaire
   // Polyline encodée Google (Strava format) — déjà extraite côté page
   encodedPolyline:   string | null
   // Records auto associés à cette activité
@@ -58,11 +60,6 @@ function fmtDurCompact(s: number | null | undefined): string {
 function fmtElev(m: number | null | undefined): string {
   if (m == null || m <= 0) return '—'
   return `${Math.round(m)} m`
-}
-
-function fmtTss(v: number | null | undefined): string {
-  if (v == null || v <= 0) return '—'
-  return String(Math.round(v))
 }
 
 function fmtSubline(sportLabel: string, iso: string): string {
@@ -180,15 +177,18 @@ export function ActivityCard({ data, onClick }: Props) {
 
       {/* ── Stats grid ── */}
       <div style={{
-        padding: '12px 16px',
+        padding: '12px 16px 8px',
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
+        gridTemplateColumns: 'repeat(3, 1fr)',
         gap:     8,
       }}>
         <Stat label="Distance" value={fmtDistKm(data.distance_m)} />
         <Stat label="Durée"    value={fmtDurCompact(data.moving_time_s)} />
         <Stat label="D+"       value={fmtElev(data.elevation_gain_m)} />
-        <Stat label="TSS"      value={fmtTss(data.tss)} />
+      </div>
+      {/* Charge — SM (métabolique) · SN (neuromusculaire), chiffres neutres */}
+      <div style={{ padding: '0 16px 12px' }}>
+        <SmSnStat sm={data.sm} sn={data.sn} size={13} />
       </div>
 
       {/* ── Records ── */}

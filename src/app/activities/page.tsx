@@ -36,6 +36,8 @@ import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
 import { computeVapKmh, avgAdjustedPaceMinKm } from '@/lib/utils/vap'
 import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
 import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
+import { useSmSn } from '@/hooks/useSmSn'
+import { smSnFromRow } from '@/lib/metrics/smSn'
 import { PowerDistribution } from '@/components/activity/PowerDistribution'
 import { AerobicEfficiency } from '@/components/activity/AerobicEfficiency'
 import { MmpTable, MMP_TABLE_DURATIONS, MMP_TABLE_LABELS } from '@/components/activity/MmpTable'
@@ -9190,9 +9192,13 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
     return () => { cancelled = true }
   }, [visibleIds.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Construit les data pour chaque ActivityCard
+  // Benchmarks athlète pour le calcul SM/SN déterministe
+  const { benchmarks: smSnBench } = useSmSn()
+
+  // Construit les data pour chaque ActivityCard (SM/SN déterministes par activité)
   const cards: ActivityCardData[] = useMemo(() => {
     return activities.map(a => {
+      const smsn = smSnFromRow(a as Parameters<typeof smSnFromRow>[0], smSnBench)
       const sportColor = SPORT_COLOR[a.sport_type] ?? '#888'
       const sportLabel = SPORT_LABEL[a.sport_type] ?? a.sport_type
       const encoded    = a.summary_polyline
@@ -9224,12 +9230,13 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
         distance_m:       a.distance_m ? Number(a.distance_m) : null,
         moving_time_s:    a.moving_time_s ? Number(a.moving_time_s) : null,
         elevation_gain_m: a.elevation_gain_m ? Number(a.elevation_gain_m) : null,
-        tss:              a.tss ? Number(a.tss) : null,
+        sm:               smsn.sm,
+        sn:               smsn.sn,
         encodedPolyline:  encoded,
         records:          { allTime, year },
       } satisfies ActivityCardData
     })
-  }, [activities, recordsByActivity, bestPerLabel])
+  }, [activities, recordsByActivity, bestPerLabel, smSnBench])
 
   if (cards.length === 0) {
     return (

@@ -152,6 +152,9 @@ const MODEL_CONFIGS: Record<THWModel, ModelConfig> = {
 function getGreeting() {
   return new Date().getHours() >= 18 ? 'Bonsoir' : 'Bonjour'
 }
+
+// Largeur de la sidebar coulissante (mobile) — doit matcher l'underlay
+const AI_SIDEBAR_W = 300
 function fmtDate(ts: number) {
   const d = Date.now() - ts
   if (d < 60_000) return 'instant'
@@ -11552,6 +11555,7 @@ function HistoryDrawer({
   onPin,
   onClose,
   persistent = false,
+  underlay = false,
   activeAgent,
   onAgentChange,
 }: {
@@ -11563,6 +11567,7 @@ function HistoryDrawer({
   onPin: (id: string) => void
   onClose: () => void
   persistent?: boolean
+  underlay?: boolean
   activeAgent: 'training' | 'networks'
   onAgentChange: (a: 'training' | 'networks') => void
 }) {
@@ -11850,6 +11855,20 @@ function HistoryDrawer({
       </div>
     </div>
   )
+
+  // ── Mode underlay (mobile) — sidebar fixe sous la colonne chat ──
+  if (underlay) {
+    return (
+      <div style={{
+        position: 'absolute', top: 0, left: 0, bottom: 0,
+        width: AI_SIDEBAR_W, background: 'var(--bg-card)',
+        borderRight: '0.5px solid var(--border)',
+        zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      }}>
+        {sidebarContent}
+      </div>
+    )
+  }
 
   // ── Mode persistant (desktop) — colonne inline ──────────────
   if (persistent) {
@@ -18191,8 +18210,9 @@ export default function AIPanel({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const autoScrollRef      = useRef<boolean>(true)
   const initMsgRef         = useRef<string | undefined>(undefined)
-  // Swipe tracking (mobile)
-  const swipeRef   = useRef<{ x: number; y: number; t: number } | null>(null)
+  // Swipe / drag tracking (mobile) — sidebar coulissante
+  const chatColRef = useRef<HTMLDivElement>(null)
+  const dragRef    = useRef<{ startX: number; startY: number; startOffset: number; active: boolean; lastOff: number } | null>(null)
   // Selection popup ref (pour détecter clic extérieur)
   const selPopupRef = useRef<HTMLDivElement>(null)
   // File inputs for attachment
@@ -18481,25 +18501,49 @@ export default function AIPanel({
     URL.revokeObjectURL(url)
   }
 
-  // ── Swipe (mobile) ────────────────────────────────────────
+  // ── Drag coulissant (mobile) — la colonne chat glisse au doigt ──
+  // par-dessus la sidebar (style Claude). Manip directe du DOM pendant
+  // le drag pour éviter de re-render ce composant à chaque touchmove.
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (isDesktop) return
     const t = e.touches[0]
-    swipeRef.current = { x: t.clientX, y: t.clientY, t: Date.now() }
+    dragRef.current = { startX: t.clientX, startY: t.clientY, startOffset: histOpen ? AI_SIDEBAR_W : 0, active: false, lastOff: histOpen ? AI_SIDEBAR_W : 0 }
+  }, [isDesktop, histOpen])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (isDesktop) return
+    const d = dragRef.current
+    if (!d) return
+    const t = e.touches[0]
+    const dx = t.clientX - d.startX
+    const dy = t.clientY - d.startY
+    if (!d.active) {
+      // Geste vertical → on laisse scroller, on abandonne le drag
+      if (Math.abs(dy) > 12 && Math.abs(dy) >= Math.abs(dx)) { dragRef.current = null; return }
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) d.active = true
+      else return
+    }
+    const off = Math.max(0, Math.min(AI_SIDEBAR_W, d.startOffset + dx))
+    d.lastOff = off
+    const el = chatColRef.current
+    if (el) { el.style.transition = 'none'; el.style.transform = `translateX(${off}px)` }
   }, [isDesktop])
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (isDesktop || !swipeRef.current) return
-    const t = e.changedTouches[0]
-    const dx = t.clientX - swipeRef.current.x
-    const dy = t.clientY - swipeRef.current.y
-    const dt = Date.now() - swipeRef.current.t
-    swipeRef.current = null
-    // Ignorer si vertical ou trop lent (>400ms) ou trop court (<50px)
-    if (Math.abs(dy) > Math.abs(dx)) return
-    if (dt > 400 || Math.abs(dx) < 50) return
-    if (dx > 0 && !histOpen) setHistOpen(true)
-    if (dx < 0 && histOpen)  setHistOpen(false)
+  const handleTouchEnd = useCallback(() => {
+    if (isDesktop) return
+    const d = dragRef.current
+    dragRef.current = null
+    const el = chatColRef.current
+    if (el) el.style.transition = ''
+    if (d && d.active) {
+      const open = d.lastOff > AI_SIDEBAR_W / 2
+      setHistOpen(open)
+      if (el) el.style.transform = `translateX(${open ? AI_SIDEBAR_W : 0}px)`
+    } else if (histOpen) {
+      // Simple tap sur le bord visible (peek) → on referme
+      setHistOpen(false)
+      if (el) el.style.transform = 'translateX(0px)'
+    }
   }, [isDesktop, histOpen])
 
   // ── Plan context fetch — structure COMPLÈTE du plan (pour tool calls) ──
@@ -19356,8 +19400,8 @@ export default function AIPanel({
           box-shadow: 0 0 0 3px rgba(6,182,212,0.12), 0 2px 8px rgba(0,0,0,0.06) !important;
         }
         html.dark .aip-input-wrap {
-          background: #1C2333 !important;
-          border-color: rgba(255,255,255,0.10) !important;
+          background: #0A0A0C !important;
+          border-color: rgba(255,255,255,0.12) !important;
           box-shadow: none !important;
         }
         html.dark .aip-input-wrap:focus-within {
@@ -19391,8 +19435,8 @@ export default function AIPanel({
       {/* ══ PANNEAU ═══════════════════════════════════════════ */}
       <div className={`aip-root${open ? '' : ' closed'}${fullscr ? ' fullscreen' : ''}`}>
 
-        {/* ══ HEADER ════════════════════════════════════════ */}
-        <div style={{
+        {/* ══ HEADER (desktop) — sur mobile : boutons flottants ══════ */}
+        {isDesktop && <div style={{
           height: 50, padding: '10px 12px 10px 16px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
           flexShrink: 0, background: 'var(--ai-bg)',
@@ -19501,7 +19545,7 @@ export default function AIPanel({
               </svg>
             </button>
           </div>{/* /actions */}
-        </div>
+        </div>}
 
         {/* ══ BODY — flex-row : sidebar | chat ══════════════ */}
         <div className="aip-body">
@@ -19522,9 +19566,10 @@ export default function AIPanel({
             />
           )}
 
-          {/* ── Sidebar mobile (overlay) ── */}
-          {!isDesktop && histOpen && (
+          {/* ── Sidebar mobile (underlay : la colonne chat coulisse dessus) ── */}
+          {!isDesktop && (
             <HistoryDrawer
+              underlay
               convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
               activeId={activeId}
               onSelect={selectConv}
@@ -19537,13 +19582,59 @@ export default function AIPanel({
             />
           )}
 
-          {/* ── Chat column ── */}
+          {/* ── Chat column (coulisse au-dessus de la sidebar sur mobile) ── */}
           <div
+            ref={chatColRef}
             className="aip-chat-col"
             onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            style={{ justifyContent: activeAgent === 'training' && showEmpty && !activeFlow ? 'center' : undefined }}
+            style={{
+              justifyContent: activeAgent === 'training' && showEmpty && !activeFlow ? 'center' : undefined,
+              ...(isDesktop ? {} : {
+                position: 'relative', zIndex: 2, background: 'var(--ai-bg)',
+                transform: `translateX(${histOpen ? AI_SIDEBAR_W : 0}px)`,
+                transition: 'transform 0.28s cubic-bezier(0.32,1.06,0.64,1)',
+                boxShadow: histOpen ? '-8px 0 28px rgba(0,0,0,0.28)' : 'none',
+              }),
+            }}
           >
+
+          {/* ── Boutons flottants (mobile) : menu à gauche, sortie à droite ── */}
+          {!isDesktop && (
+            <>
+              <button
+                onClick={() => setHistOpen(h => !h)}
+                aria-label="Conversations"
+                style={{
+                  position: 'absolute', top: 12, left: 12, zIndex: 6,
+                  width: 40, height: 40, borderRadius: '50%',
+                  border: '0.5px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                  color: 'var(--ai-text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.16)',
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M4 7h16M4 12h16M4 17h10" />
+                </svg>
+              </button>
+              <button
+                onClick={onClose}
+                aria-label="Sortir de l'assistant"
+                style={{
+                  position: 'absolute', top: 12, right: 12, zIndex: 6,
+                  width: 40, height: 40, borderRadius: '50%',
+                  border: '0.5px solid var(--ai-border)', background: 'var(--ai-bg2)',
+                  color: 'var(--ai-text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.16)',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+            </>
+          )}
 
           {/* ── Hybrid Networks ──────────────────────────── */}
           {activeAgent === 'networks' && (
@@ -19559,7 +19650,7 @@ export default function AIPanel({
           {activeAgent === 'training' && <div
             ref={scrollContainerRef}
             className="aip-messages"
-            style={{ padding: '24px 20px 0', flex: showEmpty && !activeFlow ? '0 0 auto' : undefined }}
+            style={{ padding: isDesktop ? '24px 20px 0' : '62px 20px 0', flex: showEmpty && !activeFlow ? '0 0 auto' : undefined }}
             onMouseUp={handleMsgMouseUp}
             onScroll={() => {
               const el = scrollContainerRef.current

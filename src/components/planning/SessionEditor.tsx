@@ -19,6 +19,7 @@ import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { segmentElevationProfile, getSignificantClimbs } from '@/lib/gpx/parser'
 import type { ParsedSegment } from '@/lib/gpx/parser'
 import { formatDuration } from '@/lib/utils'
+import { SportIcon } from '@/components/icons/SportIcon'
 
 import {
   // Types
@@ -4602,12 +4603,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           background: 'var(--bg-card)',
         }}>
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '5px 12px', borderRadius: 10,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '4px 12px 4px 4px', borderRadius: 99,
             background: `${accent}18`, border: `1px solid ${accent}35`,
             flexShrink: 0,
           }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: accent, display: 'inline-block' }} />
+            <SportIcon sport={sport} size={26} />
             <span style={{ fontSize: 13, fontWeight: 700, color: accent }}>{SPORT_LABEL[sport]}</span>
           </div>
 
@@ -4789,11 +4790,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             <div>
               <span style={lbl}>Sport</span>
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px',
+                display: 'flex', alignItems: 'center', gap: 10, padding: '7px 16px 7px 8px',
                 borderRadius: 10, border: `1.5px solid ${accent}40`, background: `${accent}08`,
                 boxSizing: 'border-box' as const,
               }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: accent, flexShrink: 0 }} />
+                <SportIcon sport={sport} size={28} />
                 <select value={sport} onChange={e => handleSportChange(e.target.value as SportType)}
                   style={{
                     flex: 1, appearance: 'none' as const, WebkitAppearance: 'none' as const,

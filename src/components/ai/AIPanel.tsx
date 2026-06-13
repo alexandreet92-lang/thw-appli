@@ -150,10 +150,7 @@ const MODEL_CONFIGS: Record<THWModel, ModelConfig> = {
 }
 
 function getGreeting() {
-  const h = new Date().getHours()
-  if (h >= 5 && h < 12) return 'matin'
-  if (h >= 12 && h < 18) return 'après-midi'
-  return 'soir'
+  return new Date().getHours() >= 18 ? 'Bonsoir' : 'Bonjour'
 }
 function fmtDate(ts: number) {
   const d = Date.now() - ts
@@ -11156,93 +11153,6 @@ function fileToAttachment(file: File): Promise<AttachedFile> {
 // PLUS MENU
 // ══════════════════════════════════════════════════════════════
 
-// ── FontPicker — sélecteur de police inline dans la barre de saisie ──────────
-
-const FONT_PICKER_OPTIONS = [
-  { id: 'dm_sans', label: 'DM Sans',  family: 'DM Sans, sans-serif' },
-  { id: 'inter',   label: 'Inter',    family: 'Inter, sans-serif' },
-  { id: 'system',  label: 'Système',  family: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif' },
-  { id: 'serif',   label: 'Serif',    family: 'Georgia, Times New Roman, serif' },
-  { id: 'mono',    label: 'Mono',     family: 'DM Mono, monospace' },
-]
-
-function FontPicker({ current, onChange }: { current: string; onChange: (family: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [open])
-
-  const currentFont = FONT_PICKER_OPTIONS.find(f => f.family === current) ?? FONT_PICKER_OPTIONS[0]
-
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button
-        onClick={() => setOpen(p => !p)}
-        title="Police du chat"
-        style={{
-          height: 24, padding: '0 8px', borderRadius: 6, flexShrink: 0,
-          border: `1px solid ${open ? 'var(--ai-mid)' : 'var(--ai-border)'}`,
-          background: open ? 'var(--ai-bg)' : 'transparent',
-          cursor: 'pointer', color: 'var(--ai-dim)',
-          display: 'flex', alignItems: 'center', gap: 4,
-          transition: 'all 0.12s',
-        }}
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>
-        </svg>
-        <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.02em', fontFamily: 'DM Sans, sans-serif' }}>
-          {currentFont.label}
-        </span>
-      </button>
-
-      {open && (
-        <div style={{
-          position: 'absolute', bottom: '100%', left: 0,
-          marginBottom: 6, padding: 4,
-          background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
-          borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-          zIndex: 40, minWidth: 130,
-        }}>
-          {FONT_PICKER_OPTIONS.map(f => {
-            const active = f.family === current
-            return (
-              <button
-                key={f.id}
-                onClick={() => {
-                  onChange(f.family)
-                  localStorage.setItem('thw_ai_chat_font', f.id)
-                  window.dispatchEvent(new Event('thw:chat-font-changed'))
-                  setOpen(false)
-                }}
-                style={{
-                  display: 'block', width: '100%', padding: '6px 10px',
-                  border: 'none', borderRadius: 7,
-                  background: active ? 'var(--ai-accent-dim)' : 'transparent',
-                  color: active ? 'var(--ai-accent)' : 'var(--ai-text)',
-                  fontSize: 12, fontWeight: active ? 600 : 400,
-                  fontFamily: f.family,
-                  cursor: 'pointer', textAlign: 'left',
-                  transition: 'background 0.1s',
-                }}
-              >
-                {f.label}
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
 type MenuScreen = 'main' | 'actions' | 'connecteurs' | 'competences'
 
 interface ConnectorDef {
@@ -11690,7 +11600,7 @@ function HistoryDrawer({
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Titre Hybrid */}
       <div style={{ padding: '18px 16px 8px', flexShrink: 0 }}>
-        <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>
+        <span style={{ fontSize: 24, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>
           Hybrid
         </span>
       </div>
@@ -11830,14 +11740,14 @@ function HistoryDrawer({
                   )}
                   <div style={{
                     flex: 1, minWidth: 0,
-                    fontSize: 13, fontWeight: conv.id === activeId ? 600 : 400,
-                    color: conv.id === activeId ? 'var(--ai-text)' : 'var(--ai-mid)',
+                    fontSize: 13, fontWeight: 600,
+                    color: 'var(--ai-text)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     lineHeight: 1.3,
                   }}>
                     {conv.title}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--ai-dim)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 11, color: 'var(--ai-mid)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                     {mounted ? fmtDate(conv.updatedAt) : ''}
                   </div>
                 </div>
@@ -18251,10 +18161,9 @@ export default function AIPanel({
   const [toolApplyError,   setToolApplyError]   = useState<string | null>(null)
   const [aiRules,          setAiRules]          = useState<{ category: string; rule_text: string }[]>([])
   const [ruleHelperCategory, setRuleHelperCategory] = useState<string | null>(null)
-  const [chatFontFamily,   setChatFontFamily]   = useState('DM Sans, sans-serif')
   const [quotedText,       setQuotedText]       = useState<string | null>(null)
-  const [showQuickActions, setShowQuickActions] = useState(true)
   const [userInitials,     setUserInitials]     = useState<string>('')
+  const [userFirstName,    setUserFirstName]    = useState<string>('')
   const [hoveredMsgId,     setHoveredMsgId]     = useState<string | null>(null)
   const [copiedMsgId,      setCopiedMsgId]      = useState<string | null>(null)
 
@@ -18314,8 +18223,6 @@ export default function AIPanel({
   useEffect(() => {
     setMounted(true)
     setConvs(loadConvs())
-    const sqaVal = localStorage.getItem('thw_ai_show_quick_actions')
-    if (sqaVal === 'false') setShowQuickActions(false)
   }, [])
 
   // Charge les règles IA actives de l'utilisateur au mount
@@ -18334,27 +18241,6 @@ export default function AIPanel({
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Charge et écoute la police de chat depuis localStorage
-  useEffect(() => {
-    const FONT_MAP: Record<string, string> = {
-      dm_sans: 'DM Sans, sans-serif',
-      inter:   'Inter, sans-serif',
-      system:  '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
-      serif:   'Georgia, Times New Roman, serif',
-      mono:    'DM Mono, monospace',
-    }
-    const apply = () => {
-      const val = localStorage.getItem('thw_ai_chat_font')
-      if (val && FONT_MAP[val]) setChatFontFamily(FONT_MAP[val])
-    }
-    apply()
-    window.addEventListener('thw:chat-font-changed', apply)
-    window.addEventListener('storage', apply)
-    return () => {
-      window.removeEventListener('thw:chat-font-changed', apply)
-      window.removeEventListener('storage', apply)
-    }
-  }, [])
 
   // Écoute l'event depuis la page profil (bouton "Formuler avec l'IA")
   useEffect(() => {
@@ -18382,6 +18268,9 @@ export default function AIPanel({
         const parts = name.trim().split(/\s+/)
         if (parts.length >= 2) setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase())
         else if (parts[0]) setUserInitials(parts[0][0].toUpperCase())
+        // Prénom — uniquement depuis full_name (jamais l'email)
+        const fullName = (user.user_metadata?.full_name ?? '').trim()
+        if (fullName) setUserFirstName(fullName.split(/\s+/)[0])
       } catch { /* silent */ }
     })()
   }, [mounted])
@@ -19515,7 +19404,7 @@ export default function AIPanel({
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             flex: 1, minWidth: 0,
           }}>
-            {active ? active.title : 'Hybrid Training'}
+            {active ? active.title : ''}
           </span>
 
           {/* Actions droite */}
@@ -19653,6 +19542,7 @@ export default function AIPanel({
             className="aip-chat-col"
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
+            style={{ justifyContent: activeAgent === 'training' && showEmpty && !activeFlow ? 'center' : undefined }}
           >
 
           {/* ── Hybrid Networks ──────────────────────────── */}
@@ -19669,7 +19559,7 @@ export default function AIPanel({
           {activeAgent === 'training' && <div
             ref={scrollContainerRef}
             className="aip-messages"
-            style={{ padding: '24px 20px 0' }}
+            style={{ padding: '24px 20px 0', flex: showEmpty && !activeFlow ? '0 0 auto' : undefined }}
             onMouseUp={handleMsgMouseUp}
             onScroll={() => {
               const el = scrollContainerRef.current
@@ -19679,9 +19569,9 @@ export default function AIPanel({
             }}
           >
 
-            {/* ── Empty state ── */}
+            {/* ── Empty state — logo shuriken + salut horaire ── */}
             {showEmpty && !activeFlow && (
-              <div style={{ animation: 'ai_slidein 0.25s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 32 }}>
+              <div style={{ animation: 'ai_slidein 0.25s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 8 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
@@ -19693,130 +19583,11 @@ export default function AIPanel({
                   }}
                 />
                 <p style={{
-                  textAlign: 'center', margin: '0 0 6px',
-                  fontSize: 16, fontWeight: 700, color: 'var(--ai-text)',
-                  fontFamily: 'Syne,sans-serif', lineHeight: 1.3,
+                  textAlign: 'center', margin: 0,
+                  fontSize: 24, fontWeight: 600, color: 'var(--ai-text)',
+                  fontFamily: 'var(--font-display)', lineHeight: 1.3, letterSpacing: '-0.01em',
                 }}>
-                  Bonjour, bon {mounted ? getGreeting() : 'matin'} !
-                </p>
-                <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 28px' }}>
-                  Comment puis-je t'aider aujourd'hui ?
-                </p>
-
-                <button
-                  onClick={() => {
-                    const next = !showQuickActions
-                    setShowQuickActions(next)
-                    localStorage.setItem('thw_ai_show_quick_actions', String(next))
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6, width: '100%',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    padding: '0 0 9px',
-                  }}
-                >
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
-                    textTransform: 'uppercase', color: 'var(--ai-dim)',
-                  }}>
-                    Actions rapides
-                  </span>
-                  <svg
-                    width="10" height="10" viewBox="0 0 24 24" fill="none"
-                    stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round"
-                    style={{ transform: showQuickActions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
-                  >
-                    <path d="M6 9l6 6 6-6"/>
-                  </svg>
-                </button>
-
-                {showQuickActions && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-                    {QUICK_ACTIONS.map((qa, i) => {
-                      const mcfg = MODEL_CONFIGS[qa.model]
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            setModel(qa.model)
-                            if (qa.flow) {
-                              setActiveFlow(qa.flow)
-                              setActiveQA(null)
-                            } else if (qa.enrichedId) {
-                              setActiveFlow(null)
-                              setActiveQA(null)
-                              void handleEnrichedAction(qa.enrichedId, qa.label)
-                            } else if (qa.prompt) {
-                              setActiveFlow(null)
-                              setActiveQA(null)
-                              void send(qa.label, qa.prompt)
-                            }
-                          }}
-                          disabled={loading}
-                          style={{
-                            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                            gap: 10, padding: '12px 14px', borderRadius: 12,
-                            border: '1px solid var(--border-mid)',
-                            background: 'var(--bg-card)',
-                            boxShadow: 'var(--shadow-card)',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            textAlign: 'left', width: '100%',
-                            opacity: loading ? 0.5 : 1,
-                            transition: 'box-shadow 0.18s, border-color 0.18s, transform 0.18s',
-                          }}
-                          onMouseEnter={e => { if (!loading) {
-                            const el = e.currentTarget as HTMLButtonElement
-                            el.style.borderColor = 'var(--primary)'
-                            el.style.boxShadow = '0 4px 16px rgba(6,182,212,0.10)'
-                            el.style.transform = 'translateY(-1px)'
-                          }}}
-                          onMouseLeave={e => {
-                            const el = e.currentTarget as HTMLButtonElement
-                            el.style.borderColor = 'var(--border-mid)'
-                            el.style.boxShadow = 'var(--shadow-card)'
-                            el.style.transform = 'translateY(0)'
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.3, marginBottom: 2 }}>
-                              {qa.label}
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--ai-dim)', lineHeight: 1.3 }}>
-                              {qa.sub}
-                            </div>
-                            {/* Modèle recommandé */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={qa.model === 'hermes' ? '/logos/logo_3bras.png' : qa.model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                                alt={mcfg.name}
-                                style={{ width: 12, height: 12, objectFit: 'contain', flexShrink: 0 }}
-                              />
-                              <span style={{ fontSize: 10, color: mcfg.color, fontFamily: 'DM Sans,sans-serif', opacity: 0.8 }}>
-                                {mcfg.name}
-                              </span>
-                            </div>
-                          </div>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 3 }}>
-                            <path d="M5 12h14M12 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {!showQuickActions && (
-                  <p
-                    style={{ fontSize: 11, color: 'var(--ai-dim)', textAlign: 'center', margin: '0 0 16px', cursor: 'pointer' }}
-                    onClick={() => { setShowQuickActions(true); localStorage.setItem('thw_ai_show_quick_actions', 'true') }}
-                  >
-                    Afficher les actions rapides
-                  </p>
-                )}
-
-                <p style={{ textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, paddingBottom: 14, margin: 0 }}>
-                  ou utilise + pour explorer toutes les options
+                  {mounted ? getGreeting() : 'Bonjour'}{userFirstName ? `, ${userFirstName}` : ''}
                 </p>
               </div>
             )}
@@ -20178,7 +19949,7 @@ export default function AIPanel({
                             borderRadius: 0,
                             boxShadow: 'none',
                             padding: 0,
-                            fontSize: 14, lineHeight: 1.65,
+                            fontSize: 16, lineHeight: 1.6,
                             color: 'var(--text)',
                             wordBreak: 'break-word',
                             animation: 'fadeUp 0.2s ease-out',
@@ -20194,7 +19965,7 @@ export default function AIPanel({
                                 ))}
                               </div>
                             ) : (
-                              <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily={chatFontFamily} />
+                              <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily="var(--font-display)" />
                             )}
                           </div>
                         )
@@ -20374,7 +20145,7 @@ export default function AIPanel({
           {activeAgent === 'training' && <>
           <div className="aip-input-footer" style={{
             padding: '10px 16px 14px',
-            borderTop: '1px solid var(--ai-border)',
+            borderTop: showEmpty && !activeFlow ? 'none' : '1px solid var(--ai-border)',
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',
           }}>
@@ -20581,9 +20352,6 @@ export default function AIPanel({
                     />
                   )}
                 </div>
-
-                {/* Police */}
-                <FontPicker current={chatFontFamily} onChange={setChatFontFamily} />
 
                 {/* Sélecteur modèle */}
                 <ModelPicker model={model} onChange={setModel} disabled={loading} />

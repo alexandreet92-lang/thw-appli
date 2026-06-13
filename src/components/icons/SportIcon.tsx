@@ -12,6 +12,22 @@ import type { ComponentType } from 'react'
 export type SportKey =
   | 'run' | 'bike' | 'swim' | 'rowing' | 'muscu' | 'hyrox' | 'ellip'
 
+// Mapping depuis les SportType de l'app (run|bike|swim|hyrox|rowing|gym|elliptique)
+// + alias éventuels (running, cycling…). Inconnu → null.
+const SPORT_TYPE_TO_KEY: Record<string, SportKey> = {
+  run: 'run', running: 'run',
+  bike: 'bike', cycling: 'bike',
+  swim: 'swim',
+  rowing: 'rowing',
+  gym: 'muscu', muscu: 'muscu',
+  hyrox: 'hyrox',
+  elliptique: 'ellip', ellip: 'ellip',
+}
+
+export function sportKeyFromType(sport: string): SportKey | null {
+  return SPORT_TYPE_TO_KEY[sport] ?? null
+}
+
 // MAP CENTRALISÉE — couleur + icône au même endroit.
 // Pour changer une couleur : modifier UNE ligne ici, rien d'autre.
 const SPORT_ICON: Record<SportKey, { Icon: ComponentType<{ size?: number; color?: string; stroke?: number }>; color: string; label: string }> = {
@@ -28,10 +44,12 @@ export function SportIcon({
   sport,
   size = 40,
 }: {
-  sport: SportKey
+  sport: SportKey | string
   size?: number
 }) {
-  const cfg = SPORT_ICON[sport]
+  // Accepte une SportKey directe OU un SportType de l'app (gym, elliptique, running…)
+  const key = (sport in SPORT_ICON ? sport : sportKeyFromType(sport)) as SportKey | null
+  const cfg = key ? SPORT_ICON[key] : undefined
   if (!cfg) return null
   const { Icon, color } = cfg
   const inner = Math.round(size * 0.56)

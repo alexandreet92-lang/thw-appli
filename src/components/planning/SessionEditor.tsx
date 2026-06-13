@@ -19,6 +19,7 @@ import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { segmentElevationProfile, getSignificantClimbs } from '@/lib/gpx/parser'
 import type { ParsedSegment } from '@/lib/gpx/parser'
 import { formatDuration } from '@/lib/utils'
+import { SportIcon } from '@/components/icons/SportIcon'
 
 import {
   // Types
@@ -3892,7 +3893,9 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks, exercises])
 
-  const accent = SPORT_BORDER[sport]
+  // Thème neutre/classique — identique pour tous les sports (plus d'accent par sport).
+  // Les logos gardent leur couleur propre ; seul le thème UI est uniforme.
+  const accent = '#06B6D4'
   const isStrength = sport === 'gym' || sport === 'hyrox'
   const trainTypes = TRAINING_TYPES[sport] ?? []
 
@@ -4602,12 +4605,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           background: 'var(--bg-card)',
         }}>
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '5px 12px', borderRadius: 10,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '4px 12px 4px 4px', borderRadius: 99,
             background: `${accent}18`, border: `1px solid ${accent}35`,
             flexShrink: 0,
           }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: accent, display: 'inline-block' }} />
+            <SportIcon sport={sport} size={26} />
             <span style={{ fontSize: 13, fontWeight: 700, color: accent }}>{SPORT_LABEL[sport]}</span>
           </div>
 
@@ -4785,27 +4788,28 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         }}>
           {/* GAUCHE */}
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 24 }}>
-            {/* Sport */}
+            {/* Sport — tous les logos sur une ligne, clic = sélection */}
             <div>
               <span style={lbl}>Sport</span>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '9px 16px',
-                borderRadius: 10, border: `1.5px solid ${accent}40`, background: `${accent}08`,
-                boxSizing: 'border-box' as const,
-              }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: accent, flexShrink: 0 }} />
-                <select value={sport} onChange={e => handleSportChange(e.target.value as SportType)}
-                  style={{
-                    flex: 1, appearance: 'none' as const, WebkitAppearance: 'none' as const,
-                    background: 'none', border: 'none',
-                    color: 'var(--text)', fontSize: 14, fontWeight: 700,
-                    cursor: 'pointer', outline: 'none', fontFamily: 'DM Sans, sans-serif',
-                  }}>
-                  {(Object.keys(SPORT_LABEL) as SportType[]).map(sp => (
-                    <option key={sp} value={sp}>{SPORT_ABBR[sp]} — {SPORT_LABEL[sp]}</option>
-                  ))}
-                </select>
-                <span style={{ color: 'var(--text-dim)', fontSize: 10, flexShrink: 0 }}>▾</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+                {(Object.keys(SPORT_LABEL) as SportType[]).map(sp => {
+                  const selected = sp === sport
+                  return (
+                    <button key={sp} onClick={() => handleSportChange(sp)} title={SPORT_LABEL[sp]}
+                      style={{
+                        display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 5,
+                        padding: '9px 6px 7px', borderRadius: 12, cursor: 'pointer',
+                        border: selected ? `1.5px solid ${accent}` : '1.5px solid var(--border)',
+                        background: selected ? `${accent}12` : 'transparent',
+                        minWidth: 60, flex: '1 1 0',
+                        opacity: selected ? 1 : 0.6,
+                        transition: 'opacity .15s, border-color .15s, background .15s',
+                      }}>
+                      <SportIcon sport={sp} size={34} />
+                      <span style={{ fontSize: 10, fontWeight: 600, color: selected ? 'var(--text)' : 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{SPORT_SHORT[sp]}</span>
+                    </button>
+                  )
+                })}
               </div>
 
               {sport === 'bike' && (

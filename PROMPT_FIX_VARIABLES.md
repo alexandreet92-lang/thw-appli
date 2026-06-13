@@ -1,18 +1,24 @@
 # Fix — Variables CSS incorrectes (SessionEditor + WeekGrid)
 
-## Cause
-Le refactor précédent a introduit des variables CSS qui n'existent pas dans ce projet :
+## Statut : DÉJÀ APPLIQUÉ (commit 264047d → 88d3070)
+
+## Cause initiale
+Le refactor SessionEditor (layout flex) avait introduit des variables CSS inexistantes :
 `var(--card)`, `var(--muted)`, `var(--foreground)`, `var(--muted-foreground)`.
 
-## Mapping de remplacement
+## Mapping de remplacement appliqué
 
-| Incorrect           | Correct            |
-|---------------------|--------------------|
-| `var(--card)`       | `var(--bg-card)`   |
-| `var(--muted)`      | `var(--bg-card2)`  |
-| `var(--foreground)` | `var(--text)`      |
-| `var(--muted-foreground)` | `var(--text-dim)` |
+| Incorrect                 | Correct            |
+|---------------------------|--------------------|
+| `var(--card)`             | `var(--bg-card)`   |
+| `var(--muted)`            | `var(--bg-card2)`  |
+| `var(--foreground)`       | `var(--text)`      |
+| `var(--muted-foreground)` | `var(--text-dim)`  |
 
-## Fichiers touchés
-- `src/components/planning/SessionEditor.tsx` — replace_all sur les variables
-- `src/app/planning/page.tsx` — WeekGrid header background (déjà corrigé dans commit précédent, vérification)
+## État vérifié
+
+- SessionEditor.tsx : 0 occurrence de var(--card/muted/foreground/muted-foreground)
+- Sheet background = `var(--bg-card)` ✓
+- Backdrop zIndex: 998, Sheet zIndex: 999 ✓
+- WeekGrid header background = `var(--bg-card)` ✓
+- Cellules de jours : background `var(--bg-card)`, bordure `var(--border)` ✓

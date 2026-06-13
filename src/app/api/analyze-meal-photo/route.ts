@@ -1,117 +1,107 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
+import { anchorMacros } from '@/lib/nutrition/anchorMacros'
 
 // ── POST /api/analyze-meal-photo ─────────────────────────────────
-// Receives JSON { base64: string, mimeType: string }.
-// Returns detailed meal analysis: meal_name, items[], totals, confidence, notes, + une
-// note /10 (score) et un avis (advice) renvoyés DANS LA MÊME réponse (aucun appel en plus).
-// Modèle : MODELS.fast (Haiku, tier le moins cher). Cette route ne décompte PAS le quota IA
-// de l'utilisateur (aucun import check-quota / recordTokenUsage — inchangé).
+// Décompose un plat en INGRÉDIENTS (pas un bloc unique). Les ingrédients comptables
+// (œufs, tranches, fruits) sont renvoyés en NOMBRE, pas en grammes ; la quantité issue de
+// la photo est un PREMIER JET (estimated:true) confirmable. Les macros sont ANCRÉES sur
+// common-foods (réf. type-CIQUAL) ingrédient par ingrédient ; repli sur l'estimation du
+// modèle sinon. Note /10 + avis renvoyés dans la MÊME réponse (modèle Hermès/Haiku).
+// Cette route ne décompte PAS le quota IA (aucun check-quota / recordTokenUsage) — inchangé.
 // ─────────────────────────────────────────────────────────────────
+interface RawIngredient {
+  name?: string; countable?: boolean; count?: number; unit?: string; grams?: number
+  kcal?: number; prot?: number; gluc?: number; lip?: number
+}
+
+const r0 = (n: unknown) => Math.max(0, Math.round(Number(n) || 0))
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { base64?: string; mimeType?: string }
-    const { base64, mimeType } = body
-    if (!base64) {
-      return NextResponse.json({ error: 'Champ base64 manquant' }, { status: 400 })
-    }
+    const { base64, mimeType } = await req.json() as { base64?: string; mimeType?: string }
+    if (!base64) return NextResponse.json({ error: 'Champ base64 manquant' }, { status: 400 })
 
-    const mediaType = (mimeType || 'image/jpeg') as
-      | 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
-
-    const client   = getAnthropicClient()
+    const mediaType = (mimeType || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+    const client = getAnthropicClient()
     const response = await client.messages.create({
-      model:      MODELS.fast,
-      max_tokens: 700,
-      system: `Tu es un coach nutrition de la performance. Tu analyses des images de repas.
-Tu réponds UNIQUEMENT avec un objet JSON valide. Zéro texte avant ou après. Zéro commentaire.
-RÈGLE ABSOLUE sur "advice" : c'est un conseil de PERFORMANCE constructif et bienveillant
-(ex : "vise +15 g de protéines pour optimiser la récup"). JAMAIS de jugement moral, JAMAIS
-de culpabilisation sur la nourriture, JAMAIS de remarque sur le poids. Une seule phrase.
-"score" = qualité nutritionnelle pour la performance sportive, entier de 1 à 10.`,
+      model: MODELS.fast,
+      max_tokens: 900,
+      system: `Tu es un coach nutrition de la performance qui analyse des photos de repas.
+Tu réponds UNIQUEMENT avec un objet JSON valide. Zéro texte avant/après, zéro commentaire.
+DÉCOMPOSE le plat en ingrédients distincts (ex: une omelette = "œuf" + "beurre", PAS
+"omelette"). Pour les aliments comptables (œuf, tranche, fruit, biscuit), donne countable=true
++ count (un NOMBRE entier), PAS des grammes. Donne aussi grams = masse totale estimée de
+l'ingrédient (sert au calcul des macros). Les quantités sont une ESTIMATION.
+RÈGLE sur "advice" : conseil de PERFORMANCE constructif et bienveillant (ex: "ajoute une
+source de glucides lents pour tenir la séance"). JAMAIS de jugement moral ni de
+culpabilisation. Une phrase. "score" = qualité nutritionnelle pour la performance, 1 à 10.`,
       messages: [{
-        role:    'user',
+        role: 'user',
         content: [
-          {
-            type:   'image',
-            source: { type: 'base64', media_type: mediaType, data: base64 },
-          },
-          {
-            type: 'text',
-            text: `Analyse ce repas en photo et identifie chaque aliment visible.
-Retourne EXACTEMENT ce JSON (valeurs entières, confidence = "low"|"medium"|"high") :
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: `Analyse ce repas. Retourne EXACTEMENT ce JSON :
 {
-  "meal_name": "Nom du repas",
-  "items": [
-    { "name": "Aliment", "qty": 150, "unit": "g", "kcal": 200 }
+  "meal_name": "Nom du plat",
+  "ingredients": [
+    { "name": "Œuf", "countable": true, "count": 3, "unit": "œuf", "grams": 150,
+      "kcal": 233, "prot": 19, "gluc": 2, "lip": 16 }
   ],
-  "totals": { "kcal": 0, "prot": 0, "gluc": 0, "lip": 0 },
   "confidence": "medium",
-  "notes": "Remarque optionnelle courte ou null",
+  "notes": null,
   "score": 7,
   "advice": "Conseil de performance constructif en une phrase"
-}`,
-          },
+}
+Les champs kcal/prot/gluc/lip sont ta meilleure estimation par ingrédient (repli).` },
         ],
       }],
     })
 
     const textBlock = response.content.find(b => b.type === 'text')
     if (!textBlock || textBlock.type !== 'text') throw new Error('Pas de réponse texte')
-
     let raw = textBlock.text.trim()
     const md = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
     if (md) raw = md[1].trim()
-    const start = raw.indexOf('{')
-    if (start > 0) raw = raw.slice(start)
-    const end = raw.lastIndexOf('}')
-    if (end !== -1) raw = raw.slice(0, end + 1)
+    const s = raw.indexOf('{'); if (s > 0) raw = raw.slice(s)
+    const e = raw.lastIndexOf('}'); if (e !== -1) raw = raw.slice(0, e + 1)
 
     const parsed = JSON.parse(raw) as {
-      meal_name:  string
-      items:      Array<{ name: string; qty: number; unit: string; kcal: number }>
-      totals:     { kcal: number; prot: number; gluc: number; lip: number }
-      confidence: 'low' | 'medium' | 'high'
-      notes?:     string | null
-      score?:     number | null
-      advice?:    string | null
+      meal_name?: string; ingredients?: RawIngredient[]
+      confidence?: 'low' | 'medium' | 'high'; notes?: string | null
+      score?: number | null; advice?: string | null
     }
 
-    const items = (parsed.items ?? []).map(it => ({
-      name: String(it.name ?? ''),
-      qty:  Math.max(0, Math.round(Number(it.qty)  || 0)),
-      unit: String(it.unit ?? 'g'),
-      kcal: Math.max(0, Math.round(Number(it.kcal) || 0)),
-    }))
+    // Ancrage macros ingrédient par ingrédient (common-foods) ; repli sur le modèle.
+    const items = (parsed.ingredients ?? []).map(ing => {
+      const grams = r0(ing.grams)
+      const per100 = anchorMacros(String(ing.name ?? ''))
+      let kcal: number, prot: number, gluc: number, lip: number, anchored = false
+      if (per100 && grams > 0) {
+        const ratio = grams / 100
+        kcal = Math.round(per100.kcal * ratio); prot = Math.round(per100.prot * ratio)
+        gluc = Math.round(per100.gluc * ratio); lip = Math.round(per100.lip * ratio); anchored = true
+      } else {
+        kcal = r0(ing.kcal); prot = r0(ing.prot); gluc = r0(ing.gluc); lip = r0(ing.lip)
+      }
+      const countable = !!ing.countable && r0(ing.count) > 0
+      const qty = countable ? r0(ing.count) : grams
+      const unit = countable ? String(ing.unit || 'u') : 'g'
+      return { name: String(ing.name ?? ''), qty, unit, estimated: true, anchored, kcal, prot, gluc, lip }
+    }).filter(it => it.name)
 
-    const totals = {
-      kcal: Math.max(0, Math.round(Number(parsed.totals?.kcal) || 0)),
-      prot: Math.max(0, Math.round(Number(parsed.totals?.prot) || 0)),
-      gluc: Math.max(0, Math.round(Number(parsed.totals?.gluc) || 0)),
-      lip:  Math.max(0, Math.round(Number(parsed.totals?.lip)  || 0)),
-    }
-
-    // Recompute totals from items if totals.kcal is 0 but items exist
-    if (totals.kcal === 0 && items.length > 0) {
-      totals.kcal = items.reduce((s, it) => s + it.kcal, 0)
-    }
+    const totals = items.reduce((a, it) => ({
+      kcal: a.kcal + it.kcal, prot: a.prot + it.prot, gluc: a.gluc + it.gluc, lip: a.lip + it.lip,
+    }), { kcal: 0, prot: 0, gluc: 0, lip: 0 })
 
     const confidence = (['low', 'medium', 'high'] as const).includes(parsed.confidence as 'low' | 'medium' | 'high')
-      ? parsed.confidence
-      : 'medium'
-
+      ? parsed.confidence : 'medium'
     const rawScore = Number(parsed.score)
     const score = Number.isFinite(rawScore) ? Math.min(10, Math.max(1, Math.round(rawScore))) : null
     const advice = typeof parsed.advice === 'string' && parsed.advice.trim() ? parsed.advice.trim() : null
 
     return NextResponse.json({
-      meal_name:  parsed.meal_name ?? 'Repas',
-      items,
-      totals,
-      confidence,
-      notes: parsed.notes ?? null,
-      score,
-      advice,
+      meal_name: parsed.meal_name ?? 'Repas',
+      items, totals, confidence, notes: parsed.notes ?? null, score, advice,
     })
   } catch (err) {
     console.error('[analyze-meal-photo]', err)

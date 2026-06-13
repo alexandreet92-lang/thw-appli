@@ -132,8 +132,8 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
             onTapFood={i => setEditing({ slot, index: i })}
             onDeleteFood={i => deleteFood(slot, i)}
             onPhoto={() => triggerPhoto(slot)}
-            onSearch={() => setSearchFor(slot)}
-            onAdd={() => setEditing({ slot, index: null })}
+            onAddSearch={() => setSearchFor(slot)}
+            onAddManual={() => setEditing({ slot, index: null })}
             onClear={() => { if (entry?.id) void deleteEntry(entry.id) }}
           />
         ) : (
@@ -172,8 +172,8 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
             setPhotoFor(null)
             setMeta(prev => ({ ...prev, [slot]: { score: r.score, advice: r.advice } }))
             const url = await uploadPhoto(file)
-            const food: EditableFood = { name: r.meal_name, qty: '', unit: '', kcal: r.kcal, prot: r.prot, gluc: r.gluc, lip: r.lip }
-            await commit(slot, [...foodsOf(entryFor(slot)), food], url)
+            const newFoods: EditableFood[] = r.items.map(it => ({ name: it.name, qty: it.qty, unit: it.unit, kcal: it.kcal, prot: it.prot, gluc: it.gluc, lip: it.lip }))
+            await commit(slot, [...foodsOf(entryFor(slot)), ...newFoods], url)
           }}
         />
       )}

@@ -1,15 +1,19 @@
 'use client'
-// Flux « Photo IA » (createPortal). Image affichée à côté + donut qui se remplit pendant
-// l'analyse (CSS, 60fps). Résultat rectifiable : description éditable + quantités éditables
-// (recalcul kcal/macros proportionnel) → Annuler / Confirmer (var(--primary)).
+// Flux « Photo IA » (createPortal). L'analyse DÉCOMPOSE le plat en ingrédients (comptes pour
+// les aliments comptables) ; chaque quantité est un PREMIER JET estimé, confirmable. Les
+// macros par ingrédient sont ancrées côté API (common-foods). Édition de la quantité/compte
+// → recalcul live (proportionnel). À la confirmation, chaque ingrédient devient un aliment.
 // Analyse RÉELLE via /api/analyze-meal-photo ; aucun résultat inventé (état d'erreur clair).
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MacroDonut } from './MacroDonut'
 
-interface Item { name: string; qty: number; unit: string; kcal: number }
-interface ApiResult { meal_name: string; items: Item[]; totals: { kcal: number; prot: number; gluc: number; lip: number }; confidence: string; notes?: string | null; score?: number | null; advice?: string | null }
-export interface PhotoConfirm { meal_name: string; kcal: number; prot: number; gluc: number; lip: number; items: Item[]; photoUrl: string; score: number | null; advice: string | null }
+interface ApiItem { name: string; qty: number; unit: string; estimated: boolean; kcal: number; prot: number; gluc: number; lip: number }
+interface ApiResult { meal_name: string; items: ApiItem[]; totals: { kcal: number; prot: number; gluc: number; lip: number }; score?: number | null; advice?: string | null }
+export interface ConfirmFood { name: string; qty: string; unit: string; kcal: number; prot: number; gluc: number; lip: number }
+export interface PhotoConfirm { items: ConfirmFood[]; photoUrl: string; score: number | null; advice: string | null }
+
+interface Row extends ApiItem { baseQty: number; baseKcal: number; baseProt: number; baseGluc: number; baseLip: number }
 
 async function resize(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((res, rej) => {
@@ -31,17 +35,15 @@ async function resize(file: File): Promise<{ base64: string; mimeType: string }>
 }
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
-const inp: React.CSSProperties = { width: '100%', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 13, outline: 'none', boxSizing: 'border-box' }
+const inp: React.CSSProperties = { padding: '7px 9px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 13, outline: 'none', boxSizing: 'border-box' }
 
 export function PhotoMealEditor({ file, onCancel, onConfirm }: { file: File; onCancel: () => void; onConfirm: (r: PhotoConfirm) => void }) {
   const [preview, setPreview] = useState('')
   const [analyzing, setAnalyzing] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [name, setName] = useState('')
-  const [items, setItems] = useState<Item[]>([])
+  const [rows, setRows] = useState<Row[]>([])
   const [score, setScore] = useState<number | null>(null)
   const [advice, setAdvice] = useState<string | null>(null)
-  const base = useRef<{ qty: number[]; kcal: number[]; totals: { kcal: number; prot: number; gluc: number; lip: number } } | null>(null)
 
   useEffect(() => {
     const url = URL.createObjectURL(file); setPreview(url)
@@ -53,9 +55,7 @@ export function PhotoMealEditor({ file, onCancel, onConfirm }: { file: File; onC
         if (!r.ok) throw new Error(String(r.status))
         const data = await r.json() as ApiResult
         if (cancel) return
-        const its = data.items ?? []
-        base.current = { qty: its.map(i => i.qty || 0), kcal: its.map(i => i.kcal || 0), totals: data.totals }
-        setName(data.meal_name || 'Repas'); setItems(its)
+        setRows((data.items ?? []).map(it => ({ ...it, baseQty: it.qty || 1, baseKcal: it.kcal, baseProt: it.prot, baseGluc: it.gluc, baseLip: it.lip })))
         setScore(typeof data.score === 'number' ? data.score : null)
         setAdvice(data.advice ?? null)
       } catch { if (!cancel) setError('Analyse indisponible. Réessaie avec une photo plus nette.') }
@@ -64,63 +64,60 @@ export function PhotoMealEditor({ file, onCancel, onConfirm }: { file: File; onC
     return () => { cancel = true; URL.revokeObjectURL(url) }
   }, [file])
 
-  // Recalcul proportionnel à l'édition d'une quantité.
   function setQty(i: number, q: number) {
-    setItems(prev => prev.map((it, idx) => idx === i ? { ...it, qty: q, kcal: base.current && base.current.qty[idx] > 0 ? Math.round(base.current.kcal[idx] * q / base.current.qty[idx]) : it.kcal } : it))
+    setRows(prev => prev.map((it, idx) => {
+      if (idx !== i) return it
+      const ratio = it.baseQty > 0 ? q / it.baseQty : 1
+      return { ...it, qty: q, estimated: false, kcal: Math.round(it.baseKcal * ratio), prot: Math.round(it.baseProt * ratio), gluc: Math.round(it.baseGluc * ratio), lip: Math.round(it.baseLip * ratio) }
+    }))
   }
-  const totalKcal = items.reduce((s, it) => s + (it.kcal || 0), 0)
-  const ratio = base.current && base.current.totals.kcal > 0 ? totalKcal / base.current.totals.kcal : 1
-  const macros = base.current
-    ? { prot: Math.round(base.current.totals.prot * ratio), gluc: Math.round(base.current.totals.gluc * ratio), lip: Math.round(base.current.totals.lip * ratio) }
-    : { prot: 0, gluc: 0, lip: 0 }
+  function setName(i: number, name: string) { setRows(prev => prev.map((it, idx) => idx === i ? { ...it, name } : it)) }
+
+  const t = rows.reduce((a, it) => ({ kcal: a.kcal + it.kcal, prot: a.prot + it.prot, gluc: a.gluc + it.gluc, lip: a.lip + it.lip }), { kcal: 0, prot: 0, gluc: 0, lip: 0 })
 
   return createPortal(
     <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'flex-end' }}>
-      <div onClick={e => e.stopPropagation()} className="rec-drawer" style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <style>{`@keyframes pmaSpin{to{transform:rotate(360deg)}}`}</style>
+      <div onClick={ev => ev.stopPropagation()} style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
           <h2 style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Photo IA</h2>
-          <button onClick={onCancel} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <button onClick={onCancel} aria-label="Fermer" style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 100px' }}>
-          <style>{`@keyframes pmaSpin{to{transform:rotate(360deg)}}`}</style>
-          {/* Image + donut (analyse animée ou résultat) */}
           <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
             {preview && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="repas" style={{ width: 110, height: 110, objectFit: 'cover', borderRadius: 'var(--r-md)', flexShrink: 0 }} />
+              <img src={preview} alt="repas" style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 'var(--r-md)', flexShrink: 0 }} />
             )}
             {analyzing ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                <svg width={72} height={72} style={{ animation: 'pmaSpin 0.9s linear infinite' }}>
-                  <circle cx={36} cy={36} r={30} fill="none" stroke="var(--bg-card2)" strokeWidth={8} />
-                  <circle cx={36} cy={36} r={30} fill="none" stroke="var(--primary)" strokeWidth={8} strokeDasharray={`${0.28 * 2 * Math.PI * 30} ${2 * Math.PI * 30}`} strokeLinecap="round" />
+                <svg width={64} height={64} style={{ animation: 'pmaSpin 0.9s linear infinite' }}>
+                  <circle cx={32} cy={32} r={26} fill="none" stroke="var(--bg-card2)" strokeWidth={7} />
+                  <circle cx={32} cy={32} r={26} fill="none" stroke="var(--primary)" strokeWidth={7} strokeDasharray={`${0.28 * 2 * Math.PI * 26} ${2 * Math.PI * 26}`} strokeLinecap="round" />
                 </svg>
-                <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-mid)' }}>Analyse en cours…</span>
+                <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-mid)' }}>Analyse…</span>
               </div>
-            ) : !error && (
-              <MacroDonut kcal={totalKcal} prot={macros.prot} gluc={macros.gluc} lip={macros.lip} size={84} />
-            )}
+            ) : !error && <MacroDonut kcal={t.kcal} prot={t.prot} gluc={t.gluc} lip={t.lip} size={84} />}
           </div>
 
           {error ? (
             <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{error}</p>
           ) : !analyzing && (
             <>
-              <p style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 5px' }}>Description</p>
-              <input className="rec-drawer" value={name} onChange={e => setName(e.target.value)} style={{ ...inp, marginBottom: 'var(--space-4)' }} />
-              <p style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>Aliments détectés (quantité en g)</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {items.map((it, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ flex: 1, fontFamily: FB, fontSize: 13, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.name}</span>
-                    <input className="rec-drawer tnum" type="number" value={it.qty} onChange={e => setQty(i, Math.max(0, parseInt(e.target.value) || 0))} style={{ ...inp, width: 78, textAlign: 'right' }} />
-                    <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', width: 12 }}>{it.unit || 'g'}</span>
-                    <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', width: 54, textAlign: 'right' }}>{it.kcal} kcal</span>
+              <p style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 8px' }}>Ingrédients détectés — confirme les quantités</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {rows.map((it, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input value={it.name} onChange={ev => setName(i, ev.target.value)} style={{ ...inp, flex: 1, minWidth: 0 }} />
+                    <input className="tnum" type="number" inputMode="decimal" value={it.qty} onChange={ev => setQty(i, Math.max(0, parseFloat(ev.target.value) || 0))} style={{ ...inp, width: 60, textAlign: 'right' }} />
+                    <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', width: 34, flexShrink: 0 }}>{it.unit}</span>
+                    <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', width: 52, textAlign: 'right', flexShrink: 0 }}>{it.kcal} kcal</span>
                   </div>
                 ))}
               </div>
-              <p className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', margin: 'var(--space-4) 0 0' }}>{totalKcal} kcal · P {macros.prot} · G {macros.gluc} · L {macros.lip} g</p>
+              <p style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-2) 0 0' }}>Quantités estimées par la photo — ajuste si besoin.</p>
+              <p className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', margin: 'var(--space-3) 0 0' }}>Total {t.kcal} kcal · P {t.prot} · G {t.gluc} · L {t.lip} g</p>
               {advice && (
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -136,12 +133,12 @@ export function PhotoMealEditor({ file, onCancel, onConfirm }: { file: File; onC
 
         <div style={{ display: 'flex', gap: 'var(--space-2)', padding: '12px 20px 20px', borderTop: '1px solid var(--border)' }}>
           <button onClick={onCancel} style={{ flex: 1, padding: '13px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: FB, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-          <button disabled={analyzing || !!error || totalKcal <= 0}
-            onClick={() => onConfirm({ meal_name: name.trim() || 'Repas', kcal: totalKcal, prot: macros.prot, gluc: macros.gluc, lip: macros.lip, items, photoUrl: preview, score, advice })}
-            style={{ flex: 2, padding: '13px', borderRadius: 'var(--r-sm)', border: 'none', cursor: analyzing || error || totalKcal <= 0 ? 'not-allowed' : 'pointer', background: analyzing || error || totalKcal <= 0 ? 'var(--bg-card2)' : 'var(--primary)', color: analyzing || error || totalKcal <= 0 ? 'var(--text-dim)' : 'var(--on-primary)', fontFamily: FB, fontSize: 14, fontWeight: 600 }}>Confirmer</button>
+          <button disabled={analyzing || !!error || t.kcal <= 0}
+            onClick={() => onConfirm({ items: rows.map(it => ({ name: it.name.trim() || 'Aliment', qty: String(it.qty), unit: it.unit, kcal: it.kcal, prot: it.prot, gluc: it.gluc, lip: it.lip })), photoUrl: preview, score, advice })}
+            style={{ flex: 2, padding: '13px', borderRadius: 'var(--r-sm)', border: 'none', cursor: analyzing || error || t.kcal <= 0 ? 'not-allowed' : 'pointer', background: analyzing || error || t.kcal <= 0 ? 'var(--bg-card2)' : 'var(--primary)', color: analyzing || error || t.kcal <= 0 ? 'var(--text-dim)' : 'var(--on-primary)', fontFamily: FB, fontSize: 14, fontWeight: 600 }}>Confirmer</button>
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   )
 }

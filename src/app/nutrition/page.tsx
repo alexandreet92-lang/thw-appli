@@ -1073,7 +1073,7 @@ export default function NutritionPage() {
   const next14Days = Array.from({ length: 14 }, (_, i) => addDays(today, i))
 
   return (
-    <div className={isDesktop ? '' : 'max-w-screen-2xl mx-auto'} style={{ padding: '0 0 80px' }}>
+    <div style={{ width: '100%', maxWidth: '100%', margin: 0, padding: '0 0 80px', overflowX: 'hidden', boxSizing: 'border-box' }}>
       <PageHelp config={NUTRITION_ONBOARDING} show={show} onDismiss={dismiss} />
       {/* ── Scanner code-barres (mobile uniquement via CSS) ────── */}
       {scannerOpen && (
@@ -1107,8 +1107,8 @@ export default function NutritionPage() {
       )}
 
       {/* ── HEADER ─────────────────────────────────────────────── */}
-      <div className="px-[var(--space-5)] md:px-[var(--space-8)]" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 'var(--space-5)' }}>
-        <h1 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 24, margin: 0 }}>Nutrition</h1>
+      <div className="px-4 md:px-7" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 24, boxSizing: 'border-box' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, margin: 0 }}>Nutrition</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Bouton scanner — visible mobile uniquement (md:hidden via Tailwind) */}
           <button
@@ -1146,9 +1146,9 @@ export default function NutritionPage() {
 
       {/* Desktop : rail latéral gauche (comme Planning) + contenu pleine largeur.
           Mobile : onglets en haut (inchangés). */}
-      <div style={{ display: isDesktop ? 'flex' : 'block', alignItems: 'flex-start', width: '100%' }}>
+      <div style={{ display: isDesktop ? 'flex' : 'block', alignItems: 'flex-start', width: '100%', maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box' }}>
         {isDesktop && <NutritionRail tab={tab} onChange={changeTab} />}
-        <div className="px-[var(--space-5)] md:px-[var(--space-8)] pt-5 md:pt-8" style={{ paddingBottom: 0, flex: 1, minWidth: 0 }}>
+        <div className="px-3 md:px-7 pt-[14px] md:pt-7" style={{ paddingBottom: 0, flex: 1, minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
 
         {!isDesktop && <NutritionTabs tab={tab} onChange={changeTab} />}
 

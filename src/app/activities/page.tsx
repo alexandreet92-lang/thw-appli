@@ -4524,7 +4524,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
             {avgPace != null && <StatCard label="Allure moy." value={fmtPace(avgPace)} />}
             {avgHr   != null && <StatCard label="FC moy." value={`${avgHr} bpm`} />}
             {avgRunCad != null && <StatCard label="Cadence moy." value={`${avgRunCad} spm`} />}
-            {totalTss > 0 && <StatCard label="TSS période" value={Math.round(totalTss).toString()} />}
+            {totalTss > 0 && <StatCard label="SM période" value={Math.round(totalTss).toString()} />}
             {vapKmh && <StatCard label="VAP" value={`${vapKmh} km/h`} />}
           </div>
           {runZones && runTimesZ && runTimesZ.some(t => t > 0) && (
@@ -4931,7 +4931,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase',
-          letterSpacing: 0.8, fontFamily: T.fontDisplay }}>TSS total</span>
+          letterSpacing: 0.8, fontFamily: T.fontDisplay }}>SM total</span>
         <span className="stat-number" style={{ fontSize: 18, fontWeight: 700, color: T.text }}>
           {totalTss > 0 ? Math.round(totalTss) : '—'}
         </span>
@@ -5090,7 +5090,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
         { label: 'Temps',    value: fmtDur(totalTime) },
         { label: 'Distance', value: fmtDist(totalDist) },
         { label: 'D+',       value: totalElev >= 1 ? `+${Math.round(totalElev)} m` : '—' },
-        { label: 'TSS',      value: totalTss > 0 ? Math.round(totalTss).toString() : '—' },
+        { label: 'SM',       value: totalTss > 0 ? Math.round(totalTss).toString() : '—' },
         { label: 'FC moy.',  value: meanHr ? `${meanHr} bpm` : '—' },
         { label: 'Séances',  value: week.count.toString() },
       ].map(k => (
@@ -5725,7 +5725,7 @@ function SectionDonnees({ activities, zones, profile }: {
             const stats = [
               { label: 'Séances',    curr: inRange.length,    prev: prevInRange.length, fmt: (v: number) => v.toString() },
               { label: 'Distance',   curr: totalDist / 1000,  prev: prevDist / 1000,    fmt: (v: number) => `${v.toFixed(0)} km` },
-              { label: 'TSS Total',  curr: totalTss,           prev: prevTss,            fmt: (v: number) => Math.round(v).toString() },
+              { label: 'SM Total',   curr: totalTss,           prev: prevTss,            fmt: (v: number) => Math.round(v).toString() },
               { label: 'RPE Moyen',  curr: rpeVals.length ? avg(rpeVals) : 0, prev: prevMeanRpe, fmt: (v: number) => v ? `${v.toFixed(1)}/10` : '—' },
             ]
             return (
@@ -6044,7 +6044,7 @@ function SectionDonnees({ activities, zones, profile }: {
                       <div style={{ color: 'var(--text-dim)', fontSize: 10, marginBottom: 2 }}>
                         {new Date(heatHover.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                       </div>
-                      <div style={{ fontWeight: 600, color: 'var(--text)' }}>TSS {heatHover.tss}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text)' }}>SM {heatHover.tss}</div>
                       {heatHover.title && <div style={{ color: 'var(--text-dim)', fontSize: 11, marginTop: 2 }}>{heatHover.title}</div>}
                     </div>
                   )}
@@ -6464,6 +6464,8 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const width    = useWindowWidth()
   const isMobile = width < 768
   const col = SPORT_COLOR[a.sport_type] ?? T.accent
+  const { compute: computeSmSn } = useSmSn()
+  const smsn = computeSmSn(a as Parameters<typeof computeSmSn>[0])
 
   const [showDeleteConfirm,    setShowDeleteConfirm]    = useState(false)
   const [isDeleting,           setIsDeleting]           = useState(false)
@@ -7106,14 +7108,18 @@ conseil pour la prochaine séance similaire.`
               fontFamily: T.fontMono }}>{Number(localRpe).toFixed(1)}/10</span>
           </div>
         )}
-        {a.tss != null && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted, display: 'flex', alignItems: 'center' }}>
-              TSS<TooltipInfo text={'TSS (Training Stress Score)\n\nMesure la charge d\'une séance.\n\nTSS = (durée × NP × IF)² / FTP²\n\n< 150 → récupération rapide\n150–300 → fatigant\n> 300 → très éprouvant'} />
-            </span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.tss))}</span>
-          </div>
-        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ fontSize: 12, color: T.textMuted, display: 'flex', alignItems: 'center' }}>
+            SM<TooltipInfo text={'SM — Score Métabolique\n\nCharge cardio-vasculaire et énergétique : intensité relative, durée, chaleur, dénivelé positif.'} />
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{smsn.sm}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ fontSize: 12, color: T.textMuted, display: 'flex', alignItems: 'center' }}>
+            SN<TooltipInfo text={'SN — Score Neuromusculaire\n\nCharge mécanique et musculaire : efforts explosifs, impacts, descentes, volume de force.'} />
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{smsn.sn}</span>
+        </div>
         {a.trimp != null && !a.tss && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: 12, color: T.textMuted }}>TRIMP</span>
@@ -7455,7 +7461,7 @@ conseil pour la prochaine séance similaire.`
               { label: 'Vitesse',    value: avgSpeedKmh ? `${avgSpeedKmh} km/h` : '—' },
               { label: isBike ? 'Watts moy.' : 'Allure', value: isBike ? (avgWattsVal ?? '—') : (paceS ? fmtPace(paceS) : '—') },
               { label: 'D+',         value: elevGainVal ?? '—' },
-              { label: 'TSS',        value: tssVal ?? '—' },
+              { label: 'SM · SN',    value: `${smsn.sm} · ${smsn.sn}` },
             ]
             return (
               <div style={{
@@ -7852,7 +7858,7 @@ conseil pour la prochaine séance similaire.`
                   { label: 'Allure moy.',    value: paceS ? fmtPace(paceS) : '—', color: '#10b981' },
                   { label: 'D+',             value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' },
                   { label: 'FC moy.',        value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
-                  { label: 'TSS',            value: a.tss ? Math.round(Number(a.tss)).toString() : '—', color: '#ef4444' },
+                  { label: 'SM · SN',        value: `${smsn.sm} · ${smsn.sn}` },
                   { label: 'Allure ajustée', value: adjPace > 0 ? `${fmtPaceMinKm(adjPace)}/km` : '—', color: '#7c3aed' },
                 ] : isRowing ? [
                   { label: 'Distance',  value: distAuto },
@@ -7867,7 +7873,7 @@ conseil pour la prochaine séance similaire.`
                   { label: 'Allure /100m', value: avgMs > 0 ? formatPaceSwim(100 / avgMs) : '—', color: '#0ea5e9' },
                   { label: 'FC moy.',      value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
                   { label: 'Cadence',      value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} c/min` : '—', color: '#ec4899' },
-                  { label: 'TSS',          value: a.tss ? Math.round(Number(a.tss)).toString() : '—', color: '#ef4444' },
+                  { label: 'SM · SN',      value: `${smsn.sm} · ${smsn.sn}` },
                 ] : [
                   { label: 'Distance',  value: km ? `${km} km` : '—' },
                   { label: 'Durée',     value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
@@ -7876,7 +7882,7 @@ conseil pour la prochaine séance similaire.`
                     value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : '—') : (paceS ? fmtPace(paceS) : '—'),
                     color: isBike ? '#818CF8' : undefined },
                   { label: 'D+',        value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' },
-                  { label: 'TSS',       value: a.tss ? Math.round(Number(a.tss)).toString() : '—', color: '#F97316' },
+                  { label: 'SM · SN',   value: `${smsn.sm} · ${smsn.sn}` },
                 ]
                 return (
                   <>
@@ -8062,7 +8068,7 @@ conseil pour la prochaine séance similaire.`
                   { label: 'Temp. moy.',  value: tempAvg != null ? `${tempAvg} °C` : null,                        color: undefined },
                   { label: 'Temp. max',   value: maxTempStream ? `${maxTempStream} °C` : null,                     color: maxTempStream && maxTempStream > 32 ? '#EF4444' : undefined },
                   { label: 'Calories',    value: a.calories ? `${Math.round(Number(a.calories))} kcal` : null,     color: undefined },
-                  { label: 'TSS',         value: a.tss ? Math.round(Number(a.tss)).toString() : null,              color: '#F97316' as string | undefined },
+                  { label: 'SM · SN',     value: `${smsn.sm} · ${smsn.sn}` as string | undefined },
                   { label: 'TRIMP',       value: a.trimp ? Math.round(Number(a.trimp)).toString() : null,          color: undefined },
                 ] as { label: string; value: string | null; color?: string }[]).filter(r => r.value != null).map(r => (
                   <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>

@@ -4583,7 +4583,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       {/* Bottom sheet — flex column */}
       <div onClick={e => e.stopPropagation()} style={{
         position: 'fixed' as const, bottom: 0, left: 0, right: 0, height: '96dvh', zIndex: 999,
-        background: 'var(--card)', borderRadius: '20px 20px 0 0',
+        background: 'var(--bg-card)', borderRadius: '20px 20px 0 0',
         boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
         display: 'flex', flexDirection: 'column' as const,
         overflow: 'hidden',
@@ -4599,7 +4599,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           padding: '12px 24px',
           borderBottom: '1px solid var(--border)',
           flexShrink: 0,
-          background: 'var(--card)',
+          background: 'var(--bg-card)',
         }}>
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
@@ -4617,7 +4617,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             placeholder={`${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`}
             style={{
               flex: 1, background: 'none', border: 'none',
-              color: 'var(--foreground)',
+              color: 'var(--text)',
               fontSize: mobile ? 16 : 18,
               fontWeight: 700, outline: 'none', padding: 0,
               minWidth: 0,
@@ -4636,7 +4636,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             width: 32, height: 32, borderRadius: '50%',
             border: '1px solid var(--border)',
             background: 'transparent', cursor: 'pointer',
-            color: 'var(--muted-foreground)', fontSize: 16,
+            color: 'var(--text-dim)', fontSize: 16,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>✕</button>
@@ -6846,7 +6846,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         <div style={{
           padding: mobile ? '12px 16px' : '13px 24px',
           borderTop: '1px solid var(--border)',
-          background: 'var(--card)',
+          background: 'var(--bg-card)',
           display: 'flex', alignItems: 'center', gap: 8,
           flexShrink: 0,
           flexWrap: 'wrap' as const,

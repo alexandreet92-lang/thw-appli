@@ -15,11 +15,11 @@ export type SportKey =
 // MAP CENTRALISÉE — couleur + icône au même endroit.
 // Pour changer une couleur : modifier UNE ligne ici, rien d'autre.
 const SPORT_ICON: Record<SportKey, { Icon: ComponentType<{ size?: number; color?: string; stroke?: number }>; color: string; label: string }> = {
-  run:    { Icon: IconRun,        color: '#f97316', label: 'Running'    },
+  run:    { Icon: IconRun,        color: '#22c55e', label: 'Running'    },
   bike:   { Icon: IconBike,       color: '#3b82f6', label: 'Cyclisme'   },
   swim:   { Icon: IconSwimming,   color: '#0ea5e9', label: 'Natation'   },
   rowing: { Icon: IconKayak,      color: '#8b5cf6', label: 'Aviron'     }, // IconRowing absent → IconKayak
-  muscu:  { Icon: IconBarbell,    color: '#7c3aed', label: 'Muscu'      },
+  muscu:  { Icon: IconBarbell,    color: '#f97316', label: 'Muscu'      },
   hyrox:  { Icon: IconStretching2,color: '#ef4444', label: 'Hyrox'      }, // IconStretching2 (mouvement fonctionnel)
   ellip:  { Icon: IconTreadmill,  color: '#ec4899', label: 'Elliptique' },
 }

@@ -2489,7 +2489,7 @@ function TrainingTab() {
           <span style={{ fontSize:10,fontWeight:700,color:planColor,letterSpacing:'0.08em',textTransform:'uppercase' as const }}>{labelTag}</span>
           <span style={{ fontSize:10,color:'var(--text-dim)' }}>{getWeekLabel(ws)}</span>
         </div>}
-        <div style={{ display:'grid',gridTemplateColumns:'60px repeat(7,1fr)',borderBottom:'1px solid var(--border)',background:'transparent',minWidth:520 }}>
+        <div style={{ display:'grid',gridTemplateColumns:'60px repeat(7,1fr)',borderBottom:'1px solid var(--border)',background:'var(--bg-card)',minWidth:520 }}>
           <div style={{ padding:'10px 8px', background:'transparent' }}/>
           {w.map((d,i)=>{ const cfg=INTENSITY_CONFIG[d.intensity]; const isCurrent = ws===currentWeekStart; const isPickerOpen = isCurrent && intensityPickerDay===i; return (
             <div key={d.day} style={{ padding:'9px 6px',textAlign:'center' as const,minWidth:68,margin:'6px 3px',borderRadius:10,background:'var(--bg-card)',border:i===todayIdx&&isCurrent?'1px solid rgba(34,211,238,.4)':'1px solid var(--border)' }}>

@@ -66,6 +66,7 @@ export function VoiceOverlay({
         const analyser: AnalyserNode = ctx.createAnalyser()
         analyser.fftSize = 256
         src.connect(analyser)
+        await ctx.resume?.()   // iOS : le contexte démarre souvent « suspended »
         audioRef.current = { ctx, stream, analyser, data: new Uint8Array(analyser.fftSize) }
       } catch {
         fallbackRef.current = true   // pas d'accès micro → repli sur la parole
@@ -77,6 +78,7 @@ export function VoiceOverlay({
       let v = 0
       const a = audioRef.current
       if (a) {
+        if (a.ctx.state === 'suspended') a.ctx.resume?.()
         a.analyser.getByteTimeDomainData(a.data)
         let sum = 0
         for (let i = 0; i < a.data.length; i++) { const d = (a.data[i] - 128) / 128; sum += d * d }

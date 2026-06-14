@@ -18928,7 +18928,19 @@ export default function AIPanel({
       setLiveTranscript(finalTranscriptRef.current)
       setLiveInterim(interim)
     }
-    rec.onerror = () => stopVoice('')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onerror = (e: any) => {
+      // iOS coupe régulièrement la reconnaissance (aborted / no-speech).
+      // On ne ferme le mode vocal que sur un refus d'autorisation ;
+      // sinon onend se charge de relancer.
+      if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed') stopVoice('')
+    }
+    rec.onend = () => {
+      // Reconnaissance terminée (pause sur iOS) : relancer tant qu'on enregistre.
+      if (speechRef.current === rec) {
+        try { rec.start() } catch { /* déjà démarrée */ }
+      }
+    }
     rec.start()
   }, [stopVoice])
 

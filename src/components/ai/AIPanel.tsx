@@ -18685,6 +18685,15 @@ export default function AIPanel({
     const { tool_name, tool_input: inp } = tc
     let pgErr: { message: string } | null = null
 
+    // Garde-fou : l'IA ne doit jamais inventer d'identifiant. Si un UUID
+    // attendu (plan ou séance) est absent / factice (ex: 'current-plan'),
+    // on renvoie un message clair au lieu d'une erreur SQL brute.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const idVal = (inp.training_plan_id ?? inp.session_id) as string | undefined
+    if (idVal !== undefined && (typeof idVal !== 'string' || !UUID_RE.test(idVal))) {
+      return "Aucun plan d'entraînement enregistré n'est rattaché à cette conversation, je ne peux donc pas l'appliquer directement. Pour créer un plan complet et l'enregistrer, lance l'action « Créer un plan d'entraînement ». Je peux aussi te détailler le plan ici sans l'enregistrer."
+    }
+
     if (tool_name === 'add_session') {
       const { error } = await sb.from('planned_sessions').insert({
         user_id:      userId,

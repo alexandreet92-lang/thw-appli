@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { CircleGauge, ShoppingBag, ChevronRight } from 'lucide-react'
 import { getModelMultiplier, getModelDisplayName } from '@/lib/tokens/multipliers'
+import { MobileSheet } from '@/components/ai/MobileSheet'
 
 interface TokenLimits {
   monthly:     { used: number; limit: number; resets_at: string }
@@ -61,7 +62,7 @@ function Gauge({ label, used, limit, resetLabel }: { label: string; used: number
   )
 }
 
-export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena' }: { onBuyTokens: () => void; currentModel?: string }) {
+export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena', isMobile = false }: { onBuyTokens: () => void; currentModel?: string; isMobile?: boolean }) {
   const [open, setOpen] = useState(false)
   const [limits, setLimits] = useState<TokenLimits | null>(null)
   const ref = useRef<HTMLDivElement>(null)
@@ -77,11 +78,11 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena' 
   useEffect(() => { if (open) void load() }, [open, load])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || isMobile) return
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
-  }, [open])
+  }, [open, isMobile])
 
   const maxPct = limits ? Math.max(pct(limits.monthly.used, limits.monthly.limit), pct(limits.rolling_6h.used, limits.rolling_6h.limit)) : 0
 
@@ -97,14 +98,9 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena' 
         <span style={{ position: 'absolute', bottom: 3, right: 3, width: 6, height: 6, borderRadius: '50%', background: dotColor(maxPct), border: '1px solid var(--ai-bg)' }} />
       </button>
 
-      {open && limits && (
-        <div style={{
-          position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 320, zIndex: 300,
-          background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 14,
-          boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: 4,
-          animation: 'aip_menu_up 0.16s ease-out',
-        }}>
-          <div style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Utilisation des tokens</div>
+      {open && limits && (() => {
+        const inner = (
+        <>
           <div style={{ height: 1, background: 'var(--border)' }} />
           <Gauge label="Limite hebdomadaire" used={limits.monthly.used} limit={limits.monthly.limit} resetLabel={`Réinit. dans ${untilDays(limits.monthly.resets_at)}`} />
           <div style={{ height: 1, background: 'var(--border)' }} />
@@ -155,8 +151,24 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena' 
             </span>
             <ChevronRight size={12} color="var(--text-mid)" />
           </button>
-        </div>
-      )}
+        </>
+        )
+
+        if (isMobile) {
+          return <MobileSheet title="Utilisation des tokens" onClose={() => setOpen(false)}>{inner}</MobileSheet>
+        }
+        return (
+          <div style={{
+            position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 320, zIndex: 300,
+            background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 14,
+            boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: 4,
+            animation: 'aip_menu_up 0.16s ease-out',
+          }}>
+            <div style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Utilisation des tokens</div>
+            {inner}
+          </div>
+        )
+      })()}
     </div>
   )
 }

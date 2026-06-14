@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
+import { MobileSheet } from './MobileSheet'
 import ActiveCompetencesBadge from '@/components/ai-coach/ActiveCompetencesBadge'
 import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
 import TopupEmailModal from '@/components/topup/TopupEmailModal'
@@ -1251,22 +1252,23 @@ function ModelEffigy({ model, isAnimating, size = 18, color }: {
 
 // ── ModelPicker — bouton rond + dropdown monochrome ──────────
 
-function ModelPicker({ model, onChange, disabled = false }: {
+function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
   model: THWModel
   onChange: (m: THWModel) => void
   disabled?: boolean
+  isMobile?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!open) return
+    if (!open || isMobile) return
     const h = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
-  }, [open])
+  }, [open, isMobile])
 
   const models: THWModel[] = ['hermes', 'athena', 'zeus']
   const cfg = MODEL_CONFIGS[model]
@@ -1297,79 +1299,77 @@ function ModelPicker({ model, onChange, disabled = false }: {
         />
       </button>
 
-      {/* Dropdown */}
-      {open && (
-        <div style={{
-          position: 'absolute',
-          bottom: 'calc(100% + 10px)',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'var(--ai-bg)',
-          border: '1px solid var(--ai-border)',
-          borderRadius: 13,
-          boxShadow: '0 8px 28px rgba(0,0,0,0.13)',
-          overflow: 'hidden',
-          minWidth: 188,
-          zIndex: 50,
-          animation: 'ai_slidein 0.14s ease',
-        }}>
-          <div style={{
-            padding: '10px 14px 6px',
-            fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)',
-            letterSpacing: '0.08em', textTransform: 'uppercase',
-            fontFamily: 'DM Sans,sans-serif',
-          }}>
-            Modèle IA
-          </div>
-          {models.map(m => {
-            const mc  = MODEL_CONFIGS[m]
-            const isA = model === m
-            return (
-              <button
-                key={m}
-                onClick={() => { onChange(m); setOpen(false) }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  width: '100%', padding: '9px 14px',
-                  border: 'none',
-                  background: isA ? 'var(--ai-bg2)' : 'transparent',
-                  cursor: 'pointer', textAlign: 'left',
-                  transition: 'background 0.1s',
-                }}
-                onMouseEnter={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
-                onMouseLeave={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                  alt={mc.name}
-                  style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0, opacity: isA ? 1 : 0.6 }}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 12, fontWeight: isA ? 700 : 500,
-                    color: isA ? 'var(--ai-text)' : 'var(--ai-mid)',
-                    fontFamily: 'Syne,sans-serif', lineHeight: 1.2,
-                  }}>
-                    {mc.name}
-                  </div>
-                  <div style={{
-                    fontSize: 10, color: 'var(--ai-dim)',
-                    fontFamily: 'DM Sans,sans-serif', marginTop: 2,
-                  }}>
-                    {mc.desc}
-                  </div>
+      {/* Liste des modèles — dropdown (desktop) ou bottom sheet (mobile) */}
+      {open && (() => {
+        const list = models.map(m => {
+          const mc  = MODEL_CONFIGS[m]
+          const isA = model === m
+          return (
+            <button
+              key={m}
+              onClick={() => { onChange(m); setOpen(false) }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', padding: isMobile ? '12px 14px' : '9px 14px',
+                border: 'none', borderRadius: 10,
+                background: isA ? 'var(--ai-bg2)' : 'transparent',
+                cursor: 'pointer', textAlign: 'left',
+                transition: 'background 0.1s',
+              }}
+              onMouseEnter={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+              onMouseLeave={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                alt={mc.name}
+                style={{ width: isMobile ? 24 : 20, height: isMobile ? 24 : 20, objectFit: 'contain', flexShrink: 0, opacity: isA ? 1 : 0.6 }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: isMobile ? 14 : 12, fontWeight: isA ? 700 : 500,
+                  color: isA ? 'var(--ai-text)' : 'var(--ai-mid)',
+                  fontFamily: 'Syne,sans-serif', lineHeight: 1.2,
+                }}>
+                  {mc.name}
                 </div>
-                {isA && (
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M20 6L9 17l-5-5"/>
-                  </svg>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      )}
+                <div style={{
+                  fontSize: isMobile ? 12 : 10, color: 'var(--ai-dim)',
+                  fontFamily: 'DM Sans,sans-serif', marginTop: 2,
+                }}>
+                  {mc.desc}
+                </div>
+              </div>
+              {isA && (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+              )}
+            </button>
+          )
+        })
+
+        if (isMobile) {
+          return <MobileSheet title="Modèle IA" onClose={() => setOpen(false)}>{list}</MobileSheet>
+        }
+        return (
+          <div style={{
+            position: 'absolute', bottom: 'calc(100% + 10px)', left: '50%',
+            transform: 'translateX(-50%)', background: 'var(--ai-bg)',
+            border: '1px solid var(--ai-border)', borderRadius: 13,
+            boxShadow: '0 8px 28px rgba(0,0,0,0.13)', overflow: 'hidden',
+            minWidth: 188, zIndex: 50, padding: 4, animation: 'ai_slidein 0.14s ease',
+          }}>
+            <div style={{
+              padding: '6px 10px 6px', fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)',
+              letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'DM Sans,sans-serif',
+            }}>
+              Modèle IA
+            </div>
+            {list}
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -11224,8 +11224,10 @@ function PlusMenu({
   onClose,
   onClosePanel,
   onCamera,
+  onPhotos,
   onFiles,
   onForceModel,
+  isMobile = false,
 }: {
   onPrepare:    (label: string, apiPrompt: string) => void
   onEnriched:   (id: string, label: string) => void
@@ -11233,19 +11235,18 @@ function PlusMenu({
   onClose:      () => void
   onClosePanel: () => void
   onCamera:     () => void
+  onPhotos:     () => void
   onFiles:      () => void
   onForceModel: (m: THWModel) => void
+  isMobile?:    boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
-  const [isMobile, setIsMobile] = useState(false)
   const [activeScreen, setActiveScreen] = useState<MenuScreen>('main')
   const [animating, setAnimating] = useState(false)
   const [activeTheme, setActiveTheme] = useState<QuickActionTheme>('entrainement')
   const [compCount, setCompCount] = useState<number | null>(null)
   const [compLimit, setCompLimit] = useState(3)
-
-  useEffect(() => { setIsMobile(window.innerWidth < 768) }, [])
 
   // Comptage léger des compétences actives + limite du plan
   useEffect(() => {
@@ -11276,12 +11277,13 @@ function PlusMenu({
   }, [])
 
   useEffect(() => {
+    if (isMobile) return
     const h = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose()
     }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
-  }, [onClose])
+  }, [onClose, isMobile])
 
   function goTo(screen: MenuScreen) {
     if (animating) return
@@ -11313,35 +11315,41 @@ function PlusMenu({
     fontFamily: 'DM Sans,sans-serif', transition: 'background 120ms',
   }
   const sepStyle: React.CSSProperties = { height: 1, background: 'var(--border)', margin: '4px 0' }
+  const photoTileStyle: React.CSSProperties = {
+    flexShrink: 0, width: 100, height: 92, borderRadius: 14,
+    border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 7,
+    cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+  }
+  const photoTileLabel: React.CSSProperties = { fontSize: 12, color: 'var(--text)', fontWeight: 500 }
 
-  return (
-    <div ref={ref} className="aip-plus-menu" style={{
-      position: 'absolute', bottom: 'calc(100% + 8px)', left: 0,
-      minWidth: 260,
-      borderRadius: 12,
-      padding: 6,
-      boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
-      zIndex: 200,
-      maxHeight: '72vh', overflow: 'hidden',
-      animation: 'aip_menu_up 0.18s ease-out',
-    }}>
+  const body = (
+    <>
 
       {/* ════ ÉCRAN PRINCIPAL ════ */}
       {activeScreen === 'main' && (
-        <div style={{ maxHeight: '72vh', overflowY: 'auto' }}>
-          {/* 1. Ajouter des fichiers */}
+        <div style={{ maxHeight: isMobile ? undefined : '72vh', overflowY: isMobile ? undefined : 'auto' }}>
+          {/* Rangée Caméra + Photothèque — mobile (web : pas d'accès à la galerie système) */}
+          {isMobile && (
+            <div style={{ display: 'flex', gap: 8, padding: '2px 4px 12px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <button onClick={() => { onClose(); setTimeout(onCamera, 80) }} style={photoTileStyle}>
+                <Camera size={22} color="var(--text)" />
+                <span style={photoTileLabel}>Caméra</span>
+              </button>
+              <button onClick={() => { onClose(); setTimeout(onPhotos, 80) }} style={photoTileStyle}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8.5" cy="8.5" r="1.6" /><path d="M21 15l-5-5L5 21" />
+                </svg>
+                <span style={photoTileLabel}>Photothèque</span>
+              </button>
+            </div>
+          )}
+
+          {/* Ajouter des fichiers */}
           <button style={rowStyle} onClick={() => { onClose(); setTimeout(onFiles, 80) }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
             <Paperclip size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
             Ajouter des fichiers…
           </button>
-
-          {/* 2. Prendre une photo — mobile only */}
-          {isMobile && (
-            <button style={rowStyle} onClick={() => { onClose(); setTimeout(onCamera, 80) }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
-              <Camera size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-              Prendre une photo
-            </button>
-          )}
 
           <div style={sepStyle} />
 
@@ -11536,6 +11544,20 @@ function PlusMenu({
           </div>
         </div>
       )}
+    </>
+  )
+
+  if (isMobile) {
+    return <MobileSheet title="Ajouter à la discussion" onClose={onClose}>{body}</MobileSheet>
+  }
+  return (
+    <div ref={ref} className="aip-plus-menu" style={{
+      position: 'absolute', bottom: 'calc(100% + 8px)', left: 0,
+      minWidth: 260, borderRadius: 12, padding: 6,
+      boxShadow: '0 8px 32px rgba(0,0,0,0.24)', zIndex: 200,
+      maxHeight: '72vh', overflow: 'hidden', animation: 'aip_menu_up 0.18s ease-out',
+    }}>
+      {body}
     </div>
   )
 }
@@ -18482,7 +18504,8 @@ export default function AIPanel({
     el.style.height = Math.min(el.scrollHeight, 200) + 'px'
   }
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() }
+    // Sur mobile, Entrée = retour à la ligne (seul le bouton envoie).
+    if (e.key === 'Enter' && !e.shiftKey && isDesktop) { e.preventDefault(); void send() }
   }
 
   const newConv = () => {
@@ -19436,6 +19459,22 @@ export default function AIPanel({
         }
         .aip-input-wrap *:focus-visible { outline: none !important; }
 
+        /* Bulle message utilisateur — gris (jour) / noir distinct du fond (nuit) */
+        .aip-user-bubble { background: #EDEDED; color: #15171C; }
+        html.dark .aip-user-bubble { background: #26262B; color: #EEF2F7; }
+
+        /* Boutons flottants (mobile) — blancs + ombre légère en mode jour */
+        .aip-float-btn {
+          background: #FFFFFF;
+          border: 0.5px solid rgba(0,0,0,0.08);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+        }
+        html.dark .aip-float-btn {
+          background: #1A1A1E;
+          border: 0.5px solid rgba(255,255,255,0.10);
+          box-shadow: 0 2px 10px rgba(0,0,0,0.40);
+        }
+
         /* Menu + — liste compacte */
         .aip-plus-menu {
           background: var(--bg-card);
@@ -19638,12 +19677,12 @@ export default function AIPanel({
               <button
                 onClick={() => setHistOpen(h => !h)}
                 aria-label="Conversations"
+                className="aip-float-btn"
                 style={{
                   position: 'absolute', top: 12, left: 12, zIndex: 6,
                   width: 40, height: 40, borderRadius: '50%',
-                  border: '0.5px solid var(--ai-border)', background: 'var(--ai-bg2)',
                   color: 'var(--ai-text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.16)',
+                  cursor: 'pointer',
                 }}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -19653,12 +19692,12 @@ export default function AIPanel({
               <button
                 onClick={onClose}
                 aria-label="Sortir de l'assistant"
+                className="aip-float-btn"
                 style={{
                   position: 'absolute', top: 12, right: 12, zIndex: 6,
                   width: 40, height: 40, borderRadius: '50%',
-                  border: '0.5px solid var(--ai-border)', background: 'var(--ai-bg2)',
                   color: 'var(--ai-text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.16)',
+                  cursor: 'pointer',
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -20036,9 +20075,8 @@ export default function AIPanel({
                       {/* Bulle user / bulle IA */}
                       {msg.role === 'user' ? (
                         <>
-                          <div style={{
+                          <div className="aip-user-bubble" style={{
                             alignSelf: 'flex-end', marginLeft: 'auto', maxWidth: '70%',
-                            background: '#06B6D4', color: '#ffffff',
                             borderRadius: '18px 18px 4px 18px',
                             padding: '10px 16px',
                             fontSize: 14, lineHeight: 1.5,
@@ -20471,19 +20509,21 @@ export default function AIPanel({
                       onClosePanel={onClose}
                       onForceModel={setModel}
                       onCamera={() => cameraRef.current?.click()}
+                      onPhotos={() => photosRef.current?.click()}
                       onFiles={() => filesRef.current?.click()}
+                      isMobile={!isDesktop}
                     />
                   )}
                 </div>
 
                 {/* Sélecteur modèle */}
-                <ModelPicker model={model} onChange={setModel} disabled={loading} />
+                <ModelPicker model={model} onChange={setModel} disabled={loading} isMobile={!isDesktop} />
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
 
                 {/* Jauge tokens — à gauche du micro */}
-                <TokenUsageBubble onBuyTokens={() => setTopupOpen(true)} currentModel={model} />
+                <TokenUsageBubble onBuyTokens={() => setTopupOpen(true)} currentModel={model} isMobile={!isDesktop} />
 
                 {/* Mic button — B3 (hidden if not supported) */}
                 {speechSupported && !loading && (

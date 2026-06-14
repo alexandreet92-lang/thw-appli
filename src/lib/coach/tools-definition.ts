@@ -137,33 +137,20 @@ export interface AskClarifyingQuestionsInput {
   questions: ClarifyingQuestionInput[]
 }
 
-/** Séance générée pour create_training_plan (format français, comme saveToPlanning) */
-export interface CreatePlanSessionInput {
-  jour: number            // 0=lundi … 6=dimanche
-  sport: 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym'
-  titre: string
-  duree_min: number
-  tss?: number
-  intensite?: 'low' | 'moderate' | 'high' | 'max'
-  heure?: string
-  notes?: string
-  rpe?: number
-  blocs?: SessionBlockInput[]
-}
-
-export interface CreatePlanWeekInput {
-  numero: number          // 1-based
-  seances: CreatePlanSessionInput[]
-}
-
+/** Besoins de création de plan, réunis par le coach via les questions.
+ *  Le client complète avec les données réelles (zones, historique…) puis
+ *  génère le plan via /api/training-plan. */
 export interface CreateTrainingPlanInput {
   name: string
   objectif_principal: string
+  sport_principal: 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym'
+  niveau: string                 // débutant | intermédiaire | confirmé
   duree_semaines: number
-  start_date: string      // YYYY-MM-DD (lundi de la 1re semaine)
-  sports: string[]
-  blocs_periodisation: BlocPeriodisationInput[]
-  semaines: CreatePlanWeekInput[]
+  start_date: string             // YYYY-MM-DD (lundi de la 1re semaine)
+  seances_par_semaine: number
+  date_objectif?: string         // YYYY-MM-DD de la course cible
+  type_competition?: string
+  requirements_resume: string    // synthèse libre de tout ce que le coach a appris
 }
 
 // ── Map CoachToolName → Input type ────────────────────────────
@@ -495,63 +482,28 @@ export const coachTools: Anthropic.Tool[] = [
   {
     name: 'create_training_plan',
     description:
-      "Crée ET enregistre un plan d'entraînement complet pour l'athlète (nouvelle ligne training_plans + " +
-      "toutes les séances dans planned_sessions). " +
-      "Appelle ce tool quand l'athlète demande de CRÉER un nouveau plan ET que tu as réuni les infos décisives " +
-      "(objectif, durée, niveau, date de début, fréquence) — au besoin via ask_clarifying_questions d'abord. " +
-      "Génère TOUTES les semaines (semaines[].seances[]). Reste COMPACT : titres courts, notes ≤ 12 mots, " +
-      "blocs détaillés (blocs[]) uniquement pour les semaines 1 et 2, blocs: [] ensuite. " +
-      "N'invente jamais d'identifiant : ce tool crée le plan, tu n'as pas besoin de training_plan_id.",
+      "Crée ET enregistre un plan d'entraînement complet, périodisé et détaillé pour l'athlète. " +
+      "Appelle ce tool UNIQUEMENT après avoir réuni les besoins décisifs via ask_clarifying_questions " +
+      "(objectif, durée, niveau, date de début, fréquence, préférences, points à travailler). " +
+      "Tu n'as PAS besoin de générer les séances toi-même ni de fournir d'identifiant : le système " +
+      "génère le plan détaillé à partir de ces besoins ET de TOUTES les données réelles de l'athlète " +
+      "(zones, historique d'entraînement, performances, courses, métriques santé). " +
+      "Transmets simplement une synthèse complète des besoins dans requirements_resume.",
     input_schema: {
       type: 'object' as const,
       properties: {
         name:               { type: 'string', description: 'Nom court du plan (ex: "Prépa cyclisme 12 sem").' },
         objectif_principal: { type: 'string', description: "Objectif principal du plan en une phrase." },
-        duree_semaines:     { type: 'integer', description: 'Nombre total de semaines du plan.' },
+        sport_principal:    { type: 'string', enum: [...SPORT_ENUM], description: "Sport principal : 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym'." },
+        niveau:             { type: 'string', description: 'Niveau de l\'athlète : débutant | intermédiaire | confirmé.' },
+        duree_semaines:     { type: 'integer', description: 'Durée totale du plan en semaines.' },
         start_date:         { type: 'string', description: 'Date du lundi de la 1re semaine, format YYYY-MM-DD.' },
-        sports: {
-          type: 'array',
-          description: "Sports couverts par le plan (codes : 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym').",
-          items: { type: 'string', enum: [...SPORT_ENUM] },
-        },
-        blocs_periodisation: {
-          type: 'array',
-          description: 'Périodisation macro du plan (Base → Intensité → Spécifique → Compétition).',
-          items: BLOC_PERIODISATION_ITEM,
-        },
-        semaines: {
-          type: 'array',
-          description: 'Toutes les semaines du plan, chacune avec ses séances.',
-          items: {
-            type: 'object',
-            properties: {
-              numero: { type: 'integer', description: 'Numéro de semaine (1-based).' },
-              seances: {
-                type: 'array',
-                description: 'Séances de la semaine. Génère-les toutes.',
-                items: {
-                  type: 'object',
-                  properties: {
-                    jour:      PROP_DAY_INDEX,
-                    sport:     PROP_SPORT,
-                    titre:     { type: 'string', description: 'Titre court de la séance.' },
-                    duree_min: { type: 'integer', description: 'Durée en minutes.' },
-                    tss:       { type: 'number', description: 'TSS estimé.' },
-                    intensite: PROP_INTENSITY,
-                    heure:     { type: 'string', description: 'Heure de début HH:MM (optionnel).' },
-                    notes:     { type: 'string', description: 'Note ≤ 12 mots (optionnel).' },
-                    rpe:       { type: 'integer', description: 'RPE cible 1–10 (optionnel).' },
-                    blocs:     PROP_BLOCKS,
-                  },
-                  required: ['jour', 'sport', 'titre', 'duree_min'],
-                },
-              },
-            },
-            required: ['numero', 'seances'],
-          },
-        },
+        seances_par_semaine:{ type: 'integer', description: 'Nombre de séances par semaine souhaité.' },
+        date_objectif:      { type: 'string', description: 'Date de la course cible YYYY-MM-DD (optionnel).' },
+        type_competition:   { type: 'string', description: 'Type de compétition / objectif (optionnel).' },
+        requirements_resume:{ type: 'string', description: 'Synthèse libre et complète de TOUT ce que tu as appris des besoins de l\'athlète (préférences, contraintes, points faibles à travailler, jours dispo, équipement, méthode souhaitée…). Plus c\'est riche, meilleur sera le plan.' },
       },
-      required: ['name', 'objectif_principal', 'duree_semaines', 'start_date', 'semaines'],
+      required: ['name', 'objectif_principal', 'sport_principal', 'niveau', 'duree_semaines', 'start_date', 'seances_par_semaine', 'requirements_resume'],
     },
   },
 ]

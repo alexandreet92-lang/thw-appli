@@ -13038,10 +13038,8 @@ function toolCallMeta(tc: PendingToolCall): { borderColor: string; emoji: string
       description: `${n} blocs de périodisation remplacés` }
   }
   if (tool_name === 'create_training_plan') {
-    const weeks = ((inp.semaines as unknown[]) ?? []).length
-    const nSess = ((inp.semaines as { seances?: unknown[] }[]) ?? []).reduce((acc, w) => acc + ((w.seances ?? []).length), 0)
     return { borderColor: '#3C90D5', emoji: '✦', label: "Créer le plan d'entraînement",
-      description: `${String(inp.name ?? 'Plan')} · ${String(inp.duree_semaines ?? weeks)} semaines · ${nSess} séances` }
+      description: `${String(inp.name ?? 'Plan')} · ${String(inp.sport_principal ?? '')} · ${String(inp.duree_semaines ?? '?')} sem · ${String(inp.seances_par_semaine ?? '?')}×/sem (généré à partir de tes données)` }
   }
   return { borderColor: '#9ca3af', emoji: '?', label: tool_name, description: '' }
 }
@@ -18274,6 +18272,8 @@ export default function AIPanel({
   const filesRef   = useRef<HTMLInputElement>(null)
   // AbortController pour annuler la requête en cours
   const abortRef   = useRef<AbortController | null>(null)
+  // Synthèse du dernier plan créé (create_training_plan) → message de restitution riche
+  const planSummaryRef = useRef<{ name: string; weeks: number; sessions: number; pointsCles: string[]; conseils: string[] } | null>(null)
   // Agent selector dropdown
   const agentDropRef = useRef<HTMLDivElement>(null)
 
@@ -18777,22 +18777,81 @@ export default function AIPanel({
       pgErr = error
 
     } else if (tool_name === 'create_training_plan') {
-      // Crée un plan complet : ligne training_plans + N séances planned_sessions.
-      // Réutilise le mapping colonnes de saveToPlanning (source de vérité).
-      const p = inp as unknown as {
-        name?: string; objectif_principal?: string; duree_semaines?: number
-        start_date?: string; sports?: string[]; blocs_periodisation?: unknown[]
-        semaines?: { numero?: number; seances?: Record<string, unknown>[] }[]
+      // 1) Lundi de départ
+      const r = inp as unknown as {
+        name?: string; objectif_principal?: string; sport_principal?: string
+        niveau?: string; duree_semaines?: number; start_date?: string
+        seances_par_semaine?: number; date_objectif?: string; type_competition?: string
+        requirements_resume?: string
       }
-      // Lundi de la semaine de départ
-      const sd = new Date(p.start_date ?? new Date().toISOString().slice(0, 10))
+      const sd = new Date(r.start_date ?? new Date().toISOString().slice(0, 10))
       const dow = sd.getDay() === 0 ? 6 : sd.getDay() - 1
       sd.setDate(sd.getDate() - dow)
       const startDate = sd.toISOString().slice(0, 10)
-      const weeks = p.semaines ?? []
-      const duree = p.duree_semaines ?? weeks.length ?? 1
-      const endDateSunday = addDays(addWeeks(startDate, Math.max(1, duree) - 1), 6)
 
+      // 2) Rassembler TOUTES les données réelles de l'athlète
+      const cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+      const todayStr = new Date().toISOString().slice(0, 10)
+      const [profil, zones, activities, events, health] = await Promise.all([
+        sb.from('athlete_performance_profile').select('*').eq('user_id', userId).maybeSingle().then(x => x.data ?? null),
+        sb.from('athlete_zones').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle().then(x => x.data ?? null),
+        sb.from('activities').select('sport_type,title,started_at,moving_time_s,distance_m,tss').eq('user_id', userId).gte('started_at', cutoff).order('started_at', { ascending: false }).limit(40).then(x => x.data ?? []),
+        sb.from('calendar_events').select('*').eq('user_id', userId).gte('date', todayStr).limit(20).then(x => x.data ?? []),
+        sb.from('metrics_daily').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(14).then(x => x.data ?? []),
+      ])
+
+      // 3) Questionnaire construit à partir des besoins réunis par le coach
+      const questionnaire = {
+        sport_principal:     r.sport_principal,
+        experience:          r.niveau,
+        niveau_connaissance: r.niveau,
+        seances_debut_prepa: r.seances_par_semaine,
+        seances_pic_prepa:   r.seances_par_semaine,
+        duree_semaines_cible: r.duree_semaines,
+        date_debut:          startDate,
+        goal_races: (r.objectif_principal || r.date_objectif) ? [{
+          nom:       r.type_competition || r.objectif_principal,
+          sport:     r.sport_principal,
+          level:     'main',
+          date:      r.date_objectif ?? '',
+          goal_libre: r.objectif_principal,
+        }] : [],
+        precision_profil: r.requirements_resume ?? '',
+        precision_dispo:  `${r.seances_par_semaine ?? '?'} séances/semaine`,
+      }
+
+      // 4) Génération détaillée via le pipeline dédié
+      type GenProgram = {
+        nom?: string; objectif_principal?: string; duree_semaines?: number
+        blocs_periodisation?: unknown[]; conseils_adaptation?: string[]; points_cles?: string[]
+        semaines?: { numero?: number; seances?: Record<string, unknown>[] }[]
+      }
+      let program: GenProgram | null = null
+      try {
+        const genRes = await fetch('/api/training-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionnaire,
+            profil, zones,
+            historique_90j: activities,
+            calendrier_objectifs: events,
+            sante: health,
+          }),
+        })
+        if (!genRes.ok) {
+          return "La génération du plan détaillé a échoué (limite atteinte ou erreur serveur). Réessaie dans un instant."
+        }
+        const gen = await genRes.json() as { program?: GenProgram }
+        program = gen.program ?? null
+      } catch {
+        return "Impossible de générer le plan pour le moment. Vérifie ta connexion et réessaie."
+      }
+      if (!program?.semaines?.length) {
+        return "Le plan généré est revenu vide. Réessaie, ou précise un peu plus tes besoins."
+      }
+
+      // 5) Persistance — mapping colonnes identique à saveToPlanning
       const sportMap: Record<string, string> = {
         'Running': 'run', 'Course': 'run', 'Course à pied': 'run', 'Trail': 'run',
         'Cyclisme': 'bike', 'Vélo': 'bike', 'Velo': 'bike', 'Cycling': 'bike',
@@ -18800,22 +18859,25 @@ export default function AIPanel({
         'Hyrox': 'hyrox', 'Rowing': 'rowing', 'Aviron': 'rowing',
       }
       const normSport = (raw: string) => sportMap[raw] ?? sportMap[raw?.trim()] ?? raw?.toLowerCase()
+      const weeks = program.semaines
+      const duree = program.duree_semaines ?? r.duree_semaines ?? weeks.length
+      const endDateSunday = addDays(addWeeks(startDate, Math.max(1, duree) - 1), 6)
       const sportsAcross = Array.from(new Set(
         weeks.flatMap(w => (w.seances ?? []).map(s => normSport(String(s.sport ?? '')))).filter(Boolean)
       ))
 
       const { error: planErr } = await sb.from('training_plans').insert({
         user_id:             userId,
-        name:                p.name ?? "Plan d'entraînement",
-        objectif_principal:  p.objectif_principal ?? null,
+        name:                program.nom ?? r.name ?? "Plan d'entraînement",
+        objectif_principal:  program.objectif_principal ?? r.objectif_principal ?? null,
         duree_semaines:      duree,
         start_date:          startDate,
         end_date:            endDateSunday,
-        sports:              sportsAcross.length ? sportsAcross : (p.sports ?? []),
-        blocs_periodisation: p.blocs_periodisation ?? [],
-        conseils_adaptation: [],
-        points_cles:         [],
-        ai_context:          { source: 'chat_coach', generated_at: new Date().toISOString() },
+        sports:              sportsAcross,
+        blocs_periodisation: program.blocs_periodisation ?? [],
+        conseils_adaptation: program.conseils_adaptation ?? [],
+        points_cles:         program.points_cles ?? [],
+        ai_context:          { source: 'chat_coach', requirements: r.requirements_resume, generated_at: new Date().toISOString() },
         status:              'active',
       })
       if (planErr) {
@@ -18864,6 +18926,15 @@ export default function AIPanel({
           const { error: sessErr } = await sb.from('planned_sessions').insert(rows)
           pgErr = sessErr
         }
+        if (!pgErr) {
+          planSummaryRef.current = {
+            name: program.nom ?? r.name ?? "Plan d'entraînement",
+            weeks: weeks.length,
+            sessions: rows.length,
+            pointsCles: Array.isArray(program.points_cles) ? program.points_cles : [],
+            conseils: Array.isArray(program.conseils_adaptation) ? program.conseils_adaptation : [],
+          }
+        }
       }
 
     } else {
@@ -18896,7 +18967,25 @@ export default function AIPanel({
       // Succès — message de confirmation dans le chat
       const cid = active?.id
       if (cid) {
-        const summary = total > 1 ? `✓ ${total} modifications appliquées avec succès.` : '✓ Modification appliquée avec succès.'
+        const ps = planSummaryRef.current
+        planSummaryRef.current = null
+        let summary: string
+        if (ps) {
+          // Restitution riche pour une création de plan : logique + conseils + lien
+          const lignes: string[] = [
+            `✓ **Plan créé : ${ps.name}** — ${ps.weeks} semaines, ${ps.sessions} séances enregistrées.`,
+          ]
+          if (ps.pointsCles.length) {
+            lignes.push('', '**La logique du plan :**', ...ps.pointsCles.map(p => `- ${p}`))
+          }
+          if (ps.conseils.length) {
+            lignes.push('', '**Conseils d\'adaptation :**', ...ps.conseils.map(c => `- ${c}`))
+          }
+          lignes.push('', 'Les 4 premières semaines sont détaillées (blocs, intensités) ; les suivantes seront affinées à l\'approche. 👉 [Voir le plan dans Planning](/planning)')
+          summary = lignes.join('\n')
+        } else {
+          summary = total > 1 ? `✓ ${total} modifications appliquées avec succès.` : '✓ Modification appliquée avec succès.'
+        }
         const successMsg: AIMsg = { id: genId(), role: 'assistant', content: summary, ts: Date.now(), modelId: model }
         setConvs(prev => prev.map(c =>
           c.id === cid ? { ...c, msgs: [...c.msgs, successMsg], updatedAt: Date.now() } : c

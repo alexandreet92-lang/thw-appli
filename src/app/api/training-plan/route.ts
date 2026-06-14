@@ -481,10 +481,15 @@ async function postHandler(req: NextRequest): Promise<Response> {
 
   const formattedQuestionnaire = formatQuestionnaireForPrompt(questionnaire)
 
+  // Durée cible explicite (transmise par le chat coach via les réponses de l'athlète)
+  const targetWeeks = Number(questionnaire?.duree_semaines_cible) || null
+  const startDateCible = (questionnaire?.date_debut as string | undefined) || null
+
   // Tronquer l'historique à 30 activités max pour réduire la taille du prompt
   const historique_30j = (historique_90j ?? []).slice(0, 30)
 
   const userPrompt = `Crée un programme d'entraînement avec ces informations :
+${targetWeeks ? `\nDURÉE CIBLE : ${targetWeeks} semaines EXACTEMENT${startDateCible ? `, à partir du ${startDateCible}` : ''}.\n` : ''}
 
 QUESTIONNAIRE ATHLÈTE — INTERPRÉTATION STRUCTURÉE :
 ${formattedQuestionnaire}
@@ -508,13 +513,18 @@ ${modification ? `MODIFICATION DEMANDÉE :\n${modification}\n\nPROGRAMME EXISTAN
 
 INSTRUCTIONS DE GÉNÉRATION — RESPECTER IMPÉRATIVEMENT :
 
-STRUCTURE :
-- Génère le détail complet des séances (seances[]) pour TOUTES les semaines du plan, sans exception.
+STRUCTURE & DÉTAIL PROGRESSIF (méthode coach d'élite) :
+- Génère TOUTES les semaines de la durée demandée (voir DURÉE CIBLE ci-dessous), sans exception.
 - Pour chaque séance : sport, titre, jour (0=lundi…6=dimanche), duree_min, tss, intensite, heure, notes, rpe.
-- Blocs détaillés (blocs[]) : UNIQUEMENT semaines 1 et 2. Semaines 3+ → blocs: [].
-- note_coach : OBLIGATOIRE pour chaque semaine, 1 phrase de coaching contextuelle.
-- conseils_adaptation : 3 éléments maximum. points_cles : 3 éléments maximum.
-- Chaque "consigne" ≤ 10 mots, chaque "notes" ≤ 12 mots.
+- Blocs DÉTAILLÉS (blocs[]) OBLIGATOIRES pour les semaines 1 à 4 (le bloc en cours) : échauffement → corps → retour au calme, avec zone, répétitions, récup, et watts/allure/FC CALIBRÉS sur les zones de l'athlète (section ZONES D'ENTRAÎNEMENT). Pour les semaines 5+, blocs: [] (elles seront détaillées progressivement à l'approche).
+- Même sans blocs détaillés, CHAQUE séance des semaines 5+ doit avoir un titre précis, une intensité, un TSS cohérent et une note utile (≤ 14 mots) — jamais de séance vide ou générique.
+- note_coach : OBLIGATOIRE pour chaque semaine — 1 phrase qui explique le POURQUOI de la semaine (objectif physiologique, place dans la périodisation).
+- conseils_adaptation : 3 à 5 conseils concrets et personnalisés (basés sur l'historique, les zones, les contraintes). points_cles : 3 à 5 points expliquant la LOGIQUE du plan.
+
+CALIBRAGE SUR LES DONNÉES RÉELLES :
+- Utilise les ZONES fournies pour prescrire des intensités chiffrées (watts vélo, allure run, FC) dans les blocs des semaines 1-4.
+- Analyse l'HISTORIQUE 30 jours (volume, sports, charge) pour fixer un point de départ RÉALISTE : ne sur-charge pas par rapport au volume actuel, progresse logiquement.
+- Tiens compte des MÉTRIQUES santé récentes (fatigue, sommeil) et des courses du CALENDRIER pour la périodisation.
 
 COURSES & OBJECTIFS :
 - Construire la périodisation en remontant depuis la date de la course GTY (ou Principale si pas de GTY).
@@ -552,11 +562,12 @@ Génère selon ce schéma JSON (UNIQUEMENT le JSON, rien d'autre) :
 ${JSON_SCHEMA}
 
 RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
-0. FORMAT ULTRA-COMPACT : 4 semaines MAXIMUM. blocs:[] pour TOUTES les semaines. Titres ≤ 3 mots. Notes ≤ 5 mots. Maximum 2000 tokens total.
-1. Programme réaliste adapté au niveau et au temps disponible
-2. Progression logique (Base → Intensité → Spécifique → Compétition)
-3. TSS cohérent avec la durée et l'intensité
-4. Respect des jours de repos demandés`
+0. DURÉE CIBLE : respecte EXACTEMENT la durée demandée (champ "Durée cible" du questionnaire si présent, sinon déduis-la de la date de course). Génère toutes ces semaines.
+1. QUALITÉ AVANT TOUT : chaque séance doit avoir un sens dans la progression. Intensités calibrées sur les zones réelles. Jamais de séance creuse ou copiée-collée.
+2. Progression logique et périodisée (Base → Intensité → Spécifique → Affûtage → Compétition), cohérente avec l'historique et la forme actuelle.
+3. TSS cohérent avec la durée et l'intensité. Respect strict des jours de repos et des contraintes.
+4. EXPLIQUE TES CHOIX : note_coach par semaine + conseils_adaptation + points_cles doivent rendre la LOGIQUE du plan limpide pour l'athlète.
+5. Compacité intelligente : detail complet (blocs) semaines 1-4 ; semaines 5+ = séances cadrées sans blocs. Reste dans les limites de tokens en priorisant : périodisation → toutes les semaines cadrées → blocs détaillés des 4 premières.`
 
   try {
     const client = getAnthropicClient()

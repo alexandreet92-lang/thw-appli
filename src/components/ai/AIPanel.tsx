@@ -11556,6 +11556,8 @@ function HistoryDrawer({
   onClose,
   persistent = false,
   underlay = false,
+  avatarUrl = null,
+  initials = '',
   activeAgent,
   onAgentChange,
 }: {
@@ -11568,6 +11570,8 @@ function HistoryDrawer({
   onClose: () => void
   persistent?: boolean
   underlay?: boolean
+  avatarUrl?: string | null
+  initials?: string
   activeAgent: 'training' | 'networks'
   onAgentChange: (a: 'training' | 'networks') => void
 }) {
@@ -11603,15 +11607,33 @@ function HistoryDrawer({
 
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Titre Hybrid */}
-      <div style={{ padding: '18px 16px 8px', flexShrink: 0 }}>
+      {/* Titre Hybrid + photo de profil (style Claude) */}
+      <div style={{ padding: '18px 16px 8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <span style={{ fontSize: 24, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>
           Hybrid
         </span>
+        <a
+          href="/profile"
+          aria-label="Profil"
+          style={{
+            width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden', textDecoration: 'none',
+            border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
+            color: 'var(--text)', fontSize: 13, fontWeight: 600,
+            fontFamily: 'DM Sans,sans-serif',
+          }}
+        >
+          {avatarUrl
+            ? /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={avatarUrl} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : (initials || '?')}
+        </a>
       </div>
 
-      {/* Nouvelle conversation + Projets */}
+      {/* Nouvelle conversation (desktop) + Projets */}
       <div style={{ padding: '0 8px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {!underlay && (
         <button
           onClick={onNew}
           style={{
@@ -11630,6 +11652,7 @@ function HistoryDrawer({
           </svg>
           Nouvelle conversation
         </button>
+        )}
         <div
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
@@ -11691,7 +11714,7 @@ function HistoryDrawer({
       </div>
 
       {/* Conversation list */}
-      <div className="aip-hist-list" style={{ flex: 1, overflowY: 'auto', padding: '4px 6px' }}>
+      <div className="aip-hist-list" style={{ flex: 1, overflowY: 'auto', padding: underlay ? '4px 6px 76px' : '4px 6px' }}>
         {convs.length === 0 ? (
           <div style={{ padding: '18px 8px', textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, lineHeight: 1.6 }}>
             Aucune conversation.<br />Pose une question pour commencer.
@@ -11831,28 +11854,26 @@ function HistoryDrawer({
         ))}
       </div>
 
-      {/* ── Settings ── */}
-      <div style={{ borderTop: '1px solid var(--border)', padding: '6px 8px 8px', flexShrink: 0 }}>
-        {/* Réglages IA */}
-        <a
-          href="/profile"
+      {/* Nouvelle conversation — bulle flottante (mobile, style Claude) */}
+      {underlay && (
+        <button
+          onClick={onNew}
           style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 12px', borderRadius: 8,
-            color: 'var(--text-mid)', textDecoration: 'none',
-            fontFamily: 'DM Sans,sans-serif', fontSize: 14,
-            transition: 'background 0.12s',
+            position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', gap: 8, zIndex: 5,
+            padding: '11px 20px', borderRadius: 999, border: 'none',
+            background: 'var(--text)', color: 'var(--bg-card)',
+            fontSize: 14, fontWeight: 600, fontFamily: 'DM Sans,sans-serif',
+            cursor: 'pointer', whiteSpace: 'nowrap',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.24)',
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-hover)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+            <path d="M12 5v14M5 12h14" />
           </svg>
-          <span>Réglages IA</span>
-        </a>
-      </div>
+          Nouvelle conversation
+        </button>
+      )}
     </div>
   )
 
@@ -18183,6 +18204,7 @@ export default function AIPanel({
   const [quotedText,       setQuotedText]       = useState<string | null>(null)
   const [userInitials,     setUserInitials]     = useState<string>('')
   const [userFirstName,    setUserFirstName]    = useState<string>('')
+  const [userAvatarUrl,    setUserAvatarUrl]    = useState<string | null>(null)
   const [hoveredMsgId,     setHoveredMsgId]     = useState<string | null>(null)
   const [copiedMsgId,      setCopiedMsgId]      = useState<string | null>(null)
 
@@ -18291,6 +18313,9 @@ export default function AIPanel({
         // Prénom — uniquement depuis full_name (jamais l'email)
         const fullName = (user.user_metadata?.full_name ?? '').trim()
         if (fullName) setUserFirstName(fullName.split(/\s+/)[0])
+        // Photo de profil — depuis profiles.avatar_url
+        const { data: prof } = await sb.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle()
+        if (prof?.avatar_url) setUserAvatarUrl(prof.avatar_url as string)
       } catch { /* silent */ }
     })()
   }, [mounted])
@@ -18534,7 +18559,8 @@ export default function AIPanel({
     const d = dragRef.current
     dragRef.current = null
     const el = chatColRef.current
-    if (el) el.style.transition = ''
+    // Restaure la transition animée pour que le snap glisse (et ne saute pas)
+    if (el) el.style.transition = 'transform 0.34s cubic-bezier(0.32,0.72,0,1)'
     if (d && d.active) {
       const open = d.lastOff > AI_SIDEBAR_W / 2
       setHistOpen(open)
@@ -19554,6 +19580,8 @@ export default function AIPanel({
           {isDesktop && (
             <HistoryDrawer
               persistent
+              avatarUrl={userAvatarUrl}
+              initials={userInitials}
               convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
               activeId={activeId}
               onSelect={selectConv}
@@ -19570,6 +19598,8 @@ export default function AIPanel({
           {!isDesktop && (
             <HistoryDrawer
               underlay
+              avatarUrl={userAvatarUrl}
+              initials={userInitials}
               convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
               activeId={activeId}
               onSelect={selectConv}
@@ -19594,8 +19624,10 @@ export default function AIPanel({
               ...(isDesktop ? {} : {
                 position: 'relative', zIndex: 2, background: 'var(--ai-bg)',
                 transform: `translateX(${histOpen ? AI_SIDEBAR_W : 0}px)`,
-                transition: 'transform 0.28s cubic-bezier(0.32,1.06,0.64,1)',
-                boxShadow: histOpen ? '-8px 0 28px rgba(0,0,0,0.28)' : 'none',
+                transition: 'transform 0.34s cubic-bezier(0.32,0.72,0,1)',
+                willChange: 'transform', touchAction: 'pan-y',
+                borderTopLeftRadius: 22, borderBottomLeftRadius: 22,
+                boxShadow: '-5px 0 22px rgba(0,0,0,0.12)',
               }),
             }}
           >

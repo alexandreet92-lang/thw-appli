@@ -31,6 +31,7 @@ export type CoachToolName =
   | 'move_session'
   | 'add_week'
   | 'update_plan_periodisation'
+  | 'ask_clarifying_questions'
 
 // ── Types des inputs par tool ─────────────────────────────────
 
@@ -123,6 +124,18 @@ export interface UpdatePlanPeriodisationInput {
   blocs_periodisation: BlocPeriodisationInput[]
 }
 
+/** Question de clarification posée à l'athlète (carte interactive front) */
+export interface ClarifyingQuestionInput {
+  header: string          // étiquette courte ≤ 12 caractères
+  question: string        // intitulé complet
+  multiSelect: boolean    // plusieurs réponses possibles
+  options: { label: string; description?: string }[]
+}
+
+export interface AskClarifyingQuestionsInput {
+  questions: ClarifyingQuestionInput[]
+}
+
 // ── Map CoachToolName → Input type ────────────────────────────
 
 export interface CoachToolInputMap {
@@ -132,6 +145,7 @@ export interface CoachToolInputMap {
   move_session:              MoveSessionInput
   add_week:                  AddWeekInput
   update_plan_periodisation: UpdatePlanPeriodisationInput
+  ask_clarifying_questions:  AskClarifyingQuestionsInput
 }
 
 export type CoachToolInput<T extends CoachToolName> = CoachToolInputMap[T]
@@ -390,6 +404,57 @@ export const coachTools: Anthropic.Tool[] = [
         },
       },
       required: ['training_plan_id', 'blocs_periodisation'],
+    },
+  },
+
+  // ── 7. ask_clarifying_questions ──────────────────────────────
+  {
+    name: 'ask_clarifying_questions',
+    description:
+      "Pose 1 à 4 questions à choix multiples à l'athlète pour clarifier sa demande AVANT de répondre, " +
+      "quand une information DÉCISIVE manque (objectif, préférence, contrainte, échéance, " +
+      "ou une donnée requise absente de l'application). " +
+      "N'utilise PAS ce tool si la demande est déjà claire ou si l'information est présente dans le contexte. " +
+      "Ne le combine jamais avec un tool de modification du plan dans le même tour : pose d'abord, agis ensuite.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        questions: {
+          type: 'array',
+          description: '1 à 4 questions, uniquement les plus décisives.',
+          items: {
+            type: 'object',
+            properties: {
+              header: {
+                type: 'string',
+                description: 'Étiquette très courte (≤ 12 caractères) affichée en chip, ex: "Objectif", "Volume".',
+              },
+              question: {
+                type: 'string',
+                description: 'La question complète, claire et spécifique. Se termine par un point d\'interrogation.',
+              },
+              multiSelect: {
+                type: 'boolean',
+                description: 'true si plusieurs réponses peuvent être sélectionnées, false sinon.',
+              },
+              options: {
+                type: 'array',
+                description: '2 à 4 choix distincts et mutuellement exclusifs (sauf multiSelect).',
+                items: {
+                  type: 'object',
+                  properties: {
+                    label:       { type: 'string', description: 'Choix court (1 à 5 mots).' },
+                    description: { type: 'string', description: 'Brève explication du choix (1 phrase). Optionnel.' },
+                  },
+                  required: ['label'],
+                },
+              },
+            },
+            required: ['header', 'question', 'multiSelect', 'options'],
+          },
+        },
+      },
+      required: ['questions'],
     },
   },
 ]

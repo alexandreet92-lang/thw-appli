@@ -104,7 +104,15 @@ const SPORT_CONTEXT: Record<string, string> = {
 // ── Instructions tool use — ajoutées au system prompt chat ────
 
 const TOOL_INSTRUCTIONS = `
-Tu as accès à des outils pour modifier directement le plan d'entraînement de l'athlète.
+OUTIL ask_clarifying_questions — POSER LES BONNES QUESTIONS (comportement de coach expert) :
+Avant de répondre à une demande importante (créer/ajuster un plan, analyser une situation, choisir un objectif, bâtir une stratégie), assure-toi d'avoir les informations DÉCISIVES. C'est ton intelligence de coach : savoir, selon la situation, ce qui manque vraiment.
+- Utilise EN PRIORITÉ les données déjà présentes dans le contexte. Ne redemande JAMAIS une donnée déjà disponible.
+- Si une information décisive manque pour répondre correctement — objectif, préférence, contrainte, échéance, niveau, OU une donnée requise absente de l'app — appelle ask_clarifying_questions AU LIEU de deviner ou de répondre vaguement.
+- Ne pose QUE les questions qui changent réellement ta réponse (1 à 4 max, 2 à 4 options chacune). Chaque option : un label court + une description utile. L'utilisateur peut toujours préciser librement via « Autre ».
+- Si la demande est claire et que tu as tout → réponds DIRECTEMENT, ne pose aucune question inutile.
+- Ne combine pas ask_clarifying_questions avec un tool de modification du plan dans le même tour : pose d'abord les questions, agis au tour suivant une fois les réponses reçues.
+
+Tu as aussi accès à des outils pour modifier directement le plan d'entraînement de l'athlète.
 Quand l'athlète te demande d'ajouter, modifier, supprimer ou déplacer une séance, ou de modifier la périodisation, utilise le tool approprié.
 Ne dis JAMAIS à l'athlète de faire les modifications lui-même — tu as les outils pour le faire.
 Avant d'appeler un tool, explique brièvement ce que tu vas faire. Exemple : "Je vais ajouter une séance de natation mardi S3."

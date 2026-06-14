@@ -18,6 +18,7 @@ import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { VoiceOverlay } from './VoiceOverlay'
+import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
 import ActiveCompetencesBadge from '@/components/ai-coach/ActiveCompetencesBadge'
 import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
 import TopupEmailModal from '@/components/topup/TopupEmailModal'
@@ -39,6 +40,7 @@ interface AIMsg {
   content: string
   ts: number
   modelId?: THWModel   // modèle utilisé pour cette réponse
+  clarifyingQuestions?: ClarifyingQuestions  // questions IA (tool ask_clarifying_questions)
   sessionData?: SBSession  // données structurées SessionBuilder (persiste en localStorage)
   trainingReport?: TrainingReportData  // données structurées AnalyzeTrainingFlow (persiste en localStorage)
   raceStrategy?: RaceStrategyData      // données structurées StrategieCourseFlow (persiste en localStorage)
@@ -19153,10 +19155,26 @@ export default function AIPanel({
           } else if (eventType === 'tool_use') {
             try {
               const tool = JSON.parse(data) as PendingToolCall
-              // Accumule dans le tableau — NE remplace PAS (plusieurs tool_use possibles)
-              setPendingToolCalls(prev => [...prev, tool])
-              setToolApplyStatus('idle')
-              setToolApplyError(null)
+              if (tool.tool_name === 'ask_clarifying_questions') {
+                // Questions de clarification → attachées au message (carte interactive),
+                // pas au flux d'application de tools.
+                const qs = (tool.tool_input?.questions ?? []) as ClarifyingQuestions['questions']
+                if (Array.isArray(qs) && qs.length > 0) {
+                  setConvs(prev => prev.map(c =>
+                    c.id === cid
+                      ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId
+                          // content non vide : évite un tour assistant vide dans l'historique API
+                          ? { ...m, content: m.content || 'Quelques précisions pour mieux te répondre :', clarifyingQuestions: { questions: qs } }
+                          : m), updatedAt: Date.now() }
+                      : c
+                  ))
+                }
+              } else {
+                // Accumule dans le tableau — NE remplace PAS (plusieurs tool_use possibles)
+                setPendingToolCalls(prev => [...prev, tool])
+                setToolApplyStatus('idle')
+                setToolApplyError(null)
+              }
             } catch { /* malformed JSON — ignore */ }
           }
         }
@@ -20207,6 +20225,22 @@ export default function AIPanel({
                         text={msg.content}
                         isStreaming={loading && idx === active.msgs.length - 1}
                       />
+                    )}
+                    {/* Questions de clarification IA — carte interactive */}
+                    {msg.role === 'assistant' && msg.clarifyingQuestions && (
+                      <div style={{ marginLeft: 34 }}>
+                        <CoachQuestionCard
+                          data={msg.clarifyingQuestions}
+                          onSubmit={(recap) => {
+                            setConvs(prev => prev.map(c =>
+                              c.id === active.id
+                                ? { ...c, msgs: c.msgs.map(mm => mm.id === msg.id && mm.clarifyingQuestions ? { ...mm, clarifyingQuestions: { ...mm.clarifyingQuestions, answered: recap } } : mm) }
+                                : c
+                            ))
+                            void send(recap)
+                          }}
+                        />
+                      </div>
                     )}
 
                     {/* ── Message actions + timestamp (C1, C4) ─── */}

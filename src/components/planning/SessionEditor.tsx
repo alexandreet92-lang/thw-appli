@@ -1412,18 +1412,26 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
           )}
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={addSingle}
-            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=accentBB;(e.currentTarget as HTMLElement).style.color=accentBB}}
-            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='#E5E7EB';(e.currentTarget as HTMLElement).style.color='#6B7280'}}
-            style={{ flex:1, padding:'10px 14px', borderRadius:8, background:'var(--bg-card)', border:'1.5px dashed #E5E7EB', color:'#6B7280', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'border-color 0.15s,color 0.15s' }}>
-            <span style={{ fontSize:16, lineHeight:1, fontWeight:300 }}>+</span> Bloc simple
+            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=accentBB;(e.currentTarget as HTMLElement).style.background=`${accentBB}0a`}}
+            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--border)';(e.currentTarget as HTMLElement).style.background='var(--bg-card2)'}}
+            style={{ flex:1, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s, background .15s' }}>
+            <span style={{ width:30, height:30, borderRadius:9, background:`${accentBB}18`, color:accentBB, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:300, flexShrink:0, lineHeight:1 }}>+</span>
+            <span style={{ display:'flex', flexDirection:'column' as const, gap:1 }}>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>Bloc simple</span>
+              <span style={{ fontSize:10.5, color:'var(--text-dim)' }}>Effort continu</span>
+            </span>
           </button>
           <button onClick={addInterval}
-            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='#F5F3FF'}}
-            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='var(--bg-card)'}}
-            style={{ flex:1, padding:'10px 14px', borderRadius:8, background:'var(--bg-card)', border:'1.5px dashed #8B5CF6', color:'#8B5CF6', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'background 0.15s' }}>
-            <span style={{ fontSize:14 }}>⟳</span> Répétitions
+            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='#8B5CF6';(e.currentTarget as HTMLElement).style.background='rgba(139,92,246,0.06)'}}
+            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--border)';(e.currentTarget as HTMLElement).style.background='var(--bg-card2)'}}
+            style={{ flex:1, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s, background .15s' }}>
+            <span style={{ width:30, height:30, borderRadius:9, background:'rgba(139,92,246,0.15)', color:'#8B5CF6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0, lineHeight:1 }}>⟳</span>
+            <span style={{ display:'flex', flexDirection:'column' as const, gap:1 }}>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>Répétitions</span>
+              <span style={{ fontSize:10.5, color:'var(--text-dim)' }}>Intervalles</span>
+            </span>
           </button>
         </div>
       )}
@@ -4791,22 +4799,24 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             {/* Sport — tous les logos sur une ligne, clic = sélection */}
             <div>
               <span style={lbl}>Sport</span>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
                 {(Object.keys(SPORT_LABEL) as SportType[]).map(sp => {
                   const selected = sp === sport
                   return (
                     <button key={sp} onClick={() => handleSportChange(sp)} title={SPORT_LABEL[sp]}
                       style={{
                         display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 5,
-                        padding: '9px 6px 7px', borderRadius: 12, cursor: 'pointer',
-                        border: selected ? `1.5px solid ${accent}` : '1.5px solid var(--border)',
-                        background: selected ? `${accent}12` : 'transparent',
-                        minWidth: 60, flex: '1 1 0',
-                        opacity: selected ? 1 : 0.6,
-                        transition: 'opacity .15s, border-color .15s, background .15s',
-                      }}>
-                      <SportIcon sport={sp} size={34} />
-                      <span style={{ fontSize: 10, fontWeight: 600, color: selected ? 'var(--text)' : 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{SPORT_SHORT[sp]}</span>
+                        padding: '6px 4px', borderRadius: 10, cursor: 'pointer',
+                        border: 'none', background: 'transparent',
+                        minWidth: 48, flex: '1 1 0',
+                        opacity: selected ? 1 : 0.4,
+                        transition: 'opacity .15s, transform .15s',
+                        transform: selected ? 'scale(1.06)' : 'scale(1)',
+                      }}
+                      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.opacity = '0.7' }}
+                      onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLElement).style.opacity = '0.4' }}>
+                      <SportIcon sport={sp} size={24} circle={false} />
+                      <span style={{ fontSize: 10, fontWeight: selected ? 700 : 600, color: selected ? 'var(--text)' : 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{SPORT_SHORT[sp]}</span>
                     </button>
                   )
                 })}
@@ -4877,30 +4887,38 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 24 }}>
             {/* RPE */}
             <div style={{
-              padding: '14px 16px', borderRadius: 12,
-              border: `1px solid ${rpeCol}25`, background: `${rpeCol}06`,
+              padding: '16px 18px', borderRadius: 14,
+              border: '1px solid var(--border)', background: 'var(--bg-card2)',
             }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
                 <div>
                   <span style={lbl}>Effort perçu</span>
-                  <p style={{ fontSize: 11, color: rpeCol, fontWeight: 600, margin: '2px 0 0', letterSpacing: '0.01em' }}>
+                  <p style={{ fontSize: 12.5, color: rpeCol, fontWeight: 700, margin: '3px 0 0', letterSpacing: '0.01em' }}>
                     {rpe <= 2 ? 'Très facile' : rpe <= 4 ? 'Facile' : rpe <= 6 ? 'Modéré' : rpe <= 8 ? 'Difficile' : 'Maximal'}
                   </p>
                 </div>
-                <span style={{ fontSize: 28, fontWeight: 800, color: rpeCol, fontFamily: 'DM Mono, monospace', lineHeight: 1, letterSpacing: '-0.02em' }}>
-                  {rpe}<span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 600 }}>/10</span>
+                <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, fontFamily: 'var(--font-display)', lineHeight: 1 }}>
+                  <span style={{ fontSize: 34, fontWeight: 700, color: rpeCol, letterSpacing: '-0.02em' }}>{rpe}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}>/10</span>
                 </span>
               </div>
-              <div style={{ background: 'var(--border)', borderRadius: 99, height: 5, position: 'relative' as const, overflow: 'hidden' }}>
-                <div style={{
-                  position: 'absolute' as const, left: 0, top: 0, height: '100%', borderRadius: 99,
-                  width: `${(rpe / 10) * 100}%`,
-                  background: `linear-gradient(90deg, #4ade8088, ${rpeCol})`,
-                  transition: 'width 0.08s',
-                }} />
+              <div style={{ position: 'relative' as const, height: 18, display: 'flex', alignItems: 'center' }}>
+                <div style={{ background: 'var(--border)', borderRadius: 99, height: 6, width: '100%', position: 'relative' as const }}>
+                  <div style={{
+                    position: 'absolute' as const, left: 0, top: 0, height: '100%', borderRadius: 99,
+                    width: `${(rpe / 10) * 100}%`,
+                    background: `linear-gradient(90deg, #4ade80, ${rpeCol})`,
+                    transition: 'width 0.1s',
+                  }} />
+                  <div style={{
+                    position: 'absolute' as const, top: '50%', left: `${(rpe / 10) * 100}%`, transform: 'translate(-50%,-50%)',
+                    width: 16, height: 16, borderRadius: '50%', background: 'var(--bg-card)',
+                    border: `3px solid ${rpeCol}`, boxShadow: '0 1px 4px rgba(0,0,0,0.25)', transition: 'left 0.1s', pointerEvents: 'none' as const,
+                  }} />
+                </div>
+                <input type="range" min={0} max={10} step={1} value={rpe} onChange={e => setRpe(parseInt(e.target.value))}
+                  style={{ position: 'absolute' as const, left: 0, right: 0, width: '100%', height: 18, opacity: 0, cursor: 'pointer', zIndex: 2, margin: 0 }} />
               </div>
-              <input type="range" min={0} max={10} step={1} value={rpe} onChange={e => setRpe(parseInt(e.target.value))}
-                style={{ width: '100%', height: 20, marginTop: -14, opacity: 0, cursor: 'pointer', position: 'relative' as const, zIndex: 2 }} />
             </div>
 
             {/* Durée */}

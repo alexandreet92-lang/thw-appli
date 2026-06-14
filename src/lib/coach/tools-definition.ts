@@ -411,9 +411,11 @@ export const coachTools: Anthropic.Tool[] = [
   {
     name: 'ask_clarifying_questions',
     description:
-      "Pose 1 à 4 questions à choix multiples à l'athlète pour clarifier sa demande AVANT de répondre, " +
-      "quand une information DÉCISIVE manque (objectif, préférence, contrainte, échéance, " +
+      "Pose des questions à choix multiples à l'athlète pour clarifier sa demande AVANT de répondre, " +
+      "quand une information DÉCISIVE manque (objectif, préférence, contrainte, échéance, niveau, " +
       "ou une donnée requise absente de l'application). " +
+      "REGROUPE toutes les questions décisives en UN SEUL appel (1 à 6 questions). " +
+      "C'est le SEUL moyen autorisé de poser une question : jamais en texte libre, liste ou tableau. " +
       "N'utilise PAS ce tool si la demande est déjà claire ou si l'information est présente dans le contexte. " +
       "Ne le combine jamais avec un tool de modification du plan dans le même tour : pose d'abord, agis ensuite.",
     input_schema: {
@@ -421,7 +423,7 @@ export const coachTools: Anthropic.Tool[] = [
       properties: {
         questions: {
           type: 'array',
-          description: '1 à 4 questions, uniquement les plus décisives.',
+          description: '1 à 6 questions, uniquement les plus décisives, regroupées en un seul appel.',
           items: {
             type: 'object',
             properties: {

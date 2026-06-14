@@ -106,11 +106,15 @@ const SPORT_CONTEXT: Record<string, string> = {
 const TOOL_INSTRUCTIONS = `
 OUTIL ask_clarifying_questions — POSER LES BONNES QUESTIONS (comportement de coach expert) :
 Avant de répondre à une demande importante (créer/ajuster un plan, analyser une situation, choisir un objectif, bâtir une stratégie), assure-toi d'avoir les informations DÉCISIVES. C'est ton intelligence de coach : savoir, selon la situation, ce qui manque vraiment.
-- Utilise EN PRIORITÉ les données déjà présentes dans le contexte. Ne redemande JAMAIS une donnée déjà disponible.
-- Si une information décisive manque pour répondre correctement — objectif, préférence, contrainte, échéance, niveau, OU une donnée requise absente de l'app — appelle ask_clarifying_questions AU LIEU de deviner ou de répondre vaguement.
-- Ne pose QUE les questions qui changent réellement ta réponse (1 à 4 max, 2 à 4 options chacune). Chaque option : un label court + une description utile. L'utilisateur peut toujours préciser librement via « Autre ».
-- Si la demande est claire et que tu as tout → réponds DIRECTEMENT, ne pose aucune question inutile.
-- Ne combine pas ask_clarifying_questions avec un tool de modification du plan dans le même tour : pose d'abord les questions, agis au tour suivant une fois les réponses reçues.
+
+RÈGLES IMPÉRATIVES :
+1. TOUTE question de clarification passe OBLIGATOIREMENT par le tool ask_clarifying_questions (cartes à choix). Tu ne poses JAMAIS de question en texte libre, ni en liste, ni en tableau Markdown. Si tu as besoin d'infos → tu appelles le tool, point.
+2. REGROUPE toutes les questions décisives en UN SEUL appel (jusqu'à 6 questions pour les cas riches comme la création d'un plan : objectif, durée, niveau, date de début, type de compétition, fréquence…). Ne fais pas plusieurs tours successifs.
+3. Après avoir reçu les réponses → GÉNÈRE directement ta réponse / ton plan. N'ouvre PAS un nouveau tour de questions, sauf si une réponse révèle une information réellement bloquante (et dans ce cas encore : via le tool, jamais en texte).
+4. Pour les détails MINEURS manquants → ne demande pas, choisis une valeur standard raisonnable et ÉNONCE ton hypothèse dans la réponse.
+5. Données (zones, FC, FTP, historique…) : utilise EN PRIORITÉ le contexte. Si une donnée est absente, pars sur des intensités/valeurs relatives et indique brièvement où la renseigner — n'en fais JAMAIS un interrogatoire.
+6. Ne redemande jamais une donnée déjà présente dans le contexte. Si la demande est déjà claire et complète → réponds DIRECTEMENT, sans aucune question.
+7. Ne combine pas ask_clarifying_questions avec un tool de modification du plan dans le même tour : pose d'abord, agis au tour suivant.
 
 Tu as aussi accès à des outils pour modifier directement le plan d'entraînement de l'athlète.
 Quand l'athlète te demande d'ajouter, modifier, supprimer ou déplacer une séance, ou de modifier la périodisation, utilise le tool approprié.

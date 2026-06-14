@@ -32,6 +32,7 @@ export type CoachToolName =
   | 'add_week'
   | 'update_plan_periodisation'
   | 'ask_clarifying_questions'
+  | 'create_training_plan'
 
 // ── Types des inputs par tool ─────────────────────────────────
 
@@ -136,6 +137,35 @@ export interface AskClarifyingQuestionsInput {
   questions: ClarifyingQuestionInput[]
 }
 
+/** Séance générée pour create_training_plan (format français, comme saveToPlanning) */
+export interface CreatePlanSessionInput {
+  jour: number            // 0=lundi … 6=dimanche
+  sport: 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym'
+  titre: string
+  duree_min: number
+  tss?: number
+  intensite?: 'low' | 'moderate' | 'high' | 'max'
+  heure?: string
+  notes?: string
+  rpe?: number
+  blocs?: SessionBlockInput[]
+}
+
+export interface CreatePlanWeekInput {
+  numero: number          // 1-based
+  seances: CreatePlanSessionInput[]
+}
+
+export interface CreateTrainingPlanInput {
+  name: string
+  objectif_principal: string
+  duree_semaines: number
+  start_date: string      // YYYY-MM-DD (lundi de la 1re semaine)
+  sports: string[]
+  blocs_periodisation: BlocPeriodisationInput[]
+  semaines: CreatePlanWeekInput[]
+}
+
 // ── Map CoachToolName → Input type ────────────────────────────
 
 export interface CoachToolInputMap {
@@ -146,6 +176,7 @@ export interface CoachToolInputMap {
   add_week:                  AddWeekInput
   update_plan_periodisation: UpdatePlanPeriodisationInput
   ask_clarifying_questions:  AskClarifyingQuestionsInput
+  create_training_plan:      CreateTrainingPlanInput
 }
 
 export type CoachToolInput<T extends CoachToolName> = CoachToolInputMap[T]
@@ -457,6 +488,70 @@ export const coachTools: Anthropic.Tool[] = [
         },
       },
       required: ['questions'],
+    },
+  },
+
+  // ── 8. create_training_plan ──────────────────────────────────
+  {
+    name: 'create_training_plan',
+    description:
+      "Crée ET enregistre un plan d'entraînement complet pour l'athlète (nouvelle ligne training_plans + " +
+      "toutes les séances dans planned_sessions). " +
+      "Appelle ce tool quand l'athlète demande de CRÉER un nouveau plan ET que tu as réuni les infos décisives " +
+      "(objectif, durée, niveau, date de début, fréquence) — au besoin via ask_clarifying_questions d'abord. " +
+      "Génère TOUTES les semaines (semaines[].seances[]). Reste COMPACT : titres courts, notes ≤ 12 mots, " +
+      "blocs détaillés (blocs[]) uniquement pour les semaines 1 et 2, blocs: [] ensuite. " +
+      "N'invente jamais d'identifiant : ce tool crée le plan, tu n'as pas besoin de training_plan_id.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        name:               { type: 'string', description: 'Nom court du plan (ex: "Prépa cyclisme 12 sem").' },
+        objectif_principal: { type: 'string', description: "Objectif principal du plan en une phrase." },
+        duree_semaines:     { type: 'integer', description: 'Nombre total de semaines du plan.' },
+        start_date:         { type: 'string', description: 'Date du lundi de la 1re semaine, format YYYY-MM-DD.' },
+        sports: {
+          type: 'array',
+          description: "Sports couverts par le plan (codes : 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym').",
+          items: { type: 'string', enum: [...SPORT_ENUM] },
+        },
+        blocs_periodisation: {
+          type: 'array',
+          description: 'Périodisation macro du plan (Base → Intensité → Spécifique → Compétition).',
+          items: BLOC_PERIODISATION_ITEM,
+        },
+        semaines: {
+          type: 'array',
+          description: 'Toutes les semaines du plan, chacune avec ses séances.',
+          items: {
+            type: 'object',
+            properties: {
+              numero: { type: 'integer', description: 'Numéro de semaine (1-based).' },
+              seances: {
+                type: 'array',
+                description: 'Séances de la semaine. Génère-les toutes.',
+                items: {
+                  type: 'object',
+                  properties: {
+                    jour:      PROP_DAY_INDEX,
+                    sport:     PROP_SPORT,
+                    titre:     { type: 'string', description: 'Titre court de la séance.' },
+                    duree_min: { type: 'integer', description: 'Durée en minutes.' },
+                    tss:       { type: 'number', description: 'TSS estimé.' },
+                    intensite: PROP_INTENSITY,
+                    heure:     { type: 'string', description: 'Heure de début HH:MM (optionnel).' },
+                    notes:     { type: 'string', description: 'Note ≤ 12 mots (optionnel).' },
+                    rpe:       { type: 'integer', description: 'RPE cible 1–10 (optionnel).' },
+                    blocs:     PROP_BLOCKS,
+                  },
+                  required: ['jour', 'sport', 'titre', 'duree_min'],
+                },
+              },
+            },
+            required: ['numero', 'seances'],
+          },
+        },
+      },
+      required: ['name', 'objectif_principal', 'duree_semaines', 'start_date', 'semaines'],
     },
   },
 ]

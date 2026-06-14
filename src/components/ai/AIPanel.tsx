@@ -13037,6 +13037,12 @@ function toolCallMeta(tc: PendingToolCall): { borderColor: string; emoji: string
     return { borderColor: '#f97316', emoji: '⟳', label: 'Modifier la périodisation',
       description: `${n} blocs de périodisation remplacés` }
   }
+  if (tool_name === 'create_training_plan') {
+    const weeks = ((inp.semaines as unknown[]) ?? []).length
+    const nSess = ((inp.semaines as { seances?: unknown[] }[]) ?? []).reduce((acc, w) => acc + ((w.seances ?? []).length), 0)
+    return { borderColor: '#3C90D5', emoji: '✦', label: "Créer le plan d'entraînement",
+      description: `${String(inp.name ?? 'Plan')} · ${String(inp.duree_semaines ?? weeks)} semaines · ${nSess} séances` }
+  }
   return { borderColor: '#9ca3af', emoji: '?', label: tool_name, description: '' }
 }
 
@@ -18769,6 +18775,96 @@ export default function AIPanel({
         blocs_periodisation: inp.blocs_periodisation,
       }).eq('id', inp.training_plan_id)
       pgErr = error
+
+    } else if (tool_name === 'create_training_plan') {
+      // Crée un plan complet : ligne training_plans + N séances planned_sessions.
+      // Réutilise le mapping colonnes de saveToPlanning (source de vérité).
+      const p = inp as unknown as {
+        name?: string; objectif_principal?: string; duree_semaines?: number
+        start_date?: string; sports?: string[]; blocs_periodisation?: unknown[]
+        semaines?: { numero?: number; seances?: Record<string, unknown>[] }[]
+      }
+      // Lundi de la semaine de départ
+      const sd = new Date(p.start_date ?? new Date().toISOString().slice(0, 10))
+      const dow = sd.getDay() === 0 ? 6 : sd.getDay() - 1
+      sd.setDate(sd.getDate() - dow)
+      const startDate = sd.toISOString().slice(0, 10)
+      const weeks = p.semaines ?? []
+      const duree = p.duree_semaines ?? weeks.length ?? 1
+      const endDateSunday = addDays(addWeeks(startDate, Math.max(1, duree) - 1), 6)
+
+      const sportMap: Record<string, string> = {
+        'Running': 'run', 'Course': 'run', 'Course à pied': 'run', 'Trail': 'run',
+        'Cyclisme': 'bike', 'Vélo': 'bike', 'Velo': 'bike', 'Cycling': 'bike',
+        'Natation': 'swim', 'Swimming': 'swim', 'Musculation': 'gym', 'Gym': 'gym',
+        'Hyrox': 'hyrox', 'Rowing': 'rowing', 'Aviron': 'rowing',
+      }
+      const normSport = (raw: string) => sportMap[raw] ?? sportMap[raw?.trim()] ?? raw?.toLowerCase()
+      const sportsAcross = Array.from(new Set(
+        weeks.flatMap(w => (w.seances ?? []).map(s => normSport(String(s.sport ?? '')))).filter(Boolean)
+      ))
+
+      const { error: planErr } = await sb.from('training_plans').insert({
+        user_id:             userId,
+        name:                p.name ?? "Plan d'entraînement",
+        objectif_principal:  p.objectif_principal ?? null,
+        duree_semaines:      duree,
+        start_date:          startDate,
+        end_date:            endDateSunday,
+        sports:              sportsAcross.length ? sportsAcross : (p.sports ?? []),
+        blocs_periodisation: p.blocs_periodisation ?? [],
+        conseils_adaptation: [],
+        points_cles:         [],
+        ai_context:          { source: 'chat_coach', generated_at: new Date().toISOString() },
+        status:              'active',
+      })
+      if (planErr) {
+        pgErr = planErr
+      } else {
+        const { data: planRow } = await sb.from('training_plans')
+          .select('id').eq('user_id', userId).eq('status', 'active').eq('start_date', startDate)
+          .order('created_at', { ascending: false }).limit(1).maybeSingle()
+        const newPlanId = planRow?.id as string | undefined
+
+        const rows: Record<string, unknown>[] = []
+        for (const semaine of weeks) {
+          const weekStart = addWeeks(startDate, (semaine.numero ?? 1) - 1)
+          for (const seance of (semaine.seances ?? [])) {
+            const titreLC = String(seance.titre ?? '').toLowerCase().trim()
+            if (/^(repos|rest|rest day|jour (de )?repos|off|jour off)$/i.test(titreLC)) continue
+            if ((Number(seance.duree_min) || 0) === 0 && !titreLC) continue
+            const oc = {
+              sport: seance.sport, titre: seance.titre, time: seance.heure ?? null,
+              duration_min: seance.duree_min, tss: seance.tss ?? null, intensity: seance.intensite ?? null,
+              notes: seance.notes ?? null, rpe: seance.rpe ?? null, blocs: seance.blocs ?? [],
+            }
+            rows.push({
+              user_id:          userId,
+              plan_id:          newPlanId ?? null,
+              week_start:       weekStart,
+              day_index:        seance.jour,
+              sport:            normSport(String(seance.sport ?? '')),
+              title:            seance.titre,
+              time:             seance.heure ?? null,
+              duration_min:     seance.duree_min,
+              tss:              seance.tss ?? null,
+              status:           'planned',
+              intensity:        seance.intensite ?? null,
+              notes:            seance.notes ?? null,
+              rpe:              seance.rpe ?? null,
+              blocks:           seance.blocs ?? [],
+              plan_variant:     'A',
+              validation_data:  {},
+              source:           'training_plan',
+              original_content: oc,
+            })
+          }
+        }
+        if (rows.length > 0) {
+          const { error: sessErr } = await sb.from('planned_sessions').insert(rows)
+          pgErr = sessErr
+        }
+      }
 
     } else {
       return `Tool inconnu : ${tool_name}`

@@ -124,7 +124,8 @@ Si la demande est ambiguë (quelle semaine ? quel jour ?), pose une question de 
 
 RÈGLE CRITIQUE — CHOIX DU BON TOOL :
 - N'INVENTE JAMAIS un identifiant (training_plan_id, session_id). Utilise UNIQUEMENT les UUID réels présents dans le contexte. N'écris jamais de valeur factice comme "current-plan" ou "plan-1".
-- Si AUCUN plan n'existe dans le contexte, tu ne peux PAS le créer ni le modifier via ces outils : présente le plan dans ta réponse texte et invite l'athlète à lancer l'action « Créer un plan d'entraînement » pour l'enregistrer. N'appelle add_session / add_week / update_plan_periodisation que si un training_plan_id réel figure dans le contexte.
+- CRÉER un nouveau plan complet → utilise le tool create_training_plan (il crée et enregistre le plan, tu n'as PAS besoin de training_plan_id). Réunis d'abord les infos décisives (objectif, durée, niveau, date de début, fréquence), via ask_clarifying_questions si besoin, puis appelle create_training_plan avec toutes les semaines.
+- MODIFIER un plan existant (add_session / add_week / update_plan_periodisation / move / delete) → uniquement si un training_plan_id ou session_id RÉEL figure dans le contexte. S'il n'y en a pas, ne tente pas de modifier : crée un plan (create_training_plan) ou réponds en texte.
 - Si une semaine est marquée "⚠️ AUCUNE SÉANCE — semaine vide" → utilise OBLIGATOIREMENT add_week pour créer cette semaine.
 - Si une séance a déjà un id: → utilise update_session pour la modifier ou move_session pour la déplacer.
 - Ne jamais appeler update_session sur une séance qui n'existe pas (pas d'id). Ce serait une erreur.

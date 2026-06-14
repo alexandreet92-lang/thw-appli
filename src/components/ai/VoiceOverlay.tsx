@@ -1,58 +1,125 @@
 'use client'
 
 // ══════════════════════════════════════════════════════════════
-// VoiceOverlay — mode dictée plein écran (style image 4).
+// VoiceOverlay — mode dictée (style Claude mobile).
 //
-// Transcription live en grand texte serif (Fraunces) au centre,
-// barre de contrôle en pilule en bas : ✕ annuler · waveform ·
-// ✓ valider. Portail sur document.body, au-dessus de tout.
+// · Fond translucide + blur : la conversation et le champ d'écriture
+//   restent visibles, floutés en arrière-plan.
+// · Transcription serif ancrée juste au-dessus de la barre de contrôle.
+// · Waveform réactive au VRAI volume du micro (Web Audio API) :
+//   points plats au silence, barres qui montent à la voix. Repli
+//   automatique « piloté par la parole » si le micro est indisponible.
+// · Pilule compacte : ✕ · waveform · ✓ (bleu shuriken #3C90D5).
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-const ACCENT = '#06B6D4'
+const SHURIKEN = '#3C90D5'        // bleu du logo shuriken
+const NBARS = 34                  // barres de la waveform (historique défilant)
 
 export function VoiceOverlay({
   transcript,
   interim,
-  secs,
   onCancel,
   onConfirm,
 }: {
   transcript: string
   interim: string
-  secs: number
   onCancel: () => void
   onConfirm: () => void
 }) {
   const [mounted, setMounted] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const active = interim.trim().length > 0
+  const barsRef = useRef<(HTMLSpanElement | null)[]>([])
+  const bufRef = useRef<number[]>(new Array(NBARS).fill(0))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const audioRef = useRef<{ ctx: any; stream: MediaStream; analyser: AnalyserNode; data: Uint8Array } | null>(null)
+  const fallbackRef = useRef(false)
+  const fbEnergyRef = useRef(0)
+  const interimRef = useRef(interim)
+  const lastInterimRef = useRef('')
+  interimRef.current = interim
+
   const hasText = (transcript + interim).trim().length > 0
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Auto-scroll vers le bas au fil de la transcription
+  // Auto-scroll de la transcription
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [transcript, interim])
 
+  // ── Analyse du volume micro + animation de la waveform ──────
+  useEffect(() => {
+    let cancelled = false
+
+    async function setup() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Ctx = window.AudioContext || (window as any).webkitAudioContext
+        const ctx = new Ctx()
+        const src = ctx.createMediaStreamSource(stream)
+        const analyser: AnalyserNode = ctx.createAnalyser()
+        analyser.fftSize = 256
+        src.connect(analyser)
+        audioRef.current = { ctx, stream, analyser, data: new Uint8Array(analyser.fftSize) }
+      } catch {
+        fallbackRef.current = true   // pas d'accès micro → repli sur la parole
+      }
+    }
+    void setup()
+
+    const id = window.setInterval(() => {
+      let v = 0
+      const a = audioRef.current
+      if (a) {
+        a.analyser.getByteTimeDomainData(a.data)
+        let sum = 0
+        for (let i = 0; i < a.data.length; i++) { const d = (a.data[i] - 128) / 128; sum += d * d }
+        v = Math.min(1, Math.sqrt(sum / a.data.length) * 4.4)   // RMS + gain
+        if (v < 0.06) v = 0                                     // noise gate → silence = plat
+      } else if (fallbackRef.current) {
+        // Repli : enveloppe pilotée par l'activité de reconnaissance
+        const cur = interimRef.current
+        if (cur && cur !== lastInterimRef.current) fbEnergyRef.current = 1
+        else fbEnergyRef.current *= 0.82
+        lastInterimRef.current = cur
+        v = fbEnergyRef.current > 0.05 ? fbEnergyRef.current * (0.4 + Math.random() * 0.45) : 0
+      }
+      const buf = bufRef.current
+      buf.push(v); buf.shift()
+      for (let i = 0; i < NBARS; i++) {
+        const el = barsRef.current[i]
+        if (!el) continue
+        const h = buf[i]
+        el.style.transform = `scaleY(${Math.max(0.09, h)})`
+        el.style.opacity = h > 0.05 ? '1' : '0.45'
+      }
+    }, 65)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+      const a = audioRef.current
+      if (a) {
+        a.stream.getTracks().forEach(t => t.stop())
+        a.ctx.close?.()
+        audioRef.current = null
+      }
+    }
+  }, [])
+
   if (!mounted) return null
-
-  const mm = String(Math.floor(secs / 60)).padStart(2, '0')
-  const ss = String(secs % 60).padStart(2, '0')
-
-  // Waveform : barres animées (plus amples quand l'utilisateur parle)
-  const BARS = 28
 
   return createPortal(
     <>
       <style>{`
-        @keyframes vo_fade { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes vo_bar  { 0%,100% { transform: scaleY(0.22) } 50% { transform: scaleY(1) } }
-        @keyframes vo_dot  { 0%,100% { opacity: 0.35 } 50% { opacity: 1 } }
+        @keyframes vo_in   { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes vo_pill { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
       `}</style>
       <div
         role="dialog"
@@ -60,82 +127,75 @@ export function VoiceOverlay({
         aria-label="Dictée vocale"
         style={{
           position: 'fixed', inset: 0, zIndex: 1500,
-          background: 'var(--ai-bg)', color: 'var(--ai-text)',
-          display: 'flex', flexDirection: 'column',
-          animation: 'vo_fade 0.22s ease',
-          paddingTop: 'env(safe-area-inset-top, 0px)',
-          paddingBottom: 'calc(18px + env(safe-area-inset-bottom, 0px))',
+          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+          background: 'color-mix(in srgb, var(--ai-bg) 58%, transparent)',
+          backdropFilter: 'blur(18px) saturate(1.05)',
+          WebkitBackdropFilter: 'blur(18px) saturate(1.05)',
+          animation: 'vo_in 0.22s ease',
+          paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
         }}
       >
-        {/* Timer + état */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 0 6px' }}>
-          <span style={{
-            display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
-            background: ACCENT, animation: 'vo_dot 1.1s ease-in-out infinite',
-          }} />
-          <span style={{ fontFamily: 'DM Mono, ui-monospace, monospace', fontSize: 13, color: 'var(--ai-mid)', letterSpacing: '0.04em' }}>
-            {mm}:{ss}
-          </span>
-        </div>
-
-        {/* Transcription live — gros texte serif */}
+        {/* Transcription — juste au-dessus de la pilule */}
         <div
           ref={scrollRef}
           style={{
-            flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-            display: 'flex', flexDirection: 'column', justifyContent: hasText ? 'flex-start' : 'center',
-            padding: '14px 26px 24px',
+            flexShrink: 0, maxHeight: '36vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+            padding: '0 24px 14px',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 42px)',
+            maskImage: 'linear-gradient(to bottom, transparent 0, #000 42px)',
           }}
         >
-          {hasText ? (
-            <p style={{
-              margin: 0, fontFamily: 'var(--font-display, Fraunces), Georgia, serif',
-              fontSize: 'clamp(26px, 6.4vw, 38px)', lineHeight: 1.32, fontWeight: 400,
-              letterSpacing: '-0.01em',
-            }}>
-              <span style={{ color: 'var(--ai-text)' }}>{transcript}</span>
-              <span style={{ color: 'var(--ai-dim)' }}>{interim}</span>
-            </p>
-          ) : (
-            <p style={{
-              margin: 0, textAlign: 'center', fontFamily: 'var(--font-display, Fraunces), Georgia, serif',
-              fontSize: 'clamp(22px, 5.2vw, 30px)', color: 'var(--ai-dim)', fontStyle: 'italic', fontWeight: 400,
-            }}>
-              Je t&apos;écoute…
-            </p>
-          )}
+          <p style={{
+            margin: 0, fontFamily: 'var(--font-display, Fraunces), Georgia, serif',
+            fontSize: 'clamp(22px, 5.4vw, 30px)', lineHeight: 1.32, fontWeight: 400, fontStyle: 'italic',
+            letterSpacing: '-0.01em',
+          }}>
+            {hasText ? (
+              <>
+                <span style={{ color: 'var(--ai-text)' }}>{transcript}</span>
+                <span style={{ color: 'var(--ai-dim)' }}>{interim}</span>
+              </>
+            ) : (
+              <span style={{ color: 'var(--ai-dim)' }}>Je t&apos;écoute…</span>
+            )}
+          </p>
         </div>
 
-        {/* Barre de contrôle — pilule : ✕ · waveform · ✓ */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, padding: '8px 22px 0' }}>
+        {/* Pilule de contrôle — ✕ · waveform · ✓ */}
+        <div style={{
+          flexShrink: 0, margin: '0 14px', display: 'flex', alignItems: 'center', gap: 10,
+          background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 999,
+          padding: '7px 9px', boxShadow: '0 8px 28px rgba(0,0,0,0.16)',
+          animation: 'vo_pill 0.26s cubic-bezier(0.32,0.72,0,1)',
+        }}>
           {/* Annuler */}
           <button
             onClick={onCancel}
             aria-label="Annuler"
             style={{
-              width: 56, height: 56, borderRadius: '50%', border: 'none', flexShrink: 0,
-              background: 'var(--ai-bg2, rgba(127,127,127,0.16))', color: 'var(--ai-text)',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 44, height: 44, borderRadius: '50%', border: 'none', flexShrink: 0,
+              background: 'var(--ai-bg2, rgba(127,127,127,0.14))', color: 'var(--ai-text)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
 
-          {/* Waveform */}
-          <div style={{ flex: 1, maxWidth: 240, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, overflow: 'hidden' }}>
-            {Array.from({ length: BARS }, (_, i) => {
-              const d = Math.abs(i - (BARS - 1) / 2) / (BARS / 2) // 0 au centre → 1 aux bords
-              return (
-                <span key={i} style={{
+          {/* Waveform — historique défilant du volume */}
+          <div style={{ flex: 1, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, overflow: 'hidden' }}>
+            {Array.from({ length: NBARS }, (_, i) => (
+              <span
+                key={i}
+                ref={el => { barsRef.current[i] = el }}
+                style={{
                   width: 3, height: '100%', borderRadius: 3, flexShrink: 0,
-                  background: ACCENT,
-                  opacity: active ? 0.55 + (1 - d) * 0.45 : 0.3,
-                  transformOrigin: 'center',
-                  transform: 'scaleY(0.22)',
-                  animation: `vo_bar ${active ? 0.5 + (i % 6) * 0.08 : 1.4 + (i % 4) * 0.2}s ease-in-out ${(i * 0.045) % 0.9}s infinite`,
-                }} />
-              )
-            })}
+                  background: 'var(--ai-text)', opacity: 0.45,
+                  transformOrigin: 'center', transform: 'scaleY(0.09)',
+                  transition: 'transform 0.07s linear, opacity 0.12s linear',
+                }}
+              />
+            ))}
           </div>
 
           {/* Valider */}
@@ -143,13 +203,13 @@ export function VoiceOverlay({
             onClick={onConfirm}
             aria-label="Valider"
             style={{
-              width: 56, height: 56, borderRadius: '50%', border: 'none', flexShrink: 0,
-              background: ACCENT, color: '#fff', cursor: 'pointer',
+              width: 44, height: 44, borderRadius: '50%', border: 'none', flexShrink: 0,
+              background: SHURIKEN, color: '#fff', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 6px 18px rgba(6,182,212,0.4)',
+              boxShadow: '0 4px 14px rgba(60,144,213,0.42)',
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
           </button>
         </div>
       </div>

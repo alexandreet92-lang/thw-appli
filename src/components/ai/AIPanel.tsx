@@ -20445,7 +20445,6 @@ export default function AIPanel({
                 <VoiceOverlay
                   transcript={liveTranscript}
                   interim={liveInterim}
-                  secs={recSecs}
                   onCancel={cancelVoice}
                   onConfirm={confirmVoice}
                 />

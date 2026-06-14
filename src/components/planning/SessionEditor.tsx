@@ -938,6 +938,10 @@ function bumpPaceOrWatts(v: string, steps: number): string {
   const n = parseInt(v || '0') || 0
   return String(Math.max(0, n + steps * 5))
 }
+// Durée affichée en m:ss (durationMin = minutes décimales). Pas de 15 s.
+function durMMSS(min: number): string { const s = Math.max(0, Math.round((min || 0) * 60)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
+function mmssToMin(v: string): number { const m = (v || '').match(/^(\d+):(\d{1,2})$/); if (m) return (+m[1]) + (+m[2]) / 60; const n = parseFloat(v || '0'); return isNaN(n) ? 0 : n }
+function bumpDurSec(min: number, steps: number): number { const s = Math.max(0, Math.round((min || 0) * 60) + steps * 15); return Math.round(s) / 60 }
 
 function StepperField({ label, unit, value, onChange, onDec, onInc, color = 'var(--text)', placeholder, headerRight }: {
   label: string; unit?: string; value: string; onChange: (v: string) => void; onDec: () => void; onInc: () => void
@@ -1087,17 +1091,17 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
               <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>TSS Estimé</p>
-              <p style={{ fontSize: 18, fontWeight: 800, color: '#3B82F6', fontFamily: 'DM Mono,monospace', margin: 0 }}>{tssCurrent}<span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 3 }}>pts</span></p>
+              <p style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', margin: 0 }}>{tssCurrent}<span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 3 }}>pts</span></p>
             </div>
             <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
               <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>Durée Totale</p>
-              <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono,monospace', margin: 0 }}>{formatHM(Math.round(totalBlocks))}</p>
+              <p style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', margin: 0 }}>{formatHM(Math.round(totalBlocks))}</p>
             </div>
             <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
               <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>Intensité Moy.</p>
-              <p style={{ fontSize: 18, fontWeight: 800, color: zc(dominantZone), fontFamily: 'DM Mono,monospace', margin: 0 }}>
+              <p style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', margin: 0 }}>
                 {npWatts ? `${npWatts}W` : '—'}
                 {ifVal && <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 4 }}>IF {ifVal}</span>}
               </p>
@@ -1260,37 +1264,37 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
               return (
                 <div key={b.id} {...dragProps}
                   onMouseEnter={() => setHoveredBlockId(b.id)} onMouseLeave={() => setHoveredBlockId(null)}
-                  style={{ borderRadius: 10, overflow: 'hidden', border: `1px solid ${col}33`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', opacity: isDragging ? 0.5 : 1, outline: isDragOver ? `2px solid ${col}` : 'none', borderLeft: isHov ? `3px solid ${col}` : `1px solid ${col}33`, transition: 'border-left 0.12s' }}>
+                  style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', opacity: isDragging ? 0.5 : 1, outline: isDragOver ? '2px solid var(--primary)' : 'none', borderColor: isHov ? 'var(--border-mid)' : 'var(--border)', transition: 'border-color 0.12s' }}>
                   {/* Header */}
-                  <div style={{ background: `${col}0D`, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ width: 28, height: 28, borderRadius: 6, background: col, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>Z{b.zone}</span>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: '#a78bfa', background: 'rgba(167,139,250,0.15)', padding: '3px 8px', borderRadius: 6, flexShrink: 0 }}>INTERVAL</span>
+                  <div style={{ background: 'var(--bg-card2)', padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ padding: '3px 8px', borderRadius: 6, background: `${col}1A`, color: col, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Z{b.zone}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', background: 'var(--bg-elev)', padding: '3px 8px', borderRadius: 6, flexShrink: 0, letterSpacing: '0.04em' }}>INTERVAL</span>
                     <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{b.reps}× {b.label || `${Math.round((b.effortMin??0)*10)/10}min`}</span>
                     <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', flexShrink: 0 }}>{formatHM(Math.round((b.reps??1)*((b.effortMin??0)+(b.recoveryMin??0))))}</span>
                     <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:12, padding:'0 3px', flexShrink:0 }} title="Dupliquer">📋</button>
                     <button onClick={() => onChange(blocks.filter(x => x.id !== b.id))} style={{ background:'none', border:'none', cursor:'pointer', fontSize:18, lineHeight:1, padding:'0 2px', flexShrink:0, color:'var(--text-dim)' }}>×</button>
                   </div>
                   {/* Body */}
-                  <div style={{ padding: '10px 12px', background: 'var(--bg-card)', borderLeft: `3px solid ${col}`, display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
-                    <div style={{ padding: '8px 10px', borderRadius: 8, background: `${col}08`, border: `1px solid ${col}22` }}>
-                      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: col, margin: '0 0 6px' }}>Effort</p>
+                  <div style={{ padding: '10px 12px', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                    <div style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>Effort</p>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(90px,1fr))', gap: 8 }}>
                         <div>
                           <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Répétitions</p>
-                          <input type="number" min={1} value={b.reps??5} onChange={e=>upd(b.id,'reps',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
+                          <input type="number" min={1} value={b.reps??5} onChange={e=>upd(b.id,'reps',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
                         </div>
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Durée (min)</p>
-                          <input type="number" min={0.1} step={0.1} value={b.effortMin??4} onChange={e=>upd(b.id,'effortMin',parseFloat(e.target.value)||0.5)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:`1px solid ${col}40`, background:'var(--bg-card2)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
-                          {effortRange && sport !== 'bike' && <p style={{ fontSize:9, color:col, margin:'2px 0 0', fontFamily:'DM Mono,monospace' }}>{effortRange}</p>}
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Durée</p>
+                          <input value={durMMSS(b.effortMin??0)} onChange={e=>upd(b.id,'effortMin',mmssToMin(e.target.value))} placeholder="4:00" style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
+                          {effortRange && sport !== 'bike' && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0', fontFamily:'var(--font-display)' }}>{effortRange}</p>}
                         </div>
                         <div>
                           <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Zone</p>
-                          <input type="number" min={1} max={7} value={b.zone} onChange={e=>upd(b.id,'zone',parseInt(e.target.value)||3)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
+                          <input type="number" min={1} max={7} value={b.zone} onChange={e=>upd(b.id,'zone',parseInt(e.target.value)||3)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
                         </div>
                         <div>
                           <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{vLabel}</p>
-                          <input value={b.value} onChange={e=>upd(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:`1px solid ${col}40`, background:'var(--bg-card2)', color:col, fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', fontWeight:700 }}/>
+                          <input value={b.value} onChange={e=>upd(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', outline:'none', fontWeight:700 }}/>
                           {sport==='bike' && ftp && parseInt(b.value||'0')>0 && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0' }}>{Math.round(parseInt(b.value||'0')/ftp*100)}% FTP</p>}
                         </div>
                       </div>
@@ -1299,8 +1303,8 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                       <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>Récupération</p>
                       <div style={{ display: 'grid', gridTemplateColumns: sport==='bike' ? '1fr 1fr 1fr' : '1fr 1fr', gap: 8 }}>
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Durée (min)</p>
-                          <input type="number" min={0} step={0.5} value={b.recoveryMin??1} onChange={e=>upd(b.id,'recoveryMin',parseFloat(e.target.value)||0)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid rgba(107,114,128,0.25)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Durée</p>
+                          <input value={durMMSS(b.recoveryMin??0)} onChange={e=>upd(b.id,'recoveryMin',mmssToMin(e.target.value))} placeholder="1:00" style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
                         </div>
                         <div>
                           <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Zone récup</p>
@@ -1337,10 +1341,10 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
             return (
               <div key={b.id} {...dragProps}
                 onMouseEnter={() => setHoveredBlockId(b.id)} onMouseLeave={() => setHoveredBlockId(null)}
-                style={{ borderRadius: 10, border: `1px solid ${col}33`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden', opacity: isDragging ? 0.5 : 1, outline: isDragOver ? `2px solid ${col}` : 'none', borderLeft: isHov ? `3px solid ${col}` : `1px solid ${col}33`, transition: 'border-left 0.12s' }}>
+                style={{ borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden', opacity: isDragging ? 0.5 : 1, outline: isDragOver ? '2px solid var(--primary)' : 'none', borderColor: isHov ? 'var(--border-mid)' : 'var(--border)', transition: 'border-color 0.12s' }}>
                 {/* Header */}
-                <div style={{ background: `${col}0D`, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 28, height: 28, borderRadius: 6, background: col, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>Z{b.zone}</span>
+                <div style={{ background: 'var(--bg-card2)', padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 6, background: `${col}1A`, color: col, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Z{b.zone}</span>
                   <select value={b.type} onChange={e => changeType(b.id, e.target.value)} style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '2px 4px' }}>
                     {(Object.entries(BLOCK_TYPE_LABEL) as [BlockType,string][]).filter(([k]) => k !== 'circuit_header').map(([k,v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
@@ -1353,13 +1357,13 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                     style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:18, lineHeight:1, padding:'0 2px', flexShrink:0, transition:'color 0.12s' }}>×</button>
                 </div>
                 {/* Body */}
-                <div style={{ padding: '10px 12px', background: 'var(--bg-card)', borderLeft: `3px solid ${col}` }}>
+                <div style={{ padding: '10px 12px', background: 'var(--bg-card)' }}>
                   <input value={b.label} onChange={e=>upd(b.id,'label',e.target.value)} placeholder="Nom du bloc (ex: Tempo)" style={{ width:'100%', padding:'8px 11px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, outline:'none', boxSizing:'border-box' as const, marginBottom:10 }}/>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, alignItems: 'end' }}>
-                    <StepperField label="Durée" unit="min" value={String(b.durationMin)}
-                      onChange={v=>upd(b.id,'durationMin',parseInt(v)||0)}
-                      onDec={()=>upd(b.id,'durationMin',Math.max(0,(b.durationMin||0)-5))}
-                      onInc={()=>upd(b.id,'durationMin',(b.durationMin||0)+5)} />
+                    <StepperField label="Durée" value={durMMSS(b.durationMin)}
+                      onChange={v=>upd(b.id,'durationMin',mmssToMin(v))}
+                      onDec={()=>upd(b.id,'durationMin',bumpDurSec(b.durationMin,-1))}
+                      onInc={()=>upd(b.id,'durationMin',bumpDurSec(b.durationMin,1))} />
                     {inFtpPct && sport === 'bike' && ftp ? (
                       <div>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4, minHeight:14 }}>
@@ -1372,7 +1376,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                         </div>
                       </div>
                     ) : (
-                      <StepperField label={vLabel} value={b.value||''} placeholder={vPlh} color={col}
+                      <StepperField label={vLabel} value={b.value||''} placeholder={vPlh} color="var(--text)"
                         onChange={v=>upd(b.id,'value',v)}
                         onDec={()=>upd(b.id,'value',bumpPaceOrWatts(b.value||'',-1))}
                         onInc={()=>upd(b.id,'value',bumpPaceOrWatts(b.value||'',1))}
@@ -1380,7 +1384,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                           <button onClick={() => setFtpPctMode(p=>({...p,[b.id]:!p[b.id]}))} style={{ fontSize:8, padding:'1px 5px', borderRadius:3, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', cursor:'pointer', fontWeight:600 }}>%FTP</button>
                         ) : undefined} />
                     )}
-                    <StepperField label="FC" unit="bpm" value={b.hrAvg||''} color="#EF4444"
+                    <StepperField label="FC" unit="bpm" value={b.hrAvg||''} color="var(--text)"
                       onChange={v=>upd(b.id,'hrAvg',v)}
                       onDec={()=>upd(b.id,'hrAvg',String(Math.max(0,(parseInt(b.hrAvg||'0')||0)-1)))}
                       onInc={()=>upd(b.id,'hrAvg',String((parseInt(b.hrAvg||'0')||0)+1))} />
@@ -1440,20 +1444,20 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
       ) : (
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={addSingle}
-            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=accentBB;(e.currentTarget as HTMLElement).style.background=`${accentBB}0a`}}
-            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--border)';(e.currentTarget as HTMLElement).style.background='var(--bg-card2)'}}
-            style={{ flex:1, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s, background .15s' }}>
-            <span style={{ width:30, height:30, borderRadius:9, background:`${accentBB}18`, color:accentBB, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:300, flexShrink:0, lineHeight:1 }}>+</span>
+            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--primary)'}}
+            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--border)'}}
+            style={{ flex:1, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s' }}>
+            <span style={{ width:30, height:30, borderRadius:9, background:'var(--bg-elev)', color:'var(--text-mid)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:300, flexShrink:0, lineHeight:1 }}>+</span>
             <span style={{ display:'flex', flexDirection:'column' as const, gap:1 }}>
               <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>Bloc simple</span>
               <span style={{ fontSize:10.5, color:'var(--text-dim)' }}>Effort continu</span>
             </span>
           </button>
           <button onClick={addInterval}
-            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='#8B5CF6';(e.currentTarget as HTMLElement).style.background='rgba(139,92,246,0.06)'}}
-            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--border)';(e.currentTarget as HTMLElement).style.background='var(--bg-card2)'}}
-            style={{ flex:1, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s, background .15s' }}>
-            <span style={{ width:30, height:30, borderRadius:9, background:'rgba(139,92,246,0.15)', color:'#8B5CF6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0, lineHeight:1 }}>⟳</span>
+            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--primary)'}}
+            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--border)'}}
+            style={{ flex:1, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s' }}>
+            <span style={{ width:30, height:30, borderRadius:9, background:'var(--bg-elev)', color:'var(--text-mid)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0, lineHeight:1 }}>⟳</span>
             <span style={{ display:'flex', flexDirection:'column' as const, gap:1 }}>
               <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>Répétitions</span>
               <span style={{ fontSize:10.5, color:'var(--text-dim)' }}>Intervalles</span>

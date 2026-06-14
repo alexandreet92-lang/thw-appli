@@ -17,6 +17,7 @@ import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
+import { VoiceOverlay } from './VoiceOverlay'
 import ActiveCompetencesBadge from '@/components/ai-coach/ActiveCompetencesBadge'
 import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
 import TopupEmailModal from '@/components/topup/TopupEmailModal'
@@ -20439,43 +20440,15 @@ export default function AIPanel({
                 />
               )}
 
-              {/* Recording overlay — B3 */}
+              {/* Dictée vocale — overlay plein écran (style image 4) */}
               {recording && (
-                <div style={{ padding: '12px 16px 8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 52 }}>
-                    {/* Cancel X */}
-                    <button onClick={cancelVoice} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#374151', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14, fontWeight: 700 }}>✕</button>
-                    {/* Sound wave — 20 bars */}
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2, height: 28, overflow: 'hidden' }}>
-                      {Array.from({ length: 20 }, (_, i) => (
-                        <span key={i} style={{
-                          display: 'inline-block', width: '4%', maxWidth: 4, height: '100%',
-                          borderRadius: 2, background: 'var(--ai-dim)', flexShrink: 0,
-                          animation: `ai_voice_bar ${0.6 + (i % 5) * 0.1}s ease-in-out infinite alternate`,
-                          animationDelay: `${(i * 0.05) % 0.5}s`,
-                          transformOrigin: 'bottom',
-                        }} />
-                      ))}
-                    </div>
-                    {/* Timer */}
-                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: 'var(--ai-dim)', flexShrink: 0 }}>
-                      {String(Math.floor(recSecs/60)).padStart(2,'0')}:{String(recSecs%60).padStart(2,'0')}
-                    </span>
-                    {/* Confirm ✓ — transfère la transcription */}
-                    <button onClick={confirmVoice} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#06B6D4', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>✓</button>
-                  </div>
-                  {/* Transcription temps réel */}
-                  <div style={{ marginTop: 6, maxHeight: 60, overflowY: 'auto', padding: '4px 0' }}>
-                    {!liveTranscript && !liveInterim ? (
-                      <span style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: 14 }}>À l&apos;écoute…</span>
-                    ) : (
-                      <span style={{ fontSize: 14, lineHeight: 1.5 }}>
-                        <span style={{ color: 'var(--text)' }}>{liveTranscript}</span>
-                        <span style={{ color: 'var(--text-mid)' }}>{liveInterim}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <VoiceOverlay
+                  transcript={liveTranscript}
+                  interim={liveInterim}
+                  secs={recSecs}
+                  onCancel={cancelVoice}
+                  onConfirm={confirmVoice}
+                />
               )}
 
               {/* Ligne basse : + · modèle · [spacer] · mic · envoyer */}

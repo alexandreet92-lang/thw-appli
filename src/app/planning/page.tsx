@@ -21,7 +21,7 @@ import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
 import { Dumbbell, CalendarDays, LayoutDashboard } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { TrainingSummary } from '@/app/planning/components/training/TrainingSummary'
-import { SportIcon } from '@/components/icons/SportIcon'
+import { SportIcon, SPORT_ICON, sportKeyFromType } from '@/components/icons/SportIcon'
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import type { NutritionItem, ParcoursData } from '@/components/planning/SessionEditor'
 
@@ -2167,6 +2167,8 @@ function isoWeekNum(ds: string): number {
   return Math.ceil(((t.getTime() - ys.getTime()) / 86400000 + 1) / 7)
 }
 const PLAN_SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique']
+// Couleur sport alignée sur les logos SportIcon (run=vert, muscu=orange, etc.)
+function iconColor(sp: string): string { const k = sportKeyFromType(sp); return k ? SPORT_ICON[k].color : (SPORT_BORDER[sp as SportType] ?? '#94a3b8') }
 
 function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   // Lit un éventuel ?week=YYYY-MM-DD dans l'URL pour positionner le
@@ -2335,6 +2337,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const [extraSessions, setExtraSessions] = useState<Record<string,Session[]>>({})
   const [planTick, setPlanTick] = useState(0)
   const [loadedOnce, setLoadedOnce] = useState(false)
+  const [datasWeek, setDatasWeek] = useState<string|null>(null)
   useEffect(()=>{ if(!loading) setLoadedOnce(true) },[loading])
   useEffect(()=>{
     const sb=createClient()
@@ -2450,14 +2453,17 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 })}
                 {/* cumul volumes */}
                 <div style={{ padding: '9px 10px', borderLeft: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)' }}>Total</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{formatHM(totalMin)}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <button onClick={() => setDatasWeek(ws)} style={{ display: 'flex', alignItems: 'baseline', gap: 5, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)' }}>Volume</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{formatHM(totalMin)}</span>
+                    </button>
+                    <button onClick={() => setDatasWeek(ws)} title="Voir les données" style={{ fontSize: 9, fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-dim, rgba(6,182,212,0.12))', border: '1px solid rgba(6,182,212,0.3)', borderRadius: 6, padding: '2px 7px', cursor: 'pointer' }}>Datas</button>
                   </div>
                   {PLAN_SPORTS.filter(sp => vol[sp]).map(sp => (
                     <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
                       <SportIcon sport={sp} size={15} />
-                      <div style={{ flex: 1, height: 7, borderRadius: 4, background: 'var(--border)', overflow: 'hidden' }}><div style={{ width: `${(vol[sp] / maxVol) * 100}%`, height: '100%', background: SPORT_BORDER[sp], borderRadius: 4 }} /></div>
+                      <div style={{ flex: 1, height: 7, borderRadius: 4, background: 'var(--border)', overflow: 'hidden' }}><div style={{ width: `${(vol[sp] / maxVol) * 100}%`, height: '100%', background: iconColor(sp), borderRadius: 4 }} /></div>
                       <span style={{ fontSize: 8.5, color: 'var(--text-mid)', fontWeight: 700, minWidth: 32, textAlign: 'right' as const }}>{formatHM(vol[sp])}</span>
                     </div>
                   ))}
@@ -2467,6 +2473,78 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
             )
           })}
         </div></div>
+      </div>
+    )
+  }
+
+  // ── Surpage « Datas » d'une semaine ──
+  function renderDatasOverlay() {
+    if (!datasWeek) return null
+    const w = buildWeek(datasWeek, activePlan)
+    const dates = getWeekDatesFromStart(datasWeek)
+    // par jour : minutes par sport
+    const dayBySport = w.map(d => {
+      const m: Record<string, number> = {}
+      d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); m[sp] = (m[sp] || 0) + s.durationMin })
+      d.activities.forEach(a => { const sp = normalizeSportType(a.sport); m[sp] = (m[sp] || 0) + Math.round(a.elapsedTime / 60) })
+      return m
+    })
+    const dayTotals = dayBySport.map(m => Object.values(m).reduce((a, b) => a + b, 0))
+    const maxDay = Math.max(1, ...dayTotals)
+    const counts: Record<string, number> = {}
+    let totalN = 0
+    w.forEach(d => { d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); counts[sp] = (counts[sp] || 0) + 1; totalN++ }); d.activities.forEach(a => { const sp = normalizeSportType(a.sport); counts[sp] = (counts[sp] || 0) + 1; totalN++ }) })
+    let sm = 0, sn = 0
+    w.forEach(d => d.sessions.forEach(s => { const e = estSmSn(s.blocks, s.durationMin); sm += e.sm; sn += e.sn }))
+    const totalMin = dayTotals.reduce((a, b) => a + b, 0)
+    const GH = 120
+    return (
+      <div onClick={e => { if (e.target === e.currentTarget) setDatasWeek(null) }}
+        style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, width: 'min(640px,96vw)', maxHeight: '88vh', overflowY: 'auto', padding: '22px 24px', boxShadow: 'var(--shadow)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 19, color: 'var(--text)' }}>Semaine S{isoWeekNum(datasWeek)} <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500 }}>· {new Date(datasWeek + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span></span>
+            <button onClick={() => setDatasWeek(null)} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 14 }}>✕</button>
+          </div>
+          {/* Totaux */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' as const }}>
+            {[['SÉANCES', String(totalN), 'var(--text)'], ['VOLUME', formatHM(totalMin), 'var(--text)'], ['SM', String(sm), '#06B6D4'], ['SN', String(sn), '#8B5CF6']].map((c, i) => (
+              <div key={i} style={{ flex: '1 1 110px', padding: '11px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{c[0]}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: c[2], fontFamily: 'Syne,sans-serif', marginTop: 2 }}>{c[1]}</div>
+              </div>
+            ))}
+          </div>
+          {/* Séances par sport */}
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 8 }}>SÉANCES PAR SPORT</div>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' as const, marginBottom: 20 }}>
+            {PLAN_SPORTS.filter(sp => counts[sp]).map(sp => (
+              <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <SportIcon sport={sp} size={20} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{counts[sp]}</span>
+              </div>
+            ))}
+          </div>
+          {/* Volume par jour — jauges verticales empilées par sport */}
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 10 }}>VOLUME PAR JOUR</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: GH + 30 }}>
+            {w.map((d, i) => {
+              const m = dayBySport[i]; const tot = dayTotals[i]
+              const barH = (tot / maxDay) * GH
+              return (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 8.5, color: 'var(--text-dim)', fontWeight: 700, height: 11 }}>{tot > 0 ? formatHM(tot) : ''}</span>
+                  <div style={{ width: '70%', maxWidth: 30, height: GH, display: 'flex', flexDirection: 'column-reverse' as const, borderRadius: 6, overflow: 'hidden', background: 'var(--bg-card2)' }}>
+                    {PLAN_SPORTS.filter(sp => m[sp]).map(sp => (
+                      <div key={sp} style={{ height: `${(m[sp] / maxDay) * GH}px`, background: iconColor(sp) }} />
+                    ))}
+                  </div>
+                  <span style={{ fontSize: 9, color: i === todayIdx && datasWeek === currentWeekStart ? '#06B6D4' : 'var(--text-dim)', fontWeight: 700 }}>{['L', 'M', 'M', 'J', 'V', 'S', 'D'][i]}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
     )
   }
@@ -2966,6 +3044,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
 
       {tab === 'training' && (<>
       {renderPlan()}
+      {renderDatasOverlay()}
       </>)}
     </div>
   )

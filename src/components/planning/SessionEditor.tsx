@@ -942,6 +942,24 @@ function bumpPaceOrWatts(v: string, steps: number): string {
 function durMMSS(min: number): string { const s = Math.max(0, Math.round((min || 0) * 60)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 function mmssToMin(v: string): number { const m = (v || '').match(/^(\d+):(\d{1,2})$/); if (m) return (+m[1]) + (+m[2]) / 60; const n = parseFloat(v || '0'); return isNaN(n) ? 0 : n }
 function bumpDurSec(min: number, steps: number): number { const s = Math.max(0, Math.round((min || 0) * 60) + steps * 15); return Math.round(s) / 60 }
+// Estimation SM (métabolique) / SN (neuromusculaire) « prévu » depuis les blocs (déterministe,
+// proxy par zone — l'app calcule le réel sur l'activité terminée). Remplace l'ancien TSS.
+const SM_COEF = [0.6, 0.85, 1.05, 1.25, 1.45, 1.55, 1.62]
+const SN_COEF = [0, 0, 0.08, 0.25, 0.6, 1.1, 1.7]
+function estimateSmSn(blocks: { mode?: string; zone?: number; durationMin?: number; reps?: number; effortMin?: number; recoveryMin?: number }[], durationMin: number): { sm: number; sn: number } {
+  let sm = 0, sn = 0, acc = 0
+  for (const b of blocks) {
+    const z = Math.max(1, Math.min(7, b.zone || 1))
+    const isIv = b.mode === 'interval' && !!b.reps && b.effortMin != null
+    const totMin = isIv ? (b.reps as number) * ((b.effortMin as number) + (b.recoveryMin || 0)) : (b.durationMin || 0)
+    const effMin = isIv ? (b.reps as number) * (b.effortMin as number) : (b.durationMin || 0)
+    sm += totMin * SM_COEF[z - 1]
+    sn += effMin * SN_COEF[z - 1]
+    acc += totMin
+  }
+  if (acc === 0 && durationMin > 0) sm = durationMin
+  return { sm: Math.round(sm), sn: Math.round(sn) }
+}
 
 function StepperField({ label, unit, value, onChange, onDec, onInc, color = 'var(--text)', placeholder, headerRight }: {
   label: string; unit?: string; value: string; onChange: (v: string) => void; onDec: () => void; onInc: () => void
@@ -1060,6 +1078,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
 
   // ── Métriques header ──
   const tssCurrent = computeTSSRange(blocks, sport, totalBlocks, 5, null).high
+  const smsnBB = estimateSmSn(blocks, totalBlocks)
   const npWatts = (() => {
     if (sport !== 'bike' || blocks.length === 0) return null
     const IF_Z = [0.55,0.70,0.83,0.95,1.10,1.20,1.35]
@@ -1090,12 +1109,17 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
           {/* 3-metric row */}
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>TSS Estimé</p>
-              <p style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', margin: 0 }}>{tssCurrent}<span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 3 }}>pts</span></p>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>SM<span style={{ fontSize: 8, color: 'var(--text-dim)' }}> métab.</span></p>
+              <p style={{ fontSize: 19, fontWeight: 700, color: '#06B6D4', fontFamily: 'var(--font-display)', margin: 0 }}>{smsnBB.sm}</p>
             </div>
             <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>Durée Totale</p>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>SN<span style={{ fontSize: 8, color: 'var(--text-dim)' }}> neuro.</span></p>
+              <p style={{ fontSize: 19, fontWeight: 700, color: '#8B5CF6', fontFamily: 'var(--font-display)', margin: 0 }}>{smsnBB.sn}</p>
+            </div>
+            <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
+            <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>Durée</p>
               <p style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', margin: 0 }}>{formatHM(Math.round(totalBlocks))}</p>
             </div>
             <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
@@ -3964,6 +3988,7 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
       ? String(sessionStats.tssLow)
       : `${sessionStats.tssLow}–${sessionStats.tssHigh}`
   const tssLabel = sessionStats.tssHigh < 50 ? 'Très facile' : sessionStats.tssHigh < 100 ? 'Modérée' : sessionStats.tssHigh < 150 ? 'Difficile' : sessionStats.tssHigh < 200 ? 'Très difficile' : 'Extrême'
+  const smsn = estimateSmSn(blocks, dur)
 
   // RPE color
   const rpeCol = rpe <= 3 ? '#4ade80' : rpe <= 6 ? '#facc15' : rpe <= 8 ? '#fb923c' : '#f87171'
@@ -4980,7 +5005,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 <div style={{ display: 'flex', gap: mobile ? 12 : 20, alignItems: 'flex-start', flexWrap: 'wrap' as const }}>
                   {/* Donut Zones — 160×160px, 20px ring */}
                   {(() => {
-                    const SIZE = 160, CX = 80, CY = 80, R_OUT = 70, R_IN = 50
+                    const SIZE = 118, CX = 59, CY = 59, R_OUT = 52, R_IN = 38
                     const GAP_RAD = 0.025
                     let angle = -Math.PI / 2
                     const arcs = zoneDist.map((v, i) => {
@@ -5019,12 +5044,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8 }}>
                         <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
                           {/* Background ring */}
-                          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="#374151" strokeWidth={R_OUT - R_IN} opacity={0.25} />
+                          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="var(--border)" strokeWidth={R_OUT - R_IN} opacity={0.25} />
                           {arcs}
                           {/* Center text: duration */}
-                          <text x={CX} y={CY - 8} textAnchor="middle" fontSize={13} fill="var(--text)" fontWeight={800} fontFamily="DM Mono,monospace">{fmtDurLocal(dur)}</text>
-                          <text x={CX} y={CY + 10} textAnchor="middle" fontSize={9} fill="var(--text-dim)" fontFamily="DM Mono,monospace">Zones</text>
-                          <text x={CX} y={CY + 23} textAnchor="middle" fontSize={11} fill={accent} fontWeight={700} fontFamily="DM Mono,monospace">{tssDisplay} TSS</text>
+                          <text x={CX} y={CY - 6} textAnchor="middle" fontSize={14} fill="var(--text)" fontWeight={800} fontFamily="var(--font-display)">{fmtDurLocal(dur)}</text>
+                          <text x={CX} y={CY + 13} textAnchor="middle" fontSize={10} fontWeight={700} fill="#06B6D4" fontFamily="var(--font-display)">SM {smsn.sm}</text>
+                          <text x={CX} y={CY + 26} textAnchor="middle" fontSize={10} fontWeight={700} fill="#8B5CF6" fontFamily="var(--font-display)">SN {smsn.sn}</text>
                         </svg>
                         {/* Compact legend */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, auto)', gap: '3px 8px', justifyContent: 'center' }}>
@@ -5054,11 +5079,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             </div>
                           )}
                           <div style={{ textAlign: 'center' as const }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'center' }}>
-                              <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--text)' }}>{tssDisplay}</span>
-                              <button onClick={() => setTssInfo(true)} style={{ width: 12, height: 12, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 6, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>?</button>
-                            </div>
-                            <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>TSS</div>
+                            <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'var(--font-display)', color: '#8B5CF6' }}>{smsn.sn}</div>
+                            <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>SN neuro.</div>
                           </div>
                         </div>
                       </div>
@@ -5092,7 +5114,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 }}>
                         <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-                          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="#374151" strokeWidth={R_OUT - R_IN} opacity={0.25} />
+                          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="var(--border)" strokeWidth={R_OUT - R_IN} opacity={0.25} />
                           {arcs}
                           <text x={CX} y={CY + 4} textAnchor="middle" fontSize={9} fill="var(--text)" fontWeight={700} fontFamily="DM Mono,monospace">FC</text>
                         </svg>
@@ -5110,15 +5132,15 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 </div>
               </div>
             ) : (
-              /* Fallback: always show TSS */
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              /* Fallback: SM / SN */
+              <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
                 <div style={{ textAlign: 'center' as const }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center', marginBottom: 3 }}>
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>TSS</span>
-                    <button onClick={() => setTssInfo(true)} style={{ width: 13, height: 13, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 7, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>?</button>
-                  </div>
-                  <span style={{ fontSize: 24, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace', letterSpacing: '-0.03em' }}>{tssDisplay}</span>
-                  <p style={{ fontSize: 8, color: 'var(--text-dim)', margin: '3px 0 0' }}>{tssLabel}</p>
+                  <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>SM métab.</span>
+                  <p style={{ fontSize: 24, fontWeight: 800, color: '#06B6D4', fontFamily: 'var(--font-display)', letterSpacing: '-0.03em', margin: '2px 0 0' }}>{smsn.sm}</p>
+                </div>
+                <div style={{ textAlign: 'center' as const }}>
+                  <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>SN neuro.</span>
+                  <p style={{ fontSize: 24, fontWeight: 800, color: '#8B5CF6', fontFamily: 'var(--font-display)', letterSpacing: '-0.03em', margin: '2px 0 0' }}>{smsn.sn}</p>
                 </div>
                 {blocks.length === 0 && (
                   <p style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic', flex: 1 }}>

@@ -2202,6 +2202,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const [detailModal, setDetailModal] = useState<Session|null>(null)
   const [activityDetail, setActivityDetail] = useState<TrainingActivity|null>(null)
   const [dragOver, setDragOver] = useState<number|null>(null)
+  const [hoverAdd, setHoverAdd] = useState<string|null>(null)
   const [show10w, setShow10w] = useState(false)
   const [intensityModal, setIntensityModal] = useState<DayIntensity|null>(null)
   const [planningFavorites, setPlanningFavorites] = useState<Array<{id:string;name:string}>>([])
@@ -2585,7 +2586,14 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               onDragLeave={()=>setDragOver(null)}
               onDrop={()=>onDrop(i)}
               onTouchEnd={()=>onTouchEnd(i)}
-              style={{ borderLeft:'1px solid var(--border)',padding:'6px 4px',background:dragOver===i?'rgba(6,182,212,0.04)':'transparent',minWidth:68,minHeight:80 }}>
+              onMouseEnter={()=>setHoverAdd(`${ws}_${i}`)}
+              onMouseLeave={()=>setHoverAdd(h=>h===`${ws}_${i}`?null:h)}
+              style={{ position:'relative' as const,borderLeft:'1px solid var(--border)',padding:'6px 4px',background:dragOver===i?'rgba(6,182,212,0.04)':'transparent',minWidth:68,minHeight:80 }}>
+              {hoverAdd===`${ws}_${i}` && (
+                <button onClick={()=>{setAddModalFavorites(false);setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws})}}
+                  title="Ajouter une séance"
+                  style={{ position:'absolute' as const,top:'50%',left:'50%',transform:'translate(-50%,-50%)',zIndex:8,width:30,height:30,borderRadius:'50%',background:'#06B6D4',border:'none',color:'#fff',fontSize:18,lineHeight:1,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 10px rgba(6,182,212,0.55)' }}>+</button>
+              )}
               <div style={{ display:'flex',flexDirection:'column',gap:4 }}>
                 {/* Activités réelles (cliquables → modal détail) */}
                 {d.activities.map(a=>{

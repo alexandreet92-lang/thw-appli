@@ -68,18 +68,17 @@ export const COACH_PRINCIPLES = `PRINCIPES DE COACHING (à appliquer en permanen
 5. Choix de méthode = profil × objectif × temps × niveau (jamais imposée) : tu proposes et tu expliques.
 6. Tu expliques court et causal, calibré sur les vraies données de l'athlète.`
 
-// ── Doctrine pour la GÉNÉRATION DE PLAN (lean : tenir dans le temps serveur) ──
-// On reste léger : méthode + B7 (séances) (+ B2 si blessure). Pas B1/B6 complets
-// (trop volumineux → prefill + sortie plus longue → timeout).
+// ── Doctrine pour la GÉNÉRATION DE PLAN (riche : Vercel Pro = 300 s de marge) ──
 export function buildDoctrineForPlan(opts: { methodId?: string; sport?: string; injury?: boolean }): string {
-  const parts: string[] = []
+  const parts: string[] = [read('B1-philosophie.md')]
   const mf = methodDocFile(opts.methodId, opts.sport)
   if (mf) parts.push(read(mf))
-  parts.push(cap(read('B7-seances.md'), 7000))   // bibliothèque de séances calibrées
-  if (opts.injury) parts.push(cap(read('B2-blessures.md'), 5000))
+  parts.push(read('B7-seances.md'))      // bibliothèque de séances calibrées
+  parts.push(read('B6-competitions.md')) // exigences de l'épreuve
+  if (opts.injury) parts.push(read('B2-blessures.md'))
   const body = parts.filter(Boolean).join('\n\n═══════════════════\n\n')
   if (!body) return ''
-  return `\n\n========== DOCTRINE DE COACHING (RÉFÉRENTIEL À APPLIQUER) ==========\n${body}\n========== FIN DOCTRINE ==========\n`
+  return `\n\n========== DOCTRINE DE COACHING (RÉFÉRENTIEL À APPLIQUER FIDÈLEMENT) ==========\n${body}\n========== FIN DOCTRINE ==========\n`
 }
 
 // ── Doctrine pour le CHAT (légère, ciblée, BORNÉE) ──────────────

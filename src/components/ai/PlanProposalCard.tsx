@@ -67,7 +67,7 @@ export function PlanProposalCard({
           <span style={spinner} />
           <div>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--ai-text)' }}>Je construis ton plan…</p>
-            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--ai-dim)' }}>Analyse de tes données, zones et historique (20-40 s).</p>
+            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--ai-dim)' }}>Analyse de tes données, zones et historique (ça peut prendre 1-2 min).</p>
           </div>
         </div>
         <style>{`@keyframes pp_spin{to{transform:rotate(360deg)}}`}</style>

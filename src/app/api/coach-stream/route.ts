@@ -18,7 +18,7 @@
 // ══════════════════════════════════════════════════════════════
 
 export const runtime     = 'nodejs'
-export const maxDuration = 120
+export const maxDuration = 300
 
 import { NextRequest } from 'next/server'
 import type Anthropic from '@anthropic-ai/sdk'

@@ -19184,7 +19184,13 @@ export default function AIPanel({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questionnaire, profil, zones, historique_90j: activities, calendrier_objectifs: events, sante: health }),
       })
-      if (!genRes.ok) { setProposal({ status: 'error', requirements: req, error: 'La génération a échoué (limite atteinte ou serveur occupé). Réessaie.' }); return }
+      if (!genRes.ok) {
+        let msg = 'La génération a échoué. Réessaie.'
+        if (genRes.status === 504 || genRes.status === 408) msg = 'La génération a pris trop de temps. Réessaie, ou demande un plan un peu plus court.'
+        else if (genRes.status === 402 || genRes.status === 429) msg = 'Limite de génération atteinte pour le moment. Réessaie un peu plus tard.'
+        else { try { const e = await genRes.json() as { error?: string }; if (e?.error) msg = e.error } catch { /* ignore */ } }
+        setProposal({ status: 'error', requirements: req, error: msg }); return
+      }
       const gen = await genRes.json() as { program?: GenProgram }
       if (!gen.program?.semaines?.length) { setProposal({ status: 'error', requirements: req, error: 'Le plan est revenu vide. Précise tes besoins et réessaie.' }); return }
       setProposal({ status: 'ready', requirements: { ...req, start_date: startDate }, program: gen.program })

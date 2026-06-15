@@ -1,4 +1,4 @@
-export const maxDuration = 60
+export const maxDuration = 120
 
 import { NextRequest } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
@@ -513,16 +513,16 @@ ${modification ? `MODIFICATION DEMANDÉE :\n${modification}\n\nPROGRAMME EXISTAN
 
 INSTRUCTIONS DE GÉNÉRATION — RESPECTER IMPÉRATIVEMENT :
 
-STRUCTURE & DÉTAIL PROGRESSIF (méthode coach d'élite) :
-- Génère TOUTES les semaines de la durée demandée (voir DURÉE CIBLE ci-dessous), sans exception.
-- Pour chaque séance : sport, titre, jour (0=lundi…6=dimanche), duree_min, tss, intensite, heure, notes, rpe.
-- Blocs DÉTAILLÉS (blocs[]) OBLIGATOIRES pour les semaines 1 à 4 (le bloc en cours) : échauffement → corps → retour au calme, avec zone, répétitions, récup, et watts/allure/FC CALIBRÉS sur les zones de l'athlète (section ZONES D'ENTRAÎNEMENT). Pour les semaines 5+, blocs: [] (elles seront détaillées progressivement à l'approche).
-- Même sans blocs détaillés, CHAQUE séance des semaines 5+ doit avoir un titre précis, une intensité, un TSS cohérent et une note utile (≤ 14 mots) — jamais de séance vide ou générique.
-- note_coach : OBLIGATOIRE pour chaque semaine — 1 phrase qui explique le POURQUOI de la semaine (objectif physiologique, place dans la périodisation).
-- conseils_adaptation : 3 à 5 conseils concrets et personnalisés (basés sur l'historique, les zones, les contraintes). points_cles : 3 à 5 points expliquant la LOGIQUE du plan.
+STRUCTURE & DÉTAIL PROGRESSIF (méthode coach d'élite) — RESTE COMPACT (≤ ~3500 tokens sinon le plan est tronqué) :
+- Génère TOUTES les semaines de la durée demandée, mais SEULEMENT les 2 premières en détail.
+- SEMAINES 1 et 2 : blocs[] détaillés (échauffement → corps → retour au calme), avec zone, répétitions, récup et watts/allure/FC CALIBRÉS sur les zones de l'athlète (section ZONES D'ENTRAÎNEMENT).
+- SEMAINES 3+ : blocs: [] OBLIGATOIRE. Juste sport, titre court, jour, duree_min, tss, intensite, note ≤ 8 mots. Elles seront détaillées plus tard, à l'approche.
+- Chaque séance : sport, titre, jour (0=lundi…6=dimanche), duree_min, tss, intensite, heure, notes, rpe.
+- note_coach : 1 phrase COURTE par semaine — le POURQUOI (objectif physiologique, place dans la périodisation).
+- conseils_adaptation : 3 à 4 maximum. points_cles : 3 à 4 maximum. Phrases courtes et concrètes.
 
 CALIBRAGE SUR LES DONNÉES RÉELLES :
-- Utilise les ZONES fournies pour prescrire des intensités chiffrées (watts vélo, allure run, FC) dans les blocs des semaines 1-4.
+- Utilise les ZONES fournies pour prescrire des intensités chiffrées (watts vélo, allure run, FC) dans les blocs des semaines 1-2.
 - Analyse l'HISTORIQUE 30 jours (volume, sports, charge) pour fixer un point de départ RÉALISTE : ne sur-charge pas par rapport au volume actuel, progresse logiquement.
 - Tiens compte des MÉTRIQUES santé récentes (fatigue, sommeil) et des courses du CALENDRIER pour la périodisation.
 
@@ -563,11 +563,11 @@ ${JSON_SCHEMA}
 
 RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
 0. DURÉE CIBLE : respecte EXACTEMENT la durée demandée (champ "Durée cible" du questionnaire si présent, sinon déduis-la de la date de course). Génère toutes ces semaines.
-1. QUALITÉ AVANT TOUT : chaque séance doit avoir un sens dans la progression. Intensités calibrées sur les zones réelles. Jamais de séance creuse ou copiée-collée.
+1. QUALITÉ AVANT TOUT : chaque séance a un sens dans la progression. Intensités calibrées sur les zones réelles. Jamais de séance creuse ou copiée-collée.
 2. Progression logique et périodisée (Base → Intensité → Spécifique → Affûtage → Compétition), cohérente avec l'historique et la forme actuelle.
 3. TSS cohérent avec la durée et l'intensité. Respect strict des jours de repos et des contraintes.
-4. EXPLIQUE TES CHOIX : note_coach par semaine + conseils_adaptation + points_cles doivent rendre la LOGIQUE du plan limpide pour l'athlète.
-5. Compacité intelligente : detail complet (blocs) semaines 1-4 ; semaines 5+ = séances cadrées sans blocs. Reste dans les limites de tokens en priorisant : périodisation → toutes les semaines cadrées → blocs détaillés des 4 premières.`
+4. EXPLIQUE TES CHOIX : note_coach par semaine + conseils_adaptation + points_cles rendent la LOGIQUE du plan limpide.
+5. COMPACITÉ OBLIGATOIRE : blocs détaillés UNIQUEMENT semaines 1-2 ; semaines 3+ = séances cadrées SANS blocs (blocs:[]). Reste sous ~3500 tokens. Priorité : périodisation → toutes les semaines cadrées (compactes) → blocs des 2 premières semaines.`
 
   try {
     const client = getAnthropicClient()
@@ -578,14 +578,11 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
       messages: [{ role: 'user', content: userPrompt }],
     })
 
-    // Tâche 2 — vérification stop_reason avant tout parsing
+    // stop_reason : si tronqué (max_tokens), on NE rejette PAS — repairJSON
+    // récupère les semaines complètes générées (détail progressif).
     console.log('[training-plan] stop_reason:', resp.stop_reason, '| usage:', JSON.stringify(resp.usage))
     if (resp.stop_reason === 'max_tokens') {
-      console.log('[training-plan] ERROR: output truncated at max_tokens')
-      return new Response(JSON.stringify({
-        error: 'Réponse tronquée — le plan est trop long pour les limites actuelles',
-        stop_reason: 'max_tokens',
-      }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+      console.log('[training-plan] WARN: output truncated at max_tokens → tentative de réparation')
     }
 
     // Tâche 4 — extraction correcte : response.content[0].text

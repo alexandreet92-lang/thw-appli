@@ -4921,10 +4921,6 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 }} />
               </div>
             </div>
-          </div>
-
-          {/* DROITE */}
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 24 }}>
             {/* RPE */}
             <div style={{
               padding: '16px 18px', borderRadius: 14,
@@ -4960,6 +4956,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               </div>
             </div>
 
+          </div>
+
+          {/* DROITE */}
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 24 }}>
             {/* Résumé — SM / SN + répartition de zones (remplace le donut) */}
             <div style={{ padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
               <div style={{ display: 'flex', gap: 28, marginBottom: 14 }}>
@@ -4981,8 +4981,6 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 </>
               )}
             </div>
-          </div>
-
           {/* Watts / allure estimés + références athlète en dessous */}
           {(() => {
             const hasEstimate = !!(sessionAvg.avgWatts || sessionAvg.avgPace)
@@ -5045,6 +5043,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               </div>
             )
           })()}
+          </div>
+
         </div>
 
         {/* TSS INFO MODAL */}

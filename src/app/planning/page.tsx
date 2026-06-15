@@ -18,7 +18,7 @@ const AIPanelDynamic = nDynamic(() => import('@/components/ai/AIPanel'), { ssr: 
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
-import { Dumbbell, CalendarDays } from 'lucide-react'
+import { Dumbbell, CalendarDays, LayoutDashboard } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { TrainingSummary } from '@/app/planning/components/training/TrainingSummary'
 import { SessionEditor } from '@/components/planning/SessionEditor'
@@ -2141,7 +2141,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
 // ════════════════════════════════════════════════
 // TRAINING TAB
 // ════════════════════════════════════════════════
-function TrainingTab() {
+function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   // Lit un éventuel ?week=YYYY-MM-DD dans l'URL pour positionner le
   // weekOffset initial — utile après "Ajouter au Planning" depuis le
   // Coach IA, qui redirige sur la semaine de début du programme.
@@ -2625,6 +2625,7 @@ function TrainingTab() {
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
+      {tab === 'plan' && (<>
       {/* ── PLAN HEADER + GRAPHIQUES (visible si plan IA actif) ── */}
       {aiPlan && (
         <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} nextRace={nextRace} onReload={() => setAiPlanReloadTick(t => t + 1)} />
@@ -2655,6 +2656,7 @@ function TrainingTab() {
           </button>
         </div>
       )}
+      </>)}
       {show10w && <Last10WeeksModal onClose={()=>setShow10w(false)}/>}
       {intensityModal && <InfoModal title={INTENSITY_CONFIG[intensityModal].label} content={<p style={{margin:0}}>{intensityModal==='recovery'?'Journée légère ou repos.':intensityModal==='low'?'Faible intensité, récupération active.':intensityModal==='mid'?'Intensité modérée, fatigue contrôlée.':'Forte intensité — récupération nécessaire.'}</p>} onClose={()=>setIntensityModal(null)}/>}
       {addModal!==null && (
@@ -2681,6 +2683,7 @@ function TrainingTab() {
       )}
       {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}
 
+      {tab === 'training' && (<>
       {/* ── Controls — desktop (ancienne interface) ── */}
       <div id="tr-ctrl-desktop" style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' as const }}>
         <div style={{ display:'flex',alignItems:'center',gap:4,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:10,padding:'4px 6px' }}>
@@ -2799,7 +2802,9 @@ function TrainingTab() {
         @media (min-width: 768px) { #tr-ctrl-mobile { display: none !important; } }
         @media (max-width: 767px) { #tr-ctrl-desktop { display: none !important; } }
       `}</style>
+      </>)}
 
+      {tab === 'plan' && (<>
       {/* Résumé Entraînement (refonte design system) */}
       <TrainingSummary
         plannedMin={plannedMin} doneMin={doneMin}
@@ -2813,9 +2818,11 @@ function TrainingTab() {
         isModified={(s) => isSessionModified(s)}
         belowVolume={<TrainingBlockSummary />}
       />
+      </>)}
 
 
 
+      {tab === 'training' && (<>
       {/* View switch */}
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',position:'relative',zIndex:5 }}>
         <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{compareMode?'Comparaison Plan A / Plan B':`Plan ${activePlan} · ${getWeekLabel(currentWeekStart)}`}</p>
@@ -2899,6 +2906,7 @@ function TrainingTab() {
           )})}
         </div>
       )}
+      </>)}
     </div>
   )
 }
@@ -4324,8 +4332,9 @@ export default function PlanningPage() {
       <SectionLayout
         header={header}
         sections={[
-          { id:'training', label:'Entraînement', subtitle:'Séances et plan',    icon:Dumbbell,     content:<TrainingTab/> },
-          { id:'week',     label:'Semaine',      subtitle:'Vue hebdomadaire',   icon:CalendarDays, content:<WeekTab trainingWeek={sessions}/> },
+          { id:'training', label:'Entraînement', subtitle:'Plan détaillé',      icon:Dumbbell,        content:<TrainingTab tab="training"/> },
+          { id:'plan',     label:'Plan',         subtitle:'Blocs, stats & IA',  icon:LayoutDashboard, content:<TrainingTab tab="plan"/> },
+          { id:'week',     label:'Semaine',      subtitle:'Vue hebdomadaire',   icon:CalendarDays,    content:<WeekTab trainingWeek={sessions}/> },
         ]}
       />
     </>

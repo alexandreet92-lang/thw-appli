@@ -19162,18 +19162,22 @@ export default function AIPanel({
 
       const cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
       const todayStr = new Date().toISOString().slice(0, 10)
-      const [profil, zones, activities, events, health] = await Promise.all([
+      const [profil, zones, activities, events, races, health] = await Promise.all([
         sb.from('athlete_performance_profile').select('*').eq('user_id', userId).maybeSingle().then(x => x.data ?? null),
         sb.from('athlete_zones').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle().then(x => x.data ?? null),
         sb.from('activities').select('sport_type,title,started_at,moving_time_s,distance_m,tss').eq('user_id', userId).gte('started_at', cutoff).order('started_at', { ascending: false }).limit(40).then(x => x.data ?? []),
         sb.from('calendar_events').select('*').eq('user_id', userId).gte('date', todayStr).limit(20).then(x => x.data ?? []),
+        sb.from('planned_races').select('name,sport,date,level,goal,goal_time').eq('user_id', userId).gte('date', todayStr).order('date').limit(10).then(x => x.data ?? []),
         sb.from('metrics_daily').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(14).then(x => x.data ?? []),
       ])
+      // L'objectif vient AUSSI des courses planifiées : on le donne au générateur (il ne doit pas le redemander)
+      const calendrier = [...(races as unknown[]), ...(events as unknown[])]
 
       const questionnaire = {
         sport_principal: req.sport_principal, experience: req.niveau, niveau_connaissance: req.niveau,
         seances_debut_prepa: req.seances_par_semaine, seances_pic_prepa: req.seances_par_semaine,
         duree_semaines_cible: req.duree_semaines, date_debut: startDate,
+        methode: req.methode ?? '', methodologie: req.methodologie ?? '',
         goal_races: (req.objectif_principal || req.date_objectif) ? [{
           nom: req.type_competition || req.objectif_principal, sport: req.sport_principal,
           level: 'main', date: req.date_objectif ?? '', goal_libre: req.objectif_principal,
@@ -19182,7 +19186,7 @@ export default function AIPanel({
       }
       const genRes = await fetch('/api/training-plan', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionnaire, profil, zones, historique_90j: activities, calendrier_objectifs: events, sante: health }),
+        body: JSON.stringify({ questionnaire, profil, zones, historique_90j: activities, calendrier_objectifs: calendrier, sante: health }),
       })
       if (!genRes.ok) {
         let msg = 'La génération a échoué. Réessaie.'

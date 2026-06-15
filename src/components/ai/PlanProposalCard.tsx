@@ -26,6 +26,7 @@ export interface GenWeek {
 }
 export interface GenProgram {
   nom?: string; objectif_principal?: string; duree_semaines?: number
+  methodologie?: string
   blocs_periodisation?: GenBloc[]; semaines?: GenWeek[]
   conseils_adaptation?: string[]; points_cles?: string[]
 }
@@ -33,7 +34,7 @@ export interface PlanRequirements {
   name?: string; objectif_principal?: string; sport_principal?: string
   niveau?: string; duree_semaines?: number; start_date?: string
   seances_par_semaine?: number; date_objectif?: string; type_competition?: string
-  requirements_resume?: string
+  requirements_resume?: string; methode?: string; methodologie?: string
 }
 export interface PlanProposal {
   status: 'generating' | 'ready' | 'error' | 'validated'
@@ -100,6 +101,14 @@ export function PlanProposalCard({
       </p>
       {(prog.objectif_principal ?? proposal.requirements.objectif_principal) && (
         <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--ai-mid)' }}>{prog.objectif_principal ?? proposal.requirements.objectif_principal}</p>
+      )}
+
+      {/* Analyse du coach (méthodologie) */}
+      {prog.methodologie && (
+        <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+          <p style={sectionTitle}>L&apos;analyse du coach</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ai-text)', lineHeight: 1.5 }}>{prog.methodologie}</p>
+        </div>
       )}
 
       {/* Volumes */}

@@ -67,6 +67,7 @@ interface GeneratedPlan {
   nom: string
   duree_semaines: number
   objectif_principal: string
+  methodologie?: string
   blocs_periodisation: PlanPeriodisation[]
   semaines: PlanSemaine[]
   conseils_adaptation: string[]
@@ -75,9 +76,19 @@ interface GeneratedPlan {
 
 // ── System prompt ─────────────────────────────────────────────
 
-const SYSTEM = `Tu es un coach expert en planification d'entraînement sportif de haut niveau.
-Tu crées des programmes structurés, périodisés et personnalisés.
-Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans commentaires, sans texte avant ou après. Le JSON doit être aussi compact que possible : pas d'indentation, pas d'espaces inutiles, pas de descriptions longues dans les champs texte.`
+const SYSTEM = `Tu es un entraîneur d'élite (niveau coach professionnel / TrainingPeaks), spécialiste endurance ET force : course, trail, cyclisme, natation, triathlon/Ironman, Hyrox, musculation, et préparation physique.
+
+TON RÔLE : raisonner comme un vrai coach, PAS remplir un formulaire. Tu pars de la situation RÉELLE de l'athlète et tu bâtis une logique d'entraînement sur-mesure, justifiée.
+
+PRINCIPES DE COACH (à appliquer activement) :
+- Ne refais JAMAIS une base aérobie déjà acquise : pars d'où en est l'athlète et fais progresser.
+- Choisis une approche par sport ET par bloc selon l'objectif, et JUSTIFIE : bloc PMA (avec ou sans pré-fatigue), bloc seuil, sweet spot, spécifique, affûtage, rappels VMA…
+- Adapte aux contraintes réelles : blessure (ex : douleur au pied → intensités sur herbe pour réduire l'impact), dénivelé de la course → côtes/hills, triathlon/Ironman → sorties longues + brick (enchaînement vélo→run), natation → technique + seuil + travail d'hypoxie, etc.
+- Calibre les intensités sur les zones fournies (watts, allure, FC).
+- Charge et progression réalistes vs l'historique récent. Périodisation cohérente jusqu'à la date de la course.
+- Intègre la force/prévention si pertinent (force haut/bas du corps, core, explosivité, prévention blessures).
+
+Tu réponds UNIQUEMENT avec un objet JSON valide (aucun markdown, aucun texte hors JSON), compact.`
 
 // ── JSON schema ────────────────────────────────────────────────
 
@@ -85,6 +96,7 @@ const JSON_SCHEMA = `{
   "nom": "string — nom du programme",
   "duree_semaines": "number",
   "objectif_principal": "string",
+  "methodologie": "string — TON ANALYSE DE COACH (4 à 7 phrases) : la logique GLOBALE du plan. Quelle approche tu choisis et POURQUOI, comment tu enchaînes les phases jusqu'à la course, comment tu gères les spécificités (base déjà acquise, blessure, dénivelé, brick, hypoxie, force…). Concret, sans blabla — comme si tu expliquais ta stratégie à l'athlète.",
   "blocs_periodisation": [
     {
       "nom": "string",
@@ -256,6 +268,7 @@ function normalizePlan(raw: unknown): GeneratedPlan {
     nom: (inner.nom ?? inner.name ?? 'Plan d\'entraînement') as string,
     // Alias: AI may return `objectif` instead of `objectif_principal`
     objectif_principal: (inner.objectif_principal ?? inner.objectif ?? '') as string,
+    methodologie: (inner.methodologie ?? inner.synthese ?? inner.analyse ?? '') as string,
     semaines: semaines as GeneratedPlan['semaines'],
     blocs_periodisation: (Array.isArray(blocsRaw) ? blocsRaw : []) as GeneratedPlan['blocs_periodisation'],
     conseils_adaptation: Array.isArray(inner.conseils_adaptation) ? inner.conseils_adaptation as string[] : [],
@@ -484,12 +497,16 @@ async function postHandler(req: NextRequest): Promise<Response> {
   // Durée cible explicite (transmise par le chat coach via les réponses de l'athlète)
   const targetWeeks = Number(questionnaire?.duree_semaines_cible) || null
   const startDateCible = (questionnaire?.date_debut as string | undefined) || null
+  // Méthode / méthodologie choisie ou décrite (étape B — sélection de méthode)
+  const methodeChoisie = (questionnaire?.methode as string | undefined) || ''
+  const methodologieFournie = (questionnaire?.methodologie as string | undefined) || ''
 
   // Tronquer l'historique à 30 activités max pour réduire la taille du prompt
   const historique_30j = (historique_90j ?? []).slice(0, 30)
 
   const userPrompt = `Crée un programme d'entraînement avec ces informations :
-${targetWeeks ? `\nDURÉE CIBLE : ${targetWeeks} semaines EXACTEMENT${startDateCible ? `, à partir du ${startDateCible}` : ''}.\n` : ''}
+${targetWeeks ? `\nDURÉE CIBLE : ${targetWeeks} semaines EXACTEMENT${startDateCible ? `, à partir du ${startDateCible}` : ''}.\n` : ''}${methodeChoisie ? `\nMÉTHODE CHOISIE : ${methodeChoisie}. Construis le plan selon cette approche.\n` : ''}${methodologieFournie ? `\nMÉTHODOLOGIE VALIDÉE PAR L'ATHLÈTE — SUIS-LA FIDÈLEMENT :\n${methodologieFournie}\n` : ''}
+RAISONNE D'ABORD COMME UN COACH : lis l'objectif et sa date dans le CALENDRIER, évalue la forme via l'HISTORIQUE, repère la base déjà acquise, les blessures/contraintes (précisions profil) et le dénivelé éventuel. Construis une logique sur-mesure et JUSTIFIE-la dans le champ "methodologie". Ne demande rien : déduis tout du contexte.
 
 QUESTIONNAIRE ATHLÈTE — INTERPRÉTATION STRUCTURÉE :
 ${formattedQuestionnaire}

@@ -151,6 +151,8 @@ export interface CreateTrainingPlanInput {
   date_objectif?: string         // YYYY-MM-DD de la course cible
   type_competition?: string
   requirements_resume: string    // synthèse libre de tout ce que le coach a appris
+  methode?: string               // méthode choisie (polarisé, blocs, seuil…) — étape B
+  methodologie?: string          // la logique/approche raisonnée du coach, à suivre fidèlement
 }
 
 // ── Map CoachToolName → Input type ────────────────────────────
@@ -501,9 +503,11 @@ export const coachTools: Anthropic.Tool[] = [
         seances_par_semaine:{ type: 'integer', description: 'Nombre de séances par semaine souhaité.' },
         date_objectif:      { type: 'string', description: 'Date de la course cible YYYY-MM-DD (optionnel).' },
         type_competition:   { type: 'string', description: 'Type de compétition / objectif (optionnel).' },
-        requirements_resume:{ type: 'string', description: 'Synthèse libre et complète de TOUT ce que tu as appris des besoins de l\'athlète (préférences, contraintes, points faibles à travailler, jours dispo, équipement, méthode souhaitée…). Plus c\'est riche, meilleur sera le plan.' },
+        requirements_resume:{ type: 'string', description: 'Synthèse libre et complète de TOUT ce que tu as appris des besoins de l\'athlète (préférences, contraintes, points faibles à travailler, jours dispo, équipement…). Plus c\'est riche, meilleur sera le plan.' },
+        methode:            { type: 'string', description: 'Méthode d\'entraînement retenue (ex: polarisé, pyramidal, par blocs, axé seuil/sweet spot). Si l\'athlète t\'a laissé choisir, indique celle que tu as sélectionnée.' },
+        methodologie:       { type: 'string', description: 'TA logique de coach validée avec l\'athlète : approche par sport et par phase, et le POURQUOI. Le générateur la suivra fidèlement. Sois précis et concret.' },
       },
-      required: ['name', 'objectif_principal', 'sport_principal', 'niveau', 'duree_semaines', 'start_date', 'seances_par_semaine', 'requirements_resume'],
+      required: ['name', 'objectif_principal', 'sport_principal', 'niveau', 'duree_semaines', 'start_date', 'seances_par_semaine', 'requirements_resume', 'methodologie'],
     },
   },
 ]

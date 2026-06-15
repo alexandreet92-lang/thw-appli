@@ -513,18 +513,17 @@ ${modification ? `MODIFICATION DEMANDÉE :\n${modification}\n\nPROGRAMME EXISTAN
 
 INSTRUCTIONS DE GÉNÉRATION — RESPECTER IMPÉRATIVEMENT :
 
-STRUCTURE & DÉTAIL PROGRESSIF (méthode coach d'élite) — RESTE COMPACT (≤ ~3500 tokens sinon le plan est tronqué) :
-- Génère TOUTES les semaines de la durée demandée, mais SEULEMENT les 2 premières en détail.
-- SEMAINES 1 et 2 : blocs[] détaillés (échauffement → corps → retour au calme), avec zone, répétitions, récup et watts/allure/FC CALIBRÉS sur les zones de l'athlète (section ZONES D'ENTRAÎNEMENT).
-- SEMAINES 3+ : blocs: [] OBLIGATOIRE. Juste sport, titre court, jour, duree_min, tss, intensite, note ≤ 8 mots. Elles seront détaillées plus tard, à l'approche.
-- Chaque séance : sport, titre, jour (0=lundi…6=dimanche), duree_min, tss, intensite, heure, notes, rpe.
+STRUCTURE & DÉTAIL PROGRESSIF (méthode coach d'élite) — RÈGLE ABSOLUE DE TAILLE (sinon la génération échoue) :
+- Génère TOUTES les semaines de la durée demandée, mais ne détaille les SÉANCES que pour les 2 premières.
+- SEMAINES 1 et 2 UNIQUEMENT : seances[] complètes, avec blocs[] détaillés (échauffement → corps → retour au calme), zone, répétitions, récup et watts/allure/FC CALIBRÉS sur les zones de l'athlète (section ZONES D'ENTRAÎNEMENT).
+- SEMAINES 3 ET SUIVANTES : "seances": [] (TABLEAU VIDE OBLIGATOIRE). Ne génère AUCUNE séance pour ces semaines. Donne seulement : numero, type, volume_h, tss_semaine, theme (court), note_coach (1 phrase courte). Ces semaines seront détaillées plus tard, à l'approche. C'est ESSENTIEL pour que la génération aboutisse.
 - note_coach : 1 phrase COURTE par semaine — le POURQUOI (objectif physiologique, place dans la périodisation).
 - conseils_adaptation : 3 à 4 maximum. points_cles : 3 à 4 maximum. Phrases courtes et concrètes.
 
 CALIBRAGE SUR LES DONNÉES RÉELLES :
 - Utilise les ZONES fournies pour prescrire des intensités chiffrées (watts vélo, allure run, FC) dans les blocs des semaines 1-2.
-- Analyse l'HISTORIQUE 30 jours (volume, sports, charge) pour fixer un point de départ RÉALISTE : ne sur-charge pas par rapport au volume actuel, progresse logiquement.
-- Tiens compte des MÉTRIQUES santé récentes (fatigue, sommeil) et des courses du CALENDRIER pour la périodisation.
+- Analyse l'HISTORIQUE 30 jours (volume, sports, charge) pour fixer un point de départ RÉALISTE.
+- Tiens compte des MÉTRIQUES santé récentes et des courses du CALENDRIER pour la périodisation et les volumes (début / progression / pic / affûtage).
 
 COURSES & OBJECTIFS :
 - Construire la périodisation en remontant depuis la date de la course GTY (ou Principale si pas de GTY).
@@ -567,13 +566,13 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
 2. Progression logique et périodisée (Base → Intensité → Spécifique → Affûtage → Compétition), cohérente avec l'historique et la forme actuelle.
 3. TSS cohérent avec la durée et l'intensité. Respect strict des jours de repos et des contraintes.
 4. EXPLIQUE TES CHOIX : note_coach par semaine + conseils_adaptation + points_cles rendent la LOGIQUE du plan limpide.
-5. COMPACITÉ OBLIGATOIRE : blocs détaillés UNIQUEMENT semaines 1-2 ; semaines 3+ = séances cadrées SANS blocs (blocs:[]). Reste sous ~3500 tokens. Priorité : périodisation → toutes les semaines cadrées (compactes) → blocs des 2 premières semaines.`
+5. TAILLE OBLIGATOIRE : seules les semaines 1-2 ont des seances[] (avec blocs) ; TOUTES les semaines 3+ ont "seances": [] (vide). Ne dépasse jamais cette règle — c'est ce qui garantit que la génération aboutit dans le temps imparti.`
 
   try {
     const client = getAnthropicClient()
     const resp = await client.messages.create({
       model: MODELS.powerful,
-      max_tokens: 16000,
+      max_tokens: 8000,
       system: SYSTEM,
       messages: [{ role: 'user', content: userPrompt }],
     })

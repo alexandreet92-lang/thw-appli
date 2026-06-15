@@ -961,6 +961,38 @@ function estimateSmSn(blocks: { mode?: string; zone?: number; durationMin?: numb
   return { sm: Math.round(sm), sn: Math.round(sn) }
 }
 
+// ── Compte rendu : image (story) téléchargeable ──
+interface CrRow { color: string; name: string; detail: string }
+function crEsc(t: string) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
+function buildCompteRenduSVG(o: { title: string; subtitle: string; sm: number; sn: number; durLabel: string; rightLabel: string; rightVal: string; rows: CrRow[] }): { svg: string; w: number; h: number } {
+  const W = 620, BG = '#0A0D14', CARD = '#0E121A', LINE = 'rgba(255,255,255,0.09)', TX = '#F2F5F9', MID = 'rgba(242,245,249,0.55)', DIM = 'rgba(242,245,249,0.38)', CY = '#22D3EE', VIO = '#A78BFA'
+  const top = 250, rowH = 66, foot = 78
+  const H = top + Math.max(1, o.rows.length) * rowH + foot
+  const T = (x: number, y: number, t: string, s: number, f: string, w = 400, a = 'start', mono = false) => `<text x="${x}" y="${y}" font-family="${mono ? 'monospace' : 'Inter,Arial,sans-serif'}" font-size="${s}" font-weight="${w}" fill="${f}" text-anchor="${a}">${crEsc(t)}</text>`
+  let s = `<rect width="${W}" height="${H}" fill="${BG}"/>`
+  s += `<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="${CY}"/><stop offset="1" stop-color="${VIO}"/></linearGradient></defs>`
+  s += `<rect x="34" y="34" width="36" height="36" rx="10" fill="url(#g)"/>` + T(52, 59, 'T', 20, '#06121A', 800, 'middle')
+  s += T(82, 50, 'THW COACHING', 12, TX, 800) + T(82, 66, 'Compte rendu de séance', 10, DIM)
+  s += `<line x1="34" y1="90" x2="${W - 34}" y2="90" stroke="${LINE}"/>`
+  s += T(34, 134, o.title, 27, TX, 800) + T(34, 158, o.subtitle, 13, MID)
+  // stats
+  const cells = [['SM', String(o.sm), CY], ['SN', String(o.sn), VIO], ['DURÉE', o.durLabel, TX], [o.rightLabel, o.rightVal, TX]]
+  const cw = (W - 68 - 30) / 4
+  cells.forEach((c, i) => { const x = 34 + i * (cw + 10); s += `<rect x="${x}" y="178" width="${cw}" height="56" rx="12" fill="${CARD}" stroke="${LINE}"/>` + T(x + 12, 200, c[0], 9, DIM, 700) + T(x + 12, 224, c[1], c[1].length > 5 ? 16 : 20, c[2], 700, 'start', true) })
+  // rows
+  let y = top
+  if (o.rows.length === 0) s += T(34, y + 20, 'Aucun bloc pour le moment.', 13, DIM)
+  o.rows.forEach(r => {
+    s += `<rect x="34" y="${y}" width="${W - 68}" height="${rowH - 8}" rx="12" fill="${CARD}" stroke="${LINE}"/>`
+    s += `<rect x="48" y="${y + 14}" width="6" height="${rowH - 36}" rx="3" fill="${r.color}"/>`
+    s += T(70, y + 26, r.name, 15, TX, 700) + T(70, y + 45, r.detail, 12, MID)
+    y += rowH
+  })
+  s += `<line x1="34" y1="${H - 60}" x2="${W - 34}" y2="${H - 60}" stroke="${LINE}"/>`
+  s += T(34, H - 32, 'thw-coaching.app', 12, MID, 700) + T(W - 34, H - 32, 'Généré par THW Coaching', 11, DIM, 400, 'end')
+  return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}</svg>`, w: W, h: H }
+}
+
 function StepperField({ label, unit, value, onChange, onDec, onInc, color = 'var(--text)', placeholder, headerRight }: {
   label: string; unit?: string; value: string; onChange: (v: string) => void; onDec: () => void; onInc: () => void
   color?: string; placeholder?: string; headerRight?: React.ReactNode
@@ -1236,6 +1268,32 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
           </div>
         </div>
       )}
+
+      {/* ══ PROFIL D'INTENSITÉ (style Zwift) ══ */}
+      {!isStrengthSportBB && blocks.length > 0 && (() => {
+        const segs: { d: number; z: number }[] = []
+        blocks.forEach(b => {
+          if (b.mode === 'interval' && b.reps && b.effortMin != null) {
+            for (let r = 0; r < b.reps; r++) { segs.push({ d: b.effortMin as number, z: b.zone }); if ((b.recoveryMin || 0) > 0) segs.push({ d: b.recoveryMin as number, z: b.recoveryZone || 1 }) }
+          } else segs.push({ d: b.durationMin || 0, z: b.zone })
+        })
+        const Hpx = 150, padTop = 12
+        return (
+          <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 14px 10px', marginBottom: 12 }}>
+            <p style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text-dim)', margin: '0 0 12px' }}>Profil d&apos;intensité</p>
+            <div style={{ position: 'relative' as const, height: Hpx, marginLeft: 24 }}>
+              {[1, 2, 3, 4, 5, 6, 7].map(z => { const y = Hpx - (z / 7) * (Hpx - padTop); return (
+                <div key={z} style={{ position: 'absolute' as const, left: 0, right: 0, top: y, borderTop: '1px solid var(--border)' }}>
+                  <span style={{ position: 'absolute' as const, left: -22, top: -7, fontSize: 8, fontWeight: 700, color: 'var(--text-dim)' }}>Z{z}</span>
+                </div>) })}
+              <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
+                {segs.map((s, i) => { const h = Math.max(8, (s.z / 7) * (Hpx - padTop)); return (
+                  <div key={i} title={`Z${s.z} · ${durMMSS(s.d)}`} style={{ flex: s.d, height: h, background: zc(s.z), borderRadius: '5px 5px 2px 2px', minWidth: 3, transition: 'height 0.15s' }} />) })}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ══ LISTE DES BLOCS ══ */}
       {(sport === 'gym' || sport === 'hyrox') ? (
@@ -4005,6 +4063,57 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
 
   // Auto-save intentionally removed — save on close instead to avoid infinite re-render loop
 
+  function handleCompteRendu() {
+    const finalTitle = title || `${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`
+    const durLabel = dur >= 60 ? `${Math.floor(dur / 60)}h${String(dur % 60).padStart(2, '0')}` : `${dur}min`
+    let rows: CrRow[]
+    if (isStrength) {
+      rows = exercises.map(e => ({
+        color: '#A78BFA',
+        name: e.name,
+        detail: `${e.sets} × ${e.reps}${e.weightKg ? ` · ${e.weightKg} kg` : ''}${e.distanceM ? ` · ${e.distanceM} m` : ''}${e.targetTimeSec ? ` · ${e.targetTimeSec}s` : ''}`,
+      }))
+    } else {
+      rows = blocks.map(b => {
+        const col = DONUT_ZONE_COLORS[Math.max(0, Math.min(6, (b.zone || 1) - 1))]
+        const name = b.label || `Bloc Z${b.zone}`
+        const detail = b.mode === 'interval' && b.reps
+          ? `${b.reps} × ${durMMSS(b.effortMin || 0)}${b.value ? ` @ ${b.value}` : ''} · récup ${durMMSS(b.recoveryMin || 0)}`
+          : `${durMMSS(b.durationMin || 0)}${b.value ? ` · ${b.value}` : ''} · Z${b.zone}`
+        return { color: col, name, detail }
+      })
+    }
+    const { svg, w, h } = buildCompteRenduSVG({
+      title: finalTitle,
+      subtitle: `${SPORT_LABEL[sport]}${trainingTypes.length ? ` · ${trainingTypes.join(' + ')}` : ''}`,
+      sm: smsn.sm, sn: smsn.sn, durLabel,
+      rightLabel: isStrength ? 'EXOS' : 'BLOCS',
+      rightVal: String(isStrength ? exercises.length : blocks.length),
+      rows,
+    })
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }))
+    const img = new Image()
+    img.onload = () => {
+      const scale = 2
+      const canvas = document.createElement('canvas')
+      canvas.width = w * scale; canvas.height = h * scale
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { URL.revokeObjectURL(url); return }
+      ctx.scale(scale, scale); ctx.drawImage(img, 0, 0, w, h)
+      URL.revokeObjectURL(url)
+      canvas.toBlob(b => {
+        if (!b) return
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(b)
+        a.download = `${finalTitle.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'seance'}.png`
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(a.href), 1500)
+      }, 'image/png')
+    }
+    img.onerror = () => URL.revokeObjectURL(url)
+    img.src = url
+  }
+
   function handleExportPDF() {
     const finalTitle = title || `${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`
     const blocksHtml = blocks.map(b => {
@@ -4771,6 +4880,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               {SPORT_LABEL[sport]}{trainingTypes.length ? ` · ${trainingTypes.join(' + ')}` : ''}
             </p>
           </div>
+          <button onClick={handleCompteRendu} title="Compte rendu — télécharger en image"
+            style={{ flexShrink: 0, height: 34, padding: '0 13px', borderRadius: 10, cursor: 'pointer', border: 'none', background: 'var(--primary)', color: 'var(--on-primary, #06121A)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
+            <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 8L2.5 4.5h2V1h3v3.5h2L6 8Z" fill="currentColor"/>
+              <rect x="1.5" y="10" width="9" height="1.2" rx="0.6" fill="currentColor"/>
+            </svg>
+            Compte rendu
+          </button>
           <button onClick={handleExportPDF} title="Exporter en PDF"
             style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, cursor: 'pointer', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">

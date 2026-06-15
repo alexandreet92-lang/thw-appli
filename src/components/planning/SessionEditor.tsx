@@ -4855,7 +4855,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       }}
                       onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.opacity = '0.7' }}
                       onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLElement).style.opacity = '0.4' }}>
-                      <SportIcon sport={sp} size={24} circle={false} />
+                      <SportIcon sport={sp} size={38} />
                       <span style={{ fontSize: 10, fontWeight: selected ? 700 : 600, color: selected ? 'var(--text)' : 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{SPORT_SHORT[sp]}</span>
                     </button>
                   )
@@ -4934,15 +4934,17 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   </p>
                 </div>
                 <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, fontFamily: 'var(--font-display)', lineHeight: 1 }}>
-                  <span style={{ fontSize: 34, fontWeight: 700, color: rpeCol, letterSpacing: '-0.02em' }}>{rpe}</span>
+                  <span style={{ fontSize: 34, fontWeight: 700, color: rpeCol, letterSpacing: '-0.02em' }}>{rpe % 1 === 0 ? rpe : rpe.toFixed(1)}</span>
                   <span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}>/10</span>
                 </span>
               </div>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <button key={i} onClick={() => setRpe(i + 1)} aria-label={`RPE ${i + 1}`}
-                    style={{ flex: 1, height: 18, borderRadius: 5, border: 'none', cursor: 'pointer', padding: 0, background: i < rpe ? rpeCol : 'var(--bg-elev)', transition: 'background 0.1s' }} />
-                ))}
+              <div style={{ position: 'relative' as const, height: 22, display: 'flex', alignItems: 'center' }}>
+                <div style={{ width: '100%', height: 8, borderRadius: 99, background: 'var(--bg-elev)', position: 'relative' as const }}>
+                  <div style={{ position: 'absolute' as const, left: 0, top: 0, height: '100%', width: `${(rpe / 10) * 100}%`, borderRadius: 99, background: 'linear-gradient(90deg, #4ade80, #facc15, #fb923c, #f87171)', transition: 'width 0.1s' }} />
+                  <div style={{ position: 'absolute' as const, top: '50%', left: `${(rpe / 10) * 100}%`, transform: 'translate(-50%,-50%)', width: 20, height: 20, borderRadius: '50%', background: 'var(--bg-card)', border: `3px solid ${rpeCol}`, boxShadow: '0 2px 6px rgba(0,0,0,0.3)', pointerEvents: 'none' as const }} />
+                </div>
+                <input type="range" min={0} max={10} step={0.5} value={rpe} onChange={e => setRpe(parseFloat(e.target.value))}
+                  style={{ position: 'absolute' as const, left: 0, right: 0, width: '100%', height: 22, opacity: 0, cursor: 'pointer', zIndex: 2, margin: 0 }} />
               </div>
             </div>
 

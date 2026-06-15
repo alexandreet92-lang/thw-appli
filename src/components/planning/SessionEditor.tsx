@@ -6556,20 +6556,27 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         {/* STRATÉGIE NUTRITIONNELLE */}
         <div style={{ padding: mobile ? '20px 16px 14px' : '20px 24px 18px' }}>
           <button onClick={() => setNutritionOpen(!nutritionOpen)} style={{
-            width: '100%', padding: mobile ? '12px' : '13px', borderRadius: 10,
-            border: '1px solid var(--border)', background: nutritionItems.length > 0 ? `${accent}08` : 'var(--bg-card)',
-            color: nutritionItems.length > 0 ? accent : 'var(--text-dim)',
-            fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            width: '100%', padding: '12px 14px', borderRadius: 12,
+            border: '1px solid var(--border)', background: nutritionOpen ? 'var(--bg-card2)' : 'var(--bg-card)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 11, transition: 'background 0.15s',
           }}>
-            <span style={{ fontSize: 12, color: accent }}>★</span>
-            Stratégie nutritionnelle
+            <span style={{ width: 30, height: 30, borderRadius: 9, background: `${accent}16`, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="15" height="15" viewBox="0 0 14 14" fill="none"><path d="M7 1.2C4.6 4.2 2.6 6.4 2.6 8.7a4.4 4.4 0 0 0 8.8 0C11.4 6.4 9.4 4.2 7 1.2Z" fill="currentColor"/></svg>
+            </span>
+            <span style={{ flex: 1, textAlign: 'left' as const, display: 'flex', flexDirection: 'column' as const, gap: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Stratégie nutritionnelle</span>
+              <span style={{ fontSize: 10.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                {nutritionItems.length > 0
+                  ? `${nutritionItems.length} ravitaillement${nutritionItems.length > 1 ? 's' : ''} · ${dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0} g/h`
+                  : 'Optionnel — gels, boissons, barres…'}
+              </span>
+            </span>
             {nutritionItems.length > 0 && (
-              <span style={{ fontSize: 10, color: accent, fontFamily: 'DM Mono, monospace' }}>
-                · {nutritionItems.length} ravitaillement{nutritionItems.length > 1 ? 's' : ''}
+              <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'var(--font-display)', background: `${accent}12`, borderRadius: 7, padding: '3px 9px', flexShrink: 0 }}>
+                {nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}g
               </span>
             )}
-            <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-dim)', transform: nutritionOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s', display: 'inline-block' }}>▾</span>
+            <span style={{ fontSize: 11, color: 'var(--text-dim)', transform: nutritionOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s', display: 'inline-block', flexShrink: 0 }}>▾</span>
           </button>
 
           {nutritionOpen && (
@@ -6691,12 +6698,16 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             </div>
                           )
                         })}
-                        {/* Summary */}
-                        <div style={{ display: 'flex', gap: 16, padding: '4px 0', fontSize: 11, color: 'var(--text-dim)', flexWrap: 'wrap' as const }}>
-                          <span>Total : <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}g</strong> glucides</span>
-                          <span><strong style={{ color: accent, fontFamily: 'DM Mono, monospace' }}>
-                            {dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0}g/h
-                          </strong></span>
+                        {/* Summary — 2 chips */}
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <div style={{ flex: 1, padding: '8px 12px', borderRadius: 9, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>Total glucides</div>
+                            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', lineHeight: 1.2 }}>{nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}<span style={{ fontSize: 11, color: 'var(--text-dim)' }}> g</span></div>
+                          </div>
+                          <div style={{ flex: 1, padding: '8px 12px', borderRadius: 9, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>Apport</div>
+                            <div style={{ fontSize: 17, fontWeight: 700, color: accent, fontFamily: 'var(--font-display)', lineHeight: 1.2 }}>{dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0}<span style={{ fontSize: 11, color: 'var(--text-dim)' }}> g/h</span></div>
+                          </div>
                         </div>
                       </div>
                     )
@@ -6711,9 +6722,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       name: '', quantity: '1 gel', glucidesG: 25, proteinesG: 0, notes: '',
                     }])
                   }} style={{
-                    width: '100%', padding: '9px', borderRadius: 8,
-                    border: '1px dashed var(--border)', background: 'transparent',
-                    color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
+                    width: '100%', padding: '10px', borderRadius: 9,
+                    border: `1px dashed ${accent}55`, background: `${accent}0c`,
+                    color: accent, fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
                   }}>+ Ajouter un ravitaillement</button>
                 </>
               ) : (

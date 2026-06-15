@@ -4960,157 +4960,27 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               </div>
             </div>
 
-            {/* Donut + TSS — only for endurance with blocks */}
-            {showDonuts ? (
-              <div>
-                {/* ── Donuts row ── */}
-                <div style={{ display: 'flex', gap: mobile ? 12 : 20, alignItems: 'flex-start', flexWrap: 'wrap' as const }}>
-                  {/* Donut Zones — 160×160px, 20px ring */}
-                  {(() => {
-                    const SIZE = 118, CX = 59, CY = 59, R_OUT = 52, R_IN = 38
-                    const GAP_RAD = 0.025
-                    let angle = -Math.PI / 2
-                    const arcs = zoneDist.map((v, i) => {
-                      if (v === 0) return null
-                      const pct = v / 100
-                      const sweep = pct * 2 * Math.PI
-                      const startA = angle + GAP_RAD / 2
-                      const endA   = angle + sweep - GAP_RAD / 2
-                      angle += sweep
-                      if (endA <= startA) return null
-                      const lg = endA - startA > Math.PI ? 1 : 0
-                      const p = (r: number, a: number) => ({ x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) })
-                      const os = p(R_OUT, startA), oe = p(R_OUT, endA)
-                      const is = p(R_IN, startA),  ie = p(R_IN, endA)
-                      return (
-                        <path key={i}
-                          d={`M${os.x.toFixed(1)} ${os.y.toFixed(1)} A${R_OUT} ${R_OUT} 0 ${lg} 1 ${oe.x.toFixed(1)} ${oe.y.toFixed(1)} L${ie.x.toFixed(1)} ${ie.y.toFixed(1)} A${R_IN} ${R_IN} 0 ${lg} 0 ${is.x.toFixed(1)} ${is.y.toFixed(1)} Z`}
-                          fill={DONUT_ZONE_COLORS[i]} opacity={0.9}
-                          style={{ transition: 'opacity 0.2s' }}
-                        />
-                      )
-                    })
-                    // Compute dominant zone avg watts
-                    const avgW = sessionAvg.avgWatts
-                    const avgHR = hrDist.length > 0 ? (() => {
-                      const lthr = lthrForSport ?? 170
-                      const zoneHRs = [lthr * 0.60, lthr * 0.84, lthr * 0.91, lthr * 0.98, lthr * 1.04, lthr * 1.09, lthr * 1.15]
-                      let sum = 0, tot = 0
-                      hrDist.forEach(h => { sum += h.pct * (zoneHRs[0] ?? 130); tot += h.pct })
-                      return tot > 0 ? Math.round(sum / tot) : null
-                    })() : null
-                    // Glucides g/h estimate: ~60g/h per 100 TSS/h, scaled
-                    const tssPerH = dur > 0 ? sessionStats.tssHigh / (dur / 60) : 0
-                    const glucGph = Math.round(Math.min(90, Math.max(20, tssPerH * 0.55)))
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8 }}>
-                        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-                          {/* Background ring */}
-                          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="var(--border)" strokeWidth={R_OUT - R_IN} opacity={0.25} />
-                          {arcs}
-                          {/* Center text: duration */}
-                          <text x={CX} y={CY - 6} textAnchor="middle" fontSize={14} fill="var(--text)" fontWeight={800} fontFamily="var(--font-display)">{fmtDurLocal(dur)}</text>
-                          <text x={CX} y={CY + 13} textAnchor="middle" fontSize={10} fontWeight={700} fill="#06B6D4" fontFamily="var(--font-display)">SM {smsn.sm}</text>
-                          <text x={CX} y={CY + 26} textAnchor="middle" fontSize={10} fontWeight={700} fill="#8B5CF6" fontFamily="var(--font-display)">SN {smsn.sn}</text>
-                        </svg>
-                        {/* Compact legend */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, auto)', gap: '3px 8px', justifyContent: 'center' }}>
-                          {zoneDist.map((v, i) => v > 0 && (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: DONUT_ZONE_COLORS[i], flexShrink: 0, display: 'inline-block' }} />
-                              <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>{DONUT_ZONE_LABELS[i]} <strong style={{ color: 'var(--text-mid)' }}>{v}%</strong></span>
-                            </div>
-                          ))}
-                        </div>
-                        {/* 3 key metrics */}
-                        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                          <div style={{ textAlign: 'center' as const }}>
-                            <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: '#FBBF24' }}>{glucGph}</div>
-                            <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>g gluc/h</div>
-                          </div>
-                          {avgW && (
-                            <div style={{ textAlign: 'center' as const }}>
-                              <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent }}>{avgW}W</div>
-                              <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>Moy W</div>
-                            </div>
-                          )}
-                          {avgHR && (
-                            <div style={{ textAlign: 'center' as const }}>
-                              <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: '#EF4444' }}>{avgHR}</div>
-                              <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>FC Moy</div>
-                            </div>
-                          )}
-                          <div style={{ textAlign: 'center' as const }}>
-                            <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'var(--font-display)', color: '#8B5CF6' }}>{smsn.sn}</div>
-                            <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>SN neuro.</div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })()}
-
-                  {/* Donut FC */}
-                  {hrDist.length > 0 && (() => {
-                    const SIZE = 120, CX = 60, CY = 60, R_OUT = 52, R_IN = 36
-                    const GAP_RAD = 0.025
-                    let angle = -Math.PI / 2
-                    const total = hrDist.reduce((a, b) => a + b.pct, 0) || 1
-                    const arcs = hrDist.map((h, i) => {
-                      const pct = h.pct / total
-                      const sweep = pct * 2 * Math.PI
-                      const startA = angle + GAP_RAD / 2
-                      const endA   = angle + sweep - GAP_RAD / 2
-                      angle += sweep
-                      if (endA <= startA) return null
-                      const lg = endA - startA > Math.PI ? 1 : 0
-                      const p = (r: number, a: number) => ({ x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) })
-                      const os = p(R_OUT, startA), oe = p(R_OUT, endA)
-                      const is = p(R_IN, startA),  ie = p(R_IN, endA)
-                      return (
-                        <path key={i}
-                          d={`M${os.x.toFixed(1)} ${os.y.toFixed(1)} A${R_OUT} ${R_OUT} 0 ${lg} 1 ${oe.x.toFixed(1)} ${oe.y.toFixed(1)} L${ie.x.toFixed(1)} ${ie.y.toFixed(1)} A${R_IN} ${R_IN} 0 ${lg} 0 ${is.x.toFixed(1)} ${is.y.toFixed(1)} Z`}
-                          fill={h.color} opacity={0.88}
-                        />
-                      )
-                    })
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 }}>
-                        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-                          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="var(--border)" strokeWidth={R_OUT - R_IN} opacity={0.25} />
-                          {arcs}
-                          <text x={CX} y={CY + 4} textAnchor="middle" fontSize={9} fill="var(--text)" fontWeight={700} fontFamily="DM Mono,monospace">FC</text>
-                        </svg>
-                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
-                          {hrDist.map((h, i) => h.pct > 0 && (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: h.color, flexShrink: 0, display: 'inline-block' }} />
-                              <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>{h.label} <strong style={{ color: 'var(--text-mid)' }}>{Math.round(h.pct)}%</strong></span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </div>
+            {/* Résumé — SM / SN + répartition de zones (remplace le donut) */}
+            <div style={{ padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
+              <div style={{ display: 'flex', gap: 28, marginBottom: 14 }}>
+                <div><div style={{ fontSize: 30, fontWeight: 700, color: '#06B6D4', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{smsn.sm}</div><div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>SM métabolique</div></div>
+                <div><div style={{ fontSize: 30, fontWeight: 700, color: '#8B5CF6', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{smsn.sn}</div><div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>SN neuro</div></div>
               </div>
-            ) : (
-              /* Fallback: SM / SN */
-              <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-                <div style={{ textAlign: 'center' as const }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>SM métab.</span>
-                  <p style={{ fontSize: 24, fontWeight: 800, color: '#06B6D4', fontFamily: 'var(--font-display)', letterSpacing: '-0.03em', margin: '2px 0 0' }}>{smsn.sm}</p>
-                </div>
-                <div style={{ textAlign: 'center' as const }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>SN neuro.</span>
-                  <p style={{ fontSize: 24, fontWeight: 800, color: '#8B5CF6', fontFamily: 'var(--font-display)', letterSpacing: '-0.03em', margin: '2px 0 0' }}>{smsn.sn}</p>
-                </div>
-                {blocks.length === 0 && (
-                  <p style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic', flex: 1 }}>
-                    Ajoute des blocs pour voir les zones
-                  </p>
-                )}
-              </div>
-            )}
+              {zoneDist.some(v => v > 0) && (
+                <>
+                  <div style={{ display: 'flex', gap: 2, height: 7, marginBottom: 8 }}>
+                    {zoneDist.map((v, i) => v > 0 ? <div key={i} style={{ flex: v, background: DONUT_ZONE_COLORS[i], borderRadius: 2 }} /> : null)}
+                  </div>
+                  <div style={{ display: 'flex', gap: '5px 14px', flexWrap: 'wrap' as const }}>
+                    {zoneDist.map((v, i) => v > 0 ? (
+                      <span key={i} style={{ fontSize: 10, color: 'var(--text-dim)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: 2, background: DONUT_ZONE_COLORS[i], display: 'inline-block' }} />{DONUT_ZONE_LABELS[i]} <strong style={{ color: 'var(--text-mid)' }}>{v}%</strong>
+                      </span>
+                    ) : null)}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Watts / allure estimés + références athlète en dessous */}

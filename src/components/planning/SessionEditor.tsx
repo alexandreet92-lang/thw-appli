@@ -1054,6 +1054,46 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
   const zh  = (z: number) => ZONE_H[Math.max(0, Math.min(6, z - 1))]
   const znm = (z: number) => ZONE_NMS[Math.max(0, Math.min(6, z - 1))]
 
+  // ── Profil éditable (style Zwift) : glisser vertical = zone, bord droit = durée ──
+  const maxZone = (sport === 'bike' || sport === 'elliptique') ? 7 : 5
+  const blockMin = (b: Block) => b.mode === 'interval' && b.reps && b.effortMin != null ? (b.reps as number) * ((b.effortMin as number) + (b.recoveryMin || 0)) : (b.durationMin || 0)
+  const barsRef = useRef<HTMLDivElement | null>(null)
+  const pdrag = useRef<{ id: string; mode: 'zone' | 'dur'; el: HTMLElement; startX: number; rowW: number; rowBottom: number; usableH: number; totalMin: number; baseMin: number } | null>(null)
+  function profileMove(e: PointerEvent) {
+    const d = pdrag.current; if (!d) return
+    if (d.mode === 'zone') {
+      const ratio = Math.max(0, Math.min(1, (d.rowBottom - e.clientY) / d.usableH))
+      const z = Math.max(1, Math.min(maxZone, Math.round(ratio * maxZone)))
+      d.el.style.height = `${(z / maxZone) * d.usableH}px`; d.el.style.background = zc(z); d.el.dataset.z = String(z)
+    } else {
+      const perMin = d.rowW / d.totalMin
+      const m = Math.max(1, d.baseMin + Math.round((e.clientX - d.startX) / perMin))
+      d.el.style.flexGrow = String(m); d.el.dataset.m = String(m)
+    }
+  }
+  function profileUp() {
+    const d = pdrag.current; if (!d) return
+    window.removeEventListener('pointermove', profileMove); window.removeEventListener('pointerup', profileUp)
+    const z = parseInt(d.el.dataset.z || '0'), m = parseInt(d.el.dataset.m || '0')
+    onChange(blocks.map(b => {
+      if (b.id !== d.id) return b
+      const nb = { ...b }
+      if (d.mode === 'zone' && z) nb.zone = z
+      if (d.mode === 'dur' && m) { if (b.mode === 'interval' && b.reps) nb.effortMin = Math.max(0.5, m / b.reps - (b.recoveryMin || 0)); else nb.durationMin = m }
+      return nb
+    }))
+    pdrag.current = null
+  }
+  function profileDown(e: React.PointerEvent, b: Block, mode: 'zone' | 'dur') {
+    if (!barsRef.current) return
+    e.preventDefault(); e.stopPropagation()
+    const el = (e.currentTarget as HTMLElement).closest('[data-pbar]') as HTMLElement | null; if (!el) return
+    const rect = barsRef.current.getBoundingClientRect()
+    pdrag.current = { id: b.id, mode, el, startX: e.clientX, rowW: rect.width, rowBottom: rect.bottom, usableH: rect.height, totalMin: blocks.reduce((a, x) => a + blockMin(x), 0) || 1, baseMin: blockMin(b) }
+    el.dataset.z = String(b.zone); el.dataset.m = String(blockMin(b))
+    window.addEventListener('pointermove', profileMove); window.addEventListener('pointerup', profileUp)
+  }
+
   function addSingle() {
     onChange([...blocks, { id: `b_${Date.now()}`, mode: 'single', type: 'effort', durationMin: 10, zone: 3, value: sport === 'bike' ? '220' : '4:30', hrAvg: '', label: 'Bloc' }])
   }
@@ -1163,80 +1203,6 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
               </p>
             </div>
           </div>
-          {/* TSS gauge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px 0' }}>
-            <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
-              <div style={{ width: `${tssGaugePct}%`, height: '100%', background: tssGaugeColor, borderRadius: 2, transition: 'width 0.4s ease' }} />
-            </div>
-            <span style={{ fontSize: 9, fontWeight: 600, color: tssGaugeColor, flexShrink: 0, minWidth: 58, textAlign: 'right' as const }}>{tssLevel}</span>
-          </div>
-          {/* Skyline intensity bar */}
-          <div style={{ position: 'relative', padding: '10px 14px 0' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-end', height: 32 }}>
-              {bars.map((bar, bIdx) => {
-                const wp   = (bar.min / totalMin) * 100
-                const h    = bar.isRecovery ? 4 : zh(bar.zone)
-                const isHv = hoveredBar?.block.id === bar.block.id
-                return (
-                  <div key={bar.id}
-                    onMouseEnter={e => {
-                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                      setHoveredBar({ x: rect.left + rect.width / 2, y: rect.top, block: bar.block, isRecovery: bar.isRecovery })
-                      setHoveredBlockId(bar.block.id)
-                    }}
-                    onMouseLeave={() => { setHoveredBar(null); setHoveredBlockId(null) }}
-                    style={{
-                      width: `${wp}%`, minWidth: 2, height: h, flexShrink: 0,
-                      background: bar.isRecovery ? 'rgba(156,163,175,0.25)' : zg(bar.zone),
-                      borderRadius: '4px 4px 0 0',
-                      borderRight: bIdx < bars.length - 1 ? '1px solid rgba(255,255,255,0.45)' : 'none',
-                      transform: isHv ? 'translateY(-2px)' : 'none',
-                      transition: 'transform 0.12s',
-                      cursor: 'pointer',
-                    }}
-                  />
-                )
-              })}
-            </div>
-            {/* FC gauge line */}
-            {hasFC && (
-              <div style={{ display: 'flex', height: 4, marginTop: 2 }}>
-                {bars.map(bar => {
-                  const hr = parseInt(bar.block.hrAvg ?? '') || 0
-                  const col = hr <= 0 ? 'transparent' : hr < 130 ? '#9CA3AF' : hr < 145 ? '#10B981' : hr < 160 ? '#FBBF24' : hr < 175 ? '#F97316' : '#EF4444'
-                  return <div key={`fc_${bar.id}`} style={{ flex: bar.min, background: col, opacity: hr > 0 ? 0.75 : 0 }} />
-                })}
-              </div>
-            )}
-            {/* Nutrition overlays */}
-            {(nutritionItems ?? []).filter(m => m.timeMin > 0).map((m, i) => {
-              const leftPct = (m.timeMin / totalMin) * 100
-              if (leftPct > 100 || leftPct < 0) return null
-              const accentCol = SPORT_BORDER[sport]
-              return (
-                <div key={`nut_${i}`} style={{ position: 'absolute' as const, left: `${leftPct}%`, top: 0, bottom: 0, pointerEvents: 'none' as const, zIndex: 5, display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
-                  <div style={{ position: 'absolute' as const, bottom: '100%', marginBottom: 2, whiteSpace: 'nowrap' as const, display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
-                    <span style={{ fontSize: 7, fontWeight: 700, color: accentCol, opacity: 0.85, lineHeight: 1.2 }}>{m.name || m.type}</span>
-                    <span style={{ fontSize: 6.5, color: 'var(--text-dim)', opacity: 0.65, fontFamily: 'DM Mono,monospace' }}>{m.glucidesG}g</span>
-                  </div>
-                  <div style={{ width: 1, height: '100%', background: `repeating-linear-gradient(to bottom,${accentCol}99 0px,${accentCol}99 3px,transparent 3px,transparent 6px)` }} />
-                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: accentCol, opacity: 0.7, flexShrink: 0 }} />
-                </div>
-              )
-            })}
-          </div>
-          {/* Zone legend */}
-          <div style={{ padding: '6px 14px 10px', display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-            {(() => {
-              const used = new Set(bars.map(b => b.zone))
-              return ZONE_NMS.map((nm, i) => used.has(i + 1) && (
-                <span key={i} style={{ fontSize: 9, fontWeight: 700, color: ZONE_COL[i], display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: 2, background: ZONE_COL[i], display: 'inline-block' }} />
-                  Z{i + 1} {nm}
-                </span>
-              ))
-            })()}
-          </div>
         </div>
       )}
 
@@ -1269,26 +1235,27 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
         </div>
       )}
 
-      {/* ══ PROFIL D'INTENSITÉ (style Zwift) ══ */}
+      {/* ══ PROFIL D'INTENSITÉ ÉDITABLE (style Zwift) ══ */}
       {!isStrengthSportBB && blocks.length > 0 && (() => {
-        const segs: { d: number; z: number }[] = []
-        blocks.forEach(b => {
-          if (b.mode === 'interval' && b.reps && b.effortMin != null) {
-            for (let r = 0; r < b.reps; r++) { segs.push({ d: b.effortMin as number, z: b.zone }); if ((b.recoveryMin || 0) > 0) segs.push({ d: b.recoveryMin as number, z: b.recoveryZone || 1 }) }
-          } else segs.push({ d: b.durationMin || 0, z: b.zone })
-        })
-        const Hpx = 150, padTop = 12
+        const Hpx = 150
         return (
-          <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 14px 10px', marginBottom: 12 }}>
-            <p style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text-dim)', margin: '0 0 12px' }}>Profil d&apos;intensité</p>
-            <div style={{ position: 'relative' as const, height: Hpx, marginLeft: 24 }}>
-              {[1, 2, 3, 4, 5, 6, 7].map(z => { const y = Hpx - (z / 7) * (Hpx - padTop); return (
-                <div key={z} style={{ position: 'absolute' as const, left: 0, right: 0, top: y, borderTop: '1px solid var(--border)' }}>
-                  <span style={{ position: 'absolute' as const, left: -22, top: -7, fontSize: 8, fontWeight: 700, color: 'var(--text-dim)' }}>Z{z}</span>
-                </div>) })}
-              <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
-                {segs.map((s, i) => { const h = Math.max(8, (s.z / 7) * (Hpx - padTop)); return (
-                  <div key={i} title={`Z${s.z} · ${durMMSS(s.d)}`} style={{ flex: s.d, height: h, background: zc(s.z), borderRadius: '5px 5px 2px 2px', minWidth: 3, transition: 'height 0.15s' }} />) })}
+          <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 14px 12px', marginBottom: 12 }}>
+            <p style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text-dim)', margin: '0 0 12px' }}>Profil d&apos;intensité <span style={{ fontWeight: 500, textTransform: 'none' as const, letterSpacing: 0 }}>· glisse un bloc (haut = intensité, bord droit = durée)</span></p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {/* axe zones (bulles) */}
+              <div style={{ position: 'relative' as const, width: 28, height: Hpx, flexShrink: 0 }}>
+                {Array.from({ length: maxZone }, (_, k) => k + 1).map(z => { const top = Hpx - (z / maxZone) * Hpx; return (
+                  <span key={z} style={{ position: 'absolute' as const, top: top - 8, left: 0, fontSize: 8.5, fontWeight: 700, color: '#fff', background: zc(z), borderRadius: 7, padding: '1px 5px', lineHeight: 1.4 }}>Z{z}</span>) })}
+              </div>
+              {/* barres draggables */}
+              <div ref={barsRef} style={{ flex: 1, height: Hpx, display: 'flex', alignItems: 'flex-end', gap: 3, position: 'relative' as const }}>
+                {Array.from({ length: maxZone }, (_, k) => k + 1).map(z => { const top = Hpx - (z / maxZone) * Hpx; return (
+                  <div key={`g${z}`} style={{ position: 'absolute' as const, left: 0, right: 0, top, borderTop: '1px dashed var(--border)', pointerEvents: 'none' as const }} />) })}
+                {blocks.map(b => { const m = blockMin(b); const zclamp = Math.max(1, Math.min(maxZone, b.zone)); const h = (zclamp / maxZone) * Hpx; return (
+                  <div key={b.id} data-pbar onPointerDown={e => profileDown(e, b, 'zone')} title={`Z${b.zone} · ${durMMSS(m)}`}
+                    style={{ position: 'relative' as const, flexGrow: m, flexBasis: 0, minWidth: 6, height: h, background: zc(b.zone), borderRadius: '6px 6px 2px 2px', cursor: 'ns-resize', touchAction: 'none' as const, transition: pdrag.current ? 'none' : 'height 0.12s' }}>
+                    <span onPointerDown={e => profileDown(e, b, 'dur')} style={{ position: 'absolute' as const, right: -2, top: 0, bottom: 0, width: 9, cursor: 'ew-resize', touchAction: 'none' as const }} />
+                  </div>) })}
               </div>
             </div>
           </div>

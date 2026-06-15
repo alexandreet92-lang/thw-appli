@@ -18,15 +18,16 @@ const AIPanelDynamic = nDynamic(() => import('@/components/ai/AIPanel'), { ssr: 
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
-import { Dumbbell, CalendarDays } from 'lucide-react'
+import { Dumbbell, CalendarDays, LayoutDashboard } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { TrainingSummary } from '@/app/planning/components/training/TrainingSummary'
+import { SportIcon } from '@/components/icons/SportIcon'
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import type { NutritionItem, ParcoursData } from '@/components/planning/SessionEditor'
 
 // ── Types ─────────────────────────────────────────
 export type PlanVariant   = 'A' | 'B'
-export type WeekRange     = 1 | 5 | 10
+export type WeekRange     = 5 | 10 | 20
 export type DayIntensity  = 'recovery' | 'low' | 'mid' | 'hard'
 export type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym' | 'elliptique'
 type SessionStatus = 'planned' | 'done'
@@ -2141,7 +2142,33 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
 // ════════════════════════════════════════════════
 // TRAINING TAB
 // ════════════════════════════════════════════════
-function TrainingTab() {
+// Estimation SM (métabolique) / SN (neuromusculaire) « prévu » depuis les blocs d'une séance.
+const SM_COEF_PL = [0.6, 0.85, 1.05, 1.25, 1.45, 1.55, 1.62]
+const SN_COEF_PL = [0, 0, 0.08, 0.25, 0.6, 1.1, 1.7]
+function estSmSn(blocks: Block[] | undefined, durationMin: number): { sm: number; sn: number } {
+  let sm = 0, sn = 0, acc = 0
+  for (const b of (blocks || [])) {
+    const z = Math.max(1, Math.min(7, b.zone || 1))
+    const iv = b.mode === 'interval' && b.reps && b.effortMin != null
+    const tot = iv ? (b.reps as number) * ((b.effortMin as number) + (b.recoveryMin || 0)) : (b.durationMin || 0)
+    const eff = iv ? (b.reps as number) * (b.effortMin as number) : (b.durationMin || 0)
+    sm += tot * SM_COEF_PL[z - 1]; sn += eff * SN_COEF_PL[z - 1]; acc += tot
+  }
+  if (acc === 0 && durationMin > 0) sm = durationMin
+  return { sm: Math.round(sm), sn: Math.round(sn) }
+}
+
+// Numéro de semaine ISO depuis une date YYYY-MM-DD.
+function isoWeekNum(ds: string): number {
+  const d = new Date(ds + 'T00:00:00')
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7))
+  const ys = new Date(Date.UTC(t.getUTCFullYear(), 0, 1))
+  return Math.ceil(((t.getTime() - ys.getTime()) / 86400000 + 1) / 7)
+}
+const PLAN_SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique']
+
+function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   // Lit un éventuel ?week=YYYY-MM-DD dans l'URL pour positionner le
   // weekOffset initial — utile après "Ajouter au Planning" depuis le
   // Coach IA, qui redirige sur la semaine de début du programme.
@@ -2156,7 +2183,7 @@ function TrainingTab() {
       return Math.round(diffMs / (7 * 86400000))
     } catch { return 0 }
   })
-  const [weekRange,   setWeekRange]   = useState<WeekRange>(1)
+  const [weekRange,   setWeekRange]   = useState<WeekRange>(5)
   const [activePlan,  setActivePlan]  = useState<PlanVariant>('A')
   const [compareMode, setCompareMode] = useState(false)
   const [showRangeDd, setShowRangeDd] = useState(false)
@@ -2186,6 +2213,9 @@ function TrainingTab() {
   const [detailModal, setDetailModal] = useState<Session|null>(null)
   const [activityDetail, setActivityDetail] = useState<TrainingActivity|null>(null)
   const [dragOver, setDragOver] = useState<number|null>(null)
+  const [hoverAdd, setHoverAdd] = useState<string|null>(null)
+  const [dragCell, setDragCell] = useState<string|null>(null)
+  const planDrag = useRef<{ id: string; ws: string; day: number } | null>(null)
   const [show10w, setShow10w] = useState(false)
   const [intensityModal, setIntensityModal] = useState<DayIntensity|null>(null)
   const [planningFavorites, setPlanningFavorites] = useState<Array<{id:string;name:string}>>([])
@@ -2303,8 +2333,10 @@ function TrainingTab() {
 
   // Multi-week data for range > 1
   const [extraSessions, setExtraSessions] = useState<Record<string,Session[]>>({})
+  const [planTick, setPlanTick] = useState(0)
+  const [loadedOnce, setLoadedOnce] = useState(false)
+  useEffect(()=>{ if(!loading) setLoadedOnce(true) },[loading])
   useEffect(()=>{
-    if(weekRange===1){ setExtraSessions({}); return }
     const sb=createClient()
     ;(async()=>{
       const {data:{user}}=await sb.auth.getUser(); if(!user)return
@@ -2320,7 +2352,7 @@ function TrainingTab() {
       })
       setExtraSessions(grouped)
     })()
-  },[weekRange,weekOffset])
+  },[weekRange,weekOffset,planTick])
 
   const allWeekStarts = Array.from({length:weekRange},(_,i)=>getWeekStartFromOffset(weekOffset+i))
 
@@ -2348,6 +2380,97 @@ function TrainingTab() {
   }
   const week = buildWeek(currentWeekStart, compareMode ? undefined : activePlan)
 
+  // ── PLAN multi-semaines (style Idosport) : lignes hebdo + sidebar jauges de volume ──
+  function renderPlan() {
+    const RAIL = 54, SB = 206
+    const cols = `${RAIL}px repeat(7,minmax(0,1fr)) ${SB}px`
+    return (
+      <div style={{ border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)' }}>
+        <div style={{ overflowX: 'auto' as const }}><div style={{ minWidth: 940 }}>
+          {/* En-tête jours */}
+          <div style={{ display: 'grid', gridTemplateColumns: cols, background: 'var(--bg-card2)', borderBottom: '1px solid var(--border)' }}>
+            <div />
+            {DAY_NAMES.map(d => <div key={d} style={{ padding: '10px 4px', textAlign: 'center' as const, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)' }}>{d}.</div>)}
+            <div style={{ padding: '10px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--text-dim)', borderLeft: '1px solid var(--border)' }}>VOLUME</div>
+          </div>
+          {/* Lignes semaine */}
+          {allWeekStarts.map((ws, wi) => {
+            const w = buildWeek(ws, activePlan)
+            const dates = getWeekDatesFromStart(ws)
+            const vol: Record<string, number> = {}
+            w.forEach(d => {
+              d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); vol[sp] = (vol[sp] || 0) + s.durationMin })
+              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); vol[sp] = (vol[sp] || 0) + Math.round(a.elapsedTime / 60) })
+            })
+            const totalMin = Object.values(vol).reduce((a, b) => a + b, 0)
+            const maxVol = Math.max(1, ...Object.values(vol))
+            return (
+              <div key={ws} style={{ display: 'grid', gridTemplateColumns: cols, borderBottom: wi < allWeekStarts.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                {/* rail semaine */}
+                <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: 1, borderRight: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>S{isoWeekNum(ws)}</span>
+                  <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>{new Date(ws + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                </div>
+                {/* jours */}
+                {w.map((d, i) => {
+                  const hid = `${ws}_${i}`
+                  const isToday = ws === currentWeekStart && i === todayIdx
+                  const isDropTarget = dragCell === hid
+                  return (
+                    <div key={i} data-day-index={i}
+                      onMouseEnter={() => setHoverAdd(hid)} onMouseLeave={() => setHoverAdd(h => h === hid ? null : h)}
+                      onDragOver={e => { if (planDrag.current) { e.preventDefault(); setDragCell(hid) } }}
+                      onDragLeave={() => setDragCell(c => c === hid ? null : c)}
+                      onDrop={() => { const dr = planDrag.current; if (dr && dr.ws === ws && dr.day !== i) moveSession(dr.id, i); planDrag.current = null; setDragCell(null) }}
+                      style={{ position: 'relative' as const, minHeight: 104, padding: '24px 6px 22px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' as const, gap: 5, background: isDropTarget ? 'rgba(6,182,212,0.07)' : 'transparent', transition: 'background .12s' }}>
+                      <span style={{ position: 'absolute' as const, top: 6, right: 8, fontSize: 11, fontWeight: 700, color: isToday ? '#06B6D4' : 'var(--text-dim)' }}>{dates[i]}</span>
+                      {hoverAdd === hid && (
+                        <button onClick={() => { setAddModalFavorites(false); setAddModal({ dayIndex: i, plan: activePlan, weekStart: ws }) }} title="Ajouter une séance"
+                          style={{ position: 'absolute' as const, bottom: 4, left: '50%', transform: 'translateX(-50%)', zIndex: 6, background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 2, opacity: 0.7 }}>+</button>
+                      )}
+                      {d.activities.map(a => { const sp = normalizeSportType(a.sport); return (
+                        <div key={a.id} onClick={() => setActivityDetail(a)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 9px', borderRadius: 9, background: 'var(--bg-card2)', border: '1px solid var(--border)', cursor: 'pointer' }}>
+                          <SportIcon sport={sp} size={18} />
+                          <span style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.name}</span>
+                          <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(Math.round(a.elapsedTime / 60))}</span>
+                        </div>) })}
+                      {d.sessions.filter(s => !d.activities.some(a => matchActivity(a, d.sessions)?.id === s.id)).map(s => (
+                        <div key={s.id} draggable
+                          onDragStart={e => { planDrag.current = { id: s.id, ws, day: i }; e.dataTransfer.effectAllowed = 'move' }}
+                          onDragEnd={() => { planDrag.current = null; setDragCell(null) }}
+                          onClick={() => setDetailModal(s)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 9px', borderRadius: 9, background: 'var(--bg-card2)', border: '1px solid var(--border)', cursor: 'grab', opacity: s.status === 'done' ? 0.6 : 1 }}>
+                          <SportIcon sport={s.sport} size={18} />
+                          <span style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.title}</span>
+                          <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(s.durationMin)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
+                {/* cumul volumes */}
+                <div style={{ padding: '9px 10px', borderLeft: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)' }}>Total</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{formatHM(totalMin)}</span>
+                  </div>
+                  {PLAN_SPORTS.filter(sp => vol[sp]).map(sp => (
+                    <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+                      <SportIcon sport={sp} size={15} />
+                      <div style={{ flex: 1, height: 7, borderRadius: 4, background: 'var(--border)', overflow: 'hidden' }}><div style={{ width: `${(vol[sp] / maxVol) * 100}%`, height: '100%', background: SPORT_BORDER[sp], borderRadius: 4 }} /></div>
+                      <span style={{ fontSize: 8.5, color: 'var(--text-mid)', fontWeight: 700, minWidth: 32, textAlign: 'right' as const }}>{formatHM(vol[sp])}</span>
+                    </div>
+                  ))}
+                  {totalMin === 0 && <span style={{ fontSize: 9, color: 'var(--text-dim)', fontStyle: 'italic' as const }}>Repos</span>}
+                </div>
+              </div>
+            )
+          })}
+        </div></div>
+      </div>
+    )
+  }
+
   async function handleAddSession(dayIdx:number, s:Session, targetWeekStart?:string) {
     if (targetWeekStart && targetWeekStart !== currentWeekStart) {
       // Ajout sur une autre semaine — appel Supabase direct
@@ -2366,9 +2489,11 @@ function TrainingTab() {
         nutrition_data: typedS.nutritionItems ?? null,
       })
       window.dispatchEvent(new Event('thw:sessions-changed'))
+      setPlanTick(t => t + 1)
       return
     }
     await addSession({ ...s, dayIndex:dayIdx, planVariant:addModal?.plan??activePlan })
+    setPlanTick(t => t + 1)
   }
   async function handleSaveSession(s:Session) {
     await updateSession(s.id, s)
@@ -2455,6 +2580,11 @@ function TrainingTab() {
   const plannedTSS = allSess.reduce((s,x)=>s+(x.tss||0),0)
   const doneTSS = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+(x.tss||0),0)
                + allActs.reduce((s,a)=>s+(a.tss||0),0)
+  // SM / SN (remplacent le TSS dans l'onglet Plan)
+  const plannedSM = allSess.reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sm,0)
+  const plannedSN = allSess.reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sn,0)
+  const doneSM = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sm,0) + allActs.reduce((s,a)=>s+(a.tss||0),0)
+  const doneSN = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sn,0)
 
   const plannedN = allSess.length
   const doneN    = allSess.filter(s=>s.status==='done').length + allActs.length
@@ -2472,7 +2602,11 @@ function TrainingTab() {
     doneH: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+x.durationMin/60,0)
           + allActs.filter(a=>normalizeSportType(a.sport)===sp).reduce((a,x)=>a+x.elapsedTime/3600,0),
     plannedTSS: allSess.filter(s=>s.sport===sp).reduce((a,x)=>a+(x.tss||0),0),
-    doneTSS: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+(x.tss||0),0)
+    doneTSS: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+(x.tss||0),0),
+    plannedSM: allSess.filter(s=>s.sport===sp).reduce((a,x)=>a+estSmSn(x.blocks,x.durationMin).sm,0),
+    doneSM: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+estSmSn(x.blocks,x.durationMin).sm,0),
+    plannedSN: allSess.filter(s=>s.sport===sp).reduce((a,x)=>a+estSmSn(x.blocks,x.durationMin).sn,0),
+    doneSN: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+estSmSn(x.blocks,x.durationMin).sn,0),
   })).filter(s=>s.plannedH>0||s.doneH>0)
 
   const todaySessions = week[todayIdx]?.sessions??[]
@@ -2560,7 +2694,14 @@ function TrainingTab() {
               onDragLeave={()=>setDragOver(null)}
               onDrop={()=>onDrop(i)}
               onTouchEnd={()=>onTouchEnd(i)}
-              style={{ borderLeft:'1px solid var(--border)',padding:'6px 4px',background:dragOver===i?'rgba(6,182,212,0.04)':'transparent',minWidth:68,minHeight:80 }}>
+              onMouseEnter={()=>setHoverAdd(`${ws}_${i}`)}
+              onMouseLeave={()=>setHoverAdd(h=>h===`${ws}_${i}`?null:h)}
+              style={{ position:'relative' as const,borderLeft:'1px solid var(--border)',padding:'6px 4px',background:dragOver===i?'rgba(6,182,212,0.04)':'transparent',minWidth:68,minHeight:80 }}>
+              {hoverAdd===`${ws}_${i}` && (
+                <button onClick={()=>{setAddModalFavorites(false);setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws})}}
+                  title="Ajouter une séance"
+                  style={{ position:'absolute' as const,top:'50%',left:'50%',transform:'translate(-50%,-50%)',zIndex:8,width:30,height:30,borderRadius:'50%',background:'#06B6D4',border:'none',color:'#fff',fontSize:18,lineHeight:1,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 10px rgba(6,182,212,0.55)' }}>+</button>
+              )}
               <div style={{ display:'flex',flexDirection:'column',gap:4 }}>
                 {/* Activités réelles (cliquables → modal détail) */}
                 {d.activities.map(a=>{
@@ -2621,10 +2762,11 @@ function TrainingTab() {
 
   // Fix #7: Only show skeleton on first load (no data yet) — avoids flash when navigating back
   // If data already exists, show it immediately while the background reload completes.
-  if (loading && sessions.length === 0 && !addModal && !detailModal) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
+  if (loading && !loadedOnce && !addModal && !detailModal) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
+      {tab === 'plan' && (<>
       {/* ── PLAN HEADER + GRAPHIQUES (visible si plan IA actif) ── */}
       {aiPlan && (
         <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} nextRace={nextRace} onReload={() => setAiPlanReloadTick(t => t + 1)} />
@@ -2655,6 +2797,7 @@ function TrainingTab() {
           </button>
         </div>
       )}
+      </>)}
       {show10w && <Last10WeeksModal onClose={()=>setShow10w(false)}/>}
       {intensityModal && <InfoModal title={INTENSITY_CONFIG[intensityModal].label} content={<p style={{margin:0}}>{intensityModal==='recovery'?'Journée légère ou repos.':intensityModal==='low'?'Faible intensité, récupération active.':intensityModal==='mid'?'Intensité modérée, fatigue contrôlée.':'Forte intensité — récupération nécessaire.'}</p>} onClose={()=>setIntensityModal(null)}/>}
       {addModal!==null && (
@@ -2681,6 +2824,7 @@ function TrainingTab() {
       )}
       {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}
 
+      {tab === 'training' && (<>
       {/* ── Controls — desktop (ancienne interface) ── */}
       <div id="tr-ctrl-desktop" style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' as const }}>
         <div style={{ display:'flex',alignItems:'center',gap:4,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:10,padding:'4px 6px' }}>
@@ -2691,12 +2835,12 @@ function TrainingTab() {
         </div>
         <div style={{ position:'relative' }}>
           <button onClick={()=>setShowRangeDd(x=>!x)} style={{ padding:'6px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5 }}>
-            {weekRange===1?'1 semaine':weekRange===5?'5 semaines':'10 semaines'} <span style={{ fontSize:9 }}>▾</span>
+            {weekRange===5?'5 semaines':weekRange===10?'10 semaines':'20 semaines'} <span style={{ fontSize:9 }}>▾</span>
           </button>
           {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 4px)',left:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:10,boxShadow:'var(--shadow)',zIndex:50,minWidth:130,padding:4 }}>
-            {([1,5,10] as WeekRange[]).map(r=>(
+            {([5,10,20] as WeekRange[]).map(r=>(
               <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}} style={{ width:'100%',padding:'7px 12px',borderRadius:7,border:'none',background:weekRange===r?'rgba(6,182,212,0.10)':'transparent',color:weekRange===r?'#06B6D4':'var(--text-mid)',fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?600:400 }}>
-                {r===1?'1 semaine':r===5?'5 semaines':'10 semaines'}
+                {r===5?'5 semaines':r===10?'10 semaines':'20 semaines'}
               </button>
             ))}
           </div>}
@@ -2748,18 +2892,18 @@ function TrainingTab() {
         <div style={{ position:'relative' }}>
           <button onClick={()=>setShowRangeDd(x=>!x)}
             style={{ width:'100%',padding:'9px 16px',borderRadius:20,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',fontWeight:600 }}>
-            <span>{weekRange===1?'1 semaine':weekRange===5?'5 semaines':'10 semaines'}</span>
+            <span>{weekRange===5?'5 semaines':weekRange===10?'10 semaines':'20 semaines'}</span>
             <span style={{ fontSize:10,color:'var(--text-dim)' }}>▾</span>
           </button>
           {showRangeDd&&<div onClick={()=>setShowRangeDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
           {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,right:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:14,boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:6 }}>
-            {([1,5,10] as WeekRange[]).map(r=>(
+            {([5,10,20] as WeekRange[]).map(r=>(
               <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}}
                 style={{ width:'100%',padding:'10px 16px',borderRadius:10,border:'none',
                   background:weekRange===r?'rgba(6,182,212,0.10)':'transparent',
                   color:weekRange===r?'#06B6D4':'var(--text-mid)',
                   fontSize:13,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?700:400 }}>
-                {r===1?'1 semaine':r===5?'5 semaines':'10 semaines'}
+                {r===5?'5 semaines':r===10?'10 semaines':'20 semaines'}
               </button>
             ))}
           </div>}
@@ -2799,12 +2943,15 @@ function TrainingTab() {
         @media (min-width: 768px) { #tr-ctrl-mobile { display: none !important; } }
         @media (max-width: 767px) { #tr-ctrl-desktop { display: none !important; } }
       `}</style>
+      </>)}
 
+      {tab === 'plan' && (<>
       {/* Résumé Entraînement (refonte design system) */}
       <TrainingSummary
         plannedMin={plannedMin} doneMin={doneMin}
         plannedN={plannedN} doneN={doneN}
         plannedTSS={plannedTSS} doneTSS={doneTSS}
+        plannedSM={plannedSM} doneSM={doneSM} plannedSN={plannedSN} doneSN={doneSN}
         sportCounts={sportCounts} sportStats={sportStats}
         today={week[todayIdx] ? { day: week[todayIdx].day, date: week[todayIdx].date } : null}
         todaySessions={todaySessions}
@@ -2813,92 +2960,13 @@ function TrainingTab() {
         isModified={(s) => isSessionModified(s)}
         belowVolume={<TrainingBlockSummary />}
       />
+      </>)}
 
 
 
-      {/* View switch */}
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',position:'relative',zIndex:5 }}>
-        <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{compareMode?'Comparaison Plan A / Plan B':`Plan ${activePlan} · ${getWeekLabel(currentWeekStart)}`}</p>
-        {!compareMode&&<div style={{ display:'flex',gap:6 }}>
-          {([['vertical','⊟ Vertical'],['horizontal','⊞ Horizontal']] as [TrainingView,string][]).map(([v,l])=>(
-            <button key={v} onClick={()=>setView(v)} style={{ padding:'5px 11px',borderRadius:8,border:'1px solid',fontSize:11,cursor:'pointer',borderColor:view===v?'#06B6D4':'var(--border)',background:view===v?'rgba(6,182,212,0.10)':'var(--bg-card)',color:view===v?'#06B6D4':'var(--text-mid)',fontWeight:view===v?600:400 }}>{l}</button>
-          ))}
-        </div>}
-      </div>
-
-      {/* COMPARE MODE — Plan A stacked above Plan B */}
-      {compareMode && (
-        <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
-          <ScrollReveal><WeekGrid ws={currentWeekStart} plan="A" labelTag="Plan A — Optimal"/></ScrollReveal>
-          <ScrollReveal delay={0.08}><WeekGrid ws={currentWeekStart} plan="B" labelTag="Plan B — Minimal"/></ScrollReveal>
-        </div>
-      )}
-
-      {/* SINGLE PLAN — multi-week grids (vertical uniquement) */}
-      {!compareMode && (weekRange>1 || view==='vertical') && (
-        <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
-          {allWeekStarts.map((ws,wi)=>(
-            <ScrollReveal key={ws} delay={Math.min(wi * 0.06, 0.3)}>
-              <WeekGrid ws={ws} plan={activePlan} labelTag={weekRange>1?`Semaine ${wi+1} — ${getWeekLabel(ws)}`:undefined}/>
-            </ScrollReveal>
-          ))}
-        </div>
-      )}
-
-      {/* HORIZONTAL VIEW (only in single-week, single-plan mode) */}
-      {!compareMode && weekRange===1 && view==='horizontal' && (
-        <div style={{ display:'flex',flexDirection:'column',gap:8,marginTop:8 }}>
-          {week.map((d,i)=>{ const cfg=INTENSITY_CONFIG[d.intensity]; return (
-            <div key={d.day} data-day-index={i} onTouchEnd={()=>onTouchEnd(i)} style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:13,padding:13,boxShadow:'var(--shadow-card)' }}>
-              <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:(d.sessions.length+d.activities.length)?8:0 }}>
-                <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                  <div style={{ textAlign:'center' as const,minWidth:32 }}>
-                    <p style={{ fontSize:9,color:'var(--text-dim)',textTransform:'uppercase' as const,margin:0 }}>{d.day}</p>
-                    <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,color:i===todayIdx?'#06B6D4':'var(--text)' }}>{d.date}</p>
-                  </div>
-                  <button onClick={()=>setIntensityModal(d.intensity)} style={{ padding:'2px 8px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.color,fontSize:10,fontWeight:700,cursor:'pointer' }}>{cfg.label}</button>
-                  <button onClick={()=>handleChangeIntensity(i)} style={{ width:20,height:20,borderRadius:'50%',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
-                </div>
-                <div style={{ display:'flex',gap:4 }}>
-                  <button onClick={()=>{setAddModalFavorites(false);setAddModal({dayIndex:i,plan:activePlan})}} style={{ padding:'4px 9px',borderRadius:7,background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.2)',color:'#06B6D4',fontSize:11,cursor:'pointer',fontWeight:600 }}>+ Ajouter</button>
-                  {planningFavorites.length>0&&<button onClick={()=>{setAddModalFavorites(true);setAddModal({dayIndex:i,plan:activePlan})}} style={{ padding:'4px 8px',borderRadius:7,background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.2)',color:'#06B6D4',fontSize:12,cursor:'pointer' }} title="Charger un favori">★</button>}
-                </div>
-              </div>
-              {/* Activities from Training */}
-              {d.activities.map(a=>{ const sp=normalizeSportType(a.sport); const matchedSession=matchActivity(a,d.sessions); return (
-                <div key={a.id} onClick={()=>setActivityDetail(a)} style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',borderRadius:9,background:`${SPORT_BORDER[sp]}14`,borderLeft:`3px solid ${SPORT_BORDER[sp]}`,marginBottom:5,opacity:0.85,cursor:'pointer' }}>
-                  <SportBadge sport={sp} size="sm"/>
-                  <div style={{ flex:1 }}>
-                    <div style={{ display:'flex',alignItems:'center',gap:5 }}>
-                      <p style={{ fontSize:12,fontWeight:600,margin:0 }}>{matchedSession?matchedSession.title:a.name}</p>
-                      <span style={{ fontSize:8,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 4px',borderRadius:3,fontWeight:700 }}>Réalisé</span>
-                      {matchedSession&&<span style={{ fontSize:8,fontWeight:700,color:matchStatus(matchedSession.durationMin,Math.round(a.elapsedTime/60)).color }}>{matchStatus(matchedSession.durationMin,Math.round(a.elapsedTime/60)).label}</span>}
-                    </div>
-                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(Math.round(a.elapsedTime/60))}{a.distance?` · ${(a.distance/1000).toFixed(1)}km`:''}{matchedSession?` · Prévu ${formatHM(matchedSession.durationMin)}`:''}</p>
-                  </div>
-                </div>
-              )})}
-              {d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).map(s=>(
-                <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={e=>{e.stopPropagation();onTouchStart(s.id,i,e)}} onTouchMove={onTouchMove} onTouchEnd={onTouchEndPoint} onClick={()=>setDetailModal(s)}
-                  style={{ display:'flex',flexDirection:'column',padding:'8px 10px',borderRadius:9,background:SPORT_BG[s.sport],borderLeft:`3px solid ${SPORT_BORDER[s.sport]}`,cursor:'pointer',opacity:s.status==='done'?0.75:1,marginBottom:5 }}>
-                  <div style={{ display:'flex',alignItems:'center',gap:7 }}>
-                    <SportBadge sport={s.sport} size="sm"/>
-                    <div style={{ flex:1 }}>
-                      <div style={{ display:'flex',alignItems:'center',gap:5 }}>
-                        <p style={{ fontSize:12,fontWeight:600,margin:0 }}>{s.title}</p>
-                        {s.status==='done'&&<span style={{ fontSize:8,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 4px',borderRadius:3,fontWeight:700 }}>FAIT</span>}
-                        <span style={{ fontSize:9,fontWeight:700,color:s.planVariant==='B'?'#a78bfa':'#06B6D4',marginLeft:4 }}>Plan {s.planVariant}</span>
-                      </div>
-                      <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{s.time} · {formatHM(s.durationMin)}{s.tss?` · ${s.tss} TSS`:''}</p>
-                    </div>
-                  </div>
-                  {s.blocks.length>0 && <div style={{ display:'flex',gap:1,height:6,borderRadius:2,overflow:'hidden',marginTop:5 }}>{s.blocks.map(b=>{ const bMin=b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?b.reps*(b.effortMin+b.recoveryMin):b.durationMin; return <div key={b.id} style={{ flex:bMin,background:ZONE_COLORS[b.zone-1],opacity:0.75 }}/> })}</div>}
-                </div>
-              ))}{d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).length===0&&d.activities.length===0&&<p style={{ fontSize:11,color:'var(--text-dim)',margin:0,fontStyle:'italic' as const }}>Jour de repos</p>}
-            </div>
-          )})}
-        </div>
-      )}
+      {tab === 'training' && (<>
+      {renderPlan()}
+      </>)}
     </div>
   )
 }
@@ -4324,8 +4392,9 @@ export default function PlanningPage() {
       <SectionLayout
         header={header}
         sections={[
-          { id:'training', label:'Entraînement', subtitle:'Séances et plan',    icon:Dumbbell,     content:<TrainingTab/> },
-          { id:'week',     label:'Semaine',      subtitle:'Vue hebdomadaire',   icon:CalendarDays, content:<WeekTab trainingWeek={sessions}/> },
+          { id:'training', label:'Entraînement', subtitle:'Plan détaillé',      icon:Dumbbell,        content:<TrainingTab tab="training"/> },
+          { id:'plan',     label:'Plan',         subtitle:'Blocs, stats & IA',  icon:LayoutDashboard, content:<TrainingTab tab="plan"/> },
+          { id:'week',     label:'Semaine',      subtitle:'Vue hebdomadaire',   icon:CalendarDays,    content:<WeekTab trainingWeek={sessions}/> },
         ]}
       />
     </>

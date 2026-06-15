@@ -18,7 +18,7 @@
 // ══════════════════════════════════════════════════════════════
 
 export const runtime     = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 120
 
 import { NextRequest } from 'next/server'
 import { getAnthropicClient } from '@/lib/agents/base'

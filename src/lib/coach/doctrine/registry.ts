@@ -81,14 +81,18 @@ export function buildDoctrineForPlan(opts: { methodId?: string; sport?: string; 
   return `\n\n========== DOCTRINE DE COACHING (RÉFÉRENTIEL À APPLIQUER FIDÈLEMENT) ==========\n${body}\n========== FIN DOCTRINE ==========\n`
 }
 
-// ── Doctrine pour le CHAT (légère, ciblée) ──────────────────────
+// ── Doctrine pour le CHAT (légère, ciblée, BORNÉE) ──────────────
+// En chat, la conversation grandit à chaque tour ; on plafonne donc
+// strictement la doctrine injectée pour ne pas alourdir/ralentir l'appel.
+const cap = (s: string, n: number) => (s.length > n ? s.slice(0, n) + '\n…(doc tronqué)' : s)
+
 export function buildDoctrineForChat(opts: { methodId?: string; sport?: string; lastUserMessage?: string }): string {
   const parts: string[] = [COACH_PRINCIPLES]
   const mf = methodDocFile(opts.methodId, opts.sport)
-  if (mf) parts.push(read(mf))
+  if (mf) parts.push(cap(read(mf), 6000))           // doc méthode (≈1,5k tokens max)
   const kw = keywordDoc(opts.lastUserMessage ?? '')
-  if (kw && kw !== mf) parts.push(read(kw))
+  if (kw && kw !== mf) parts.push(cap(read(kw), 5000)) // doc socle ciblé, tronqué
   const body = parts.filter(Boolean).join('\n\n═══════════════════\n\n')
   if (!body) return ''
-  return `\n\n========== DOCTRINE DE COACHING (référentiel à appliquer) ==========\n${body}\n========== FIN DOCTRINE ==========\n`
+  return `\n\n========== DOCTRINE DE COACHING (référentiel à appliquer) ==========\n${cap(body, 14000)}\n========== FIN DOCTRINE ==========\n`
 }

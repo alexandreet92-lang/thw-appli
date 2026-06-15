@@ -3,6 +3,7 @@ export const maxDuration = 120
 import { NextRequest } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 import { withQuotaCheck } from '@/lib/subscriptions/quota-middleware'
+import { buildDoctrineForPlan } from '@/lib/coach/doctrine/registry'
 
 export const runtime = 'nodejs'
 
@@ -585,12 +586,21 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
 4. EXPLIQUE TES CHOIX : note_coach par semaine + conseils_adaptation + points_cles rendent la LOGIQUE du plan limpide.
 5. TAILLE OBLIGATOIRE : seules les semaines 1-2 ont des seances[] (avec blocs) ; TOUTES les semaines 3+ ont "seances": [] (vide). Ne dépasse jamais cette règle — c'est ce qui garantit que la génération aboutit dans le temps imparti.`
 
+  // Doctrine ciblée : B1 + méthode retenue + B7 (séances) + B6 (épreuve) (+ B2 si blessure)
+  const injuryFlag = /\b(blessure|douleur|tendon|achille|genou|pied|cheville|mollet|ischio|dos|lombaire|épaule|tibia|p[ée]riostite|fracture|g[êe]ne)\b/i
+    .test(String(questionnaire?.precision_profil ?? '') + ' ' + String(methodologieFournie))
+  const doctrineBlock = buildDoctrineForPlan({
+    methodId: methodeChoisie || undefined,
+    sport: (questionnaire?.sport_principal as string | undefined),
+    injury: injuryFlag,
+  })
+
   try {
     const client = getAnthropicClient()
     const resp = await client.messages.create({
       model: MODELS.powerful,
       max_tokens: 8000,
-      system: SYSTEM,
+      system: SYSTEM + doctrineBlock,
       messages: [{ role: 'user', content: userPrompt }],
     })
 

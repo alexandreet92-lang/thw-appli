@@ -32,7 +32,8 @@ import { TIER_LIMITS, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/ti
 import { getActiveCompetencesPrompt } from '@/lib/ai/competences'
 import { getUserTokenLimits, recordTokenUsage } from '@/lib/tokens/limits'
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
-import { methodsIndexText, methodDoctrineText } from '@/lib/coach/methods'
+import { methodsIndexText } from '@/lib/coach/methods'
+import { buildDoctrineForChat } from '@/lib/coach/doctrine/registry'
 
 // ── System prompts côté serveur ───────────────────────────────
 
@@ -329,11 +330,15 @@ export async function POST(req: NextRequest) {
   const client = getAnthropicClient()
   let systemWithTools = `${chatSystemPrompt}\n\n${TOOL_INSTRUCTIONS}`
 
-  // ── Méthode sélectionnée dans le composer → doctrine profonde injectée ──
-  const selectedMethod = (chatBody as { method?: string }).method
-  if (selectedMethod && selectedMethod !== 'auto') {
-    const doctrine = methodDoctrineText(selectedMethod)
-    if (doctrine) systemWithTools = `${systemWithTools}\n\n${doctrine}`
+  // ── Doctrine ciblée injectée (principes + méthode choisie + doc selon mots-clés) ──
+  if ((chatBody as { agentId?: string }).agentId === 'central') {
+    const selectedMethod = (chatBody as { method?: string }).method
+    const lastUser = [...(chatBody.messages ?? [])].reverse().find(m => m.role === 'user')
+    const doctrine = buildDoctrineForChat({
+      methodId: selectedMethod,
+      lastUserMessage: typeof lastUser?.content === 'string' ? lastUser.content : '',
+    })
+    if (doctrine) systemWithTools = `${systemWithTools}${doctrine}`
   }
 
   // ── Compétences actives — uniquement agent Training (agentId 'central') ──

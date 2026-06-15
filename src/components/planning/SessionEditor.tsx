@@ -4942,44 +4942,21 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   <span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}>/10</span>
                 </span>
               </div>
-              <div style={{ position: 'relative' as const, height: 18, display: 'flex', alignItems: 'center' }}>
-                <div style={{ background: 'var(--border)', borderRadius: 99, height: 6, width: '100%', position: 'relative' as const }}>
-                  <div style={{
-                    position: 'absolute' as const, left: 0, top: 0, height: '100%', borderRadius: 99,
-                    width: `${(rpe / 10) * 100}%`,
-                    background: `linear-gradient(90deg, #4ade80, ${rpeCol})`,
-                    transition: 'width 0.1s',
-                  }} />
-                  <div style={{
-                    position: 'absolute' as const, top: '50%', left: `${(rpe / 10) * 100}%`, transform: 'translate(-50%,-50%)',
-                    width: 16, height: 16, borderRadius: '50%', background: 'var(--bg-card)',
-                    border: `3px solid ${rpeCol}`, boxShadow: '0 1px 4px rgba(0,0,0,0.25)', transition: 'left 0.1s', pointerEvents: 'none' as const,
-                  }} />
-                </div>
-                <input type="range" min={0} max={10} step={1} value={rpe} onChange={e => setRpe(parseInt(e.target.value))}
-                  style={{ position: 'absolute' as const, left: 0, right: 0, width: '100%', height: 18, opacity: 0, cursor: 'pointer', zIndex: 2, margin: 0 }} />
+              <div style={{ display: 'flex', gap: 4 }}>
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <button key={i} onClick={() => setRpe(i + 1)} aria-label={`RPE ${i + 1}`}
+                    style={{ flex: 1, height: 18, borderRadius: 5, border: 'none', cursor: 'pointer', padding: 0, background: i < rpe ? rpeCol : 'var(--bg-elev)', transition: 'background 0.1s' }} />
+                ))}
               </div>
             </div>
 
-            {/* Durée */}
-            <div style={{ padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={lbl}>Durée</span>
-                <span style={{ fontSize: 20, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace' }}>{fmtDurLocal(dur)}</span>
-              </div>
-              <div style={{ background: 'var(--border)', borderRadius: 99, height: 5, position: 'relative' as const, overflow: 'hidden' }}>
-                <div style={{
-                  position: 'absolute' as const, left: 0, top: 0, height: '100%', borderRadius: 99,
-                  width: `${((dur - 5) / 355) * 100}%`,
-                  background: `linear-gradient(90deg, ${accent}66, ${accent})`,
-                  transition: 'width 0.08s',
-                }} />
-              </div>
-              <input type="range" min={5} max={360} step={5} value={dur} onChange={e => setDur(parseInt(e.target.value))}
-                style={{ width: '100%', height: 20, marginTop: -14, opacity: 0, cursor: 'pointer', position: 'relative' as const, zIndex: 2 }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 1 }}>
-                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>5min</span>
-                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>6h</span>
+            {/* Durée — stepper compact */}
+            <div style={{ padding: '14px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={lbl}>Durée</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button onClick={() => setDur(Math.max(5, dur - 5))} style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-elev)', color: 'var(--text-mid)', fontSize: 16, cursor: 'pointer', padding: 0 }}>−</button>
+                <span style={{ fontSize: 21, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', minWidth: 74, textAlign: 'center' as const }}>{fmtDurLocal(dur)}</span>
+                <button onClick={() => setDur(Math.min(360, dur + 5))} style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-elev)', color: 'var(--text-mid)', fontSize: 16, cursor: 'pointer', padding: 0 }}>+</button>
               </div>
             </div>
 

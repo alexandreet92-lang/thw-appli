@@ -4756,50 +4756,34 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           }}
         />
 
-        {/* TITRE */}
-        <div style={{ padding: mobile ? '14px 16px 0' : '16px 24px 0', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <input value={title} onChange={e => setTitle(e.target.value)}
-            placeholder={`${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`}
-            style={{
-              flex: 1, background: 'none', border: 'none', color: 'var(--text)',
-              fontSize: mobile ? 20 : 24, fontWeight: 800, outline: 'none', padding: 0,
-              minWidth: 0,
-              fontFamily: 'Syne, sans-serif', letterSpacing: '-0.03em',
-            }} />
-          <button
-            onClick={handleExportPDF}
-            title="Exporter en PDF"
-            style={{
-              flexShrink: 0,
-              padding: '5px 11px', borderRadius: 7, cursor: 'pointer',
-              border: '1px solid var(--border)', background: 'var(--bg-card)',
-              color: 'var(--text-dim)', fontSize: 10, fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 4,
-              letterSpacing: '0.04em',
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* TITRE — en-tête : pastille sport + titre + sous-type + actions */}
+        <div style={{ padding: mobile ? '14px 16px 14px' : '18px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ width: 11, height: 11, borderRadius: '50%', background: accent, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <input value={title} onChange={e => setTitle(e.target.value)}
+              placeholder={`${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`}
+              style={{
+                width: '100%', background: 'none', border: 'none', color: 'var(--text)',
+                fontSize: mobile ? 19 : 23, fontWeight: 700, outline: 'none', padding: 0, minWidth: 0,
+                fontFamily: 'var(--font-display)', letterSpacing: '-0.02em',
+              }} />
+            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+              {SPORT_LABEL[sport]}{trainingTypes.length ? ` · ${trainingTypes.join(' + ')}` : ''}
+            </p>
+          </div>
+          <button onClick={handleExportPDF} title="Exporter en PDF"
+            style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, cursor: 'pointer', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 8.5L2 4.5h2.5V1h3v3.5H10L6 8.5Z" fill="currentColor"/>
               <rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/>
             </svg>
-            PDF
           </button>
-          <button
-            onClick={() => parcoursInputRef.current?.click()}
-            title="Importer un parcours GPX/TCX/KML"
-            style={{
-              flexShrink: 0,
-              padding: '5px 11px', borderRadius: 7, cursor: 'pointer',
-              border: '1px solid var(--border)', background: 'var(--bg-card)',
-              color: 'var(--text-dim)', fontSize: 10, fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 4,
-              letterSpacing: '0.04em',
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <button onClick={() => parcoursInputRef.current?.click()} title="Importer un parcours GPX/TCX/KML"
+            style={{ flexShrink: 0, height: 34, padding: parcoursData ? '0 11px' : 0, width: parcoursData ? undefined : 34, borderRadius: 10, cursor: 'pointer', border: '1px solid var(--border)', background: parcoursData ? `${accent}12` : 'transparent', color: parcoursData ? accent : 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 11, fontWeight: 600 }}>
+            <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/>
             </svg>
-            {parcoursLoading ? '…' : parcoursData ? (parcoursData.distance != null ? `${parcoursData.distance} km` : '✓') : 'Parcours'}
+            {parcoursLoading ? '…' : parcoursData && parcoursData.distance != null ? `${parcoursData.distance}km` : ''}
           </button>
         </div>
 
@@ -4847,10 +4831,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           display: mobile ? 'flex' : 'grid',
           flexDirection: mobile ? 'column' as const : undefined,
           gridTemplateColumns: mobile ? undefined : '1fr 1fr',
-          gap: mobile ? 14 : 36,
+          gap: mobile ? 14 : 20,
+          alignItems: 'start' as const,
         }}>
-          {/* GAUCHE */}
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 24 }}>
+          {/* GAUCHE — carte paramètres */}
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 20, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: mobile ? 16 : 18 }}>
             {/* Sport — tous les logos sur une ligne, clic = sélection */}
             <div>
               <span style={lbl}>Sport</span>
@@ -4977,7 +4962,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             </div>
 
             {/* Durée */}
-            <div>
+            <div style={{ padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={lbl}>Durée</span>
                 <span style={{ fontSize: 20, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace' }}>{fmtDurLocal(dur)}</span>

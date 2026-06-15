@@ -20,6 +20,7 @@ import { MobileSheet } from './MobileSheet'
 import { VoiceOverlay } from './VoiceOverlay'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
 import { PlanProposalCard, type PlanProposal, type GenProgram, type PlanRequirements } from './PlanProposalCard'
+import { MethodPicker } from './MethodPicker'
 import ActiveCompetencesBadge from '@/components/ai-coach/ActiveCompetencesBadge'
 import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
 import TopupEmailModal from '@/components/topup/TopupEmailModal'
@@ -18224,6 +18225,7 @@ export default function AIPanel({
   const [activeQA,    setActiveQA]    = useState<ActiveQuickAction | null>(null)
   const [isDesktop,   setIsDesktop]   = useState(false)
   const [model,       setModel]       = useState<THWModel>('athena')
+  const [method,      setMethod]      = useState<string>('auto')   // méthode d'entraînement (composer)
   const [selPopup,    setSelPopup]    = useState<{ text: string; x: number; y: number } | null>(null)
   const [attachment,    setAttachment]    = useState<AttachedFile | null>(null)
   const [attachErr,     setAttachErr]     = useState<string | null>(null)
@@ -19397,6 +19399,7 @@ export default function AIPanel({
         body: JSON.stringify({
           agentId:  isPlanChat ? 'plan_coach' : activeAgent === 'networks' ? 'hybrid_networks' : 'central',
           modelId:  snapshot,
+          method:   method !== 'auto' ? method : undefined,
           messages: apiMsgs,
           aiRules:  aiRules.length > 0 ? aiRules : undefined,
           // Merge plan_context (session IDs) into the existing context so that
@@ -20904,6 +20907,9 @@ export default function AIPanel({
 
                 {/* Sélecteur modèle */}
                 <ModelPicker model={model} onChange={setModel} disabled={loading} isMobile={!isDesktop} />
+
+                {/* Sélecteur de méthode d'entraînement */}
+                <MethodPicker method={method} onChange={setMethod} disabled={loading} isMobile={!isDesktop} />
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />

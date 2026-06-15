@@ -32,6 +32,7 @@ import { TIER_LIMITS, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/ti
 import { getActiveCompetencesPrompt } from '@/lib/ai/competences'
 import { getUserTokenLimits, recordTokenUsage } from '@/lib/tokens/limits'
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
+import { methodsIndexText, methodDoctrineText } from '@/lib/coach/methods'
 
 // ── System prompts côté serveur ───────────────────────────────
 
@@ -132,13 +133,8 @@ RÈGLE CRITIQUE — CHOIX DU BON TOOL :
   3. PROPOSE TA MÉTHODOLOGIE : raisonne comme un coach d'élite (forme actuelle, base déjà acquise, blessures, dénivelé de la course, échéance) et bâtis une logique SUR-MESURE, sport par sport, en expliquant le POURQUOI. C'est TOI qui guides l'athlète.
   4. Appelle create_training_plan en remplissant : methodologie (ta logique détaillée et justifiée, sport par sport — le générateur la suit fidèlement), methode (méthode retenue), requirements_resume (tout le reste : préférences, contraintes, blessures, jours…).
 
-BIBLIOTHÈQUE DE MÉTHODES (pour proposer, choisir et expliquer — ne JAMAIS imposer) :
-- Polarisé (80/20) : gros volume facile + une faible dose de très haute intensité. Idéal endurance longue, athlètes avec du volume.
-- Pyramidal : beaucoup de facile, dose modérée de seuil, peu de VO2max. Polyvalent, prépa course classique.
-- Par blocs : concentre un stimulus (ex : bloc PMA 2 sem puis bloc seuil) pour surcharger puis assimiler. Idéal athlète confirmé, gains ciblés.
-- Axé seuil / Sweet Spot : volume autour du seuil. Efficace quand le temps est limité, cyclisme/triathlon.
-- Spécifique course : centré sur les exigences de l'épreuve (allure cible, dénivelé, brick, distance). Pour le bloc spécifique et l'affûtage.
-Choisis/propose selon le sport, l'objectif, le temps disponible et le profil.
+${methodsIndexText()}
+Choisis/propose selon le sport, l'objectif, le temps disponible et le profil. Si une MÉTHODE RETENUE est précisée plus bas, applique-la.
 - MODIFIER un plan existant (add_session / add_week / update_plan_periodisation / move / delete) → uniquement si un training_plan_id ou session_id RÉEL figure dans le contexte. S'il n'y en a pas, ne tente pas de modifier : crée un plan (create_training_plan) ou réponds en texte.
 - Si une semaine est marquée "⚠️ AUCUNE SÉANCE — semaine vide" → utilise OBLIGATOIREMENT add_week pour créer cette semaine.
 - Si une séance a déjà un id: → utilise update_session pour la modifier ou move_session pour la déplacer.
@@ -332,6 +328,13 @@ export async function POST(req: NextRequest) {
   })
   const client = getAnthropicClient()
   let systemWithTools = `${chatSystemPrompt}\n\n${TOOL_INSTRUCTIONS}`
+
+  // ── Méthode sélectionnée dans le composer → doctrine profonde injectée ──
+  const selectedMethod = (chatBody as { method?: string }).method
+  if (selectedMethod && selectedMethod !== 'auto') {
+    const doctrine = methodDoctrineText(selectedMethod)
+    if (doctrine) systemWithTools = `${systemWithTools}\n\n${doctrine}`
+  }
 
   // ── Compétences actives — uniquement agent Training (agentId 'central') ──
   if ((chatBody as { agentId?: string }).agentId === 'central') {

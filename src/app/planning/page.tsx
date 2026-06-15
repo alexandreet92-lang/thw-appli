@@ -26,7 +26,7 @@ import type { NutritionItem, ParcoursData } from '@/components/planning/SessionE
 
 // ── Types ─────────────────────────────────────────
 export type PlanVariant   = 'A' | 'B'
-export type WeekRange     = 1 | 5 | 10
+export type WeekRange     = 5 | 10 | 20
 export type DayIntensity  = 'recovery' | 'low' | 'mid' | 'hard'
 export type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym' | 'elliptique'
 type SessionStatus = 'planned' | 'done'
@@ -2157,6 +2157,16 @@ function estSmSn(blocks: Block[] | undefined, durationMin: number): { sm: number
   return { sm: Math.round(sm), sn: Math.round(sn) }
 }
 
+// Numéro de semaine ISO depuis une date YYYY-MM-DD.
+function isoWeekNum(ds: string): number {
+  const d = new Date(ds + 'T00:00:00')
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7))
+  const ys = new Date(Date.UTC(t.getUTCFullYear(), 0, 1))
+  return Math.ceil(((t.getTime() - ys.getTime()) / 86400000 + 1) / 7)
+}
+const PLAN_SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique']
+
 function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   // Lit un éventuel ?week=YYYY-MM-DD dans l'URL pour positionner le
   // weekOffset initial — utile après "Ajouter au Planning" depuis le
@@ -2172,7 +2182,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       return Math.round(diffMs / (7 * 86400000))
     } catch { return 0 }
   })
-  const [weekRange,   setWeekRange]   = useState<WeekRange>(1)
+  const [weekRange,   setWeekRange]   = useState<WeekRange>(5)
   const [activePlan,  setActivePlan]  = useState<PlanVariant>('A')
   const [compareMode, setCompareMode] = useState(false)
   const [showRangeDd, setShowRangeDd] = useState(false)
@@ -2321,7 +2331,6 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   // Multi-week data for range > 1
   const [extraSessions, setExtraSessions] = useState<Record<string,Session[]>>({})
   useEffect(()=>{
-    if(weekRange===1){ setExtraSessions({}); return }
     const sb=createClient()
     ;(async()=>{
       const {data:{user}}=await sb.auth.getUser(); if(!user)return
@@ -2364,6 +2373,88 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     }))
   }
   const week = buildWeek(currentWeekStart, compareMode ? undefined : activePlan)
+
+  // ── PLAN multi-semaines (style Idosport) : lignes hebdo + sidebar jauges de volume ──
+  function renderPlan() {
+    const RAIL = 54, SB = 206
+    const cols = `${RAIL}px repeat(7,minmax(0,1fr)) ${SB}px`
+    return (
+      <div style={{ border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)' }}>
+        <div style={{ overflowX: 'auto' as const }}><div style={{ minWidth: 940 }}>
+          {/* En-tête jours */}
+          <div style={{ display: 'grid', gridTemplateColumns: cols, background: 'var(--bg-card2)', borderBottom: '1px solid var(--border)' }}>
+            <div />
+            {DAY_NAMES.map(d => <div key={d} style={{ padding: '10px 4px', textAlign: 'center' as const, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-dim)' }}>{d}.</div>)}
+            <div style={{ padding: '10px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', color: 'var(--text-dim)', borderLeft: '1px solid var(--border)' }}>VOLUME</div>
+          </div>
+          {/* Lignes semaine */}
+          {allWeekStarts.map((ws, wi) => {
+            const w = buildWeek(ws, activePlan)
+            const dates = getWeekDatesFromStart(ws)
+            const vol: Record<string, number> = {}
+            w.forEach(d => {
+              d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); vol[sp] = (vol[sp] || 0) + s.durationMin })
+              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); vol[sp] = (vol[sp] || 0) + Math.round(a.elapsedTime / 60) })
+            })
+            const totalMin = Object.values(vol).reduce((a, b) => a + b, 0)
+            const maxVol = Math.max(1, ...Object.values(vol))
+            return (
+              <div key={ws} style={{ display: 'grid', gridTemplateColumns: cols, borderBottom: wi < allWeekStarts.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                {/* rail semaine */}
+                <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: 1, borderRight: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>S{isoWeekNum(ws)}</span>
+                  <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>{new Date(ws + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                </div>
+                {/* jours */}
+                {w.map((d, i) => {
+                  const hid = `${ws}_${i}`
+                  const isToday = ws === currentWeekStart && i === todayIdx
+                  return (
+                    <div key={i} data-day-index={i} onMouseEnter={() => setHoverAdd(hid)} onMouseLeave={() => setHoverAdd(h => h === hid ? null : h)}
+                      style={{ position: 'relative' as const, minHeight: 90, padding: '22px 5px 8px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+                      <span style={{ position: 'absolute' as const, top: 5, right: 7, fontSize: 10.5, fontWeight: 700, color: isToday ? '#06B6D4' : 'var(--text-dim)' }}>{dates[i]}</span>
+                      {hoverAdd === hid && (
+                        <button onClick={() => { setAddModalFavorites(false); setAddModal({ dayIndex: i, plan: activePlan, weekStart: ws }) }} title="Ajouter une séance"
+                          style={{ position: 'absolute' as const, bottom: 6, left: '50%', transform: 'translateX(-50%)', zIndex: 6, width: 26, height: 26, borderRadius: '50%', background: '#06B6D4', border: 'none', color: '#fff', fontSize: 16, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(6,182,212,0.5)' }}>+</button>
+                      )}
+                      {d.activities.map(a => { const sp = normalizeSportType(a.sport); return (
+                        <div key={a.id} onClick={() => setActivityDetail(a)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 6px', borderRadius: 7, background: `${SPORT_BORDER[sp]}14`, borderLeft: `2px solid ${SPORT_BORDER[sp]}`, cursor: 'pointer' }}>
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: SPORT_BORDER[sp], flexShrink: 0 }} />
+                          <span style={{ flex: 1, fontSize: 10, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.name}</span>
+                          <span style={{ fontSize: 8.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(Math.round(a.elapsedTime / 60))}</span>
+                        </div>) })}
+                      {d.sessions.filter(s => !d.activities.some(a => matchActivity(a, d.sessions)?.id === s.id)).map(s => (
+                        <div key={s.id} onClick={() => setDetailModal(s)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 6px', borderRadius: 7, background: `${SPORT_BORDER[s.sport]}10`, borderLeft: `2px solid ${SPORT_BORDER[s.sport]}`, cursor: 'pointer', opacity: s.status === 'done' ? 0.6 : 1 }}>
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: SPORT_BORDER[s.sport], flexShrink: 0 }} />
+                          <span style={{ flex: 1, fontSize: 10, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.title}</span>
+                          <span style={{ fontSize: 8.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(s.durationMin)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
+                {/* cumul volumes */}
+                <div style={{ padding: '9px 10px', borderLeft: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)' }}>Total</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{formatHM(totalMin)}</span>
+                  </div>
+                  {PLAN_SPORTS.filter(sp => vol[sp]).map(sp => (
+                    <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: SPORT_BORDER[sp], flexShrink: 0 }} />
+                      <div style={{ flex: 1, height: 7, borderRadius: 4, background: 'var(--border)', overflow: 'hidden' }}><div style={{ width: `${(vol[sp] / maxVol) * 100}%`, height: '100%', background: SPORT_BORDER[sp], borderRadius: 4 }} /></div>
+                      <span style={{ fontSize: 8.5, color: 'var(--text-mid)', fontWeight: 700, minWidth: 32, textAlign: 'right' as const }}>{formatHM(vol[sp])}</span>
+                    </div>
+                  ))}
+                  {totalMin === 0 && <span style={{ fontSize: 9, color: 'var(--text-dim)', fontStyle: 'italic' as const }}>Repos</span>}
+                </div>
+              </div>
+            )
+          })}
+        </div></div>
+      </div>
+    )
+  }
 
   async function handleAddSession(dayIdx:number, s:Session, targetWeekStart?:string) {
     if (targetWeekStart && targetWeekStart !== currentWeekStart) {
@@ -2727,12 +2818,12 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         </div>
         <div style={{ position:'relative' }}>
           <button onClick={()=>setShowRangeDd(x=>!x)} style={{ padding:'6px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--bg-card)',color:'var(--text-mid)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5 }}>
-            {weekRange===1?'1 semaine':weekRange===5?'5 semaines':'10 semaines'} <span style={{ fontSize:9 }}>▾</span>
+            {weekRange===5?'5 semaines':weekRange===10?'10 semaines':'20 semaines'} <span style={{ fontSize:9 }}>▾</span>
           </button>
           {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 4px)',left:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:10,boxShadow:'var(--shadow)',zIndex:50,minWidth:130,padding:4 }}>
-            {([1,5,10] as WeekRange[]).map(r=>(
+            {([5,10,20] as WeekRange[]).map(r=>(
               <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}} style={{ width:'100%',padding:'7px 12px',borderRadius:7,border:'none',background:weekRange===r?'rgba(6,182,212,0.10)':'transparent',color:weekRange===r?'#06B6D4':'var(--text-mid)',fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?600:400 }}>
-                {r===1?'1 semaine':r===5?'5 semaines':'10 semaines'}
+                {r===5?'5 semaines':r===10?'10 semaines':'20 semaines'}
               </button>
             ))}
           </div>}
@@ -2784,18 +2875,18 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         <div style={{ position:'relative' }}>
           <button onClick={()=>setShowRangeDd(x=>!x)}
             style={{ width:'100%',padding:'9px 16px',borderRadius:20,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',fontWeight:600 }}>
-            <span>{weekRange===1?'1 semaine':weekRange===5?'5 semaines':'10 semaines'}</span>
+            <span>{weekRange===5?'5 semaines':weekRange===10?'10 semaines':'20 semaines'}</span>
             <span style={{ fontSize:10,color:'var(--text-dim)' }}>▾</span>
           </button>
           {showRangeDd&&<div onClick={()=>setShowRangeDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
           {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,right:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:14,boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:6 }}>
-            {([1,5,10] as WeekRange[]).map(r=>(
+            {([5,10,20] as WeekRange[]).map(r=>(
               <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}}
                 style={{ width:'100%',padding:'10px 16px',borderRadius:10,border:'none',
                   background:weekRange===r?'rgba(6,182,212,0.10)':'transparent',
                   color:weekRange===r?'#06B6D4':'var(--text-mid)',
                   fontSize:13,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?700:400 }}>
-                {r===1?'1 semaine':r===5?'5 semaines':'10 semaines'}
+                {r===5?'5 semaines':r===10?'10 semaines':'20 semaines'}
               </button>
             ))}
           </div>}
@@ -2857,89 +2948,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
 
 
       {tab === 'training' && (<>
-      {/* View switch */}
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',position:'relative',zIndex:5 }}>
-        <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{compareMode?'Comparaison Plan A / Plan B':`Plan ${activePlan} · ${getWeekLabel(currentWeekStart)}`}</p>
-        {!compareMode&&<div style={{ display:'flex',gap:6 }}>
-          {([['vertical','⊟ Vertical'],['horizontal','⊞ Horizontal']] as [TrainingView,string][]).map(([v,l])=>(
-            <button key={v} onClick={()=>setView(v)} style={{ padding:'5px 11px',borderRadius:8,border:'1px solid',fontSize:11,cursor:'pointer',borderColor:view===v?'#06B6D4':'var(--border)',background:view===v?'rgba(6,182,212,0.10)':'var(--bg-card)',color:view===v?'#06B6D4':'var(--text-mid)',fontWeight:view===v?600:400 }}>{l}</button>
-          ))}
-        </div>}
-      </div>
-
-      {/* COMPARE MODE — Plan A stacked above Plan B */}
-      {compareMode && (
-        <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
-          <ScrollReveal><WeekGrid ws={currentWeekStart} plan="A" labelTag="Plan A — Optimal"/></ScrollReveal>
-          <ScrollReveal delay={0.08}><WeekGrid ws={currentWeekStart} plan="B" labelTag="Plan B — Minimal"/></ScrollReveal>
-        </div>
-      )}
-
-      {/* SINGLE PLAN — multi-week grids (vertical uniquement) */}
-      {!compareMode && (weekRange>1 || view==='vertical') && (
-        <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
-          {allWeekStarts.map((ws,wi)=>(
-            <ScrollReveal key={ws} delay={Math.min(wi * 0.06, 0.3)}>
-              <WeekGrid ws={ws} plan={activePlan} labelTag={weekRange>1?`Semaine ${wi+1} — ${getWeekLabel(ws)}`:undefined}/>
-            </ScrollReveal>
-          ))}
-        </div>
-      )}
-
-      {/* HORIZONTAL VIEW (only in single-week, single-plan mode) */}
-      {!compareMode && weekRange===1 && view==='horizontal' && (
-        <div style={{ display:'flex',flexDirection:'column',gap:8,marginTop:8 }}>
-          {week.map((d,i)=>{ const cfg=INTENSITY_CONFIG[d.intensity]; return (
-            <div key={d.day} data-day-index={i} onTouchEnd={()=>onTouchEnd(i)} style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:13,padding:13,boxShadow:'var(--shadow-card)' }}>
-              <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:(d.sessions.length+d.activities.length)?8:0 }}>
-                <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                  <div style={{ textAlign:'center' as const,minWidth:32 }}>
-                    <p style={{ fontSize:9,color:'var(--text-dim)',textTransform:'uppercase' as const,margin:0 }}>{d.day}</p>
-                    <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,color:i===todayIdx?'#06B6D4':'var(--text)' }}>{d.date}</p>
-                  </div>
-                  <button onClick={()=>setIntensityModal(d.intensity)} style={{ padding:'2px 8px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:cfg.color,fontSize:10,fontWeight:700,cursor:'pointer' }}>{cfg.label}</button>
-                  <button onClick={()=>handleChangeIntensity(i)} style={{ width:20,height:20,borderRadius:'50%',background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0 }}>+</button>
-                </div>
-                <div style={{ display:'flex',gap:4 }}>
-                  <button onClick={()=>{setAddModalFavorites(false);setAddModal({dayIndex:i,plan:activePlan})}} style={{ padding:'4px 9px',borderRadius:7,background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.2)',color:'#06B6D4',fontSize:11,cursor:'pointer',fontWeight:600 }}>+ Ajouter</button>
-                  {planningFavorites.length>0&&<button onClick={()=>{setAddModalFavorites(true);setAddModal({dayIndex:i,plan:activePlan})}} style={{ padding:'4px 8px',borderRadius:7,background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.2)',color:'#06B6D4',fontSize:12,cursor:'pointer' }} title="Charger un favori">★</button>}
-                </div>
-              </div>
-              {/* Activities from Training */}
-              {d.activities.map(a=>{ const sp=normalizeSportType(a.sport); const matchedSession=matchActivity(a,d.sessions); return (
-                <div key={a.id} onClick={()=>setActivityDetail(a)} style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',borderRadius:9,background:`${SPORT_BORDER[sp]}14`,borderLeft:`3px solid ${SPORT_BORDER[sp]}`,marginBottom:5,opacity:0.85,cursor:'pointer' }}>
-                  <SportBadge sport={sp} size="sm"/>
-                  <div style={{ flex:1 }}>
-                    <div style={{ display:'flex',alignItems:'center',gap:5 }}>
-                      <p style={{ fontSize:12,fontWeight:600,margin:0 }}>{matchedSession?matchedSession.title:a.name}</p>
-                      <span style={{ fontSize:8,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 4px',borderRadius:3,fontWeight:700 }}>Réalisé</span>
-                      {matchedSession&&<span style={{ fontSize:8,fontWeight:700,color:matchStatus(matchedSession.durationMin,Math.round(a.elapsedTime/60)).color }}>{matchStatus(matchedSession.durationMin,Math.round(a.elapsedTime/60)).label}</span>}
-                    </div>
-                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(Math.round(a.elapsedTime/60))}{a.distance?` · ${(a.distance/1000).toFixed(1)}km`:''}{matchedSession?` · Prévu ${formatHM(matchedSession.durationMin)}`:''}</p>
-                  </div>
-                </div>
-              )})}
-              {d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).map(s=>(
-                <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={e=>{e.stopPropagation();onTouchStart(s.id,i,e)}} onTouchMove={onTouchMove} onTouchEnd={onTouchEndPoint} onClick={()=>setDetailModal(s)}
-                  style={{ display:'flex',flexDirection:'column',padding:'8px 10px',borderRadius:9,background:SPORT_BG[s.sport],borderLeft:`3px solid ${SPORT_BORDER[s.sport]}`,cursor:'pointer',opacity:s.status==='done'?0.75:1,marginBottom:5 }}>
-                  <div style={{ display:'flex',alignItems:'center',gap:7 }}>
-                    <SportBadge sport={s.sport} size="sm"/>
-                    <div style={{ flex:1 }}>
-                      <div style={{ display:'flex',alignItems:'center',gap:5 }}>
-                        <p style={{ fontSize:12,fontWeight:600,margin:0 }}>{s.title}</p>
-                        {s.status==='done'&&<span style={{ fontSize:8,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 4px',borderRadius:3,fontWeight:700 }}>FAIT</span>}
-                        <span style={{ fontSize:9,fontWeight:700,color:s.planVariant==='B'?'#a78bfa':'#06B6D4',marginLeft:4 }}>Plan {s.planVariant}</span>
-                      </div>
-                      <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{s.time} · {formatHM(s.durationMin)}{s.tss?` · ${s.tss} TSS`:''}</p>
-                    </div>
-                  </div>
-                  {s.blocks.length>0 && <div style={{ display:'flex',gap:1,height:6,borderRadius:2,overflow:'hidden',marginTop:5 }}>{s.blocks.map(b=>{ const bMin=b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?b.reps*(b.effortMin+b.recoveryMin):b.durationMin; return <div key={b.id} style={{ flex:bMin,background:ZONE_COLORS[b.zone-1],opacity:0.75 }}/> })}</div>}
-                </div>
-              ))}{d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).length===0&&d.activities.length===0&&<p style={{ fontSize:11,color:'var(--text-dim)',margin:0,fontStyle:'italic' as const }}>Jour de repos</p>}
-            </div>
-          )})}
-        </div>
-      )}
+      {renderPlan()}
       </>)}
     </div>
   )

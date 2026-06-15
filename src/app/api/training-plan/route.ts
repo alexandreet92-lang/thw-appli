@@ -597,13 +597,13 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
 
   // Rappel final ABSOLU placé après la doctrine (markdown) : on force la sortie JSON pure,
   // sinon le modèle peut être tenté de répondre en markdown comme la doctrine.
-  const JSON_ONLY = `\n\n========== RAPPEL FINAL ABSOLU ==========\nTa réponse est EXCLUSIVEMENT l'objet JSON du schéma demandé : aucun texte, aucun markdown, aucun commentaire, aucune balise \`\`\` — ni avant, ni autour, ni après. Le premier caractère est { et le dernier est }.`
+  const JSON_ONLY = `\n\n========== RAPPEL FINAL ABSOLU ==========\nTa réponse est EXCLUSIVEMENT l'objet JSON du schéma demandé : aucun texte, aucun markdown, aucun commentaire, aucune balise \`\`\` — ni avant, ni autour, ni après. Le premier caractère est { et le dernier est }.\nSOIS CONCIS pour aboutir dans le temps imparti : "methodologie" ≤ 5 phrases ; titres courts ; "notes" et "consigne" ≤ 10 mots ; blocs seulement pour les semaines 1-2 ; semaines 3+ avec "seances":[].`
 
   try {
     const client = getAnthropicClient()
     const resp = await client.messages.create({
       model: MODELS.powerful,
-      max_tokens: 12000,
+      max_tokens: 4500,
       system: SYSTEM + doctrineBlock + JSON_ONLY,
       messages: [{ role: 'user', content: userPrompt }],
     })

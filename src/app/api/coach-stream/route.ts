@@ -332,13 +332,17 @@ export async function POST(req: NextRequest) {
 
   // ── Doctrine ciblée injectée (principes + méthode choisie + doc selon mots-clés) ──
   if ((chatBody as { agentId?: string }).agentId === 'central') {
-    const selectedMethod = (chatBody as { method?: string }).method
-    const lastUser = [...(chatBody.messages ?? [])].reverse().find(m => m.role === 'user')
-    const doctrine = buildDoctrineForChat({
-      methodId: selectedMethod,
-      lastUserMessage: typeof lastUser?.content === 'string' ? lastUser.content : '',
-    })
-    if (doctrine) systemWithTools = `${systemWithTools}${doctrine}`
+    try {
+      const selectedMethod = (chatBody as { method?: string }).method
+      const lastUser = [...(chatBody.messages ?? [])].reverse().find(m => m.role === 'user')
+      const doctrine = buildDoctrineForChat({
+        methodId: selectedMethod,
+        lastUserMessage: typeof lastUser?.content === 'string' ? lastUser.content : '',
+      })
+      if (doctrine) systemWithTools = `${systemWithTools}${doctrine}`
+    } catch (e) {
+      console.error('[coach-stream] doctrine injection failed:', e)
+    }
   }
 
   // ── Compétences actives — uniquement agent Training (agentId 'central') ──
@@ -370,14 +374,26 @@ export async function POST(req: NextRequest) {
     console.error('[coach-stream] token pre-check failed (fail-open):', e)
   }
 
-  const response = await client.messages.create({
-    model,
-    max_tokens: maxTokens,
-    system: systemWithTools,
-    messages: anthropicMessages,
-    tools: coachTools,
-    tool_choice: { type: 'auto' },
-  })
+  let response
+  try {
+    response = await client.messages.create({
+      model,
+      max_tokens: maxTokens,
+      system: systemWithTools,
+      messages: anthropicMessages,
+      tools: coachTools,
+      tool_choice: { type: 'auto' },
+    })
+  } catch (e) {
+    // Remonte l'erreur réelle (taille de prompt, surcharge API, timeout…) au lieu d'un 500 muet
+    const msg = e instanceof Error ? e.message : String(e)
+    const status = (e as { status?: number })?.status ?? 500
+    console.error('[coach-stream] anthropic call failed:', status, msg)
+    return new Response(JSON.stringify({ error: `IA: ${msg}` }), {
+      status: status === 429 ? 429 : 502,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
 
   // ── Enregistrement de la consommation réelle (best-effort, pondéré modèle) ──
   try {

@@ -19447,7 +19447,12 @@ export default function AIPanel({
         return
       }
 
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok || !res.body) {
+        // Remonte le message d'erreur réel du serveur (diagnostic) plutôt qu'un générique
+        let serverErr = `HTTP ${res.status}`
+        try { const ed = await res.json() as { error?: string }; if (ed?.error) serverErr = ed.error } catch { /* pas de body JSON */ }
+        throw new Error(serverErr)
+      }
 
       const aiMsgId = genId()
       setConvs(prev => prev.map(c =>
@@ -19587,6 +19592,8 @@ export default function AIPanel({
         if (s.includes('429') || s.includes('rate limit')) errText = msg429
         else if (s.includes('timeout') || s.includes('timed out') || s.includes('signal')) errText = msgTimeout
         else if (s.includes('network') || s.includes('fetch') || s.includes('failed to fetch')) errText = msgNetwork
+        // Erreur serveur explicite (ex. "IA: …") → on l'affiche telle quelle pour diagnostic
+        else if (!/^http \d+$/i.test(e.message)) errText = e.message
       }
       const errContent = `⚠️ ${errText}`
       const err: AIMsg = { id: genId(), role: 'assistant', content: errContent, ts: Date.now() }

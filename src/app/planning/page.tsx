@@ -2333,6 +2333,9 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
 
   // Multi-week data for range > 1
   const [extraSessions, setExtraSessions] = useState<Record<string,Session[]>>({})
+  const [planTick, setPlanTick] = useState(0)
+  const [loadedOnce, setLoadedOnce] = useState(false)
+  useEffect(()=>{ if(!loading) setLoadedOnce(true) },[loading])
   useEffect(()=>{
     const sb=createClient()
     ;(async()=>{
@@ -2349,7 +2352,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       })
       setExtraSessions(grouped)
     })()
-  },[weekRange,weekOffset])
+  },[weekRange,weekOffset,planTick])
 
   const allWeekStarts = Array.from({length:weekRange},(_,i)=>getWeekStartFromOffset(weekOffset+i))
 
@@ -2426,7 +2429,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                           style={{ position: 'absolute' as const, bottom: 4, left: '50%', transform: 'translateX(-50%)', zIndex: 6, background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 2, opacity: 0.7 }}>+</button>
                       )}
                       {d.activities.map(a => { const sp = normalizeSportType(a.sport); return (
-                        <div key={a.id} onClick={() => setActivityDetail(a)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 9px', borderRadius: 9, background: `${SPORT_BORDER[sp]}16`, borderLeft: `3px solid ${SPORT_BORDER[sp]}`, cursor: 'pointer' }}>
+                        <div key={a.id} onClick={() => setActivityDetail(a)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 9px', borderRadius: 9, background: 'var(--bg-card2)', border: '1px solid var(--border)', cursor: 'pointer' }}>
                           <SportIcon sport={sp} size={18} />
                           <span style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.name}</span>
                           <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(Math.round(a.elapsedTime / 60))}</span>
@@ -2436,7 +2439,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                           onDragStart={e => { planDrag.current = { id: s.id, ws, day: i }; e.dataTransfer.effectAllowed = 'move' }}
                           onDragEnd={() => { planDrag.current = null; setDragCell(null) }}
                           onClick={() => setDetailModal(s)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 9px', borderRadius: 9, background: `${SPORT_BORDER[s.sport]}12`, borderLeft: `3px solid ${SPORT_BORDER[s.sport]}`, cursor: 'grab', opacity: s.status === 'done' ? 0.6 : 1 }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 9px', borderRadius: 9, background: 'var(--bg-card2)', border: '1px solid var(--border)', cursor: 'grab', opacity: s.status === 'done' ? 0.6 : 1 }}>
                           <SportIcon sport={s.sport} size={18} />
                           <span style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.title}</span>
                           <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(s.durationMin)}</span>
@@ -2486,9 +2489,11 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         nutrition_data: typedS.nutritionItems ?? null,
       })
       window.dispatchEvent(new Event('thw:sessions-changed'))
+      setPlanTick(t => t + 1)
       return
     }
     await addSession({ ...s, dayIndex:dayIdx, planVariant:addModal?.plan??activePlan })
+    setPlanTick(t => t + 1)
   }
   async function handleSaveSession(s:Session) {
     await updateSession(s.id, s)
@@ -2757,7 +2762,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
 
   // Fix #7: Only show skeleton on first load (no data yet) — avoids flash when navigating back
   // If data already exists, show it immediately while the background reload completes.
-  if (loading && sessions.length === 0 && !addModal && !detailModal) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
+  if (loading && !loadedOnce && !addModal && !detailModal) return <div style={{ padding:20 }}><SkeletonPlanningGrid /></div>
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:14 }}>

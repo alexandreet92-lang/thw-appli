@@ -2141,6 +2141,22 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
 // ════════════════════════════════════════════════
 // TRAINING TAB
 // ════════════════════════════════════════════════
+// Estimation SM (métabolique) / SN (neuromusculaire) « prévu » depuis les blocs d'une séance.
+const SM_COEF_PL = [0.6, 0.85, 1.05, 1.25, 1.45, 1.55, 1.62]
+const SN_COEF_PL = [0, 0, 0.08, 0.25, 0.6, 1.1, 1.7]
+function estSmSn(blocks: Block[] | undefined, durationMin: number): { sm: number; sn: number } {
+  let sm = 0, sn = 0, acc = 0
+  for (const b of (blocks || [])) {
+    const z = Math.max(1, Math.min(7, b.zone || 1))
+    const iv = b.mode === 'interval' && b.reps && b.effortMin != null
+    const tot = iv ? (b.reps as number) * ((b.effortMin as number) + (b.recoveryMin || 0)) : (b.durationMin || 0)
+    const eff = iv ? (b.reps as number) * (b.effortMin as number) : (b.durationMin || 0)
+    sm += tot * SM_COEF_PL[z - 1]; sn += eff * SN_COEF_PL[z - 1]; acc += tot
+  }
+  if (acc === 0 && durationMin > 0) sm = durationMin
+  return { sm: Math.round(sm), sn: Math.round(sn) }
+}
+
 function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   // Lit un éventuel ?week=YYYY-MM-DD dans l'URL pour positionner le
   // weekOffset initial — utile après "Ajouter au Planning" depuis le
@@ -2455,6 +2471,11 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const plannedTSS = allSess.reduce((s,x)=>s+(x.tss||0),0)
   const doneTSS = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+(x.tss||0),0)
                + allActs.reduce((s,a)=>s+(a.tss||0),0)
+  // SM / SN (remplacent le TSS dans l'onglet Plan)
+  const plannedSM = allSess.reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sm,0)
+  const plannedSN = allSess.reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sn,0)
+  const doneSM = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sm,0) + allActs.reduce((s,a)=>s+(a.tss||0),0)
+  const doneSN = allSess.filter(s=>s.status==='done').reduce((s,x)=>s+estSmSn(x.blocks,x.durationMin).sn,0)
 
   const plannedN = allSess.length
   const doneN    = allSess.filter(s=>s.status==='done').length + allActs.length
@@ -2472,7 +2493,11 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     doneH: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+x.durationMin/60,0)
           + allActs.filter(a=>normalizeSportType(a.sport)===sp).reduce((a,x)=>a+x.elapsedTime/3600,0),
     plannedTSS: allSess.filter(s=>s.sport===sp).reduce((a,x)=>a+(x.tss||0),0),
-    doneTSS: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+(x.tss||0),0)
+    doneTSS: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+(x.tss||0),0),
+    plannedSM: allSess.filter(s=>s.sport===sp).reduce((a,x)=>a+estSmSn(x.blocks,x.durationMin).sm,0),
+    doneSM: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+estSmSn(x.blocks,x.durationMin).sm,0),
+    plannedSN: allSess.filter(s=>s.sport===sp).reduce((a,x)=>a+estSmSn(x.blocks,x.durationMin).sn,0),
+    doneSN: allSess.filter(s=>s.sport===sp&&s.status==='done').reduce((a,x)=>a+estSmSn(x.blocks,x.durationMin).sn,0),
   })).filter(s=>s.plannedH>0||s.doneH>0)
 
   const todaySessions = week[todayIdx]?.sessions??[]
@@ -2810,6 +2835,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         plannedMin={plannedMin} doneMin={doneMin}
         plannedN={plannedN} doneN={doneN}
         plannedTSS={plannedTSS} doneTSS={doneTSS}
+        plannedSM={plannedSM} doneSM={doneSM} plannedSN={plannedSN} doneSN={doneSN}
         sportCounts={sportCounts} sportStats={sportStats}
         today={week[todayIdx] ? { day: week[todayIdx].day, date: week[todayIdx].date } : null}
         todaySessions={todaySessions}

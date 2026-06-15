@@ -21,6 +21,7 @@ import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
 import { Dumbbell, CalendarDays, LayoutDashboard } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { TrainingSummary } from '@/app/planning/components/training/TrainingSummary'
+import { SportIcon } from '@/components/icons/SportIcon'
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import type { NutritionItem, ParcoursData } from '@/components/planning/SessionEditor'
 
@@ -2213,6 +2214,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const [activityDetail, setActivityDetail] = useState<TrainingActivity|null>(null)
   const [dragOver, setDragOver] = useState<number|null>(null)
   const [hoverAdd, setHoverAdd] = useState<string|null>(null)
+  const [dragCell, setDragCell] = useState<string|null>(null)
+  const planDrag = useRef<{ id: string; ws: string; day: number } | null>(null)
   const [show10w, setShow10w] = useState(false)
   const [intensityModal, setIntensityModal] = useState<DayIntensity|null>(null)
   const [planningFavorites, setPlanningFavorites] = useState<Array<{id:string;name:string}>>([])
@@ -2409,25 +2412,34 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 {w.map((d, i) => {
                   const hid = `${ws}_${i}`
                   const isToday = ws === currentWeekStart && i === todayIdx
+                  const isDropTarget = dragCell === hid
                   return (
-                    <div key={i} data-day-index={i} onMouseEnter={() => setHoverAdd(hid)} onMouseLeave={() => setHoverAdd(h => h === hid ? null : h)}
-                      style={{ position: 'relative' as const, minHeight: 90, padding: '22px 5px 8px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
-                      <span style={{ position: 'absolute' as const, top: 5, right: 7, fontSize: 10.5, fontWeight: 700, color: isToday ? '#06B6D4' : 'var(--text-dim)' }}>{dates[i]}</span>
+                    <div key={i} data-day-index={i}
+                      onMouseEnter={() => setHoverAdd(hid)} onMouseLeave={() => setHoverAdd(h => h === hid ? null : h)}
+                      onDragOver={e => { if (planDrag.current) { e.preventDefault(); setDragCell(hid) } }}
+                      onDragLeave={() => setDragCell(c => c === hid ? null : c)}
+                      onDrop={() => { const dr = planDrag.current; if (dr && dr.ws === ws && dr.day !== i) moveSession(dr.id, i); planDrag.current = null; setDragCell(null) }}
+                      style={{ position: 'relative' as const, minHeight: 104, padding: '24px 6px 22px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' as const, gap: 5, background: isDropTarget ? 'rgba(6,182,212,0.07)' : 'transparent', transition: 'background .12s' }}>
+                      <span style={{ position: 'absolute' as const, top: 6, right: 8, fontSize: 11, fontWeight: 700, color: isToday ? '#06B6D4' : 'var(--text-dim)' }}>{dates[i]}</span>
                       {hoverAdd === hid && (
                         <button onClick={() => { setAddModalFavorites(false); setAddModal({ dayIndex: i, plan: activePlan, weekStart: ws }) }} title="Ajouter une séance"
-                          style={{ position: 'absolute' as const, bottom: 6, left: '50%', transform: 'translateX(-50%)', zIndex: 6, width: 26, height: 26, borderRadius: '50%', background: '#06B6D4', border: 'none', color: '#fff', fontSize: 16, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(6,182,212,0.5)' }}>+</button>
+                          style={{ position: 'absolute' as const, bottom: 4, left: '50%', transform: 'translateX(-50%)', zIndex: 6, background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 2, opacity: 0.7 }}>+</button>
                       )}
                       {d.activities.map(a => { const sp = normalizeSportType(a.sport); return (
-                        <div key={a.id} onClick={() => setActivityDetail(a)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 6px', borderRadius: 7, background: `${SPORT_BORDER[sp]}14`, borderLeft: `2px solid ${SPORT_BORDER[sp]}`, cursor: 'pointer' }}>
-                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: SPORT_BORDER[sp], flexShrink: 0 }} />
-                          <span style={{ flex: 1, fontSize: 10, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.name}</span>
-                          <span style={{ fontSize: 8.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(Math.round(a.elapsedTime / 60))}</span>
+                        <div key={a.id} onClick={() => setActivityDetail(a)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 9px', borderRadius: 9, background: `${SPORT_BORDER[sp]}16`, borderLeft: `3px solid ${SPORT_BORDER[sp]}`, cursor: 'pointer' }}>
+                          <SportIcon sport={sp} size={18} />
+                          <span style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.name}</span>
+                          <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(Math.round(a.elapsedTime / 60))}</span>
                         </div>) })}
                       {d.sessions.filter(s => !d.activities.some(a => matchActivity(a, d.sessions)?.id === s.id)).map(s => (
-                        <div key={s.id} onClick={() => setDetailModal(s)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 6px', borderRadius: 7, background: `${SPORT_BORDER[s.sport]}10`, borderLeft: `2px solid ${SPORT_BORDER[s.sport]}`, cursor: 'pointer', opacity: s.status === 'done' ? 0.6 : 1 }}>
-                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: SPORT_BORDER[s.sport], flexShrink: 0 }} />
-                          <span style={{ flex: 1, fontSize: 10, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.title}</span>
-                          <span style={{ fontSize: 8.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(s.durationMin)}</span>
+                        <div key={s.id} draggable
+                          onDragStart={e => { planDrag.current = { id: s.id, ws, day: i }; e.dataTransfer.effectAllowed = 'move' }}
+                          onDragEnd={() => { planDrag.current = null; setDragCell(null) }}
+                          onClick={() => setDetailModal(s)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 9px', borderRadius: 9, background: `${SPORT_BORDER[s.sport]}12`, borderLeft: `3px solid ${SPORT_BORDER[s.sport]}`, cursor: 'grab', opacity: s.status === 'done' ? 0.6 : 1 }}>
+                          <SportIcon sport={s.sport} size={18} />
+                          <span style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.title}</span>
+                          <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(s.durationMin)}</span>
                         </div>
                       ))}
                     </div>
@@ -2440,8 +2452,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{formatHM(totalMin)}</span>
                   </div>
                   {PLAN_SPORTS.filter(sp => vol[sp]).map(sp => (
-                    <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: SPORT_BORDER[sp], flexShrink: 0 }} />
+                    <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+                      <SportIcon sport={sp} size={15} />
                       <div style={{ flex: 1, height: 7, borderRadius: 4, background: 'var(--border)', overflow: 'hidden' }}><div style={{ width: `${(vol[sp] / maxVol) * 100}%`, height: '100%', background: SPORT_BORDER[sp], borderRadius: 4 }} /></div>
                       <span style={{ fontSize: 8.5, color: 'var(--text-mid)', fontWeight: 700, minWidth: 32, textAlign: 'right' as const }}>{formatHM(vol[sp])}</span>
                     </div>

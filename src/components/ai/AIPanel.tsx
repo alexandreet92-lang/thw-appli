@@ -19,6 +19,7 @@ import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { VoiceOverlay } from './VoiceOverlay'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
+import { PlanProposalCard, type PlanProposal, type GenProgram, type PlanRequirements } from './PlanProposalCard'
 import ActiveCompetencesBadge from '@/components/ai-coach/ActiveCompetencesBadge'
 import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
 import TopupEmailModal from '@/components/topup/TopupEmailModal'
@@ -41,6 +42,7 @@ interface AIMsg {
   ts: number
   modelId?: THWModel   // modèle utilisé pour cette réponse
   clarifyingQuestions?: ClarifyingQuestions  // questions IA (tool ask_clarifying_questions)
+  planProposal?: PlanProposal  // aperçu de plan avant validation (tool create_training_plan)
   sessionData?: SBSession  // données structurées SessionBuilder (persiste en localStorage)
   trainingReport?: TrainingReportData  // données structurées AnalyzeTrainingFlow (persiste en localStorage)
   raceStrategy?: RaceStrategyData      // données structurées StrategieCourseFlow (persiste en localStorage)
@@ -19140,6 +19142,135 @@ export default function AIPanel({
     rec.start()
   }, [stopVoice])
 
+  // ── Création de plan : génération de l'aperçu (avant validation) ──
+  const generatePlanProposal = useCallback(async (cid: string, msgId: string, req: PlanRequirements) => {
+    const setProposal = (pp: PlanProposal) =>
+      setConvs(prev => prev.map(c => c.id === cid
+        ? { ...c, msgs: c.msgs.map(m => m.id === msgId ? { ...m, planProposal: pp } : m), updatedAt: Date.now() }
+        : c))
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { setProposal({ status: 'error', requirements: req, error: 'Tu n\'es plus connecté.' }); return }
+      const userId = user.id
+
+      const sd = new Date(req.start_date ?? new Date().toISOString().slice(0, 10))
+      const dow = sd.getDay() === 0 ? 6 : sd.getDay() - 1
+      sd.setDate(sd.getDate() - dow)
+      const startDate = sd.toISOString().slice(0, 10)
+
+      const cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+      const todayStr = new Date().toISOString().slice(0, 10)
+      const [profil, zones, activities, events, health] = await Promise.all([
+        sb.from('athlete_performance_profile').select('*').eq('user_id', userId).maybeSingle().then(x => x.data ?? null),
+        sb.from('athlete_zones').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle().then(x => x.data ?? null),
+        sb.from('activities').select('sport_type,title,started_at,moving_time_s,distance_m,tss').eq('user_id', userId).gte('started_at', cutoff).order('started_at', { ascending: false }).limit(40).then(x => x.data ?? []),
+        sb.from('calendar_events').select('*').eq('user_id', userId).gte('date', todayStr).limit(20).then(x => x.data ?? []),
+        sb.from('metrics_daily').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(14).then(x => x.data ?? []),
+      ])
+
+      const questionnaire = {
+        sport_principal: req.sport_principal, experience: req.niveau, niveau_connaissance: req.niveau,
+        seances_debut_prepa: req.seances_par_semaine, seances_pic_prepa: req.seances_par_semaine,
+        duree_semaines_cible: req.duree_semaines, date_debut: startDate,
+        goal_races: (req.objectif_principal || req.date_objectif) ? [{
+          nom: req.type_competition || req.objectif_principal, sport: req.sport_principal,
+          level: 'main', date: req.date_objectif ?? '', goal_libre: req.objectif_principal,
+        }] : [],
+        precision_profil: req.requirements_resume ?? '', precision_dispo: `${req.seances_par_semaine ?? '?'} séances/semaine`,
+      }
+      const genRes = await fetch('/api/training-plan', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionnaire, profil, zones, historique_90j: activities, calendrier_objectifs: events, sante: health }),
+      })
+      if (!genRes.ok) { setProposal({ status: 'error', requirements: req, error: 'La génération a échoué (limite atteinte ou serveur occupé). Réessaie.' }); return }
+      const gen = await genRes.json() as { program?: GenProgram }
+      if (!gen.program?.semaines?.length) { setProposal({ status: 'error', requirements: req, error: 'Le plan est revenu vide. Précise tes besoins et réessaie.' }); return }
+      setProposal({ status: 'ready', requirements: { ...req, start_date: startDate }, program: gen.program })
+    } catch {
+      setProposal({ status: 'error', requirements: req, error: 'Erreur pendant la génération. Vérifie ta connexion et réessaie.' })
+    }
+  }, [])
+
+  // ── Création de plan : validation → enregistrement dans Planning ──
+  const validatePlanProposal = useCallback(async (cid: string, msgId: string, proposal: PlanProposal) => {
+    const program = proposal.program
+    const req = proposal.requirements
+    if (!program?.semaines?.length) return
+    const appendMsg = (content: string) => {
+      const m: AIMsg = { id: genId(), role: 'assistant', content, ts: Date.now(), modelId: model }
+      setConvs(prev => prev.map(c => c.id === cid ? { ...c, msgs: [...c.msgs, m], updatedAt: Date.now() } : c))
+    }
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) throw new Error('Non connecté')
+      const userId = user.id
+
+      const sd = new Date(req.start_date ?? new Date().toISOString().slice(0, 10))
+      const dow = sd.getDay() === 0 ? 6 : sd.getDay() - 1
+      sd.setDate(sd.getDate() - dow)
+      const startDate = sd.toISOString().slice(0, 10)
+
+      const sportMap: Record<string, string> = {
+        'Running': 'run', 'Course': 'run', 'Course à pied': 'run', 'Trail': 'run',
+        'Cyclisme': 'bike', 'Vélo': 'bike', 'Velo': 'bike', 'Cycling': 'bike',
+        'Natation': 'swim', 'Swimming': 'swim', 'Musculation': 'gym', 'Gym': 'gym',
+        'Hyrox': 'hyrox', 'Rowing': 'rowing', 'Aviron': 'rowing',
+      }
+      const normSport = (raw: string) => sportMap[raw] ?? sportMap[raw?.trim()] ?? raw?.toLowerCase()
+      const weeks = program.semaines
+      const duree = program.duree_semaines ?? req.duree_semaines ?? weeks.length
+      const endDateSunday = addDays(addWeeks(startDate, Math.max(1, duree) - 1), 6)
+      const sportsAcross = Array.from(new Set(weeks.flatMap(w => (w.seances ?? []).map(s => normSport(String(s.sport ?? '')))).filter(Boolean)))
+
+      const { error: planErr } = await sb.from('training_plans').insert({
+        user_id: userId, name: program.nom ?? req.name ?? "Plan d'entraînement",
+        objectif_principal: program.objectif_principal ?? req.objectif_principal ?? null,
+        duree_semaines: duree, start_date: startDate, end_date: endDateSunday, sports: sportsAcross,
+        blocs_periodisation: program.blocs_periodisation ?? [], conseils_adaptation: program.conseils_adaptation ?? [],
+        points_cles: program.points_cles ?? [],
+        ai_context: { source: 'chat_coach', requirements: req.requirements_resume, generated_at: new Date().toISOString() },
+        status: 'active',
+      })
+      if (planErr) throw new Error(planErr.message)
+
+      const { data: planRow } = await sb.from('training_plans').select('id').eq('user_id', userId).eq('status', 'active').eq('start_date', startDate).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      const newPlanId = planRow?.id as string | undefined
+      const rows: Record<string, unknown>[] = []
+      for (const semaine of weeks) {
+        const weekStart = addWeeks(startDate, (semaine.numero ?? 1) - 1)
+        for (const seance of (semaine.seances ?? [])) {
+          const titreLC = String(seance.titre ?? '').toLowerCase().trim()
+          if (/^(repos|rest|rest day|jour (de )?repos|off|jour off)$/i.test(titreLC)) continue
+          if ((Number(seance.duree_min) || 0) === 0 && !titreLC) continue
+          const oc = { sport: seance.sport, titre: seance.titre, time: seance.heure ?? null, duration_min: seance.duree_min, tss: seance.tss ?? null, intensity: seance.intensite ?? null, notes: seance.notes ?? null, rpe: seance.rpe ?? null, blocs: seance.blocs ?? [] }
+          rows.push({
+            user_id: userId, plan_id: newPlanId ?? null, week_start: weekStart, day_index: seance.jour,
+            sport: normSport(String(seance.sport ?? '')), title: seance.titre, time: seance.heure ?? null,
+            duration_min: seance.duree_min, tss: seance.tss ?? null, status: 'planned', intensity: seance.intensite ?? null,
+            notes: seance.notes ?? null, rpe: seance.rpe ?? null, blocks: seance.blocs ?? [], plan_variant: 'A',
+            validation_data: {}, source: 'training_plan', original_content: oc,
+          })
+        }
+      }
+      if (rows.length > 0) {
+        const { error: sessErr } = await sb.from('planned_sessions').insert(rows)
+        if (sessErr) throw new Error(sessErr.message)
+      }
+
+      setConvs(prev => prev.map(c => c.id === cid
+        ? { ...c, msgs: c.msgs.map(m => m.id === msgId && m.planProposal ? { ...m, planProposal: { ...m.planProposal, status: 'validated' as const } } : m), updatedAt: Date.now() }
+        : c))
+      appendMsg(`✓ **Plan ajouté à ton planning** — ${rows.length} séances enregistrées. 👉 [Voir dans Planning](/planning)`)
+      window.dispatchEvent(new CustomEvent('thw:sessions-changed'))
+    } catch (e) {
+      appendMsg(`⚠️ L'enregistrement du plan a échoué : ${e instanceof Error ? e.message : 'erreur inconnue'}. Réessaie.`)
+    }
+  }, [model])
+
   // SEND MESSAGE
   const send = useCallback(async (presetDisplay?: string, presetApi?: string) => {
     const txt = (presetDisplay ?? input).trim()
@@ -19319,6 +19450,8 @@ export default function AIPanel({
       const decoder     = new TextDecoder()
       let textAccumulated = ''
       let sseBuffer       = ''
+      // Création de plan : on génère l'aperçu APRÈS le stream (40s), pas pendant
+      let planGenRequest: { msgId: string; requirements: PlanRequirements } | null = null
 
       const processSSEBuffer = () => {
         const parts = sseBuffer.split('\n\n')
@@ -19363,6 +19496,17 @@ export default function AIPanel({
                       : c
                   ))
                 }
+              } else if (tool.tool_name === 'create_training_plan') {
+                // Aperçu de plan : génération lancée après le stream, puis validation manuelle
+                const reqs = (tool.tool_input ?? {}) as PlanRequirements
+                planGenRequest = { msgId: aiMsgId, requirements: reqs }
+                setConvs(prev => prev.map(c =>
+                  c.id === cid
+                    ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId
+                        ? { ...m, content: m.content || 'Voici le plan que je te propose — regarde, puis valide pour l\'ajouter au planning :', planProposal: { status: 'generating', requirements: reqs } }
+                        : m), updatedAt: Date.now() }
+                    : c
+                ))
               } else {
                 // Accumule dans le tableau — NE remplace PAS (plusieurs tool_use possibles)
                 setPendingToolCalls(prev => [...prev, tool])
@@ -19390,6 +19534,12 @@ export default function AIPanel({
 
       abortRef.current = null
       streamDone = true  // stream complété normalement
+
+      // Création de plan demandée → génère l'aperçu (asynchrone, la carte affiche son loader)
+      const pgr = planGenRequest as { msgId: string; requirements: PlanRequirements } | null
+      if (pgr) {
+        void generatePlanProposal(cid, pgr.msgId, pgr.requirements)
+      }
 
       // ── Persistance DB pour le plan-chat (training_plan_messages) ──
       if (isPlanChat && planId && textAccumulated) {
@@ -20433,6 +20583,20 @@ export default function AIPanel({
                             ))
                             void send(recap)
                           }}
+                        />
+                      </div>
+                    )}
+                    {/* Aperçu de plan — à valider avant enregistrement */}
+                    {msg.role === 'assistant' && msg.planProposal && (
+                      <div style={{ marginLeft: 34 }}>
+                        <PlanProposalCard
+                          proposal={msg.planProposal}
+                          onValidate={() => { if (msg.planProposal) void validatePlanProposal(active.id, msg.id, msg.planProposal) }}
+                          onCancel={() => setConvs(prev => prev.map(c =>
+                            c.id === active.id
+                              ? { ...c, msgs: c.msgs.map(mm => mm.id === msg.id ? { ...mm, planProposal: undefined } : mm) }
+                              : c
+                          ))}
                         />
                       </div>
                     )}

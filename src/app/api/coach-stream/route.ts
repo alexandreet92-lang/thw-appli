@@ -21,6 +21,7 @@ export const runtime     = 'nodejs'
 export const maxDuration = 120
 
 import { NextRequest } from 'next/server'
+import type Anthropic from '@anthropic-ai/sdk'
 import { getAnthropicClient } from '@/lib/agents/base'
 import { buildChatParams } from '@/lib/agents/chatAgent'
 import type { ChatInput } from '@/lib/coach-engine/schemas'
@@ -323,10 +324,41 @@ export async function POST(req: NextRequest) {
     return new Response('No messages provided', { status: 400 })
   }
 
-  const { systemPrompt: chatSystemPrompt, anthropicMessages } = buildChatParams({
-    ...chatBody,
-    aiRules: chatBody.aiRules ?? [],
-  })
+  let chatSystemPrompt: string
+  let anthropicMessages: { role: string; content: unknown }[]
+  try {
+    const built = buildChatParams({ ...chatBody, aiRules: chatBody.aiRules ?? [] })
+    chatSystemPrompt = built.systemPrompt
+    anthropicMessages = built.anthropicMessages as { role: string; content: unknown }[]
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error('[coach-stream] buildChatParams failed:', msg)
+    return new Response(JSON.stringify({ error: `Préparation: ${msg}` }), { status: 502, headers: { 'Content-Type': 'application/json' } })
+  }
+
+  // ── Assainir l'historique pour l'API : pas de contenu vide, rôles alternés ──
+  // (les flux questions/plan ajoutent parfois des messages assistant consécutifs
+  //  ou vides → l'API Anthropic rejette ces cas. On fusionne / nettoie.)
+  anthropicMessages = (() => {
+    const out: { role: string; content: unknown }[] = []
+    for (const m of anthropicMessages) {
+      const isStr = typeof m.content === 'string'
+      const txt = isStr ? (m.content as string).trim() : m.content
+      if (isStr && !txt) continue                    // drop message vide
+      const last = out[out.length - 1]
+      if (last && last.role === m.role && isStr && typeof last.content === 'string') {
+        last.content = `${last.content}\n\n${txt as string}`   // fusionne rôles consécutifs
+      } else {
+        out.push({ role: m.role, content: isStr ? txt : m.content })
+      }
+    }
+    while (out.length && out[0].role !== 'user') out.shift()   // doit commencer par user
+    return out
+  })()
+  if (!anthropicMessages.length) {
+    return new Response(JSON.stringify({ error: 'Conversation vide après nettoyage.' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+  }
+
   const client = getAnthropicClient()
   let systemWithTools = `${chatSystemPrompt}\n\n${TOOL_INSTRUCTIONS}`
 
@@ -380,7 +412,7 @@ export async function POST(req: NextRequest) {
       model,
       max_tokens: maxTokens,
       system: systemWithTools,
-      messages: anthropicMessages,
+      messages: anthropicMessages as Anthropic.MessageParam[],
       tools: coachTools,
       tool_choice: { type: 'auto' },
     })

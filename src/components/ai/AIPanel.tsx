@@ -20471,14 +20471,14 @@ export default function AIPanel({
                       {msg.role === 'user' ? (
                         <>
                           <div className="aip-user-bubble" style={{
-                            alignSelf: 'flex-end', marginLeft: 'auto', maxWidth: '70%',
+                            alignSelf: 'flex-end', marginLeft: 'auto', maxWidth: isDesktop ? '74%' : '90%',
                             borderRadius: '18px 18px 4px 18px',
-                            padding: '10px 16px',
-                            fontSize: 14, lineHeight: 1.5,
-                            wordBreak: 'break-word',
+                            padding: '11px 16px',
+                            fontSize: 15, lineHeight: 1.55,
+                            whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
                             animation: 'fadeUp 0.2s ease-out',
                           }}>
-                            {msg.content}
+                            {msg.content.replace(/^[ \t]*[-*]\s+/gm, '• ')}
                           </div>
                           {/* User avatar */}
                           <div style={{

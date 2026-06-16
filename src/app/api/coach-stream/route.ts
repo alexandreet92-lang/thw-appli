@@ -406,11 +406,20 @@ export async function POST(req: NextRequest) {
     console.error('[coach-stream] token pre-check failed (fail-open):', e)
   }
 
+  // ── Modèle effectif du CHAT = celui sélectionné dans le composer (hermes/athena/zeus),
+  //    plafonné par le tier de l'abonnement (on ne peut pas choisir plus haut que son tier).
+  const RANK: Record<string, number> = { hermes: 0, athena: 1, zeus: 2 }
+  const requestedKey = ((chatBody as { modelId?: string }).modelId ?? 'athena')
+  const cappedKey = (RANK[requestedKey] ?? 1) <= (RANK[tierModel] ?? 1) ? requestedKey : tierModel
+  const chatModel = MODEL_IDS[cappedKey as keyof typeof MODEL_IDS] ?? model
+  const chatMaxTokens = MODEL_MAX_TOKENS[cappedKey as keyof typeof MODEL_MAX_TOKENS] ?? maxTokens
+  console.log(`[coach-stream] chat model selection → requested=${requestedKey} tier=${tierModel} → ${cappedKey} (${chatModel})`)
+
   let response
   try {
     response = await client.messages.create({
-      model,
-      max_tokens: maxTokens,
+      model: chatModel,
+      max_tokens: chatMaxTokens,
       system: systemWithTools,
       messages: anthropicMessages as Anthropic.MessageParam[],
       tools: coachTools,

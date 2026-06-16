@@ -16,12 +16,12 @@ export interface WeekData {
 }
 interface Props { weeks: WeekData[] }
 
-const SERIES: Record<Serie, { label: string; cssVar: string; unit: string; min: number; max: number; upGood: boolean }> = {
-  hrv:       { label: 'HRV',       cssVar: '--rec-hrv',       unit: ' ms',  min: 40, max: 80, upGood: true },
-  sommeil:   { label: 'Sommeil',   cssVar: '--rec-sommeil',   unit: ' h',   min: 5,  max: 9,  upGood: true },
-  readiness: { label: 'Readiness', cssVar: '--rec-readiness', unit: '',     min: 0,  max: 100, upGood: true },
-  fc:        { label: 'FC repos',  cssVar: '--rec-fc',        unit: ' bpm', min: 45, max: 62, upGood: false },
-  fatigue:   { label: 'Fatigue',   cssVar: '--rec-fatigue',   unit: '/10',  min: 0,  max: 10, upGood: false },
+const SERIES: Record<Serie, { label: string; cssVar: string; unit: string; min: number; max: number; upGood: boolean; empty: string }> = {
+  hrv:       { label: 'HRV',       cssVar: '--rec-hrv',       unit: ' ms',  min: 40, max: 80, upGood: true,  empty: 'à venir' },
+  sommeil:   { label: 'Sommeil',   cssVar: '--rec-sommeil',   unit: ' h',   min: 5,  max: 9,  upGood: true,  empty: 'en attente Polar' },
+  readiness: { label: 'Readiness', cssVar: '--rec-readiness', unit: '',     min: 0,  max: 100, upGood: true,  empty: 'à venir' },
+  fc:        { label: 'FC repos',  cssVar: '--rec-fc',        unit: ' bpm', min: 45, max: 62, upGood: false, empty: 'à venir' },
+  fatigue:   { label: 'Fatigue',   cssVar: '--rec-fatigue',   unit: '/10',  min: 0,  max: 10, upGood: false, empty: 'à venir' },
 }
 const KEYS: Serie[] = ['hrv', 'sommeil', 'readiness', 'fc', 'fatigue']
 const DAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
@@ -101,7 +101,7 @@ export default function RecoveryTrendChart({ weeks }: Props) {
           const good = cfg.upGood ? delta > 0 : delta < 0
           const dColor = delta === 0 ? 'var(--text-dim)' : good ? 'var(--charge-low)' : 'var(--charge-hard)'
           return (
-            <button key={s} onClick={() => toggle(s)} onDoubleClick={() => isolate(s)} disabled={!live} title={live ? cfg.label : 'non synchronisé'}
+            <button key={s} onClick={() => toggle(s)} onDoubleClick={() => isolate(s)} disabled={!live} title={live ? cfg.label : cfg.empty}
               style={{ textAlign: 'left', padding: '9px 11px', borderRadius: 12, cursor: live ? 'pointer' : 'default',
                 background: live && on ? 'var(--bg-card2)' : 'transparent', border: '1px solid var(--border)',
                 opacity: live ? (on ? 1 : 0.5) : 0.45 }}>
@@ -117,7 +117,7 @@ export default function RecoveryTrendChart({ weeks }: Props) {
               ) : (
                 <span style={{ display: 'block', marginTop: 4 }}>
                   <span style={{ ...NUM, fontWeight: 600, fontSize: 19, color: 'var(--text-dim)' }}>—</span>
-                  <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 9, fontWeight: 500, color: 'var(--text-dim)' }}>non synchronisé</span>
+                  <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 9, fontWeight: 500, color: 'var(--text-dim)' }}>{cfg.empty}</span>
                 </span>
               )}
             </button>

@@ -5,8 +5,11 @@ export const dynamic = 'force-dynamic'
 import { useMemo } from 'react'
 import { Activity, ClipboardList, Gauge, Moon, Plug } from 'lucide-react'
 import { SectionLayout, type SectionDef } from '@/components/navigation/SectionLayout'
-import RecoveryTrendChart from '@/components/recovery/RecoveryTrendChart'
-import { buildEmptyWeeks } from '@/components/recovery/overviewData'
+import RecoveryTrendChart, { type WeekData } from '@/components/recovery/RecoveryTrendChart'
+import { buildWeeks } from '@/components/recovery/overviewData'
+import { useHrvRows } from '@/components/recovery/useHrvRows'
+import SleepHrvTab from '@/components/recovery/SleepHrvTab'
+import SourcesTab from '@/components/recovery/SourcesTab'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
@@ -25,16 +28,15 @@ function Placeholder({ title }: { title: string }) {
 }
 
 // ── Onglet Vue d'ensemble ──────────────────────────────────────
-function OverviewTab() {
-  const weeks = useMemo(() => buildEmptyWeeks(4), [])
+function OverviewTab({ weeks }: { weeks: WeekData[] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderRadius: 14,
         background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
         <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
-          Vue d&apos;ensemble de ta récupération. Connecte une source (Garmin, Polar, Oura…) ou remplis ton check-in
-          pour suivre HRV, sommeil, FC de repos, readiness et fatigue au fil des semaines.
+          HRV en direct depuis Polar (Nightly Recharge). Sommeil détaillé en attente d&apos;activation côté Polar ;
+          readiness et fatigue arriveront via le check-in.
         </p>
       </div>
       <RecoveryTrendChart weeks={weeks} />
@@ -47,13 +49,21 @@ function OverviewTab() {
 // ══════════════════════════════════════════════════════════════
 export default function RecoveryPage() {
   const { show, dismiss, reopen } = usePageOnboarding(RECOVERY_ONBOARDING.pageId, RECOVERY_ONBOARDING.version)
+  const { rows: hrvRows, loading } = useHrvRows()
+
+  // Série HRV réelle mappée par date ; fenêtre ancrée sur la dernière nuit reçue.
+  const weeks = useMemo(() => {
+    const byDate = new Map(hrvRows.map(r => [r.date, r.hrv] as [string, number]))
+    const anchor = hrvRows.length ? new Date(`${hrvRows[hrvRows.length - 1].date}T12:00:00`) : new Date()
+    return buildWeeks(byDate, 4, anchor)
+  }, [hrvRows])
 
   const sections: SectionDef[] = [
-    { id: 'overview',  label: "Vue d'ensemble", subtitle: 'KPI + tendances',  icon: Activity,      content: <OverviewTab /> },
-    { id: 'checkin',   label: 'Check-in',       subtitle: 'Ressenti du jour', icon: ClipboardList, content: <Placeholder title="Check-in" /> },
-    { id: 'load',      label: 'Charge & forme', subtitle: 'CTL / ATL / TSB',  icon: Gauge,         content: <Placeholder title="Charge & forme" /> },
-    { id: 'sleep',     label: 'Sommeil & HRV',  subtitle: 'Non synchronisé',  icon: Moon,          content: <Placeholder title="Sommeil & HRV" /> },
-    { id: 'sources',   label: 'Sources',        subtitle: 'Intégrations',     icon: Plug,          content: <Placeholder title="Sources" /> },
+    { id: 'overview', label: "Vue d'ensemble", subtitle: 'KPI + tendances',   icon: Activity,      content: <OverviewTab weeks={weeks} /> },
+    { id: 'checkin',  label: 'Check-in',       subtitle: 'Ressenti du jour',  icon: ClipboardList, content: <Placeholder title="Check-in" /> },
+    { id: 'load',     label: 'Charge & forme', subtitle: 'CTL / ATL / TSB',   icon: Gauge,         content: <Placeholder title="Charge & forme" /> },
+    { id: 'sleep',    label: 'Sommeil & HRV',  subtitle: 'HRV · sommeil',     icon: Moon,          content: <SleepHrvTab rows={hrvRows} loading={loading} /> },
+    { id: 'sources',  label: 'Sources',        subtitle: 'Intégrations',      icon: Plug,          content: <SourcesTab hrvActive={hrvRows.length > 0} /> },
   ]
 
   const header = (

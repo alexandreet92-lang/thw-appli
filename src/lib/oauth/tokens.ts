@@ -68,13 +68,28 @@ export async function getValidToken(
     return row.access_token
   }
 
-  if (!row.refresh_token) return null
-
-  const refreshed = await doRefreshToken(provider, row.refresh_token)
-  if (!refreshed) {
+  // Pas de refresh_token → impossible de rafraîchir : reconnexion requise.
+  if (!row.refresh_token) {
     await supabase
       .from('oauth_tokens')
-      .update({ last_error: 'refresh_failed', updated_at: new Date().toISOString() })
+      .update({ is_active: false, last_error: 'reconnect_required', updated_at: new Date().toISOString() })
+      .eq('id', row.id)
+    return null
+  }
+
+  const refreshed = await doRefreshToken(provider, row.refresh_token)
+  if ('error' in refreshed) {
+    // 400/401 = token révoqué/non-rafraîchissable → on désactive la source pour
+    // que l'UI propose "Reconnecter". Erreur transitoire (réseau/5xx) → on garde
+    // la source active et on retentera au prochain appel.
+    const reconnect = refreshed.error === 'reconnect_required'
+    await supabase
+      .from('oauth_tokens')
+      .update({
+        ...(reconnect ? { is_active: false } : {}),
+        last_error: reconnect ? 'reconnect_required' : 'refresh_failed',
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', row.id)
     return null
   }
@@ -84,6 +99,7 @@ export async function getValidToken(
     refresh_token: refreshed.refresh_token ?? row.refresh_token,
     expires_at:    refreshed.expires_at,
     last_error:    null,
+    is_active:     true,
     last_used_at:  new Date().toISOString(),
     updated_at:    new Date().toISOString(),
   }).eq('id', row.id)
@@ -91,10 +107,14 @@ export async function getValidToken(
   return refreshed.access_token
 }
 
+type RefreshSuccess = { access_token: string; refresh_token?: string; expires_at: number }
+type RefreshFailure = { error: 'reconnect_required' | 'transient' }
+type RefreshOutcome = RefreshSuccess | RefreshFailure
+
 async function doRefreshToken(
   provider: OAuthProvider,
   refreshToken: string
-): Promise<{ access_token: string; refresh_token?: string; expires_at: number } | null> {
+): Promise<RefreshOutcome> {
   const cfg = OAUTH_CONFIG[provider]
   try {
     if (provider === 'withings') {
@@ -107,7 +127,10 @@ async function doRefreshToken(
       })
       const res  = await fetch(cfg.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
       const json = await res.json()
-      if (json.status !== 0) return null
+      if (json.status !== 0) {
+        console.error(`[doRefreshToken:withings] status=${json.status} error=${json.error ?? ''}`)
+        return { error: 'transient' }
+      }
       return {
         access_token:  json.body.access_token,
         refresh_token: json.body.refresh_token,
@@ -115,7 +138,8 @@ async function doRefreshToken(
       }
     }
 
-    // Polar v4 : Basic Auth (client_id:client_secret en header, pas en body)
+    // Polar v4 : Basic Auth (client_id:client_secret en header, pas en body),
+    // body x-www-form-urlencoded grant_type=refresh_token&refresh_token=…
     if (provider === 'polar') {
       const basicAuth = Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString('base64')
       const params = new URLSearchParams({
@@ -127,12 +151,19 @@ async function doRefreshToken(
         headers: {
           'Authorization': `Basic ${basicAuth}`,
           'Content-Type':  'application/x-www-form-urlencoded',
+          'Accept':        'application/json',
         },
         body: params,
       })
       if (!res.ok) {
-        console.error(`[doRefreshToken:polar] ${res.status}: ${await res.text().catch(() => '')}`)
-        return null
+        // Diagnostic : on logge la VRAIE cause (sans le secret) — URL, grant_type,
+        // statut HTTP et body brut renvoyé par Polar.
+        const body = await res.text().catch(() => '')
+        console.error(
+          `[doRefreshToken:polar] POST ${cfg.tokenUrl} grant_type=refresh_token → HTTP ${res.status} | body: ${body}`,
+        )
+        // 400/401 = invalid_grant / token révoqué → reconnexion requise.
+        return { error: res.status === 400 || res.status === 401 ? 'reconnect_required' : 'transient' }
       }
       const json = await res.json() as Record<string, unknown>
       return {
@@ -152,15 +183,19 @@ async function doRefreshToken(
       client_secret: cfg.clientSecret,
     })
     const res = await fetch(cfg.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error(`[doRefreshToken:${provider}] HTTP ${res.status}`)
+      return { error: res.status === 400 || res.status === 401 ? 'reconnect_required' : 'transient' }
+    }
     const json = await res.json()
     return {
       access_token:  json.access_token,
       refresh_token: json.refresh_token,
       expires_at:    json.expires_at ?? Math.floor(Date.now() / 1000) + (json.expires_in ?? 3600),
     }
-  } catch {
-    return null
+  } catch (e) {
+    console.error(`[doRefreshToken:${provider}] network error: ${e instanceof Error ? e.message : String(e)}`)
+    return { error: 'transient' }
   }
 }
 

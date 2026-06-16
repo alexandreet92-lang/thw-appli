@@ -61,6 +61,39 @@ function mapPolarSport(sport?: string): string {
   return 'other'
 }
 
+// ── Helpers de parsing sommeil ──────────────────────────────────────
+// Renvoie la première clé présente (non-null) parmi `keys`.
+function pick(obj: Record<string, unknown>, keys: string[]): unknown {
+  for (const k of keys) if (obj[k] != null) return obj[k]
+  return null
+}
+
+// Durée Polar → minutes. Accepte : secondes (number), ISO-8601 'PT..' (string),
+// ou nombre en string (interprété en secondes). Null si inexploitable.
+function durToMin(v: unknown): number | null {
+  if (v == null) return null
+  if (typeof v === 'number') return Number.isFinite(v) ? Math.round(v / 60) : null
+  if (typeof v === 'string') {
+    const t = v.trim()
+    if (/^P/i.test(t)) { const sec = parsePolarDuration(t); return sec ? Math.round(sec / 60) : null }
+    const n = Number(t)
+    return Number.isFinite(n) ? Math.round(n / 60) : null
+  }
+  return null
+}
+
+function numOrNull(v: unknown): number | null {
+  if (v == null) return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+function isoOrNull(v: unknown): string | null {
+  if (v == null) return null
+  const d = new Date(String(v))
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
 // ── registerPolarUser — conservé pour compatibilité (ne sert plus en v4) ──
 export async function registerPolarUser(_userId: string): Promise<void> {
   // La v4 n'a pas d'étape d'enregistrement — no-op
@@ -81,9 +114,10 @@ export async function syncPolarSleep(userId: string): Promise<{
     return { status: 'no_context', nights_synced: 0 }
   }
 
-  // ── Lister les nuits de sommeil (30j max par appel, Polar limite) ───
-  const chunks = polarDateChunks(90, 30)
+  // ── Lister les nuits de sommeil (28j max par appel) sur ~3 mois ─────
+  const chunks = polarDateChunks(84, 28)
   const nightsByDate = new Map<string, Record<string, unknown>>()
+  let loggedRaw = false
 
   for (const chunk of chunks) {
     const res = await callPolarV4('sleeps', ctx.token, { from: chunk.from, to: chunk.to })
@@ -91,6 +125,14 @@ export async function syncPolarSleep(userId: string): Promise<{
     if (!res.ok) { console.log('[SLEEP] List error', res.status, 'chunk', chunk.from); continue }
 
     const body = await res.text()
+
+    // ── Log brut COMPLET une seule fois (noms de champs réels Polar) ──
+    if (!loggedRaw) {
+      console.log(`[SLEEP RAW] GET /v4/data/sleeps?from=${chunk.from}&to=${chunk.to} → ${res.status}`)
+      console.log('[SLEEP RAW BODY]', body)   // non tronqué — volontaire pour le diagnostic
+      loggedRaw = true
+    }
+
     let raw: unknown
     try { raw = JSON.parse(body) } catch { continue }
 
@@ -101,32 +143,77 @@ export async function syncPolarSleep(userId: string): Promise<{
          (raw as Record<string, unknown>)['data']) as Record<string, unknown>[] | undefined) ?? []
 
     for (const item of items) {
-      // Polar v4 retourne { sleepDate: "YYYY-MM-DD" } — sleepDate est la vraie clé
-      const d = String(item['sleepDate'] ?? item['date'] ?? '')
+      const d = String(pick(item, ['sleepDate', 'date']) ?? '')
       if (d) nightsByDate.set(d, item)   // dédoublonnage par date
     }
   }
 
   const nights = [...nightsByDate.entries()].map(([date, raw]) => ({ date, raw }))
   console.log('[SLEEP] nights received:', nights.length)
-  console.log('[SLEEP] first night:', JSON.stringify(nights[0]).slice(0, 300))
 
   if (!nights.length) return { status: 'ok', nights_synced: 0 }
 
   const supabase = createServiceClient()
 
-  // Insérer dans health_data — colonnes core uniquement (sleep_cycles etc. n'existent pas)
-  const rows = nights.map(n => ({
-    user_id:     userId,
-    provider:    'polar',
-    provider_id: `sleep_${n.date}`,
-    measured_at: `${n.date}T00:00:00Z`,
-    date:        n.date,
-    data_type:   'sleep',
-    raw_data:    n.raw,
-  }))
+  // ── Mapping des vraies métriques (sleepNightSleep) → colonnes ───────
+  // Noms candidats : on couvre camelCase (v4) ET snake_case (v3) ; les noms
+  // exacts sont confirmés par [SLEEP RAW BODY] ci-dessus et ajustés au besoin.
+  const rows = nights.map(({ date, raw }) => {
+    // Les phases peuvent être imbriquées (phaseDurations) ou à plat sur la nuit.
+    const phases = (pick(raw, ['phaseDurations', 'sleepPhaseDurations', 'phases']) as Record<string, unknown> | null) ?? raw
 
-  console.log('[SLEEP] inserting', rows.length, 'rows into health_data (data_type=sleep)...')
+    const deep  = durToMin(pick(phases, ['deepSleep', 'deep_sleep', 'deepDuration', 'deep']))
+    const light = durToMin(pick(phases, ['lightSleep', 'light_sleep', 'lightDuration', 'light']))
+    const rem   = durToMin(pick(phases, ['remSleep', 'rem_sleep', 'remDuration', 'rem']))
+    const awake = durToMin(pick(phases, ['awake', 'wake', 'awakeDuration', 'wakeDuration']))
+
+    // Durée totale : champ dédié sinon somme des phases connues.
+    let durationMin = durToMin(pick(raw, ['sleepDuration', 'totalSleepDuration', 'sleep_duration', 'duration']))
+    if (durationMin == null) {
+      const parts = [deep, light, rem].filter((x): x is number => x != null)
+      durationMin = parts.length ? parts.reduce((a, b) => a + b, 0) : null
+    }
+
+    // Score : champ direct ou imbriqué (sleepScoreData.score).
+    const scoreObj   = pick(raw, ['sleepScoreData', 'scoreData', 'sleepScore']) as Record<string, unknown> | number | null
+    const scoreRaw   = typeof scoreObj === 'object' && scoreObj != null
+      ? pick(scoreObj, ['score', 'sleepScore', 'value'])
+      : pick(raw, ['sleepScore', 'sleep_score', 'score'])
+    const scoreNum   = numOrNull(scoreRaw)
+
+    const start      = isoOrNull(pick(raw, ['sleepStartTime', 'sleep_start_time', 'sleepStart', 'startTime']))
+    const end        = isoOrNull(pick(raw, ['sleepEndTime', 'sleep_end_time', 'sleepEnd', 'endTime']))
+    const efficiency = numOrNull(pick(raw, ['sleepEfficiency', 'sleep_efficiency', 'efficiencyPercent', 'efficiency']))
+    const latency    = durToMin(pick(raw, ['sleepLatency', 'sleep_latency', 'latency', 'sleepOnsetLatency']))
+
+    return {
+      user_id:              userId,
+      provider:             'polar',
+      provider_id:          `sleep_${date}`,
+      measured_at:          start ?? `${date}T00:00:00Z`,
+      date,
+      data_type:            'sleep',
+      sleep_duration_min:   durationMin,
+      sleep_score:          scoreNum != null ? Math.round(scoreNum) : null,
+      deep_duration_min:    deep,
+      light_duration_min:   light,
+      rem_duration_min:     rem,
+      awake_duration_min:   awake,
+      sleep_efficiency_pct: efficiency,
+      sleep_latency_min:    latency,
+      sleep_start:          start,
+      sleep_end:            end,
+      raw_data:             raw,
+    }
+  })
+
+  const firstNonNull = rows.find(r => r.sleep_duration_min != null || r.sleep_score != null)
+  console.log('[SLEEP] mapped sample:', JSON.stringify(
+    firstNonNull
+      ? { date: firstNonNull.date, dur: firstNonNull.sleep_duration_min, score: firstNonNull.sleep_score,
+          deep: firstNonNull.deep_duration_min, light: firstNonNull.light_duration_min, rem: firstNonNull.rem_duration_min }
+      : { warning: 'aucune métrique mappée — vérifier [SLEEP RAW BODY]' },
+  ))
 
   const { data, error } = await supabase
     .from('health_data')
@@ -204,6 +291,7 @@ export async function syncPolarNightlyRecharge(userId: string): Promise<{
       // 'nightly_recharge' n'est pas dans le CHECK constraint de health_data
       // → on stocke comme 'hrv' (valeur autorisée, HrvSection le lit déjà)
       data_type:   'hrv',
+      hrv_rmssd:   hrvVal,   // colonne dédiée (en plus de raw_data.hrv_rmssd)
       raw_data: {
         hrv_rmssd:          hrvVal,   // lu par HrvSection via raw_data.hrv_rmssd
         rri_ms:             rri != null ? Number(rri) : null,

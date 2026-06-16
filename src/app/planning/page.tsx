@@ -2142,6 +2142,20 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
 // ════════════════════════════════════════════════
 // TRAINING TAB
 // ════════════════════════════════════════════════
+// Bulle compacte (mobile) : logo sport coloré + pastille de durée colorée. Tap → ouvre.
+function DayBubble({ sport, label, done, onClick }: { sport: string; label: string; done?: boolean; onClick: () => void }) {
+  const key = sportKeyFromType(sport)
+  const cfg = key ? SPORT_ICON[key] : null
+  const color = cfg?.color ?? 'var(--text-mid)'
+  const Ico = cfg?.Icon
+  return (
+    <button onClick={onClick} style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'3px 2px',borderRadius:8,border:'none',background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1 }}>
+      {Ico ? <Ico size={15} color={color} stroke={2.2} /> : <span style={{ width:7,height:7,borderRadius:'50%',background:color }} />}
+      <span className="tnum" style={{ width:'100%',textAlign:'center',background:color,color:'var(--on-primary)',borderRadius:999,padding:'1px 0',fontSize:9.5,fontWeight:700,fontFamily:'var(--font-body)' }}>{label}</span>
+    </button>
+  )
+}
+
 // Estimation SM (métabolique) / SN (neuromusculaire) « prévu » depuis les blocs d'une séance.
 const SM_COEF_PL = [0.6, 0.85, 1.05, 1.25, 1.45, 1.55, 1.62]
 const SN_COEF_PL = [0, 0, 0.08, 0.25, 0.6, 1.1, 1.7]
@@ -2399,7 +2413,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     const cols = `${RAIL}px repeat(7,minmax(0,1fr)) ${SB}px`
     return (
       <div style={{ border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)' }}>
-        <div style={{ overflowX: 'auto' as const }}><div style={{ minWidth: 940 }}>
+        <style>{`@media(max-width:767px){.wg-desktop{display:none!important}}@media(min-width:768px){.wg-mobile{display:none!important}}`}</style>
+        <div className="wg-desktop"><div style={{ overflowX: 'auto' as const }}><div style={{ minWidth: 940 }}>
           {/* En-tête jours */}
           <div style={{ display: 'grid', gridTemplateColumns: cols, background: 'var(--bg-card2)', borderBottom: '1px solid var(--border)' }}>
             <div />
@@ -2488,6 +2503,39 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
             )
           })}
         </div></div>
+        </div>{/* /wg-desktop */}
+
+        {/* ── Mobile : bandeau 7 jours compact par semaine (tout visible, pleine largeur) ── */}
+        <div className="wg-mobile">
+          {allWeekStarts.map(ws => {
+            const w = buildWeek(ws, activePlan); const dates = getWeekDatesFromStart(ws)
+            return (
+              <div key={ws} style={{ borderBottom:'1px solid var(--border)', padding:'8px 6px' }}>
+                <div style={{ display:'flex', alignItems:'baseline', gap:6, marginBottom:6 }}>
+                  <span style={{ fontSize:11, fontWeight:800, color:'var(--text)', fontFamily:'Syne,sans-serif' }}>S{isoWeekNum(ws)}</span>
+                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>{new Date(ws+'T00:00:00').toLocaleDateString('fr-FR',{ day:'numeric', month:'short' })}</span>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
+                  {w.map((d,i)=>{
+                    const isToday = ws===currentWeekStart && i===todayIdx
+                    const sess = d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id))
+                    const acts = d.activities.filter(a=>!matchActivity(a,d.sessions))
+                    return (
+                      <div key={i} style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center' }}>
+                        <div style={{ width:'100%', textAlign:'center' as const, borderRadius:8, padding:'2px 0', boxSizing:'border-box' as const, background:isToday?'var(--bg-card2)':'transparent' }}>
+                          <p style={{ fontSize:8.5, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.02em', margin:0, color:'var(--text-dim)' }}>{d.day}</p>
+                          <p className="tnum" style={{ fontSize:13, fontWeight:700, margin:0, color:isToday?'var(--primary)':'var(--text)' }}>{dates[i]}</p>
+                        </div>
+                        {sess.map(s=><DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status==='done'} onClick={()=>setDetailModal(s)} />)}
+                        {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
     )
   }
@@ -2710,12 +2758,16 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     const w = buildWeek(ws, plan)
     const wDates = getWeekDatesFromStart(ws)
     const planColor = plan==='A'?'#06B6D4':plan==='B'?'#a78bfa':'var(--text)'
+    const isCurrentWeek = ws===currentWeekStart
+    const chev: React.CSSProperties = { flexShrink:0, width:18, border:'none', background:'transparent', color:'var(--text-dim)', fontSize:20, lineHeight:1, cursor:'pointer', padding:0 }
     return (
       <div style={{ background:'var(--bg-card)',border:`1px solid ${plan?planColor+'44':'var(--border)'}`,borderRadius:16,overflow:'hidden',boxShadow:'var(--shadow-card)',overflowX:'auto' }}>
+        <style>{`@media(max-width:767px){.wg-desktop{display:none!important}}@media(min-width:768px){.wg-mobile{display:none!important}}`}</style>
         {labelTag && <div style={{ padding:'6px 14px',background:`${planColor}11`,borderBottom:`1px solid ${planColor}33`,display:'flex',alignItems:'center',gap:8 }}>
           <span style={{ fontSize:10,fontWeight:700,color:planColor,letterSpacing:'0.08em',textTransform:'uppercase' as const }}>{labelTag}</span>
           <span style={{ fontSize:10,color:'var(--text-dim)' }}>{getWeekLabel(ws)}</span>
         </div>}
+        <div className="wg-desktop">
         <div style={{ display:'grid',gridTemplateColumns:'60px repeat(7,1fr)',borderBottom:'1px solid var(--border)',background:'var(--bg-card)',minWidth:520 }}>
           <div style={{ padding:'10px 8px', background:'transparent' }}/>
           {w.map((d,i)=>{ const cfg=INTENSITY_CONFIG[d.intensity]; const isCurrent = ws===currentWeekStart; const isPickerOpen = isCurrent && intensityPickerDay===i; return (
@@ -2848,6 +2900,32 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               </div>
             </div>
           ))}
+        </div>
+        </div>{/* /wg-desktop */}
+
+        {/* ── Bandeau compact 7 jours — mobile (tout visible, pleine largeur) ── */}
+        <div className="wg-mobile">
+          <div style={{ display:'flex',alignItems:'flex-start',gap:2,padding:'8px 4px' }}>
+            {isCurrentWeek && <button aria-label="Semaine précédente" onClick={()=>setWeekOffset(o=>o-1)} style={chev}>‹</button>}
+            <div style={{ flex:1,minWidth:0,display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2 }}>
+              {w.map((d,i)=>{
+                const today = i===todayIdx && isCurrentWeek
+                const sess = d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id))
+                const acts = d.activities.filter(a=>!matchActivity(a,d.sessions))
+                return (
+                  <div key={d.day} style={{ minWidth:0,display:'flex',flexDirection:'column',gap:3,alignItems:'center' }}>
+                    <div style={{ width:'100%',textAlign:'center' as const,borderRadius:8,padding:'3px 0',boxSizing:'border-box' as const,background:today?'var(--bg)':'transparent',border:today?'1px solid var(--border-mid)':'1px solid transparent' }}>
+                      <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.02em',margin:0,color:today?'var(--text)':'var(--text-dim)' }}>{d.day}</p>
+                      <p className="tnum" style={{ fontSize:14,fontWeight:700,margin:0,color:'var(--text)' }}>{wDates[i]}</p>
+                    </div>
+                    {sess.map(s=><DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status==='done'} onClick={()=>setDetailModal(s)} />)}
+                    {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
+                  </div>
+                )
+              })}
+            </div>
+            {isCurrentWeek && <button aria-label="Semaine suivante" onClick={()=>setWeekOffset(o=>o+1)} style={chev}>›</button>}
+          </div>
         </div>
       </div>
     )

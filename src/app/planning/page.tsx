@@ -127,7 +127,7 @@ export interface Block {
 export interface Session {
   id:string; sport:SportType; title:string; time:string; durationMin:number
   tss?:number; main?:boolean; status:SessionStatus; notes?:string; blocks:Block[]
-  rpe?:number; dayIndex:number; planVariant?:PlanVariant
+  rpe?:number; dayIndex:number; planVariant?:PlanVariant; intensity?:string|null
   // Phase 5 — snapshot immuable de la version IA (pour badge "modifié" + reset)
   originalContent?: Record<string, unknown>
   vDuration?:string; vDistance?:string; vElevation?:string; vSpeed?:string
@@ -658,7 +658,7 @@ function usePlanning(weekStartParam?:string) {
       id:r.id, dayIndex:r.day_index, sport:normalizeSportType(r.sport), title:r.title,
       time:r.time??'09:00', durationMin:r.duration_min, tss:r.tss,
       status:r.status, notes:r.notes, rpe:r.rpe, blocks:normalizeBlocks(r.blocks), main:false,
-      planVariant:r.plan_variant??'A',
+      planVariant:r.plan_variant??'A', intensity:r.intensity??null,
       originalContent: r.original_content ?? undefined,
       parcoursData: r.parcours_data ?? undefined,
       nutritionItems: r.nutrition_data ?? undefined,
@@ -2169,6 +2169,16 @@ function isoWeekNum(ds: string): number {
 const PLAN_SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique']
 // Couleur sport alignée sur les logos SportIcon (run=vert, muscu=orange, etc.)
 function iconColor(sp: string): string { const k = sportKeyFromType(sp); return k ? SPORT_ICON[k].color : (SPORT_BORDER[sp as SportType] ?? '#94a3b8') }
+// Type de journée (Récup / Low / Mid / Hard) — normalise les vocabulaires possibles
+// en base (recovery|low|mid|hard mais aussi moderate|high|max|easy…) vers DayIntensity.
+function intensityKey(v: string | null | undefined): DayIntensity {
+  switch ((v ?? '').toLowerCase()) {
+    case 'recovery': case 'recup': case 'récup': case 'rest': case 'off': return 'recovery'
+    case 'mid': case 'moderate': case 'medium': case 'tempo': return 'mid'
+    case 'hard': case 'high': case 'max': case 'intense': case 'vo2': return 'hard'
+    default: return 'low'
+  }
+}
 
 function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   // Lit un éventuel ?week=YYYY-MM-DD dans l'URL pour positionner le
@@ -2351,7 +2361,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         grouped[r.week_start].push({id:r.id,dayIndex:r.day_index,sport:r.sport,title:r.title,
           time:r.time??'09:00',durationMin:r.duration_min,tss:r.tss,status:r.status,
           notes:r.notes,rpe:r.rpe,blocks:normalizeBlocks(r.blocks),main:false,planVariant:r.plan_variant??'A',
-          ...(r.validation_data??{})})
+          intensity:r.intensity??null,...(r.validation_data??{})})
       })
       setExtraSessions(grouped)
     })()
@@ -2437,17 +2447,22 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                           <span style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.name}</span>
                           <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(Math.round(a.elapsedTime / 60))}</span>
                         </div>) })}
-                      {d.sessions.filter(s => !d.activities.some(a => matchActivity(a, d.sessions)?.id === s.id)).map(s => (
+                      {d.sessions.filter(s => !d.activities.some(a => matchActivity(a, d.sessions)?.id === s.id)).map(s => {
+                        const ik = intensityKey(s.intensity ?? d.intensity); const ic = INTENSITY_CONFIG[ik]
+                        return (
                         <div key={s.id} draggable
                           onDragStart={e => { planDrag.current = { id: s.id, ws, day: i }; e.dataTransfer.effectAllowed = 'move' }}
                           onDragEnd={() => { planDrag.current = null; setDragCell(null) }}
                           onClick={() => setDetailModal(s)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 9px', borderRadius: 9, background: 'var(--bg-card2)', border: '1px solid var(--border)', cursor: 'grab', opacity: s.status === 'done' ? 0.6 : 1 }}>
-                          <SportIcon sport={s.sport} size={18} />
-                          <span style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.title}</span>
-                          <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(s.durationMin)}</span>
+                          style={{ display: 'flex', flexDirection: 'column' as const, gap: 4, padding: '6px 8px 7px', borderRadius: 9, background: 'var(--bg-card2)', border: '1px solid var(--border)', cursor: 'grab', opacity: s.status === 'done' ? 0.6 : 1 }}>
+                          <span style={{ alignSelf: 'flex-start', fontSize: 8, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: ic.color, background: ic.bg, border: `1px solid ${ic.border}`, borderRadius: 5, padding: '1px 5px', lineHeight: 1.4 }}>{ic.label}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <SportIcon sport={s.sport} size={18} />
+                            <span style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.title}</span>
+                            <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(s.durationMin)}</span>
+                          </div>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   )
                 })}

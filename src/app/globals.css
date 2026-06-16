@@ -81,6 +81,13 @@
   --ai-accent:    #9D7DFF;
   --ai-accent-dim:rgba(157,125,255,0.12);
 
+  /* ── Récupération — séries Vue d'ensemble (fixes, 2 thèmes) ── */
+  --rec-hrv:       #06b6d4;
+  --rec-sommeil:   #a855f7;
+  --rec-readiness: #22d3ee;
+  --rec-fc:        #ef4444;
+  --rec-fatigue:   #f97316;
+
   /* ── Safe area ───────────────────────────────── */
   --safe-b: env(safe-area-inset-bottom, 0px);
 

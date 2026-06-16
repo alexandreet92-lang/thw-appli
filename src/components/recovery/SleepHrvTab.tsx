@@ -8,7 +8,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { Moon, Hourglass } from 'lucide-react'
-import type { HrvRow } from './useHrvRows'
+import type { HrvRow } from './useRecoveryData'
 
 const NUM = { fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' as const, fontFeatureSettings: "'zero' 0" }
 

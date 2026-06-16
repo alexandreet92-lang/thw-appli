@@ -19,9 +19,9 @@ interface Props { weeks: WeekData[] }
 const SERIES: Record<Serie, { label: string; cssVar: string; unit: string; min: number; max: number; upGood: boolean; empty: string }> = {
   hrv:       { label: 'HRV',       cssVar: '--rec-hrv',       unit: ' ms',  min: 40, max: 80, upGood: true,  empty: 'à venir' },
   sommeil:   { label: 'Sommeil',   cssVar: '--rec-sommeil',   unit: ' h',   min: 5,  max: 9,  upGood: true,  empty: 'en attente Polar' },
-  readiness: { label: 'Readiness', cssVar: '--rec-readiness', unit: '',     min: 0,  max: 100, upGood: true,  empty: 'à venir' },
+  readiness: { label: 'Readiness', cssVar: '--rec-readiness', unit: '',     min: 0,  max: 100, upGood: true,  empty: 'via check-in' },
   fc:        { label: 'FC repos',  cssVar: '--rec-fc',        unit: ' bpm', min: 45, max: 62, upGood: false, empty: 'à venir' },
-  fatigue:   { label: 'Fatigue',   cssVar: '--rec-fatigue',   unit: '/10',  min: 0,  max: 10, upGood: false, empty: 'à venir' },
+  fatigue:   { label: 'Fatigue',   cssVar: '--rec-fatigue',   unit: '/10',  min: 0,  max: 10, upGood: false, empty: 'via check-in' },
 }
 const KEYS: Serie[] = ['hrv', 'sommeil', 'readiness', 'fc', 'fatigue']
 const DAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']

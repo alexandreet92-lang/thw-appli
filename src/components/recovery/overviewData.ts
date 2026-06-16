@@ -32,16 +32,19 @@ function weekLabel(monday: Date): string {
   return `${a} – ${b}`
 }
 
+export interface SeriesMaps {
+  hrv?: Map<string, number>
+  readiness?: Map<string, number>
+  fatigue?: Map<string, number>
+}
+
 /**
  * N dernières semaines (ordre chronologique, dernière = la plus récente).
- * Série `hrv` remplie depuis `hrvByDate` (clé 'YYYY-MM-DD' → valeur ms) ;
- * autres séries `null`. `today` ancre la fenêtre (ex. dernière nuit HRV reçue).
+ * Séries `hrv` / `readiness` / `fatigue` remplies depuis les maps par date
+ * ('YYYY-MM-DD' → valeur) ; `sommeil` et `fc` restent `null`.
+ * `today` ancre la fenêtre (ex. date de la donnée la plus récente).
  */
-export function buildWeeks(
-  hrvByDate?: Map<string, number>,
-  count = 4,
-  today: Date = new Date(),
-): WeekData[] {
+export function buildWeeks(maps: SeriesMaps = {}, count = 4, today: Date = new Date()): WeekData[] {
   const base = mondayOf(today)
   const nulls = () => Array<number | null>(7).fill(null)
   const weeks: WeekData[] = []
@@ -51,15 +54,20 @@ export function buildWeeks(
     monday.setDate(base.getDate() - i * 7)
 
     const hrv: (number | null)[] = []
+    const readiness: (number | null)[] = []
+    const fatigue: (number | null)[] = []
     for (let d = 0; d < 7; d++) {
       const day = new Date(monday)
       day.setDate(monday.getDate() + d)
-      hrv.push(hrvByDate?.get(ymd(day)) ?? null)
+      const key = ymd(day)
+      hrv.push(maps.hrv?.get(key) ?? null)
+      readiness.push(maps.readiness?.get(key) ?? null)
+      fatigue.push(maps.fatigue?.get(key) ?? null)
     }
 
     weeks.push({
       label: weekLabel(monday),
-      values: { hrv, sommeil: nulls(), readiness: nulls(), fc: nulls(), fatigue: nulls() },
+      values: { hrv, sommeil: nulls(), readiness, fc: nulls(), fatigue },
     })
   }
   return weeks

@@ -16,6 +16,11 @@ import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
+import { MobileSheet } from './MobileSheet'
+import { VoiceOverlay } from './VoiceOverlay'
+import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
+import { PlanProposalCard, type PlanProposal, type GenProgram, type PlanRequirements } from './PlanProposalCard'
+import { MethodPicker } from './MethodPicker'
 import ActiveCompetencesBadge from '@/components/ai-coach/ActiveCompetencesBadge'
 import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
 import TopupEmailModal from '@/components/topup/TopupEmailModal'
@@ -37,6 +42,8 @@ interface AIMsg {
   content: string
   ts: number
   modelId?: THWModel   // modèle utilisé pour cette réponse
+  clarifyingQuestions?: ClarifyingQuestions  // questions IA (tool ask_clarifying_questions)
+  planProposal?: PlanProposal  // aperçu de plan avant validation (tool create_training_plan)
   sessionData?: SBSession  // données structurées SessionBuilder (persiste en localStorage)
   trainingReport?: TrainingReportData  // données structurées AnalyzeTrainingFlow (persiste en localStorage)
   raceStrategy?: RaceStrategyData      // données structurées StrategieCourseFlow (persiste en localStorage)
@@ -150,11 +157,11 @@ const MODEL_CONFIGS: Record<THWModel, ModelConfig> = {
 }
 
 function getGreeting() {
-  const h = new Date().getHours()
-  if (h >= 5 && h < 12) return 'matin'
-  if (h >= 12 && h < 18) return 'après-midi'
-  return 'soir'
+  return new Date().getHours() >= 18 ? 'Bonsoir' : 'Bonjour'
 }
+
+// Largeur de la sidebar coulissante (mobile) — doit matcher l'underlay
+const AI_SIDEBAR_W = 300
 function fmtDate(ts: number) {
   const d = Date.now() - ts
   if (d < 60_000) return 'instant'
@@ -1251,22 +1258,23 @@ function ModelEffigy({ model, isAnimating, size = 18, color }: {
 
 // ── ModelPicker — bouton rond + dropdown monochrome ──────────
 
-function ModelPicker({ model, onChange, disabled = false }: {
+function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
   model: THWModel
   onChange: (m: THWModel) => void
   disabled?: boolean
+  isMobile?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!open) return
+    if (!open || isMobile) return
     const h = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
-  }, [open])
+  }, [open, isMobile])
 
   const models: THWModel[] = ['hermes', 'athena', 'zeus']
   const cfg = MODEL_CONFIGS[model]
@@ -1297,79 +1305,77 @@ function ModelPicker({ model, onChange, disabled = false }: {
         />
       </button>
 
-      {/* Dropdown */}
-      {open && (
-        <div style={{
-          position: 'absolute',
-          bottom: 'calc(100% + 10px)',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'var(--ai-bg)',
-          border: '1px solid var(--ai-border)',
-          borderRadius: 13,
-          boxShadow: '0 8px 28px rgba(0,0,0,0.13)',
-          overflow: 'hidden',
-          minWidth: 188,
-          zIndex: 50,
-          animation: 'ai_slidein 0.14s ease',
-        }}>
-          <div style={{
-            padding: '10px 14px 6px',
-            fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)',
-            letterSpacing: '0.08em', textTransform: 'uppercase',
-            fontFamily: 'DM Sans,sans-serif',
-          }}>
-            Modèle IA
-          </div>
-          {models.map(m => {
-            const mc  = MODEL_CONFIGS[m]
-            const isA = model === m
-            return (
-              <button
-                key={m}
-                onClick={() => { onChange(m); setOpen(false) }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  width: '100%', padding: '9px 14px',
-                  border: 'none',
-                  background: isA ? 'var(--ai-bg2)' : 'transparent',
-                  cursor: 'pointer', textAlign: 'left',
-                  transition: 'background 0.1s',
-                }}
-                onMouseEnter={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
-                onMouseLeave={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                  alt={mc.name}
-                  style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0, opacity: isA ? 1 : 0.6 }}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 12, fontWeight: isA ? 700 : 500,
-                    color: isA ? 'var(--ai-text)' : 'var(--ai-mid)',
-                    fontFamily: 'Syne,sans-serif', lineHeight: 1.2,
-                  }}>
-                    {mc.name}
-                  </div>
-                  <div style={{
-                    fontSize: 10, color: 'var(--ai-dim)',
-                    fontFamily: 'DM Sans,sans-serif', marginTop: 2,
-                  }}>
-                    {mc.desc}
-                  </div>
+      {/* Liste des modèles — dropdown (desktop) ou bottom sheet (mobile) */}
+      {open && (() => {
+        const list = models.map(m => {
+          const mc  = MODEL_CONFIGS[m]
+          const isA = model === m
+          return (
+            <button
+              key={m}
+              onClick={() => { onChange(m); setOpen(false) }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', padding: isMobile ? '12px 14px' : '9px 14px',
+                border: 'none', borderRadius: 10,
+                background: isA ? 'var(--ai-bg2)' : 'transparent',
+                cursor: 'pointer', textAlign: 'left',
+                transition: 'background 0.1s',
+              }}
+              onMouseEnter={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+              onMouseLeave={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                alt={mc.name}
+                style={{ width: isMobile ? 24 : 20, height: isMobile ? 24 : 20, objectFit: 'contain', flexShrink: 0, opacity: isA ? 1 : 0.6 }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: isMobile ? 14 : 12, fontWeight: isA ? 700 : 500,
+                  color: isA ? 'var(--ai-text)' : 'var(--ai-mid)',
+                  fontFamily: 'Syne,sans-serif', lineHeight: 1.2,
+                }}>
+                  {mc.name}
                 </div>
-                {isA && (
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M20 6L9 17l-5-5"/>
-                  </svg>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      )}
+                <div style={{
+                  fontSize: isMobile ? 12 : 10, color: 'var(--ai-dim)',
+                  fontFamily: 'DM Sans,sans-serif', marginTop: 2,
+                }}>
+                  {mc.desc}
+                </div>
+              </div>
+              {isA && (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+              )}
+            </button>
+          )
+        })
+
+        if (isMobile) {
+          return <MobileSheet title="Modèle IA" onClose={() => setOpen(false)}>{list}</MobileSheet>
+        }
+        return (
+          <div style={{
+            position: 'absolute', bottom: 'calc(100% + 10px)', left: '50%',
+            transform: 'translateX(-50%)', background: 'var(--ai-bg)',
+            border: '1px solid var(--ai-border)', borderRadius: 13,
+            boxShadow: '0 8px 28px rgba(0,0,0,0.13)', overflow: 'hidden',
+            minWidth: 188, zIndex: 50, padding: 4, animation: 'ai_slidein 0.14s ease',
+          }}>
+            <div style={{
+              padding: '6px 10px 6px', fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)',
+              letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'DM Sans,sans-serif',
+            }}>
+              Modèle IA
+            </div>
+            {list}
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -11156,93 +11162,6 @@ function fileToAttachment(file: File): Promise<AttachedFile> {
 // PLUS MENU
 // ══════════════════════════════════════════════════════════════
 
-// ── FontPicker — sélecteur de police inline dans la barre de saisie ──────────
-
-const FONT_PICKER_OPTIONS = [
-  { id: 'dm_sans', label: 'DM Sans',  family: 'DM Sans, sans-serif' },
-  { id: 'inter',   label: 'Inter',    family: 'Inter, sans-serif' },
-  { id: 'system',  label: 'Système',  family: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif' },
-  { id: 'serif',   label: 'Serif',    family: 'Georgia, Times New Roman, serif' },
-  { id: 'mono',    label: 'Mono',     family: 'DM Mono, monospace' },
-]
-
-function FontPicker({ current, onChange }: { current: string; onChange: (family: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [open])
-
-  const currentFont = FONT_PICKER_OPTIONS.find(f => f.family === current) ?? FONT_PICKER_OPTIONS[0]
-
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button
-        onClick={() => setOpen(p => !p)}
-        title="Police du chat"
-        style={{
-          height: 24, padding: '0 8px', borderRadius: 6, flexShrink: 0,
-          border: `1px solid ${open ? 'var(--ai-mid)' : 'var(--ai-border)'}`,
-          background: open ? 'var(--ai-bg)' : 'transparent',
-          cursor: 'pointer', color: 'var(--ai-dim)',
-          display: 'flex', alignItems: 'center', gap: 4,
-          transition: 'all 0.12s',
-        }}
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>
-        </svg>
-        <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.02em', fontFamily: 'DM Sans, sans-serif' }}>
-          {currentFont.label}
-        </span>
-      </button>
-
-      {open && (
-        <div style={{
-          position: 'absolute', bottom: '100%', left: 0,
-          marginBottom: 6, padding: 4,
-          background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
-          borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-          zIndex: 40, minWidth: 130,
-        }}>
-          {FONT_PICKER_OPTIONS.map(f => {
-            const active = f.family === current
-            return (
-              <button
-                key={f.id}
-                onClick={() => {
-                  onChange(f.family)
-                  localStorage.setItem('thw_ai_chat_font', f.id)
-                  window.dispatchEvent(new Event('thw:chat-font-changed'))
-                  setOpen(false)
-                }}
-                style={{
-                  display: 'block', width: '100%', padding: '6px 10px',
-                  border: 'none', borderRadius: 7,
-                  background: active ? 'var(--ai-accent-dim)' : 'transparent',
-                  color: active ? 'var(--ai-accent)' : 'var(--ai-text)',
-                  fontSize: 12, fontWeight: active ? 600 : 400,
-                  fontFamily: f.family,
-                  cursor: 'pointer', textAlign: 'left',
-                  transition: 'background 0.1s',
-                }}
-              >
-                {f.label}
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
 type MenuScreen = 'main' | 'actions' | 'connecteurs' | 'competences'
 
 interface ConnectorDef {
@@ -11311,8 +11230,10 @@ function PlusMenu({
   onClose,
   onClosePanel,
   onCamera,
+  onPhotos,
   onFiles,
   onForceModel,
+  isMobile = false,
 }: {
   onPrepare:    (label: string, apiPrompt: string) => void
   onEnriched:   (id: string, label: string) => void
@@ -11320,19 +11241,18 @@ function PlusMenu({
   onClose:      () => void
   onClosePanel: () => void
   onCamera:     () => void
+  onPhotos:     () => void
   onFiles:      () => void
   onForceModel: (m: THWModel) => void
+  isMobile?:    boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
-  const [isMobile, setIsMobile] = useState(false)
   const [activeScreen, setActiveScreen] = useState<MenuScreen>('main')
   const [animating, setAnimating] = useState(false)
   const [activeTheme, setActiveTheme] = useState<QuickActionTheme>('entrainement')
   const [compCount, setCompCount] = useState<number | null>(null)
   const [compLimit, setCompLimit] = useState(3)
-
-  useEffect(() => { setIsMobile(window.innerWidth < 768) }, [])
 
   // Comptage léger des compétences actives + limite du plan
   useEffect(() => {
@@ -11363,12 +11283,13 @@ function PlusMenu({
   }, [])
 
   useEffect(() => {
+    if (isMobile) return
     const h = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose()
     }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
-  }, [onClose])
+  }, [onClose, isMobile])
 
   function goTo(screen: MenuScreen) {
     if (animating) return
@@ -11400,35 +11321,41 @@ function PlusMenu({
     fontFamily: 'DM Sans,sans-serif', transition: 'background 120ms',
   }
   const sepStyle: React.CSSProperties = { height: 1, background: 'var(--border)', margin: '4px 0' }
+  const photoTileStyle: React.CSSProperties = {
+    flexShrink: 0, width: 100, height: 92, borderRadius: 14,
+    border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 7,
+    cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+  }
+  const photoTileLabel: React.CSSProperties = { fontSize: 12, color: 'var(--text)', fontWeight: 500 }
 
-  return (
-    <div ref={ref} className="aip-plus-menu" style={{
-      position: 'absolute', bottom: 'calc(100% + 8px)', left: 0,
-      minWidth: 260,
-      borderRadius: 12,
-      padding: 6,
-      boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
-      zIndex: 200,
-      maxHeight: '72vh', overflow: 'hidden',
-      animation: 'aip_menu_up 0.18s ease-out',
-    }}>
+  const body = (
+    <>
 
       {/* ════ ÉCRAN PRINCIPAL ════ */}
       {activeScreen === 'main' && (
-        <div style={{ maxHeight: '72vh', overflowY: 'auto' }}>
-          {/* 1. Ajouter des fichiers */}
+        <div style={{ maxHeight: isMobile ? undefined : '72vh', overflowY: isMobile ? undefined : 'auto' }}>
+          {/* Rangée Caméra + Photothèque — mobile (web : pas d'accès à la galerie système) */}
+          {isMobile && (
+            <div style={{ display: 'flex', gap: 8, padding: '2px 4px 12px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <button onClick={() => { onClose(); setTimeout(onCamera, 80) }} style={photoTileStyle}>
+                <Camera size={22} color="var(--text)" />
+                <span style={photoTileLabel}>Caméra</span>
+              </button>
+              <button onClick={() => { onClose(); setTimeout(onPhotos, 80) }} style={photoTileStyle}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8.5" cy="8.5" r="1.6" /><path d="M21 15l-5-5L5 21" />
+                </svg>
+                <span style={photoTileLabel}>Photothèque</span>
+              </button>
+            </div>
+          )}
+
+          {/* Ajouter des fichiers */}
           <button style={rowStyle} onClick={() => { onClose(); setTimeout(onFiles, 80) }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
             <Paperclip size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
             Ajouter des fichiers…
           </button>
-
-          {/* 2. Prendre une photo — mobile only */}
-          {isMobile && (
-            <button style={rowStyle} onClick={() => { onClose(); setTimeout(onCamera, 80) }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
-              <Camera size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-              Prendre une photo
-            </button>
-          )}
 
           <div style={sepStyle} />
 
@@ -11623,6 +11550,20 @@ function PlusMenu({
           </div>
         </div>
       )}
+    </>
+  )
+
+  if (isMobile) {
+    return <MobileSheet title="Ajouter à la discussion" onClose={onClose}>{body}</MobileSheet>
+  }
+  return (
+    <div ref={ref} className="aip-plus-menu" style={{
+      position: 'absolute', bottom: 'calc(100% + 8px)', left: 0,
+      minWidth: 260, borderRadius: 12, padding: 6,
+      boxShadow: '0 8px 32px rgba(0,0,0,0.24)', zIndex: 200,
+      maxHeight: '72vh', overflow: 'hidden', animation: 'aip_menu_up 0.18s ease-out',
+    }}>
+      {body}
     </div>
   )
 }
@@ -11642,6 +11583,9 @@ function HistoryDrawer({
   onPin,
   onClose,
   persistent = false,
+  underlay = false,
+  avatarUrl = null,
+  initials = '',
   activeAgent,
   onAgentChange,
 }: {
@@ -11653,6 +11597,9 @@ function HistoryDrawer({
   onPin: (id: string) => void
   onClose: () => void
   persistent?: boolean
+  underlay?: boolean
+  avatarUrl?: string | null
+  initials?: string
   activeAgent: 'training' | 'networks'
   onAgentChange: (a: 'training' | 'networks') => void
 }) {
@@ -11688,15 +11635,33 @@ function HistoryDrawer({
 
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Titre Hybrid */}
-      <div style={{ padding: '18px 16px 8px', flexShrink: 0 }}>
-        <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>
+      {/* Titre Hybrid + photo de profil (style Claude) */}
+      <div style={{ padding: '18px 16px 8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <span style={{ fontSize: 24, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>
           Hybrid
         </span>
+        <a
+          href="/profile"
+          aria-label="Profil"
+          style={{
+            width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden', textDecoration: 'none',
+            border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
+            color: 'var(--text)', fontSize: 13, fontWeight: 600,
+            fontFamily: 'DM Sans,sans-serif',
+          }}
+        >
+          {avatarUrl
+            ? /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={avatarUrl} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : (initials || '?')}
+        </a>
       </div>
 
-      {/* Nouvelle conversation + Projets */}
+      {/* Nouvelle conversation (desktop) + Projets */}
       <div style={{ padding: '0 8px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {!underlay && (
         <button
           onClick={onNew}
           style={{
@@ -11715,6 +11680,7 @@ function HistoryDrawer({
           </svg>
           Nouvelle conversation
         </button>
+        )}
         <div
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
@@ -11776,7 +11742,7 @@ function HistoryDrawer({
       </div>
 
       {/* Conversation list */}
-      <div className="aip-hist-list" style={{ flex: 1, overflowY: 'auto', padding: '4px 6px' }}>
+      <div className="aip-hist-list" style={{ flex: 1, overflowY: 'auto', padding: underlay ? '4px 6px 76px' : '4px 6px' }}>
         {convs.length === 0 ? (
           <div style={{ padding: '18px 8px', textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, lineHeight: 1.6 }}>
             Aucune conversation.<br />Pose une question pour commencer.
@@ -11830,14 +11796,14 @@ function HistoryDrawer({
                   )}
                   <div style={{
                     flex: 1, minWidth: 0,
-                    fontSize: 13, fontWeight: conv.id === activeId ? 600 : 400,
-                    color: conv.id === activeId ? 'var(--ai-text)' : 'var(--ai-mid)',
+                    fontSize: 13, fontWeight: 600,
+                    color: 'var(--ai-text)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     lineHeight: 1.3,
                   }}>
                     {conv.title}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--ai-dim)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 11, color: 'var(--ai-mid)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                     {mounted ? fmtDate(conv.updatedAt) : ''}
                   </div>
                 </div>
@@ -11916,30 +11882,42 @@ function HistoryDrawer({
         ))}
       </div>
 
-      {/* ── Settings ── */}
-      <div style={{ borderTop: '1px solid var(--border)', padding: '6px 8px 8px', flexShrink: 0 }}>
-        {/* Réglages IA */}
-        <a
-          href="/profile"
+      {/* Nouvelle conversation — bulle flottante (mobile, style Claude) */}
+      {underlay && (
+        <button
+          onClick={onNew}
           style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 12px', borderRadius: 8,
-            color: 'var(--text-mid)', textDecoration: 'none',
-            fontFamily: 'DM Sans,sans-serif', fontSize: 14,
-            transition: 'background 0.12s',
+            position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', gap: 8, zIndex: 5,
+            padding: '11px 20px', borderRadius: 999, border: 'none',
+            background: 'var(--text)', color: 'var(--bg-card)',
+            fontSize: 14, fontWeight: 600, fontFamily: 'DM Sans,sans-serif',
+            cursor: 'pointer', whiteSpace: 'nowrap',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.24)',
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-hover)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+            <path d="M12 5v14M5 12h14" />
           </svg>
-          <span>Réglages IA</span>
-        </a>
-      </div>
+          Nouvelle conversation
+        </button>
+      )}
     </div>
   )
+
+  // ── Mode underlay (mobile) — sidebar fixe sous la colonne chat ──
+  if (underlay) {
+    return (
+      <div style={{
+        position: 'absolute', top: 0, left: 0, bottom: 0,
+        width: AI_SIDEBAR_W, background: 'var(--bg-card)',
+        borderRight: '0.5px solid var(--border)',
+        zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      }}>
+        {sidebarContent}
+      </div>
+    )
+  }
 
   // ── Mode persistant (desktop) — colonne inline ──────────────
   if (persistent) {
@@ -13061,6 +13039,10 @@ function toolCallMeta(tc: PendingToolCall): { borderColor: string; emoji: string
     const n = ((inp.blocs_periodisation as unknown[]) ?? []).length
     return { borderColor: '#f97316', emoji: '⟳', label: 'Modifier la périodisation',
       description: `${n} blocs de périodisation remplacés` }
+  }
+  if (tool_name === 'create_training_plan') {
+    return { borderColor: '#3C90D5', emoji: '✦', label: "Créer le plan d'entraînement",
+      description: `${String(inp.name ?? 'Plan')} · ${String(inp.sport_principal ?? '')} · ${String(inp.duree_semaines ?? '?')} sem · ${String(inp.seances_par_semaine ?? '?')}×/sem (généré à partir de tes données)` }
   }
   return { borderColor: '#9ca3af', emoji: '?', label: tool_name, description: '' }
 }
@@ -18243,6 +18225,7 @@ export default function AIPanel({
   const [activeQA,    setActiveQA]    = useState<ActiveQuickAction | null>(null)
   const [isDesktop,   setIsDesktop]   = useState(false)
   const [model,       setModel]       = useState<THWModel>('athena')
+  const [method,      setMethod]      = useState<string>('auto')   // méthode d'entraînement (composer)
   const [selPopup,    setSelPopup]    = useState<{ text: string; x: number; y: number } | null>(null)
   const [attachment,    setAttachment]    = useState<AttachedFile | null>(null)
   const [attachErr,     setAttachErr]     = useState<string | null>(null)
@@ -18251,10 +18234,10 @@ export default function AIPanel({
   const [toolApplyError,   setToolApplyError]   = useState<string | null>(null)
   const [aiRules,          setAiRules]          = useState<{ category: string; rule_text: string }[]>([])
   const [ruleHelperCategory, setRuleHelperCategory] = useState<string | null>(null)
-  const [chatFontFamily,   setChatFontFamily]   = useState('DM Sans, sans-serif')
   const [quotedText,       setQuotedText]       = useState<string | null>(null)
-  const [showQuickActions, setShowQuickActions] = useState(true)
   const [userInitials,     setUserInitials]     = useState<string>('')
+  const [userFirstName,    setUserFirstName]    = useState<string>('')
+  const [userAvatarUrl,    setUserAvatarUrl]    = useState<string | null>(null)
   const [hoveredMsgId,     setHoveredMsgId]     = useState<string | null>(null)
   const [copiedMsgId,      setCopiedMsgId]      = useState<string | null>(null)
 
@@ -18282,8 +18265,9 @@ export default function AIPanel({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const autoScrollRef      = useRef<boolean>(true)
   const initMsgRef         = useRef<string | undefined>(undefined)
-  // Swipe tracking (mobile)
-  const swipeRef   = useRef<{ x: number; y: number; t: number } | null>(null)
+  // Swipe / drag tracking (mobile) — sidebar coulissante
+  const chatColRef = useRef<HTMLDivElement>(null)
+  const dragRef    = useRef<{ startX: number; startY: number; startOffset: number; active: boolean; lastOff: number } | null>(null)
   // Selection popup ref (pour détecter clic extérieur)
   const selPopupRef = useRef<HTMLDivElement>(null)
   // File inputs for attachment
@@ -18292,6 +18276,8 @@ export default function AIPanel({
   const filesRef   = useRef<HTMLInputElement>(null)
   // AbortController pour annuler la requête en cours
   const abortRef   = useRef<AbortController | null>(null)
+  // Synthèse du dernier plan créé (create_training_plan) → message de restitution riche
+  const planSummaryRef = useRef<{ name: string; weeks: number; sessions: number; pointsCles: string[]; conseils: string[] } | null>(null)
   // Agent selector dropdown
   const agentDropRef = useRef<HTMLDivElement>(null)
 
@@ -18314,8 +18300,6 @@ export default function AIPanel({
   useEffect(() => {
     setMounted(true)
     setConvs(loadConvs())
-    const sqaVal = localStorage.getItem('thw_ai_show_quick_actions')
-    if (sqaVal === 'false') setShowQuickActions(false)
   }, [])
 
   // Charge les règles IA actives de l'utilisateur au mount
@@ -18334,27 +18318,6 @@ export default function AIPanel({
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Charge et écoute la police de chat depuis localStorage
-  useEffect(() => {
-    const FONT_MAP: Record<string, string> = {
-      dm_sans: 'DM Sans, sans-serif',
-      inter:   'Inter, sans-serif',
-      system:  '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
-      serif:   'Georgia, Times New Roman, serif',
-      mono:    'DM Mono, monospace',
-    }
-    const apply = () => {
-      const val = localStorage.getItem('thw_ai_chat_font')
-      if (val && FONT_MAP[val]) setChatFontFamily(FONT_MAP[val])
-    }
-    apply()
-    window.addEventListener('thw:chat-font-changed', apply)
-    window.addEventListener('storage', apply)
-    return () => {
-      window.removeEventListener('thw:chat-font-changed', apply)
-      window.removeEventListener('storage', apply)
-    }
-  }, [])
 
   // Écoute l'event depuis la page profil (bouton "Formuler avec l'IA")
   useEffect(() => {
@@ -18382,6 +18345,12 @@ export default function AIPanel({
         const parts = name.trim().split(/\s+/)
         if (parts.length >= 2) setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase())
         else if (parts[0]) setUserInitials(parts[0][0].toUpperCase())
+        // Prénom — uniquement depuis full_name (jamais l'email)
+        const fullName = (user.user_metadata?.full_name ?? '').trim()
+        if (fullName) setUserFirstName(fullName.split(/\s+/)[0])
+        // Photo de profil — depuis profiles.avatar_url
+        const { data: prof } = await sb.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle()
+        if (prof?.avatar_url) setUserAvatarUrl(prof.avatar_url as string)
       } catch { /* silent */ }
     })()
   }, [mounted])
@@ -18548,7 +18517,8 @@ export default function AIPanel({
     el.style.height = Math.min(el.scrollHeight, 200) + 'px'
   }
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() }
+    // Sur mobile, Entrée = retour à la ligne (seul le bouton envoie).
+    if (e.key === 'Enter' && !e.shiftKey && isDesktop) { e.preventDefault(); void send() }
   }
 
   const newConv = () => {
@@ -18592,25 +18562,50 @@ export default function AIPanel({
     URL.revokeObjectURL(url)
   }
 
-  // ── Swipe (mobile) ────────────────────────────────────────
+  // ── Drag coulissant (mobile) — la colonne chat glisse au doigt ──
+  // par-dessus la sidebar (style Claude). Manip directe du DOM pendant
+  // le drag pour éviter de re-render ce composant à chaque touchmove.
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (isDesktop) return
     const t = e.touches[0]
-    swipeRef.current = { x: t.clientX, y: t.clientY, t: Date.now() }
+    dragRef.current = { startX: t.clientX, startY: t.clientY, startOffset: histOpen ? AI_SIDEBAR_W : 0, active: false, lastOff: histOpen ? AI_SIDEBAR_W : 0 }
+  }, [isDesktop, histOpen])
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (isDesktop) return
+    const d = dragRef.current
+    if (!d) return
+    const t = e.touches[0]
+    const dx = t.clientX - d.startX
+    const dy = t.clientY - d.startY
+    if (!d.active) {
+      // Geste vertical → on laisse scroller, on abandonne le drag
+      if (Math.abs(dy) > 12 && Math.abs(dy) >= Math.abs(dx)) { dragRef.current = null; return }
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) d.active = true
+      else return
+    }
+    const off = Math.max(0, Math.min(AI_SIDEBAR_W, d.startOffset + dx))
+    d.lastOff = off
+    const el = chatColRef.current
+    if (el) { el.style.transition = 'none'; el.style.transform = `translateX(${off}px)` }
   }, [isDesktop])
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (isDesktop || !swipeRef.current) return
-    const t = e.changedTouches[0]
-    const dx = t.clientX - swipeRef.current.x
-    const dy = t.clientY - swipeRef.current.y
-    const dt = Date.now() - swipeRef.current.t
-    swipeRef.current = null
-    // Ignorer si vertical ou trop lent (>400ms) ou trop court (<50px)
-    if (Math.abs(dy) > Math.abs(dx)) return
-    if (dt > 400 || Math.abs(dx) < 50) return
-    if (dx > 0 && !histOpen) setHistOpen(true)
-    if (dx < 0 && histOpen)  setHistOpen(false)
+  const handleTouchEnd = useCallback(() => {
+    if (isDesktop) return
+    const d = dragRef.current
+    dragRef.current = null
+    const el = chatColRef.current
+    // Restaure la transition animée pour que le snap glisse (et ne saute pas)
+    if (el) el.style.transition = 'transform 0.34s cubic-bezier(0.32,0.72,0,1)'
+    if (d && d.active) {
+      const open = d.lastOff > AI_SIDEBAR_W / 2
+      setHistOpen(open)
+      if (el) el.style.transform = `translateX(${open ? AI_SIDEBAR_W : 0}px)`
+    } else if (histOpen) {
+      // Simple tap sur le bord visible (peek) → on referme
+      setHistOpen(false)
+      if (el) el.style.transform = 'translateX(0px)'
+    }
   }, [isDesktop, histOpen])
 
   // ── Plan context fetch — structure COMPLÈTE du plan (pour tool calls) ──
@@ -18700,6 +18695,15 @@ export default function AIPanel({
     const { tool_name, tool_input: inp } = tc
     let pgErr: { message: string } | null = null
 
+    // Garde-fou : l'IA ne doit jamais inventer d'identifiant. Si un UUID
+    // attendu (plan ou séance) est absent / factice (ex: 'current-plan'),
+    // on renvoie un message clair au lieu d'une erreur SQL brute.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const idVal = (inp.training_plan_id ?? inp.session_id) as string | undefined
+    if (idVal !== undefined && (typeof idVal !== 'string' || !UUID_RE.test(idVal))) {
+      return "Aucun plan d'entraînement enregistré n'est rattaché à cette conversation, je ne peux donc pas l'appliquer directement. Pour créer un plan complet et l'enregistrer, lance l'action « Créer un plan d'entraînement ». Je peux aussi te détailler le plan ici sans l'enregistrer."
+    }
+
     if (tool_name === 'add_session') {
       const { error } = await sb.from('planned_sessions').insert({
         user_id:      userId,
@@ -18776,6 +18780,167 @@ export default function AIPanel({
       }).eq('id', inp.training_plan_id)
       pgErr = error
 
+    } else if (tool_name === 'create_training_plan') {
+      // 1) Lundi de départ
+      const r = inp as unknown as {
+        name?: string; objectif_principal?: string; sport_principal?: string
+        niveau?: string; duree_semaines?: number; start_date?: string
+        seances_par_semaine?: number; date_objectif?: string; type_competition?: string
+        requirements_resume?: string
+      }
+      const sd = new Date(r.start_date ?? new Date().toISOString().slice(0, 10))
+      const dow = sd.getDay() === 0 ? 6 : sd.getDay() - 1
+      sd.setDate(sd.getDate() - dow)
+      const startDate = sd.toISOString().slice(0, 10)
+
+      // 2) Rassembler TOUTES les données réelles de l'athlète
+      const cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+      const todayStr = new Date().toISOString().slice(0, 10)
+      const [profil, zones, activities, events, health] = await Promise.all([
+        sb.from('athlete_performance_profile').select('*').eq('user_id', userId).maybeSingle().then(x => x.data ?? null),
+        sb.from('athlete_zones').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle().then(x => x.data ?? null),
+        sb.from('activities').select('sport_type,title,started_at,moving_time_s,distance_m,tss').eq('user_id', userId).gte('started_at', cutoff).order('started_at', { ascending: false }).limit(40).then(x => x.data ?? []),
+        sb.from('calendar_events').select('*').eq('user_id', userId).gte('date', todayStr).limit(20).then(x => x.data ?? []),
+        sb.from('metrics_daily').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(14).then(x => x.data ?? []),
+      ])
+
+      // 3) Questionnaire construit à partir des besoins réunis par le coach
+      const questionnaire = {
+        sport_principal:     r.sport_principal,
+        experience:          r.niveau,
+        niveau_connaissance: r.niveau,
+        seances_debut_prepa: r.seances_par_semaine,
+        seances_pic_prepa:   r.seances_par_semaine,
+        duree_semaines_cible: r.duree_semaines,
+        date_debut:          startDate,
+        goal_races: (r.objectif_principal || r.date_objectif) ? [{
+          nom:       r.type_competition || r.objectif_principal,
+          sport:     r.sport_principal,
+          level:     'main',
+          date:      r.date_objectif ?? '',
+          goal_libre: r.objectif_principal,
+        }] : [],
+        precision_profil: r.requirements_resume ?? '',
+        precision_dispo:  `${r.seances_par_semaine ?? '?'} séances/semaine`,
+      }
+
+      // 4) Génération détaillée via le pipeline dédié
+      type GenProgram = {
+        nom?: string; objectif_principal?: string; duree_semaines?: number
+        blocs_periodisation?: unknown[]; conseils_adaptation?: string[]; points_cles?: string[]
+        semaines?: { numero?: number; seances?: Record<string, unknown>[] }[]
+      }
+      let program: GenProgram | null = null
+      try {
+        const genRes = await fetch('/api/training-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionnaire,
+            profil, zones,
+            historique_90j: activities,
+            calendrier_objectifs: events,
+            sante: health,
+          }),
+        })
+        if (!genRes.ok) {
+          return "La génération du plan détaillé a échoué (limite atteinte ou erreur serveur). Réessaie dans un instant."
+        }
+        const gen = await genRes.json() as { program?: GenProgram }
+        program = gen.program ?? null
+      } catch {
+        return "Impossible de générer le plan pour le moment. Vérifie ta connexion et réessaie."
+      }
+      if (!program?.semaines?.length) {
+        return "Le plan généré est revenu vide. Réessaie, ou précise un peu plus tes besoins."
+      }
+
+      // 5) Persistance — mapping colonnes identique à saveToPlanning
+      const sportMap: Record<string, string> = {
+        'Running': 'run', 'Course': 'run', 'Course à pied': 'run', 'Trail': 'run',
+        'Cyclisme': 'bike', 'Vélo': 'bike', 'Velo': 'bike', 'Cycling': 'bike',
+        'Natation': 'swim', 'Swimming': 'swim', 'Musculation': 'gym', 'Gym': 'gym',
+        'Hyrox': 'hyrox', 'Rowing': 'rowing', 'Aviron': 'rowing',
+      }
+      const normSport = (raw: string) => sportMap[raw] ?? sportMap[raw?.trim()] ?? raw?.toLowerCase()
+      const weeks = program.semaines
+      const duree = program.duree_semaines ?? r.duree_semaines ?? weeks.length
+      const endDateSunday = addDays(addWeeks(startDate, Math.max(1, duree) - 1), 6)
+      const sportsAcross = Array.from(new Set(
+        weeks.flatMap(w => (w.seances ?? []).map(s => normSport(String(s.sport ?? '')))).filter(Boolean)
+      ))
+
+      const { error: planErr } = await sb.from('training_plans').insert({
+        user_id:             userId,
+        name:                program.nom ?? r.name ?? "Plan d'entraînement",
+        objectif_principal:  program.objectif_principal ?? r.objectif_principal ?? null,
+        duree_semaines:      duree,
+        start_date:          startDate,
+        end_date:            endDateSunday,
+        sports:              sportsAcross,
+        blocs_periodisation: program.blocs_periodisation ?? [],
+        conseils_adaptation: program.conseils_adaptation ?? [],
+        points_cles:         program.points_cles ?? [],
+        ai_context:          { source: 'chat_coach', requirements: r.requirements_resume, generated_at: new Date().toISOString() },
+        status:              'active',
+      })
+      if (planErr) {
+        pgErr = planErr
+      } else {
+        const { data: planRow } = await sb.from('training_plans')
+          .select('id').eq('user_id', userId).eq('status', 'active').eq('start_date', startDate)
+          .order('created_at', { ascending: false }).limit(1).maybeSingle()
+        const newPlanId = planRow?.id as string | undefined
+
+        const rows: Record<string, unknown>[] = []
+        for (const semaine of weeks) {
+          const weekStart = addWeeks(startDate, (semaine.numero ?? 1) - 1)
+          for (const seance of (semaine.seances ?? [])) {
+            const titreLC = String(seance.titre ?? '').toLowerCase().trim()
+            if (/^(repos|rest|rest day|jour (de )?repos|off|jour off)$/i.test(titreLC)) continue
+            if ((Number(seance.duree_min) || 0) === 0 && !titreLC) continue
+            const oc = {
+              sport: seance.sport, titre: seance.titre, time: seance.heure ?? null,
+              duration_min: seance.duree_min, tss: seance.tss ?? null, intensity: seance.intensite ?? null,
+              notes: seance.notes ?? null, rpe: seance.rpe ?? null, blocs: seance.blocs ?? [],
+            }
+            rows.push({
+              user_id:          userId,
+              plan_id:          newPlanId ?? null,
+              week_start:       weekStart,
+              day_index:        seance.jour,
+              sport:            normSport(String(seance.sport ?? '')),
+              title:            seance.titre,
+              time:             seance.heure ?? null,
+              duration_min:     seance.duree_min,
+              tss:              seance.tss ?? null,
+              status:           'planned',
+              intensity:        seance.intensite ?? null,
+              notes:            seance.notes ?? null,
+              rpe:              seance.rpe ?? null,
+              blocks:           seance.blocs ?? [],
+              plan_variant:     'A',
+              validation_data:  {},
+              source:           'training_plan',
+              original_content: oc,
+            })
+          }
+        }
+        if (rows.length > 0) {
+          const { error: sessErr } = await sb.from('planned_sessions').insert(rows)
+          pgErr = sessErr
+        }
+        if (!pgErr) {
+          planSummaryRef.current = {
+            name: program.nom ?? r.name ?? "Plan d'entraînement",
+            weeks: weeks.length,
+            sessions: rows.length,
+            pointsCles: Array.isArray(program.points_cles) ? program.points_cles : [],
+            conseils: Array.isArray(program.conseils_adaptation) ? program.conseils_adaptation : [],
+          }
+        }
+      }
+
     } else {
       return `Tool inconnu : ${tool_name}`
     }
@@ -18806,7 +18971,25 @@ export default function AIPanel({
       // Succès — message de confirmation dans le chat
       const cid = active?.id
       if (cid) {
-        const summary = total > 1 ? `✓ ${total} modifications appliquées avec succès.` : '✓ Modification appliquée avec succès.'
+        const ps = planSummaryRef.current
+        planSummaryRef.current = null
+        let summary: string
+        if (ps) {
+          // Restitution riche pour une création de plan : logique + conseils + lien
+          const lignes: string[] = [
+            `✓ **Plan créé : ${ps.name}** — ${ps.weeks} semaines, ${ps.sessions} séances enregistrées.`,
+          ]
+          if (ps.pointsCles.length) {
+            lignes.push('', '**La logique du plan :**', ...ps.pointsCles.map(p => `- ${p}`))
+          }
+          if (ps.conseils.length) {
+            lignes.push('', '**Conseils d\'adaptation :**', ...ps.conseils.map(c => `- ${c}`))
+          }
+          lignes.push('', 'Les 4 premières semaines sont détaillées (blocs, intensités) ; les suivantes seront affinées à l\'approche. 👉 [Voir le plan dans Planning](/planning)')
+          summary = lignes.join('\n')
+        } else {
+          summary = total > 1 ? `✓ ${total} modifications appliquées avec succès.` : '✓ Modification appliquée avec succès.'
+        }
         const successMsg: AIMsg = { id: genId(), role: 'assistant', content: summary, ts: Date.now(), modelId: model }
         setConvs(prev => prev.map(c =>
           c.id === cid ? { ...c, msgs: [...c.msgs, successMsg], updatedAt: Date.now() } : c
@@ -18945,9 +19128,160 @@ export default function AIPanel({
       setLiveTranscript(finalTranscriptRef.current)
       setLiveInterim(interim)
     }
-    rec.onerror = () => stopVoice('')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onerror = (e: any) => {
+      // iOS coupe régulièrement la reconnaissance (aborted / no-speech).
+      // On ne ferme le mode vocal que sur un refus d'autorisation ;
+      // sinon onend se charge de relancer.
+      if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed') stopVoice('')
+    }
+    rec.onend = () => {
+      // Reconnaissance terminée (pause sur iOS) : relancer tant qu'on enregistre.
+      if (speechRef.current === rec) {
+        try { rec.start() } catch { /* déjà démarrée */ }
+      }
+    }
     rec.start()
   }, [stopVoice])
+
+  // ── Création de plan : génération de l'aperçu (avant validation) ──
+  const generatePlanProposal = useCallback(async (cid: string, msgId: string, req: PlanRequirements) => {
+    const setProposal = (pp: PlanProposal) =>
+      setConvs(prev => prev.map(c => c.id === cid
+        ? { ...c, msgs: c.msgs.map(m => m.id === msgId ? { ...m, planProposal: pp } : m), updatedAt: Date.now() }
+        : c))
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) { setProposal({ status: 'error', requirements: req, error: 'Tu n\'es plus connecté.' }); return }
+      const userId = user.id
+
+      const sd = new Date(req.start_date ?? new Date().toISOString().slice(0, 10))
+      const dow = sd.getDay() === 0 ? 6 : sd.getDay() - 1
+      sd.setDate(sd.getDate() - dow)
+      const startDate = sd.toISOString().slice(0, 10)
+
+      const cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+      const todayStr = new Date().toISOString().slice(0, 10)
+      const [profil, zones, activities, events, races, health] = await Promise.all([
+        sb.from('athlete_performance_profile').select('*').eq('user_id', userId).maybeSingle().then(x => x.data ?? null),
+        sb.from('athlete_zones').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle().then(x => x.data ?? null),
+        sb.from('activities').select('sport_type,title,started_at,moving_time_s,distance_m,tss').eq('user_id', userId).gte('started_at', cutoff).order('started_at', { ascending: false }).limit(40).then(x => x.data ?? []),
+        sb.from('calendar_events').select('*').eq('user_id', userId).gte('date', todayStr).limit(20).then(x => x.data ?? []),
+        sb.from('planned_races').select('name,sport,date,level,goal,goal_time').eq('user_id', userId).gte('date', todayStr).order('date').limit(10).then(x => x.data ?? []),
+        sb.from('metrics_daily').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(14).then(x => x.data ?? []),
+      ])
+      // L'objectif vient AUSSI des courses planifiées : on le donne au générateur (il ne doit pas le redemander)
+      const calendrier = [...(races as unknown[]), ...(events as unknown[])]
+
+      const questionnaire = {
+        sport_principal: req.sport_principal, experience: req.niveau, niveau_connaissance: req.niveau,
+        seances_debut_prepa: req.seances_par_semaine, seances_pic_prepa: req.seances_par_semaine,
+        duree_semaines_cible: req.duree_semaines, date_debut: startDate,
+        methode: req.methode ?? '', methodologie: req.methodologie ?? '',
+        goal_races: (req.objectif_principal || req.date_objectif) ? [{
+          nom: req.type_competition || req.objectif_principal, sport: req.sport_principal,
+          level: 'main', date: req.date_objectif ?? '', goal_libre: req.objectif_principal,
+        }] : [],
+        precision_profil: req.requirements_resume ?? '', precision_dispo: `${req.seances_par_semaine ?? '?'} séances/semaine`,
+      }
+      const genRes = await fetch('/api/training-plan', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionnaire, profil, zones, historique_90j: activities, calendrier_objectifs: calendrier, sante: health }),
+      })
+      if (!genRes.ok) {
+        let msg = 'La génération a échoué. Réessaie.'
+        if (genRes.status === 504 || genRes.status === 408) msg = 'La génération a pris trop de temps. Réessaie, ou demande un plan un peu plus court.'
+        else if (genRes.status === 402 || genRes.status === 429) msg = 'Limite de génération atteinte pour le moment. Réessaie un peu plus tard.'
+        else { try { const e = await genRes.json() as { error?: string }; if (e?.error) msg = e.error } catch { /* ignore */ } }
+        setProposal({ status: 'error', requirements: req, error: msg }); return
+      }
+      const gen = await genRes.json() as { program?: GenProgram }
+      if (!gen.program?.semaines?.length) { setProposal({ status: 'error', requirements: req, error: 'Le plan est revenu vide. Précise tes besoins et réessaie.' }); return }
+      setProposal({ status: 'ready', requirements: { ...req, start_date: startDate }, program: gen.program })
+    } catch {
+      setProposal({ status: 'error', requirements: req, error: 'Erreur pendant la génération. Vérifie ta connexion et réessaie.' })
+    }
+  }, [])
+
+  // ── Création de plan : validation → enregistrement dans Planning ──
+  const validatePlanProposal = useCallback(async (cid: string, msgId: string, proposal: PlanProposal) => {
+    const program = proposal.program
+    const req = proposal.requirements
+    if (!program?.semaines?.length) return
+    const appendMsg = (content: string) => {
+      const m: AIMsg = { id: genId(), role: 'assistant', content, ts: Date.now(), modelId: model }
+      setConvs(prev => prev.map(c => c.id === cid ? { ...c, msgs: [...c.msgs, m], updatedAt: Date.now() } : c))
+    }
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) throw new Error('Non connecté')
+      const userId = user.id
+
+      const sd = new Date(req.start_date ?? new Date().toISOString().slice(0, 10))
+      const dow = sd.getDay() === 0 ? 6 : sd.getDay() - 1
+      sd.setDate(sd.getDate() - dow)
+      const startDate = sd.toISOString().slice(0, 10)
+
+      const sportMap: Record<string, string> = {
+        'Running': 'run', 'Course': 'run', 'Course à pied': 'run', 'Trail': 'run',
+        'Cyclisme': 'bike', 'Vélo': 'bike', 'Velo': 'bike', 'Cycling': 'bike',
+        'Natation': 'swim', 'Swimming': 'swim', 'Musculation': 'gym', 'Gym': 'gym',
+        'Hyrox': 'hyrox', 'Rowing': 'rowing', 'Aviron': 'rowing',
+      }
+      const normSport = (raw: string) => sportMap[raw] ?? sportMap[raw?.trim()] ?? raw?.toLowerCase()
+      const weeks = program.semaines
+      const duree = program.duree_semaines ?? req.duree_semaines ?? weeks.length
+      const endDateSunday = addDays(addWeeks(startDate, Math.max(1, duree) - 1), 6)
+      const sportsAcross = Array.from(new Set(weeks.flatMap(w => (w.seances ?? []).map(s => normSport(String(s.sport ?? '')))).filter(Boolean)))
+
+      const { error: planErr } = await sb.from('training_plans').insert({
+        user_id: userId, name: program.nom ?? req.name ?? "Plan d'entraînement",
+        objectif_principal: program.objectif_principal ?? req.objectif_principal ?? null,
+        duree_semaines: duree, start_date: startDate, end_date: endDateSunday, sports: sportsAcross,
+        blocs_periodisation: program.blocs_periodisation ?? [], conseils_adaptation: program.conseils_adaptation ?? [],
+        points_cles: program.points_cles ?? [],
+        ai_context: { source: 'chat_coach', requirements: req.requirements_resume, generated_at: new Date().toISOString() },
+        status: 'active',
+      })
+      if (planErr) throw new Error(planErr.message)
+
+      const { data: planRow } = await sb.from('training_plans').select('id').eq('user_id', userId).eq('status', 'active').eq('start_date', startDate).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      const newPlanId = planRow?.id as string | undefined
+      const rows: Record<string, unknown>[] = []
+      for (const semaine of weeks) {
+        const weekStart = addWeeks(startDate, (semaine.numero ?? 1) - 1)
+        for (const seance of (semaine.seances ?? [])) {
+          const titreLC = String(seance.titre ?? '').toLowerCase().trim()
+          if (/^(repos|rest|rest day|jour (de )?repos|off|jour off)$/i.test(titreLC)) continue
+          if ((Number(seance.duree_min) || 0) === 0 && !titreLC) continue
+          const oc = { sport: seance.sport, titre: seance.titre, time: seance.heure ?? null, duration_min: seance.duree_min, tss: seance.tss ?? null, intensity: seance.intensite ?? null, notes: seance.notes ?? null, rpe: seance.rpe ?? null, blocs: seance.blocs ?? [] }
+          rows.push({
+            user_id: userId, plan_id: newPlanId ?? null, week_start: weekStart, day_index: seance.jour,
+            sport: normSport(String(seance.sport ?? '')), title: seance.titre, time: seance.heure ?? null,
+            duration_min: seance.duree_min, tss: seance.tss ?? null, status: 'planned', intensity: seance.intensite ?? null,
+            notes: seance.notes ?? null, rpe: seance.rpe ?? null, blocks: seance.blocs ?? [], plan_variant: 'A',
+            validation_data: {}, source: 'training_plan', original_content: oc,
+          })
+        }
+      }
+      if (rows.length > 0) {
+        const { error: sessErr } = await sb.from('planned_sessions').insert(rows)
+        if (sessErr) throw new Error(sessErr.message)
+      }
+
+      setConvs(prev => prev.map(c => c.id === cid
+        ? { ...c, msgs: c.msgs.map(m => m.id === msgId && m.planProposal ? { ...m, planProposal: { ...m.planProposal, status: 'validated' as const } } : m), updatedAt: Date.now() }
+        : c))
+      appendMsg(`✓ **Plan ajouté à ton planning** — ${rows.length} séances enregistrées. 👉 [Voir dans Planning](/planning)`)
+      window.dispatchEvent(new CustomEvent('thw:sessions-changed'))
+    } catch (e) {
+      appendMsg(`⚠️ L'enregistrement du plan a échoué : ${e instanceof Error ? e.message : 'erreur inconnue'}. Réessaie.`)
+    }
+  }, [model])
 
   // SEND MESSAGE
   const send = useCallback(async (presetDisplay?: string, presetApi?: string) => {
@@ -19065,6 +19399,7 @@ export default function AIPanel({
         body: JSON.stringify({
           agentId:  isPlanChat ? 'plan_coach' : activeAgent === 'networks' ? 'hybrid_networks' : 'central',
           modelId:  snapshot,
+          method:   method !== 'auto' ? method : undefined,
           messages: apiMsgs,
           aiRules:  aiRules.length > 0 ? aiRules : undefined,
           // Merge plan_context (session IDs) into the existing context so that
@@ -19112,7 +19447,12 @@ export default function AIPanel({
         return
       }
 
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok || !res.body) {
+        // Remonte le message d'erreur réel du serveur (diagnostic) plutôt qu'un générique
+        let serverErr = `HTTP ${res.status}`
+        try { const ed = await res.json() as { error?: string }; if (ed?.error) serverErr = ed.error } catch { /* pas de body JSON */ }
+        throw new Error(serverErr)
+      }
 
       const aiMsgId = genId()
       setConvs(prev => prev.map(c =>
@@ -19128,6 +19468,8 @@ export default function AIPanel({
       const decoder     = new TextDecoder()
       let textAccumulated = ''
       let sseBuffer       = ''
+      // Création de plan : on génère l'aperçu APRÈS le stream (40s), pas pendant
+      let planGenRequest: { msgId: string; requirements: PlanRequirements } | null = null
 
       const processSSEBuffer = () => {
         const parts = sseBuffer.split('\n\n')
@@ -19158,10 +19500,37 @@ export default function AIPanel({
           } else if (eventType === 'tool_use') {
             try {
               const tool = JSON.parse(data) as PendingToolCall
-              // Accumule dans le tableau — NE remplace PAS (plusieurs tool_use possibles)
-              setPendingToolCalls(prev => [...prev, tool])
-              setToolApplyStatus('idle')
-              setToolApplyError(null)
+              if (tool.tool_name === 'ask_clarifying_questions') {
+                // Questions de clarification → attachées au message (carte interactive),
+                // pas au flux d'application de tools.
+                const qs = (tool.tool_input?.questions ?? []) as ClarifyingQuestions['questions']
+                if (Array.isArray(qs) && qs.length > 0) {
+                  setConvs(prev => prev.map(c =>
+                    c.id === cid
+                      ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId
+                          // content non vide : évite un tour assistant vide dans l'historique API
+                          ? { ...m, content: m.content || 'Quelques précisions pour mieux te répondre :', clarifyingQuestions: { questions: qs } }
+                          : m), updatedAt: Date.now() }
+                      : c
+                  ))
+                }
+              } else if (tool.tool_name === 'create_training_plan') {
+                // Aperçu de plan : génération lancée après le stream, puis validation manuelle
+                const reqs = (tool.tool_input ?? {}) as PlanRequirements
+                planGenRequest = { msgId: aiMsgId, requirements: reqs }
+                setConvs(prev => prev.map(c =>
+                  c.id === cid
+                    ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId
+                        ? { ...m, content: m.content || 'Voici le plan que je te propose — regarde, puis valide pour l\'ajouter au planning :', planProposal: { status: 'generating', requirements: reqs } }
+                        : m), updatedAt: Date.now() }
+                    : c
+                ))
+              } else {
+                // Accumule dans le tableau — NE remplace PAS (plusieurs tool_use possibles)
+                setPendingToolCalls(prev => [...prev, tool])
+                setToolApplyStatus('idle')
+                setToolApplyError(null)
+              }
             } catch { /* malformed JSON — ignore */ }
           }
         }
@@ -19183,6 +19552,12 @@ export default function AIPanel({
 
       abortRef.current = null
       streamDone = true  // stream complété normalement
+
+      // Création de plan demandée → génère l'aperçu (asynchrone, la carte affiche son loader)
+      const pgr = planGenRequest as { msgId: string; requirements: PlanRequirements } | null
+      if (pgr) {
+        void generatePlanProposal(cid, pgr.msgId, pgr.requirements)
+      }
 
       // ── Persistance DB pour le plan-chat (training_plan_messages) ──
       if (isPlanChat && planId && textAccumulated) {
@@ -19217,6 +19592,8 @@ export default function AIPanel({
         if (s.includes('429') || s.includes('rate limit')) errText = msg429
         else if (s.includes('timeout') || s.includes('timed out') || s.includes('signal')) errText = msgTimeout
         else if (s.includes('network') || s.includes('fetch') || s.includes('failed to fetch')) errText = msgNetwork
+        // Erreur serveur explicite (ex. "IA: …") → on l'affiche telle quelle pour diagnostic
+        else if (!/^http \d+$/i.test(e.message)) errText = e.message
       }
       const errContent = `⚠️ ${errText}`
       const err: AIMsg = { id: genId(), role: 'assistant', content: errContent, ts: Date.now() }
@@ -19467,8 +19844,8 @@ export default function AIPanel({
           box-shadow: 0 0 0 3px rgba(6,182,212,0.12), 0 2px 8px rgba(0,0,0,0.06) !important;
         }
         html.dark .aip-input-wrap {
-          background: #1C2333 !important;
-          border-color: rgba(255,255,255,0.10) !important;
+          background: #0A0A0C !important;
+          border-color: rgba(255,255,255,0.12) !important;
           box-shadow: none !important;
         }
         html.dark .aip-input-wrap:focus-within {
@@ -19476,6 +19853,22 @@ export default function AIPanel({
           box-shadow: 0 0 0 3px rgba(6,182,212,0.15) !important;
         }
         .aip-input-wrap *:focus-visible { outline: none !important; }
+
+        /* Bulle message utilisateur — gris (jour) / noir distinct du fond (nuit) */
+        .aip-user-bubble { background: #EDEDED; color: #15171C; }
+        html.dark .aip-user-bubble { background: #26262B; color: #EEF2F7; }
+
+        /* Boutons flottants (mobile) — blancs + ombre légère en mode jour */
+        .aip-float-btn {
+          background: #FFFFFF;
+          border: 0.5px solid rgba(0,0,0,0.08);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+        }
+        html.dark .aip-float-btn {
+          background: #1A1A1E;
+          border: 0.5px solid rgba(255,255,255,0.10);
+          box-shadow: 0 2px 10px rgba(0,0,0,0.40);
+        }
 
         /* Menu + — liste compacte */
         .aip-plus-menu {
@@ -19502,8 +19895,8 @@ export default function AIPanel({
       {/* ══ PANNEAU ═══════════════════════════════════════════ */}
       <div className={`aip-root${open ? '' : ' closed'}${fullscr ? ' fullscreen' : ''}`}>
 
-        {/* ══ HEADER ════════════════════════════════════════ */}
-        <div style={{
+        {/* ══ HEADER (desktop) — sur mobile : boutons flottants ══════ */}
+        {isDesktop && <div style={{
           height: 50, padding: '10px 12px 10px 16px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
           flexShrink: 0, background: 'var(--ai-bg)',
@@ -19515,7 +19908,7 @@ export default function AIPanel({
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             flex: 1, minWidth: 0,
           }}>
-            {active ? active.title : 'Hybrid Training'}
+            {active ? active.title : ''}
           </span>
 
           {/* Actions droite */}
@@ -19612,7 +20005,7 @@ export default function AIPanel({
               </svg>
             </button>
           </div>{/* /actions */}
-        </div>
+        </div>}
 
         {/* ══ BODY — flex-row : sidebar | chat ══════════════ */}
         <div className="aip-body">
@@ -19621,6 +20014,8 @@ export default function AIPanel({
           {isDesktop && (
             <HistoryDrawer
               persistent
+              avatarUrl={userAvatarUrl}
+              initials={userInitials}
               convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
               activeId={activeId}
               onSelect={selectConv}
@@ -19633,9 +20028,12 @@ export default function AIPanel({
             />
           )}
 
-          {/* ── Sidebar mobile (overlay) ── */}
-          {!isDesktop && histOpen && (
+          {/* ── Sidebar mobile (underlay : la colonne chat coulisse dessus) ── */}
+          {!isDesktop && (
             <HistoryDrawer
+              underlay
+              avatarUrl={userAvatarUrl}
+              initials={userInitials}
               convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
               activeId={activeId}
               onSelect={selectConv}
@@ -19648,12 +20046,61 @@ export default function AIPanel({
             />
           )}
 
-          {/* ── Chat column ── */}
+          {/* ── Chat column (coulisse au-dessus de la sidebar sur mobile) ── */}
           <div
+            ref={chatColRef}
             className="aip-chat-col"
             onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            style={{
+              justifyContent: activeAgent === 'training' && showEmpty && !activeFlow ? 'center' : undefined,
+              ...(isDesktop ? {} : {
+                position: 'relative', zIndex: 2, background: 'var(--ai-bg)',
+                transform: `translateX(${histOpen ? AI_SIDEBAR_W : 0}px)`,
+                transition: 'transform 0.34s cubic-bezier(0.32,0.72,0,1)',
+                willChange: 'transform', touchAction: 'pan-y',
+                borderTopLeftRadius: 22, borderBottomLeftRadius: 22,
+                boxShadow: '-5px 0 22px rgba(0,0,0,0.12)',
+              }),
+            }}
           >
+
+          {/* ── Boutons flottants (mobile) : menu à gauche, sortie à droite ── */}
+          {!isDesktop && (
+            <>
+              <button
+                onClick={() => setHistOpen(h => !h)}
+                aria-label="Conversations"
+                className="aip-float-btn"
+                style={{
+                  position: 'absolute', top: 12, left: 12, zIndex: 6,
+                  width: 40, height: 40, borderRadius: '50%',
+                  color: 'var(--ai-text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M4 7h16M4 12h16M4 17h10" />
+                </svg>
+              </button>
+              <button
+                onClick={onClose}
+                aria-label="Sortir de l'assistant"
+                className="aip-float-btn"
+                style={{
+                  position: 'absolute', top: 12, right: 12, zIndex: 6,
+                  width: 40, height: 40, borderRadius: '50%',
+                  color: 'var(--ai-text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+            </>
+          )}
 
           {/* ── Hybrid Networks ──────────────────────────── */}
           {activeAgent === 'networks' && (
@@ -19669,7 +20116,7 @@ export default function AIPanel({
           {activeAgent === 'training' && <div
             ref={scrollContainerRef}
             className="aip-messages"
-            style={{ padding: '24px 20px 0' }}
+            style={{ padding: isDesktop ? '24px 20px 0' : '62px 20px 0', flex: showEmpty && !activeFlow ? '0 0 auto' : undefined }}
             onMouseUp={handleMsgMouseUp}
             onScroll={() => {
               const el = scrollContainerRef.current
@@ -19679,9 +20126,9 @@ export default function AIPanel({
             }}
           >
 
-            {/* ── Empty state ── */}
+            {/* ── Empty state — logo shuriken + salut horaire ── */}
             {showEmpty && !activeFlow && (
-              <div style={{ animation: 'ai_slidein 0.25s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 32 }}>
+              <div style={{ animation: 'ai_slidein 0.25s ease', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 8 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
@@ -19693,130 +20140,11 @@ export default function AIPanel({
                   }}
                 />
                 <p style={{
-                  textAlign: 'center', margin: '0 0 6px',
-                  fontSize: 16, fontWeight: 700, color: 'var(--ai-text)',
-                  fontFamily: 'Syne,sans-serif', lineHeight: 1.3,
+                  textAlign: 'center', margin: 0,
+                  fontSize: 24, fontWeight: 600, color: 'var(--ai-text)',
+                  fontFamily: 'var(--font-display)', lineHeight: 1.3, letterSpacing: '-0.01em',
                 }}>
-                  Bonjour, bon {mounted ? getGreeting() : 'matin'} !
-                </p>
-                <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 28px' }}>
-                  Comment puis-je t'aider aujourd'hui ?
-                </p>
-
-                <button
-                  onClick={() => {
-                    const next = !showQuickActions
-                    setShowQuickActions(next)
-                    localStorage.setItem('thw_ai_show_quick_actions', String(next))
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6, width: '100%',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    padding: '0 0 9px',
-                  }}
-                >
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
-                    textTransform: 'uppercase', color: 'var(--ai-dim)',
-                  }}>
-                    Actions rapides
-                  </span>
-                  <svg
-                    width="10" height="10" viewBox="0 0 24 24" fill="none"
-                    stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round"
-                    style={{ transform: showQuickActions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
-                  >
-                    <path d="M6 9l6 6 6-6"/>
-                  </svg>
-                </button>
-
-                {showQuickActions && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-                    {QUICK_ACTIONS.map((qa, i) => {
-                      const mcfg = MODEL_CONFIGS[qa.model]
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            setModel(qa.model)
-                            if (qa.flow) {
-                              setActiveFlow(qa.flow)
-                              setActiveQA(null)
-                            } else if (qa.enrichedId) {
-                              setActiveFlow(null)
-                              setActiveQA(null)
-                              void handleEnrichedAction(qa.enrichedId, qa.label)
-                            } else if (qa.prompt) {
-                              setActiveFlow(null)
-                              setActiveQA(null)
-                              void send(qa.label, qa.prompt)
-                            }
-                          }}
-                          disabled={loading}
-                          style={{
-                            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-                            gap: 10, padding: '12px 14px', borderRadius: 12,
-                            border: '1px solid var(--border-mid)',
-                            background: 'var(--bg-card)',
-                            boxShadow: 'var(--shadow-card)',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            textAlign: 'left', width: '100%',
-                            opacity: loading ? 0.5 : 1,
-                            transition: 'box-shadow 0.18s, border-color 0.18s, transform 0.18s',
-                          }}
-                          onMouseEnter={e => { if (!loading) {
-                            const el = e.currentTarget as HTMLButtonElement
-                            el.style.borderColor = 'var(--primary)'
-                            el.style.boxShadow = '0 4px 16px rgba(6,182,212,0.10)'
-                            el.style.transform = 'translateY(-1px)'
-                          }}}
-                          onMouseLeave={e => {
-                            const el = e.currentTarget as HTMLButtonElement
-                            el.style.borderColor = 'var(--border-mid)'
-                            el.style.boxShadow = 'var(--shadow-card)'
-                            el.style.transform = 'translateY(0)'
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.3, marginBottom: 2 }}>
-                              {qa.label}
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--ai-dim)', lineHeight: 1.3 }}>
-                              {qa.sub}
-                            </div>
-                            {/* Modèle recommandé */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5 }}>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={qa.model === 'hermes' ? '/logos/logo_3bras.png' : qa.model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                                alt={mcfg.name}
-                                style={{ width: 12, height: 12, objectFit: 'contain', flexShrink: 0 }}
-                              />
-                              <span style={{ fontSize: 10, color: mcfg.color, fontFamily: 'DM Sans,sans-serif', opacity: 0.8 }}>
-                                {mcfg.name}
-                              </span>
-                            </div>
-                          </div>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 3 }}>
-                            <path d="M5 12h14M12 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {!showQuickActions && (
-                  <p
-                    style={{ fontSize: 11, color: 'var(--ai-dim)', textAlign: 'center', margin: '0 0 16px', cursor: 'pointer' }}
-                    onClick={() => { setShowQuickActions(true); localStorage.setItem('thw_ai_show_quick_actions', 'true') }}
-                  >
-                    Afficher les actions rapides
-                  </p>
-                )}
-
-                <p style={{ textAlign: 'center', color: 'var(--ai-dim)', fontSize: 11, paddingBottom: 14, margin: 0 }}>
-                  ou utilise + pour explorer toutes les options
+                  {mounted ? getGreeting() : 'Bonjour'}{userFirstName ? `, ${userFirstName}` : ''}
                 </p>
               </div>
             )}
@@ -20142,16 +20470,15 @@ export default function AIPanel({
                       {/* Bulle user / bulle IA */}
                       {msg.role === 'user' ? (
                         <>
-                          <div style={{
-                            alignSelf: 'flex-end', marginLeft: 'auto', maxWidth: '70%',
-                            background: '#06B6D4', color: '#ffffff',
+                          <div className="aip-user-bubble" style={{
+                            alignSelf: 'flex-end', marginLeft: 'auto', maxWidth: isDesktop ? '74%' : '90%',
                             borderRadius: '18px 18px 4px 18px',
-                            padding: '10px 16px',
-                            fontSize: 14, lineHeight: 1.5,
-                            wordBreak: 'break-word',
+                            padding: '11px 16px',
+                            fontSize: 15, lineHeight: 1.55,
+                            whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
                             animation: 'fadeUp 0.2s ease-out',
                           }}>
-                            {msg.content}
+                            {msg.content.replace(/^[ \t]*[-*]\s+/gm, '• ')}
                           </div>
                           {/* User avatar */}
                           <div style={{
@@ -20178,7 +20505,7 @@ export default function AIPanel({
                             borderRadius: 0,
                             boxShadow: 'none',
                             padding: 0,
-                            fontSize: 14, lineHeight: 1.65,
+                            fontSize: 16, lineHeight: 1.6,
                             color: 'var(--text)',
                             wordBreak: 'break-word',
                             animation: 'fadeUp 0.2s ease-out',
@@ -20194,7 +20521,7 @@ export default function AIPanel({
                                 ))}
                               </div>
                             ) : (
-                              <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily={chatFontFamily} />
+                              <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily="var(--font-display)" />
                             )}
                           </div>
                         )
@@ -20262,6 +20589,36 @@ export default function AIPanel({
                         text={msg.content}
                         isStreaming={loading && idx === active.msgs.length - 1}
                       />
+                    )}
+                    {/* Questions de clarification IA — carte interactive */}
+                    {msg.role === 'assistant' && msg.clarifyingQuestions && (
+                      <div style={{ marginLeft: 34 }}>
+                        <CoachQuestionCard
+                          data={msg.clarifyingQuestions}
+                          onSubmit={(recap) => {
+                            setConvs(prev => prev.map(c =>
+                              c.id === active.id
+                                ? { ...c, msgs: c.msgs.map(mm => mm.id === msg.id && mm.clarifyingQuestions ? { ...mm, clarifyingQuestions: { ...mm.clarifyingQuestions, answered: recap } } : mm) }
+                                : c
+                            ))
+                            void send(recap)
+                          }}
+                        />
+                      </div>
+                    )}
+                    {/* Aperçu de plan — à valider avant enregistrement */}
+                    {msg.role === 'assistant' && msg.planProposal && (
+                      <div style={{ marginLeft: 4, marginRight: 2 }}>
+                        <PlanProposalCard
+                          proposal={msg.planProposal}
+                          onValidate={() => { if (msg.planProposal) void validatePlanProposal(active.id, msg.id, msg.planProposal) }}
+                          onCancel={() => setConvs(prev => prev.map(c =>
+                            c.id === active.id
+                              ? { ...c, msgs: c.msgs.map(mm => mm.id === msg.id ? { ...mm, planProposal: undefined } : mm) }
+                              : c
+                          ))}
+                        />
+                      </div>
                     )}
 
                     {/* ── Message actions + timestamp (C1, C4) ─── */}
@@ -20374,7 +20731,7 @@ export default function AIPanel({
           {activeAgent === 'training' && <>
           <div className="aip-input-footer" style={{
             padding: '10px 16px 14px',
-            borderTop: '1px solid var(--ai-border)',
+            borderTop: showEmpty && !activeFlow ? 'none' : '1px solid var(--ai-border)',
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',
           }}>
@@ -20507,43 +20864,14 @@ export default function AIPanel({
                 />
               )}
 
-              {/* Recording overlay — B3 */}
+              {/* Dictée vocale — overlay plein écran (style image 4) */}
               {recording && (
-                <div style={{ padding: '12px 16px 8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 52 }}>
-                    {/* Cancel X */}
-                    <button onClick={cancelVoice} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#374151', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14, fontWeight: 700 }}>✕</button>
-                    {/* Sound wave — 20 bars */}
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2, height: 28, overflow: 'hidden' }}>
-                      {Array.from({ length: 20 }, (_, i) => (
-                        <span key={i} style={{
-                          display: 'inline-block', width: '4%', maxWidth: 4, height: '100%',
-                          borderRadius: 2, background: 'var(--ai-dim)', flexShrink: 0,
-                          animation: `ai_voice_bar ${0.6 + (i % 5) * 0.1}s ease-in-out infinite alternate`,
-                          animationDelay: `${(i * 0.05) % 0.5}s`,
-                          transformOrigin: 'bottom',
-                        }} />
-                      ))}
-                    </div>
-                    {/* Timer */}
-                    <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: 'var(--ai-dim)', flexShrink: 0 }}>
-                      {String(Math.floor(recSecs/60)).padStart(2,'0')}:{String(recSecs%60).padStart(2,'0')}
-                    </span>
-                    {/* Confirm ✓ — transfère la transcription */}
-                    <button onClick={confirmVoice} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#06B6D4', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>✓</button>
-                  </div>
-                  {/* Transcription temps réel */}
-                  <div style={{ marginTop: 6, maxHeight: 60, overflowY: 'auto', padding: '4px 0' }}>
-                    {!liveTranscript && !liveInterim ? (
-                      <span style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: 14 }}>À l&apos;écoute…</span>
-                    ) : (
-                      <span style={{ fontSize: 14, lineHeight: 1.5 }}>
-                        <span style={{ color: 'var(--text)' }}>{liveTranscript}</span>
-                        <span style={{ color: 'var(--text-mid)' }}>{liveInterim}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <VoiceOverlay
+                  transcript={liveTranscript}
+                  interim={liveInterim}
+                  onCancel={cancelVoice}
+                  onConfirm={confirmVoice}
+                />
               )}
 
               {/* Ligne basse : + · modèle · [spacer] · mic · envoyer */}
@@ -20577,22 +20905,24 @@ export default function AIPanel({
                       onClosePanel={onClose}
                       onForceModel={setModel}
                       onCamera={() => cameraRef.current?.click()}
+                      onPhotos={() => photosRef.current?.click()}
                       onFiles={() => filesRef.current?.click()}
+                      isMobile={!isDesktop}
                     />
                   )}
                 </div>
 
-                {/* Police */}
-                <FontPicker current={chatFontFamily} onChange={setChatFontFamily} />
-
                 {/* Sélecteur modèle */}
-                <ModelPicker model={model} onChange={setModel} disabled={loading} />
+                <ModelPicker model={model} onChange={setModel} disabled={loading} isMobile={!isDesktop} />
+
+                {/* Sélecteur de méthode d'entraînement */}
+                <MethodPicker method={method} onChange={setMethod} disabled={loading} isMobile={!isDesktop} />
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
 
                 {/* Jauge tokens — à gauche du micro */}
-                <TokenUsageBubble onBuyTokens={() => setTopupOpen(true)} currentModel={model} />
+                <TokenUsageBubble onBuyTokens={() => setTopupOpen(true)} currentModel={model} isMobile={!isDesktop} />
 
                 {/* Mic button — B3 (hidden if not supported) */}
                 {speechSupported && !loading && (

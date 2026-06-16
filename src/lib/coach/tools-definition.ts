@@ -31,6 +31,8 @@ export type CoachToolName =
   | 'move_session'
   | 'add_week'
   | 'update_plan_periodisation'
+  | 'ask_clarifying_questions'
+  | 'create_training_plan'
 
 // ── Types des inputs par tool ─────────────────────────────────
 
@@ -123,6 +125,36 @@ export interface UpdatePlanPeriodisationInput {
   blocs_periodisation: BlocPeriodisationInput[]
 }
 
+/** Question de clarification posée à l'athlète (carte interactive front) */
+export interface ClarifyingQuestionInput {
+  header: string          // étiquette courte ≤ 12 caractères
+  question: string        // intitulé complet
+  multiSelect: boolean    // plusieurs réponses possibles
+  options: { label: string; description?: string }[]
+}
+
+export interface AskClarifyingQuestionsInput {
+  questions: ClarifyingQuestionInput[]
+}
+
+/** Besoins de création de plan, réunis par le coach via les questions.
+ *  Le client complète avec les données réelles (zones, historique…) puis
+ *  génère le plan via /api/training-plan. */
+export interface CreateTrainingPlanInput {
+  name: string
+  objectif_principal: string
+  sport_principal: 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym'
+  niveau: string                 // débutant | intermédiaire | confirmé
+  duree_semaines: number
+  start_date: string             // YYYY-MM-DD (lundi de la 1re semaine)
+  seances_par_semaine: number
+  date_objectif?: string         // YYYY-MM-DD de la course cible
+  type_competition?: string
+  requirements_resume: string    // synthèse libre de tout ce que le coach a appris
+  methode?: string               // méthode choisie (polarisé, blocs, seuil…) — étape B
+  methodologie?: string          // la logique/approche raisonnée du coach, à suivre fidèlement
+}
+
 // ── Map CoachToolName → Input type ────────────────────────────
 
 export interface CoachToolInputMap {
@@ -132,6 +164,8 @@ export interface CoachToolInputMap {
   move_session:              MoveSessionInput
   add_week:                  AddWeekInput
   update_plan_periodisation: UpdatePlanPeriodisationInput
+  ask_clarifying_questions:  AskClarifyingQuestionsInput
+  create_training_plan:      CreateTrainingPlanInput
 }
 
 export type CoachToolInput<T extends CoachToolName> = CoachToolInputMap[T]
@@ -390,6 +424,90 @@ export const coachTools: Anthropic.Tool[] = [
         },
       },
       required: ['training_plan_id', 'blocs_periodisation'],
+    },
+  },
+
+  // ── 7. ask_clarifying_questions ──────────────────────────────
+  {
+    name: 'ask_clarifying_questions',
+    description:
+      "Pose des questions à choix multiples à l'athlète pour clarifier sa demande AVANT de répondre, " +
+      "quand une information DÉCISIVE manque (objectif, préférence, contrainte, échéance, niveau, " +
+      "ou une donnée requise absente de l'application). " +
+      "REGROUPE toutes les questions décisives en UN SEUL appel (1 à 6 questions). " +
+      "C'est le SEUL moyen autorisé de poser une question : jamais en texte libre, liste ou tableau. " +
+      "N'utilise PAS ce tool si la demande est déjà claire ou si l'information est présente dans le contexte. " +
+      "Ne le combine jamais avec un tool de modification du plan dans le même tour : pose d'abord, agis ensuite.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        questions: {
+          type: 'array',
+          description: '1 à 6 questions, uniquement les plus décisives, regroupées en un seul appel.',
+          items: {
+            type: 'object',
+            properties: {
+              header: {
+                type: 'string',
+                description: 'Étiquette très courte (≤ 12 caractères) affichée en chip, ex: "Objectif", "Volume".',
+              },
+              question: {
+                type: 'string',
+                description: 'La question complète, claire et spécifique. Se termine par un point d\'interrogation.',
+              },
+              multiSelect: {
+                type: 'boolean',
+                description: 'true si plusieurs réponses peuvent être sélectionnées, false sinon.',
+              },
+              options: {
+                type: 'array',
+                description: '2 à 4 choix distincts et mutuellement exclusifs (sauf multiSelect).',
+                items: {
+                  type: 'object',
+                  properties: {
+                    label:       { type: 'string', description: 'Choix court (1 à 5 mots).' },
+                    description: { type: 'string', description: 'Brève explication du choix (1 phrase). Optionnel.' },
+                  },
+                  required: ['label'],
+                },
+              },
+            },
+            required: ['header', 'question', 'multiSelect', 'options'],
+          },
+        },
+      },
+      required: ['questions'],
+    },
+  },
+
+  // ── 8. create_training_plan ──────────────────────────────────
+  {
+    name: 'create_training_plan',
+    description:
+      "Crée ET enregistre un plan d'entraînement complet, périodisé et détaillé pour l'athlète. " +
+      "Appelle ce tool UNIQUEMENT après avoir réuni les besoins décisifs via ask_clarifying_questions " +
+      "(objectif, durée, niveau, date de début, fréquence, préférences, points à travailler). " +
+      "Tu n'as PAS besoin de générer les séances toi-même ni de fournir d'identifiant : le système " +
+      "génère le plan détaillé à partir de ces besoins ET de TOUTES les données réelles de l'athlète " +
+      "(zones, historique d'entraînement, performances, courses, métriques santé). " +
+      "Transmets simplement une synthèse complète des besoins dans requirements_resume.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        name:               { type: 'string', description: 'Nom court du plan (ex: "Prépa cyclisme 12 sem").' },
+        objectif_principal: { type: 'string', description: "Objectif principal du plan en une phrase." },
+        sport_principal:    { type: 'string', enum: [...SPORT_ENUM], description: "Sport principal : 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym'." },
+        niveau:             { type: 'string', description: 'Niveau de l\'athlète : débutant | intermédiaire | confirmé.' },
+        duree_semaines:     { type: 'integer', description: 'Durée totale du plan en semaines.' },
+        start_date:         { type: 'string', description: 'Date du lundi de la 1re semaine, format YYYY-MM-DD.' },
+        seances_par_semaine:{ type: 'integer', description: 'Nombre de séances par semaine souhaité.' },
+        date_objectif:      { type: 'string', description: 'Date de la course cible YYYY-MM-DD (optionnel).' },
+        type_competition:   { type: 'string', description: 'Type de compétition / objectif (optionnel).' },
+        requirements_resume:{ type: 'string', description: 'Synthèse libre et complète de TOUT ce que tu as appris des besoins de l\'athlète (préférences, contraintes, points faibles à travailler, jours dispo, équipement…). Plus c\'est riche, meilleur sera le plan.' },
+        methode:            { type: 'string', description: 'Méthode d\'entraînement retenue (ex: polarisé, pyramidal, par blocs, axé seuil/sweet spot). Si l\'athlète t\'a laissé choisir, indique celle que tu as sélectionnée.' },
+        methodologie:       { type: 'string', description: 'TA logique de coach validée avec l\'athlète : approche par sport et par phase, et le POURQUOI. Le générateur la suivra fidèlement. Sois précis et concret.' },
+      },
+      required: ['name', 'objectif_principal', 'sport_principal', 'niveau', 'duree_semaines', 'start_date', 'seances_par_semaine', 'requirements_resume', 'methodologie'],
     },
   },
 ]

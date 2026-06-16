@@ -43,15 +43,19 @@ const SPORT_ICON: Record<SportKey, { Icon: ComponentType<{ size?: number; color?
 export function SportIcon({
   sport,
   size = 40,
+  circle = true,
 }: {
   sport: SportKey | string
   size?: number
+  circle?: boolean
 }) {
   // Accepte une SportKey directe OU un SportType de l'app (gym, elliptique, running…)
   const key = (sport in SPORT_ICON ? sport : sportKeyFromType(sport)) as SportKey | null
   const cfg = key ? SPORT_ICON[key] : undefined
   if (!cfg) return null
   const { Icon, color } = cfg
+  // Variante « nue » : juste le pictogramme dans la couleur du sport, sans pastille.
+  if (!circle) return <Icon size={size} color={color} stroke={2.2} />
   const inner = Math.round(size * 0.56)
   return (
     <span

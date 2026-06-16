@@ -18,9 +18,10 @@
 // ══════════════════════════════════════════════════════════════
 
 export const runtime     = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300
 
 import { NextRequest } from 'next/server'
+import type Anthropic from '@anthropic-ai/sdk'
 import { getAnthropicClient } from '@/lib/agents/base'
 import { buildChatParams } from '@/lib/agents/chatAgent'
 import type { ChatInput } from '@/lib/coach-engine/schemas'
@@ -32,6 +33,8 @@ import { TIER_LIMITS, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/ti
 import { getActiveCompetencesPrompt } from '@/lib/ai/competences'
 import { getUserTokenLimits, recordTokenUsage } from '@/lib/tokens/limits'
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
+import { methodsIndexText } from '@/lib/coach/methods'
+import { buildDoctrineForChat } from '@/lib/coach/doctrine/registry'
 
 // ── System prompts côté serveur ───────────────────────────────
 
@@ -104,13 +107,37 @@ const SPORT_CONTEXT: Record<string, string> = {
 // ── Instructions tool use — ajoutées au system prompt chat ────
 
 const TOOL_INSTRUCTIONS = `
-Tu as accès à des outils pour modifier directement le plan d'entraînement de l'athlète.
+OUTIL ask_clarifying_questions — POSER LES BONNES QUESTIONS (comportement de coach expert) :
+Avant de répondre à une demande importante (créer/ajuster un plan, analyser une situation, choisir un objectif, bâtir une stratégie), assure-toi d'avoir les informations DÉCISIVES. C'est ton intelligence de coach : savoir, selon la situation, ce qui manque vraiment.
+
+RÈGLES IMPÉRATIVES :
+1. TOUTE question de clarification passe OBLIGATOIREMENT par le tool ask_clarifying_questions (cartes à choix). Tu ne poses JAMAIS de question en texte libre, ni en liste, ni en tableau Markdown. Si tu as besoin d'infos → tu appelles le tool, point.
+2. REGROUPE toutes les questions décisives en UN SEUL appel (jusqu'à 6 questions pour les cas riches comme la création d'un plan : objectif, durée, niveau, date de début, type de compétition, fréquence…). Ne fais pas plusieurs tours successifs.
+3. Après avoir reçu les réponses → GÉNÈRE directement ta réponse / ton plan. N'ouvre PAS un nouveau tour de questions, sauf si une réponse révèle une information réellement bloquante (et dans ce cas encore : via le tool, jamais en texte).
+4. Pour les détails MINEURS manquants → ne demande pas, choisis une valeur standard raisonnable et ÉNONCE ton hypothèse dans la réponse.
+5. Données (zones, FC, FTP, historique…) : utilise EN PRIORITÉ le contexte. Si une donnée est absente, pars sur des intensités/valeurs relatives et indique brièvement où la renseigner — n'en fais JAMAIS un interrogatoire.
+6. Ne redemande jamais une donnée déjà présente dans le contexte. Si la demande est déjà claire et complète → réponds DIRECTEMENT, sans aucune question.
+7. Ne combine pas ask_clarifying_questions avec un tool de modification du plan dans le même tour : pose d'abord, agis au tour suivant.
+
+Tu as aussi accès à des outils pour modifier directement le plan d'entraînement de l'athlète.
 Quand l'athlète te demande d'ajouter, modifier, supprimer ou déplacer une séance, ou de modifier la périodisation, utilise le tool approprié.
 Ne dis JAMAIS à l'athlète de faire les modifications lui-même — tu as les outils pour le faire.
 Avant d'appeler un tool, explique brièvement ce que tu vas faire. Exemple : "Je vais ajouter une séance de natation mardi S3."
 Si la demande est ambiguë (quelle semaine ? quel jour ?), pose une question de clarification AVANT d'appeler le tool.
 
 RÈGLE CRITIQUE — CHOIX DU BON TOOL :
+- N'INVENTE JAMAIS un identifiant (training_plan_id, session_id). Utilise UNIQUEMENT les UUID réels présents dans le contexte. N'écris jamais de valeur factice comme "current-plan" ou "plan-1".
+- CRÉER un nouveau plan → tool create_training_plan. Le système génère le plan détaillé à partir de TA méthodologie ET de toutes les données réelles de l'athlète (zones, historique, performances, COURSES/objectif du calendrier, santé). Tu n'as ni à générer les séances ni à fournir d'identifiant.
+
+  COMPORTEMENT DE COACH EXPERT — OBLIGATOIRE :
+  1. NE REDEMANDE JAMAIS ce que l'app connaît déjà : l'objectif et la date de course sont dans le calendrier ; les zones, performances et l'historique sont en base. Déduis-les. Ne pose de questions QUE sur l'inconnu subjectif : blessures/gênes non enregistrées, préférences, jours disponibles/indisponibles, et le choix de méthode.
+  2. CHOIX DE MÉTHODE (via ask_clarifying_questions) : propose 2-3 méthodes pertinentes (voir BIBLIOTHÈQUE), PLUS l'option « Choisis pour moi (selon mes données) » et « Je décris ma façon de m'entraîner ». Si « Choisis pour moi » → sélectionne la meilleure méthode d'après ses données et justifie-la. Si « Je décris » → adapte-toi à sa description.
+  3. PROPOSE TA MÉTHODOLOGIE : raisonne comme un coach d'élite (forme actuelle, base déjà acquise, blessures, dénivelé de la course, échéance) et bâtis une logique SUR-MESURE, sport par sport, en expliquant le POURQUOI. C'est TOI qui guides l'athlète.
+  4. Appelle create_training_plan en remplissant : methodologie (ta logique détaillée et justifiée, sport par sport — le générateur la suit fidèlement), methode (méthode retenue), requirements_resume (tout le reste : préférences, contraintes, blessures, jours…).
+
+${methodsIndexText()}
+Choisis/propose selon le sport, l'objectif, le temps disponible et le profil. Si une MÉTHODE RETENUE est précisée plus bas, applique-la.
+- MODIFIER un plan existant (add_session / add_week / update_plan_periodisation / move / delete) → uniquement si un training_plan_id ou session_id RÉEL figure dans le contexte. S'il n'y en a pas, ne tente pas de modifier : crée un plan (create_training_plan) ou réponds en texte.
 - Si une semaine est marquée "⚠️ AUCUNE SÉANCE — semaine vide" → utilise OBLIGATOIREMENT add_week pour créer cette semaine.
 - Si une séance a déjà un id: → utilise update_session pour la modifier ou move_session pour la déplacer.
 - Ne jamais appeler update_session sur une séance qui n'existe pas (pas d'id). Ce serait une erreur.
@@ -297,12 +324,58 @@ export async function POST(req: NextRequest) {
     return new Response('No messages provided', { status: 400 })
   }
 
-  const { systemPrompt: chatSystemPrompt, anthropicMessages } = buildChatParams({
-    ...chatBody,
-    aiRules: chatBody.aiRules ?? [],
-  })
+  let chatSystemPrompt: string
+  let anthropicMessages: { role: string; content: unknown }[]
+  try {
+    const built = buildChatParams({ ...chatBody, aiRules: chatBody.aiRules ?? [] })
+    chatSystemPrompt = built.systemPrompt
+    anthropicMessages = built.anthropicMessages as { role: string; content: unknown }[]
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error('[coach-stream] buildChatParams failed:', msg)
+    return new Response(JSON.stringify({ error: `Préparation: ${msg}` }), { status: 502, headers: { 'Content-Type': 'application/json' } })
+  }
+
+  // ── Assainir l'historique pour l'API : pas de contenu vide, rôles alternés ──
+  // (les flux questions/plan ajoutent parfois des messages assistant consécutifs
+  //  ou vides → l'API Anthropic rejette ces cas. On fusionne / nettoie.)
+  anthropicMessages = (() => {
+    const out: { role: string; content: unknown }[] = []
+    for (const m of anthropicMessages) {
+      const isStr = typeof m.content === 'string'
+      const txt = isStr ? (m.content as string).trim() : m.content
+      if (isStr && !txt) continue                    // drop message vide
+      const last = out[out.length - 1]
+      if (last && last.role === m.role && isStr && typeof last.content === 'string') {
+        last.content = `${last.content}\n\n${txt as string}`   // fusionne rôles consécutifs
+      } else {
+        out.push({ role: m.role, content: isStr ? txt : m.content })
+      }
+    }
+    while (out.length && out[0].role !== 'user') out.shift()   // doit commencer par user
+    return out
+  })()
+  if (!anthropicMessages.length) {
+    return new Response(JSON.stringify({ error: 'Conversation vide après nettoyage.' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+  }
+
   const client = getAnthropicClient()
   let systemWithTools = `${chatSystemPrompt}\n\n${TOOL_INSTRUCTIONS}`
+
+  // ── Doctrine ciblée injectée (principes + méthode choisie + doc selon mots-clés) ──
+  if ((chatBody as { agentId?: string }).agentId === 'central') {
+    try {
+      const selectedMethod = (chatBody as { method?: string }).method
+      const lastUser = [...(chatBody.messages ?? [])].reverse().find(m => m.role === 'user')
+      const doctrine = buildDoctrineForChat({
+        methodId: selectedMethod,
+        lastUserMessage: typeof lastUser?.content === 'string' ? lastUser.content : '',
+      })
+      if (doctrine) systemWithTools = `${systemWithTools}${doctrine}`
+    } catch (e) {
+      console.error('[coach-stream] doctrine injection failed:', e)
+    }
+  }
 
   // ── Compétences actives — uniquement agent Training (agentId 'central') ──
   if ((chatBody as { agentId?: string }).agentId === 'central') {
@@ -333,14 +406,26 @@ export async function POST(req: NextRequest) {
     console.error('[coach-stream] token pre-check failed (fail-open):', e)
   }
 
-  const response = await client.messages.create({
-    model,
-    max_tokens: maxTokens,
-    system: systemWithTools,
-    messages: anthropicMessages,
-    tools: coachTools,
-    tool_choice: { type: 'auto' },
-  })
+  let response
+  try {
+    response = await client.messages.create({
+      model,
+      max_tokens: maxTokens,
+      system: systemWithTools,
+      messages: anthropicMessages as Anthropic.MessageParam[],
+      tools: coachTools,
+      tool_choice: { type: 'auto' },
+    })
+  } catch (e) {
+    // Remonte l'erreur réelle (taille de prompt, surcharge API, timeout…) au lieu d'un 500 muet
+    const msg = e instanceof Error ? e.message : String(e)
+    const status = (e as { status?: number })?.status ?? 500
+    console.error('[coach-stream] anthropic call failed:', status, msg)
+    return new Response(JSON.stringify({ error: `IA: ${msg}` }), {
+      status: status === 429 ? 429 : 502,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
 
   // ── Enregistrement de la consommation réelle (best-effort, pondéré modèle) ──
   try {

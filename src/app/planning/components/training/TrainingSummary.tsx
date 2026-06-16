@@ -24,7 +24,7 @@ const hms = (min: number) => { const m = Math.max(0, Math.round(min)); return `$
 const hh = (h: number) => hms(h * 60)
 const mm = (min: number) => hms(min)
 
-interface SportStat { sport: string; doneH: number; plannedH: number; doneTSS: number; plannedTSS: number }
+interface SportStat { sport: string; doneH: number; plannedH: number; doneTSS: number; plannedTSS: number; doneSM: number; plannedSM: number; doneSN: number; plannedSN: number }
 interface SportCount { sport: string; done: number; planned: number }
 interface Sess { id: string; sport: string; title: string; time: string; durationMin: number; tss?: number | null; status: string }
 
@@ -32,6 +32,7 @@ interface Props<S extends Sess> {
   plannedMin: number; doneMin: number
   plannedN: number; doneN: number
   plannedTSS: number; doneTSS: number
+  plannedSM: number; doneSM: number; plannedSN: number; doneSN: number
   sportCounts: SportCount[]
   sportStats: SportStat[]
   today: { day: string; date: string } | null
@@ -60,13 +61,8 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
   const volPct = p.plannedMin ? Math.min(p.doneMin / p.plannedMin * 100, 100) : 0
   // Si doneTSS=0 (séances pas encore done + pas d'activités Strava), on affiche la charge
   // planifiée dans la jauge pour qu'elle ne reste pas vide. Sinon ratio done/planned classique.
-  const tssPct = p.plannedTSS > 0
-    ? Math.min((p.doneTSS > 0 ? p.doneTSS : p.plannedTSS) / p.plannedTSS * 100, 100)
-    : 0
-  // Debug — à retirer une fois validé sur 3 semaines réelles
-  if (typeof window !== 'undefined') {
-    console.log('[TSS debug]', { plannedTSS: p.plannedTSS, doneTSS: p.doneTSS, tssPct })
-  }
+  const smPct = p.plannedSM > 0 ? Math.min((p.doneSM > 0 ? p.doneSM : p.plannedSM) / p.plannedSM * 100, 100) : 0
+  const snPct = p.plannedSN > 0 ? Math.min((p.doneSN > 0 ? p.doneSN : p.plannedSN) / p.plannedSN * 100, 100) : 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
@@ -95,13 +91,16 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
           </div>
         </div>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <p style={label}>TSS</p>
-            <button onClick={p.onOpen10w} style={w10}>10 sem.</button>
-          </div>
-          <p style={prevu}>Prévu {p.plannedTSS} pts</p>
-          <p className="tnum" style={big}><CountUp value={p.doneTSS} /> pts</p>
-          <AnimatedBar pct={tssPct} color="var(--text-mid)" height={5} />
+          <p style={label}>SM <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>métab.</span></p>
+          <p style={prevu}>Prévu {p.plannedSM}</p>
+          <p className="tnum" style={{ ...big, color: 'var(--primary)' }}><CountUp value={p.doneSM} /></p>
+          <AnimatedBar pct={smPct} color="var(--primary)" height={5} />
+        </div>
+        <div>
+          <p style={label}>SN <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>neuro.</span></p>
+          <p style={prevu}>Prévu {p.plannedSN}</p>
+          <p className="tnum" style={{ ...big, color: 'var(--sport-gym)' }}><CountUp value={p.doneSN} /></p>
+          <AnimatedBar pct={snPct} color="var(--sport-gym)" height={5} />
         </div>
       </div>
 
@@ -111,10 +110,7 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
           <p style={{ ...label, marginBottom: 'var(--space-3)' }}>Volume par discipline</p>
           {p.sportStats.map(s => {
             const volPct = s.plannedH > 0 ? Math.min(s.doneH / s.plannedH * 100, 100) : 0
-            // Fallback: si doneTSS=0 sur ce sport, on remplit avec la charge planifiée
-            const tssPct = s.plannedTSS > 0
-              ? Math.min((s.doneTSS > 0 ? s.doneTSS : s.plannedTSS) / s.plannedTSS * 100, 100)
-              : 0
+            const smPctS = s.plannedSM > 0 ? Math.min((s.doneSM > 0 ? s.doneSM : s.plannedSM) / s.plannedSM * 100, 100) : 0
             const c = sv(s.sport)
             return (
               <div key={s.sport} style={{ marginBottom: 'var(--space-4)' }}>
@@ -127,9 +123,9 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
                   <span className="tnum" style={valS}><strong style={strongS}>{hh(s.doneH)}</strong> / {hh(s.plannedH)}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                  <span style={miniLbl}>TSS</span>
-                  <div style={track}><div style={{ width: `${tssPct}%`, height: '100%', borderRadius: 3, background: c, opacity: 0.55, animation: 'barFill 0.9s cubic-bezier(0.25,1,0.5,1) both' }} /></div>
-                  <span className="tnum" style={valS}><strong style={strongS}>{Math.round(s.doneTSS)}</strong> / {s.plannedTSS > 0 ? Math.round(s.plannedTSS) : '--'} pts</span>
+                  <span style={miniLbl}>SM</span>
+                  <div style={track}><div style={{ width: `${smPctS}%`, height: '100%', borderRadius: 3, background: 'var(--primary)', animation: 'barFill 0.9s cubic-bezier(0.25,1,0.5,1) both' }} /></div>
+                  <span className="tnum" style={valS}><strong style={strongS}>{Math.round(s.doneSM)}</strong> / {s.plannedSM > 0 ? Math.round(s.plannedSM) : '--'} · SN {Math.round(s.doneSN)}</span>
                 </div>
               </div>
             )

@@ -928,6 +928,95 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
   )
 }
 
+// ── Saisie allure/watts : helpers + champ stepper (− / valeur / +) ──
+function paceToSec(s: string): number { const m = (s || '').match(/^(\d+):(\d{1,2})$/); return m ? (+m[1]) * 60 + (+m[2]) : NaN }
+function secToPace(n: number): string { const x = Math.max(0, Math.round(n)); return `${Math.floor(x / 60)}:${String(x % 60).padStart(2, '0')}` }
+// Incrémente une allure mm:ss de ±5s, ou une valeur numérique (watts) de ±5.
+function bumpPaceOrWatts(v: string, steps: number): string {
+  const sec = paceToSec(v)
+  if (!isNaN(sec)) return secToPace(sec + steps * 5)
+  const n = parseInt(v || '0') || 0
+  return String(Math.max(0, n + steps * 5))
+}
+// Durée affichée en m:ss (durationMin = minutes décimales). Pas de 15 s.
+function durMMSS(min: number): string { const s = Math.max(0, Math.round((min || 0) * 60)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
+function mmssToMin(v: string): number { const m = (v || '').match(/^(\d+):(\d{1,2})$/); if (m) return (+m[1]) + (+m[2]) / 60; const n = parseFloat(v || '0'); return isNaN(n) ? 0 : n }
+function bumpDurSec(min: number, steps: number): number { const s = Math.max(0, Math.round((min || 0) * 60) + steps * 15); return Math.round(s) / 60 }
+// Estimation SM (métabolique) / SN (neuromusculaire) « prévu » depuis les blocs (déterministe,
+// proxy par zone — l'app calcule le réel sur l'activité terminée). Remplace l'ancien TSS.
+const SM_COEF = [0.6, 0.85, 1.05, 1.25, 1.45, 1.55, 1.62]
+const SN_COEF = [0, 0, 0.08, 0.25, 0.6, 1.1, 1.7]
+function estimateSmSn(blocks: { mode?: string; zone?: number; durationMin?: number; reps?: number; effortMin?: number; recoveryMin?: number }[], durationMin: number): { sm: number; sn: number } {
+  let sm = 0, sn = 0, acc = 0
+  for (const b of blocks) {
+    const z = Math.max(1, Math.min(7, b.zone || 1))
+    const isIv = b.mode === 'interval' && !!b.reps && b.effortMin != null
+    const totMin = isIv ? (b.reps as number) * ((b.effortMin as number) + (b.recoveryMin || 0)) : (b.durationMin || 0)
+    const effMin = isIv ? (b.reps as number) * (b.effortMin as number) : (b.durationMin || 0)
+    sm += totMin * SM_COEF[z - 1]
+    sn += effMin * SN_COEF[z - 1]
+    acc += totMin
+  }
+  if (acc === 0 && durationMin > 0) sm = durationMin
+  return { sm: Math.round(sm), sn: Math.round(sn) }
+}
+
+// ── Compte rendu : image (story) téléchargeable ──
+interface CrRow { color: string; name: string; detail: string }
+function crEsc(t: string) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
+function buildCompteRenduSVG(o: { title: string; subtitle: string; sm: number; sn: number; durLabel: string; rightLabel: string; rightVal: string; rows: CrRow[] }): { svg: string; w: number; h: number } {
+  const W = 620, BG = '#0A0D14', CARD = '#0E121A', LINE = 'rgba(255,255,255,0.09)', TX = '#F2F5F9', MID = 'rgba(242,245,249,0.55)', DIM = 'rgba(242,245,249,0.38)', CY = '#22D3EE', VIO = '#A78BFA'
+  const top = 250, rowH = 66, foot = 78
+  const H = top + Math.max(1, o.rows.length) * rowH + foot
+  const T = (x: number, y: number, t: string, s: number, f: string, w = 400, a = 'start', mono = false) => `<text x="${x}" y="${y}" font-family="${mono ? 'monospace' : 'Inter,Arial,sans-serif'}" font-size="${s}" font-weight="${w}" fill="${f}" text-anchor="${a}">${crEsc(t)}</text>`
+  let s = `<rect width="${W}" height="${H}" fill="${BG}"/>`
+  s += `<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="${CY}"/><stop offset="1" stop-color="${VIO}"/></linearGradient></defs>`
+  s += `<rect x="34" y="34" width="36" height="36" rx="10" fill="url(#g)"/>` + T(52, 59, 'T', 20, '#06121A', 800, 'middle')
+  s += T(82, 50, 'THW COACHING', 12, TX, 800) + T(82, 66, 'Compte rendu de séance', 10, DIM)
+  s += `<line x1="34" y1="90" x2="${W - 34}" y2="90" stroke="${LINE}"/>`
+  s += T(34, 134, o.title, 27, TX, 800) + T(34, 158, o.subtitle, 13, MID)
+  // stats
+  const cells = [['SM', String(o.sm), CY], ['SN', String(o.sn), VIO], ['DURÉE', o.durLabel, TX], [o.rightLabel, o.rightVal, TX]]
+  const cw = (W - 68 - 30) / 4
+  cells.forEach((c, i) => { const x = 34 + i * (cw + 10); s += `<rect x="${x}" y="178" width="${cw}" height="56" rx="12" fill="${CARD}" stroke="${LINE}"/>` + T(x + 12, 200, c[0], 9, DIM, 700) + T(x + 12, 224, c[1], c[1].length > 5 ? 16 : 20, c[2], 700, 'start', true) })
+  // rows
+  let y = top
+  if (o.rows.length === 0) s += T(34, y + 20, 'Aucun bloc pour le moment.', 13, DIM)
+  o.rows.forEach(r => {
+    s += `<rect x="34" y="${y}" width="${W - 68}" height="${rowH - 8}" rx="12" fill="${CARD}" stroke="${LINE}"/>`
+    s += `<rect x="48" y="${y + 14}" width="6" height="${rowH - 36}" rx="3" fill="${r.color}"/>`
+    s += T(70, y + 26, r.name, 15, TX, 700) + T(70, y + 45, r.detail, 12, MID)
+    y += rowH
+  })
+  s += `<line x1="34" y1="${H - 60}" x2="${W - 34}" y2="${H - 60}" stroke="${LINE}"/>`
+  s += T(34, H - 32, 'thw-coaching.app', 12, MID, 700) + T(W - 34, H - 32, 'Généré par THW Coaching', 11, DIM, 400, 'end')
+  return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}</svg>`, w: W, h: H }
+}
+
+function StepperField({ label, unit, value, onChange, onDec, onInc, color = 'var(--text)', placeholder, headerRight }: {
+  label: string; unit?: string; value: string; onChange: (v: string) => void; onDec: () => void; onInc: () => void
+  color?: string; placeholder?: string; headerRight?: React.ReactNode
+}) {
+  const btn: React.CSSProperties = { width: 28, flexShrink: 0, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 17, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none', padding: 0 }
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, minHeight: 14 }}>
+        <p style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>{label}</p>
+        {headerRight}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'stretch', height: 34 }}>
+        <button type="button" onClick={onDec} style={{ ...btn, borderRadius: '8px 0 0 8px', borderRight: 'none' }}>−</button>
+        <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex', alignItems: 'center', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
+          <input value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)}
+            style={{ width: '100%', minWidth: 0, textAlign: 'center', background: 'transparent', border: 'none', outline: 'none', color, fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-display)', padding: unit ? '0 16px 0 4px' : '0 4px' }} />
+          {unit && <span style={{ position: 'absolute', right: 5, fontSize: 8.5, color: 'var(--text-dim)', pointerEvents: 'none' }}>{unit}</span>}
+        </div>
+        <button type="button" onClick={onInc} style={{ ...btn, borderRadius: '0 8px 8px 0', borderLeft: 'none' }}>+</button>
+      </div>
+    </div>
+  )
+}
+
 function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, athleteData }: {
   sport: SportType; blocks: Block[]; onChange: (b: Block[]) => void
   nutritionItems?: Array<{ timeMin: number; name: string; type: string; glucidesG: number }>
@@ -964,6 +1053,46 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
   const zg  = (z: number) => ZONE_GRAD[Math.max(0, Math.min(6, z - 1))]
   const zh  = (z: number) => ZONE_H[Math.max(0, Math.min(6, z - 1))]
   const znm = (z: number) => ZONE_NMS[Math.max(0, Math.min(6, z - 1))]
+
+  // ── Profil éditable (style Zwift) : glisser vertical = zone, bord droit = durée ──
+  const maxZone = (sport === 'bike' || sport === 'elliptique') ? 7 : 5
+  const blockMin = (b: Block) => b.mode === 'interval' && b.reps && b.effortMin != null ? (b.reps as number) * ((b.effortMin as number) + (b.recoveryMin || 0)) : (b.durationMin || 0)
+  const barsRef = useRef<HTMLDivElement | null>(null)
+  const pdrag = useRef<{ id: string; mode: 'zone' | 'dur'; el: HTMLElement; startX: number; rowW: number; rowBottom: number; usableH: number; totalMin: number; baseMin: number } | null>(null)
+  function profileMove(e: PointerEvent) {
+    const d = pdrag.current; if (!d) return
+    if (d.mode === 'zone') {
+      const ratio = Math.max(0, Math.min(1, (d.rowBottom - e.clientY) / d.usableH))
+      const z = Math.max(1, Math.min(maxZone, Math.round(ratio * maxZone)))
+      d.el.style.height = `${(z / maxZone) * d.usableH}px`; d.el.style.background = zc(z); d.el.dataset.z = String(z)
+    } else {
+      const perMin = d.rowW / d.totalMin
+      const m = Math.max(1, d.baseMin + Math.round((e.clientX - d.startX) / perMin))
+      d.el.style.flexGrow = String(m); d.el.dataset.m = String(m)
+    }
+  }
+  function profileUp() {
+    const d = pdrag.current; if (!d) return
+    window.removeEventListener('pointermove', profileMove); window.removeEventListener('pointerup', profileUp)
+    const z = parseInt(d.el.dataset.z || '0'), m = parseInt(d.el.dataset.m || '0')
+    onChange(blocks.map(b => {
+      if (b.id !== d.id) return b
+      const nb = { ...b }
+      if (d.mode === 'zone' && z) nb.zone = z
+      if (d.mode === 'dur' && m) { if (b.mode === 'interval' && b.reps) nb.effortMin = Math.max(0.5, m / b.reps - (b.recoveryMin || 0)); else nb.durationMin = m }
+      return nb
+    }))
+    pdrag.current = null
+  }
+  function profileDown(e: React.PointerEvent, b: Block, mode: 'zone' | 'dur') {
+    if (!barsRef.current) return
+    e.preventDefault(); e.stopPropagation()
+    const el = (e.currentTarget as HTMLElement).closest('[data-pbar]') as HTMLElement | null; if (!el) return
+    const rect = barsRef.current.getBoundingClientRect()
+    pdrag.current = { id: b.id, mode, el, startX: e.clientX, rowW: rect.width, rowBottom: rect.bottom, usableH: rect.height, totalMin: blocks.reduce((a, x) => a + blockMin(x), 0) || 1, baseMin: blockMin(b) }
+    el.dataset.z = String(b.zone); el.dataset.m = String(blockMin(b))
+    window.addEventListener('pointermove', profileMove); window.addEventListener('pointerup', profileUp)
+  }
 
   function addSingle() {
     onChange([...blocks, { id: `b_${Date.now()}`, mode: 'single', type: 'effort', durationMin: 10, zone: 3, value: sport === 'bike' ? '220' : '4:30', hrAvg: '', label: 'Bloc' }])
@@ -1021,6 +1150,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
 
   // ── Métriques header ──
   const tssCurrent = computeTSSRange(blocks, sport, totalBlocks, 5, null).high
+  const smsnBB = estimateSmSn(blocks, totalBlocks)
   const npWatts = (() => {
     if (sport !== 'bike' || blocks.length === 0) return null
     const IF_Z = [0.55,0.70,0.83,0.95,1.10,1.20,1.35]
@@ -1051,96 +1181,27 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
           {/* 3-metric row */}
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: '#9CA3AF', margin: '0 0 2px' }}>TSS Estimé</p>
-              <p style={{ fontSize: 18, fontWeight: 800, color: '#3B82F6', fontFamily: 'DM Mono,monospace', margin: 0 }}>{tssCurrent}<span style={{ fontSize: 10, fontWeight: 400, color: '#9CA3AF', marginLeft: 3 }}>pts</span></p>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>SM<span style={{ fontSize: 8, color: 'var(--text-dim)' }}> métab.</span></p>
+              <p style={{ fontSize: 19, fontWeight: 700, color: '#06B6D4', fontFamily: 'var(--font-display)', margin: 0 }}>{smsnBB.sm}</p>
             </div>
             <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: '#9CA3AF', margin: '0 0 2px' }}>Durée Totale</p>
-              <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono,monospace', margin: 0 }}>{formatHM(Math.round(totalBlocks))}</p>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>SN<span style={{ fontSize: 8, color: 'var(--text-dim)' }}> neuro.</span></p>
+              <p style={{ fontSize: 19, fontWeight: 700, color: '#8B5CF6', fontFamily: 'var(--font-display)', margin: 0 }}>{smsnBB.sn}</p>
             </div>
             <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: '#9CA3AF', margin: '0 0 2px' }}>Intensité Moy.</p>
-              <p style={{ fontSize: 18, fontWeight: 800, color: zc(dominantZone), fontFamily: 'DM Mono,monospace', margin: 0 }}>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>Durée</p>
+              <p style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', margin: 0 }}>{formatHM(Math.round(totalBlocks))}</p>
+            </div>
+            <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
+            <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>Intensité Moy.</p>
+              <p style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', margin: 0 }}>
                 {npWatts ? `${npWatts}W` : '—'}
-                {ifVal && <span style={{ fontSize: 10, fontWeight: 400, color: '#9CA3AF', marginLeft: 4 }}>IF {ifVal}</span>}
+                {ifVal && <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 4 }}>IF {ifVal}</span>}
               </p>
             </div>
-          </div>
-          {/* TSS gauge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px 0' }}>
-            <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
-              <div style={{ width: `${tssGaugePct}%`, height: '100%', background: tssGaugeColor, borderRadius: 2, transition: 'width 0.4s ease' }} />
-            </div>
-            <span style={{ fontSize: 9, fontWeight: 600, color: tssGaugeColor, flexShrink: 0, minWidth: 58, textAlign: 'right' as const }}>{tssLevel}</span>
-          </div>
-          {/* Skyline intensity bar */}
-          <div style={{ position: 'relative', padding: '10px 14px 0' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-end', height: 32 }}>
-              {bars.map((bar, bIdx) => {
-                const wp   = (bar.min / totalMin) * 100
-                const h    = bar.isRecovery ? 4 : zh(bar.zone)
-                const isHv = hoveredBar?.block.id === bar.block.id
-                return (
-                  <div key={bar.id}
-                    onMouseEnter={e => {
-                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                      setHoveredBar({ x: rect.left + rect.width / 2, y: rect.top, block: bar.block, isRecovery: bar.isRecovery })
-                      setHoveredBlockId(bar.block.id)
-                    }}
-                    onMouseLeave={() => { setHoveredBar(null); setHoveredBlockId(null) }}
-                    style={{
-                      width: `${wp}%`, minWidth: 2, height: h, flexShrink: 0,
-                      background: bar.isRecovery ? 'rgba(156,163,175,0.25)' : zg(bar.zone),
-                      borderRadius: '4px 4px 0 0',
-                      borderRight: bIdx < bars.length - 1 ? '1px solid rgba(255,255,255,0.45)' : 'none',
-                      transform: isHv ? 'translateY(-2px)' : 'none',
-                      transition: 'transform 0.12s',
-                      cursor: 'pointer',
-                    }}
-                  />
-                )
-              })}
-            </div>
-            {/* FC gauge line */}
-            {hasFC && (
-              <div style={{ display: 'flex', height: 4, marginTop: 2 }}>
-                {bars.map(bar => {
-                  const hr = parseInt(bar.block.hrAvg ?? '') || 0
-                  const col = hr <= 0 ? 'transparent' : hr < 130 ? '#9CA3AF' : hr < 145 ? '#10B981' : hr < 160 ? '#FBBF24' : hr < 175 ? '#F97316' : '#EF4444'
-                  return <div key={`fc_${bar.id}`} style={{ flex: bar.min, background: col, opacity: hr > 0 ? 0.75 : 0 }} />
-                })}
-              </div>
-            )}
-            {/* Nutrition overlays */}
-            {(nutritionItems ?? []).filter(m => m.timeMin > 0).map((m, i) => {
-              const leftPct = (m.timeMin / totalMin) * 100
-              if (leftPct > 100 || leftPct < 0) return null
-              const accentCol = SPORT_BORDER[sport]
-              return (
-                <div key={`nut_${i}`} style={{ position: 'absolute' as const, left: `${leftPct}%`, top: 0, bottom: 0, pointerEvents: 'none' as const, zIndex: 5, display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
-                  <div style={{ position: 'absolute' as const, bottom: '100%', marginBottom: 2, whiteSpace: 'nowrap' as const, display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
-                    <span style={{ fontSize: 7, fontWeight: 700, color: accentCol, opacity: 0.85, lineHeight: 1.2 }}>{m.name || m.type}</span>
-                    <span style={{ fontSize: 6.5, color: 'var(--text-dim)', opacity: 0.65, fontFamily: 'DM Mono,monospace' }}>{m.glucidesG}g</span>
-                  </div>
-                  <div style={{ width: 1, height: '100%', background: `repeating-linear-gradient(to bottom,${accentCol}99 0px,${accentCol}99 3px,transparent 3px,transparent 6px)` }} />
-                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: accentCol, opacity: 0.7, flexShrink: 0 }} />
-                </div>
-              )
-            })}
-          </div>
-          {/* Zone legend */}
-          <div style={{ padding: '6px 14px 10px', display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-            {(() => {
-              const used = new Set(bars.map(b => b.zone))
-              return ZONE_NMS.map((nm, i) => used.has(i + 1) && (
-                <span key={i} style={{ fontSize: 9, fontWeight: 700, color: ZONE_COL[i], display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: 2, background: ZONE_COL[i], display: 'inline-block' }} />
-                  Z{i + 1} {nm}
-                </span>
-              ))
-            })()}
           </div>
         </div>
       )}
@@ -1173,6 +1234,33 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
           </div>
         </div>
       )}
+
+      {/* ══ PROFIL D'INTENSITÉ ÉDITABLE (style Zwift) ══ */}
+      {!isStrengthSportBB && blocks.length > 0 && (() => {
+        const Hpx = 150
+        return (
+          <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 14px 12px', marginBottom: 12 }}>
+            <p style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text-dim)', margin: '0 0 12px' }}>Profil d&apos;intensité <span style={{ fontWeight: 500, textTransform: 'none' as const, letterSpacing: 0 }}>· glisse un bloc (haut = intensité, bord droit = durée)</span></p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {/* axe zones (bulles) */}
+              <div style={{ position: 'relative' as const, width: 28, height: Hpx, flexShrink: 0 }}>
+                {Array.from({ length: maxZone }, (_, k) => k + 1).map(z => { const top = Hpx - (z / maxZone) * Hpx; return (
+                  <span key={z} style={{ position: 'absolute' as const, top: top - 8, left: 0, fontSize: 8.5, fontWeight: 700, color: '#fff', background: zc(z), borderRadius: 7, padding: '1px 5px', lineHeight: 1.4 }}>Z{z}</span>) })}
+              </div>
+              {/* barres draggables */}
+              <div ref={barsRef} style={{ flex: 1, height: Hpx, display: 'flex', alignItems: 'flex-end', gap: 3, position: 'relative' as const }}>
+                {Array.from({ length: maxZone }, (_, k) => k + 1).map(z => { const top = Hpx - (z / maxZone) * Hpx; return (
+                  <div key={`g${z}`} style={{ position: 'absolute' as const, left: 0, right: 0, top, borderTop: '1px dashed var(--border)', pointerEvents: 'none' as const }} />) })}
+                {blocks.map(b => { const m = blockMin(b); const zclamp = Math.max(1, Math.min(maxZone, b.zone)); const h = (zclamp / maxZone) * Hpx; return (
+                  <div key={b.id} data-pbar onPointerDown={e => profileDown(e, b, 'zone')} title={`Z${b.zone} · ${durMMSS(m)}`}
+                    style={{ position: 'relative' as const, flexGrow: m, flexBasis: 0, minWidth: 6, height: h, background: zc(b.zone), borderRadius: '6px 6px 2px 2px', cursor: 'ns-resize', touchAction: 'none' as const, transition: pdrag.current ? 'none' : 'height 0.12s' }}>
+                    <span onPointerDown={e => profileDown(e, b, 'dur')} style={{ position: 'absolute' as const, right: -2, top: 0, bottom: 0, width: 9, cursor: 'ew-resize', touchAction: 'none' as const }} />
+                  </div>) })}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ══ LISTE DES BLOCS ══ */}
       {(sport === 'gym' || sport === 'hyrox') ? (
@@ -1209,7 +1297,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                       <span style={{fontSize:10,color:'var(--text-dim)'}}>min repos</span>
                     </div>
                   </div>
-                  <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'#9CA3AF', cursor:'pointer', fontSize:12, padding:'0 2px' }} title="Dupliquer">📋</button>
+                  <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:12, padding:'0 2px' }} title="Dupliquer">📋</button>
                   <button onClick={()=>onChange(blocks.filter((_,j)=>j!==bi))} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:16, lineHeight:1, padding:'0 2px' }}>×</button>
                 </div>
               )
@@ -1225,57 +1313,57 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
               return (
                 <div key={b.id} {...dragProps}
                   onMouseEnter={() => setHoveredBlockId(b.id)} onMouseLeave={() => setHoveredBlockId(null)}
-                  style={{ borderRadius: 10, overflow: 'hidden', border: `1px solid ${col}33`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', opacity: isDragging ? 0.5 : 1, outline: isDragOver ? `2px solid ${col}` : 'none', borderLeft: isHov ? `3px solid ${col}` : `1px solid ${col}33`, transition: 'border-left 0.12s' }}>
+                  style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', opacity: isDragging ? 0.5 : 1, outline: isDragOver ? '2px solid var(--primary)' : 'none', borderColor: isHov ? 'var(--border-mid)' : 'var(--border)', transition: 'border-color 0.12s' }}>
                   {/* Header */}
-                  <div style={{ background: `${col}0D`, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ width: 28, height: 28, borderRadius: 6, background: col, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>Z{b.zone}</span>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: '#a78bfa', background: 'rgba(167,139,250,0.15)', padding: '3px 8px', borderRadius: 6, flexShrink: 0 }}>INTERVAL</span>
+                  <div style={{ background: 'var(--bg-card2)', padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ padding: '3px 8px', borderRadius: 6, background: `${col}1A`, color: col, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Z{b.zone}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', background: 'var(--bg-elev)', padding: '3px 8px', borderRadius: 6, flexShrink: 0, letterSpacing: '0.04em' }}>INTERVAL</span>
                     <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{b.reps}× {b.label || `${Math.round((b.effortMin??0)*10)/10}min`}</span>
                     <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', flexShrink: 0 }}>{formatHM(Math.round((b.reps??1)*((b.effortMin??0)+(b.recoveryMin??0))))}</span>
-                    <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'#9CA3AF', cursor:'pointer', fontSize:12, padding:'0 3px', flexShrink:0 }} title="Dupliquer">📋</button>
-                    <button onClick={() => onChange(blocks.filter(x => x.id !== b.id))} style={{ background:'none', border:'none', cursor:'pointer', fontSize:18, lineHeight:1, padding:'0 2px', flexShrink:0, color:'#9CA3AF' }}>×</button>
+                    <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:12, padding:'0 3px', flexShrink:0 }} title="Dupliquer">📋</button>
+                    <button onClick={() => onChange(blocks.filter(x => x.id !== b.id))} style={{ background:'none', border:'none', cursor:'pointer', fontSize:18, lineHeight:1, padding:'0 2px', flexShrink:0, color:'var(--text-dim)' }}>×</button>
                   </div>
                   {/* Body */}
-                  <div style={{ padding: '10px 12px', background: 'var(--bg-card)', borderLeft: `3px solid ${col}`, display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
-                    <div style={{ padding: '8px 10px', borderRadius: 8, background: `${col}08`, border: `1px solid ${col}22` }}>
-                      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: col, margin: '0 0 6px' }}>Effort</p>
+                  <div style={{ padding: '10px 12px', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                    <div style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>Effort</p>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(90px,1fr))', gap: 8 }}>
                         <div>
-                          <p style={{ fontSize: 9, color: '#9CA3AF', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Répétitions</p>
-                          <input type="number" min={1} value={b.reps??5} onChange={e=>upd(b.id,'reps',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid #E5E7EB', background:'#F9FAFB', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Répétitions</p>
+                          <input type="number" min={1} value={b.reps??5} onChange={e=>upd(b.id,'reps',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
                         </div>
                         <div>
-                          <p style={{ fontSize: 9, color: '#9CA3AF', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Durée (min)</p>
-                          <input type="number" min={0.1} step={0.1} value={b.effortMin??4} onChange={e=>upd(b.id,'effortMin',parseFloat(e.target.value)||0.5)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:`1px solid ${col}40`, background:'#F9FAFB', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
-                          {effortRange && sport !== 'bike' && <p style={{ fontSize:9, color:col, margin:'2px 0 0', fontFamily:'DM Mono,monospace' }}>{effortRange}</p>}
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Durée</p>
+                          <input value={durMMSS(b.effortMin??0)} onChange={e=>upd(b.id,'effortMin',mmssToMin(e.target.value))} placeholder="4:00" style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
+                          {effortRange && sport !== 'bike' && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0', fontFamily:'var(--font-display)' }}>{effortRange}</p>}
                         </div>
                         <div>
-                          <p style={{ fontSize: 9, color: '#9CA3AF', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Zone</p>
-                          <input type="number" min={1} max={7} value={b.zone} onChange={e=>upd(b.id,'zone',parseInt(e.target.value)||3)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid #E5E7EB', background:'#F9FAFB', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Zone</p>
+                          <input type="number" min={1} max={7} value={b.zone} onChange={e=>upd(b.id,'zone',parseInt(e.target.value)||3)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
                         </div>
                         <div>
-                          <p style={{ fontSize: 9, color: '#9CA3AF', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{vLabel}</p>
-                          <input value={b.value} onChange={e=>upd(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:`1px solid ${col}40`, background:'#F9FAFB', color:col, fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', fontWeight:700 }}/>
-                          {sport==='bike' && ftp && parseInt(b.value||'0')>0 && <p style={{ fontSize:9, color:'#9CA3AF', margin:'2px 0 0' }}>{Math.round(parseInt(b.value||'0')/ftp*100)}% FTP</p>}
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{vLabel}</p>
+                          <input value={b.value} onChange={e=>upd(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', outline:'none', fontWeight:700 }}/>
+                          {sport==='bike' && ftp && parseInt(b.value||'0')>0 && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0' }}>{Math.round(parseInt(b.value||'0')/ftp*100)}% FTP</p>}
                         </div>
                       </div>
                     </div>
                     <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(107,114,128,0.06)', border: '1px solid rgba(107,114,128,0.15)' }}>
-                      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: '#9CA3AF', margin: '0 0 6px' }}>Récupération</p>
+                      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>Récupération</p>
                       <div style={{ display: 'grid', gridTemplateColumns: sport==='bike' ? '1fr 1fr 1fr' : '1fr 1fr', gap: 8 }}>
                         <div>
-                          <p style={{ fontSize: 9, color: '#9CA3AF', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Durée (min)</p>
-                          <input type="number" min={0} step={0.5} value={b.recoveryMin??1} onChange={e=>upd(b.id,'recoveryMin',parseFloat(e.target.value)||0)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid rgba(107,114,128,0.25)', background:'#F9FAFB', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Durée</p>
+                          <input value={durMMSS(b.recoveryMin??0)} onChange={e=>upd(b.id,'recoveryMin',mmssToMin(e.target.value))} placeholder="1:00" style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
                         </div>
                         <div>
-                          <p style={{ fontSize: 9, color: '#9CA3AF', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Zone récup</p>
-                          <input type="number" min={1} max={7} value={b.recoveryZone??1} onChange={e=>upd(b.id,'recoveryZone',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid #E5E7EB', background:'#F9FAFB', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Zone récup</p>
+                          <input type="number" min={1} max={7} value={b.recoveryZone??1} onChange={e=>upd(b.id,'recoveryZone',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
                         </div>
                         {sport==='bike' && (
                           <div>
-                            <p style={{ fontSize: 9, color: '#9CA3AF', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Watts récup</p>
-                            <input type="number" min={0} step={5} value={b.recoveryValue??''} placeholder="180" onChange={e=>upd(b.id,'recoveryValue',e.target.value)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid rgba(107,114,128,0.25)', background:'#F9FAFB', color:'#6B7280', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', fontWeight:600 }}/>
-                            {ftp && parseInt(b.recoveryValue||'0')>0 && <p style={{ fontSize:9, color:'#9CA3AF', margin:'2px 0 0' }}>{Math.round(parseInt(b.recoveryValue||'0')/ftp*100)}% FTP · {zc(getZone('bike',b.recoveryValue??''))}</p>}
+                            <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Watts récup</p>
+                            <input type="number" min={0} step={5} value={b.recoveryValue??''} placeholder="180" onChange={e=>upd(b.id,'recoveryValue',e.target.value)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid rgba(107,114,128,0.25)', background:'var(--bg-card2)', color:'var(--text-mid)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', fontWeight:600 }}/>
+                            {ftp && parseInt(b.recoveryValue||'0')>0 && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0' }}>{Math.round(parseInt(b.recoveryValue||'0')/ftp*100)}% FTP · {zc(getZone('bike',b.recoveryValue??''))}</p>}
                           </div>
                         )}
                       </div>
@@ -1286,7 +1374,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                   <div style={{ padding: '7px 12px', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ flex:1, fontSize:11, color:col, fontWeight:500 }}>{b.reps}×{b.label||`${b.effortMin}min`} · Z{b.zone} {znm(b.zone)}</span>
                     <div style={{ cursor:'grab', display:'flex', flexDirection:'column' as const, gap:2, padding:'2px 4px', flexShrink:0 }}>
-                      {[0,1].map(r=><div key={r} style={{ display:'flex', gap:2 }}>{[0,1,2].map(d=><div key={d} style={{ width:3, height:3, borderRadius:'50%', background:'#D1D5DB' }}/>)}</div>)}
+                      {[0,1].map(r=><div key={r} style={{ display:'flex', gap:2 }}>{[0,1,2].map(d=><div key={d} style={{ width:3, height:3, borderRadius:'50%', background:'var(--border-mid)' }}/>)}</div>)}
                     </div>
                   </div>
                 </div>
@@ -1302,64 +1390,55 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
             return (
               <div key={b.id} {...dragProps}
                 onMouseEnter={() => setHoveredBlockId(b.id)} onMouseLeave={() => setHoveredBlockId(null)}
-                style={{ borderRadius: 10, border: `1px solid ${col}33`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden', opacity: isDragging ? 0.5 : 1, outline: isDragOver ? `2px solid ${col}` : 'none', borderLeft: isHov ? `3px solid ${col}` : `1px solid ${col}33`, transition: 'border-left 0.12s' }}>
+                style={{ borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden', opacity: isDragging ? 0.5 : 1, outline: isDragOver ? '2px solid var(--primary)' : 'none', borderColor: isHov ? 'var(--border-mid)' : 'var(--border)', transition: 'border-color 0.12s' }}>
                 {/* Header */}
-                <div style={{ background: `${col}0D`, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 28, height: 28, borderRadius: 6, background: col, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>Z{b.zone}</span>
+                <div style={{ background: 'var(--bg-card2)', padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 6, background: `${col}1A`, color: col, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>Z{b.zone}</span>
                   <select value={b.type} onChange={e => changeType(b.id, e.target.value)} style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '2px 4px' }}>
                     {(Object.entries(BLOCK_TYPE_LABEL) as [BlockType,string][]).filter(([k]) => k !== 'circuit_header').map(([k,v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                   <span style={{ flex:1, fontSize:13, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{b.label || 'Bloc'}</span>
                   <span style={{ fontSize:14, fontWeight:700, color:'var(--text)', flexShrink:0 }}>{formatHM(b.durationMin)}</span>
-                  <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'#9CA3AF', cursor:'pointer', fontSize:12, padding:'0 3px', flexShrink:0 }} title="Dupliquer">📋</button>
+                  <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:12, padding:'0 3px', flexShrink:0 }} title="Dupliquer">📋</button>
                   <button onClick={() => onChange(blocks.filter(x => x.id !== b.id))}
                     onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.color='#EF4444'}}
-                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.color='#9CA3AF'}}
-                    style={{ background:'none', border:'none', color:'#9CA3AF', cursor:'pointer', fontSize:18, lineHeight:1, padding:'0 2px', flexShrink:0, transition:'color 0.12s' }}>×</button>
+                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.color='var(--text-dim)'}}
+                    style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:18, lineHeight:1, padding:'0 2px', flexShrink:0, transition:'color 0.12s' }}>×</button>
                 </div>
                 {/* Body */}
-                <div style={{ padding: '10px 12px', background: 'var(--bg-card)', borderLeft: `3px solid ${col}` }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) 72px minmax(0,1fr) 68px', gap: 8, alignItems: 'end' }}>
-                    {/* Label */}
-                    <div>
-                      <p style={{ fontSize:10, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'#9CA3AF', margin:'0 0 3px' }}>Label</p>
-                      <input value={b.label} onChange={e=>upd(b.id,'label',e.target.value)} placeholder="Nom du bloc" style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid #E5E7EB', background:'#F9FAFB', color:'var(--text)', fontSize:12, outline:'none', boxSizing:'border-box' as const }}/>
-                    </div>
-                    {/* Durée */}
-                    <div>
-                      <p style={{ fontSize:10, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'#9CA3AF', margin:'0 0 3px' }}>Durée</p>
-                      <div style={{ position:'relative' as const, display:'flex', alignItems:'center' }}>
-                        <input type="number" value={b.durationMin} onChange={e=>upd(b.id,'durationMin',parseInt(e.target.value)||0)} style={{ width:'100%', padding:'6px 26px 6px 10px', borderRadius:6, border:'1px solid #E5E7EB', background:'#F9FAFB', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
-                        <span style={{ position:'absolute' as const, right:6, fontSize:9, color:'#9CA3AF', pointerEvents:'none' as const }}>min</span>
-                      </div>
-                    </div>
-                    {/* Watts / Allure */}
-                    <div>
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:3 }}>
-                        <p style={{ fontSize:10, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'#9CA3AF', margin:0 }}>{vLabel}</p>
-                        {sport === 'bike' && ftp && (
-                          <button onClick={() => setFtpPctMode(p=>({...p,[b.id]:!p[b.id]}))} style={{ fontSize:8, padding:'1px 5px', borderRadius:3, border:`1px solid ${inFtpPct?col:'#E5E7EB'}`, background:inFtpPct?`${col}15`:'transparent', color:inFtpPct?col:'#9CA3AF', cursor:'pointer', fontWeight:600 }}>{inFtpPct?'→W':'%FTP'}</button>
-                        )}
-                      </div>
-                      {inFtpPct && sport === 'bike' && ftp ? (
-                        <div style={{ position:'relative' as const, display:'flex', alignItems:'center' }}>
-                          <input type="number" min={1} max={200} placeholder="75" value={wattsNum>0?Math.round(wattsNum/ftp*100):''} onChange={e=>{const p=parseFloat(e.target.value)||0;upd(b.id,'value',String(Math.round(ftp*p/100)))}} style={{ width:'100%', padding:'6px 20px 6px 10px', borderRadius:6, border:`1px solid ${col}50`, background:'#F9FAFB', color:col, fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', fontWeight:700 }}/>
-                          <span style={{ position:'absolute' as const, right:6, fontSize:9, color:'#9CA3AF', pointerEvents:'none' as const }}>%</span>
+                <div style={{ padding: '10px 12px', background: 'var(--bg-card)' }}>
+                  <input value={b.label} onChange={e=>upd(b.id,'label',e.target.value)} placeholder="Nom du bloc (ex: Tempo)" style={{ width:'100%', padding:'8px 11px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, outline:'none', boxSizing:'border-box' as const, marginBottom:10 }}/>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, alignItems: 'end' }}>
+                    <StepperField label="Durée" value={durMMSS(b.durationMin)}
+                      onChange={v=>upd(b.id,'durationMin',mmssToMin(v))}
+                      onDec={()=>upd(b.id,'durationMin',bumpDurSec(b.durationMin,-1))}
+                      onInc={()=>upd(b.id,'durationMin',bumpDurSec(b.durationMin,1))} />
+                    {inFtpPct && sport === 'bike' && ftp ? (
+                      <div>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4, minHeight:14 }}>
+                          <p style={{ fontSize:9.5, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', margin:0 }}>{vLabel}</p>
+                          <button onClick={() => setFtpPctMode(p=>({...p,[b.id]:!p[b.id]}))} style={{ fontSize:8, padding:'1px 5px', borderRadius:3, border:`1px solid ${col}`, background:`${col}15`, color:col, cursor:'pointer', fontWeight:600 }}>→W</button>
                         </div>
-                      ) : (
-                        <input value={b.value} onChange={e=>upd(b.id,'value',e.target.value)} placeholder={vPlh} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:`1px solid ${col}50`, background:'#F9FAFB', color:col, fontSize:13, fontWeight:700, fontFamily:'DM Mono,monospace', outline:'none', boxSizing:'border-box' as const }}/>
-                      )}
-                      {sport==='bike' && ftp && wattsNum>0 && !inFtpPct && <p style={{ fontSize:9, color:'#9CA3AF', margin:'2px 0 0' }}>{Math.round(wattsNum/ftp*100)}% FTP</p>}
-                    </div>
-                    {/* FC */}
-                    <div>
-                      <p style={{ fontSize:10, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'#9CA3AF', margin:'0 0 3px' }}>FC</p>
-                      <div style={{ position:'relative' as const, display:'flex', alignItems:'center' }}>
-                        <input value={b.hrAvg} onChange={e=>upd(b.id,'hrAvg',e.target.value)} placeholder="158" style={{ width:'100%', padding:'6px 26px 6px 10px', borderRadius:6, border:'1px solid #E5E7EB', background:'#F9FAFB', color:'#EF4444', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
-                        <span style={{ position:'absolute' as const, right:4, fontSize:8, color:'#9CA3AF', pointerEvents:'none' as const }}>bpm</span>
+                        <div style={{ position:'relative' as const, display:'flex', alignItems:'center', height:34 }}>
+                          <input type="number" min={1} max={200} placeholder="75" value={wattsNum>0?Math.round(wattsNum/ftp*100):''} onChange={e=>{const p=parseFloat(e.target.value)||0;upd(b.id,'value',String(Math.round(ftp*p/100)))}} style={{ width:'100%', padding:'0 20px 0 10px', borderRadius:8, border:`1px solid ${col}50`, background:'var(--bg-card2)', color:col, fontSize:15, fontFamily:'var(--font-display)', outline:'none', fontWeight:700, boxSizing:'border-box' as const }}/>
+                          <span style={{ position:'absolute' as const, right:6, fontSize:9, color:'var(--text-dim)', pointerEvents:'none' as const }}>%</span>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <StepperField label={vLabel} value={b.value||''} placeholder={vPlh} color="var(--text)"
+                        onChange={v=>upd(b.id,'value',v)}
+                        onDec={()=>upd(b.id,'value',bumpPaceOrWatts(b.value||'',-1))}
+                        onInc={()=>upd(b.id,'value',bumpPaceOrWatts(b.value||'',1))}
+                        headerRight={sport === 'bike' && ftp ? (
+                          <button onClick={() => setFtpPctMode(p=>({...p,[b.id]:!p[b.id]}))} style={{ fontSize:8, padding:'1px 5px', borderRadius:3, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', cursor:'pointer', fontWeight:600 }}>%FTP</button>
+                        ) : undefined} />
+                    )}
+                    <StepperField label="FC" unit="bpm" value={b.hrAvg||''} color="var(--text)"
+                      onChange={v=>upd(b.id,'hrAvg',v)}
+                      onDec={()=>upd(b.id,'hrAvg',String(Math.max(0,(parseInt(b.hrAvg||'0')||0)-1)))}
+                      onInc={()=>upd(b.id,'hrAvg',String((parseInt(b.hrAvg||'0')||0)+1))} />
                   </div>
+                  {sport==='bike' && ftp && wattsNum>0 && !inFtpPct && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'6px 0 0' }}>{Math.round(wattsNum/ftp*100)}% FTP</p>}
                   {/* FTP warning */}
                   {warnFtp && (
                     <div style={{ marginTop:8, padding:'5px 10px', borderRadius:6, background:'rgba(234,88,12,0.08)', border:'1px solid rgba(234,88,12,0.25)', display:'flex', alignItems:'center', gap:5 }}>
@@ -1374,7 +1453,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                     {sport==='bike'&&b.value?`${b.value}W · `:b.value?`${b.value} · `:''}Z{b.zone} {znm(b.zone)}
                   </span>
                   <div style={{ cursor:'grab', display:'flex', flexDirection:'column' as const, gap:2, padding:'2px 4px', flexShrink:0 }}>
-                    {[0,1].map(r=><div key={r} style={{ display:'flex', gap:2 }}>{[0,1,2].map(d=><div key={d} style={{ width:3, height:3, borderRadius:'50%', background:'#D1D5DB' }}/>)}</div>)}
+                    {[0,1].map(r=><div key={r} style={{ display:'flex', gap:2 }}>{[0,1,2].map(d=><div key={d} style={{ width:3, height:3, borderRadius:'50%', background:'var(--border-mid)' }}/>)}</div>)}
                   </div>
                 </div>
               </div>
@@ -1412,18 +1491,26 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
           )}
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={addSingle}
-            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=accentBB;(e.currentTarget as HTMLElement).style.color=accentBB}}
-            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='#E5E7EB';(e.currentTarget as HTMLElement).style.color='#6B7280'}}
-            style={{ flex:1, padding:'10px 14px', borderRadius:8, background:'var(--bg-card)', border:'1.5px dashed #E5E7EB', color:'#6B7280', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'border-color 0.15s,color 0.15s' }}>
-            <span style={{ fontSize:16, lineHeight:1, fontWeight:300 }}>+</span> Bloc simple
+            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--primary)'}}
+            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--border)'}}
+            style={{ flex:1, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s' }}>
+            <span style={{ width:30, height:30, borderRadius:9, background:'var(--bg-elev)', color:'var(--text-mid)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:300, flexShrink:0, lineHeight:1 }}>+</span>
+            <span style={{ display:'flex', flexDirection:'column' as const, gap:1 }}>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>Bloc simple</span>
+              <span style={{ fontSize:10.5, color:'var(--text-dim)' }}>Effort continu</span>
+            </span>
           </button>
           <button onClick={addInterval}
-            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='#F5F3FF'}}
-            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='var(--bg-card)'}}
-            style={{ flex:1, padding:'10px 14px', borderRadius:8, background:'var(--bg-card)', border:'1.5px dashed #8B5CF6', color:'#8B5CF6', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'background 0.15s' }}>
-            <span style={{ fontSize:14 }}>⟳</span> Répétitions
+            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--primary)'}}
+            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='var(--border)'}}
+            style={{ flex:1, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s' }}>
+            <span style={{ width:30, height:30, borderRadius:9, background:'var(--bg-elev)', color:'var(--text-mid)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0, lineHeight:1 }}>⟳</span>
+            <span style={{ display:'flex', flexDirection:'column' as const, gap:1 }}>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>Répétitions</span>
+              <span style={{ fontSize:10.5, color:'var(--text-dim)' }}>Intervalles</span>
+            </span>
           </button>
         </div>
       )}
@@ -1939,7 +2026,7 @@ function IntervalPanel({
     <div style={{ padding:'12px 14px', background:'var(--bg-card2)', borderTop:'1px solid var(--border)' }}>
       {/* Presets */}
       <div style={{ marginBottom:10 }}>
-        <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'#9CA3AF', margin:'0 0 6px' }}>Presets</p>
+        <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', margin:'0 0 6px' }}>Presets</p>
         <div style={{ display:'flex', gap:4, flexWrap:'wrap' as const }}>
           {PRESETS.map(p => {
             const active = p.blocks.length === iBlocks.length && p.blocks.every((pb, i) => pb.type === iBlocks[i]?.type && pb.sec === iBlocks[i]?.sec)
@@ -3926,6 +4013,7 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
       ? String(sessionStats.tssLow)
       : `${sessionStats.tssLow}–${sessionStats.tssHigh}`
   const tssLabel = sessionStats.tssHigh < 50 ? 'Très facile' : sessionStats.tssHigh < 100 ? 'Modérée' : sessionStats.tssHigh < 150 ? 'Difficile' : sessionStats.tssHigh < 200 ? 'Très difficile' : 'Extrême'
+  const smsn = estimateSmSn(blocks, dur)
 
   // RPE color
   const rpeCol = rpe <= 3 ? '#4ade80' : rpe <= 6 ? '#facc15' : rpe <= 8 ? '#fb923c' : '#f87171'
@@ -3941,6 +4029,57 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   // Duration gauge is set only by user input — do not auto-compute from blocks
 
   // Auto-save intentionally removed — save on close instead to avoid infinite re-render loop
+
+  function handleCompteRendu() {
+    const finalTitle = title || `${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`
+    const durLabel = dur >= 60 ? `${Math.floor(dur / 60)}h${String(dur % 60).padStart(2, '0')}` : `${dur}min`
+    let rows: CrRow[]
+    if (isStrength) {
+      rows = exercises.map(e => ({
+        color: '#A78BFA',
+        name: e.name,
+        detail: `${e.sets} × ${e.reps}${e.weightKg ? ` · ${e.weightKg} kg` : ''}${e.distanceM ? ` · ${e.distanceM} m` : ''}${e.targetTimeSec ? ` · ${e.targetTimeSec}s` : ''}`,
+      }))
+    } else {
+      rows = blocks.map(b => {
+        const col = DONUT_ZONE_COLORS[Math.max(0, Math.min(6, (b.zone || 1) - 1))]
+        const name = b.label || `Bloc Z${b.zone}`
+        const detail = b.mode === 'interval' && b.reps
+          ? `${b.reps} × ${durMMSS(b.effortMin || 0)}${b.value ? ` @ ${b.value}` : ''} · récup ${durMMSS(b.recoveryMin || 0)}`
+          : `${durMMSS(b.durationMin || 0)}${b.value ? ` · ${b.value}` : ''} · Z${b.zone}`
+        return { color: col, name, detail }
+      })
+    }
+    const { svg, w, h } = buildCompteRenduSVG({
+      title: finalTitle,
+      subtitle: `${SPORT_LABEL[sport]}${trainingTypes.length ? ` · ${trainingTypes.join(' + ')}` : ''}`,
+      sm: smsn.sm, sn: smsn.sn, durLabel,
+      rightLabel: isStrength ? 'EXOS' : 'BLOCS',
+      rightVal: String(isStrength ? exercises.length : blocks.length),
+      rows,
+    })
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }))
+    const img = new Image()
+    img.onload = () => {
+      const scale = 2
+      const canvas = document.createElement('canvas')
+      canvas.width = w * scale; canvas.height = h * scale
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { URL.revokeObjectURL(url); return }
+      ctx.scale(scale, scale); ctx.drawImage(img, 0, 0, w, h)
+      URL.revokeObjectURL(url)
+      canvas.toBlob(b => {
+        if (!b) return
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(b)
+        a.download = `${finalTitle.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'seance'}.png`
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(a.href), 1500)
+      }, 'image/png')
+    }
+    img.onerror = () => URL.revokeObjectURL(url)
+    img.src = url
+  }
 
   function handleExportPDF() {
     const finalTitle = title || `${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`
@@ -4693,50 +4832,42 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           }}
         />
 
-        {/* TITRE */}
-        <div style={{ padding: mobile ? '14px 16px 0' : '16px 24px 0', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <input value={title} onChange={e => setTitle(e.target.value)}
-            placeholder={`${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`}
-            style={{
-              flex: 1, background: 'none', border: 'none', color: 'var(--text)',
-              fontSize: mobile ? 20 : 24, fontWeight: 800, outline: 'none', padding: 0,
-              minWidth: 0,
-              fontFamily: 'Syne, sans-serif', letterSpacing: '-0.03em',
-            }} />
-          <button
-            onClick={handleExportPDF}
-            title="Exporter en PDF"
-            style={{
-              flexShrink: 0,
-              padding: '5px 11px', borderRadius: 7, cursor: 'pointer',
-              border: '1px solid var(--border)', background: 'var(--bg-card)',
-              color: 'var(--text-dim)', fontSize: 10, fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 4,
-              letterSpacing: '0.04em',
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* TITRE — en-tête : pastille sport + titre + sous-type + actions */}
+        <div style={{ padding: mobile ? '14px 16px 14px' : '18px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ width: 11, height: 11, borderRadius: '50%', background: accent, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <input value={title} onChange={e => setTitle(e.target.value)}
+              placeholder={`${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`}
+              style={{
+                width: '100%', background: 'none', border: 'none', color: 'var(--text)',
+                fontSize: mobile ? 19 : 23, fontWeight: 700, outline: 'none', padding: 0, minWidth: 0,
+                fontFamily: 'var(--font-display)', letterSpacing: '-0.02em',
+              }} />
+            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+              {SPORT_LABEL[sport]}{trainingTypes.length ? ` · ${trainingTypes.join(' + ')}` : ''}
+            </p>
+          </div>
+          <button onClick={handleCompteRendu} title="Compte rendu — télécharger en image"
+            style={{ flexShrink: 0, height: 34, padding: '0 13px', borderRadius: 10, cursor: 'pointer', border: 'none', background: 'var(--primary)', color: 'var(--on-primary, #06121A)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
+            <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 8L2.5 4.5h2V1h3v3.5h2L6 8Z" fill="currentColor"/>
+              <rect x="1.5" y="10" width="9" height="1.2" rx="0.6" fill="currentColor"/>
+            </svg>
+            Compte rendu
+          </button>
+          <button onClick={handleExportPDF} title="Exporter en PDF"
+            style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, cursor: 'pointer', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 8.5L2 4.5h2.5V1h3v3.5H10L6 8.5Z" fill="currentColor"/>
               <rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/>
             </svg>
-            PDF
           </button>
-          <button
-            onClick={() => parcoursInputRef.current?.click()}
-            title="Importer un parcours GPX/TCX/KML"
-            style={{
-              flexShrink: 0,
-              padding: '5px 11px', borderRadius: 7, cursor: 'pointer',
-              border: '1px solid var(--border)', background: 'var(--bg-card)',
-              color: 'var(--text-dim)', fontSize: 10, fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 4,
-              letterSpacing: '0.04em',
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <button onClick={() => parcoursInputRef.current?.click()} title="Importer un parcours GPX/TCX/KML"
+            style={{ flexShrink: 0, height: 34, padding: parcoursData ? '0 11px' : 0, width: parcoursData ? undefined : 34, borderRadius: 10, cursor: 'pointer', border: '1px solid var(--border)', background: parcoursData ? `${accent}12` : 'transparent', color: parcoursData ? accent : 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 11, fontWeight: 600 }}>
+            <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/>
             </svg>
-            {parcoursLoading ? '…' : parcoursData ? (parcoursData.distance != null ? `${parcoursData.distance} km` : '✓') : 'Parcours'}
+            {parcoursLoading ? '…' : parcoursData && parcoursData.distance != null ? `${parcoursData.distance}km` : ''}
           </button>
         </div>
 
@@ -4784,29 +4915,32 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           display: mobile ? 'flex' : 'grid',
           flexDirection: mobile ? 'column' as const : undefined,
           gridTemplateColumns: mobile ? undefined : '1fr 1fr',
-          gap: mobile ? 14 : 36,
+          gap: mobile ? 14 : 20,
+          alignItems: 'start' as const,
         }}>
-          {/* GAUCHE */}
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 24 }}>
+          {/* GAUCHE — carte paramètres */}
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 20, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: mobile ? 16 : 18 }}>
             {/* Sport — tous les logos sur une ligne, clic = sélection */}
             <div>
               <span style={lbl}>Sport</span>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
                 {(Object.keys(SPORT_LABEL) as SportType[]).map(sp => {
                   const selected = sp === sport
                   return (
                     <button key={sp} onClick={() => handleSportChange(sp)} title={SPORT_LABEL[sp]}
                       style={{
                         display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 5,
-                        padding: '9px 6px 7px', borderRadius: 12, cursor: 'pointer',
-                        border: selected ? `1.5px solid ${accent}` : '1.5px solid var(--border)',
-                        background: selected ? `${accent}12` : 'transparent',
-                        minWidth: 60, flex: '1 1 0',
-                        opacity: selected ? 1 : 0.6,
-                        transition: 'opacity .15s, border-color .15s, background .15s',
-                      }}>
-                      <SportIcon sport={sp} size={34} />
-                      <span style={{ fontSize: 10, fontWeight: 600, color: selected ? 'var(--text)' : 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{SPORT_SHORT[sp]}</span>
+                        padding: '6px 4px', borderRadius: 10, cursor: 'pointer',
+                        border: 'none', background: 'transparent',
+                        minWidth: 48, flex: '1 1 0',
+                        opacity: selected ? 1 : 0.4,
+                        transition: 'opacity .15s, transform .15s',
+                        transform: selected ? 'scale(1.06)' : 'scale(1)',
+                      }}
+                      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.opacity = '0.7' }}
+                      onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLElement).style.opacity = '0.4' }}>
+                      <SportIcon sport={sp} size={38} />
+                      <span style={{ fontSize: 10, fontWeight: selected ? 700 : 600, color: selected ? 'var(--text)' : 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{SPORT_SHORT[sp]}</span>
                     </button>
                   )
                 })}
@@ -4871,216 +5005,68 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 }} />
               </div>
             </div>
+            {/* RPE */}
+            <div style={{
+              padding: '16px 18px', borderRadius: 14,
+              border: '1px solid var(--border)', background: 'var(--bg-card2)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div>
+                  <span style={lbl}>Effort perçu</span>
+                  <p style={{ fontSize: 12.5, color: rpeCol, fontWeight: 700, margin: '3px 0 0', letterSpacing: '0.01em' }}>
+                    {rpe <= 2 ? 'Très facile' : rpe <= 4 ? 'Facile' : rpe <= 6 ? 'Modéré' : rpe <= 8 ? 'Difficile' : 'Maximal'}
+                  </p>
+                </div>
+                <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, fontFamily: 'var(--font-display)', lineHeight: 1 }}>
+                  <span style={{ fontSize: 34, fontWeight: 700, color: rpeCol, letterSpacing: '-0.02em' }}>{rpe % 1 === 0 ? rpe : rpe.toFixed(1)}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 600 }}>/10</span>
+                </span>
+              </div>
+              <div style={{ position: 'relative' as const, height: 22, display: 'flex', alignItems: 'center' }}>
+                <div style={{ width: '100%', height: 8, borderRadius: 99, background: 'var(--bg-elev)', position: 'relative' as const }}>
+                  <div style={{ position: 'absolute' as const, left: 0, top: 0, height: '100%', width: `${(rpe / 10) * 100}%`, borderRadius: 99, background: 'linear-gradient(90deg, #4ade80, #facc15, #fb923c, #f87171)', transition: 'width 0.1s' }} />
+                  <div style={{ position: 'absolute' as const, top: '50%', left: `${(rpe / 10) * 100}%`, transform: 'translate(-50%,-50%)', width: 20, height: 20, borderRadius: '50%', background: 'var(--bg-card)', border: `3px solid ${rpeCol}`, boxShadow: '0 2px 6px rgba(0,0,0,0.3)', pointerEvents: 'none' as const }} />
+                </div>
+                <input type="range" min={0} max={10} step={0.5} value={rpe} onChange={e => setRpe(parseFloat(e.target.value))}
+                  style={{ position: 'absolute' as const, left: 0, right: 0, width: '100%', height: 22, opacity: 0, cursor: 'pointer', zIndex: 2, margin: 0 }} />
+              </div>
+            </div>
+
+            {/* Durée — stepper compact */}
+            <div style={{ padding: '14px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={lbl}>Durée</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button onClick={() => setDur(Math.max(5, dur - 5))} style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-elev)', color: 'var(--text-mid)', fontSize: 16, cursor: 'pointer', padding: 0 }}>−</button>
+                <span style={{ fontSize: 21, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', minWidth: 74, textAlign: 'center' as const }}>{fmtDurLocal(dur)}</span>
+                <button onClick={() => setDur(Math.min(360, dur + 5))} style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-elev)', color: 'var(--text-mid)', fontSize: 16, cursor: 'pointer', padding: 0 }}>+</button>
+              </div>
+            </div>
+
           </div>
 
           {/* DROITE */}
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 24 }}>
-            {/* RPE */}
-            <div style={{
-              padding: '14px 16px', borderRadius: 12,
-              border: `1px solid ${rpeCol}25`, background: `${rpeCol}06`,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div>
-                  <span style={lbl}>Effort perçu</span>
-                  <p style={{ fontSize: 11, color: rpeCol, fontWeight: 600, margin: '2px 0 0', letterSpacing: '0.01em' }}>
-                    {rpe <= 2 ? 'Très facile' : rpe <= 4 ? 'Facile' : rpe <= 6 ? 'Modéré' : rpe <= 8 ? 'Difficile' : 'Maximal'}
-                  </p>
-                </div>
-                <span style={{ fontSize: 28, fontWeight: 800, color: rpeCol, fontFamily: 'DM Mono, monospace', lineHeight: 1, letterSpacing: '-0.02em' }}>
-                  {rpe}<span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 600 }}>/10</span>
-                </span>
+            {/* Résumé — SM / SN + répartition de zones (remplace le donut) */}
+            <div style={{ padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
+              <div style={{ display: 'flex', gap: 28, marginBottom: 14 }}>
+                <div><div style={{ fontSize: 30, fontWeight: 700, color: '#06B6D4', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{smsn.sm}</div><div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>SM métabolique</div></div>
+                <div><div style={{ fontSize: 30, fontWeight: 700, color: '#8B5CF6', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{smsn.sn}</div><div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>SN neuro</div></div>
               </div>
-              <div style={{ background: 'var(--border)', borderRadius: 99, height: 5, position: 'relative' as const, overflow: 'hidden' }}>
-                <div style={{
-                  position: 'absolute' as const, left: 0, top: 0, height: '100%', borderRadius: 99,
-                  width: `${(rpe / 10) * 100}%`,
-                  background: `linear-gradient(90deg, #4ade8088, ${rpeCol})`,
-                  transition: 'width 0.08s',
-                }} />
-              </div>
-              <input type="range" min={0} max={10} step={1} value={rpe} onChange={e => setRpe(parseInt(e.target.value))}
-                style={{ width: '100%', height: 20, marginTop: -14, opacity: 0, cursor: 'pointer', position: 'relative' as const, zIndex: 2 }} />
-            </div>
-
-            {/* Durée */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={lbl}>Durée</span>
-                <span style={{ fontSize: 20, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace' }}>{fmtDurLocal(dur)}</span>
-              </div>
-              <div style={{ background: 'var(--border)', borderRadius: 99, height: 5, position: 'relative' as const, overflow: 'hidden' }}>
-                <div style={{
-                  position: 'absolute' as const, left: 0, top: 0, height: '100%', borderRadius: 99,
-                  width: `${((dur - 5) / 355) * 100}%`,
-                  background: `linear-gradient(90deg, ${accent}66, ${accent})`,
-                  transition: 'width 0.08s',
-                }} />
-              </div>
-              <input type="range" min={5} max={360} step={5} value={dur} onChange={e => setDur(parseInt(e.target.value))}
-                style={{ width: '100%', height: 20, marginTop: -14, opacity: 0, cursor: 'pointer', position: 'relative' as const, zIndex: 2 }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 1 }}>
-                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>5min</span>
-                <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>6h</span>
-              </div>
-            </div>
-
-            {/* Donut + TSS — only for endurance with blocks */}
-            {showDonuts ? (
-              <div>
-                {/* ── Donuts row ── */}
-                <div style={{ display: 'flex', gap: mobile ? 12 : 20, alignItems: 'flex-start', flexWrap: 'wrap' as const }}>
-                  {/* Donut Zones — 160×160px, 20px ring */}
-                  {(() => {
-                    const SIZE = 160, CX = 80, CY = 80, R_OUT = 70, R_IN = 50
-                    const GAP_RAD = 0.025
-                    let angle = -Math.PI / 2
-                    const arcs = zoneDist.map((v, i) => {
-                      if (v === 0) return null
-                      const pct = v / 100
-                      const sweep = pct * 2 * Math.PI
-                      const startA = angle + GAP_RAD / 2
-                      const endA   = angle + sweep - GAP_RAD / 2
-                      angle += sweep
-                      if (endA <= startA) return null
-                      const lg = endA - startA > Math.PI ? 1 : 0
-                      const p = (r: number, a: number) => ({ x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) })
-                      const os = p(R_OUT, startA), oe = p(R_OUT, endA)
-                      const is = p(R_IN, startA),  ie = p(R_IN, endA)
-                      return (
-                        <path key={i}
-                          d={`M${os.x.toFixed(1)} ${os.y.toFixed(1)} A${R_OUT} ${R_OUT} 0 ${lg} 1 ${oe.x.toFixed(1)} ${oe.y.toFixed(1)} L${ie.x.toFixed(1)} ${ie.y.toFixed(1)} A${R_IN} ${R_IN} 0 ${lg} 0 ${is.x.toFixed(1)} ${is.y.toFixed(1)} Z`}
-                          fill={DONUT_ZONE_COLORS[i]} opacity={0.9}
-                          style={{ transition: 'opacity 0.2s' }}
-                        />
-                      )
-                    })
-                    // Compute dominant zone avg watts
-                    const avgW = sessionAvg.avgWatts
-                    const avgHR = hrDist.length > 0 ? (() => {
-                      const lthr = lthrForSport ?? 170
-                      const zoneHRs = [lthr * 0.60, lthr * 0.84, lthr * 0.91, lthr * 0.98, lthr * 1.04, lthr * 1.09, lthr * 1.15]
-                      let sum = 0, tot = 0
-                      hrDist.forEach(h => { sum += h.pct * (zoneHRs[0] ?? 130); tot += h.pct })
-                      return tot > 0 ? Math.round(sum / tot) : null
-                    })() : null
-                    // Glucides g/h estimate: ~60g/h per 100 TSS/h, scaled
-                    const tssPerH = dur > 0 ? sessionStats.tssHigh / (dur / 60) : 0
-                    const glucGph = Math.round(Math.min(90, Math.max(20, tssPerH * 0.55)))
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8 }}>
-                        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-                          {/* Background ring */}
-                          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="#374151" strokeWidth={R_OUT - R_IN} opacity={0.25} />
-                          {arcs}
-                          {/* Center text: duration */}
-                          <text x={CX} y={CY - 8} textAnchor="middle" fontSize={13} fill="var(--text)" fontWeight={800} fontFamily="DM Mono,monospace">{fmtDurLocal(dur)}</text>
-                          <text x={CX} y={CY + 10} textAnchor="middle" fontSize={9} fill="var(--text-dim)" fontFamily="DM Mono,monospace">Zones</text>
-                          <text x={CX} y={CY + 23} textAnchor="middle" fontSize={11} fill={accent} fontWeight={700} fontFamily="DM Mono,monospace">{tssDisplay} TSS</text>
-                        </svg>
-                        {/* Compact legend */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, auto)', gap: '3px 8px', justifyContent: 'center' }}>
-                          {zoneDist.map((v, i) => v > 0 && (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: DONUT_ZONE_COLORS[i], flexShrink: 0, display: 'inline-block' }} />
-                              <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>{DONUT_ZONE_LABELS[i]} <strong style={{ color: 'var(--text-mid)' }}>{v}%</strong></span>
-                            </div>
-                          ))}
-                        </div>
-                        {/* 3 key metrics */}
-                        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                          <div style={{ textAlign: 'center' as const }}>
-                            <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: '#FBBF24' }}>{glucGph}</div>
-                            <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>g gluc/h</div>
-                          </div>
-                          {avgW && (
-                            <div style={{ textAlign: 'center' as const }}>
-                              <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent }}>{avgW}W</div>
-                              <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>Moy W</div>
-                            </div>
-                          )}
-                          {avgHR && (
-                            <div style={{ textAlign: 'center' as const }}>
-                              <div style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: '#EF4444' }}>{avgHR}</div>
-                              <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>FC Moy</div>
-                            </div>
-                          )}
-                          <div style={{ textAlign: 'center' as const }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'center' }}>
-                              <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--text)' }}>{tssDisplay}</span>
-                              <button onClick={() => setTssInfo(true)} style={{ width: 12, height: 12, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 6, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>?</button>
-                            </div>
-                            <div style={{ fontSize: 8, color: 'var(--text-dim)' }}>TSS</div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })()}
-
-                  {/* Donut FC */}
-                  {hrDist.length > 0 && (() => {
-                    const SIZE = 120, CX = 60, CY = 60, R_OUT = 52, R_IN = 36
-                    const GAP_RAD = 0.025
-                    let angle = -Math.PI / 2
-                    const total = hrDist.reduce((a, b) => a + b.pct, 0) || 1
-                    const arcs = hrDist.map((h, i) => {
-                      const pct = h.pct / total
-                      const sweep = pct * 2 * Math.PI
-                      const startA = angle + GAP_RAD / 2
-                      const endA   = angle + sweep - GAP_RAD / 2
-                      angle += sweep
-                      if (endA <= startA) return null
-                      const lg = endA - startA > Math.PI ? 1 : 0
-                      const p = (r: number, a: number) => ({ x: CX + r * Math.cos(a), y: CY + r * Math.sin(a) })
-                      const os = p(R_OUT, startA), oe = p(R_OUT, endA)
-                      const is = p(R_IN, startA),  ie = p(R_IN, endA)
-                      return (
-                        <path key={i}
-                          d={`M${os.x.toFixed(1)} ${os.y.toFixed(1)} A${R_OUT} ${R_OUT} 0 ${lg} 1 ${oe.x.toFixed(1)} ${oe.y.toFixed(1)} L${ie.x.toFixed(1)} ${ie.y.toFixed(1)} A${R_IN} ${R_IN} 0 ${lg} 0 ${is.x.toFixed(1)} ${is.y.toFixed(1)} Z`}
-                          fill={h.color} opacity={0.88}
-                        />
-                      )
-                    })
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 }}>
-                        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-                          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="#374151" strokeWidth={R_OUT - R_IN} opacity={0.25} />
-                          {arcs}
-                          <text x={CX} y={CY + 4} textAnchor="middle" fontSize={9} fill="var(--text)" fontWeight={700} fontFamily="DM Mono,monospace">FC</text>
-                        </svg>
-                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
-                          {hrDist.map((h, i) => h.pct > 0 && (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: h.color, flexShrink: 0, display: 'inline-block' }} />
-                              <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>{h.label} <strong style={{ color: 'var(--text-mid)' }}>{Math.round(h.pct)}%</strong></span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </div>
-              </div>
-            ) : (
-              /* Fallback: always show TSS */
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ textAlign: 'center' as const }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center', marginBottom: 3 }}>
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>TSS</span>
-                    <button onClick={() => setTssInfo(true)} style={{ width: 13, height: 13, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 7, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>?</button>
+              {zoneDist.some(v => v > 0) && (
+                <>
+                  <div style={{ display: 'flex', gap: 2, height: 7, marginBottom: 8 }}>
+                    {zoneDist.map((v, i) => v > 0 ? <div key={i} style={{ flex: v, background: DONUT_ZONE_COLORS[i], borderRadius: 2 }} /> : null)}
                   </div>
-                  <span style={{ fontSize: 24, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace', letterSpacing: '-0.03em' }}>{tssDisplay}</span>
-                  <p style={{ fontSize: 8, color: 'var(--text-dim)', margin: '3px 0 0' }}>{tssLabel}</p>
-                </div>
-                {blocks.length === 0 && (
-                  <p style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic', flex: 1 }}>
-                    Ajoute des blocs pour voir les zones
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-
+                  <div style={{ display: 'flex', gap: '5px 14px', flexWrap: 'wrap' as const }}>
+                    {zoneDist.map((v, i) => v > 0 ? (
+                      <span key={i} style={{ fontSize: 10, color: 'var(--text-dim)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: 2, background: DONUT_ZONE_COLORS[i], display: 'inline-block' }} />{DONUT_ZONE_LABELS[i]} <strong style={{ color: 'var(--text-mid)' }}>{v}%</strong>
+                      </span>
+                    ) : null)}
+                  </div>
+                </>
+              )}
+            </div>
           {/* Watts / allure estimés + références athlète en dessous */}
           {(() => {
             const hasEstimate = !!(sessionAvg.avgWatts || sessionAvg.avgPace)
@@ -5143,6 +5129,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               </div>
             )
           })()}
+          </div>
+
         </div>
 
         {/* TSS INFO MODAL */}
@@ -6568,20 +6556,27 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         {/* STRATÉGIE NUTRITIONNELLE */}
         <div style={{ padding: mobile ? '20px 16px 14px' : '20px 24px 18px' }}>
           <button onClick={() => setNutritionOpen(!nutritionOpen)} style={{
-            width: '100%', padding: mobile ? '12px' : '13px', borderRadius: 10,
-            border: '1px solid var(--border)', background: nutritionItems.length > 0 ? `${accent}08` : 'var(--bg-card)',
-            color: nutritionItems.length > 0 ? accent : 'var(--text-dim)',
-            fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            width: '100%', padding: '12px 14px', borderRadius: 12,
+            border: '1px solid var(--border)', background: nutritionOpen ? 'var(--bg-card2)' : 'var(--bg-card)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 11, transition: 'background 0.15s',
           }}>
-            <span style={{ fontSize: 12, color: accent }}>★</span>
-            Stratégie nutritionnelle
+            <span style={{ width: 30, height: 30, borderRadius: 9, background: `${accent}16`, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="15" height="15" viewBox="0 0 14 14" fill="none"><path d="M7 1.2C4.6 4.2 2.6 6.4 2.6 8.7a4.4 4.4 0 0 0 8.8 0C11.4 6.4 9.4 4.2 7 1.2Z" fill="currentColor"/></svg>
+            </span>
+            <span style={{ flex: 1, textAlign: 'left' as const, display: 'flex', flexDirection: 'column' as const, gap: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Stratégie nutritionnelle</span>
+              <span style={{ fontSize: 10.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                {nutritionItems.length > 0
+                  ? `${nutritionItems.length} ravitaillement${nutritionItems.length > 1 ? 's' : ''} · ${dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0} g/h`
+                  : 'Optionnel — gels, boissons, barres…'}
+              </span>
+            </span>
             {nutritionItems.length > 0 && (
-              <span style={{ fontSize: 10, color: accent, fontFamily: 'DM Mono, monospace' }}>
-                · {nutritionItems.length} ravitaillement{nutritionItems.length > 1 ? 's' : ''}
+              <span style={{ fontSize: 11, fontWeight: 700, color: accent, fontFamily: 'var(--font-display)', background: `${accent}12`, borderRadius: 7, padding: '3px 9px', flexShrink: 0 }}>
+                {nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}g
               </span>
             )}
-            <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-dim)', transform: nutritionOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s', display: 'inline-block' }}>▾</span>
+            <span style={{ fontSize: 11, color: 'var(--text-dim)', transform: nutritionOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s', display: 'inline-block', flexShrink: 0 }}>▾</span>
           </button>
 
           {nutritionOpen && (
@@ -6703,12 +6698,16 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             </div>
                           )
                         })}
-                        {/* Summary */}
-                        <div style={{ display: 'flex', gap: 16, padding: '4px 0', fontSize: 11, color: 'var(--text-dim)', flexWrap: 'wrap' as const }}>
-                          <span>Total : <strong style={{ color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}g</strong> glucides</span>
-                          <span><strong style={{ color: accent, fontFamily: 'DM Mono, monospace' }}>
-                            {dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0}g/h
-                          </strong></span>
+                        {/* Summary — 2 chips */}
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <div style={{ flex: 1, padding: '8px 12px', borderRadius: 9, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>Total glucides</div>
+                            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', lineHeight: 1.2 }}>{nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}<span style={{ fontSize: 11, color: 'var(--text-dim)' }}> g</span></div>
+                          </div>
+                          <div style={{ flex: 1, padding: '8px 12px', borderRadius: 9, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>Apport</div>
+                            <div style={{ fontSize: 17, fontWeight: 700, color: accent, fontFamily: 'var(--font-display)', lineHeight: 1.2 }}>{dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0}<span style={{ fontSize: 11, color: 'var(--text-dim)' }}> g/h</span></div>
+                          </div>
                         </div>
                       </div>
                     )
@@ -6723,9 +6722,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       name: '', quantity: '1 gel', glucidesG: 25, proteinesG: 0, notes: '',
                     }])
                   }} style={{
-                    width: '100%', padding: '9px', borderRadius: 8,
-                    border: '1px dashed var(--border)', background: 'transparent',
-                    color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
+                    width: '100%', padding: '10px', borderRadius: 9,
+                    border: `1px dashed ${accent}55`, background: `${accent}0c`,
+                    color: accent, fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
                   }}>+ Ajouter un ravitaillement</button>
                 </>
               ) : (

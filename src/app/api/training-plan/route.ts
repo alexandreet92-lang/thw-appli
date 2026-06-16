@@ -1,4 +1,4 @@
-export const maxDuration = 60
+export const maxDuration = 300
 
 import { NextRequest } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
@@ -67,6 +67,7 @@ interface GeneratedPlan {
   nom: string
   duree_semaines: number
   objectif_principal: string
+  methodologie?: string
   blocs_periodisation: PlanPeriodisation[]
   semaines: PlanSemaine[]
   conseils_adaptation: string[]
@@ -75,9 +76,19 @@ interface GeneratedPlan {
 
 // ── System prompt ─────────────────────────────────────────────
 
-const SYSTEM = `Tu es un coach expert en planification d'entraînement sportif de haut niveau.
-Tu crées des programmes structurés, périodisés et personnalisés.
-Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans commentaires, sans texte avant ou après. Le JSON doit être aussi compact que possible : pas d'indentation, pas d'espaces inutiles, pas de descriptions longues dans les champs texte.`
+const SYSTEM = `Tu es un entraîneur d'élite (niveau coach professionnel / TrainingPeaks), spécialiste endurance ET force : course, trail, cyclisme, natation, triathlon/Ironman, Hyrox, musculation, et préparation physique.
+
+TON RÔLE : raisonner comme un vrai coach, PAS remplir un formulaire. Tu pars de la situation RÉELLE de l'athlète et tu bâtis une logique d'entraînement sur-mesure, justifiée.
+
+PRINCIPES DE COACH (à appliquer activement) :
+- Ne refais JAMAIS une base aérobie déjà acquise : pars d'où en est l'athlète et fais progresser.
+- Choisis une approche par sport ET par bloc selon l'objectif, et JUSTIFIE : bloc PMA (avec ou sans pré-fatigue), bloc seuil, sweet spot, spécifique, affûtage, rappels VMA…
+- Adapte aux contraintes réelles : blessure (ex : douleur au pied → intensités sur herbe pour réduire l'impact), dénivelé de la course → côtes/hills, triathlon/Ironman → sorties longues + brick (enchaînement vélo→run), natation → technique + seuil + travail d'hypoxie, etc.
+- Calibre les intensités sur les zones fournies (watts, allure, FC).
+- Charge et progression réalistes vs l'historique récent. Périodisation cohérente jusqu'à la date de la course.
+- Intègre la force/prévention si pertinent (force haut/bas du corps, core, explosivité, prévention blessures).
+
+Tu réponds UNIQUEMENT avec un objet JSON valide (aucun markdown, aucun texte hors JSON), compact.`
 
 // ── JSON schema ────────────────────────────────────────────────
 
@@ -85,6 +96,7 @@ const JSON_SCHEMA = `{
   "nom": "string — nom du programme",
   "duree_semaines": "number",
   "objectif_principal": "string",
+  "methodologie": "string — TON ANALYSE DE COACH, STRUCTURÉE ET AÉRÉE (pas un pavé). Utilise des sauts de ligne réels (\\n), de courts sous-titres en **gras**, et des puces avec des tirets '- '. Couvre : l'approche choisie et POURQUOI, l'enchaînement des phases jusqu'à la course, la gestion des spécificités (base déjà acquise, blessure, dénivelé, brick, hypoxie, force…), sport par sport. Concret, comme une note de coach lisible. Exemple de forme : '**Logique générale**\\n- ...\\n- ...\\n\\n**Par sport**\\n- Vélo : ...\\n- Course : ...'.",
   "blocs_periodisation": [
     {
       "nom": "string",
@@ -256,6 +268,7 @@ function normalizePlan(raw: unknown): GeneratedPlan {
     nom: (inner.nom ?? inner.name ?? 'Plan d\'entraînement') as string,
     // Alias: AI may return `objectif` instead of `objectif_principal`
     objectif_principal: (inner.objectif_principal ?? inner.objectif ?? '') as string,
+    methodologie: (inner.methodologie ?? inner.synthese ?? inner.analyse ?? '') as string,
     semaines: semaines as GeneratedPlan['semaines'],
     blocs_periodisation: (Array.isArray(blocsRaw) ? blocsRaw : []) as GeneratedPlan['blocs_periodisation'],
     conseils_adaptation: Array.isArray(inner.conseils_adaptation) ? inner.conseils_adaptation as string[] : [],
@@ -481,10 +494,19 @@ async function postHandler(req: NextRequest): Promise<Response> {
 
   const formattedQuestionnaire = formatQuestionnaireForPrompt(questionnaire)
 
+  // Durée cible explicite (transmise par le chat coach via les réponses de l'athlète)
+  const targetWeeks = Number(questionnaire?.duree_semaines_cible) || null
+  const startDateCible = (questionnaire?.date_debut as string | undefined) || null
+  // Méthode / méthodologie choisie ou décrite (étape B — sélection de méthode)
+  const methodeChoisie = (questionnaire?.methode as string | undefined) || ''
+  const methodologieFournie = (questionnaire?.methodologie as string | undefined) || ''
+
   // Tronquer l'historique à 30 activités max pour réduire la taille du prompt
   const historique_30j = (historique_90j ?? []).slice(0, 30)
 
   const userPrompt = `Crée un programme d'entraînement avec ces informations :
+${targetWeeks ? `\nDURÉE CIBLE : ${targetWeeks} semaines EXACTEMENT${startDateCible ? `, à partir du ${startDateCible}` : ''}.\n` : ''}${methodeChoisie ? `\nMÉTHODE CHOISIE : ${methodeChoisie}. Construis le plan selon cette approche.\n` : ''}${methodologieFournie ? `\nMÉTHODOLOGIE VALIDÉE PAR L'ATHLÈTE — SUIS-LA FIDÈLEMENT :\n${methodologieFournie}\n` : ''}
+RAISONNE D'ABORD COMME UN COACH : lis l'objectif et sa date dans le CALENDRIER, évalue la forme via l'HISTORIQUE, repère la base déjà acquise, les blessures/contraintes (précisions profil) et le dénivelé éventuel. Construis une logique sur-mesure et JUSTIFIE-la dans le champ "methodologie". Ne demande rien : déduis tout du contexte.
 
 QUESTIONNAIRE ATHLÈTE — INTERPRÉTATION STRUCTURÉE :
 ${formattedQuestionnaire}
@@ -508,13 +530,17 @@ ${modification ? `MODIFICATION DEMANDÉE :\n${modification}\n\nPROGRAMME EXISTAN
 
 INSTRUCTIONS DE GÉNÉRATION — RESPECTER IMPÉRATIVEMENT :
 
-STRUCTURE :
-- Génère le détail complet des séances (seances[]) pour TOUTES les semaines du plan, sans exception.
-- Pour chaque séance : sport, titre, jour (0=lundi…6=dimanche), duree_min, tss, intensite, heure, notes, rpe.
-- Blocs détaillés (blocs[]) : UNIQUEMENT semaines 1 et 2. Semaines 3+ → blocs: [].
-- note_coach : OBLIGATOIRE pour chaque semaine, 1 phrase de coaching contextuelle.
-- conseils_adaptation : 3 éléments maximum. points_cles : 3 éléments maximum.
-- Chaque "consigne" ≤ 10 mots, chaque "notes" ≤ 12 mots.
+STRUCTURE & DÉTAIL PROGRESSIF (méthode coach d'élite) — RÈGLE ABSOLUE DE TAILLE (sinon la génération échoue) :
+- Génère TOUTES les semaines de la durée demandée, mais ne détaille les SÉANCES que pour les 2 premières.
+- SEMAINES 1 et 2 UNIQUEMENT : seances[] complètes, avec blocs[] détaillés (échauffement → corps → retour au calme), zone, répétitions, récup et watts/allure/FC CALIBRÉS sur les zones de l'athlète (section ZONES D'ENTRAÎNEMENT).
+- SEMAINES 3 ET SUIVANTES : "seances": [] (TABLEAU VIDE OBLIGATOIRE). Ne génère AUCUNE séance pour ces semaines. Donne seulement : numero, type, volume_h, tss_semaine, theme (court), note_coach (1 phrase courte). Ces semaines seront détaillées plus tard, à l'approche. C'est ESSENTIEL pour que la génération aboutisse.
+- note_coach : 1 phrase COURTE par semaine — le POURQUOI (objectif physiologique, place dans la périodisation).
+- conseils_adaptation : 3 à 4 maximum. points_cles : 3 à 4 maximum. Phrases courtes et concrètes.
+
+CALIBRAGE SUR LES DONNÉES RÉELLES :
+- Utilise les ZONES fournies pour prescrire des intensités chiffrées (watts vélo, allure run, FC) dans les blocs des semaines 1-2.
+- Analyse l'HISTORIQUE 30 jours (volume, sports, charge) pour fixer un point de départ RÉALISTE.
+- Tiens compte des MÉTRIQUES santé récentes et des courses du CALENDRIER pour la périodisation et les volumes (début / progression / pic / affûtage).
 
 COURSES & OBJECTIFS :
 - Construire la périodisation en remontant depuis la date de la course GTY (ou Principale si pas de GTY).
@@ -552,29 +578,32 @@ Génère selon ce schéma JSON (UNIQUEMENT le JSON, rien d'autre) :
 ${JSON_SCHEMA}
 
 RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
-0. FORMAT ULTRA-COMPACT : 4 semaines MAXIMUM. blocs:[] pour TOUTES les semaines. Titres ≤ 3 mots. Notes ≤ 5 mots. Maximum 2000 tokens total.
-1. Programme réaliste adapté au niveau et au temps disponible
-2. Progression logique (Base → Intensité → Spécifique → Compétition)
-3. TSS cohérent avec la durée et l'intensité
-4. Respect des jours de repos demandés`
+0. DURÉE CIBLE : respecte EXACTEMENT la durée demandée (champ "Durée cible" du questionnaire si présent, sinon déduis-la de la date de course). Génère toutes ces semaines.
+1. QUALITÉ AVANT TOUT : chaque séance a un sens dans la progression. Intensités calibrées sur les zones réelles. Jamais de séance creuse ou copiée-collée.
+2. Progression logique et périodisée (Base → Intensité → Spécifique → Affûtage → Compétition), cohérente avec l'historique et la forme actuelle.
+3. TSS cohérent avec la durée et l'intensité. Respect strict des jours de repos et des contraintes.
+4. EXPLIQUE TES CHOIX : note_coach par semaine + conseils_adaptation + points_cles rendent la LOGIQUE du plan limpide.
+5. TAILLE OBLIGATOIRE : seules les semaines 1-2 ont des seances[] (avec blocs) ; TOUTES les semaines 3+ ont "seances": [] (vide). Ne dépasse jamais cette règle — c'est ce qui garantit que la génération aboutit dans le temps imparti.`
+
+  // Le générateur reste un PRODUCTEUR DE JSON PUR : on n'y injecte PAS la doctrine
+  // markdown (elle pousse le modèle à répondre en markdown → JSON cassé). Le
+  // raisonnement de coach arrive déjà via "methodologie" (texte) dans le userPrompt.
+  const JSON_ONLY = `\n\n========== RAPPEL FINAL ABSOLU ==========\nTa réponse est EXCLUSIVEMENT l'objet JSON du schéma demandé : aucun texte, aucun markdown, aucun commentaire, aucune balise \`\`\` — ni avant, ni autour, ni après. Le premier caractère est { et le dernier est }.\nRappel structure : blocs détaillés pour les semaines 1-2 ; semaines 3+ avec "seances":[].`
 
   try {
     const client = getAnthropicClient()
     const resp = await client.messages.create({
       model: MODELS.powerful,
-      max_tokens: 16000,
-      system: SYSTEM,
+      max_tokens: 8000,
+      system: SYSTEM + JSON_ONLY,
       messages: [{ role: 'user', content: userPrompt }],
     })
 
-    // Tâche 2 — vérification stop_reason avant tout parsing
+    // stop_reason : si tronqué (max_tokens), on NE rejette PAS — repairJSON
+    // récupère les semaines complètes générées (détail progressif).
     console.log('[training-plan] stop_reason:', resp.stop_reason, '| usage:', JSON.stringify(resp.usage))
     if (resp.stop_reason === 'max_tokens') {
-      console.log('[training-plan] ERROR: output truncated at max_tokens')
-      return new Response(JSON.stringify({
-        error: 'Réponse tronquée — le plan est trop long pour les limites actuelles',
-        stop_reason: 'max_tokens',
-      }), { status: 500, headers: { 'Content-Type': 'application/json' } })
+      console.log('[training-plan] WARN: output truncated at max_tokens → tentative de réparation')
     }
 
     // Tâche 4 — extraction correcte : response.content[0].text

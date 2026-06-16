@@ -3,7 +3,6 @@ export const maxDuration = 300
 import { NextRequest } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 import { withQuotaCheck } from '@/lib/subscriptions/quota-middleware'
-import { buildDoctrineForPlan } from '@/lib/coach/doctrine/registry'
 
 export const runtime = 'nodejs'
 
@@ -586,17 +585,9 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
 4. EXPLIQUE TES CHOIX : note_coach par semaine + conseils_adaptation + points_cles rendent la LOGIQUE du plan limpide.
 5. TAILLE OBLIGATOIRE : seules les semaines 1-2 ont des seances[] (avec blocs) ; TOUTES les semaines 3+ ont "seances": [] (vide). Ne dépasse jamais cette règle — c'est ce qui garantit que la génération aboutit dans le temps imparti.`
 
-  // Doctrine ciblée : B1 + méthode retenue + B7 (séances) + B6 (épreuve) (+ B2 si blessure)
-  const injuryFlag = /\b(blessure|douleur|tendon|achille|genou|pied|cheville|mollet|ischio|dos|lombaire|épaule|tibia|p[ée]riostite|fracture|g[êe]ne)\b/i
-    .test(String(questionnaire?.precision_profil ?? '') + ' ' + String(methodologieFournie))
-  const doctrineBlock = buildDoctrineForPlan({
-    methodId: methodeChoisie || undefined,
-    sport: (questionnaire?.sport_principal as string | undefined),
-    injury: injuryFlag,
-  })
-
-  // Rappel final ABSOLU placé après la doctrine (markdown) : on force la sortie JSON pure,
-  // sinon le modèle peut être tenté de répondre en markdown comme la doctrine.
+  // Le générateur reste un PRODUCTEUR DE JSON PUR : on n'y injecte PAS la doctrine
+  // markdown (elle pousse le modèle à répondre en markdown → JSON cassé). Le
+  // raisonnement de coach arrive déjà via "methodologie" (texte) dans le userPrompt.
   const JSON_ONLY = `\n\n========== RAPPEL FINAL ABSOLU ==========\nTa réponse est EXCLUSIVEMENT l'objet JSON du schéma demandé : aucun texte, aucun markdown, aucun commentaire, aucune balise \`\`\` — ni avant, ni autour, ni après. Le premier caractère est { et le dernier est }.\nRappel structure : blocs détaillés pour les semaines 1-2 ; semaines 3+ avec "seances":[].`
 
   try {
@@ -604,7 +595,7 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
     const resp = await client.messages.create({
       model: MODELS.powerful,
       max_tokens: 8000,
-      system: SYSTEM + doctrineBlock + JSON_ONLY,
+      system: SYSTEM + JSON_ONLY,
       messages: [{ role: 'user', content: userPrompt }],
     })
 

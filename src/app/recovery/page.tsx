@@ -13,22 +13,12 @@ import { computeReadiness, type ReadinessResult } from '@/lib/recovery/computeRe
 import ReadinessCard from '@/components/recovery/ReadinessCard'
 import CheckinTab from '@/components/recovery/CheckinTab'
 import SleepHrvTab from '@/components/recovery/SleepHrvTab'
+import ChargeTab from '@/components/recovery/ChargeTab'
 import SourcesTab from '@/components/recovery/SourcesTab'
 import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { RECOVERY_ONBOARDING } from '@/onboarding/configs/recovery.config'
-
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
-      minHeight: 320, padding: 32, textAlign: 'center',
-      background: 'var(--bg-card)', border: '1px dashed var(--border-mid)', borderRadius: 20 }}>
-      <p style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, color: 'var(--text)', margin: 0 }}>{title}</p>
-      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>À implémenter — prochain lot</p>
-    </div>
-  )
-}
 
 function OverviewTab({ weeks, readiness }: { weeks: WeekData[]; readiness: ReadinessResult | null }) {
   return (
@@ -71,7 +61,7 @@ export default function RecoveryPage() {
   const sections: SectionDef[] = [
     { id: 'overview', label: "Vue d'ensemble", subtitle: 'KPI + tendances',  icon: Activity,      content: <OverviewTab weeks={weeks} readiness={todayReadiness} /> },
     { id: 'checkin',  label: 'Check-in',       subtitle: 'Ressenti du jour', icon: ClipboardList, content: <CheckinTab initial={data.todayCheckin} inputs={inputs} onSaved={() => setReload(x => x + 1)} /> },
-    { id: 'load',     label: 'Charge & forme', subtitle: 'CTL / ATL / TSB',  icon: Gauge,         content: <Placeholder title="Charge & forme" /> },
+    { id: 'load',     label: 'Charge & forme', subtitle: 'CTL / ATL / TSB',  icon: Gauge,         content: <ChargeTab /> },
     { id: 'sleep',    label: 'Sommeil & HRV',  subtitle: 'HRV · sommeil',    icon: Moon,          content: <SleepHrvTab rows={data.hrvRows} loading={data.loading} /> },
     { id: 'sources',  label: 'Sources',        subtitle: 'Intégrations',     icon: Plug,          content: <SourcesTab hrvActive={data.hrvRows.length > 0} /> },
   ]

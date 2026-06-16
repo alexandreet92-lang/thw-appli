@@ -131,7 +131,7 @@ export function CoachQuestionCard({
       {/* Contenu swipeable */}
       <div style={{ overflow: 'hidden' }} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div ref={wrapRef} key={page} style={{ animation: anim ? `cq_${anim} 0.24s ease` : undefined }}>
-          <p style={{ margin: '0 0 12px', fontSize: 15.5, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.35, fontFamily: 'Syne,sans-serif' }}>{q.question}</p>
+          <p style={{ margin: '0 0 6px', fontSize: 16.5, fontWeight: 600, color: 'var(--ai-text)', lineHeight: 1.35, fontFamily: 'Syne,sans-serif' }}>{q.question}</p>
 
           {/* Options — rangées épurées séparées par un filet */}
           <div style={{ borderTop: '1px solid var(--ai-border)' }}>
@@ -143,18 +143,18 @@ export function CoachQuestionCard({
                   onClick={() => toggle(opt.label)}
                   style={{
                     display: 'flex', alignItems: 'flex-start', gap: 10, width: '100%',
-                    padding: '11px 8px', border: 'none', borderBottom: '1px solid var(--ai-border)',
-                    background: sel ? 'rgba(60,144,213,0.08)' : 'transparent', cursor: 'pointer', textAlign: 'left',
+                    padding: '12px 10px', border: 'none', borderBottom: '1px solid var(--ai-border)',
+                    background: sel ? 'rgba(60,144,213,0.07)' : 'transparent', cursor: 'pointer', textAlign: 'left',
                     transition: 'background 0.12s',
                   }}
                 >
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--ai-text)' }}>{opt.label}</span>
-                    {opt.description && <span style={{ display: 'block', fontSize: 12.5, color: 'var(--ai-dim)', marginTop: 2, lineHeight: 1.4 }}>{opt.description}</span>}
+                    <span style={{ display: 'block', fontSize: 14.5, fontWeight: 600, color: sel ? '#3C90D5' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{opt.label}</span>
+                    {opt.description && <span style={{ display: 'block', fontSize: 12.5, color: 'var(--ai-dim)', marginTop: 2, lineHeight: 1.45 }}>{opt.description}</span>}
                   </span>
-                  <span style={{ marginTop: 2, width: 18, height: 18, flexShrink: 0, borderRadius: q.multiSelect ? 5 : '50%', border: `1.5px solid ${sel ? '#3C90D5' : 'var(--ai-border)'}`, background: sel ? '#3C90D5' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {sel && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
-                  </span>
+                  {sel && (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3C90D5" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 2, flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>
+                  )}
                 </button>
               )
             })}

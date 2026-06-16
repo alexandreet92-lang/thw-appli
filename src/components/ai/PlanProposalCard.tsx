@@ -181,29 +181,30 @@ export function PlanProposalCard({
             const num = w.numero ?? 0
             const open = openWeek === num
             return (
-              <div key={num} style={{ border: '1px solid var(--ai-border)', borderRadius: 10, marginBottom: 6, overflow: 'hidden' }}>
-                <button onClick={() => setOpenWeek(open ? null : num)} style={weekHead}>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ai-text)' }}>Semaine {num}{w.type ? ` · ${w.type}` : ''}</span>
+              <div key={num} style={{ marginBottom: 10 }}>
+                <button onClick={() => setOpenWeek(open ? null : num)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '7px 0', border: 'none', borderBottom: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer' }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>Semaine {num}{w.type ? ` · ${w.type}` : ''}</span>
                   <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{weekVol(w)}h · {(w.seances ?? []).length} séances {open ? '▾' : '▸'}</span>
                 </button>
                 {open && (
-                  <div style={{ padding: '0 10px 8px' }}>
-                    {w.note_coach && <p style={{ margin: '0 0 7px', fontSize: 11.5, color: 'var(--ai-mid)', fontStyle: 'italic' }}>{w.note_coach}</p>}
+                  <div style={{ paddingTop: 7 }}>
+                    {w.note_coach && <p style={{ margin: '0 0 9px', fontSize: 12, color: 'var(--ai-mid)', fontStyle: 'italic', lineHeight: 1.45 }}>{w.note_coach}</p>}
                     {(w.seances ?? []).map((s, j) => (
-                      <div key={j} style={{ padding: '6px 0', borderTop: j ? '1px solid var(--ai-border)' : 'none' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12 }}>
+                      <div key={j} style={{ padding: '8px 0', borderTop: j ? '1px solid var(--ai-border)' : 'none' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
                           <span style={dayChip}>{DAYS[s.jour ?? 0]}</span>
-                          <span style={{ fontWeight: 600, color: 'var(--ai-text)' }}>{s.titre}</span>
-                          <span style={{ marginLeft: 'auto', color: 'var(--ai-dim)', fontSize: 11, fontFamily: 'DM Mono,monospace' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--ai-text)' }}>{s.titre}</span>
+                          <span style={{ marginLeft: 'auto', color: 'var(--ai-dim)', fontSize: 11, fontFamily: 'DM Mono,monospace', flexShrink: 0 }}>
                             {sportLabel(s.sport)} · {s.duree_min}′
                           </span>
                         </div>
                         {(s.blocs ?? []).length > 0 && (
-                          <div style={{ marginTop: 3, paddingLeft: 4 }}>
+                          <div style={{ marginTop: 5, paddingLeft: 2 }}>
                             {(s.blocs ?? []).map((bl, k) => (
-                              <p key={k} style={{ margin: '1px 0', fontSize: 11, color: 'var(--ai-mid)' }}>
-                                • {bl.nom}{bl.duree_min ? ` ${bl.duree_min}′` : ''}{bl.repetitions ? ` ×${bl.repetitions}` : ''}{bl.zone ? ` Z${bl.zone}` : ''}{bl.watts ? ` ${bl.watts}W` : ''}{bl.allure ? ` ${bl.allure}` : ''}{bl.consigne ? ` — ${bl.consigne}` : ''}
-                              </p>
+                              <div key={k} style={{ display: 'flex', gap: 7, margin: '2px 0', fontSize: 12, color: 'var(--ai-mid)', lineHeight: 1.45 }}>
+                                <span style={{ color: '#3C90D5', flexShrink: 0 }}>•</span>
+                                <span>{bl.nom}{bl.duree_min ? ` ${bl.duree_min}′` : ''}{bl.repetitions ? ` ×${bl.repetitions}` : ''}{bl.zone ? ` Z${bl.zone}` : ''}{bl.watts ? ` ${bl.watts}W` : ''}{bl.allure ? ` ${bl.allure}` : ''}{bl.consigne ? ` — ${bl.consigne}` : ''}</span>
+                              </div>
                             ))}
                           </div>
                         )}
@@ -250,7 +251,7 @@ export function PlanProposalCard({
 }
 
 // ── Styles ──────────────────────────────────────────────────────
-const card: React.CSSProperties = { border: '1px solid var(--ai-border)', borderRadius: 16, padding: 14, background: 'var(--ai-bg)', marginTop: 4 }
+const card: React.CSSProperties = { marginTop: 6, padding: '2px 2px 4px' }
 const sectionTitle: React.CSSProperties = { margin: '0 0 6px', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif' }
 const kpi: React.CSSProperties = { flex: 1, padding: '6px 3px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }
 const kpiL: React.CSSProperties = { margin: 0, fontSize: 8, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.04em' }

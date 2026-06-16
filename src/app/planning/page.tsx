@@ -2142,17 +2142,42 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
 // ════════════════════════════════════════════════
 // TRAINING TAB
 // ════════════════════════════════════════════════
-// Bulle compacte (mobile) : logo sport coloré + pastille de durée colorée. Tap → ouvre.
-function DayBubble({ sport, label, done, onClick }: { sport: string; label: string; done?: boolean; onClick: () => void }) {
+// Bulle compacte (mobile ET desktop, présentation unifiée) : logo sport + pastille durée.
+function DayBubble({ sport, label, done, onClick, draggable, onDragStart, onDragEnd, onTouchStart, onTouchMove, onTouchEnd, lifted }: {
+  sport: string; label: string; done?: boolean; onClick?: () => void
+  draggable?: boolean
+  onDragStart?: React.DragEventHandler; onDragEnd?: React.DragEventHandler
+  onTouchStart?: React.TouchEventHandler; onTouchMove?: React.TouchEventHandler; onTouchEnd?: React.TouchEventHandler
+  lifted?: boolean
+}) {
   const key = sportKeyFromType(sport)
   const cfg = key ? SPORT_ICON[key] : null
   const color = cfg?.color ?? 'var(--text-mid)'
   const Ico = cfg?.Icon
   return (
-    <button onClick={onClick} style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'3px 2px',borderRadius:8,border:'none',background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1 }}>
+    <button onClick={onClick} draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}
+      onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+      style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'3px 2px',borderRadius:8,border:'none',background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1,transform:lifted?'scale(1.06)':undefined,boxShadow:lifted?'0 6px 16px rgba(0,0,0,0.35)':undefined,transition:'transform .12s, box-shadow .12s',touchAction:onTouchStart?'none':undefined,position:'relative',zIndex:lifted?20:undefined }}>
       {Ico ? <Ico size={15} color={color} stroke={2.2} /> : <span style={{ width:7,height:7,borderRadius:'50%',background:color }} />}
       <span className="tnum" style={{ width:'100%',textAlign:'center',background:color,color:'var(--on-primary)',borderRadius:999,padding:'1px 0',fontSize:9.5,fontWeight:700,fontFamily:'var(--font-body)' }}>{label}</span>
     </button>
+  )
+}
+
+// Jauge de volume par sport : remplissage planifié atténué + réalisé en couleur pleine.
+function VolBar({ sport, total, done, max }: { sport: string; total: number; done: number; max: number }) {
+  const color = iconColor(sport)
+  const totalPct = max > 0 ? Math.min((total / max) * 100, 100) : 0
+  const donePct = max > 0 ? Math.min((done / max) * 100, 100) : 0
+  return (
+    <div style={{ display:'flex',alignItems:'center',gap:7,marginBottom:6 }}>
+      <SportIcon sport={sport} size={15} />
+      <div style={{ flex:1,height:7,borderRadius:4,background:'var(--border)',overflow:'hidden',position:'relative' }}>
+        <div style={{ position:'absolute',top:0,left:0,height:'100%',width:`${totalPct}%`,background:color,opacity:0.28,borderRadius:4 }} />
+        <div style={{ position:'absolute',top:0,left:0,height:'100%',width:`${donePct}%`,background:color,borderRadius:4,transition:'width .5s ease' }} />
+      </div>
+      <span style={{ fontSize:8.5,color:'var(--text-mid)',fontWeight:700,minWidth:32,textAlign:'right' as const }}>{formatHM(total)}</span>
+    </div>
   )
 }
 
@@ -2242,6 +2267,36 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const [hoverAdd, setHoverAdd] = useState<string|null>(null)
   const [dragCell, setDragCell] = useState<string|null>(null)
   const planDrag = useRef<{ id: string; ws: string; day: number } | null>(null)
+  // Mobile : drag d'une séance par appui long (≥1 s) puis déplacement vers un autre jour.
+  const [tDrag, setTDrag] = useState<{ id: string; ws: string } | null>(null)
+  const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const tStart = useRef<{ x: number; y: number } | null>(null)
+  const tDragRef = useRef(false)
+  function bubbleTouch(id: string, ws: string) {
+    return {
+      onTouchStart: (e: React.TouchEvent) => {
+        const t = e.touches[0]; tStart.current = { x: t.clientX, y: t.clientY }; tDragRef.current = false
+        if (lpTimer.current) clearTimeout(lpTimer.current)
+        lpTimer.current = setTimeout(() => { tDragRef.current = true; setTDrag({ id, ws }); try { navigator.vibrate?.(15) } catch { /* noop */ } }, 1000)
+      },
+      onTouchMove: (e: React.TouchEvent) => {
+        const t = e.touches[0]; const st = tStart.current; if (!st) return
+        if (!tDragRef.current) { if (Math.hypot(t.clientX - st.x, t.clientY - st.y) > 10 && lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null } return }
+        e.preventDefault()
+        const el = (document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null)?.closest('[data-mday]') as HTMLElement | null
+        setDragCell(el ? `${el.getAttribute('data-mws')}_${el.getAttribute('data-mday')}` : null)
+      },
+      onTouchEnd: (e: React.TouchEvent) => {
+        if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null }
+        if (tDragRef.current) {
+          const t = e.changedTouches[0]
+          const el = (document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null)?.closest('[data-mday]') as HTMLElement | null
+          if (el) { const di = parseInt(el.getAttribute('data-mday') || '-1'); const dws = el.getAttribute('data-mws'); if (di >= 0 && dws === ws) moveSession(id, di) }
+        }
+        setTDrag(null); setDragCell(null)
+      },
+    }
+  }
   const [show10w, setShow10w] = useState(false)
   const [intensityModal, setIntensityModal] = useState<DayIntensity|null>(null)
   const [planningFavorites, setPlanningFavorites] = useState<Array<{id:string;name:string}>>([])
@@ -2426,9 +2481,10 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
             const w = buildWeek(ws, activePlan)
             const dates = getWeekDatesFromStart(ws)
             const vol: Record<string, number> = {}
+            const volDone: Record<string, number> = {}
             w.forEach(d => {
               d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); vol[sp] = (vol[sp] || 0) + s.durationMin })
-              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); vol[sp] = (vol[sp] || 0) + Math.round(a.elapsedTime / 60) })
+              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); const m = Math.round(a.elapsedTime / 60); vol[sp] = (vol[sp] || 0) + m; volDone[sp] = (volDone[sp] || 0) + m })
             })
             const totalMin = Object.values(vol).reduce((a, b) => a + b, 0)
             const maxVol = Math.max(1, ...Object.values(vol))
@@ -2456,28 +2512,17 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                         <button onClick={() => { setAddModalFavorites(false); setAddModal({ dayIndex: i, plan: activePlan, weekStart: ws }) }} title="Ajouter une séance"
                           style={{ position: 'absolute' as const, bottom: 4, left: '50%', transform: 'translateX(-50%)', zIndex: 6, background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 2, opacity: 0.7 }}>+</button>
                       )}
-                      {d.activities.map(a => { const sp = normalizeSportType(a.sport); return (
-                        <div key={a.id} onClick={() => setActivityDetail(a)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 9px', borderRadius: 9, background: 'var(--bg-card2)', border: '1px solid var(--border)', cursor: 'pointer' }}>
-                          <SportIcon sport={sp} size={18} />
-                          <span style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.name}</span>
-                          <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(Math.round(a.elapsedTime / 60))}</span>
-                        </div>) })}
-                      {d.sessions.filter(s => !d.activities.some(a => matchActivity(a, d.sessions)?.id === s.id)).map(s => {
-                        const ik = intensityKey(s.intensity ?? d.intensity); const ic = INTENSITY_CONFIG[ik]
-                        return (
-                        <div key={s.id} draggable
+                      {/* Bulles unifiées (même présentation que mobile) */}
+                      {d.activities.map(a => (
+                        <DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime / 60))} done onClick={() => setActivityDetail(a)} />
+                      ))}
+                      {d.sessions.filter(s => !d.activities.some(a => matchActivity(a, d.sessions)?.id === s.id)).map(s => (
+                        <DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status === 'done'}
+                          draggable
                           onDragStart={e => { planDrag.current = { id: s.id, ws, day: i }; e.dataTransfer.effectAllowed = 'move' }}
                           onDragEnd={() => { planDrag.current = null; setDragCell(null) }}
-                          onClick={() => setDetailModal(s)}
-                          style={{ display: 'flex', flexDirection: 'column' as const, gap: 4, padding: '6px 8px 7px', borderRadius: 9, background: 'var(--bg-card2)', border: '1px solid var(--border)', cursor: 'grab', opacity: s.status === 'done' ? 0.6 : 1 }}>
-                          <span style={{ alignSelf: 'flex-start', fontSize: 8, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase' as const, color: ic.color, background: ic.bg, border: `1px solid ${ic.border}`, borderRadius: 5, padding: '1px 5px', lineHeight: 1.4 }}>{ic.label}</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                            <SportIcon sport={s.sport} size={18} />
-                            <span style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.title}</span>
-                            <span style={{ fontSize: 9.5, color: 'var(--text-dim)', fontWeight: 700 }}>{formatHM(s.durationMin)}</span>
-                          </div>
-                        </div>
-                      )})}
+                          onClick={() => setDetailModal(s)} />
+                      ))}
                     </div>
                   )
                 })}
@@ -2491,11 +2536,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                     <button onClick={() => setDatasWeek(ws)} title="Voir les données" style={{ fontSize: 9, fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-dim, rgba(6,182,212,0.12))', border: '1px solid rgba(6,182,212,0.3)', borderRadius: 6, padding: '2px 7px', cursor: 'pointer' }}>Datas</button>
                   </div>
                   {PLAN_SPORTS.filter(sp => vol[sp]).map(sp => (
-                    <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
-                      <SportIcon sport={sp} size={15} />
-                      <div style={{ flex: 1, height: 7, borderRadius: 4, background: 'var(--border)', overflow: 'hidden' }}><div style={{ width: `${(vol[sp] / maxVol) * 100}%`, height: '100%', background: iconColor(sp), borderRadius: 4 }} /></div>
-                      <span style={{ fontSize: 8.5, color: 'var(--text-mid)', fontWeight: 700, minWidth: 32, textAlign: 'right' as const }}>{formatHM(vol[sp])}</span>
-                    </div>
+                    <VolBar key={sp} sport={sp} total={vol[sp]} done={volDone[sp] || 0} max={maxVol} />
                   ))}
                   {totalMin === 0 && <span style={{ fontSize: 9, color: 'var(--text-dim)', fontStyle: 'italic' as const }}>Repos</span>}
                 </div>
@@ -2509,29 +2550,47 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         <div className="wg-mobile">
           {allWeekStarts.map(ws => {
             const w = buildWeek(ws, activePlan); const dates = getWeekDatesFromStart(ws)
+            const mVol: Record<string, number> = {}; const mDone: Record<string, number> = {}
+            w.forEach(d => {
+              d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); mVol[sp] = (mVol[sp] || 0) + s.durationMin })
+              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); const m = Math.round(a.elapsedTime / 60); mVol[sp] = (mVol[sp] || 0) + m; mDone[sp] = (mDone[sp] || 0) + m })
+            })
+            const mTotal = Object.values(mVol).reduce((a, b) => a + b, 0)
+            const mMax = Math.max(1, ...Object.values(mVol))
             return (
               <div key={ws} style={{ borderBottom:'1px solid var(--border)', padding:'8px 6px' }}>
                 <div style={{ display:'flex', alignItems:'baseline', gap:6, marginBottom:6 }}>
                   <span style={{ fontSize:11, fontWeight:800, color:'var(--text)', fontFamily:'Syne,sans-serif' }}>S{isoWeekNum(ws)}</span>
                   <span style={{ fontSize:9, color:'var(--text-dim)' }}>{new Date(ws+'T00:00:00').toLocaleDateString('fr-FR',{ day:'numeric', month:'short' })}</span>
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, touchAction: tDrag ? 'none' : undefined }}>
                   {w.map((d,i)=>{
                     const isToday = ws===currentWeekStart && i===todayIdx
+                    const hid = `${ws}_${i}`
+                    const isDropTarget = !!tDrag && dragCell===hid
                     const sess = d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id))
                     const acts = d.activities.filter(a=>!matchActivity(a,d.sessions))
                     return (
-                      <div key={i} style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center' }}>
-                        <div style={{ width:'100%', textAlign:'center' as const, borderRadius:8, padding:'2px 0', boxSizing:'border-box' as const, background:isToday?'var(--bg-card2)':'transparent' }}>
+                      <div key={i} data-mday={i} data-mws={ws} style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center', borderRadius:8, background:isDropTarget?'var(--primary-dim)':'transparent', transition:'background .12s' }}>
+                        {/* Tap sur le jour → ajouter une séance (mobile, feature) */}
+                        <button onClick={()=>{ setAddModalFavorites(false); setAddModal({ dayIndex:i, plan:activePlan, weekStart:ws }) }} style={{ width:'100%', textAlign:'center' as const, borderRadius:8, padding:'2px 0', boxSizing:'border-box' as const, border:'none', cursor:'pointer', background:isToday?'var(--bg-card2)':'transparent' }}>
                           <p style={{ fontSize:8.5, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.02em', margin:0, color:'var(--text-dim)' }}>{d.day}</p>
                           <p className="tnum" style={{ fontSize:13, fontWeight:700, margin:0, color:isToday?'var(--primary)':'var(--text)' }}>{dates[i]}</p>
-                        </div>
-                        {sess.map(s=><DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status==='done'} onClick={()=>setDetailModal(s)} />)}
+                        </button>
+                        {sess.map(s=><DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status==='done'} lifted={tDrag?.id===s.id} {...bubbleTouch(s.id, ws)} onClick={()=>{ if(tDragRef.current){ tDragRef.current=false; return } setDetailModal(s) }} />)}
                         {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
                       </div>
                     )
                   })}
                 </div>
+                {/* Datas + volume par sport (feature) */}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, margin:'8px 2px 4px' }}>
+                  <span className="tnum" style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)' }}>Volume <span style={{ color:'var(--text)' }}>{formatHM(mTotal)}</span></span>
+                  <button onClick={()=>setDatasWeek(ws)} style={{ fontSize:10, fontWeight:700, color:'var(--primary)', background:'var(--primary-dim)', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer' }}>Datas</button>
+                </div>
+                {PLAN_SPORTS.filter(sp=>mVol[sp]).map(sp=>(
+                  <VolBar key={sp} sport={sp} total={mVol[sp]} done={mDone[sp]||0} max={mMax} />
+                ))}
               </div>
             )
           })}

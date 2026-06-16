@@ -92,6 +92,7 @@ export function PlanProposalCard({
   const vMax = vols.length ? Math.max(...vols) : undefined
   const previewWeeks = weeks.filter(w => (w.numero ?? 99) <= 2)
   const validated = proposal.status === 'validated'
+  const sportDist = sportDistribution(weeks)
 
   return (
     <div style={card}>
@@ -125,6 +126,34 @@ export function PlanProposalCard({
           </div>
         ))}
       </div>
+
+      {/* Courbe de volume par semaine (colorée par phase) */}
+      {weeks.length > 1 && (
+        <div style={{ marginTop: 14 }}>
+          <p style={sectionTitle}>Volume par semaine</p>
+          <VolumeChart weeks={weeks} blocs={blocs} />
+        </div>
+      )}
+
+      {/* Donut de répartition par sport */}
+      {sportDist.length > 0 && (
+        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
+          <SportDonut dist={sportDist} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={sectionTitle}>Répartition par sport</p>
+            {sportDist.map(d => {
+              const total = sportDist.reduce((s, x) => s + x.min, 0) || 1
+              return (
+                <div key={d.sport} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4, fontSize: 12 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, color: 'var(--ai-text)' }}>{sportLabel(d.sport)}</span>
+                  <span style={{ color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace', fontSize: 11 }}>{Math.round(d.min / total * 100)}%</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Phases de périodisation */}
       {blocs.length > 0 && (
@@ -242,4 +271,77 @@ function phaseColor(type: string): string {
   if (t.includes('deload') || t.includes('affût') || t.includes('affut')) return '#a855f7'
   if (t.includes('comp')) return '#ef4444'
   return '#9ca3af'
+}
+
+// ── Couleurs sport + agrégations ────────────────────────────────
+const SPORT_COLOR: Record<string, string> = {
+  run: '#22c55e', bike: '#3b82f6', swim: '#06b6d4', gym: '#f97316', hyrox: '#8b5cf6', rowing: '#14b8a6',
+}
+function sportDistribution(weeks: GenWeek[]): { sport: string; min: number; color: string }[] {
+  const map = new Map<string, number>()
+  for (const w of weeks) for (const s of (w.seances ?? [])) {
+    const sp = (s.sport ?? '').toLowerCase()
+    if (!sp) continue
+    map.set(sp, (map.get(sp) ?? 0) + (s.duree_min ?? 0))
+  }
+  return [...map.entries()]
+    .filter(([, m]) => m > 0)
+    .map(([sport, min]) => ({ sport, min, color: SPORT_COLOR[sport] ?? '#9ca3af' }))
+    .sort((a, b) => b.min - a.min)
+}
+function weekPhaseColor(numero: number, blocs: GenBloc[]): string {
+  const b = blocs.find(x => numero >= x.semaine_debut && numero <= x.semaine_fin)
+  return b ? phaseColor(b.type) : '#9ca3af'
+}
+
+// ── Courbe de volume par semaine (SVG raw) ──────────────────────
+function VolumeChart({ weeks, blocs }: { weeks: GenWeek[]; blocs: GenBloc[] }) {
+  const vols = weeks.map(weekVol)
+  const max = Math.max(...vols, 1)
+  const W = 300, H = 58, gap = 3
+  const n = weeks.length
+  const bw = n ? (W - gap * (n - 1)) / n : 0
+  return (
+    <svg viewBox={`0 0 ${W} ${H + 14}`} width="100%" style={{ display: 'block', overflow: 'visible' }} preserveAspectRatio="none">
+      {weeks.map((w, i) => {
+        const v = weekVol(w)
+        const h = Math.max(2, (v / max) * H)
+        const x = i * (bw + gap)
+        const num = w.numero ?? i + 1
+        return (
+          <g key={i}>
+            <rect x={x} y={H - h} width={bw} height={h} rx={1.5} fill={weekPhaseColor(num, blocs)} opacity={0.92} />
+            {(n <= 14 || i % 2 === 0) && (
+              <text x={x + bw / 2} y={H + 10} textAnchor="middle" fontSize="7" fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{num}</text>
+            )}
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+// ── Donut de répartition par sport (SVG raw) ────────────────────
+function SportDonut({ dist }: { dist: { sport: string; min: number; color: string }[] }) {
+  const total = dist.reduce((s, d) => s + d.min, 0) || 1
+  const r = 27, sw = 11, C = 2 * Math.PI * r
+  let off = 0
+  return (
+    <svg viewBox="0 0 72 72" width="72" height="72" style={{ flexShrink: 0 }}>
+      <circle cx="36" cy="36" r={r} fill="none" stroke="var(--ai-border)" strokeWidth={sw} opacity={0.35} />
+      <g transform="rotate(-90 36 36)">
+        {dist.map((d, i) => {
+          const dash = (d.min / total) * C
+          const seg = (
+            <circle key={i} cx="36" cy="36" r={r} fill="none" stroke={d.color} strokeWidth={sw}
+              strokeDasharray={`${dash} ${C - dash}`} strokeDashoffset={-off} />
+          )
+          off += dash
+          return seg
+        })}
+      </g>
+      <text x="36" y="33" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--ai-text)" fontFamily="DM Mono,monospace">{Math.round(total / 60)}h</text>
+      <text x="36" y="44" textAnchor="middle" fontSize="6.5" fill="var(--ai-dim)">sem 1-2</text>
+    </svg>
+  )
 }

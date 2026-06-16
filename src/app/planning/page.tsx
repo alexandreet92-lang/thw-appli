@@ -21,6 +21,7 @@ import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
 import { Dumbbell, CalendarDays } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { TrainingSummary } from '@/app/planning/components/training/TrainingSummary'
+import { SPORT_ICON, sportKeyFromType } from '@/components/icons/SportIcon'
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import type { NutritionItem, ParcoursData } from '@/components/planning/SessionEditor'
 
@@ -2141,6 +2142,20 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
 // ════════════════════════════════════════════════
 // TRAINING TAB
 // ════════════════════════════════════════════════
+// Bulle compacte (mobile) : logo sport coloré + pastille de durée colorée. Tap → ouvre.
+function DayBubble({ sport, label, done, onClick }: { sport: string; label: string; done?: boolean; onClick: () => void }) {
+  const key = sportKeyFromType(sport)
+  const cfg = key ? SPORT_ICON[key] : null
+  const color = cfg?.color ?? 'var(--text-mid)'
+  const Ico = cfg?.Icon
+  return (
+    <button onClick={onClick} style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'3px 2px',borderRadius:8,border:'none',background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1 }}>
+      {Ico ? <Ico size={15} color={color} stroke={2.2} /> : <span style={{ width:7,height:7,borderRadius:'50%',background:color }} />}
+      <span className="tnum" style={{ width:'100%',textAlign:'center',background:color,color:'var(--on-primary)',borderRadius:999,padding:'1px 0',fontSize:9.5,fontWeight:700,fontFamily:'var(--font-body)' }}>{label}</span>
+    </button>
+  )
+}
+
 function TrainingTab() {
   // Lit un éventuel ?week=YYYY-MM-DD dans l'URL pour positionner le
   // weekOffset initial — utile après "Ajouter au Planning" depuis le
@@ -2483,12 +2498,16 @@ function TrainingTab() {
     const w = buildWeek(ws, plan)
     const wDates = getWeekDatesFromStart(ws)
     const planColor = plan==='A'?'#06B6D4':plan==='B'?'#a78bfa':'var(--text)'
+    const isCurrentWeek = ws===currentWeekStart
+    const chev: React.CSSProperties = { flexShrink:0, width:18, border:'none', background:'transparent', color:'var(--text-dim)', fontSize:20, lineHeight:1, cursor:'pointer', padding:0 }
     return (
       <div style={{ background:'var(--bg-card)',border:`1px solid ${plan?planColor+'44':'var(--border)'}`,borderRadius:16,overflow:'hidden',boxShadow:'var(--shadow-card)',overflowX:'auto' }}>
+        <style>{`@media(max-width:767px){.wg-desktop{display:none!important}}@media(min-width:768px){.wg-mobile{display:none!important}}`}</style>
         {labelTag && <div style={{ padding:'6px 14px',background:`${planColor}11`,borderBottom:`1px solid ${planColor}33`,display:'flex',alignItems:'center',gap:8 }}>
           <span style={{ fontSize:10,fontWeight:700,color:planColor,letterSpacing:'0.08em',textTransform:'uppercase' as const }}>{labelTag}</span>
           <span style={{ fontSize:10,color:'var(--text-dim)' }}>{getWeekLabel(ws)}</span>
         </div>}
+        <div className="wg-desktop">
         <div style={{ display:'grid',gridTemplateColumns:'60px repeat(7,1fr)',borderBottom:'1px solid var(--border)',background:'var(--bg-card)',minWidth:520 }}>
           <div style={{ padding:'10px 8px', background:'transparent' }}/>
           {w.map((d,i)=>{ const cfg=INTENSITY_CONFIG[d.intensity]; const isCurrent = ws===currentWeekStart; const isPickerOpen = isCurrent && intensityPickerDay===i; return (
@@ -2614,6 +2633,32 @@ function TrainingTab() {
               </div>
             </div>
           ))}
+        </div>
+        </div>{/* /wg-desktop */}
+
+        {/* ── Bandeau compact 7 jours — mobile (tout visible, pleine largeur) ── */}
+        <div className="wg-mobile">
+          <div style={{ display:'flex',alignItems:'flex-start',gap:2,padding:'8px 4px' }}>
+            {isCurrentWeek && <button aria-label="Semaine précédente" onClick={()=>setWeekOffset(o=>o-1)} style={chev}>‹</button>}
+            <div style={{ flex:1,minWidth:0,display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2 }}>
+              {w.map((d,i)=>{
+                const today = i===todayIdx && isCurrentWeek
+                const sess = d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id))
+                const acts = d.activities.filter(a=>!matchActivity(a,d.sessions))
+                return (
+                  <div key={d.day} style={{ minWidth:0,display:'flex',flexDirection:'column',gap:3,alignItems:'center' }}>
+                    <div style={{ width:'100%',textAlign:'center' as const,borderRadius:8,padding:'3px 0',boxSizing:'border-box' as const,background:today?'var(--bg)':'transparent',border:today?'1px solid var(--border-mid)':'1px solid transparent' }}>
+                      <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.02em',margin:0,color:today?'var(--text)':'var(--text-dim)' }}>{d.day}</p>
+                      <p className="tnum" style={{ fontSize:14,fontWeight:700,margin:0,color:'var(--text)' }}>{wDates[i]}</p>
+                    </div>
+                    {sess.map(s=><DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status==='done'} onClick={()=>setDetailModal(s)} />)}
+                    {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
+                  </div>
+                )
+              })}
+            </div>
+            {isCurrentWeek && <button aria-label="Semaine suivante" onClick={()=>setWeekOffset(o=>o+1)} style={chev}>›</button>}
+          </div>
         </div>
       </div>
     )
@@ -2889,7 +2934,7 @@ function TrainingTab() {
                         {s.status==='done'&&<span style={{ fontSize:8,background:SPORT_BORDER[s.sport],color:'#fff',padding:'1px 4px',borderRadius:3,fontWeight:700 }}>FAIT</span>}
                         <span style={{ fontSize:9,fontWeight:700,color:s.planVariant==='B'?'#a78bfa':'#06B6D4',marginLeft:4 }}>Plan {s.planVariant}</span>
                       </div>
-                      <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{s.time} · {formatHM(s.durationMin)}{s.tss?` · ${s.tss} TSS`:''}</p>
+                      <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{s.time} · {formatHM(s.durationMin)}{s.tss?` · SM ${s.tss}`:''}</p>
                     </div>
                   </div>
                   {s.blocks.length>0 && <div style={{ display:'flex',gap:1,height:6,borderRadius:2,overflow:'hidden',marginTop:5 }}>{s.blocks.map(b=>{ const bMin=b.mode==='interval'&&b.reps&&b.effortMin&&b.recoveryMin?b.reps*(b.effortMin+b.recoveryMin):b.durationMin; return <div key={b.id} style={{ flex:bMin,background:ZONE_COLORS[b.zone-1],opacity:0.75 }}/> })}</div>}

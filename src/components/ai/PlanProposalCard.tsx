@@ -104,11 +104,11 @@ export function PlanProposalCard({
         <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--ai-mid)' }}>{prog.objectif_principal ?? proposal.requirements.objectif_principal}</p>
       )}
 
-      {/* Analyse du coach (méthodologie) */}
+      {/* Analyse du coach (méthodologie) — directement sur l'interface, pas de sous-boîte */}
       {prog.methodologie && (
-        <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
+        <div style={{ marginTop: 12 }}>
           <p style={sectionTitle}>L&apos;analyse du coach</p>
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ai-text)', lineHeight: 1.5 }}>{prog.methodologie}</p>
+          <RichText text={prog.methodologie} />
         </div>
       )}
 
@@ -271,6 +271,43 @@ function phaseColor(type: string): string {
   if (t.includes('deload') || t.includes('affût') || t.includes('affut')) return '#a855f7'
   if (t.includes('comp')) return '#ef4444'
   return '#9ca3af'
+}
+
+// ── Rendu texte riche (méthodologie) : sauts de ligne, puces, gras, sous-titres ──
+function parseBold(text: string): React.ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i} style={{ fontWeight: 700 }}>{part.slice(2, -2)}</strong>
+      : <span key={i}>{part}</span>,
+  )
+}
+function RichText({ text }: { text: string }) {
+  const lines = text.split('\n')
+  return (
+    <div>
+      {lines.map((ln, i) => {
+        const t = ln.trim()
+        if (!t) return <div key={i} style={{ height: 7 }} />
+        // Puce
+        if (/^[-*•]\s+/.test(t)) {
+          return (
+            <div key={i} style={{ display: 'flex', gap: 8, margin: '3px 0', fontSize: 13, lineHeight: 1.5, color: 'var(--ai-text)' }}>
+              <span style={{ color: '#3C90D5', flexShrink: 0, fontWeight: 700 }}>•</span>
+              <span style={{ flex: 1, minWidth: 0 }}>{parseBold(t.replace(/^[-*•]\s+/, ''))}</span>
+            </div>
+          )
+        }
+        // Sous-titre : ligne courte se terminant par ':' (ou ## markdown)
+        if (t.startsWith('#')) {
+          return <p key={i} style={{ margin: '10px 0 4px', fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{t.replace(/^#+\s*/, '')}</p>
+        }
+        if (t.length <= 46 && /[:：]$/.test(t)) {
+          return <p key={i} style={{ margin: '9px 0 3px', fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{parseBold(t)}</p>
+        }
+        return <p key={i} style={{ margin: '0 0 5px', fontSize: 13, lineHeight: 1.55, color: 'var(--ai-text)' }}>{parseBold(t)}</p>
+      })}
+    </div>
+  )
 }
 
 // ── Couleurs sport + agrégations ────────────────────────────────

@@ -20608,7 +20608,7 @@ export default function AIPanel({
                     )}
                     {/* Aperçu de plan — à valider avant enregistrement */}
                     {msg.role === 'assistant' && msg.planProposal && (
-                      <div style={{ marginLeft: 34 }}>
+                      <div style={{ marginLeft: 4, marginRight: 2 }}>
                         <PlanProposalCard
                           proposal={msg.planProposal}
                           onValidate={() => { if (msg.planProposal) void validatePlanProposal(active.id, msg.id, msg.planProposal) }}

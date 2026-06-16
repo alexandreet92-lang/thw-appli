@@ -96,7 +96,7 @@ const JSON_SCHEMA = `{
   "nom": "string — nom du programme",
   "duree_semaines": "number",
   "objectif_principal": "string",
-  "methodologie": "string — TON ANALYSE DE COACH (4 à 7 phrases) : la logique GLOBALE du plan. Quelle approche tu choisis et POURQUOI, comment tu enchaînes les phases jusqu'à la course, comment tu gères les spécificités (base déjà acquise, blessure, dénivelé, brick, hypoxie, force…). Concret, sans blabla — comme si tu expliquais ta stratégie à l'athlète.",
+  "methodologie": "string — TON ANALYSE DE COACH, STRUCTURÉE ET AÉRÉE (pas un pavé). Utilise des sauts de ligne réels (\\n), de courts sous-titres en **gras**, et des puces avec des tirets '- '. Couvre : l'approche choisie et POURQUOI, l'enchaînement des phases jusqu'à la course, la gestion des spécificités (base déjà acquise, blessure, dénivelé, brick, hypoxie, force…), sport par sport. Concret, comme une note de coach lisible. Exemple de forme : '**Logique générale**\\n- ...\\n- ...\\n\\n**Par sport**\\n- Vélo : ...\\n- Course : ...'.",
   "blocs_periodisation": [
     {
       "nom": "string",

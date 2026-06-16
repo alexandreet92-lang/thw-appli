@@ -87,9 +87,9 @@ export type TierModel = typeof TIER_LIMITS[TierName]['model']
 
 // ── Mapping modèle → identifiant Anthropic ─────────────────────────
 export const MODEL_IDS: Record<TierModel, string> = {
-  hermes: 'claude-haiku-4-5-20251001',
-  athena: 'claude-sonnet-4-6',
-  zeus:   'claude-sonnet-4-6',   // même modèle, contexte + créativité max
+  hermes: 'claude-haiku-4-5-20251001',  // rapide, sobre
+  athena: 'claude-sonnet-4-6',          // équilibré
+  zeus:   'claude-opus-4-8',            // le plus puissant et précis (raisonnement poussé)
 }
 
 // ── Mapping modèle → max_tokens Anthropic ──────────────────────────

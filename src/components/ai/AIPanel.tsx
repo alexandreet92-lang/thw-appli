@@ -18304,7 +18304,9 @@ export default function AIPanel({
   useEffect(() => {
     setMounted(true)
     setConvs(loadConvs())
-    // Synchro multi-appareils : fusionne avec les conversations du serveur
+    // Synchro multi-appareils : fusionne avec les conversations du serveur,
+    // PUIS pousse l'ensemble fusionné (sinon les convs locales existantes ne
+    // remontent jamais au serveur et l'autre appareil ne les voit pas).
     void (async () => {
       try {
         const { createClient } = await import('@/lib/supabase/client')
@@ -18313,8 +18315,10 @@ export default function AIPanel({
         if (!user) return
         syncUserIdRef.current = user.id
         const remote = await fetchRemoteConvs(sb, user.id)
-        if (!remote.length) return
-        setConvs(prev => mergeConvs(prev as unknown as SyncConv[], remote, MAX_CONVS) as unknown as AIConv[])
+        const localNow = loadConvs() as unknown as SyncConv[]
+        const merged = mergeConvs(localNow, remote, MAX_CONVS)
+        setConvs(merged as unknown as AIConv[])
+        void pushConvs(sb, user.id, merged)
       } catch { /* hors-ligne / non connecté → on garde le local */ }
     })()
   }, [])

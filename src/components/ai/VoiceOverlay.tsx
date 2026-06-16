@@ -37,6 +37,7 @@ export function VoiceOverlay({
   const audioRef = useRef<{ ctx: any; stream: MediaStream; analyser: AnalyserNode; data: Uint8Array } | null>(null)
   const fallbackRef = useRef(false)
   const fbEnergyRef = useRef(0)
+  const silentTicksRef = useRef(0)
   const interimRef = useRef(interim)
   const lastInterimRef = useRef('')
   interimRef.current = interim
@@ -82,8 +83,19 @@ export function VoiceOverlay({
         a.analyser.getByteTimeDomainData(a.data)
         let sum = 0
         for (let i = 0; i < a.data.length; i++) { const d = (a.data[i] - 128) / 128; sum += d * d }
-        v = Math.min(1, Math.sqrt(sum / a.data.length) * 4.4)   // RMS + gain
-        if (v < 0.06) v = 0                                     // noise gate → silence = plat
+        v = Math.min(1, Math.sqrt(sum / a.data.length) * 6.0)   // RMS + gain (plus sensible)
+        if (v < 0.035) v = 0                                    // noise gate → silence = plat
+        // Auto-bascule : si le micro réel ne capte rien pendant que la parole EST reconnue
+        // (conflit micro iOS), on passe sur l'enveloppe pilotée par la parole.
+        if (v > 0.04) silentTicksRef.current = 0
+        else if (interimRef.current.trim()) {
+          silentTicksRef.current += 1
+          if (silentTicksRef.current > 12) {
+            try { a.stream.getTracks().forEach(t => t.stop()); a.ctx.close?.() } catch { /* ignore */ }
+            audioRef.current = null
+            fallbackRef.current = true
+          }
+        }
       } else if (fallbackRef.current) {
         // Repli : enveloppe pilotée par l'activité de reconnaissance
         const cur = interimRef.current

@@ -159,7 +159,8 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
         }
         return (
           <div style={{
-            position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 320, zIndex: 300,
+            position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 300,
+            width: 300, maxWidth: 'calc(100vw - 24px)',
             background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 14,
             boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: 4,
             animation: 'aip_menu_up 0.16s ease-out',

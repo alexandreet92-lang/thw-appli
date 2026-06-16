@@ -19,6 +19,7 @@ import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { VoiceOverlay } from './VoiceOverlay'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
+import { fetchRemoteConvs, pushConvs, deleteRemoteConv, mergeConvs, type SyncConv } from '@/lib/ai/conversations-sync'
 import { PlanProposalCard, type PlanProposal, type GenProgram, type PlanRequirements } from './PlanProposalCard'
 import { MethodPicker } from './MethodPicker'
 import ActiveCompetencesBadge from '@/components/ai-coach/ActiveCompetencesBadge'
@@ -18278,6 +18279,9 @@ export default function AIPanel({
   const abortRef   = useRef<AbortController | null>(null)
   // Synthèse du dernier plan créé (create_training_plan) → message de restitution riche
   const planSummaryRef = useRef<{ name: string; weeks: number; sessions: number; pointsCles: string[]; conseils: string[] } | null>(null)
+  // Synchro conversations entre appareils (Supabase)
+  const syncUserIdRef = useRef<string | null>(null)
+  const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Agent selector dropdown
   const agentDropRef = useRef<HTMLDivElement>(null)
 
@@ -18300,7 +18304,36 @@ export default function AIPanel({
   useEffect(() => {
     setMounted(true)
     setConvs(loadConvs())
+    // Synchro multi-appareils : fusionne avec les conversations du serveur
+    void (async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        syncUserIdRef.current = user.id
+        const remote = await fetchRemoteConvs(sb, user.id)
+        if (!remote.length) return
+        setConvs(prev => mergeConvs(prev as unknown as SyncConv[], remote, MAX_CONVS) as unknown as AIConv[])
+      } catch { /* hors-ligne / non connecté → on garde le local */ }
+    })()
   }, [])
+
+  // Pousse les conversations vers le serveur (debounce) à chaque changement
+  useEffect(() => {
+    if (!mounted) return
+    const uid = syncUserIdRef.current
+    if (!uid) return
+    if (pushTimerRef.current) clearTimeout(pushTimerRef.current)
+    pushTimerRef.current = setTimeout(() => {
+      void (async () => {
+        const { createClient } = await import('@/lib/supabase/client')
+        await pushConvs(createClient(), uid, convs as unknown as SyncConv[])
+      })()
+    }, 1500)
+    return () => { if (pushTimerRef.current) clearTimeout(pushTimerRef.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convs, mounted])
 
   // Charge les règles IA actives de l'utilisateur au mount
   useEffect(() => {
@@ -18538,6 +18571,12 @@ export default function AIPanel({
   const deleteConv = (id: string) => {
     setConvs(prev => prev.filter(c => c.id !== id))
     if (activeId === id) setActiveId(null)
+    // Suppression explicite côté serveur (sinon elle réapparaîtrait à la prochaine fusion)
+    const uid = syncUserIdRef.current
+    if (uid) void (async () => {
+      const { createClient } = await import('@/lib/supabase/client')
+      await deleteRemoteConv(createClient(), uid, id)
+    })()
   }
 
   const pinConv = (id: string) => {

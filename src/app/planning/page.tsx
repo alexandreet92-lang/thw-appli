@@ -2526,6 +2526,9 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
 
   // Multi-week data for range > 1
   const [extraSessions, setExtraSessions] = useState<Record<string,Session[]>>({})
+  // Intensité (type de jour) par DATE précise : clé `${week_start}_${day_index}` → propre à
+  // chaque semaine (modifier un jour n'affecte plus le même jour des autres semaines).
+  const [intensityMap, setIntensityMap] = useState<Record<string,DayIntensity>>({})
   const [planTick, setPlanTick] = useState(0)
   const [loadedOnce, setLoadedOnce] = useState(false)
   const [datasWeek, setDatasWeek] = useState<string|null>(null)
@@ -2550,6 +2553,25 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
 
   const allWeekStarts = Array.from({length:weekRange},(_,i)=>getWeekStartFromOffset(weekOffset+i))
 
+  // Charge les types de jour de TOUTES les semaines affichées (clé week_start_day_index).
+  useEffect(()=>{
+    const sb=createClient()
+    ;(async()=>{
+      const {data:{user}}=await sb.auth.getUser(); if(!user)return
+      const {data}=await sb.from('day_intensity').select('week_start,day_index,intensity').eq('user_id',user.id).in('week_start',allWeekStarts)
+      const m:Record<string,DayIntensity>={}
+      ;(data??[]).forEach((x:{week_start:string;day_index:number;intensity:DayIntensity})=>{ m[`${x.week_start}_${x.day_index}`]=x.intensity })
+      setIntensityMap(m)
+    })()
+  },[weekRange,weekOffset,planTick])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Définit le type d'un jour PRÉCIS (semaine + jour) — n'affecte pas les autres semaines.
+  async function setDayIntensityWeek(ws:string, dayIdx:number, intensity:DayIntensity) {
+    setIntensityMap(p=>({...p,[`${ws}_${dayIdx}`]:intensity}))
+    const sb=createClient(); const {data:{user}}=await sb.auth.getUser(); if(!user)return
+    await sb.from('day_intensity').upsert({ user_id:user.id, week_start:ws, day_index:dayIdx, intensity, updated_at:new Date().toISOString() },{ onConflict:'user_id,week_start,day_index' })
+  }
+
   function getSessionsForWeek(ws:string, plan?:PlanVariant):Session[] {
     const raw = ws===currentWeekStart ? sessions : (extraSessions[ws]??[])
     if(!plan) return raw
@@ -2567,7 +2589,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     const wActs = getActivitiesForWeek(ws)
     return DAY_NAMES.map((day,i)=>({
       day, date:wDates[i],
-      intensity:(intensities[i]??'low') as DayIntensity,
+      intensity:(intensityMap[`${ws}_${i}`]??'low') as DayIntensity,
       sessions: wSessions.filter(s=>s.dayIndex===i && !isRestSession(s)),
       activities: wActs.filter(a=>a.dayIndex===i),
     }))
@@ -2624,7 +2646,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                       <div style={{ alignSelf: 'flex-end' as const, marginBottom: 2 }}>
                         <DayHeader num={dates[i]} intensity={d.intensity} isToday={isToday}
                           onNum={() => setDayPicker(p => p === `d_${hid}` ? null : `d_${hid}`)} open={dayPicker === `d_${hid}`}
-                          onPick={(it) => { setDayIntensity(i, it); setDayPicker(null) }} />
+                          onPick={(it) => { void setDayIntensityWeek(ws, i, it); setDayPicker(null) }} />
                       </div>
                       {hoverAdd === hid && (
                         <button onClick={() => { setAddModalFavorites(false); setAddModal({ dayIndex: i, plan: activePlan, weekStart: ws }) }} title="Ajouter une séance"
@@ -2703,7 +2725,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                           <div key={i} data-mday={i} data-mws={ws} style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center', borderRadius:8, background:isDropTarget?'var(--primary-dim)':'transparent', transition:'background .12s' }}>
                             <DayHeader abbr={d.day} num={dates[i]} intensity={d.intensity} isToday={isToday}
                               plus onPlus={() => setDayPicker(p => p === `m_${hid}` ? null : `m_${hid}`)} open={dayPicker === `m_${hid}`}
-                              onPick={(it) => { setDayIntensity(i, it); setDayPicker(null) }}
+                              onPick={(it) => { void setDayIntensityWeek(ws, i, it); setDayPicker(null) }}
                               onNum={() => { setAddModalFavorites(false); setAddModal({ dayIndex:i, plan:activePlan, weekStart:ws }) }} />
                             {sess.map(s=><DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status==='done'} lifted={tDrag?.id===s.id} {...bubbleTouch(s.id, ws)} onClick={()=>{ if(tDragRef.current){ tDragRef.current=false; return } setDetailModal(s) }} />)}
                             {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
@@ -3241,63 +3263,56 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       </div>
 
       {/* ── Controls — mobile (3 lignes en carte) ── */}
-      <div id="tr-ctrl-mobile" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:16,padding:'14px 16px',display:'flex',flexDirection:'column',gap:12,boxShadow:'var(--shadow-card)' }}>
-        {/* Ligne 1 : Navigation semaine */}
-        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-          <div style={{ display:'flex',alignItems:'center',gap:6 }}>
-            <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:18,padding:'4px 12px',borderRadius:10,lineHeight:1 }}>←</button>
-            <span style={{ fontSize:13,fontWeight:700,color:'var(--text)',minWidth:130,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
-            <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:18,padding:'4px 12px',borderRadius:10,lineHeight:1 }}>→</button>
-          </div>
-          {weekOffset!==0
-            ? <button onClick={()=>setWeekOffset(0)} style={{ fontSize:11,padding:'5px 12px',borderRadius:20,background:'rgba(6,182,212,0.10)',border:'1px solid rgba(6,182,212,0.3)',color:'#06B6D4',cursor:'pointer',fontWeight:700 }}>Auj.</button>
-            : <div style={{ width:52 }}/>
-          }
-        </div>
-        {/* Ligne 2 : Sélecteur période */}
+      <div id="tr-ctrl-mobile" style={{ display:'flex',alignItems:'center',gap:6,flexWrap:'wrap' as const }}>
+        {/* Navigation semaine — compacte */}
+        <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius:8,lineHeight:1 }}>←</button>
+        <span style={{ fontSize:11,fontWeight:700,color:'var(--text)',minWidth:96,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
+        <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius:8,lineHeight:1 }}>→</button>
+        {weekOffset!==0 && <button onClick={()=>setWeekOffset(0)} style={{ fontSize:10,padding:'4px 9px',borderRadius:8,background:'var(--primary-dim)',border:'none',color:'var(--primary)',cursor:'pointer',fontWeight:700 }}>Auj.</button>}
+        {/* Sélecteur période — bulle compacte */}
         <div style={{ position:'relative' }}>
           <button onClick={()=>setShowRangeDd(x=>!x)}
-            style={{ width:'100%',padding:'9px 16px',borderRadius:20,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',fontWeight:600 }}>
-            <span>{weekRange===5?'5 semaines':weekRange===10?'10 semaines':'20 semaines'}</span>
-            <span style={{ fontSize:10,color:'var(--text-dim)' }}>▾</span>
+            style={{ padding:'5px 11px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
+            <span>{weekRange===5?'5 sem.':weekRange===10?'10 sem.':'20 sem.'}</span>
+            <span style={{ fontSize:9,color:'var(--text-dim)' }}>▾</span>
           </button>
           {showRangeDd&&<div onClick={()=>setShowRangeDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
-          {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,right:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:14,boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:6 }}>
+          {showRangeDd&&<div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,minWidth:130,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:12,boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:5 }}>
             {([5,10,20] as WeekRange[]).map(r=>(
               <button key={r} onClick={()=>{setWeekRange(r);setShowRangeDd(false)}}
-                style={{ width:'100%',padding:'10px 16px',borderRadius:10,border:'none',
+                style={{ width:'100%',padding:'8px 12px',borderRadius:8,border:'none',
                   background:weekRange===r?'rgba(6,182,212,0.10)':'transparent',
                   color:weekRange===r?'#06B6D4':'var(--text-mid)',
-                  fontSize:13,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?700:400 }}>
+                  fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:weekRange===r?700:400 }}>
                 {r===5?'5 semaines':r===10?'10 semaines':'20 semaines'}
               </button>
             ))}
           </div>}
         </div>
-        {/* Ligne 3 : Plan ▾ dropdown compact */}
+        {/* Plan ▾ — bulle compacte */}
         <div style={{ position:'relative' }}>
           {showPlanDd && <div onClick={()=>setShowPlanDd(false)} style={{ position:'fixed',inset:0,zIndex:49 }}/>}
           <button onClick={()=>setShowPlanDd(x=>!x)}
-            style={{ width:'100%',padding:'10px 16px',borderRadius:20,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',fontWeight:600 }}>
-            <span>{compareMode ? 'Comparer A & B' : `Plan ${activePlan} — ${activePlan==='A'?'Optimal':'Minimal'}`}</span>
-            <span style={{ fontSize:10,color:'var(--text-dim)' }}>▾</span>
+            style={{ padding:'5px 11px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontWeight:600 }}>
+            <span>{compareMode ? 'A & B' : `Plan ${activePlan}`}</span>
+            <span style={{ fontSize:9,color:'var(--text-dim)' }}>▾</span>
           </button>
           {showPlanDd && (
-            <div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,right:0,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:14,boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:6 }}>
+            <div style={{ position:'absolute',top:'calc(100% + 6px)',left:0,minWidth:180,background:'var(--bg-card)',border:'1px solid var(--border-mid)',borderRadius:12,boxShadow:'0 8px 24px rgba(0,0,0,0.18)',zIndex:50,padding:5 }}>
               {(['A','B'] as PlanVariant[]).map(p=>(
                 <button key={p} onClick={()=>{setActivePlan(p);setCompareMode(false);setShowPlanDd(false)}}
-                  style={{ width:'100%',padding:'10px 16px',borderRadius:10,border:'none',
+                  style={{ width:'100%',padding:'8px 12px',borderRadius:8,border:'none',
                     background:!compareMode&&activePlan===p?'rgba(6,182,212,0.10)':'transparent',
                     color:!compareMode&&activePlan===p?'#06B6D4':'var(--text-mid)',
-                    fontSize:13,cursor:'pointer',textAlign:'left' as const,fontWeight:!compareMode&&activePlan===p?700:400 }}>
+                    fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:!compareMode&&activePlan===p?700:400 }}>
                   Plan {p} — {p==='A'?'Optimal':'Minimal'}
                 </button>
               ))}
               <button onClick={()=>{setCompareMode(x=>!x);setShowPlanDd(false)}}
-                style={{ width:'100%',padding:'10px 16px',borderRadius:10,border:'none',
+                style={{ width:'100%',padding:'8px 12px',borderRadius:8,border:'none',
                   background:compareMode?'rgba(255,179,64,0.10)':'transparent',
                   color:compareMode?'#ffb340':'var(--text-mid)',
-                  fontSize:13,cursor:'pointer',textAlign:'left' as const,fontWeight:compareMode?700:400 }}>
+                  fontSize:12,cursor:'pointer',textAlign:'left' as const,fontWeight:compareMode?700:400 }}>
                 Comparer les deux plans
               </button>
             </div>

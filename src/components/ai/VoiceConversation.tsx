@@ -22,6 +22,8 @@ function stripForSpeech(s: string): string {
   return s
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^\s*\|?[-: |]+\|?\s*$/gm, ' ')   // lignes de séparation de tableau
+    .replace(/\|/g, ' ')                         // pipes de tableau restants
     .replace(/[#*_`>]/g, '')
     .replace(/^\s*[-•→]\s*/gm, '')
     .replace(/\n{2,}/g, '. ')
@@ -37,7 +39,9 @@ export function VoiceConversation({ onTurn, onClose }: {
   const [phase, setPhase] = useState<Phase>('listening')
   const [live, setLive] = useState('')       // transcription en cours (utilisateur)
   const [spoken, setSpoken] = useState('')    // texte lu par l'IA
+  const [revealed, setRevealed] = useState(0) // nb de caractères révélés (apparition fluide)
   const [supported, setSupported] = useState(true)
+  const revealTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const phaseRef = useRef<Phase>('listening')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -97,6 +101,7 @@ export function VoiceConversation({ onTurn, onClose }: {
     return () => {
       endedRef.current = true
       if (silenceRef.current) clearTimeout(silenceRef.current)
+      if (revealTimerRef.current) clearInterval(revealTimerRef.current)
       try { rec.stop() } catch { /* ignore */ }
       window.speechSynthesis.cancel()
     }
@@ -115,19 +120,36 @@ export function VoiceConversation({ onTurn, onClose }: {
     speak(resp)
   }
 
+  function startReveal(len: number) {
+    if (revealTimerRef.current) clearInterval(revealTimerRef.current)
+    setRevealed(0)
+    revealTimerRef.current = setInterval(() => {
+      setRevealed(r => {
+        const next = r + 3
+        if (next >= len && revealTimerRef.current) { clearInterval(revealTimerRef.current); revealTimerRef.current = null }
+        return Math.min(next, len)
+      })
+    }, 35)   // ~85 car/s ≈ rythme de parole → apparition fluide
+  }
+
   function speak(text: string) {
     const clean = stripForSpeech(text)
     const synth = window.speechSynthesis
     if (!clean || !synth) { setPhaseBoth('listening'); return }
     setSpoken(clean)
+    startReveal(clean.length)
     setPhaseBoth('speaking')
     synth.cancel()
     const u = new SpeechSynthesisUtterance(clean)
     u.lang = 'fr-FR'; u.rate = 1.03
     const fr = synth.getVoices().find(v => v.lang?.toLowerCase().startsWith('fr'))
     if (fr) u.voice = fr
-    u.onend = () => { if (!endedRef.current) { setSpoken(''); setPhaseBoth('listening') } }
-    u.onerror = () => { if (!endedRef.current) { setSpoken(''); setPhaseBoth('listening') } }
+    const finish = () => {
+      if (revealTimerRef.current) { clearInterval(revealTimerRef.current); revealTimerRef.current = null }
+      if (!endedRef.current) { setSpoken(''); setRevealed(0); setPhaseBoth('listening') }
+    }
+    u.onend = finish
+    u.onerror = finish
     synth.speak(u)
   }
 
@@ -137,7 +159,7 @@ export function VoiceConversation({ onTurn, onClose }: {
     : phase === 'listening' ? 'Je t’écoute…'
     : phase === 'thinking' ? 'Je réfléchis…'
     : 'Je réponds…'
-  const centerText = phase === 'speaking' ? spoken : (live || (phase === 'thinking' ? '…' : 'Parle, je t’écoute…'))
+  const centerText = phase === 'speaking' ? spoken.slice(0, revealed) : (live || (phase === 'thinking' ? '…' : 'Parle, je t’écoute…'))
 
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label="Conversation vocale" style={{
@@ -180,11 +202,11 @@ export function VoiceConversation({ onTurn, onClose }: {
           ))}
         </div>
         <button onClick={onClose} aria-label="Terminer la conversation" style={{
-          width: 60, height: 60, borderRadius: '50%', border: 'none', background: '#ef4444', color: '#fff',
+          width: 44, height: 44, borderRadius: '50%', border: 'none', background: '#ef4444', color: '#fff',
           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 6px 18px rgba(239,68,68,0.4)',
+          boxShadow: '0 5px 14px rgba(239,68,68,0.38)',
         }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>
         <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>Coupe-moi la parole quand tu veux · rouge = terminer</span>
       </div>

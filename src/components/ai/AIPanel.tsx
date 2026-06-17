@@ -19331,7 +19331,7 @@ export default function AIPanel({
   }, [model])
 
   // SEND MESSAGE
-  const send = useCallback(async (presetDisplay?: string, presetApi?: string) => {
+  const send = useCallback(async (presetDisplay?: string, presetApi?: string, opts?: { voice?: boolean }) => {
     const txt = (presetDisplay ?? input).trim()
     const hasAttachment = !!attachment
     if (!txt && !hasAttachment && !activeQA || loading) return
@@ -19447,6 +19447,7 @@ export default function AIPanel({
           agentId:  isPlanChat ? 'plan_coach' : activeAgent === 'networks' ? 'hybrid_networks' : 'central',
           modelId:  snapshot,
           method:   method !== 'auto' ? method : undefined,
+          voice:    opts?.voice ? true : undefined,
           messages: apiMsgs,
           aiRules:  aiRules.length > 0 ? aiRules : undefined,
           // Merge plan_context (session IDs) into the existing context so that
@@ -20925,7 +20926,7 @@ export default function AIPanel({
               {/* Discussion vocale (v1) — boucle écoute → coach → voix */}
               {voiceConvOpen && (
                 <VoiceConversation
-                  onTurn={async (t) => { await send(t); return lastResponseTextRef.current }}
+                  onTurn={async (t) => { await send(t, undefined, { voice: true }); return lastResponseTextRef.current }}
                   onClose={() => setVoiceConvOpen(false)}
                 />
               )}
@@ -21002,7 +21003,14 @@ export default function AIPanel({
                 {/* Conversation vocale (mode discussion) */}
                 {speechSupported && !loading && !recording && (
                   <button
-                    onClick={() => setVoiceConvOpen(true)}
+                    onClick={() => {
+                      // Débloque la synthèse vocale dans le geste utilisateur (sinon iOS bloque la voix différée)
+                      try {
+                        const s = window.speechSynthesis
+                        if (s) { s.cancel(); s.speak(new SpeechSynthesisUtterance(' ')) }
+                      } catch { /* ignore */ }
+                      setVoiceConvOpen(true)
+                    }}
                     title="Discussion vocale"
                     className="aip-icon-btn"
                     style={{

@@ -387,6 +387,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── Mode vocal : réponse conversationnelle (sera lue à voix haute) ──
+  if ((chatBody as { voice?: boolean }).voice) {
+    systemWithTools = `${systemWithTools}\n\nMODE VOCAL — ta réponse sera LUE À VOIX HAUTE. Réponds de façon CONVERSATIONNELLE et naturelle, en 2 à 6 phrases courtes. AUCUN markdown, AUCUN tableau, AUCUNE liste à puces, AUCUN titre, aucun symbole (#, *, |, -). Parle comme un coach à l'oral, va droit à l'essentiel. Si l'athlète veut un plan détaillé ou des chiffres précis, propose-lui d'ouvrir le détail à l'écran plutôt que de tout réciter.`
+  }
+
   // ── Pré-check tokens (fail-open : n'interrompt jamais en cas d'erreur) ──
   const tokenModelKey = (chatBody as { modelId?: string }).modelId ?? 'athena'
   try {

@@ -20,6 +20,8 @@ import { segmentElevationProfile, getSignificantClimbs } from '@/lib/gpx/parser'
 import type { ParsedSegment } from '@/lib/gpx/parser'
 import { formatDuration } from '@/lib/utils'
 import { SportIcon } from '@/components/icons/SportIcon'
+import { SessionEditorMobile } from './mobile/SessionEditorMobile'
+import { sportColor as mobileSportColor } from './mobile/editorial'
 
 import {
   // Types
@@ -4702,6 +4704,52 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         sessionTitle={title || SPORT_LABEL[sport]}
         onExit={() => setExecuteMode(false)}
         exoHistory={exoHistory}
+      />
+    )
+  }
+
+  // ── Refonte MOBILE (sports endurance) — desktop inchangé ──
+  // §0..§6 : feuille « éditorial clair » + builder de blocs adaptatif.
+  // Pour gym/hyrox, on conserve le rendu existant (builder d'exercices).
+  if (mobile && !isStrength) {
+    const onFavorite = async () => {
+      const name = prompt('Nom du favori :', title || SPORT_LABEL[sport])
+      if (!name) return
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        await sb.from('session_favorites').insert({
+          user_id: user.id, name, sport,
+          training_type: trainingTypes.join('+') || null, blocks_data: blocks,
+          nutrition_data: nutritionItems, duration_min: dur, rpe, notes: desc,
+        })
+        alert('✓ Favori sauvegardé')
+      } catch (e) { console.error('[Fav]', e) }
+    }
+    return (
+      <SessionEditorMobile
+        mode={mode}
+        sport={sport} accent={mobileSportColor(sport)} onSportChange={handleSportChange}
+        cyclingSub={cyclingSub} setCyclingSub={setCyclingSub}
+        trainingTypes={trainingTypes} setTrainingTypes={setTrainingTypes}
+        title={title} setTitle={setTitle}
+        date={date} setDate={setDate} time={time} setTime={setTime}
+        dur={dur} setDur={setDur} rpe={rpe} setRpe={setRpe}
+        desc={desc} setDesc={setDesc}
+        selPlan={selPlan}
+        blocks={blocks} setBlocks={setBlocks}
+        sm={smsn.sm} sn={smsn.sn}
+        athlete={athleteData ? {
+          ftp: athleteData.ftp, lthrBike: athleteData.lthrBike, lthrRun: athleteData.lthrRun,
+          runThresholdPaceStr: athleteData.runThresholdPaceStr, swimCSSStr: athleteData.swimCSSStr,
+          hrMax: athleteData.hrMax,
+        } : null}
+        refs={{ ftp: athleteData?.ftp ?? null, runThresholdPaceSec: athleteData?.runThresholdPaceSec ?? null, cssSecPer100m: athleteData?.cssSecPer100m ?? null }}
+        builderTab={builderTab} setBuilderTab={setBuilderTab}
+        saving={saving} saved={saved}
+        onClose={onClose} onSave={handleSubmit} onExportPDF={handleExportPDF} onFavorite={onFavorite}
       />
     )
   }

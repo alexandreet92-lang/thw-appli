@@ -319,12 +319,20 @@ function useCalendar() {
   }
 
   async function updateRace(r: Race) {
-    await supabase.from('planned_races').update({
+    const { error } = await supabase.from('planned_races').update({
       name: r.name, sport: r.sport, date: r.date, level: r.level,
       goal: r.goal ?? null, strategy: r.strategy ?? null,
+      run_distance: r.runDistance ?? null, tri_distance: r.triDistance ?? null,
+      hyrox_category: r.hyroxCategory ?? null, hyrox_level: r.hyroxLevel ?? null,
+      hyrox_gender: r.hyroxGender ?? null, goal_time: r.goalTime ?? null,
+      goal_swim_time: r.goalSwimTime ?? null, goal_bike_time: r.goalBikeTime ?? null,
+      goal_run_time: r.goalRunTime ?? null,
+      status: r.status ?? 'upcoming', distance: r.distance ?? null,
+      performance_data: r.performanceData ?? {}, notes: r.notes ?? null,
       validated: r.validated ?? false, validation_data: r.validationData ?? {},
       updated_at: new Date().toISOString(),
     }).eq('id', r.id)
+    if (error) { console.error('[updateRace] update error', error); throw error }
     setRaces(p => p.map(x => x.id === r.id ? r : x))
   }
 

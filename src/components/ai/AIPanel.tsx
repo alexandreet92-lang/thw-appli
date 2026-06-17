@@ -18,6 +18,7 @@ import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { VoiceOverlay } from './VoiceOverlay'
+import { VoiceConversation } from './VoiceConversation'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
 import { fetchRemoteConvs, pushConvs, deleteRemoteConv, mergeConvs, type SyncConv } from '@/lib/ai/conversations-sync'
 import { PlanProposalCard, type PlanProposal, type GenProgram, type PlanRequirements } from './PlanProposalCard'
@@ -18282,6 +18283,9 @@ export default function AIPanel({
   // Synchro conversations entre appareils (Supabase)
   const syncUserIdRef = useRef<string | null>(null)
   const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Conversation vocale : dernier texte de réponse complet (pour la synthèse vocale)
+  const lastResponseTextRef = useRef('')
+  const [voiceConvOpen, setVoiceConvOpen] = useState(false)
   // Agent selector dropdown
   const agentDropRef = useRef<HTMLDivElement>(null)
 
@@ -18304,7 +18308,9 @@ export default function AIPanel({
   useEffect(() => {
     setMounted(true)
     setConvs(loadConvs())
-    // Synchro multi-appareils : fusionne avec les conversations du serveur
+    // Synchro multi-appareils : fusionne avec les conversations du serveur,
+    // PUIS pousse l'ensemble fusionné (sinon les convs locales existantes ne
+    // remontent jamais au serveur et l'autre appareil ne les voit pas).
     void (async () => {
       try {
         const { createClient } = await import('@/lib/supabase/client')
@@ -18313,8 +18319,10 @@ export default function AIPanel({
         if (!user) return
         syncUserIdRef.current = user.id
         const remote = await fetchRemoteConvs(sb, user.id)
-        if (!remote.length) return
-        setConvs(prev => mergeConvs(prev as unknown as SyncConv[], remote, MAX_CONVS) as unknown as AIConv[])
+        const localNow = loadConvs() as unknown as SyncConv[]
+        const merged = mergeConvs(localNow, remote, MAX_CONVS)
+        setConvs(merged as unknown as AIConv[])
+        void pushConvs(sb, user.id, merged)
       } catch { /* hors-ligne / non connecté → on garde le local */ }
     })()
   }, [])
@@ -19591,6 +19599,7 @@ export default function AIPanel({
 
       abortRef.current = null
       streamDone = true  // stream complété normalement
+      lastResponseTextRef.current = textAccumulated  // pour la lecture vocale (conversation)
 
       // Création de plan demandée → génère l'aperçu (asynchrone, la carte affiche son loader)
       const pgr = planGenRequest as { msgId: string; requirements: PlanRequirements } | null
@@ -20913,6 +20922,14 @@ export default function AIPanel({
                 />
               )}
 
+              {/* Discussion vocale (v1) — boucle écoute → coach → voix */}
+              {voiceConvOpen && (
+                <VoiceConversation
+                  onTurn={async (t) => { await send(t); return lastResponseTextRef.current }}
+                  onClose={() => setVoiceConvOpen(false)}
+                />
+              )}
+
               {/* Ligne basse : + · modèle · [spacer] · mic · envoyer */}
               <div style={{
                 display: 'flex', alignItems: 'center',
@@ -20978,6 +20995,23 @@ export default function AIPanel({
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="9" y="2" width="6" height="11" rx="3"/>
                       <path d="M5 10a7 7 0 0 0 14 0M12 19v3M8 22h8"/>
+                    </svg>
+                  </button>
+                )}
+
+                {/* Conversation vocale (mode discussion) */}
+                {speechSupported && !loading && !recording && (
+                  <button
+                    onClick={() => setVoiceConvOpen(true)}
+                    title="Discussion vocale"
+                    className="aip-icon-btn"
+                    style={{
+                      width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                      color: 'var(--ai-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4" />
                     </svg>
                   </button>
                 )}

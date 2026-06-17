@@ -31,8 +31,8 @@ export function VoiceOverlay({
 }) {
   const [mounted, setMounted] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const barsRef = useRef<(HTMLSpanElement | null)[]>([])
   const bufRef = useRef<number[]>(new Array(NBARS).fill(0))
+  const waveRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const audioRef = useRef<{ ctx: any; stream: MediaStream; analyser: AnalyserNode; data: Uint8Array } | null>(null)
   const fallbackRef = useRef(false)
@@ -106,12 +106,13 @@ export function VoiceOverlay({
       }
       const buf = bufRef.current
       buf.push(v); buf.shift()
-      for (let i = 0; i < NBARS; i++) {
-        const el = barsRef.current[i]
-        if (!el) continue
-        const h = buf[i]
-        el.style.transform = `scaleY(${Math.max(0.09, h)})`
-        el.style.opacity = h > 0.05 ? '1' : '0.45'
+      // Les barres bougent en continu (animation CSS). Le volume amplifie
+      // l'ensemble : silence → idle, fort → barres plus hautes.
+      const cont = waveRef.current
+      if (cont) {
+        const amp = 0.55 + Math.min(1, v) * 1.2
+        cont.style.transform = `scaleY(${amp})`
+        cont.style.opacity = String(0.6 + Math.min(1, v) * 0.4)
       }
     }, 65)
 
@@ -134,6 +135,7 @@ export function VoiceOverlay({
       <style>{`
         @keyframes vo_in   { from { opacity: 0 } to { opacity: 1 } }
         @keyframes vo_pill { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes vo_wave { 0%,100% { transform: scaleY(0.25) } 50% { transform: scaleY(0.9) } }
       `}</style>
       <div
         role="dialog"
@@ -196,17 +198,15 @@ export function VoiceOverlay({
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
 
-          {/* Waveform — historique défilant du volume */}
-          <div style={{ flex: 1, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, overflow: 'hidden' }}>
+          {/* Waveform — barres animées en continu, amplifiées par le volume */}
+          <div ref={waveRef} style={{ flex: 1, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, overflow: 'hidden', transformOrigin: 'center', transition: 'transform 0.09s linear, opacity 0.12s linear', willChange: 'transform' }}>
             {Array.from({ length: NBARS }, (_, i) => (
               <span
                 key={i}
-                ref={el => { barsRef.current[i] = el }}
                 style={{
                   width: 3, height: '100%', borderRadius: 3, flexShrink: 0,
-                  background: 'var(--ai-text)', opacity: 0.45,
-                  transformOrigin: 'center', transform: 'scaleY(0.09)',
-                  transition: 'transform 0.07s linear, opacity 0.12s linear',
+                  background: 'var(--ai-text)', transformOrigin: 'center',
+                  animation: `vo_wave ${0.7 + (i % 5) * 0.13}s ease-in-out ${((i * 0.07) % 0.9).toFixed(2)}s infinite`,
                 }}
               />
             ))}

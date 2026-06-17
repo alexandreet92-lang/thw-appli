@@ -1,6 +1,7 @@
 'use client'
 // Primitives UI « éditorial clair » partagées par le SessionEditor mobile.
 // Aucune couleur hex : tout via var(--se-*) ou la prop `accent` reçue.
+import { useRef } from 'react'
 import type { ReactNode } from 'react'
 
 export function Card({ children, style }: { children: ReactNode; style?: React.CSSProperties }) {
@@ -48,6 +49,35 @@ export function Segmented<T extends string>({ value, options, onChange, accent }
           }}>{o.label}</button>
         )
       })}
+    </div>
+  )
+}
+
+/** Jauge draggable (clic + glissé), pas discret. Le pouce flotte sur la piste. */
+export function Gauge({ value, min, max, step, onChange, color, gradient }: {
+  value: number; min: number; max: number; step: number; onChange: (v: number) => void
+  color: string; gradient?: string
+}) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const pct = Math.max(0, Math.min(1, (value - min) / (max - min)))
+  function apply(clientX: number) {
+    const el = ref.current; if (!el) return
+    const r = el.getBoundingClientRect()
+    const raw = min + ((clientX - r.left) / r.width) * (max - min)
+    const v = Math.round(raw / step) * step
+    onChange(Math.max(min, Math.min(max, +v.toFixed(2))))
+  }
+  function down(e: React.PointerEvent) {
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+    apply(e.clientX)
+  }
+  function move(e: React.PointerEvent) { if (e.buttons) apply(e.clientX) }
+  return (
+    <div ref={ref} onPointerDown={down} onPointerMove={move}
+      style={{ position: 'relative', height: 22, display: 'flex', alignItems: 'center', cursor: 'pointer', touchAction: 'none' }}>
+      <div style={{ width: '100%', height: 8, borderRadius: 5, background: gradient ?? 'var(--se-rule)' }} />
+      {!gradient && <div style={{ position: 'absolute', left: 0, height: 8, width: `${pct * 100}%`, borderRadius: 5, background: color, pointerEvents: 'none' }} />}
+      <span style={{ position: 'absolute', left: `${pct * 100}%`, width: 18, height: 18, borderRadius: '50%', background: 'var(--se-card)', border: `2px solid ${color}`, boxShadow: '0 1px 4px rgba(0,0,0,0.15)', transform: 'translateX(-50%)', pointerEvents: 'none' }} />
     </div>
   )
 }

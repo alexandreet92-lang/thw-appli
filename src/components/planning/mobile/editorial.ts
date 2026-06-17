@@ -72,6 +72,16 @@ export function mmssToMin(v: string): number {
   const n = parseFloat(v || '0')
   return isNaN(n) ? 0 : n
 }
+/** Parse une durée saisie ("2h", "2h30", "1:30", "90", "45min") → minutes (null si invalide). */
+export function parseDurInput(s: string): number | null {
+  const t = (s || '').trim().toLowerCase()
+  let m = t.match(/^(\d+)\s*h\s*(\d{1,2})?$/); if (m) return (+m[1]) * 60 + (m[2] ? +m[2] : 0)
+  m = t.match(/^(\d+)\s*:\s*(\d{1,2})$/); if (m) return (+m[1]) * 60 + (+m[2])
+  m = t.match(/^(\d+)\s*min?$/); if (m) return +m[1]
+  m = t.match(/^(\d+)$/); if (m) return +m[1]
+  return null
+}
+
 /** ±5 s sur une allure mm:ss, sinon ±5 sur un entier (watts). */
 export function bumpPaceOrWatts(v: string, steps: number): string {
   const sec = paceToSec(v)

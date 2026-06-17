@@ -9,9 +9,8 @@ import {
   type SportType, type CyclingSub,
   SPORT_SHORT, CYCLING_SUB_LABEL, TRAINING_TYPES,
 } from '@/app/planning/page'
-import { sportColor, zColor, zName, fmtDur } from './editorial'
-import { toBars, type MBlock } from './blocks'
-import { Card, FieldLabel } from './ui'
+import { sportColor, zColor, fmtDur, parseDurInput } from './editorial'
+import { Card, FieldLabel, Gauge } from './ui'
 
 const SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique']
 const RPE_DESC = ['Très facile', 'Très facile', 'Facile', 'Facile', 'Modéré', 'Modéré', 'Soutenu', 'Difficile', 'Très difficile', 'Maximal']
@@ -24,17 +23,11 @@ export function MainFields(p: {
   dur: number; setDur: (n: number) => void
   rpe: number; setRpe: (n: number) => void
   desc: string; setDesc: (v: string) => void
-  blocks: MBlock[]; sm: number; sn: number
   athlete: { ftp: number | null; lthrBike: number | null; lthrRun: number | null; runThresholdPaceStr: string | null; swimCSSStr: string | null; hrMax: number | null } | null
 }) {
   const trainTypes = TRAINING_TYPES[p.sport] ?? []
-  const rpeIdx = Math.max(0, Math.min(9, p.rpe - 1))
+  const rpeIdx = Math.max(0, Math.min(9, Math.round(p.rpe) - 1))
   const rpeCol = p.rpe <= 4 ? zColor(2) : p.rpe <= 6 ? zColor(4) : p.rpe <= 8 ? zColor(5) : zColor(6)
-
-  // Distribution par zone (barre SM/SN)
-  const zd = new Array(7).fill(0)
-  for (const b of toBars(p.blocks)) zd[Math.max(0, Math.min(6, b.zone - 1))] += b.min
-  const zTot = zd.reduce((a: number, x: number) => a + x, 0)
 
   // Mini-stats par sport (réfs manquantes masquées)
   const stats: { label: string; value: string }[] = []
@@ -109,40 +102,25 @@ export function MainFields(p: {
           </div>
           <p className="se-fr se-tnum" style={{ margin: 0, fontSize: 34, fontWeight: 600, color: rpeCol, lineHeight: 1 }}>{p.rpe}<span style={{ fontSize: 13, color: 'var(--se-dim)' }}>/10</span></p>
         </div>
-        <div onClick={e => { const r = e.currentTarget.getBoundingClientRect(); const v = Math.round(((e.clientX - r.left) / r.width) * 10); p.setRpe(Math.max(1, Math.min(10, v))) }}
-          style={{ marginTop: 14, height: 8, borderRadius: 5, cursor: 'pointer', position: 'relative', background: `linear-gradient(90deg, ${zColor(2)}, ${zColor(4)}, ${zColor(6)})` }}>
-          <span style={{ position: 'absolute', top: '50%', left: `${(p.rpe / 10) * 100}%`, width: 16, height: 16, borderRadius: '50%', background: 'var(--se-card)', border: `2px solid ${rpeCol}`, transform: 'translate(-50%,-50%)' }} />
+        <div style={{ marginTop: 12 }}>
+          <Gauge value={p.rpe} min={0.5} max={10} step={0.5} onChange={p.setRpe} color={rpeCol}
+            gradient={`linear-gradient(90deg, ${zColor(2)}, ${zColor(4)}, ${zColor(6)})`} />
         </div>
       </Card>
 
-      {/* Durée */}
+      {/* Durée — jauge (pas 5min, jusqu'à 10h) + saisie manuelle */}
       <Card>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
           <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>Durée</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <button type="button" onClick={() => p.setDur(Math.max(5, p.dur - 5))} style={stepBtn}>−</button>
-            <span className="se-fr se-tnum" style={{ fontSize: 26, fontWeight: 600, minWidth: 64, textAlign: 'center' }}>{fmtDur(p.dur)}</span>
-            <button type="button" onClick={() => p.setDur(p.dur + 5)} style={stepBtn}>+</button>
-          </div>
+          <span className="se-fr se-tnum" style={{ fontSize: 26, fontWeight: 600 }}>{fmtDur(p.dur)}</span>
+          <input defaultValue={fmtDur(p.dur)} key={p.dur} placeholder="2h00"
+            onBlur={e => { const v = parseDurInput(e.target.value); if (v != null) p.setDur(Math.max(5, Math.min(600, v))) }}
+            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+            style={{ width: 60, textAlign: 'center', background: 'var(--se-card2)', border: '1px solid var(--se-rule)', borderRadius: 8, padding: '5px 4px', fontSize: 12, color: 'var(--se-text)', outline: 'none' }} />
         </div>
-      </Card>
-
-      {/* SM / SN */}
-      <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <div><p style={lblS}>SM métabolique</p><p className="se-fr se-tnum" style={{ margin: '4px 0 0', fontSize: 32, fontWeight: 600, color: '#22b8c4', lineHeight: 1 }}>{p.sm}</p></div>
-          <div style={{ textAlign: 'right' }}><p style={lblS}>SN neuro</p><p className="se-fr se-tnum" style={{ margin: '4px 0 0', fontSize: 32, fontWeight: 600, color: '#a855f7', lineHeight: 1 }}>{p.sn}</p></div>
+        <div style={{ marginTop: 12 }}>
+          <Gauge value={p.dur} min={5} max={600} step={5} onChange={n => p.setDur(n)} color={p.accent} />
         </div>
-        {zTot > 0 && (
-          <>
-            <div style={{ display: 'flex', height: 8, borderRadius: 5, overflow: 'hidden', marginTop: 14 }}>
-              {zd.map((v: number, i: number) => v > 0 ? <span key={i} style={{ width: `${(v / zTot) * 100}%`, background: zColor(i + 1) }} /> : null)}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: 10 }}>
-              {zd.map((v: number, i: number) => v > 0 ? <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--se-dim)' }}><span style={{ width: 7, height: 7, borderRadius: 2, background: zColor(i + 1) }} />{zName(i + 1)}</span> : null)}
-            </div>
-          </>
-        )}
       </Card>
 
       {/* Mini-stats */}
@@ -168,5 +146,3 @@ export function MainFields(p: {
 }
 
 const inp: React.CSSProperties = { width: '100%', background: 'transparent', border: 'none', outline: 'none', color: 'var(--se-text)', fontSize: 17, fontWeight: 600, padding: 0 }
-const stepBtn: React.CSSProperties = { width: 38, height: 38, borderRadius: '50%', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 19, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-const lblS: React.CSSProperties = { margin: 0, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }

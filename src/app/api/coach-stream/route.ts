@@ -387,9 +387,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Mode vocal : réponse conversationnelle (sera lue à voix haute) ──
+  // ── Mode vocal : DEUX sorties — écrite (structurée) + orale (conversationnelle) ──
   if ((chatBody as { voice?: boolean }).voice) {
-    systemWithTools = `${systemWithTools}\n\nMODE VOCAL — ta réponse sera LUE À VOIX HAUTE. Réponds de façon CONVERSATIONNELLE et naturelle, en 2 à 6 phrases courtes. AUCUN markdown, AUCUN tableau, AUCUNE liste à puces, AUCUN titre, aucun symbole (#, *, |, -). Parle comme un coach à l'oral, va droit à l'essentiel. Si l'athlète veut un plan détaillé ou des chiffres précis, propose-lui d'ouvrir le détail à l'écran plutôt que de tout réciter.`
+    systemWithTools = `${systemWithTools}
+
+MODE VOCAL — tu produis DEUX sorties, dans cet ordre EXACT, séparées par ces balises (n'écris rien d'autre en dehors) :
+
+###ECRIT###
+Un résumé STRUCTURÉ et AÉRÉ pour l'écran (pas un pavé, et PAS la transcription de ta réponse orale) : schématise l'essentiel — des sous-titres courts en **gras**, des tirets, des sauts de ligne entre les sections, les chiffres/points clés mis en avant. Agréable à lire en un coup d'œil.
+
+###ORAL###
+Ta réponse PARLÉE, conversationnelle et naturelle (2 à 5 phrases courtes), AUCUN markdown ni symbole (#, *, |, -). Va à l'essentiel comme un coach qui discute, et TERMINE TOUJOURS par une question ou une relance pertinente selon le contexte — on mène une vraie conversation, pas un monologue.`
   }
 
   // ── Pré-check tokens (fail-open : n'interrompt jamais en cas d'erreur) ──

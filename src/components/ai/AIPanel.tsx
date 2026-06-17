@@ -19600,7 +19600,26 @@ export default function AIPanel({
 
       abortRef.current = null
       streamDone = true  // stream complété normalement
-      lastResponseTextRef.current = textAccumulated  // pour la lecture vocale (conversation)
+
+      // Mode vocal : la réponse contient deux parties (###ECRIT### / ###ORAL###).
+      // L'écrit (structuré) reste dans le chat, l'oral (conversationnel) est lu à voix haute.
+      if (opts?.voice) {
+        const oralTag = '###ORAL###'
+        const oralIdx = textAccumulated.indexOf(oralTag)
+        if (oralIdx !== -1) {
+          const ecrit = textAccumulated.slice(0, oralIdx).replace(/###ECRIT###/g, '').trim()
+          const oral = textAccumulated.slice(oralIdx + oralTag.length).trim()
+          lastResponseTextRef.current = oral || ecrit
+          const ecritFinal = ecrit || textAccumulated
+          setConvs(prev => prev.map(c =>
+            c.id === cid ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: ecritFinal } : m), updatedAt: Date.now() } : c
+          ))
+        } else {
+          lastResponseTextRef.current = textAccumulated
+        }
+      } else {
+        lastResponseTextRef.current = textAccumulated  // pour la lecture vocale (conversation)
+      }
 
       // Création de plan demandée → génère l'aperçu (asynchrone, la carte affiche son loader)
       const pgr = planGenRequest as { msgId: string; requirements: PlanRequirements } | null

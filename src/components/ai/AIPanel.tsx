@@ -18285,6 +18285,7 @@ export default function AIPanel({
   const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Conversation vocale : dernier texte de réponse complet (pour la synthèse vocale)
   const lastResponseTextRef = useRef('')
+  const lastEcritTextRef = useRef('')   // version écrite schématisée (affichée dans l'overlay)
   const [voiceConvOpen, setVoiceConvOpen] = useState(false)
   // Agent selector dropdown
   const agentDropRef = useRef<HTMLDivElement>(null)
@@ -19611,11 +19612,13 @@ export default function AIPanel({
           const oral = textAccumulated.slice(oralIdx + oralTag.length).trim()
           lastResponseTextRef.current = oral || ecrit
           const ecritFinal = ecrit || textAccumulated
+          lastEcritTextRef.current = ecritFinal
           setConvs(prev => prev.map(c =>
             c.id === cid ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: ecritFinal } : m), updatedAt: Date.now() } : c
           ))
         } else {
           lastResponseTextRef.current = textAccumulated
+          lastEcritTextRef.current = textAccumulated
         }
       } else {
         lastResponseTextRef.current = textAccumulated  // pour la lecture vocale (conversation)
@@ -20945,7 +20948,7 @@ export default function AIPanel({
               {/* Discussion vocale (v1) — boucle écoute → coach → voix */}
               {voiceConvOpen && (
                 <VoiceConversation
-                  onTurn={async (t) => { await send(t, undefined, { voice: true }); return lastResponseTextRef.current }}
+                  onTurn={async (t) => { await send(t, undefined, { voice: true }); return { speak: lastResponseTextRef.current, show: lastEcritTextRef.current } }}
                   onClose={() => setVoiceConvOpen(false)}
                 />
               )}

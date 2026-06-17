@@ -12,6 +12,9 @@ import { type SportType, type CyclingSub, type PlanVariant, type Block, SPORT_LA
 import { EDITORIAL_CSS, PLAN_COLOR, type AthleteRefs } from './editorial'
 import { MainFields } from './MainFields'
 import { SessionBlockBuilder } from './SessionBlockBuilder'
+import { StrengthBuilder } from './StrengthBuilder'
+import { HyroxBuilder } from './HyroxBuilder'
+import type { ExerciseItem, ExoCircuit } from './strength'
 import type { MBlock } from './blocks'
 
 export interface SessionEditorMobileProps {
@@ -32,6 +35,10 @@ export interface SessionEditorMobileProps {
   builderTab: 'manual' | 'ai'; setBuilderTab: (t: 'manual' | 'ai') => void
   saving: boolean; saved: boolean
   onClose: () => void; onSave: () => void; onExportPDF: () => void; onFavorite: () => void
+  // Muscu / Hyrox (builder par exercices) — sync vers les refs côté parent
+  exercises: ExerciseItem[]; setExercises: (e: ExerciseItem[]) => void
+  circuits: ExoCircuit[]; setCircuits: (c: ExoCircuit[]) => void
+  exoMap: Record<string, string>; setExoMap: (m: Record<string, string>) => void
 }
 
 export function SessionEditorMobile(p: SessionEditorMobileProps) {
@@ -75,13 +82,27 @@ export function SessionEditorMobile(p: SessionEditorMobileProps) {
 
           <div style={{ height: 1, background: 'var(--se-rule)', margin: '24px 0' }} />
 
-          {/* §5 — Builder de blocs */}
-          <SessionBlockBuilder
-            sport={p.sport} accent={p.accent} blocks={blocks}
-            onChange={b => p.setBlocks(b as Block[])}
-            sm={p.sm} sn={p.sn} refs={p.refs}
-            builderTab={p.builderTab} onBuilderTab={p.setBuilderTab}
-          />
+          {/* §5 — Builder de blocs (adaptatif selon le sport) */}
+          {p.sport === 'gym' ? (
+            <StrengthBuilder accent={p.accent}
+              exercises={p.exercises} setExercises={p.setExercises}
+              circuits={p.circuits} setCircuits={p.setCircuits}
+              map={p.exoMap} setMap={p.setExoMap}
+              sn={p.sn} builderTab={p.builderTab} onBuilderTab={p.setBuilderTab} />
+          ) : p.sport === 'hyrox' ? (
+            <HyroxBuilder accent={p.accent}
+              exercises={p.exercises} setExercises={p.setExercises}
+              circuits={p.circuits} setCircuits={p.setCircuits}
+              map={p.exoMap} setMap={p.setExoMap}
+              sm={p.sm} sn={p.sn} builderTab={p.builderTab} onBuilderTab={p.setBuilderTab} />
+          ) : (
+            <SessionBlockBuilder
+              sport={p.sport} accent={p.accent} blocks={blocks}
+              onChange={b => p.setBlocks(b as Block[])}
+              sm={p.sm} sn={p.sn} refs={p.refs}
+              builderTab={p.builderTab} onBuilderTab={p.setBuilderTab}
+            />
+          )}
         </div>
 
         {/* §6 — Footer flottant : boutons qui survolent le contenu (pas de barre blanche) */}

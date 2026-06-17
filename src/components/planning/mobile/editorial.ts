@@ -20,6 +20,12 @@ export const EDITORIAL_CSS = `
   --se-rule-soft: #f0eee9;
   --se-r: 14px;
   --se-r-sm: 11px;
+  --pat-push: #f97316;
+  --pat-pull: #3b82f6;
+  --pat-legs: #16a34a;
+  --pat-core: #a855f7;
+  --pat-full: #64748b;
+  --pat-hyrox: #ef4444;
   background: var(--se-bg);
   color: var(--se-text);
   font-family: var(--font-body);

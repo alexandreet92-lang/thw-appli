@@ -30,6 +30,30 @@ export function FieldLabel({ children, right }: { children: ReactNode; right?: R
   )
 }
 
+/** Bandeau résumé 4 cellules (SM/SN/…). */
+export function Banner({ cells }: { cells: { label: string; value: string; color?: string }[] }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cells.length},1fr)`, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', overflow: 'hidden', marginBottom: 18 }}>
+      {cells.map((c, i) => (
+        <div key={c.label} style={{ padding: '12px 10px', borderLeft: i ? '1px solid var(--se-rule)' : 'none' }}>
+          <p style={{ margin: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--se-dim)' }}>{c.label}</p>
+          <p className="se-fr se-tnum" style={{ margin: '4px 0 0', fontSize: 21, fontWeight: 600, color: c.color ?? 'var(--se-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.value}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** En-tête de section builder : titre Fraunces + toggle Manuel/IA. */
+export function BuilderHeader({ accent, tab, onTab }: { accent: string; tab: 'manual' | 'ai'; onTab: (t: 'manual' | 'ai') => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+      <h3 className="se-fr" style={{ margin: 0, fontSize: 19, fontWeight: 600 }}>Construction de la séance</h3>
+      <Segmented accent={accent} value={tab} onChange={onTab} options={[{ key: 'manual', label: 'Manuel' }, { key: 'ai', label: '+ IA' }]} />
+    </div>
+  )
+}
+
 /** Toggle segmenté 2 valeurs (Watts/Zone, Allure/%VMA, Distance/Temps…). */
 export function Segmented<T extends string>({ value, options, onChange, accent }: {
   value: T; options: { key: T; label: string }[]; onChange: (v: T) => void; accent: string

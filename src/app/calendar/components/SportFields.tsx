@@ -20,6 +20,21 @@ const READONLY = { ...MONO, background:'var(--bg-card2)',color:'var(--text-dim)'
 interface SF { pd: Record<string,unknown>; setPd: (v: Record<string,unknown>) => void }
 const set = (pd: Record<string,unknown>, key: string, val: unknown) => ({ ...pd, [key]: val })
 
+function Chips({ label, options, value, onChange, color }: {
+  label: string; options: string[]; value: string; onChange: (v: string) => void; color: string
+}) {
+  return (
+    <div>
+      <p style={LBL}>{label}</p>
+      <div style={{ display:'flex',gap:5,flexWrap:'wrap' }}>
+        {options.map(o => { const on = value === o; return (
+          <button key={o} onClick={() => onChange(o)} style={{ padding:'6px 11px',borderRadius:999,border:`1px solid ${on?color:'var(--border)'}`,background:on?'var(--bg-card)':'var(--bg-card2)',color:on?color:'var(--text-mid)',fontSize:11,fontWeight:600,cursor:'pointer' }}>{o}</button>
+        )})}
+      </div>
+    </div>
+  )
+}
+
 export default function SportFields({ sport, pd, setPd }: SF & { sport: RaceSport }) {
   if (sport === 'run') {
     const sec = parseTimeSec((pd.goalTime as string) ?? '')
@@ -63,6 +78,7 @@ export default function SportFields({ sport, pd, setPd }: SF & { sport: RaceSpor
   if (sport === 'bike') {
     return (
       <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
+        <Chips label="Type d'épreuve" options={['Cyclo','Course par étapes','Course de fédération']} value={(pd.bikeType as string)??''} onChange={v => setPd(set(pd,'bikeType',v))} color="#3b82f6" />
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>
           <div><p style={LBL}>Distance (km)</p>
             <input style={INP} value={(pd.distance as string)??''} placeholder="180"
@@ -142,10 +158,43 @@ export default function SportFields({ sport, pd, setPd }: SF & { sport: RaceSpor
     )
   }
 
+  if (sport === 'trail') {
+    const sec = parseTimeSec((pd.goalTime as string) ?? '')
+    const km  = parseFloat((pd.distance as string) ?? '0') || 0
+    const pace = (sec > 0 && km > 0) ? fmtMinSec(sec / km) + '/km' : '—'
+    return (
+      <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>
+          <div><p style={LBL}>Distance (km)</p>
+            <input style={INP} type="number" value={(pd.distance as string)??''} placeholder="42"
+              onChange={e => setPd(set(pd,'distance',e.target.value))}/></div>
+          <div><p style={LBL}>Dénivelé D+ (m)</p>
+            <input style={INP} type="number" value={(pd.elevGain as string)??''} placeholder="2500"
+              onChange={e => setPd(set(pd,'elevGain',e.target.value))}/></div>
+        </div>
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>
+          <div><p style={LBL}>Objectif temps (HH:MM:SS)</p>
+            <input style={MONO} value={(pd.goalTime as string)??''} placeholder="06:00:00"
+              onChange={e => setPd(set(pd,'goalTime',e.target.value))}/></div>
+          <div><p style={LBL}>Allure (calc. auto)</p>
+            <input style={READONLY} readOnly value={pace} /></div>
+        </div>
+        <div><p style={LBL}>Classement cible</p>
+          <input style={INP} value={(pd.ranking as string)??''} placeholder="Top 10%"
+            onChange={e => setPd(set(pd,'ranking',e.target.value))}/></div>
+      </div>
+    )
+  }
+
   if (sport === 'hyrox') {
     const stations = (pd.stations as Record<string,string>) ?? {}
     return (
       <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
+        <Chips label="Format" options={['Single','Doubles','Relais']} value={(pd.hyroxFormat as string)??''} onChange={v => setPd(set(pd,'hyroxFormat',v))} color="#ef4444" />
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>
+          <Chips label="Niveau" options={['Open','Pro']} value={(pd.hyroxLevel as string)??''} onChange={v => setPd(set(pd,'hyroxLevel',v))} color="#ef4444" />
+          <Chips label="Genre" options={['Homme','Femme','Mixte']} value={(pd.hyroxGender as string)??''} onChange={v => setPd(set(pd,'hyroxGender',v))} color="#ef4444" />
+        </div>
         <div><p style={LBL}>Objectif temps total (HH:MM:SS)</p>
           <input style={MONO} value={(pd.goalTime as string)??''} placeholder="01:10:00"
             onChange={e => setPd(set(pd,'goalTime',e.target.value))}/></div>
@@ -225,6 +274,7 @@ export default function SportFields({ sport, pd, setPd }: SF & { sport: RaceSpor
     const split = (sec > 0 && meters > 0) ? fmtMinSec((sec / meters) * 500) : '—'
     return (
       <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
+        <Chips label="Type" options={['Ergomètre','Bateau']} value={(pd.rowType as string)??''} onChange={v => setPd(set(pd,'rowType',v))} color="#14b8a6" />
         <div>
           <p style={LBL}>Distance</p>
           <div style={{ display:'flex',gap:5,flexWrap:'wrap' }}>

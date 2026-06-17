@@ -2167,19 +2167,39 @@ function DayBubble({ sport, label, done, onClick, draggable, onDragStart, onDrag
   )
 }
 
-// Jauge de volume par sport : remplissage planifié atténué + réalisé en couleur pleine.
-function VolBar({ sport, total, done, max }: { sport: string; total: number; done: number; max: number }) {
+// Jauge de volume par sport : barre = volume PRÉVU (pleine, atténuée) qui se remplit en
+// couleur réelle au fur et à mesure des séances RÉALISÉES (réalisé ÷ prévu).
+function VolBar({ sport, planned, done }: { sport: string; planned: number; done: number }) {
   const color = iconColor(sport)
-  const totalPct = max > 0 ? Math.min((total / max) * 100, 100) : 0
-  const donePct = max > 0 ? Math.min((done / max) * 100, 100) : 0
+  const fillPct = planned > 0 ? Math.min((done / planned) * 100, 100) : (done > 0 ? 100 : 0)
   return (
     <div style={{ display:'flex',alignItems:'center',gap:7,marginBottom:6 }}>
       <SportIcon sport={sport} size={15} />
-      <div style={{ flex:1,height:7,borderRadius:4,background:'var(--border)',overflow:'hidden',position:'relative' }}>
-        <div style={{ position:'absolute',top:0,left:0,height:'100%',width:`${totalPct}%`,background:color,opacity:0.28,borderRadius:4 }} />
-        <div style={{ position:'absolute',top:0,left:0,height:'100%',width:`${donePct}%`,background:color,borderRadius:4,transition:'width .5s ease' }} />
+      <div style={{ flex:1,height:7,borderRadius:4,overflow:'hidden',position:'relative',background:'var(--border)' }}>
+        <div style={{ position:'absolute',inset:0,background:color,opacity:0.22 }} />
+        <div style={{ position:'absolute',top:0,left:0,height:'100%',width:`${fillPct}%`,background:color,borderRadius:4,transition:'width .5s ease' }} />
       </div>
-      <span style={{ fontSize:8.5,color:'var(--text-mid)',fontWeight:700,minWidth:32,textAlign:'right' as const }}>{formatHM(total)}</span>
+      <span className="tnum" style={{ fontSize:8.5,color:'var(--text-mid)',fontWeight:700,minWidth:54,textAlign:'right' as const }}>{formatHM(done)} / {formatHM(planned)}</span>
+    </div>
+  )
+}
+
+// Cycles actifs d'une semaine donnée (onglet Cycle de la grille) : nom + sport.
+function WeekCycles({ ws, blocs }: { ws: string; blocs: TrainingBlocData[] }) {
+  const wn = isoWeekNum(ws); const yr = new Date(ws + 'T00:00:00').getFullYear()
+  const rows = blocs.filter(b => b.startYear === yr && b.startWeek <= wn && wn < b.startWeek + b.durationWeeks)
+  if (rows.length === 0) return <span style={{ fontSize: 9, color: 'var(--text-dim)', fontStyle: 'italic' as const }}>Aucun cycle cette semaine</span>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+      {rows.map(b => { const m = BLOC_SPORT_MAP[b.sport]; return (
+        <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <SportIcon sport={m?.key ?? b.sport} size={15} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{b.name}</div>
+            <div style={{ fontSize: 8.5, color: 'var(--text-dim)' }}>{m?.label ?? b.sport}</div>
+          </div>
+        </div>
+      )})}
     </div>
   )
 }
@@ -2384,6 +2404,10 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const [intensityPickerDay, setIntensityPickerDay] = useState<number|null>(null)
   // Sélecteur de type de jour (anneau coloré) : clé `${ws}_${i}`. Fermeture au clic dehors.
   const [dayPicker, setDayPicker] = useState<string|null>(null)
+  // Colonne latérale grille : toggle Volume / Cycle + blocs synchronisés (cloud).
+  const [sideTab, setSideTab] = useState<'volume'|'cycle'>('volume')
+  const [cycleBlocs, setCycleBlocs] = useState<TrainingBlocData[]>(() => loadBlocs())
+  useEffect(() => { void syncBlocsFromCloud().then(setCycleBlocs) }, [])
   useEffect(() => {
     if (dayPicker === null) return
     const onDown = (e: Event) => { const t = e.target as HTMLElement | null; if (!t || !t.closest('[data-day-picker]')) setDayPicker(null) }
@@ -2568,14 +2592,15 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
           {allWeekStarts.map((ws, wi) => {
             const w = buildWeek(ws, activePlan)
             const dates = getWeekDatesFromStart(ws)
-            const vol: Record<string, number> = {}
+            const volPlanned: Record<string, number> = {}
             const volDone: Record<string, number> = {}
             w.forEach(d => {
-              d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); vol[sp] = (vol[sp] || 0) + s.durationMin })
-              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); const m = Math.round(a.elapsedTime / 60); vol[sp] = (vol[sp] || 0) + m; volDone[sp] = (volDone[sp] || 0) + m })
+              d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); volPlanned[sp] = (volPlanned[sp] || 0) + s.durationMin })
+              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); volDone[sp] = (volDone[sp] || 0) + Math.round(a.elapsedTime / 60) })
             })
-            const totalMin = Object.values(vol).reduce((a, b) => a + b, 0)
-            const maxVol = Math.max(1, ...Object.values(vol))
+            const sportsSet = Array.from(new Set([...Object.keys(volPlanned), ...Object.keys(volDone)]))
+            const plannedTotal = Object.values(volPlanned).reduce((a, b) => a + b, 0)
+            const doneTotal = Object.values(volDone).reduce((a, b) => a + b, 0)
             return (
               <div key={ws} style={{ display: 'grid', gridTemplateColumns: cols, borderBottom: wi < allWeekStarts.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 {/* rail semaine */}
@@ -2619,19 +2644,23 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                     </div>
                   )
                 })}
-                {/* cumul volumes */}
+                {/* cumul volumes / cycle — toggle */}
                 <div style={{ padding: '9px 10px', borderLeft: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                    <button onClick={() => setDatasWeek(ws)} style={{ display: 'flex', alignItems: 'baseline', gap: 5, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)' }}>Volume</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{formatHM(totalMin)}</span>
-                    </button>
-                    <button onClick={() => setDatasWeek(ws)} title="Voir les données" style={{ fontSize: 9, fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-dim, rgba(6,182,212,0.12))', border: '1px solid rgba(6,182,212,0.3)', borderRadius: 6, padding: '2px 7px', cursor: 'pointer' }}>Datas</button>
+                    <div style={{ display: 'inline-flex', background: 'var(--bg-card)', borderRadius: 7, padding: 2, gap: 2 }}>
+                      {(['volume', 'cycle'] as const).map(t => (
+                        <button key={t} onClick={() => setSideTab(t)} style={{ padding: '3px 8px', fontSize: 9, fontWeight: 700, border: 'none', cursor: 'pointer', borderRadius: 5, background: sideTab === t ? 'var(--primary-dim)' : 'transparent', color: sideTab === t ? 'var(--primary)' : 'var(--text-dim)' }}>{t === 'volume' ? 'Volume' : 'Cycle'}</button>
+                      ))}
+                    </div>
+                    <button onClick={() => setDatasWeek(ws)} title="Données réalisées" style={{ fontSize: 9, fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-dim)', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Datas</button>
                   </div>
-                  {PLAN_SPORTS.filter(sp => vol[sp]).map(sp => (
-                    <VolBar key={sp} sport={sp} total={vol[sp]} done={volDone[sp] || 0} max={maxVol} />
-                  ))}
-                  {totalMin === 0 && <span style={{ fontSize: 9, color: 'var(--text-dim)', fontStyle: 'italic' as const }}>Repos</span>}
+                  {sideTab === 'volume' ? (<>
+                    <p className="tnum" style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', margin: '0 0 6px' }}>Réalisé <span style={{ color: 'var(--text)' }}>{formatHM(doneTotal)}</span> / {formatHM(plannedTotal)}</p>
+                    {sportsSet.map(sp => (
+                      <VolBar key={sp} sport={sp} planned={volPlanned[sp] || 0} done={volDone[sp] || 0} />
+                    ))}
+                    {plannedTotal === 0 && doneTotal === 0 && <span style={{ fontSize: 9, color: 'var(--text-dim)', fontStyle: 'italic' as const }}>Repos</span>}
+                  </>) : <WeekCycles ws={ws} blocs={cycleBlocs} />}
                 </div>
               </div>
             )
@@ -2641,49 +2670,64 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
 
         {/* ── Mobile : bandeau 7 jours compact par semaine (tout visible, pleine largeur) ── */}
         <div className="wg-mobile">
+          <style>{`.wk-carousel{scrollbar-width:none}.wk-carousel::-webkit-scrollbar{display:none}`}</style>
           {allWeekStarts.map(ws => {
             const w = buildWeek(ws, activePlan); const dates = getWeekDatesFromStart(ws)
-            const mVol: Record<string, number> = {}; const mDone: Record<string, number> = {}
+            const mPlan: Record<string, number> = {}; const mDone: Record<string, number> = {}
             w.forEach(d => {
-              d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); mVol[sp] = (mVol[sp] || 0) + s.durationMin })
-              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); const m = Math.round(a.elapsedTime / 60); mVol[sp] = (mVol[sp] || 0) + m; mDone[sp] = (mDone[sp] || 0) + m })
+              d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); mPlan[sp] = (mPlan[sp] || 0) + s.durationMin })
+              d.activities.forEach(a => { const sp = normalizeSportType(a.sport); mDone[sp] = (mDone[sp] || 0) + Math.round(a.elapsedTime / 60) })
             })
-            const mTotal = Object.values(mVol).reduce((a, b) => a + b, 0)
-            const mMax = Math.max(1, ...Object.values(mVol))
+            const mSports = Array.from(new Set([...Object.keys(mPlan), ...Object.keys(mDone)]))
+            const mPlanTot = Object.values(mPlan).reduce((a, b) => a + b, 0)
+            const mDoneTot = Object.values(mDone).reduce((a, b) => a + b, 0)
             return (
-              <div key={ws} style={{ borderBottom:'1px solid var(--border)', padding:'8px 6px' }}>
-                <div style={{ display:'flex', alignItems:'baseline', gap:6, marginBottom:6 }}>
-                  <span style={{ fontSize:11, fontWeight:800, color:'var(--text)', fontFamily:'Syne,sans-serif' }}>S{isoWeekNum(ws)}</span>
-                  <span style={{ fontSize:9, color:'var(--text-dim)' }}>{new Date(ws+'T00:00:00').toLocaleDateString('fr-FR',{ day:'numeric', month:'short' })}</span>
+              <div key={ws} style={{ borderBottom:'1px solid var(--border)', padding:'8px 0' }}>
+                {/* En-tête semaine : S## + volume réalisé / prévu à droite */}
+                <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:6, margin:'0 8px 6px' }}>
+                  <span style={{ fontSize:11, fontWeight:800, color:'var(--text)', fontFamily:'Syne,sans-serif' }}>S{isoWeekNum(ws)}<span style={{ fontWeight:500, color:'var(--text-dim)', marginLeft:5 }}>{new Date(ws+'T00:00:00').toLocaleDateString('fr-FR',{ day:'numeric', month:'short' })}</span></span>
+                  <span className="tnum" style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)' }}><span style={{ color:'var(--text)' }}>{formatHM(mDoneTot)}</span> / {formatHM(mPlanTot)}</span>
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, touchAction: tDrag ? 'none' : undefined }}>
-                  {w.map((d,i)=>{
-                    const isToday = ws===currentWeekStart && i===todayIdx
-                    const hid = `${ws}_${i}`
-                    const isDropTarget = !!tDrag && dragCell===hid
-                    const sess = d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id))
-                    const acts = d.activities.filter(a=>!matchActivity(a,d.sessions))
-                    return (
-                      <div key={i} data-mday={i} data-mws={ws} style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center', borderRadius:8, background:isDropTarget?'var(--primary-dim)':'transparent', transition:'background .12s' }}>
-                        {/* En-tête : « + » → type de jour (menu animé) ; n° (anneau coloré) → ajouter une séance */}
-                        <DayHeader abbr={d.day} num={dates[i]} intensity={d.intensity} isToday={isToday}
-                          plus onPlus={() => setDayPicker(p => p === `m_${hid}` ? null : `m_${hid}`)} open={dayPicker === `m_${hid}`}
-                          onPick={(it) => { setDayIntensity(i, it); setDayPicker(null) }}
-                          onNum={() => { setAddModalFavorites(false); setAddModal({ dayIndex:i, plan:activePlan, weekStart:ws }) }} />
-                        {sess.map(s=><DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status==='done'} lifted={tDrag?.id===s.id} {...bubbleTouch(s.id, ws)} onClick={()=>{ if(tDragRef.current){ tDragRef.current=false; return } setDetailModal(s) }} />)}
-                        {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
+                {/* Carrousel coulissant : page 1 = jours · page 2 = volume/cycle + Datas */}
+                <div className="wk-carousel" style={{ display:'flex', overflowX:'auto', scrollSnapType:'x mandatory', WebkitOverflowScrolling:'touch' as React.CSSProperties['WebkitOverflowScrolling'], touchAction: tDrag ? 'none' : undefined }}>
+                  {/* PAGE 1 — jours */}
+                  <div style={{ flex:'0 0 100%', scrollSnapAlign:'start' as const, padding:'0 6px', boxSizing:'border-box' as const }}>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2 }}>
+                      {w.map((d,i)=>{
+                        const isToday = ws===currentWeekStart && i===todayIdx
+                        const hid = `${ws}_${i}`
+                        const isDropTarget = !!tDrag && dragCell===hid
+                        const sess = d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id))
+                        const acts = d.activities.filter(a=>!matchActivity(a,d.sessions))
+                        return (
+                          <div key={i} data-mday={i} data-mws={ws} style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center', borderRadius:8, background:isDropTarget?'var(--primary-dim)':'transparent', transition:'background .12s' }}>
+                            <DayHeader abbr={d.day} num={dates[i]} intensity={d.intensity} isToday={isToday}
+                              plus onPlus={() => setDayPicker(p => p === `m_${hid}` ? null : `m_${hid}`)} open={dayPicker === `m_${hid}`}
+                              onPick={(it) => { setDayIntensity(i, it); setDayPicker(null) }}
+                              onNum={() => { setAddModalFavorites(false); setAddModal({ dayIndex:i, plan:activePlan, weekStart:ws }) }} />
+                            {sess.map(s=><DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status==='done'} lifted={tDrag?.id===s.id} {...bubbleTouch(s.id, ws)} onClick={()=>{ if(tDragRef.current){ tDragRef.current=false; return } setDetailModal(s) }} />)}
+                            {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  {/* PAGE 2 — volume / cycle + Datas (glisser de droite à gauche) */}
+                  <div style={{ flex:'0 0 100%', scrollSnapAlign:'start' as const, padding:'0 8px', boxSizing:'border-box' as const }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, marginBottom:8 }}>
+                      <div style={{ display:'inline-flex', background:'var(--bg-card2)', borderRadius:7, padding:2, gap:2 }}>
+                        {(['volume','cycle'] as const).map(t => (
+                          <button key={t} onClick={()=>setSideTab(t)} style={{ padding:'4px 12px', fontSize:11, fontWeight:700, border:'none', cursor:'pointer', borderRadius:5, background:sideTab===t?'var(--primary-dim)':'transparent', color:sideTab===t?'var(--primary)':'var(--text-dim)' }}>{t==='volume'?'Volume':'Cycle'}</button>
+                        ))}
                       </div>
-                    )
-                  })}
+                      <button onClick={()=>setDatasWeek(ws)} style={{ fontSize:10, fontWeight:700, color:'var(--primary)', background:'var(--primary-dim)', border:'none', borderRadius:6, padding:'4px 10px', cursor:'pointer' }}>Datas</button>
+                    </div>
+                    {sideTab==='volume' ? (
+                      mSports.length ? mSports.map(sp=><VolBar key={sp} sport={sp} planned={mPlan[sp]||0} done={mDone[sp]||0} />)
+                        : <span style={{ fontSize:11, color:'var(--text-dim)', fontStyle:'italic' as const }}>Repos</span>
+                    ) : <WeekCycles ws={ws} blocs={cycleBlocs} />}
+                  </div>
                 </div>
-                {/* Datas + volume par sport (feature) */}
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, margin:'8px 2px 4px' }}>
-                  <span className="tnum" style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)' }}>Volume <span style={{ color:'var(--text)' }}>{formatHM(mTotal)}</span></span>
-                  <button onClick={()=>setDatasWeek(ws)} style={{ fontSize:10, fontWeight:700, color:'var(--primary)', background:'var(--primary-dim)', border:'none', borderRadius:6, padding:'3px 10px', cursor:'pointer' }}>Datas</button>
-                </div>
-                {PLAN_SPORTS.filter(sp=>mVol[sp]).map(sp=>(
-                  <VolBar key={sp} sport={sp} total={mVol[sp]} done={mDone[sp]||0} max={mMax} />
-                ))}
               </div>
             )
           })}
@@ -2697,10 +2741,9 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     if (!datasWeek) return null
     const w = buildWeek(datasWeek, activePlan)
     const dates = getWeekDatesFromStart(datasWeek)
-    // par jour : minutes par sport
+    // Datas = RÉALISÉ : minutes/séances par sport depuis les activités faites uniquement.
     const dayBySport = w.map(d => {
       const m: Record<string, number> = {}
-      d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); m[sp] = (m[sp] || 0) + s.durationMin })
       d.activities.forEach(a => { const sp = normalizeSportType(a.sport); m[sp] = (m[sp] || 0) + Math.round(a.elapsedTime / 60) })
       return m
     })
@@ -2708,7 +2751,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     const maxDay = Math.max(1, ...dayTotals)
     const counts: Record<string, number> = {}
     let totalN = 0
-    w.forEach(d => { d.sessions.forEach(s => { const sp = normalizeSportType(s.sport); counts[sp] = (counts[sp] || 0) + 1; totalN++ }); d.activities.forEach(a => { const sp = normalizeSportType(a.sport); counts[sp] = (counts[sp] || 0) + 1; totalN++ }) })
+    w.forEach(d => { d.activities.forEach(a => { const sp = normalizeSportType(a.sport); counts[sp] = (counts[sp] || 0) + 1; totalN++ }) })
     let sm = 0, sn = 0
     w.forEach(d => d.sessions.forEach(s => { const e = estSmSn(s.blocks, s.durationMin); sm += e.sm; sn += e.sn }))
     const totalMin = dayTotals.reduce((a, b) => a + b, 0)

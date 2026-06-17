@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { SplashScreen } from '@/components/ui/SplashScreen'
+import GlobalSaveToast from '@/components/ui/GlobalSaveToast'
 
 interface ClientShellProps {
   children: React.ReactNode
@@ -31,6 +32,7 @@ export function ClientShell({ children }: ClientShellProps) {
         <SplashScreen onDone={handleSplashDone} />
       )}
       {children}
+      <GlobalSaveToast />
     </>
   )
 }

@@ -142,6 +142,34 @@ export default function SportFields({ sport, pd, setPd }: SF & { sport: RaceSpor
     )
   }
 
+  if (sport === 'trail') {
+    const sec = parseTimeSec((pd.goalTime as string) ?? '')
+    const km  = parseFloat((pd.distance as string) ?? '0') || 0
+    const pace = (sec > 0 && km > 0) ? fmtMinSec(sec / km) + '/km' : '—'
+    return (
+      <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>
+          <div><p style={LBL}>Distance (km)</p>
+            <input style={INP} type="number" value={(pd.distance as string)??''} placeholder="42"
+              onChange={e => setPd(set(pd,'distance',e.target.value))}/></div>
+          <div><p style={LBL}>Dénivelé D+ (m)</p>
+            <input style={INP} type="number" value={(pd.elevGain as string)??''} placeholder="2500"
+              onChange={e => setPd(set(pd,'elevGain',e.target.value))}/></div>
+        </div>
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>
+          <div><p style={LBL}>Objectif temps (HH:MM:SS)</p>
+            <input style={MONO} value={(pd.goalTime as string)??''} placeholder="06:00:00"
+              onChange={e => setPd(set(pd,'goalTime',e.target.value))}/></div>
+          <div><p style={LBL}>Allure (calc. auto)</p>
+            <input style={READONLY} readOnly value={pace} /></div>
+        </div>
+        <div><p style={LBL}>Classement cible</p>
+          <input style={INP} value={(pd.ranking as string)??''} placeholder="Top 10%"
+            onChange={e => setPd(set(pd,'ranking',e.target.value))}/></div>
+      </div>
+    )
+  }
+
   if (sport === 'hyrox') {
     const stations = (pd.stations as Record<string,string>) ?? {}
     return (

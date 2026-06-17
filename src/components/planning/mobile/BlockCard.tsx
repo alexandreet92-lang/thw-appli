@@ -131,7 +131,7 @@ export function BlockCard({ block: b, sport, accent, refs, expanded, onToggle, o
             {sport === 'swim' && showDistToggle && <Segmented accent={accent} value={distMode ? 'distance' : 'time'} onChange={m => set({ inputMode: m })} options={[{ key: 'distance', label: 'Distance' }, { key: 'time', label: 'Temps' }]} />}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="se-fgrid">
             {isIv && <Field label="Répétitions"><Stepper value={String(b.reps ?? 1)} onChange={v => set({ reps: Math.max(1, parseInt(v) || 1) })} onDec={() => set({ reps: Math.max(1, (b.reps ?? 1) - 1) })} onInc={() => set({ reps: (b.reps ?? 1) + 1 })} /></Field>}
             {amountField()}
             {!isIv && sport !== 'bike' && showDistToggle && (

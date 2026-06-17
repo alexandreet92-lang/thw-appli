@@ -21,8 +21,10 @@ import type { ParsedSegment } from '@/lib/gpx/parser'
 import { formatDuration } from '@/lib/utils'
 import { SportIcon } from '@/components/icons/SportIcon'
 import { SessionEditorMobile } from './mobile/SessionEditorMobile'
+import { SessionEditorDesktop } from './mobile/SessionEditorDesktop'
 import { sportColor as mobileSportColor } from './mobile/editorial'
 import { blocksToExercises, defaultCircuit } from './mobile/strength'
+import type { SessionEditorPanelProps } from './mobile/panelProps'
 
 import {
   // Types
@@ -3548,6 +3550,7 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   const [executeMode, setExecuteMode] = useState(false)
   const [tssInfo, setTssInfo] = useState(false)
   const [mobile, setMobile] = useState(false)
+  const [wide, setWide] = useState(false)   // desktop ≥ 1024px → modale 2 colonnes
   const [nutritionOpen, setNutritionOpen] = useState(false)
   const [nutritionLoading, setNutritionLoading] = useState(false)
   const [showDuplicateMenu, setShowDuplicateMenu] = useState(false)
@@ -3636,7 +3639,7 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   }, [parcoursData?.name])
 
   useEffect(() => {
-    const check = () => setMobile(window.innerWidth < 640)
+    const check = () => { setMobile(window.innerWidth < 640); setWide(window.innerWidth >= 1024) }
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
@@ -3645,15 +3648,15 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   // Builder Muscu/Hyrox MOBILE : synchronise les refs utilisées par la sauvegarde.
   // Gardé MOBILE pour ne pas écraser l'ExerciseListBuilder desktop.
   useEffect(() => {
-    if (!mobile) return
+    if (!mobile && !wide) return
     gymCircuitsRef.current = mCircuits
     gymCircuitMapRef.current = mMap
-  }, [mobile, mCircuits, mMap])
+  }, [mobile, wide, mCircuits, mMap])
 
   // MOBILE strength : initialise le builder par exercices. En édition, reconstruit
   // depuis les blocs JSONB ; en création, pose un groupe par défaut adapté au sport.
   useEffect(() => {
-    if (!mobile) return
+    if (!mobile && !wide) return
     if (sport !== 'gym' && sport !== 'hyrox') return
     if (exercises.length > 0) return
     const blks = session?.blocks ?? []
@@ -3665,7 +3668,7 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
       setMCircuits([defaultCircuit(sport === 'hyrox' ? 'hyrox' : 'gym')]); setMMap({})
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mobile, sport])
+  }, [mobile, wide, sport])
 
   // Initialise le snapshot à l'ouverture (après le premier rendu)
   useEffect(() => {
@@ -4605,10 +4608,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     )
   }
 
-  // ── Refonte MOBILE — desktop inchangé ──
-  // §0..§6 : feuille « éditorial clair ». Builder adaptatif : zones (endurance)
-  // ou exercices/circuits (muscu/hyrox). SM/SN strength = depuis les exercices live.
-  if (mobile) {
+  // ── Refonte éditoriale — mobile (< 640) & desktop (≥ 1024) ──
+  // Entre les deux : layout legacy inchangé. Mêmes composants, mises en page
+  // différentes (feuille plein écran vs modale 2 colonnes). Builder adaptatif
+  // par sport ; SM/SN strength calculés depuis les exercices live.
+  if (mobile || wide) {
     const strengthBlocksLive = isStrength ? exercisesToBlocks(exercises, mCircuits, mMap) : []
     const strengthSmsn = estimateSmSn(strengthBlocksLive, dur)
     const onFavorite = async () => {
@@ -4627,33 +4631,25 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         alert('✓ Favori sauvegardé')
       } catch (e) { console.error('[Fav]', e) }
     }
-    return (
-      <SessionEditorMobile
-        mode={mode}
-        sport={sport} accent={mobileSportColor(sport)} onSportChange={handleSportChange}
-        cyclingSub={cyclingSub} setCyclingSub={setCyclingSub}
-        trainingTypes={trainingTypes} setTrainingTypes={setTrainingTypes}
-        title={title} setTitle={setTitle}
-        date={date} setDate={setDate} time={time} setTime={setTime}
-        dur={dur} setDur={setDur} rpe={rpe} setRpe={setRpe}
-        desc={desc} setDesc={setDesc}
-        selPlan={selPlan}
-        blocks={blocks} setBlocks={setBlocks}
-        sm={isStrength ? strengthSmsn.sm : smsn.sm} sn={isStrength ? strengthSmsn.sn : smsn.sn}
-        exercises={exercises} setExercises={setExercises}
-        circuits={mCircuits} setCircuits={setMCircuits}
-        exoMap={mMap} setExoMap={setMMap}
-        athlete={athleteData ? {
-          ftp: athleteData.ftp, lthrBike: athleteData.lthrBike, lthrRun: athleteData.lthrRun,
-          runThresholdPaceStr: athleteData.runThresholdPaceStr, swimCSSStr: athleteData.swimCSSStr,
-          hrMax: athleteData.hrMax,
-        } : null}
-        refs={{ ftp: athleteData?.ftp ?? null, runThresholdPaceSec: athleteData?.runThresholdPaceSec ?? null, cssSecPer100m: athleteData?.cssSecPer100m ?? null }}
-        builderTab={builderTab} setBuilderTab={setBuilderTab}
-        saving={saving} saved={saved}
-        onClose={onClose} onSave={handleSubmit} onExportPDF={handleExportPDF} onFavorite={onFavorite}
-      />
-    )
+    const panelProps: SessionEditorPanelProps = {
+      mode,
+      sport, accent: mobileSportColor(sport), onSportChange: handleSportChange,
+      cyclingSub, setCyclingSub, trainingTypes, setTrainingTypes,
+      title, setTitle, date, setDate, time, setTime,
+      dur, setDur, rpe, setRpe, desc, setDesc, selPlan,
+      blocks, setBlocks,
+      sm: isStrength ? strengthSmsn.sm : smsn.sm, sn: isStrength ? strengthSmsn.sn : smsn.sn,
+      exercises, setExercises, circuits: mCircuits, setCircuits: setMCircuits, exoMap: mMap, setExoMap: setMMap,
+      athlete: athleteData ? {
+        ftp: athleteData.ftp, lthrBike: athleteData.lthrBike, lthrRun: athleteData.lthrRun,
+        runThresholdPaceStr: athleteData.runThresholdPaceStr, swimCSSStr: athleteData.swimCSSStr,
+        hrMax: athleteData.hrMax,
+      } : null,
+      refs: { ftp: athleteData?.ftp ?? null, runThresholdPaceSec: athleteData?.runThresholdPaceSec ?? null, cssSecPer100m: athleteData?.cssSecPer100m ?? null },
+      builderTab, setBuilderTab, saving, saved,
+      onClose, onSave: handleSubmit, onExportPDF: handleExportPDF, onFavorite,
+    }
+    return wide ? <SessionEditorDesktop {...panelProps} /> : <SessionEditorMobile {...panelProps} />
   }
 
   return (

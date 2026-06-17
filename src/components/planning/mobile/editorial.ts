@@ -7,10 +7,10 @@
 import { SPORT_ICON, sportKeyFromType } from '@/components/icons/SportIcon'
 import type { SportType } from '@/app/planning/page'
 
-// Feuille de style scoppée à `.se-m` (le conteneur racine mobile).
+// Feuille de style scoppée à `.se-m` (mobile) et `.se-d` (desktop).
 // Masque aussi la MobileTabBar tant que la feuille est montée (§0).
 export const EDITORIAL_CSS = `
-.se-m {
+.se-m, .se-d {
   --se-bg: #faf9f6;
   --se-card: #ffffff;
   --se-card2: #faf9f6;
@@ -30,11 +30,15 @@ export const EDITORIAL_CSS = `
   color: var(--se-text);
   font-family: var(--font-body);
 }
-.se-m .se-fr { font-family: var(--font-display); letter-spacing: -0.02em; }
-.se-m input, .se-m textarea, .se-m button { font-family: inherit; }
-.se-m .se-tnum { font-variant-numeric: tabular-nums; }
+.se-m .se-fr, .se-d .se-fr { font-family: var(--font-display); letter-spacing: -0.02em; }
+.se-m input, .se-m textarea, .se-m button,
+.se-d input, .se-d textarea, .se-d button { font-family: inherit; }
+.se-m .se-tnum, .se-d .se-tnum { font-variant-numeric: tabular-nums; }
+.se-fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (min-width: 1024px) { .se-d .se-fgrid { grid-template-columns: repeat(4, 1fr); } }
 body.se-mobile-open .mobile-tab-bar { display: none !important; }
 @keyframes seSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes seModalIn { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 `
 
 /** Couleur d'accent du sport (map centralisée SportIcon = palette des maquettes). */

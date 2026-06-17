@@ -45,7 +45,7 @@ export function ExerciseCard({ variant, item, index, accent, onChange, onRemove 
       {/* Champs */}
       {variant === 'muscu' ? (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="se-fgrid">
             <NumField label="Séries" value={item.sets} min={1} onChange={n => set({ sets: n })} />
             <NumField label="Reps" value={item.reps} min={0} onChange={n => set({ reps: n })} />
             <NumField label="Charge" unit="kg" value={item.weightKg ?? 0} step={2} onChange={n => set({ weightKg: n })} />
@@ -62,7 +62,7 @@ export function ExerciseCard({ variant, item, index, accent, onChange, onRemove 
         </>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="se-fgrid">
             <NumField label="Distance" unit="m" value={item.distanceM ?? 0} step={50} onChange={n => set({ distanceM: n })} />
             <NumField label="Charge" unit="kg" value={item.weightKg ?? 0} step={2} onChange={n => set({ weightKg: n })} />
             <div>

@@ -35,6 +35,7 @@ import { getUserTokenLimits, recordTokenUsage } from '@/lib/tokens/limits'
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
 import { methodsIndexText } from '@/lib/coach/methods'
 import { buildDoctrineForChat } from '@/lib/coach/doctrine/registry'
+import { buildAthleteContext } from '@/lib/coach/athlete-context'
 
 // ── System prompts côté serveur ───────────────────────────────
 
@@ -384,6 +385,21 @@ export async function POST(req: NextRequest) {
       if (competencesBlock) systemWithTools = `${systemWithTools}\n\n${competencesBlock}`
     } catch (e) {
       console.error('[coach-stream] competences injection failed:', e)
+    }
+  }
+
+  // ── Contexte athlète (socle de cohérence) — chargé côté serveur à
+  //    CHAQUE message du coach central, pour que même une phrase tapée
+  //    soit raisonnée sur les données réelles (charge, activités, récup,
+  //    planning, courses, blessures, plan en cours). Fail-open : si la
+  //    construction échoue, le coach répond quand même.
+  if ((chatBody as { agentId?: string }).agentId === 'central') {
+    try {
+      const sbCtx = await createClient()
+      const athleteCtx = await buildAthleteContext(sbCtx, userId)
+      if (athleteCtx) systemWithTools = `${systemWithTools}\n\n${athleteCtx}`
+    } catch (e) {
+      console.error('[coach-stream] athlete context injection failed:', e)
     }
   }
 

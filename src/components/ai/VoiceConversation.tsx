@@ -11,6 +11,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { MobileSheet } from './MobileSheet'
 
 const ACCENT = '#3C90D5'
 const SILENCE_MS = 2500   // silence = fin du tour de parole
@@ -41,6 +42,8 @@ export function VoiceConversation({ onTurn, onClose }: {
   const [spoken, setSpoken] = useState('')    // texte lu par l'IA
   const [revealed, setRevealed] = useState(0) // nb de caractères révélés (apparition fluide)
   const [supported, setSupported] = useState(true)
+  const [lastUser, setLastUser] = useState('')   // dernière question (affichée pendant la réflexion)
+  const [showThink, setShowThink] = useState(false)
   const revealTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const phaseRef = useRef<Phase>('listening')
@@ -113,6 +116,7 @@ export function VoiceConversation({ onTurn, onClose }: {
     finalRef.current = ''
     setLive('')
     if (!userText) { setPhaseBoth('listening'); return }
+    setLastUser(userText)
     setPhaseBoth('thinking')
     let resp = ''
     try { resp = await onTurn(userText) } catch { resp = '' }
@@ -179,14 +183,43 @@ export function VoiceConversation({ onTurn, onClose }: {
         </span>
       </div>
 
-      {/* Texte central */}
+      {/* Texte central / animation de réflexion */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 26px', overflowY: 'auto' }}>
-        <p style={{
-          margin: 0, textAlign: 'center', fontFamily: 'var(--font-display, Fraunces), Georgia, serif',
-          fontSize: 'clamp(20px, 5vw, 30px)', lineHeight: 1.4, color: 'var(--ai-text)',
-          fontStyle: phase === 'listening' && !live ? 'italic' : 'normal',
-        }}>{centerText}</p>
+        {phase === 'thinking' ? (
+          <button onClick={() => setShowThink(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, background: 'none', border: 'none', cursor: 'pointer' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logos/logo_4bras.png" alt="" width={54} height={54} style={{ objectFit: 'contain', animation: 'vc_spin 1.5s linear infinite' }} />
+            <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>Je réfléchis…</span>
+            {lastUser && (
+              <span style={{ fontSize: 12.5, color: 'var(--ai-dim)', maxWidth: 300, textAlign: 'center', lineHeight: 1.4 }}>
+                « {lastUser.length > 70 ? lastUser.slice(0, 70) + '…' : lastUser} »<br />
+                <span style={{ color: '#3C90D5', fontWeight: 600 }}>voir le détail ▾</span>
+              </span>
+            )}
+          </button>
+        ) : (
+          <p style={{
+            margin: 0, textAlign: 'center', fontFamily: 'var(--font-display, Fraunces), Georgia, serif',
+            fontSize: 'clamp(20px, 5vw, 30px)', lineHeight: 1.4, color: 'var(--ai-text)',
+            fontStyle: phase === 'listening' && !live ? 'italic' : 'normal',
+          }}>{centerText}</p>
+        )}
       </div>
+
+      {showThink && (
+        <MobileSheet title="Réflexion en cours" onClose={() => setShowThink(false)}>
+          <div style={{ padding: '4px 8px 14px' }}>
+            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Ta question</p>
+            <p style={{ fontSize: 14, color: 'var(--text)', margin: '0 0 16px', lineHeight: 1.45 }}>{lastUser || '—'}</p>
+            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Ce que je fais</p>
+            {['J’analyse ta demande et le contexte', 'Je croise tes données (zones, historique, objectif)', 'Je prépare une réponse adaptée à ton profil'].map((s, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, margin: '6px 0', fontSize: 13.5, color: 'var(--text)' }}>
+                <span style={{ color: '#3C90D5', flexShrink: 0 }}>•</span><span>{s}</span>
+              </div>
+            ))}
+          </div>
+        </MobileSheet>
+      )}
 
       {/* Waveform + raccrocher */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
@@ -215,6 +248,7 @@ export function VoiceConversation({ onTurn, onClose }: {
         @keyframes vc_in   { from { opacity: 0 } to { opacity: 1 } }
         @keyframes vc_dot  { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
         @keyframes vc_wave { 0%,100% { transform: scaleY(.25) } 50% { transform: scaleY(.9) } }
+        @keyframes vc_spin { to { transform: rotate(360deg) } }
       `}</style>
     </div>,
     document.body,

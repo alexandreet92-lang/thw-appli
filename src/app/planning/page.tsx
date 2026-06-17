@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
@@ -11,6 +12,8 @@ import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 import { formatDuration } from '@/lib/utils'
 import { TrainingBlockSummary } from '@/app/planning/components/TrainingBlockSummary'
+import { loadBlocs, type TrainingBlocData } from '@/app/planning/trainingBlocks'
+import { getCurrentWeek } from '@/lib/utils/weekDates'
 import { segmentElevationProfile, getSignificantClimbs } from '@/lib/gpx/parser'
 import type { ParsedSegment } from '@/lib/gpx/parser'
 import nDynamic from 'next/dynamic'
@@ -2181,6 +2184,82 @@ function VolBar({ sport, total, done, max }: { sport: string; total: number; don
   )
 }
 
+// Résumé « Cycle » (onglet Plan) : cycle courant par discipline (nom + sport). + → Training Bloc.
+const BLOC_SPORT_MAP: Record<string, { key: string; label: string }> = {
+  velo: { key: 'bike', label: 'Vélo' }, running: { key: 'run', label: 'Course' },
+  natation: { key: 'swim', label: 'Natation' }, hyrox: { key: 'hyrox', label: 'Hyrox' },
+  muscu: { key: 'muscu', label: 'Muscu' }, rowing: { key: 'rowing', label: 'Aviron' },
+}
+function CycleSummary({ onOpen }: { onOpen: () => void }) {
+  const blocs = loadBlocs()
+  const { year, week } = getCurrentWeek()
+  const bySport: Record<string, TrainingBlocData> = {}
+  for (const b of blocs) {
+    const active = b.startYear === year && b.startWeek <= week && week < b.startWeek + b.durationWeeks
+    if (active || !bySport[b.sport]) bySport[b.sport] = b
+  }
+  const rows = Object.entries(bySport)
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+        <p style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:600, color:'var(--text)', margin:0 }}>Cycle</p>
+        <button onClick={onOpen} aria-label="Gérer les cycles (Training Bloc)" style={{ width:28, height:28, borderRadius:8, border:'none', background:'var(--primary-dim)', color:'var(--primary)', fontSize:18, lineHeight:1, cursor:'pointer' }}>+</button>
+      </div>
+      {rows.length === 0 ? (
+        <button onClick={onOpen} style={{ width:'100%', textAlign:'left' as const, padding:'12px 14px', borderRadius:12, border:'1px dashed var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:13, cursor:'pointer' }}>Aucun cycle défini — appuie sur + pour en créer un dans Training Bloc.</button>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          {rows.map(([sport, b]) => { const m = BLOC_SPORT_MAP[sport]; return (
+            <button key={sport} onClick={onOpen} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:12, border:'none', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const, width:'100%' }}>
+              <SportIcon sport={m?.key ?? sport} size={26} />
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:'var(--font-body)', fontSize:13.5, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{b.name}</div>
+                <div style={{ fontFamily:'var(--font-body)', fontSize:11, color:'var(--text-dim)' }}>{m?.label ?? sport}</div>
+              </div>
+            </button>
+          )})}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Mini-menu déroulant (createPortal, animé) pour choisir le type de jour.
+function IntensityMenuPortal({ anchor, value, onPick }: { anchor: DOMRect; value: DayIntensity; onPick: (i: DayIntensity) => void }) {
+  return createPortal(
+    <div data-day-picker style={{ position:'fixed', top:anchor.bottom+4, left:anchor.left+anchor.width/2, transform:'translateX(-50%)', zIndex:3000, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:9, padding:4, display:'flex', flexDirection:'column', gap:2, boxShadow:'0 10px 28px rgba(0,0,0,0.28)', minWidth:108, animation:'dpIn .14s ease-out', transformOrigin:'top center' }}>
+      <style>{`@keyframes dpIn{from{opacity:0;transform:translateX(-50%) scale(.92)}to{opacity:1;transform:translateX(-50%) scale(1)}}`}</style>
+      {INTENSITY_ORDER.map(it => { const c = INTENSITY_CONFIG[it]; const active = value === it; return (
+        <button key={it} onClick={() => onPick(it)} style={{ display:'flex', alignItems:'center', gap:7, padding:'7px 11px', borderRadius:6, border:'none', background:active?c.bg:'transparent', color:c.color, fontSize:12, fontWeight:active?700:500, cursor:'pointer', textAlign:'left' as const, whiteSpace:'nowrap' as const }}>
+          <span style={{ width:8, height:8, borderRadius:'50%', background:c.color }} />{c.label}
+        </button>
+      )})}
+    </div>,
+    document.body,
+  )
+}
+
+// En-tête de jour : n° dans un anneau coloré (type de jour) ; trigger du menu + « + » optionnel.
+function DayHeader({ abbr, num, intensity, isToday, onNum, plus, onPlus, open, onPick }: {
+  abbr?: string; num: number | string; intensity: DayIntensity; isToday?: boolean
+  onNum: () => void; plus?: boolean; onPlus?: () => void; open?: boolean; onPick: (i: DayIntensity) => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [rect, setRect] = useState<DOMRect | null>(null)
+  useEffect(() => { if (open && ref.current) setRect(ref.current.getBoundingClientRect()); else setRect(null) }, [open])
+  const cfg = INTENSITY_CONFIG[intensity]
+  return (
+    <div ref={ref} data-day-picker style={{ position:'relative', display:'flex', flexDirection:'column', alignItems:'center', gap:1, width:'100%' }}>
+      {plus && <button onClick={onPlus} aria-label="Définir le type de jour" style={{ border:'none', background:'transparent', color:'var(--text-dim)', fontSize:14, lineHeight:1, cursor:'pointer', padding:0, height:13 }}>+</button>}
+      {abbr && <span style={{ fontSize:8.5, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.02em', color:'var(--text-dim)' }}>{abbr}</span>}
+      <button onClick={onNum} aria-label="Jour" style={{ border:'none', background:'transparent', cursor:'pointer', padding:0, display:'flex' }}>
+        <span className="tnum" style={{ width:26, height:26, borderRadius:'50%', border:`2px solid ${cfg.color}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:isToday?'var(--primary)':'var(--text)', boxSizing:'border-box' as const }}>{num}</span>
+      </button>
+      {open && rect && <IntensityMenuPortal anchor={rect} value={intensity} onPick={onPick} />}
+    </div>
+  )
+}
+
 // Estimation SM (métabolique) / SN (neuromusculaire) « prévu » depuis les blocs d'une séance.
 const SM_COEF_PL = [0.6, 0.85, 1.05, 1.25, 1.45, 1.55, 1.62]
 const SN_COEF_PL = [0, 0, 0.08, 0.25, 0.6, 1.1, 1.7]
@@ -2302,6 +2381,14 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const [planningFavorites, setPlanningFavorites] = useState<Array<{id:string;name:string}>>([])
   // Day index dont le picker d'intensité est ouvert (null = fermé)
   const [intensityPickerDay, setIntensityPickerDay] = useState<number|null>(null)
+  // Sélecteur de type de jour (anneau coloré) : clé `${ws}_${i}`. Fermeture au clic dehors.
+  const [dayPicker, setDayPicker] = useState<string|null>(null)
+  useEffect(() => {
+    if (dayPicker === null) return
+    const onDown = (e: Event) => { const t = e.target as HTMLElement | null; if (!t || !t.closest('[data-day-picker]')) setDayPicker(null) }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [dayPicker])
   // Fermeture au clic hors du picker
   useEffect(() => {
     if (intensityPickerDay === null) return
@@ -2455,7 +2542,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     const wActs = getActivitiesForWeek(ws)
     return DAY_NAMES.map((day,i)=>({
       day, date:wDates[i],
-      intensity:(ws===currentWeekStart?(intensities[i]??'low'):'low') as DayIntensity,
+      intensity:(intensities[i]??'low') as DayIntensity,
       sessions: wSessions.filter(s=>s.dayIndex===i && !isRestSession(s)),
       activities: wActs.filter(a=>a.dayIndex===i),
     }))
@@ -2506,8 +2593,13 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                       onDragOver={e => { if (planDrag.current) { e.preventDefault(); setDragCell(hid) } }}
                       onDragLeave={() => setDragCell(c => c === hid ? null : c)}
                       onDrop={() => { const dr = planDrag.current; if (dr && dr.ws === ws && dr.day !== i) moveSession(dr.id, i); planDrag.current = null; setDragCell(null) }}
-                      style={{ position: 'relative' as const, minHeight: 104, padding: '24px 6px 22px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' as const, gap: 5, background: isDropTarget ? 'rgba(6,182,212,0.07)' : 'transparent', transition: 'background .12s' }}>
-                      <span style={{ position: 'absolute' as const, top: 6, right: 8, fontSize: 11, fontWeight: 700, color: isToday ? '#06B6D4' : 'var(--text-dim)' }}>{dates[i]}</span>
+                      style={{ position: 'relative' as const, minHeight: 104, padding: '8px 6px 22px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' as const, gap: 5, background: isDropTarget ? 'rgba(6,182,212,0.07)' : 'transparent', transition: 'background .12s' }}>
+                      {/* N° du jour dans un anneau coloré (type de jour) ; clic → menu (desktop) */}
+                      <div style={{ alignSelf: 'flex-end' as const, marginBottom: 2 }}>
+                        <DayHeader num={dates[i]} intensity={d.intensity} isToday={isToday}
+                          onNum={() => setDayPicker(p => p === hid ? null : hid)} open={dayPicker === hid}
+                          onPick={(it) => { setDayIntensity(i, it); setDayPicker(null) }} />
+                      </div>
                       {hoverAdd === hid && (
                         <button onClick={() => { setAddModalFavorites(false); setAddModal({ dayIndex: i, plan: activePlan, weekStart: ws }) }} title="Ajouter une séance"
                           style={{ position: 'absolute' as const, bottom: 4, left: '50%', transform: 'translateX(-50%)', zIndex: 6, background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 2, opacity: 0.7 }}>+</button>
@@ -2572,11 +2664,11 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                     const acts = d.activities.filter(a=>!matchActivity(a,d.sessions))
                     return (
                       <div key={i} data-mday={i} data-mws={ws} style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center', borderRadius:8, background:isDropTarget?'var(--primary-dim)':'transparent', transition:'background .12s' }}>
-                        {/* Tap sur le jour → ajouter une séance (mobile, feature) */}
-                        <button onClick={()=>{ setAddModalFavorites(false); setAddModal({ dayIndex:i, plan:activePlan, weekStart:ws }) }} style={{ width:'100%', textAlign:'center' as const, borderRadius:8, padding:'2px 0', boxSizing:'border-box' as const, border:'none', cursor:'pointer', background:isToday?'var(--bg-card2)':'transparent' }}>
-                          <p style={{ fontSize:8.5, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.02em', margin:0, color:'var(--text-dim)' }}>{d.day}</p>
-                          <p className="tnum" style={{ fontSize:13, fontWeight:700, margin:0, color:isToday?'var(--primary)':'var(--text)' }}>{dates[i]}</p>
-                        </button>
+                        {/* En-tête : « + » → type de jour (menu animé) ; n° (anneau coloré) → ajouter une séance */}
+                        <DayHeader abbr={d.day} num={dates[i]} intensity={d.intensity} isToday={isToday}
+                          plus onPlus={() => setDayPicker(p => p === hid ? null : hid)} open={dayPicker === hid}
+                          onPick={(it) => { setDayIntensity(i, it); setDayPicker(null) }}
+                          onNum={() => { setAddModalFavorites(false); setAddModal({ dayIndex:i, plan:activePlan, weekStart:ws }) }} />
                         {sess.map(s=><DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status==='done'} lifted={tDrag?.id===s.id} {...bubbleTouch(s.id, ws)} onClick={()=>{ if(tDragRef.current){ tDragRef.current=false; return } setDetailModal(s) }} />)}
                         {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
                       </div>
@@ -3188,7 +3280,10 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         onOpen10w={() => setShow10w(true)}
         onOpenSession={(s) => setDetailModal(s)}
         isModified={(s) => isSessionModified(s)}
-        belowVolume={<TrainingBlockSummary />}
+        belowVolume={<>
+          <CycleSummary onOpen={() => document.getElementById('training-bloc-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
+          <div id="training-bloc-section"><TrainingBlockSummary /></div>
+        </>}
       />
       </>)}
 

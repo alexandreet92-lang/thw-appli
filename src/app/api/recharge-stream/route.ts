@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
 import { TIER_LIMITS, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/tier-limits'
+import { buildAthleteContext } from '@/lib/coach/athlete-context'
 
 export async function POST(req: NextRequest) {
   // ── Auth ─────────────────────────────────────────────────────
@@ -52,6 +53,18 @@ export async function POST(req: NextRequest) {
 
   const client = getAnthropicClient()
 
+  // ── Contexte athlète (charge réelle) — pour personnaliser la recharge
+  //    selon la charge récente (TSS, CTL/ATL/TSB), pas seulement le poids.
+  //    Fail-open : si indisponible, on reste sur le calcul poids.
+  let systemPrompt: string | undefined
+  try {
+    const sbCtx = await createClient()
+    const athleteCtx = await buildAthleteContext(sbCtx, userId)
+    if (athleteCtx) {
+      systemPrompt = `Tu es un coach expert en nutrition de l'effort. Personnalise le protocole de recharge glucidique en fonction de la CHARGE RÉELLE de l'athlète (TSS récent, CTL/ATL/TSB, séances et course à venir) — un athlète très chargé a besoin d'une recharge plus agressive qu'un athlète peu chargé à poids égal. Croise toujours les chiffres de charge avec le poids.\n\n${athleteCtx}`
+    }
+  } catch { /* fail-open */ }
+
   // ── Streaming Anthropic → plain text ─────────────────────────
   const encoder = new TextEncoder()
 
@@ -61,6 +74,7 @@ export async function POST(req: NextRequest) {
         const stream = await client.messages.create({
           model,
           max_tokens: maxTokens,
+          ...(systemPrompt ? { system: systemPrompt } : {}),
           messages: [{ role: 'user', content: body.prompt }],
           stream: true,
         })

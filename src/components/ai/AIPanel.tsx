@@ -3470,7 +3470,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         if (!user) { setError('Non connecté'); return }
 
         const [testsRes, zonesRes, profileRes] = await Promise.all([
-          Promise.resolve({ data: [], error: null }),
+          sb.from('test_results').select('id,test_definition_id,test_definitions(sport)').eq('user_id', user.id),
           sb.from('training_zones').select('sport').eq('user_id', user.id).eq('is_current', true),
           sb.from('athlete_performance_profile').select('id').eq('user_id', user.id).maybeSingle(),
         ])
@@ -3508,7 +3508,12 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
       if (!defs?.length) { setTests([]); setPhase('select'); return }
 
       const defIds = defs.map((d: { id: string }) => d.id)
-      const { data: results } = await Promise.resolve({ data: [], error: null })
+      const { data: results } = await sb
+        .from('test_results')
+        .select('id,date,valeurs,test_definition_id,test_definitions(nom,sport,fields)')
+        .eq('user_id', user.id)
+        .in('test_definition_id', defIds)
+        .order('date', { ascending: false })
 
       const rows = (results as unknown as TestRow[]) ?? []
 
@@ -11468,22 +11473,22 @@ function PlusMenu({
                       else if (qa.prompt) onPrepare(qa.label, qa.prompt)
                     }}
                     style={{
-                      display: 'flex', alignItems: 'flex-start', gap: 8,
-                      width: '100%', padding: '8px 10px', borderRadius: 8, marginBottom: 2,
-                      fontSize: 13, color: 'var(--text)', cursor: 'pointer',
+                      display: 'flex', alignItems: 'flex-start', gap: 11,
+                      width: '100%', padding: '10px 12px', borderRadius: 8, marginBottom: 2, minHeight: 44,
+                      color: 'var(--ai-text)', cursor: 'pointer',
                       border: 'none', background: 'transparent', textAlign: 'left',
                       fontFamily: 'DM Sans,sans-serif', transition: 'background 120ms',
                     }}
                     onMouseEnter={hoverOn} onMouseLeave={hoverOff}
                   >
-                    <span style={{ flexShrink: 0, display: 'flex', marginTop: 2 }}>{actionIcon(qa.flow)}</span>
-                    <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{qa.label}</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 10, fontWeight: 500, color: MODEL_BADGE[qa.model].color, background: MODEL_BADGE[qa.model].bg, border: `0.5px solid ${MODEL_BADGE[qa.model].border}`, borderRadius: 10, padding: '2px 8px', flexShrink: 0 }}>
-                          {MODEL_CONFIGS[qa.model].name}
-                        </span>
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>· {fmtEstimate(quickActionEstimate(qa.flow))}</span>
+                    <span style={{ flexShrink: 0, display: 'flex', marginTop: 1 }}>{actionIcon(qa.flow)}</span>
+                    <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{qa.label}</span>
+                      <span style={{ fontSize: 11.5, color: 'var(--ai-dim)', lineHeight: 1.35 }}>{qa.sub}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: MODEL_BADGE[qa.model].color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 10.5, fontWeight: 500, color: MODEL_BADGE[qa.model].color }}>{MODEL_CONFIGS[qa.model].name}</span>
+                        <span style={{ fontSize: 10.5, color: 'var(--ai-dim)' }}>· {fmtEstimate(quickActionEstimate(qa.flow))}</span>
                       </span>
                     </span>
                   </button>

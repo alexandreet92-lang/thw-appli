@@ -326,10 +326,19 @@ export async function POST(req: NextRequest) {
     return new Response('No messages provided', { status: 400 })
   }
 
+  // Modèle effectif = celui choisi dans le composer, plafonné par le tier
+  // (on ne peut pas choisir plus haut que son abonnement). On le calcule ICI
+  // pour que le system prompt par-modèle (Hermès/Athéna/Zeus) corresponde
+  // TOUJOURS au modèle réellement exécuté — sinon un prompt « Zeus » pourrait
+  // tourner sur le modèle Hermès.
+  const RANK: Record<string, number> = { hermes: 0, athena: 1, zeus: 2 }
+  const requestedKey = ((chatBody as { modelId?: string }).modelId ?? 'athena')
+  const cappedKey = (RANK[requestedKey] ?? 1) <= (RANK[tierModel] ?? 1) ? requestedKey : tierModel
+
   let chatSystemPrompt: string
   let anthropicMessages: { role: string; content: unknown }[]
   try {
-    const built = buildChatParams({ ...chatBody, aiRules: chatBody.aiRules ?? [] })
+    const built = buildChatParams({ ...chatBody, modelId: cappedKey as ChatInput['modelId'], aiRules: chatBody.aiRules ?? [] })
     chatSystemPrompt = built.systemPrompt
     anthropicMessages = built.anthropicMessages as { role: string; content: unknown }[]
   } catch (e) {
@@ -447,11 +456,7 @@ Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS
     console.error('[coach-stream] token pre-check failed (fail-open):', e)
   }
 
-  // ── Modèle effectif du CHAT = celui sélectionné dans le composer (hermes/athena/zeus),
-  //    plafonné par le tier de l'abonnement (on ne peut pas choisir plus haut que son tier).
-  const RANK: Record<string, number> = { hermes: 0, athena: 1, zeus: 2 }
-  const requestedKey = ((chatBody as { modelId?: string }).modelId ?? 'athena')
-  const cappedKey = (RANK[requestedKey] ?? 1) <= (RANK[tierModel] ?? 1) ? requestedKey : tierModel
+  // ── Modèle effectif du CHAT (cappedKey calculé plus haut, aligné avec le prompt) ──
   const chatModel = MODEL_IDS[cappedKey as keyof typeof MODEL_IDS] ?? model
   const chatMaxTokens = MODEL_MAX_TOKENS[cappedKey as keyof typeof MODEL_MAX_TOKENS] ?? maxTokens
   console.log(`[coach-stream] chat model selection → requested=${requestedKey} tier=${tierModel} → ${cappedKey} (${chatModel})`)

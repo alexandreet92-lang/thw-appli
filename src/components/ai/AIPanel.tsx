@@ -19449,6 +19449,7 @@ export default function AIPanel({
           modelId:  snapshot,
           method:   method !== 'auto' ? method : undefined,
           voice:    opts?.voice ? true : undefined,
+          convId:   cid,
           messages: apiMsgs,
           aiRules:  aiRules.length > 0 ? aiRules : undefined,
           // Merge plan_context (session IDs) into the existing context so that

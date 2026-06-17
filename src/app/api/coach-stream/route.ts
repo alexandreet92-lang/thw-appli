@@ -36,6 +36,7 @@ import { getModelMultiplier } from '@/lib/tokens/multipliers'
 import { methodsIndexText } from '@/lib/coach/methods'
 import { buildDoctrineForChat } from '@/lib/coach/doctrine/registry'
 import { buildAthleteContext } from '@/lib/coach/athlete-context'
+import { buildCoachMemory } from '@/lib/coach/coach-memory'
 
 // ── System prompts côté serveur ───────────────────────────────
 
@@ -393,13 +394,21 @@ export async function POST(req: NextRequest) {
   //    soit raisonnée sur les données réelles (charge, activités, récup,
   //    planning, courses, blessures, plan en cours). Fail-open : si la
   //    construction échoue, le coach répond quand même.
+  //    Mémoire = souvenir des échanges passés (continuité, conversation
+  //    en cours exclue via convId). Les deux sont fail-open et partagent
+  //    un même client Supabase.
   if ((chatBody as { agentId?: string }).agentId === 'central') {
     try {
       const sbCtx = await createClient()
-      const athleteCtx = await buildAthleteContext(sbCtx, userId)
+      const convId = (chatBody as { convId?: string }).convId
+      const [athleteCtx, memory] = await Promise.all([
+        buildAthleteContext(sbCtx, userId).catch(() => ''),
+        buildCoachMemory(sbCtx, userId, convId).catch(() => ''),
+      ])
       if (athleteCtx) systemWithTools = `${systemWithTools}\n\n${athleteCtx}`
+      if (memory) systemWithTools = `${systemWithTools}\n\n${memory}`
     } catch (e) {
-      console.error('[coach-stream] athlete context injection failed:', e)
+      console.error('[coach-stream] athlete context / memory injection failed:', e)
     }
   }
 

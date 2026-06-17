@@ -2,12 +2,12 @@
 // Section Training Bloc — sans encadré parent (onglets + contenu directement dans le flux).
 // Onglet « Training Bloc » = grille 3 colonnes de cartes (→ BlocDetailOverlay) ; « Training
 // Planification » = frise lecture seule cliquable (→ GanttOverlay éditable). createPortal.
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FriseV1 } from '@/components/planning/FriseV1'
 import { BlocSummaryView } from '@/components/planning/BlocSummaryView'
 import { BlocDetailOverlay } from '@/components/planning/BlocDetailOverlay'
 import { GanttOverlay } from '@/components/planning/GanttOverlay'
-import { loadBlocs, upsertBloc, newBloc } from '@/app/planning/trainingBlocks'
+import { loadBlocs, upsertBloc, newBloc, syncBlocsFromCloud } from '@/app/planning/trainingBlocks'
 
 const T = 'var(--text)' // surface/texte = tokens de thème
 
@@ -19,6 +19,8 @@ export function TrainingBlockSummary() {
   const [gantt, setGantt] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const reload = () => { setBlocs(loadBlocs()); setVersion(v => v + 1) }
+  // Sync multi-appareils : récupère les blocs du cloud au montage.
+  useEffect(() => { void syncBlocsFromCloud().then(() => reload()) }, [])
 
   function openBloc(id: string) { setActiveId(id); setOpen(true) }
   function createBloc(sport: string) {

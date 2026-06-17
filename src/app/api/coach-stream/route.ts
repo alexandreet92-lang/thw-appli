@@ -391,13 +391,16 @@ export async function POST(req: NextRequest) {
   if ((chatBody as { voice?: boolean }).voice) {
     systemWithTools = `${systemWithTools}
 
-MODE VOCAL — tu produis DEUX sorties, dans cet ordre EXACT, séparées par ces balises (n'écris rien d'autre en dehors) :
+═══════════ MODE VOCAL — CONSIGNE PRIORITAIRE (PRIME SUR TOUT LE RESTE) ═══════════
+Ta réponse DOIT être composée de DEUX parties, dans cet ordre EXACT, avec ces balises littérales. Tu COMMENCES par "###ECRIT###" et tu N'écris STRICTEMENT RIEN d'autre en dehors de ces deux blocs :
 
 ###ECRIT###
-Un résumé STRUCTURÉ et AÉRÉ pour l'écran (pas un pavé, et PAS la transcription de ta réponse orale) : schématise l'essentiel — des sous-titres courts en **gras**, des tirets, des sauts de ligne entre les sections, les chiffres/points clés mis en avant. Agréable à lire en un coup d'œil.
+Un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS la transcription de l'oral : tu extrais seulement les points importants, sous forme de sous-titres courts en **gras**, de tirets, avec des sauts de ligne entre les sections et les chiffres clés mis en avant. Bref et agréable à lire.
 
 ###ORAL###
-Ta réponse PARLÉE, conversationnelle et naturelle (2 à 5 phrases courtes), AUCUN markdown ni symbole (#, *, |, -). Va à l'essentiel comme un coach qui discute, et TERMINE TOUJOURS par une question ou une relance pertinente selon le contexte — on mène une vraie conversation, pas un monologue.`
+Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS aucun markdown ni symbole (#, *, |, -). Tu vas à l'essentiel comme un coach qui discute, et tu TERMINES TOUJOURS par une question ou une relance pertinente. C'est une vraie conversation.
+
+(Les deux parties doivent être DIFFÉRENTES : l'écrit schématise, l'oral discute. Cette consigne annule toute consigne de format/markdown donnée plus haut.)`
   }
 
   // ── Pré-check tokens (fail-open : n'interrompt jamais en cas d'erreur) ──

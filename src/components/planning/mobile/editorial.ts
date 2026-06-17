@@ -8,16 +8,18 @@ import { SPORT_ICON, sportKeyFromType } from '@/components/icons/SportIcon'
 import type { SportType } from '@/app/planning/page'
 
 // Feuille de style scoppée à `.se-m` (mobile) et `.se-d` (desktop).
-// Masque aussi la MobileTabBar tant que la feuille est montée (§0).
+// Les couleurs de surface suivent le THÈME de l'app (jour = clair, nuit =
+// sombre) en mappant sur les tokens projet ; seules les couleurs sémantiques
+// (patterns sport) restent fixes. Masque la MobileTabBar tant que montée (§0).
 export const EDITORIAL_CSS = `
 .se-m, .se-d {
-  --se-bg: #faf9f6;
-  --se-card: #ffffff;
-  --se-card2: #faf9f6;
-  --se-text: #1a1a1a;
-  --se-dim: #8a8a82;
-  --se-rule: #e7e5df;
-  --se-rule-soft: #f0eee9;
+  --se-bg: var(--bg-card2);
+  --se-card: var(--bg-card);
+  --se-card2: var(--bg-card2);
+  --se-text: var(--text);
+  --se-dim: var(--text-dim);
+  --se-rule: var(--border);
+  --se-rule-soft: var(--border);
   --se-r: 14px;
   --se-r-sm: 11px;
   --pat-push: #f97316;

@@ -45,7 +45,9 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave }: 
           status: race?.status ?? 'upcoming',
           goalTime: (pd.goalTime as string) || (pd.triSwimTime ? '' : undefined),
           distance: (pd.distance as string) || (pd.rowDist as string) || undefined,
-          runDistance: sport === 'run' ? (pd.runDist as string) : undefined },
+          runDistance: sport === 'run' ? (pd.runDist as string) : undefined,
+          triDistance: sport === 'triathlon' ? (pd.triFormat as string) : undefined },
+          // Format Hyrox / type vélo / type aviron : conservés dans performanceData (pd).
         files, filesBike, filesRun,
       )
       onClose()
@@ -58,7 +60,7 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave }: 
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'raceScrimIn .2s ease' }} />
       <div className="race-ed" onClick={e => e.stopPropagation()} style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 401, height: '94vh',
-        background: 'var(--bg)', borderRadius: '26px 26px 0 0', boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
+        background: 'var(--bg-card2)', borderRadius: '26px 26px 0 0', boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'raceSheetUp .34s cubic-bezier(.2,.8,.2,1) forwards',
       }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0', flexShrink: 0 }} />
@@ -115,7 +117,7 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave }: 
         </div>
 
         {/* Footer sticky */}
-        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', gap: 10, padding: '12px 24px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', gap: 10, padding: '12px 24px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
           <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 900 }}>
             <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
             <button onClick={handleSave} disabled={saving || !name.trim()} style={{ flex: 2, padding: 12, borderRadius: 999, background: SPORT_COLOR[sport], border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: !name.trim() ? 0.5 : 1 }}>{saving ? '…' : isEdit ? 'Enregistrer' : 'Ajouter'}</button>

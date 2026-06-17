@@ -2160,7 +2160,7 @@ function DayBubble({ sport, label, done, onClick, draggable, onDragStart, onDrag
   return (
     <button onClick={onClick} draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-      style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'3px 2px',borderRadius:8,border:'none',background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1,transform:lifted?'scale(1.06)':undefined,boxShadow:lifted?'0 6px 16px rgba(0,0,0,0.35)':undefined,transition:'transform .12s, box-shadow .12s',touchAction:onTouchStart?'none':undefined,position:'relative',zIndex:lifted?20:undefined }}>
+      style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'3px 2px',borderRadius:8,border:'none',background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1,transform:lifted?'scale(1.06)':undefined,boxShadow:lifted?'0 6px 16px rgba(0,0,0,0.35)':undefined,transition:'transform .12s, box-shadow .12s',touchAction:onTouchStart?'pan-y':undefined,position:'relative',zIndex:lifted?20:undefined }}>
       {Ico ? <Ico size={15} color={color} stroke={2.2} /> : <span style={{ width:7,height:7,borderRadius:'50%',background:color }} />}
       <span className="tnum" style={{ width:'100%',textAlign:'center',background:color,color:'var(--on-primary)',borderRadius:999,padding:'1px 0',fontSize:9.5,fontWeight:700,fontFamily:'var(--font-body)' }}>{label}</span>
     </button>

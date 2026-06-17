@@ -97,6 +97,8 @@ export function SectionLayout({
       @keyframes slSlideLeft  { from { transform: translateX(-30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
       .sl-slide-right { animation: slSlideRight 280ms cubic-bezier(0.32,0.72,0,1); }
       .sl-slide-left  { animation: slSlideLeft 280ms cubic-bezier(0.32,0.72,0,1); }
+      .sl-tabscroll { scrollbar-width: none; }
+      .sl-tabscroll::-webkit-scrollbar { display: none; }
     `}</style>
   )
 
@@ -159,25 +161,28 @@ export function SectionLayout({
     <div style={{ width: '100%', maxWidth: '100%', margin: 0, padding: '0 0 80px', overflowX: 'hidden', boxSizing: 'border-box' }}>
       {styleBlock}
       {header && <div style={{ padding: '24px 16px 0' }}>{header}</div>}
-      <div style={{ display: 'flex', width: '100%', borderBottom: '1px solid var(--border)', marginTop: 12, boxSizing: 'border-box' }}>
-        {sections.map(s => {
-          const active = activeId === s.id
-          return (
-            <button key={s.id} onClick={() => go(s.id)}
-              style={{
-                flex: 1, minWidth: 0, position: 'relative', textAlign: 'center', padding: '14px 4px',
-                background: 'transparent', border: 'none', cursor: 'pointer',
-                fontFamily: 'DM Sans,sans-serif', whiteSpace: 'nowrap',
-                overflow: 'hidden', textOverflow: 'ellipsis',
-                fontSize: tabFont, fontWeight: active ? 700 : 600,
-                color: active ? CYAN : '#94A3B8', transition: 'color 0.15s',
-              }}
-            >
-              {s.short ?? s.label}
-              {active && <span style={{ position: 'absolute', bottom: -1, left: 10, right: 10, height: 3, borderRadius: '2px 2px 0 0', background: 'linear-gradient(90deg,#06B6D4 0%,#5b6fff 100%)' }} />}
-            </button>
-          )
-        })}
+      {/* Onglets mobile — segmented control « pilule » (style Dashboard), défilable au doigt */}
+      <div className="sl-tabscroll" style={{ padding: '12px 12px 0', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
+        <div role="tablist" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
+          {sections.map(s => {
+            const active = activeId === s.id
+            return (
+              <button key={s.id} role="tab" aria-selected={active} onClick={() => go(s.id)}
+                style={{
+                  border: 'none', cursor: 'pointer', borderRadius: 999, padding: '7px 16px',
+                  fontFamily: 'DM Sans,sans-serif', whiteSpace: 'nowrap', fontSize: tabFont,
+                  fontWeight: active ? 700 : 600,
+                  background: active ? 'var(--bg-elev)' : 'transparent',
+                  color: active ? 'var(--text)' : 'var(--text-mid)',
+                  boxShadow: active ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+                  transition: 'background 0.18s, color 0.18s',
+                }}
+              >
+                {s.short ?? s.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
       <div style={{ padding: '14px 12px 0' }}>
         <div style={containerStyle}>{content}</div>

@@ -10,11 +10,11 @@
 //    embarqué côté serveur. Le frontend envoie juste la
 //    description brute de la séance ou la demande nutrition.
 //
-// 2. CHAT COACH (existant)
+// 2. CHAT COACH (boucle agentique streamée)
 //    Body : { agentId, messages, context?, modelId?, aiRules? }
-//    Appel Anthropic NON-streaming via buildChatParams + outils.
-//    Approche non-streaming choisie pour garantir le JSON complet
-//    des tool_use avant émission SSE.
+//    buildChatParams + outils, puis BOUCLE agentique : on streame le
+//    texte token-par-token, on résout les outils de LECTURE côté serveur
+//    (read→reason→loop) et on rend les outils d'ACTION terminaux au front.
 // ══════════════════════════════════════════════════════════════
 
 export const runtime     = 'nodejs'

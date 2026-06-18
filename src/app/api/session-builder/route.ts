@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS, parseJsonResponse } from '@/lib/agents/base'
+import { buildAthleteContextSafe } from '@/lib/coach/athlete-context'
 
 // Types
 interface SessionBuilderRequestBody {
@@ -126,6 +127,19 @@ export async function POST(req: NextRequest) {
 
   const { sport, sousType, typesSeance, descriptionLibre, profil, sessionActuelle, modification } = body
 
+  // Contexte athlète serveur (charge actuelle, semaine planifiée, récup,
+  // blessures) pour rendre la séance consciente de l'état de forme.
+  const athleteContext = await buildAthleteContextSafe()
+  const chargeBlock = athleteContext
+    ? `\nÉTAT DE FORME ACTUEL — adapte la séance en conséquence (sans changer le type demandé par l'athlète) :
+${athleteContext}
+RÈGLES D'ADAPTATION :
+- L'athlète a CHOISI le type de séance : honore sa demande. Mais calibre le VOLUME et l'INTENSITÉ selon sa fraîcheur (TSB), sa monotonie/strain et son score de risque.
+- Si TSB très négatif / risque élevé / fatigue marquée : réduis légèrement la charge ou propose une variante plus prudente, et SIGNALE-le clairement dans "description".
+- Tiens compte des séances DÉJÀ planifiées cette semaine pour ne pas empiler deux grosses charges le même bloc.
+- Respecte impérativement les BLESSURES ACTIVES (évite les contraintes sur la zone concernée).\n`
+    : ''
+
   let userPrompt: string
 
   // Build sport-specific profil context
@@ -188,7 +202,7 @@ Conserve ce qui n'est pas explicitement modifié.
 
 Profil athlète (Sport: ${sport}) :
 ${buildProfilContext(sport, profil)}
-
+${chargeBlock}
 Retourne UNIQUEMENT ce JSON :
 ${buildJsonSchema(sport)}`
   } else {
@@ -201,7 +215,7 @@ Types de séance : ${typesSeance.join(', ')}${descriptionLibre ? `\nDescription 
 
 Profil athlète (Sport: ${sport}) :
 ${buildProfilContext(sport, profil)}
-
+${chargeBlock}
 Règles prioritaires :
 1. Adapte la séance au profil de l'athlète (pas de données génériques)
 2. Génère UNIQUEMENT les blocs demandés — ne jamais ajouter de retour au calme, récupération finale, ou cool-down non demandé

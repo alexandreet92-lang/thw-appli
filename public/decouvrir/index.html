@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<!--
+  Placeholder autonome de la landing « Découvrir ».
+  À REMPLACER par l'export réel de Claude Design (même chemin).
+  Contrat : page autonome (CSS/images embarqués) + section id="abonnements".
+-->
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Découvrir — THE HYBRID WAY</title>
+  <meta name="description" content="THE HYBRID WAY — coaching sportif hybride : endurance et force, propulsé par l'IA." />
+  <style>
+    :root {
+      --bg: #0a0a0b;
+      --surface: #141417;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f5f5f7;
+      --text-mid: #a1a1aa;
+      --accent: #6366f1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+    header.site {
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    header.site .brand {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    section { padding: 72px 0; border-bottom: 1px solid var(--border); }
+    .hero h1 {
+      font-size: clamp(34px, 6vw, 56px);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+    }
+    .hero p { font-size: 18px; color: var(--text-mid); max-width: 620px; }
+    h2 {
+      font-size: clamp(24px, 4vw, 34px);
+      letter-spacing: -0.01em;
+      margin-bottom: 16px;
+    }
+    .lead { color: var(--text-mid); max-width: 640px; margin-bottom: 28px; }
+    .cards { display: grid; gap: 16px; grid-template-columns: 1fr; }
+    @media (min-width: 720px) { .cards { grid-template-columns: 1fr 1fr; } }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+    .card h3 { font-size: 17px; margin-bottom: 8px; }
+    .card p { color: var(--text-mid); font-size: 14px; }
+    .tag {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    footer.site { padding: 40px 0; color: var(--text-mid); font-size: 13px; }
+    a.back { color: var(--accent); text-decoration: none; font-size: 14px; }
+    a.back:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <div class="wrap"><span class="brand">THE HYBRID WAY</span></div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <h1>Le coaching hybride, propulsé par l'IA.</h1>
+        <p>
+          Endurance et force dans une seule app. Planification, analyse de tes
+          séances et suivi de charge, guidés par une intelligence qui comprend
+          ton sport.
+        </p>
+      </div>
+    </section>
+
+    <section id="modeles">
+      <div class="wrap">
+        <span class="tag">Modèles IA</span>
+        <h2>Une intelligence à la hauteur de ton entraînement</h2>
+        <p class="lead">
+          Tous les modèles sont accessibles. Chacun a un multiplicateur qui
+          indique la vitesse à laquelle ton quota se consomme : choisis la
+          puissance adaptée à chaque tâche.
+        </p>
+        <div class="cards">
+          <div class="card">
+            <h3>Rapide et économe</h3>
+            <p>Pour les réponses courtes et les ajustements du quotidien.</p>
+          </div>
+          <div class="card">
+            <h3>Analyse approfondie</h3>
+            <p>Pour décortiquer une séance ou bâtir un plan d'entraînement complet.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="abonnements">
+      <div class="wrap">
+        <span class="tag">Abonnements</span>
+        <h2>Des formules pensées pour progresser</h2>
+        <p class="lead">
+          Commence gratuitement, passe au niveau supérieur quand tu en as
+          besoin. Le quota d'IA s'adapte à ton intensité d'usage, sans surprise.
+        </p>
+        <div class="cards">
+          <div class="card">
+            <h3>Essai</h3>
+            <p>Découvre l'app et l'assistant IA sur une période d'essai.</p>
+          </div>
+          <div class="card">
+            <h3>Pro</h3>
+            <p>Quota étendu, analyses avancées et outils de suivi de charge.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site">
+    <div class="wrap">
+      <p>THE HYBRID WAY — coaching sportif hybride (endurance + force).</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -131,6 +131,36 @@ interface ModelConfig {
   hint: string        // hint affiché dans le picker
 }
 
+// ══════════════════════════════════════════════════════════════
+// Primitives élégantes des écrans de flow (gate, readiness, sélection).
+// Objectif design-system : à plat, pas de boîtes grises pleines, titres
+// Fraunces, chiffres Inter tabulaires, sémantique par point (pas de
+// surface colorée). Partagées par tous les flows d'actions rapides.
+// ══════════════════════════════════════════════════════════════
+
+function FlowTitle({ title, sub }: { title: string; sub?: string }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <p style={{ margin: 0, fontSize: 17, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-display, Fraunces), Georgia, serif', letterSpacing: '-0.01em' }}>{title}</p>
+      {sub && <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--ai-dim)', lineHeight: 1.45 }}>{sub}</p>}
+    </div>
+  )
+}
+
+type GateTone = 'default' | 'ok' | 'warn'
+function GateRow({ label, value, tone = 'default', last = false }: { label: string; value: React.ReactNode; tone?: GateTone; last?: boolean }) {
+  const dot = tone === 'ok' ? '#22c55e' : tone === 'warn' ? '#eab308' : null
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 2px', borderBottom: last ? 'none' : '1px solid var(--ai-border)' }}>
+      <span style={{ fontSize: 13, color: 'var(--ai-mid)' }}>{label}</span>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+        {dot && <span style={{ width: 6, height: 6, borderRadius: '50%', background: dot, flexShrink: 0 }} />}
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ai-text)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>{value}</span>
+      </span>
+    </div>
+  )
+}
+
 const MODEL_CONFIGS: Record<THWModel, ModelConfig> = {
   hermes: {
     name: 'Hermès',
@@ -2824,84 +2854,50 @@ FORMATAGE OBLIGATOIRE :
     const np = gateData?.nutritionPlan
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
-          Recharge glucidique
-        </p>
-        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
-          Stratégie nutritionnelle avant un effort important
-        </p>
+        <FlowTitle title="Recharge glucidique" sub="Stratégie nutritionnelle avant un effort important" />
 
         {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 11, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 12, marginBottom: 16 }}>
             <Dots />
             <span>Chargement de ton profil…</span>
           </div>
         ) : gateData && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-            {/* Poids / taille */}
-            <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>Morphologie</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: gateData.weight ? 'var(--ai-text)' : '#f97316', fontFamily: 'DM Mono,monospace' }}>
-                {gateData.weight ? `${gateData.weight} kg` : 'poids non renseigné'}
-                {gateData.height ? ` · ${gateData.height} cm` : ''}
-              </span>
-            </div>
-
-            {/* Plan nutritionnel */}
-            <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>Plan nutritionnel</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: gateData.planNutritionActive ? '#22c55e' : '#f97316' }}>
-                {gateData.planNutritionActive ? 'actif' : 'non configuré'}
-              </span>
-            </div>
-
-            {/* Macros détaillées si plan actif */}
-            {np && (
-              <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>Macros quotidiennes</span>
-                  <span style={{ fontSize: 10, color: '#22c55e' }}>✓</span>
-                </div>
-                <div style={{ display: 'flex', gap: 10, fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)', flexWrap: 'wrap' as const }}>
-                  {np.calories_target && <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{np.calories_target} kcal</span>}
-                  {np.carbs_g && <span>G: {np.carbs_g}g</span>}
-                  {np.protein_g && <span>P: {np.protein_g}g</span>}
-                  {np.fat_g && <span>L: {np.fat_g}g</span>}
-                </div>
-                {np.allergies && (
-                  <p style={{ fontSize: 9, color: '#f97316', margin: '6px 0 0', fontWeight: 600 }}>⚠ Allergies : {np.allergies}</p>
-                )}
-                {np.regime && (
-                  <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '3px 0 0' }}>Régime : {np.regime}</p>
-                )}
-              </div>
+          <div style={{ marginBottom: 18 }}>
+            <GateRow
+              label="Morphologie"
+              value={gateData.weight ? `${gateData.weight} kg${gateData.height ? ` · ${gateData.height} cm` : ''}` : 'non renseigné'}
+              tone={gateData.weight ? 'ok' : 'warn'}
+            />
+            <GateRow
+              label="Plan nutritionnel"
+              value={gateData.planNutritionActive ? 'actif' : 'non configuré'}
+              tone={gateData.planNutritionActive ? 'ok' : 'warn'}
+            />
+            {np?.calories_target && (
+              <GateRow label="Macros quotidiennes" value={`${np.calories_target} kcal`} tone="ok" />
             )}
-
-            {/* Séances planifiées */}
-            <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>Séances planifiées (2 sem.)</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>
-                {gateData.plannedSessions}
-              </span>
-            </div>
-
-            {/* Courses planifiées */}
-            {gateData.plannedRaces.length > 0 && (
-              <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: 'var(--ai-mid)' }}>Courses planifiées</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', fontFamily: 'DM Mono,monospace' }}>
-                  {gateData.plannedRaces.length} course{gateData.plannedRaces.length > 1 ? 's' : ''}
-                </span>
-              </div>
+            <GateRow
+              label="Séances planifiées (2 sem.)"
+              value={gateData.plannedSessions}
+              tone={gateData.plannedSessions > 0 ? 'ok' : 'default'}
+            />
+            <GateRow
+              label="Courses planifiées"
+              value={gateData.plannedRaces.length > 0 ? `${gateData.plannedRaces.length} course${gateData.plannedRaces.length > 1 ? 's' : ''}` : 'aucune'}
+              tone={gateData.plannedRaces.length > 0 ? 'ok' : 'default'}
+              last
+            />
+            {np?.allergies && (
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '10px 2px 0' }}>Allergies prises en compte : {np.allergies}</p>
             )}
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button onClick={onCancel} style={{ padding: '10px 6px', border: 'none', background: 'transparent', color: 'var(--ai-dim)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
             Annuler
           </button>
-          <button onClick={() => setStep('event')} disabled={loading} style={{ flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none', background: loading ? 'var(--ai-border)' : 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+          <button onClick={() => setStep('event')} disabled={loading} style={{ flex: 1, padding: '11px 16px', borderRadius: 12, border: 'none', background: loading ? 'var(--ai-border)' : 'var(--ai-gradient)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
             Continuer
           </button>
         </div>
@@ -11258,6 +11254,8 @@ function PlusMenu({
   const [activeScreen, setActiveScreen] = useState<MenuScreen>('main')
   const [animating, setAnimating] = useState(false)
   const [activeTheme, setActiveTheme] = useState<QuickActionTheme>('entrainement')
+  // Mobile : navigation à deux niveaux — null = liste des thèmes, sinon actions du thème.
+  const [mobileTheme, setMobileTheme] = useState<QuickActionTheme | null>(null)
   const [compCount, setCompCount] = useState<number | null>(null)
   const [compLimit, setCompLimit] = useState(3)
 
@@ -11319,6 +11317,48 @@ function PlusMenu({
   function hoverOn(e: React.MouseEvent)  { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }
   function hoverOff(e: React.MouseEvent) { (e.currentTarget as HTMLElement).style.background = 'transparent' }
 
+  // Bouton d'action rapide (partagé desktop ↔ mobile)
+  function renderActionButton(qa: QuickAction, key: React.Key) {
+    return (
+      <button
+        key={key}
+        onClick={() => {
+          onForceModel(qa.model)
+          onClose()
+          if (qa.flow) onFlow(qa.flow)
+          else if (qa.enrichedId) onEnriched(qa.enrichedId, qa.label)
+          else if (qa.prompt) onPrepare(qa.label, qa.prompt)
+        }}
+        style={{
+          display: 'flex', alignItems: 'flex-start', gap: 12,
+          width: '100%', padding: '12px 14px', borderRadius: 12, marginBottom: 2, minHeight: 44,
+          color: 'var(--ai-text)', cursor: 'pointer',
+          border: 'none', background: 'transparent', textAlign: 'left',
+          fontFamily: 'DM Sans,sans-serif', transition: 'background 120ms',
+        }}
+        onMouseEnter={hoverOn} onMouseLeave={hoverOff}
+      >
+        <span style={{ flexShrink: 0, display: 'flex', marginTop: 1 }}>{actionIcon(qa.flow)}</span>
+        <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ai-text)', letterSpacing: '-0.01em' }}>{qa.label}</span>
+          <span style={{ fontSize: 12, color: 'var(--ai-dim)', lineHeight: 1.4 }}>{qa.sub}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: MODEL_BADGE[qa.model].color, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 500, color: MODEL_BADGE[qa.model].color }}>{MODEL_CONFIGS[qa.model].name}</span>
+            <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>· {fmtEstimate(quickActionEstimate(qa.flow))}</span>
+          </span>
+        </span>
+      </button>
+    )
+  }
+
+  // Actions d'un thème (dans l'ordre déclaré)
+  function actionsOfTheme(theme: QuickActionTheme): QuickAction[] {
+    return (QA_THEMES.find(t => t.id === theme)?.flows ?? [])
+      .map(f => QUICK_ACTIONS.find(qa => qa.flow === f))
+      .filter((qa): qa is QuickAction => !!qa)
+  }
+
   // Item compact de l'écran principal
   const rowStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 10,
@@ -11367,7 +11407,7 @@ function PlusMenu({
           <div style={sepStyle} />
 
           {/* 4. Actions rapides */}
-          <button style={rowStyle} onClick={() => goTo('actions')} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+          <button style={rowStyle} onClick={() => { setMobileTheme(null); goTo('actions') }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
             <Zap size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
             <span style={{ flex: 1 }}>Actions rapides</span>
             <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
@@ -11420,81 +11460,103 @@ function PlusMenu({
       {/* ════ SOUS-ÉCRAN : ACTIONS RAPIDES ════ */}
       {activeScreen === 'actions' && (
         <div key="actions" style={{ animation: 'aip_slide_in_right 0.22s ease-out' }}>
-          {/* Header retour */}
-          <div style={{ ...subHeaderStyle, marginBottom: 0, padding: '6px 8px 8px', borderBottom: '1px solid var(--border)' }}>
-            <button onClick={goBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
-              <ArrowLeft size={14} color="var(--text-mid)" />
-            </button>
-            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Actions rapides</span>
-          </div>
 
-          {/* 2 colonnes : thèmes | actions */}
-          <div style={{ display: 'flex', minWidth: 420, height: 360 }}>
-            {/* Colonne gauche — thèmes */}
-            <div style={{ width: 160, flexShrink: 0, borderRight: '1px solid var(--border)', padding: 6, overflowY: 'auto' }}>
-              {QA_THEMES.map(t => {
-                const active = t.id === activeTheme
-                return (
-                  <button
-                    key={t.id}
-                    onMouseEnter={() => setActiveTheme(t.id)}
-                    onClick={() => setActiveTheme(t.id)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      width: '100%', padding: '8px 10px', borderRadius: 8,
-                      fontSize: 13, cursor: 'pointer', border: 'none', textAlign: 'left',
-                      fontFamily: 'DM Sans,sans-serif',
-                      transition: 'background 120ms, color 120ms',
-                      background: active ? 'var(--bg-hover)' : 'transparent',
-                      color: active ? 'var(--text)' : 'var(--text-mid)',
-                    }}
-                  >
-                    <span style={{ flexShrink: 0, display: 'flex' }}>{themeIcon(t.id)}</span>
-                    <span style={{ flex: 1 }}>{t.label}</span>
-                    <ChevronRight size={12} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+          {/* ─────────── MOBILE : navigation à deux niveaux ─────────── */}
+          {isMobile ? (
+            mobileTheme === null ? (
+              // Niveau 1 — liste des thèmes
+              <div>
+                <div style={{ ...subHeaderStyle, marginBottom: 0, padding: '8px 10px 10px', borderBottom: '1px solid var(--border)' }}>
+                  <button onClick={goBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <ArrowLeft size={16} color="var(--text-mid)" />
                   </button>
-                )
-              })}
-            </div>
-
-            {/* Colonne droite — actions du thème actif */}
-            <div key={activeTheme} style={{ flex: 1, padding: 6, overflowY: 'auto', animation: 'aip_fade_in 0.15s ease-out' }}>
-              {(QA_THEMES.find(t => t.id === activeTheme)?.flows ?? [])
-                .map(f => QUICK_ACTIONS.find(qa => qa.flow === f))
-                .filter((qa): qa is QuickAction => !!qa)
-                .map((qa, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      onForceModel(qa.model)
-                      onClose()
-                      if (qa.flow) onFlow(qa.flow)
-                      else if (qa.enrichedId) onEnriched(qa.enrichedId, qa.label)
-                      else if (qa.prompt) onPrepare(qa.label, qa.prompt)
-                    }}
-                    style={{
-                      display: 'flex', alignItems: 'flex-start', gap: 11,
-                      width: '100%', padding: '10px 12px', borderRadius: 8, marginBottom: 2, minHeight: 44,
-                      color: 'var(--ai-text)', cursor: 'pointer',
-                      border: 'none', background: 'transparent', textAlign: 'left',
-                      fontFamily: 'DM Sans,sans-serif', transition: 'background 120ms',
-                    }}
-                    onMouseEnter={hoverOn} onMouseLeave={hoverOff}
-                  >
-                    <span style={{ flexShrink: 0, display: 'flex', marginTop: 1 }}>{actionIcon(qa.flow)}</span>
-                    <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{qa.label}</span>
-                      <span style={{ fontSize: 11.5, color: 'var(--ai-dim)', lineHeight: 1.35 }}>{qa.sub}</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: MODEL_BADGE[qa.model].color, flexShrink: 0 }} />
-                        <span style={{ fontSize: 10.5, fontWeight: 500, color: MODEL_BADGE[qa.model].color }}>{MODEL_CONFIGS[qa.model].name}</span>
-                        <span style={{ fontSize: 10.5, color: 'var(--ai-dim)' }}>· {fmtEstimate(quickActionEstimate(qa.flow))}</span>
-                      </span>
-                    </span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-display, Fraunces), Georgia, serif' }}>Actions rapides</span>
+                </div>
+                <div style={{ padding: 8 }}>
+                  {QA_THEMES.map(t => {
+                    const count = actionsOfTheme(t.id).length
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setMobileTheme(t.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 13,
+                          width: '100%', padding: '14px 14px', borderRadius: 12, marginBottom: 2, minHeight: 56,
+                          fontFamily: 'DM Sans,sans-serif', cursor: 'pointer', border: 'none', textAlign: 'left',
+                          background: 'transparent', color: 'var(--ai-text)', transition: 'background 120ms',
+                        }}
+                        onMouseEnter={hoverOn} onMouseLeave={hoverOff}
+                      >
+                        <span style={{ flexShrink: 0, display: 'flex', color: 'var(--ai-mid)' }}>{themeIcon(t.id)}</span>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: 'var(--ai-text)', letterSpacing: '-0.01em' }}>{t.label}</span>
+                          <span style={{ display: 'block', fontSize: 12, color: 'var(--ai-dim)', marginTop: 1 }}>{count} action{count > 1 ? 's' : ''}</span>
+                        </span>
+                        <ChevronRight size={18} color="var(--text-dim)" style={{ flexShrink: 0 }} />
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : (
+              // Niveau 2 — actions du thème sélectionné
+              <div key={mobileTheme} style={{ animation: 'aip_slide_in_right 0.2s ease-out' }}>
+                <div style={{ ...subHeaderStyle, marginBottom: 0, padding: '8px 10px 10px', borderBottom: '1px solid var(--border)' }}>
+                  <button onClick={() => setMobileTheme(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                    <ArrowLeft size={16} color="var(--text-mid)" />
                   </button>
-                ))}
-            </div>
-          </div>
+                  <span style={{ flexShrink: 0, display: 'flex', color: 'var(--ai-mid)' }}>{themeIcon(mobileTheme)}</span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-display, Fraunces), Georgia, serif' }}>{QA_THEMES.find(t => t.id === mobileTheme)?.label}</span>
+                </div>
+                <div style={{ padding: 8 }}>
+                  {actionsOfTheme(mobileTheme).map((qa, i) => renderActionButton(qa, i))}
+                </div>
+              </div>
+            )
+          ) : (
+            /* ─────────── DESKTOP : 2 colonnes thèmes | actions ─────────── */
+            <>
+              <div style={{ ...subHeaderStyle, marginBottom: 0, padding: '6px 8px 8px', borderBottom: '1px solid var(--border)' }}>
+                <button onClick={goBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                  <ArrowLeft size={14} color="var(--text-mid)" />
+                </button>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Actions rapides</span>
+              </div>
+              <div style={{ display: 'flex', minWidth: 460, height: 380 }}>
+                {/* Colonne gauche — thèmes */}
+                <div style={{ width: 168, flexShrink: 0, borderRight: '1px solid var(--border)', padding: 6, overflowY: 'auto' }}>
+                  {QA_THEMES.map(t => {
+                    const active = t.id === activeTheme
+                    return (
+                      <button
+                        key={t.id}
+                        onMouseEnter={() => setActiveTheme(t.id)}
+                        onClick={() => setActiveTheme(t.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          width: '100%', padding: '9px 10px', borderRadius: 8,
+                          fontSize: 13, cursor: 'pointer', border: 'none', textAlign: 'left',
+                          fontFamily: 'DM Sans,sans-serif',
+                          transition: 'background 120ms, color 120ms',
+                          background: active ? 'var(--bg-hover)' : 'transparent',
+                          color: active ? 'var(--ai-text)' : 'var(--text-mid)',
+                          fontWeight: active ? 600 : 400,
+                        }}
+                      >
+                        <span style={{ flexShrink: 0, display: 'flex' }}>{themeIcon(t.id)}</span>
+                        <span style={{ flex: 1 }}>{t.label}</span>
+                        <ChevronRight size={12} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+                      </button>
+                    )
+                  })}
+                </div>
+                {/* Colonne droite — actions du thème actif */}
+                <div key={activeTheme} style={{ flex: 1, padding: 6, overflowY: 'auto', animation: 'aip_fade_in 0.15s ease-out' }}>
+                  {actionsOfTheme(activeTheme).map((qa, i) => renderActionButton(qa, i))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -12799,63 +12861,58 @@ Sports : ${sports} | Objectif : ${goal}`
   // ── Phase select ───────────────────────────────────────────────
   return (
     <div style={{ padding: '4px 0' }}>
-      <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>Comprendre l'application</p>
-      <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 14px', lineHeight: 1.5 }}>
-        Sélectionne les sections à explorer. Le guide s'adapte à ton profil.
-      </p>
+      <FlowTitle title="Comprendre l'application" sub="Sélectionne les sections à explorer. Le guide s'adapte à ton profil." />
 
-      {/* App Health Score */}
+      {/* Configuration — readiness à plat */}
       {health && (
-        <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Configuration</span>
-            <span style={{
-              fontSize: 16, fontWeight: 800, fontFamily: 'DM Mono,monospace',
-              color: health.score >= 70 ? '#22c55e' : health.score >= 40 ? '#f97316' : '#ef4444',
-            }}>{health.score}%</span>
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 13, color: 'var(--ai-mid)' }}>Configuration de ton app</span>
+            <span style={{ fontSize: 22, fontWeight: 600, color: 'var(--ai-text)', fontVariantNumeric: 'tabular-nums', fontFamily: 'DM Sans,sans-serif' }}>
+              {health.score}<span style={{ fontSize: 13, color: 'var(--ai-dim)', marginLeft: 1 }}>%</span>
+            </span>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {health.checks.map(c => (
-              <span key={c.id} style={{
-                fontSize: 10, padding: '3px 8px', borderRadius: 6, fontWeight: 600,
-                background: c.ok ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.08)',
-                color: c.ok ? '#22c55e' : '#ef4444',
-              }}>
-                {c.ok ? '✓' : '✗'} {c.label}{c.detail ? ` — ${c.detail}` : ''}
-              </span>
+          <div>
+            {health.checks.map((c, i) => (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 2px', borderBottom: i === health.checks.length - 1 ? 'none' : '1px solid var(--ai-border)' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.ok ? '#22c55e' : 'var(--ai-border)', flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 12.5, color: c.ok ? 'var(--ai-text)' : 'var(--ai-dim)' }}>
+                  {c.label}{c.detail ? ` — ${c.detail}` : ''}
+                </span>
+                {!c.ok && <span style={{ fontSize: 11, color: 'var(--ai-dim)', flexShrink: 0 }}>à configurer</span>}
+              </div>
             ))}
           </div>
         </div>
       )}
 
       {/* Raccourcis */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        <button onClick={selectAll} style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
+        <button onClick={selectAll} style={{ padding: '4px 2px', border: 'none', background: 'transparent', color: 'var(--ai-accent)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
           Tout sélectionner
         </button>
         <button onClick={selectMissing} disabled={!health || health.checks.every(c => c.ok)} style={{
-          flex: 1, padding: '7px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)',
-          background: 'rgba(239,68,68,0.05)', color: '#ef4444', fontSize: 11, fontWeight: 600,
+          padding: '4px 2px', border: 'none', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12.5, fontWeight: 500,
           cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
           opacity: !health || health.checks.every(c => c.ok) ? 0.4 : 1,
         }}>
-          Ce que je n'utilise pas
+          Ce qu'il me reste à configurer
         </button>
       </div>
 
       {/* Grille pages */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 6, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 18 }}>
         {APP_GUIDE_PAGES.map(page => {
           const active = selected.includes(page.id)
           return (
             <button key={page.id} onClick={() => toggle(page.id)} style={{
-              padding: '10px 12px', borderRadius: 10, textAlign: 'left',
-              border: `1.5px solid ${active ? 'rgba(91,111,255,0.5)' : 'var(--ai-border)'}`,
-              background: active ? 'rgba(91,111,255,0.06)' : 'transparent',
+              padding: '11px 13px', borderRadius: 12, textAlign: 'left',
+              border: active ? '1px solid var(--ai-accent)' : '1px solid var(--ai-border)',
+              background: active ? 'var(--ai-bg2)' : 'transparent',
               cursor: 'pointer', transition: 'all 0.12s',
             }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: active ? '#5b6fff' : 'var(--ai-text)', margin: '0 0 2px' }}>{page.label}</p>
-              <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{page.sub}</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: active ? 'var(--ai-accent)' : 'var(--ai-text)', margin: '0 0 2px' }}>{page.label}</p>
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.35 }}>{page.sub}</p>
             </button>
           )
         })}
@@ -12865,15 +12922,15 @@ Sports : ${sports} | Objectif : ${goal}`
         onClick={handleGenerate}
         disabled={selected.length === 0}
         style={{
-          width: '100%', padding: '11px', borderRadius: 10,
-          background: selected.length > 0 ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--ai-border)',
+          width: '100%', padding: '12px', borderRadius: 12,
+          background: selected.length > 0 ? 'var(--ai-gradient)' : 'var(--ai-border)',
           border: 'none', color: selected.length > 0 ? '#fff' : 'var(--ai-dim)',
-          fontSize: 13, fontWeight: 700, cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
-          fontFamily: 'Syne,sans-serif',
+          fontSize: 13, fontWeight: 600, cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
+          fontFamily: 'DM Sans,sans-serif',
         }}>
         Explorer {selected.length > 0 ? `(${selected.length} section${selected.length > 1 ? 's' : ''})` : ''}
       </button>
-      <button onClick={onCancel} style={{ display: 'block', margin: '8px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
+      <button onClick={onCancel} style={{ display: 'block', margin: '10px auto 0', fontSize: 12, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
         Annuler
       </button>
     </div>

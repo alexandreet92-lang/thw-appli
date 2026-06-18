@@ -26,6 +26,7 @@ import { getAnthropicClient } from '@/lib/agents/base'
 import { buildChatParams } from '@/lib/agents/chatAgent'
 import type { ChatInput } from '@/lib/coach-engine/schemas'
 import { coachTools } from '@/lib/coach/tools-definition'
+import { readTools, READ_TOOL_NAMES, resolveReadTool } from '@/lib/coach/read-tools'
 import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
@@ -109,6 +110,17 @@ const SPORT_CONTEXT: Record<string, string> = {
 // ── Instructions tool use — ajoutées au system prompt chat ────
 
 const TOOL_INSTRUCTIONS = `
+OUTILS DE LECTURE — ENQUÊTE SUR LES DONNÉES (raisonne comme Claude, pas comme un chatbot) :
+Tu disposes d'outils pour ALLER CHERCHER les données réelles dont tu as besoin, puis raisonner dessus avant de répondre :
+- get_activities : liste d'activités au-delà du contexte (tendances, historique long, un sport précis, les compétitions).
+- analyze_sport_metrics : métriques objectives capteurs (courbe de puissance + FTP estimée vélo ; profil d'allure + réserve de vitesse course ; durabilité = fade + découplage cardiaque). À utiliser pour TOUTE analyse de niveau, de point faible ou pour chiffrer une prescription.
+- get_training_plan / get_planned_sessions : plan actif et séances planifiées AVEC LEURS ID RÉELS.
+RÈGLES :
+1. Si une affirmation utile peut être VÉRIFIÉE par un outil (niveau réel, tendance, charge, point faible), APPELLE l'outil au lieu de supposer. Tu peux enchaîner plusieurs lectures avant de conclure.
+2. Avant TOUTE modification de plan/séance (add/update/move/delete), si tu n'as pas déjà l'id réel dans le contexte, appelle d'abord get_training_plan ou get_planned_sessions pour récupérer les id — n'invente JAMAIS d'identifiant.
+3. N'abuse pas : 1 à 3 lectures ciblées suffisent. Quand tu as ce qu'il faut, RÉPONDS (ou appelle le tool d'action). Ne lis pas en boucle.
+4. Les outils de lecture sont INTERNES : n'annonce pas « je vais interroger la base », enchaîne simplement et présente une réponse aboutie, chiffrée.
+
 OUTIL ask_clarifying_questions — POSER LES BONNES QUESTIONS (comportement de coach expert) :
 Avant de répondre à une demande importante (créer/ajuster un plan, analyser une situation, choisir un objectif, bâtir une stratégie), assure-toi d'avoir les informations DÉCISIVES. C'est ton intelligence de coach : savoir, selon la situation, ce qui manque vraiment.
 
@@ -461,63 +473,110 @@ Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS
   const chatMaxTokens = MODEL_MAX_TOKENS[cappedKey as keyof typeof MODEL_MAX_TOKENS] ?? maxTokens
   console.log(`[coach-stream] chat model selection → requested=${requestedKey} tier=${tierModel} → ${cappedKey} (${chatModel})`)
 
-  let response
-  try {
-    response = await client.messages.create({
-      model: chatModel,
-      max_tokens: chatMaxTokens,
-      system: systemWithTools,
-      messages: anthropicMessages as Anthropic.MessageParam[],
-      tools: coachTools,
-      tool_choice: { type: 'auto' },
-    })
-  } catch (e) {
-    // Remonte l'erreur réelle (taille de prompt, surcharge API, timeout…) au lieu d'un 500 muet
-    const msg = e instanceof Error ? e.message : String(e)
-    const status = (e as { status?: number })?.status ?? 500
-    console.error('[coach-stream] anthropic call failed:', status, msg)
-    return new Response(JSON.stringify({ error: `IA: ${msg}` }), {
-      status: status === 429 ? 429 : 502,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
+  // ══════════════════════════════════════════════════════════════
+  // BOUCLE AGENTIQUE STREAMÉE
+  //
+  // À chaque étape : on streame la réponse du modèle token-par-token,
+  // puis on inspecte ses tool_use :
+  //  • outils de LECTURE (read-tools) → résolus côté serveur, le résultat
+  //    est renvoyé au modèle qui RAISONNE et continue la boucle ;
+  //  • outils d'ACTION terminaux (ask_clarifying_questions,
+  //    create_training_plan, add_session…) → émis au front comme avant,
+  //    et la boucle s'arrête (hand-off UI, comportement inchangé) ;
+  //  • aucun tool → réponse finale déjà streamée, on s'arrête.
+  // ══════════════════════════════════════════════════════════════
+  const allTools = [...coachTools, ...readTools]
+  const MAX_STEPS = 6
 
-  // ── Enregistrement de la consommation réelle (best-effort, pondéré modèle) ──
-  try {
-    const total = (response.usage?.input_tokens ?? 0) + (response.usage?.output_tokens ?? 0)
-    if (total > 0) void recordTokenUsage(userId, total, { model: tokenModelKey })
-  } catch (e) {
-    console.error('[coach-stream] recordTokenUsage failed:', e)
-  }
-
-  console.log('[coach-stream] chat response — stop_reason:', response.stop_reason,
-    '— blocks:', response.content.length,
-    '— usage:', response.usage)
+  // Client Supabase dédié aux outils de lecture (réutilisé sur toute la boucle)
+  const sbForTools = await createClient()
 
   const encoder = new TextEncoder()
   const readable = new ReadableStream({
-    start(controller) {
-      const send = (eventType: string, data: string) => {
+    async start(controller) {
+      const send = (eventType: string, data: string) =>
         controller.enqueue(encoder.encode(`event: ${eventType}\ndata: ${data}\n\n`))
-      }
-      for (const block of response.content) {
-        if (block.type === 'text') {
-          send('text', JSON.stringify(block.text))
-        } else if (block.type === 'tool_use') {
-          console.log('[coach-stream] tool_use:', block.name,
-            '— input keys:', Object.keys(block.input as Record<string, unknown>))
-          send('tool_use', JSON.stringify({ tool_name: block.name, tool_input: block.input }))
-        }
-      }
-      controller.close()
-    },
-  })
 
-  void logUsage(userId, 'message', {
-    model,
-    stop_reason: response.stop_reason,
-    input_tokens:  response.usage.input_tokens,
-    output_tokens: response.usage.output_tokens,
+      let convMessages = anthropicMessages as Anthropic.MessageParam[]
+      let totalIn = 0, totalOut = 0
+      let lastStop: string | null = null
+
+      try {
+        for (let step = 0; step < MAX_STEPS; step++) {
+          const ms = client.messages.stream({
+            model: chatModel,
+            max_tokens: chatMaxTokens,
+            system: systemWithTools,
+            messages: convMessages,
+            tools: allTools,
+            tool_choice: { type: 'auto' },
+          })
+
+          // Streaming live du texte token-par-token
+          for await (const ev of ms) {
+            if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta' && ev.delta.text) {
+              send('text', JSON.stringify(ev.delta.text))
+            }
+          }
+
+          const finalMsg = await ms.finalMessage()
+          totalIn  += finalMsg.usage?.input_tokens  ?? 0
+          totalOut += finalMsg.usage?.output_tokens ?? 0
+          lastStop  = finalMsg.stop_reason ?? null
+
+          const toolUses = finalMsg.content.filter(
+            (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
+          )
+          if (toolUses.length === 0) break // réponse finale déjà streamée
+
+          const reads     = toolUses.filter(t => READ_TOOL_NAMES.has(t.name))
+          const terminals = toolUses.filter(t => !READ_TOOL_NAMES.has(t.name))
+
+          // Un outil d'action terminal → hand-off au front et fin de boucle
+          if (terminals.length > 0) {
+            for (const t of terminals) {
+              console.log('[coach-stream] tool_use (terminal):', t.name)
+              send('tool_use', JSON.stringify({ tool_name: t.name, tool_input: t.input }))
+            }
+            break
+          }
+
+          // Uniquement des lectures → on résout puis on reboucle
+          convMessages = [...convMessages, { role: 'assistant', content: finalMsg.content }]
+          const results: Anthropic.ToolResultBlockParam[] = []
+          for (const r of reads) {
+            console.log('[coach-stream] read-tool:', r.name)
+            const out = await resolveReadTool(r.name, (r.input ?? {}) as Record<string, unknown>, sbForTools, userId)
+            results.push({ type: 'tool_result', tool_use_id: r.id, content: out })
+          }
+          convMessages = [...convMessages, { role: 'user', content: results }]
+
+          if (step === MAX_STEPS - 1) {
+            // Garde-fou : on ne laisse pas la boucle se terminer sur des lectures sans synthèse
+            send('text', JSON.stringify('\n\n_(analyse interrompue — trop d\'étapes)_'))
+          }
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error('[coach-stream] agentic loop error:', msg)
+        send('text', JSON.stringify(`\n\n⚠️ IA : ${msg}`))
+      } finally {
+        controller.close()
+      }
+
+      // ── Comptabilité tokens (best-effort, pondérée modèle) ──
+      try {
+        if (totalIn + totalOut > 0) void recordTokenUsage(userId, totalIn + totalOut, { model: tokenModelKey })
+      } catch (e) {
+        console.error('[coach-stream] recordTokenUsage failed:', e)
+      }
+      void logUsage(userId, 'message', {
+        model: chatModel,
+        stop_reason: lastStop ?? 'end_turn',
+        input_tokens:  totalIn,
+        output_tokens: totalOut,
+      })
+    },
   })
 
   return new Response(readable, {

@@ -28,6 +28,7 @@ import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
 import TopupEmailModal from '@/components/topup/TopupEmailModal'
 import { MODEL_BADGE, quickActionEstimate, fmtEstimate } from '@/lib/quick-actions/models'
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
+import { computeSportMetrics, wpLabelToCanon, type ActivityWithStreams, type SportMetrics } from '@/lib/analysis/sportMetrics'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -1475,6 +1476,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
 
   const [ctxData, setCtxData] = useState<{
     profile: unknown; zones: unknown; activities: unknown[]
+    activitiesStreams: ActivityWithStreams[]
     testResults: unknown[]; races: unknown[]; health: unknown[]
     aiRules: { category: string; rule_text: string }[]
   } | null>(null)
@@ -1494,7 +1496,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
 
         const since1y = new Date(Date.now() - 365 * 86400000).toISOString()
 
-        const [profRes, zonesRes, actRes, testsRes, racesRes, healthRes, rulesRes] = await Promise.all([
+        const [profRes, zonesRes, actRes, streamsRes, testsRes, racesRes, healthRes, rulesRes] = await Promise.all([
           sb.from('athlete_performance_profile').select('*').eq('user_id', user.id).maybeSingle(),
           sb.from('training_zones').select('*').eq('user_id', user.id).eq('is_current', true),
           sb.from('activities')
@@ -1503,7 +1505,23 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
             .gte('started_at', since1y)
             .order('started_at', { ascending: false })
             .limit(150),
-          Promise.resolve({ data: [], error: null }),
+          // Streams pour calcul des métriques objectives (courbe de puissance,
+          // profil d'allure, durabilité). Borné à 60 activités récentes.
+          sb.from('activities')
+            .select(ACTIVITIES_SELECT_WITH_STREAMS)
+            .eq('user_id', user.id)
+            .gte('started_at', since1y)
+            .not('streams', 'is', null)
+            .order('started_at', { ascending: false })
+            .limit(60),
+          // Vrais résultats de tests (la table peut être absente → fallback [])
+          Promise.resolve(
+            sb.from('test_results')
+              .select('id,date,valeurs,test_definition_id,test_definitions(nom,sport,fields)')
+              .eq('user_id', user.id)
+              .order('date', { ascending: false })
+              .limit(100)
+          ).catch(() => ({ data: [], error: null })),
           sb.from('planned_races')
             .select('name,sport,date,level,goal_time')
             .eq('user_id', user.id)
@@ -1527,13 +1545,14 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
         const hasZones        = zonesCount > 0
 
         setCtxData({
-          profile:     profRes.data,
-          zones:       zonesRes.data ?? [],
-          activities:  actRes.data ?? [],
-          testResults: testsRes.data ?? [],
-          races:       racesRes.data ?? [],
-          health:      healthRes.data ?? [],
-          aiRules:     (rulesRes.data ?? []) as { category: string; rule_text: string }[],
+          profile:           profRes.data,
+          zones:             zonesRes.data ?? [],
+          activities:        actRes.data ?? [],
+          activitiesStreams: (streamsRes.data ?? []) as unknown as ActivityWithStreams[],
+          testResults:       testsRes.data ?? [],
+          races:             racesRes.data ?? [],
+          health:            healthRes.data ?? [],
+          aiRules:           (rulesRes.data ?? []) as { category: string; rule_text: string }[],
         })
 
         setGateChecks([
@@ -1559,18 +1578,32 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
     setPhase('generating')
     setError(null)
     try {
+      // Métriques objectives sport-spécifiques (courbe de puissance, allure,
+      // durabilité) calculées depuis les streams, pour les sports endurance
+      // sélectionnés (vélo / course). Petite charge utile → l'IA raisonne dessus.
+      const streamActs = ctxData?.activitiesStreams ?? []
+      const sportMetrics: Record<string, SportMetrics> = {}
+      const seenCanon = new Set<string>()
+      for (const label of selected) {
+        const canon = wpLabelToCanon(label)
+        if (!canon || seenCanon.has(canon)) continue
+        const m = computeSportMetrics(streamActs, canon)
+        if (m) { sportMetrics[label] = m; seenCanon.add(canon) }
+      }
+
       const res = await fetch('/api/weakpoints', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sports:      selected,
-          profile:     ctxData?.profile,
-          zones:       ctxData?.zones,
-          activities:  ctxData?.activities  ?? [],
-          testResults: ctxData?.testResults ?? [],
-          races:       ctxData?.races       ?? [],
-          health:      ctxData?.health      ?? [],
-          aiRules:     ctxData?.aiRules     ?? [],
+          sports:       selected,
+          profile:      ctxData?.profile,
+          zones:        ctxData?.zones,
+          activities:   ctxData?.activities  ?? [],
+          testResults:  ctxData?.testResults ?? [],
+          races:        ctxData?.races       ?? [],
+          health:       ctxData?.health      ?? [],
+          aiRules:      ctxData?.aiRules     ?? [],
+          sportMetrics: Object.keys(sportMetrics).length ? sportMetrics : null,
         }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)

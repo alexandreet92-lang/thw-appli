@@ -1,0 +1,3 @@
+# Exports « bundler » auto-extractibles : assets base64 + JSON inline.
+# Toute conversion de fins de ligne (LF <-> CRLF) corromprait le bundle.
+public/decouvrir/*.html -text

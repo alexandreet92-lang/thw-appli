@@ -7,10 +7,14 @@ const nextConfig = {
     '/api/training-plan/**': ['./src/lib/coach/doctrine/**'],
     '/api/coach-stream/**': ['./src/lib/coach/doctrine/**'],
   },
-  // Page « Découvrir » : export statique autonome servi tel quel depuis
-  // public/decouvrir/index.html, exposé à l'URL propre /decouvrir.
-  async rewrites() {
-    return [{ source: '/decouvrir', destination: '/decouvrir/index.html' }]
+  // Page « Découvrir » : exports statiques autonomes (decouvrir.html + theme.html)
+  // servis depuis public/decouvrir/. L'URL d'entrée /decouvrir redirige vers le
+  // fichier dans le dossier, pour que les liens relatifs inter-pages
+  // (theme.html#...) et les ancres résolvent bien sous /decouvrir/.
+  async redirects() {
+    return [
+      { source: '/decouvrir', destination: '/decouvrir/decouvrir.html', permanent: false },
+    ]
   },
 }
 

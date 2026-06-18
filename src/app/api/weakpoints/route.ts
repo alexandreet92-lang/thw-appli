@@ -15,6 +15,7 @@ async function postHandler(req: NextRequest): Promise<Response> {
       races: unknown[]
       health: unknown[]
       aiRules: { category: string; rule_text: string }[]
+      sportMetrics?: unknown
     }
 
     const client = getAnthropicClient()
@@ -36,6 +37,13 @@ Identifie les faiblesses fondamentales dans chaque discipline :
 - Points de rupture : à quelle distance ou durée la performance se dégrade
 - Déséquilibres entre disciplines (si multi-sport)
 Base-toi sur : l'évolution des performances dans le temps, les résultats de tests, les records personnels, les zones d'entraînement, les données physiologiques (FC, puissance, allure) sur des efforts comparables.
+
+MÉTRIQUES OBJECTIVES CALCULÉES (priorité absolue si présentes) :
+Quand la section "MÉTRIQUES OBJECTIVES" est fournie, elle contient des chiffres calculés depuis les flux capteurs (streams) — ce sont des FAITS, pas des impressions. Tu DOIS les exploiter et les CITER (avec les valeurs) dans les champs "evidence" :
+- COURBE DE PUISSANCE (vélo) : compare les fenêtres entre elles. Un "trou" = une fenêtre anormalement basse par rapport aux autres et à la FTP estimée. Repères types (% FTP) : 5 s ≈ 250-400 %, 1 min ≈ 150-200 %, 5 min ≈ 110-120 %, 20 min ≈ 100-106 %, 60 min ≈ 90-95 %. Une 5 min faible vs FTP = déficit de PMA/VO2max ; un 1 min/5 s faible = déficit de puissance anaérobie/sprint ; un 60 min bas vs 20 min = manque d'endurance au seuil.
+- PROFIL D'ALLURE (course) : la réserve de vitesse = écart entre allure courte (400 m/1 km) et allure longue (10 km/21 km). Une réserve faible (allures proches) = déficit de vitesse maximale/VMA. Une dégradation forte sur les longues distances = déficit d'endurance spécifique.
+- DURABILITÉ (efforts longs) : "fadePct" = perte de puissance/vitesse en 2e moitié (négatif = baisse) ; "decouplingPct" = dérive cardiaque (>5 % = endurance aérobie insuffisante, fatigue précoce). C'est un point faible MAJEUR pour les épreuves longues s'il est élevé.
+Ne JAMAIS contredire ces chiffres par une impression. Si une faiblesse est étayée par ces métriques, mets-la en priorité 1 et chiffre l'evidence (ex : "5 min à 280 W = seulement 108 % FTP, attendu 115 %").
 
 PARTIE 2 — DIAGNOSTIC DE L'ENTRAÎNEMENT ACTUEL (secondaire)
 Ensuite seulement, analyse si l'entraînement actuel (dernières semaines) adresse ou aggrave ces points faibles :
@@ -64,6 +72,10 @@ ${JSON.stringify(body.activities, null, 2)}
 
 RÉSULTATS DE TESTS (historique complet) :
 ${JSON.stringify(body.testResults, null, 2)}
+${body.sportMetrics ? `
+MÉTRIQUES OBJECTIVES (calculées depuis les streams — FAITS à citer dans "evidence") :
+${JSON.stringify(body.sportMetrics, null, 2)}
+` : ''}
 
 COURSES PLANIFIÉES :
 ${JSON.stringify(body.races, null, 2)}
@@ -120,12 +132,12 @@ Retourne EXACTEMENT ce JSON :
       "detail": "Explication détaillée du pourquoi et du comment"
     }
   ],
-  "sources_used": ["activités 12 mois (N activités)", "tests VMA/FTP", "zones FC/allure/puissance", "courses planifiées", "données récupération"]
+  "sources_used": ["activités 12 mois (N activités)", "métriques streams (courbe puissance/allure/durabilité)", "tests VMA/FTP", "zones FC/allure/puissance", "courses planifiées", "données récupération"]
 }`
 
     const response = await client.messages.create({
       model: MODELS.powerful,
-      max_tokens: 6000,
+      max_tokens: 7000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     })

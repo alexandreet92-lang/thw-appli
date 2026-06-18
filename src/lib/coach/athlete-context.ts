@@ -15,6 +15,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 
 const ACT_SELECT =
   'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,is_race,avg_watts'
@@ -305,4 +306,21 @@ export async function buildAthleteContext(
 
   L.push('\n========== FIN CONTEXTE ATHLÈTE ==========')
   return L.join('\n')
+}
+
+// ══════════════════════════════════════════════════════════════
+// Wrapper requête — résout l'utilisateur authentifié (cookie) et
+// construit le contexte. Toujours défensif : renvoie '' si pas
+// d'utilisateur ou en cas d'erreur (ne bloque jamais la route).
+// ══════════════════════════════════════════════════════════════
+export async function buildAthleteContextSafe(): Promise<string> {
+  try {
+    const sb = await createClient()
+    const { data: { user } } = await sb.auth.getUser()
+    if (!user) return ''
+    return await buildAthleteContext(sb, user.id)
+  } catch (e) {
+    console.error('[athlete-context] buildAthleteContextSafe failed:', e)
+    return ''
+  }
 }

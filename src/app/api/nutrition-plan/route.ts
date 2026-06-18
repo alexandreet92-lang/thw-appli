@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS, parseJsonResponse } from '@/lib/agents/base'
 import { withQuotaCheck } from '@/lib/subscriptions/quota-middleware'
+import { buildAthleteContextSafe } from '@/lib/coach/athlete-context'
 
 async function postHandler(req: NextRequest): Promise<Response> {
   try {
@@ -16,6 +17,10 @@ async function postHandler(req: NextRequest): Promise<Response> {
 
     const client = getAnthropicClient()
 
+    // Contexte athlète serveur (charge réelle, semaine planifiée, courses,
+    // récup) pour caler les jours low/mid/hard et le timing des glucides.
+    const athleteContext = await buildAthleteContextSafe()
+
     const systemPrompt = `Tu es un expert en nutrition sportive.
 Tu réponds UNIQUEMENT avec un objet JSON valide correspondant exactement au schéma demandé.
 Zéro texte avant ou après le JSON. Zéro commentaire dans le JSON.`
@@ -29,6 +34,7 @@ ${profile.full_name ? `- Nom : ${profile.full_name}` : ''}
 
 PLANNING 14 PROCHAINS JOURS :
 ${JSON.stringify(sessions, null, 2)}
+${athleteContext ? `\n${athleteContext}\n` : ''}
 
 COURSES PLANIFIÉES :
 ${JSON.stringify(races, null, 2)}
@@ -46,6 +52,8 @@ IMPORTANT : Base le plan sur ces repas habituels. Adapte-les si nécessaire mais
 INSTRUCTIONS :
 - Génère exactement 7 jours (une semaine type) à partir d'aujourd'hui
 - Chaque jour doit avoir un type_jour (low, mid, hard) cohérent avec le planning d'entraînement
+- CALAGE SUR LA CHARGE RÉELLE (section CONTEXTE ATHLÈTE, si présente) : détermine type_jour (low/mid/hard) à partir de la SEMAINE PLANIFIÉE (séances, TSS) et de la charge réelle (CTL/TSB). Plus de glucides les jours hard (autour des séances clés), moins les jours low.
+- TIMING : concentre l'apport glucidique avant/après les créneaux d'entraînement des jours chargés ; privilégie les protéines en récupération. Tiens compte du poids et de l'objectif corporel pour le total calorique.
 - Les dates doivent être les vraies dates à partir d'aujourd'hui
 - Pour les repas, sois concis : 1 ligne par repas, pas de descriptions longues
 - Si un repas n'est pas nécessaire (ex: collation soir), mets description "-" et kcal/macros à 0

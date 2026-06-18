@@ -3,6 +3,7 @@ export const maxDuration = 300
 import { NextRequest } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/agents/base'
 import { withQuotaCheck } from '@/lib/subscriptions/quota-middleware'
+import { buildAthleteContextSafe } from '@/lib/coach/athlete-context'
 
 export const runtime = 'nodejs'
 
@@ -504,9 +505,14 @@ async function postHandler(req: NextRequest): Promise<Response> {
   // Tronquer l'historique à 30 activités max pour réduire la taille du prompt
   const historique_30j = (historique_90j ?? []).slice(0, 30)
 
+  // Contexte athlète serveur : CTL/ATL/TSB, volume hebdo réel, rampe, risque,
+  // planning, récup, blessures, courses — pour calibrer le plan sur la réalité.
+  const athleteContext = await buildAthleteContextSafe()
+
   const userPrompt = `Crée un programme d'entraînement avec ces informations :
 ${targetWeeks ? `\nDURÉE CIBLE : ${targetWeeks} semaines EXACTEMENT${startDateCible ? `, à partir du ${startDateCible}` : ''}.\n` : ''}${methodeChoisie ? `\nMÉTHODE CHOISIE : ${methodeChoisie}. Construis le plan selon cette approche.\n` : ''}${methodologieFournie ? `\nMÉTHODOLOGIE VALIDÉE PAR L'ATHLÈTE — SUIS-LA FIDÈLEMENT :\n${methodologieFournie}\n` : ''}
 RAISONNE D'ABORD COMME UN COACH : lis l'objectif et sa date dans le CALENDRIER, évalue la forme via l'HISTORIQUE, repère la base déjà acquise, les blessures/contraintes (précisions profil) et le dénivelé éventuel. Construis une logique sur-mesure et JUSTIFIE-la dans le champ "methodologie". Ne demande rien : déduis tout du contexte.
+${athleteContext ? `\n${athleteContext}\n` : ''}
 
 QUESTIONNAIRE ATHLÈTE — INTERPRÉTATION STRUCTURÉE :
 ${formattedQuestionnaire}
@@ -541,6 +547,12 @@ CALIBRAGE SUR LES DONNÉES RÉELLES :
 - Utilise les ZONES fournies pour prescrire des intensités chiffrées (watts vélo, allure run, FC) dans les blocs des semaines 1-2.
 - Analyse l'HISTORIQUE 30 jours (volume, sports, charge) pour fixer un point de départ RÉALISTE.
 - Tiens compte des MÉTRIQUES santé récentes et des courses du CALENDRIER pour la périodisation et les volumes (début / progression / pic / affûtage).
+
+CALIBRAGE SUR LA CHARGE RÉELLE (section CONTEXTE ATHLÈTE, si présente) — RÈGLE FORTE :
+- Le volume et le TSS de la SEMAINE 1 doivent PARTIR du volume hebdomadaire RÉEL actuel (TSS/sem des 4 dernières semaines et CTL), JAMAIS d'un volume générique. Si l'athlète tourne à 350 TSS/sem, ne démarre pas à 600.
+- Progression de charge réaliste : n'augmente pas la charge hebdomadaire de plus de ~8 à 10 % d'une semaine à l'autre (hors semaines de deload), en cohérence avec le CTL actuel et le score de risque.
+- Situe le point de départ avec le TSB (fraîcheur) ; si monotonie/strain ou risque élevés, intègre un allègement précoce.
+- Mentionne explicitement dans "methodologie" d'où part l'athlète (CTL/volume actuel) et la logique de montée en charge.
 
 COURSES & OBJECTIFS :
 - Construire la périodisation en remontant depuis la date de la course GTY (ou Principale si pas de GTY).

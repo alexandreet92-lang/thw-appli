@@ -18337,6 +18337,28 @@ export default function AIPanel({
   const [userAvatarUrl,    setUserAvatarUrl]    = useState<string | null>(null)
   const [hoveredMsgId,     setHoveredMsgId]     = useState<string | null>(null)
   const [copiedMsgId,      setCopiedMsgId]      = useState<string | null>(null)
+  // Retour qualité 👍/👎 par message (couche d'apprentissage — phase 1)
+  const [feedbackByMsg,    setFeedbackByMsg]    = useState<Record<string, 1 | -1>>({})
+
+  // Enregistre (ou bascule) le retour de l'athlète sur une réponse du coach.
+  // Optimiste : on colore tout de suite, on persiste en best-effort.
+  function sendCoachFeedback(msg: AIMsg, prevUserContent: string | undefined, convId: string | undefined, rating: 1 | -1): void {
+    setFeedbackByMsg(prev => ({ ...prev, [msg.id]: rating }))
+    const sport = msg.content.match(/^sport:([a-z_]+)/m)?.[1] ?? null
+    void fetch('/api/coach/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messageId: msg.id,
+        conversationId: convId ?? null,
+        rating,
+        model: msg.modelId ?? null,
+        sport,
+        userMessage: prevUserContent ?? null,
+        assistantMessage: msg.content,
+      }),
+    }).catch(() => { /* best-effort : ne jamais casser le chat */ })
+  }
 
   // ── Agent selector ────────────────────────────────────────────
   const [activeAgent,   setActiveAgent]   = useState<'training' | 'networks'>('training')
@@ -20836,23 +20858,33 @@ export default function AIPanel({
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
                             </button>
                             {/* Thumbs up */}
-                            <button
-                              title="Bonne réponse"
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
-                            </button>
-                            {/* Thumbs down */}
-                            <button
-                              title="Mauvaise réponse"
-                              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10zM17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>
-                            </button>
+                            {(() => {
+                              const fb = feedbackByMsg[msg.id]
+                              const prevUser = active.msgs.slice(0, idx).reverse().find(m => m.role === 'user')
+                              return (
+                                <>
+                                  <button
+                                    title="Bonne réponse"
+                                    onClick={() => sendCoachFeedback(msg, prevUser?.content, active.id, 1)}
+                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: fb === 1 ? '#22c55e' : '#6B7280', display: 'flex', alignItems: 'center' }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill={fb === 1 ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
+                                  </button>
+                                  {/* Thumbs down */}
+                                  <button
+                                    title="Mauvaise réponse"
+                                    onClick={() => sendCoachFeedback(msg, prevUser?.content, active.id, -1)}
+                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: fb === -1 ? '#ef4444' : '#6B7280', display: 'flex', alignItems: 'center' }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill={fb === -1 ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10zM17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>
+                                  </button>
+                                </>
+                              )
+                            })()}
                           </>
                         )}
                       </div>

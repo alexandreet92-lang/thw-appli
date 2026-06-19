@@ -5,6 +5,8 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef, useCallback } from 'react'
 // import { createClient } from '@/lib/supabase/client'
 import { SportTabs } from '@/components/ui/SportTabs'
+import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout'
+import { Dumbbell, Library } from 'lucide-react'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { usePlanning } from '@/hooks/usePlanning'
 import { PageHelp } from '@/onboarding/system/PageHelp'
@@ -15,6 +17,7 @@ import { SESSION_ONBOARDING } from '@/onboarding/configs/session.config'
 // TYPES
 // ══════════════════════════════════════════════════════════════════
 type Sport      = 'muscu' | 'running' | 'velo' | 'natation' | 'hyrox' | 'aviron' | 'triathlon'
+type TopTab     = 'builder' | 'biblio'   // onglets de page : Builder · Bibliothèque
 type PageMode   = 'library' | 'build' | 'execute'
 type Zone       = 1 | 2 | 3 | 4 | 5
 type Intensity  = 'low' | 'moderate' | 'high' | 'max'
@@ -1862,8 +1865,8 @@ function LibraryMode({ templates, onNew, onEdit, onStart, onDelete }: {
         {/* Header */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18, flexWrap:'wrap', gap:10 }}>
           <div>
-            <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:0 }}>Bibliothèque</p>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, margin:'4px 0 0' }}>Séances types</h2>
+            <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:0 }}>Builder</p>
+            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, margin:'4px 0 0' }}>Mes séances en réserve</h2>
           </div>
           <button onClick={onNew}
             style={{ padding:'9px 20px', borderRadius:6, border:'none', background:'#1B6EF3',
@@ -2044,8 +2047,62 @@ function sbRowToTemplate(row: SBLibRow): SessionTemplate | null {
 // ══════════════════════════════════════════════════════════════════
 // PAGE
 // ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+// BIBLIOTHÈQUE — référentiel de séances & exos types (objectif, déroulé,
+// quand la programmer). Coquille stylée ; le contenu est ajouté ensuite.
+// ══════════════════════════════════════════════════════════════════
+const FD = 'var(--font-display)', FB = 'var(--font-body)'
+
+function BibliothequeTab() {
+  const [sport, setSport] = useState<Sport | 'all'>('all')
+
+  return (
+    <div>
+      {/* Accroche éditoriale */}
+      <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: '0 0 4px', lineHeight: 1.35 }}>
+        Des séances et exercices types, expliqués.
+      </p>
+      <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', margin: '0 0 20px', maxWidth: 560, lineHeight: 1.5 }}>
+        Pour chaque type de séance : son objectif, son déroulé détaillé, et le bon moment pour la programmer dans ta semaine.
+      </p>
+
+      {/* Filtre sport */}
+      <SportTabs
+        tabs={[
+          { id: 'all', label: 'Tous', color: 'var(--primary)' },
+          ...SPORTS.map(s => ({ id: s.id, label: s.label, color: s.color })),
+        ]}
+        value={sport}
+        onChange={(id) => setSport(id as Sport | 'all')}
+      />
+
+      {/* État vide — invitation, en attendant le contenu */}
+      <div style={{
+        marginTop: 28, padding: '56px 24px', borderRadius: 'var(--r-lg, 20px)',
+        background: 'var(--bg-card2)', textAlign: 'center',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+      }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--primary-dim)', color: 'var(--primary)',
+        }}>
+          <Library size={24} />
+        </div>
+        <h3 style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
+          Bibliothèque en préparation
+        </h3>
+        <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', margin: 0, maxWidth: 420, lineHeight: 1.5 }}>
+          Des dizaines de séances par sport arrivent ici — running, vélo, muscu, natation, hyrox, aviron, triathlon.
+          {sport !== 'all' && ` Filtre actuel : ${sportLabel(sport as Sport)}.`}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function SessionPage() {
   const [templates,     setTemplates]     = useState<SessionTemplate[]>(MOCK_TEMPLATES)
+  const [topTab,        setTopTab]        = useState<TopTab>('builder')
   const [mode,          setMode]          = useState<PageMode>('library')
   const [editTarget,    setEditTarget]    = useState<SessionTemplate|undefined>()
   const [execTarget,    setExecTarget]    = useState<SessionTemplate|undefined>()
@@ -2105,75 +2162,61 @@ export default function SessionPage() {
     }
   }
 
-  const titleMap: Record<PageMode,string> = {
-    library: 'Session', build: editTarget ? 'Modifier la seance' : 'Nouvelle seance', execute: execTarget?.name ?? 'Seance en cours',
-  }
-  const subMap: Record<PageMode,string> = {
-    library: 'Bibliotheque de seances types', build: '', execute: execTarget ? sportLabel(execTarget.sport) : '',
-  }
+  const TABS: PageTab<TopTab>[] = [
+    { id: 'builder', label: 'Builder',      short: 'Builder', subtitle: 'Créer & réutiliser', icon: Dumbbell },
+    { id: 'biblio',  label: 'Bibliothèque', short: 'Biblio',  subtitle: 'Séances expliquées', icon: Library },
+  ]
+
+  const helpBtn = (
+    <button onClick={reopen} aria-label="Aide" style={{
+      width: 28, height: 28, borderRadius: '50%', background: 'var(--primary-dim)',
+      border: 'none', color: 'var(--primary)', fontFamily: FB, fontSize: 13, fontWeight: 700,
+      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    }}>?</button>
+  )
 
   return (
-    <div style={{ padding:'24px 28px', maxWidth:'100%' }}>
+    <>
       <PageHelp config={SESSION_ONBOARDING} show={show} onDismiss={dismiss} />
-      <style>{`
-        @media (max-width:767px) {
-          .session-header { flex-direction: column !important; gap: 12px !important; }
-        }
-      `}</style>
+      <TabbedPageLayout headerExtra={helpBtn} tabs={TABS} active={topTab} onChange={setTopTab}>
+        {topTab === 'builder' ? (
+          <>
+            {mode === 'library' && (
+              <LibraryMode
+                templates={templates}
+                onNew={handleNew}
+                onEdit={handleEdit}
+                onStart={handleStart}
+                onDelete={handleDelete}
+              />
+            )}
 
-      {/* Header */}
-      <div className="session-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
-        <div>
-          <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:700, letterSpacing:'-0.03em', margin:0 }}>
-            {titleMap[mode]}
-          </h1>
-          <p style={{ fontSize:12, color:'var(--text-dim)', margin:'5px 0 0' }}>
-            {subMap[mode] || new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
-          </p>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          {mode !== 'library' && (
-            <button onClick={()=>setMode('library')}
-              style={{ padding:'8px 16px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer' }}>
-              ← Bibliotheque
-            </button>
-          )}
-          <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
-        </div>
-      </div>
+            {mode === 'build' && (
+              <BuildMode
+                initial={editTarget}
+                onSave={handleSave}
+                onCancel={()=>setMode('library')}
+              />
+            )}
 
-      {mode === 'library' && (
-        <LibraryMode
-          templates={templates}
-          onNew={handleNew}
-          onEdit={handleEdit}
-          onStart={handleStart}
-          onDelete={handleDelete}
-        />
-      )}
-
-      {mode === 'build' && (
-        <BuildMode
-          initial={editTarget}
-          onSave={handleSave}
-          onCancel={()=>setMode('library')}
-        />
-      )}
-
-      {mode === 'execute' && execTarget && (
-        <div>
-          {execTarget.sport === 'muscu' && (
-            <ExecuteMuscu template={execTarget} onExit={()=>setMode('library')}/>
-          )}
-          {(execTarget.sport==='running'||execTarget.sport==='velo'||execTarget.sport==='aviron'||execTarget.sport==='triathlon') && (
-            <ExecuteEndurance template={execTarget} onExit={()=>setMode('library')}/>
-          )}
-          {(execTarget.sport==='natation'||execTarget.sport==='hyrox') && (
-            <ExecuteEndurance template={execTarget} onExit={()=>setMode('library')}/>
-          )}
-        </div>
-      )}
-
-    </div>
+            {mode === 'execute' && execTarget && (
+              <div>
+                {execTarget.sport === 'muscu' && (
+                  <ExecuteMuscu template={execTarget} onExit={()=>setMode('library')}/>
+                )}
+                {(execTarget.sport==='running'||execTarget.sport==='velo'||execTarget.sport==='aviron'||execTarget.sport==='triathlon') && (
+                  <ExecuteEndurance template={execTarget} onExit={()=>setMode('library')}/>
+                )}
+                {(execTarget.sport==='natation'||execTarget.sport==='hyrox') && (
+                  <ExecuteEndurance template={execTarget} onExit={()=>setMode('library')}/>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <BibliothequeTab />
+        )}
+      </TabbedPageLayout>
+    </>
   )
 }

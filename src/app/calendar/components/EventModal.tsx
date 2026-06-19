@@ -10,12 +10,10 @@
 import { useState, useEffect } from 'react'
 import { IconX } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
-import { RaceStage, StageSport, StageSession } from './types'
+import { RaceStage, StageSport, StageSession, StageDayParcours } from './types'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
-import RaceDropZone from './RaceDropZone'
+import { parseRouteFile } from '@/lib/parcours/parseRouteFile'
 import { RACE_EDITOR_CSS } from './raceTheme'
-
-interface ExistingFile { url: string; name: string; key: string }
 
 interface Props {
   mode?: 'create' | 'edit'
@@ -70,23 +68,44 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
     return init
   })
 
-  const [parcoursNew, setParcoursNew] = useState<File[]>([])
-  const [parcoursExisting, setParcoursExisting] = useState<ExistingFile[]>([])
+  // Parcours PAR JOUR : fichier neuf, URL existante, et data parse (pour le planning).
+  const [dayParcoursFile, setDayParcoursFile] = useState<Record<string, File | null>>({})
+  const [dayParcoursUrl,  setDayParcoursUrl]  = useState<Record<string, { url: string; name: string }>>({})
+  const [dayParcours,     setDayParcours]     = useState<Record<string, StageDayParcours | undefined>>(() => {
+    const init: Record<string, StageDayParcours | undefined> = {}
+    for (const d of initialData?.dailyProgram ?? []) if (d.parcours) init[d.date] = d.parcours
+    return init
+  })
 
   const days = getDaysBetween(startDate, endDate)
 
-  // Charge les parcours existants (event_date sentinelle « parcours… »)
+  // Charge les parcours existants par jour (event_date = date réelle YYYY-MM-DD).
   useEffect(() => {
     if (!isEdit || !initialData?.id) return
     supabase.from('race_event_files').select('event_date, file_url, file_name').eq('event_id', initialData.id)
       .then(({ data }) => {
         if (!data) return
-        const list = (data as { event_date: string; file_url: string; file_name: string }[])
-          .filter(r => (r.event_date ?? '').startsWith('parcours') && isGpx(r.file_name))
-          .map(r => ({ url: r.file_url, name: r.file_name, key: r.event_date }))
-        setParcoursExisting(list)
+        const map: Record<string, { url: string; name: string }> = {}
+        for (const r of data as { event_date: string; file_url: string; file_name: string }[]) {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(r.event_date ?? '') && isGpx(r.file_name)) {
+            map[r.event_date] = { url: r.file_url, name: r.file_name }
+          }
+        }
+        setDayParcoursUrl(map)
       })
   }, [isEdit, initialData?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sélection d'un parcours pour un jour : parse immédiat (aperçu + push planning).
+  async function pickDayParcours(date: string, file: File) {
+    setDayParcoursFile(prev => ({ ...prev, [date]: file }))
+    const parsed = await parseRouteFile(file)
+    if (parsed) setDayParcours(prev => ({ ...prev, [date]: { ...parsed, fileName: file.name } }))
+  }
+  function clearDayParcours(date: string) {
+    setDayParcoursFile(prev => ({ ...prev, [date]: null }))
+    setDayParcoursUrl(prev => { const n = { ...prev }; delete n[date]; return n })
+    setDayParcours(prev => { const n = { ...prev }; delete n[date]; return n })
+  }
 
   // Synchronise les clés de programme avec la plage de dates
   useEffect(() => {
@@ -131,13 +150,15 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
       const dailyProgram = days.map(d => {
         const dp = program[d] ?? { matin: [], aprem: [] }
         const summary = [...dp.matin, ...dp.aprem]
-          .filter(s => s.detail?.trim() || s.sport)
-          .map(s => `${sportLabel(s.sport)} : ${s.detail || ''}`.trim())
+          .filter(s => s.title?.trim() || s.detail?.trim() || s.sport)
+          .map(s => `${s.title?.trim() || sportLabel(s.sport)}${s.detail?.trim() ? ` : ${s.detail.trim()}` : ''}`)
           .join(' · ')
-        return { date: d, content: summary, matin: dp.matin, aprem: dp.aprem }
+        return { date: d, content: summary, matin: dp.matin, aprem: dp.aprem, parcours: dayParcours[d] }
       })
-      const stamp = Date.now()
-      const dayFiles = parcoursNew.filter(f => isGpx(f.name)).map((file, i) => ({ date: `parcours:${stamp}:${i}`, file }))
+      // Un parcours par jour : event_date = date réelle (stockage + relecture par jour).
+      const dayFiles = days
+        .filter(d => dayParcoursFile[d])
+        .map(d => ({ date: d, file: dayParcoursFile[d] as File }))
       await onSave(
         { name: name.trim(), startDate, endDate, description: desc || undefined, sports, dailyProgram },
         dayFiles,
@@ -215,7 +236,8 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                                     {sportOptions.map(sp => <option key={sp} value={sp}>{sportLabel(sp)}</option>)}
                                   </select>
                                   <input type="time" value={ses.time ?? ''} onChange={e => updSession(d, slot, i, { time: e.target.value })} style={{ ...INP, width: 'auto', flex: 'none', padding: '8px 10px' }} />
-                                  <input value={ses.detail} onChange={e => updSession(d, slot, i, { detail: e.target.value })} placeholder="Détail de la séance…" style={{ ...INP, flex: 1, minWidth: 140, padding: '8px 10px' }} />
+                                  <input value={ses.title ?? ''} onChange={e => updSession(d, slot, i, { title: e.target.value })} placeholder="Titre de la séance…" style={{ ...INP, flex: 1, minWidth: 130, padding: '8px 10px' }} />
+                                  <input value={ses.detail} onChange={e => updSession(d, slot, i, { detail: e.target.value })} placeholder="Détail…" style={{ ...INP, flex: 1, minWidth: 120, padding: '8px 10px' }} />
                                   <button onClick={() => rmSession(d, slot, i)} aria-label="Retirer" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}><IconX size={16} /></button>
                                 </div>
                               ))}
@@ -225,32 +247,35 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                             </div>
                           </div>
                         ))}
+
+                        {/* Parcours du jour */}
+                        <div style={{ marginTop: 4 }}>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px' }}>Parcours du jour</p>
+                          {(dayParcoursFile[d] || dayParcoursUrl[d]) ? (
+                            <>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                <span style={{ fontSize: 11.5, color: 'var(--text-mid)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  📍 {dayParcoursFile[d]?.name ?? dayParcoursUrl[d]?.name}
+                                </span>
+                                <button onClick={() => clearDayParcours(d)} aria-label="Retirer le parcours" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}><IconX size={15} /></button>
+                              </div>
+                              {dayParcoursFile[d]
+                                ? <ParcoursViewer file={dayParcoursFile[d] as File} />
+                                : dayParcoursUrl[d] ? <ParcoursViewer fileUrl={dayParcoursUrl[d].url} /> : null}
+                            </>
+                          ) : (
+                            <label style={{ display: 'block', textAlign: 'center', fontSize: 11.5, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1.5px dashed var(--border-mid)', borderRadius: 10, padding: 12, cursor: 'pointer' }}>
+                              + Importer un parcours (GPX/TCX/KML)
+                              <input type="file" accept=".gpx,.tcx,.kml" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) void pickDayParcours(d, f); e.target.value = '' }} />
+                            </label>
+                          )}
+                        </div>
                       </div>
                     )
                   })}
                 </div>
               </div>
             )}
-
-            {/* Parcours (multiples) */}
-            <div>
-              <p style={LBL}>Parcours</p>
-              <RaceDropZone list={parcoursNew} setter={setParcoursNew} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-                {parcoursExisting.map(p => (
-                  <div key={p.key}>
-                    <p style={{ fontSize: 11.5, color: 'var(--text-mid)', margin: '0 0 4px' }}>📍 {p.name}</p>
-                    <ParcoursViewer fileUrl={p.url} />
-                  </div>
-                ))}
-                {parcoursNew.filter(f => isGpx(f.name)).map((f, i) => (
-                  <div key={i}>
-                    <p style={{ fontSize: 11.5, color: 'var(--text-mid)', margin: '0 0 4px' }}>📍 {f.name}</p>
-                    <ParcoursViewer file={f} />
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 

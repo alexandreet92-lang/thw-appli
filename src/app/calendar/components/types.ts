@@ -14,7 +14,11 @@ export interface Race {
 
 // Sports d'un Stage (sans triathlon, avec muscu)
 export type StageSport = 'run' | 'trail' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'muscu'
-export interface StageSession { sport: StageSport; detail: string; time?: string }
+export interface StageSession { sport: StageSport; detail: string; time?: string; title?: string }
+
+// Parcours d'un jour de stage (parse cote client, pousse vers le planning).
+import type { RouteParcoursData } from '@/lib/parcours/parseRouteFile'
+export type StageDayParcours = RouteParcoursData & { fileUrl?: string; fileName?: string }
 
 export interface RaceStage {
   id: string; name: string
@@ -22,7 +26,7 @@ export interface RaceStage {
   description?: string
   sports?: StageSport[]
   // matin/aprem = séances structurées ; content = résumé (rétrocompat lecteurs existants)
-  dailyProgram: { date: string; content: string; matin?: StageSession[]; aprem?: StageSession[] }[]
+  dailyProgram: { date: string; content: string; matin?: StageSession[]; aprem?: StageSession[]; parcours?: StageDayParcours }[]
 }
 
 export interface NutritionItem {

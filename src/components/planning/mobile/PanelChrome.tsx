@@ -1,7 +1,8 @@
 'use client'
 // Header + Footer partagés des coquilles SessionEditor (mobile & desktop).
 // Même look éditorial ; le footer peut être flottant (mobile) ou barre sticky (desktop).
-import { IconChevronLeft, IconFileText, IconStar } from '@tabler/icons-react'
+import { useState } from 'react'
+import { IconChevronLeft, IconFileText, IconStar, IconTrash } from '@tabler/icons-react'
 import { SPORT_LABEL } from '@/app/planning/page'
 import { PLAN_COLOR } from './editorial'
 import type { SessionEditorPanelProps } from './panelProps'
@@ -20,14 +21,28 @@ export function PanelHeader({ p, titleSize = 21, padding = '14px 18px', bordered
 }
 
 export function PanelFooter({ p, floating }: { p: SessionEditorPanelProps; floating?: boolean }) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const wrap: React.CSSProperties = floating
     ? { position: 'absolute', left: 0, right: 0, bottom: 0, padding: '12px 16px', paddingBottom: 'calc(14px + env(safe-area-inset-bottom))', pointerEvents: 'none' }
     : { flexShrink: 0, padding: '12px 20px', borderTop: '1px solid var(--se-rule)', background: 'var(--se-bg)' }
+
+  // Confirmation de suppression — remplace toute la barre.
+  if (confirmDelete && p.onDelete) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', ...wrap }}>
+        <span style={{ pointerEvents: 'auto', flex: 1, minWidth: 140, fontSize: 13.5, fontWeight: 600, color: 'var(--se-text)' }}>Supprimer cette séance ?</span>
+        <button type="button" onClick={() => setConfirmDelete(false)} style={footBtn}>Annuler</button>
+        <button type="button" onClick={p.onDelete} style={{ pointerEvents: 'auto', padding: '12px 22px', borderRadius: 999, border: 'none', background: 'var(--pat-hyrox)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }}>Supprimer</button>
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, ...wrap }}>
       <button type="button" onClick={p.onClose} style={footBtn}><IconChevronLeft size={15} /> Fermer</button>
       <button type="button" onClick={p.onExportPDF} style={footIcon} aria-label="Exporter en PDF"><IconFileText size={17} /></button>
       <button type="button" onClick={p.onFavorite} style={footIcon} aria-label="Enregistrer en favori"><IconStar size={17} /></button>
+      {p.onDelete && <button type="button" onClick={() => setConfirmDelete(true)} style={footDanger} aria-label="Supprimer la séance"><IconTrash size={17} /></button>}
       <div style={{ flex: 1 }} />
       <button type="button" onClick={p.onSave} disabled={p.saving} style={{ pointerEvents: 'auto', padding: '12px 24px', borderRadius: 999, border: 'none', background: p.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: p.saving ? 0.6 : 1, boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }}>
         {p.saved ? 'Enregistré ✓' : p.mode === 'create' ? 'Ajouter' : 'Enregistrer'} →
@@ -38,3 +53,4 @@ export function PanelFooter({ p, floating }: { p: SessionEditorPanelProps; float
 
 const footBtn: React.CSSProperties = { pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '10px 15px', borderRadius: 999, border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.10)' }
 const footIcon: React.CSSProperties = { pointerEvents: 'auto', width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--se-rule)', background: 'var(--se-card)', color: 'var(--se-text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.10)' }
+const footDanger: React.CSSProperties = { ...footIcon, border: '1px solid var(--pat-hyrox)', color: 'var(--pat-hyrox)' }

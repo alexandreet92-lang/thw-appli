@@ -2169,13 +2169,13 @@ function DayBubble({ sport, label, session, done, onClick, draggable, onDragStar
           onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
           onMouseEnter={e => setTip(e.currentTarget.getBoundingClientRect())} onMouseLeave={() => setTip(null)}
           style={{ display:'flex',flexDirection:'column',alignItems:'stretch',gap:2,padding:'4px 6px',borderRadius:8,border:'none',borderLeft:`2px solid ${color}`,background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1,transform:lifted?'scale(1.06)':undefined,boxShadow:lifted?'0 6px 16px rgba(0,0,0,0.35)':undefined,transition:'transform .12s, box-shadow .12s',touchAction:onTouchStart?'pan-y':undefined,position:'relative',zIndex:lifted?20:undefined }}>
-          <div style={{ display:'flex',alignItems:'center',gap:4,minWidth:0 }}>
-            {Ico ? <Ico size={13} color={color} stroke={2.2} /> : <span style={{ width:7,height:7,borderRadius:'50%',background:color,flexShrink:0 }} />}
-            <span style={{ flex:1,minWidth:0,fontSize:9.5,fontWeight:700,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'left' }}>{session.title || (cfg?.label ?? sport)}</span>
+          <div style={{ display:'flex',alignItems:'flex-start',gap:4,minWidth:0 }}>
+            {Ico ? <span style={{ flexShrink:0,marginTop:1,display:'flex' }}><Ico size={13} color={color} stroke={2.2} /></span> : <span style={{ width:7,height:7,borderRadius:'50%',background:color,flexShrink:0,marginTop:3 }} />}
+            <span style={{ flex:1,minWidth:0,fontSize:9.5,fontWeight:700,lineHeight:1.18,color:'var(--text)',textAlign:'left',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',overflowWrap:'anywhere',wordBreak:'break-word' }}>{session.title || (cfg?.label ?? sport)}</span>
           </div>
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:5 }}>
-            <span className="tnum" style={{ fontSize:9,fontWeight:700,color }}>{formatHM(session.durationMin)}</span>
-            {session.rpe != null && <span className="tnum" style={{ fontSize:8.5,fontWeight:600,color:'var(--text-dim)' }}>RPE {session.rpe}</span>}
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:5,flexWrap:'wrap' }}>
+            <span className="tnum" style={{ fontSize:9,fontWeight:700,color,whiteSpace:'nowrap' }}>{formatHM(session.durationMin)}</span>
+            {session.rpe != null && <span className="tnum" style={{ fontSize:8.5,fontWeight:600,color:'var(--text-dim)',whiteSpace:'nowrap' }}>RPE {session.rpe}</span>}
           </div>
         </button>
         {tip && <SessionTipPortal anchor={tip} session={session} />}
@@ -2839,7 +2839,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                         const hid = `${ws}_${i}`
                         const isDropTarget = !!tDrag && dragCell===hid
                         const sess = d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id))
-                        const acts = d.activities.filter(a=>!matchActivity(a,d.sessions))
+                        const acts = d.activities  // toutes les activités réalisées (comme desktop)
                         return (
                           <div key={i} data-mday={i} data-mws={ws} style={{ minWidth:0, display:'flex', flexDirection:'column' as const, gap:3, alignItems:'center', borderRadius:8, background:isDropTarget?'var(--primary-dim)':'transparent', transition:'background .12s' }}>
                             <DayHeader abbr={d.day} num={dates[i]} intensity={d.intensity} isToday={isToday}
@@ -3255,7 +3255,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               {w.map((d,i)=>{
                 const today = i===todayIdx && isCurrentWeek
                 const sess = d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id))
-                const acts = d.activities.filter(a=>!matchActivity(a,d.sessions))
+                const acts = d.activities  // toutes les activités réalisées (comme desktop)
                 return (
                   <div key={d.day} style={{ minWidth:0,display:'flex',flexDirection:'column',gap:3,alignItems:'center' }}>
                     <div style={{ width:'100%',textAlign:'center' as const,borderRadius:8,padding:'3px 0',boxSizing:'border-box' as const,background:today?'var(--bg)':'transparent',border:today?'1px solid var(--border-mid)':'1px solid transparent' }}>

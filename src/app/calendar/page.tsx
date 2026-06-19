@@ -861,6 +861,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
           initialDate={prefillDate}
           onClose={closeRaceModal}
           onSave={handleSaveRace}
+          onDelete={editRace ? () => { deleteRace(editRace.id); closeRaceModal() } : undefined}
         />
       )}
       {eventModal && (

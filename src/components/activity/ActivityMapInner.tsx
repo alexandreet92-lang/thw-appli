@@ -16,14 +16,22 @@ const TILES = {
 
 interface LatLng { lat: number; lng: number }
 
-function FitBounds({ points }: { points: LatLng[] }) {
+function FitBounds({ points, bottomInset = 0 }: { points: LatLng[]; bottomInset?: number }) {
   const map = useMap()
+  // Recadre le tracé dans la zone VISIBLE (écran moins la partie couverte par la
+  // sheet) → padding bas = bottomInset. Animé à chaque changement de position.
   useEffect(() => {
     if (points.length < 2) return
     const latlngs = points.map(p => [p.lat, p.lng] as [number, number])
-    map.fitBounds(latlngs, { padding: [20, 20] })
+    map.invalidateSize()
+    map.fitBounds(latlngs, {
+      paddingTopLeft: [24, 24],
+      paddingBottomRight: [24, 24 + Math.max(0, bottomInset)],
+      animate: true,
+      duration: 0.4,
+    })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [bottomInset])
   return null
 }
 
@@ -37,7 +45,7 @@ function LayerSelector({ layer, onChange }: {
     { id: 'hyb', label: 'Hyb' },
   ]
   return (
-    <div style={{ position: 'absolute', right: 8, bottom: 40, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div style={{ position: 'absolute', right: 8, top: 'calc(env(safe-area-inset-top, 0px) + 72px)', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 4 }}>
       {items.map(it => {
         const active = layer === it.id
         return (
@@ -67,9 +75,10 @@ interface Props {
   layer: keyof typeof TILES
   onLayerChange: (l: keyof typeof TILES) => void
   hoverGps?: { lat: number; lng: number } | null
+  bottomInset?: number
 }
 
-export default function ActivityMapInner({ points, layer, onLayerChange, hoverGps }: Props) {
+export default function ActivityMapInner({ points, layer, onLayerChange, hoverGps, bottomInset = 0 }: Props) {
   const positions = points.map(p => [p.lat, p.lng] as [number, number])
   const center: [number, number] = points.length
     ? [points[Math.floor(points.length / 2)].lat, points[Math.floor(points.length / 2)].lng]
@@ -110,7 +119,7 @@ export default function ActivityMapInner({ points, layer, onLayerChange, hoverGp
               radius={6}
               pathOptions={{ fillColor: '#EF4444', fillOpacity: 1, color: 'white', weight: 2 }}
             />
-            <FitBounds points={points} />
+            <FitBounds points={points} bottomInset={bottomInset} />
           </>
         )}
         {/* Point curseur — suit la position du doigt/souris sur les courbes (blanc = distinct de l'arrivée rouge) */}

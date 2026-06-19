@@ -14,7 +14,7 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
-import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen, Menu, AlignJustify, LayoutGrid, Square, type LucideIcon } from 'lucide-react'
+import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, BookOpen, Menu, AlignJustify, LayoutGrid, Square, type LucideIcon } from 'lucide-react'
 import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout'
 import { ActivityTitle } from '@/components/activity/ActivityTitle'
 import { Spinner } from '@/components/ui/Spinner'
@@ -235,9 +235,18 @@ function getWeekStart(d: Date): Date {
   return date
 }
 
-function isoWeek(d: Date): string {
-  return getWeekStart(d).toISOString().slice(0, 10)
+// Format YYYY-MM-DD en heure LOCALE (toISOString() convertit en UTC et décale
+// la date d'un jour en fuseau UTC+x → semaines/jours faux).
+function localYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+
+function isoWeek(d: Date): string {
+  return localYMD(getWeekStart(d))
+}
+
+// FC : seuls la course à pied et le vélo ont une FC pertinente (sélecteur + calculs).
+const HR_SPORTS = ['run', 'trail_run', 'bike']
 
 function cutoffDate(filter: TimeFilter): Date | null {
   const now = new Date()
@@ -4731,7 +4740,12 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   const isMobile = width < 768
   const [sportFilter, setSportFilter] = useState<string>('all')
 
-  const weekStart = useMemo(() => { const d = new Date(week.week); d.setHours(0,0,0,0); return d }, [week.week])
+  // Slide bas→haut à l'ouverture, haut→bas à la fermeture (avant démontage).
+  const [open, setOpen] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setOpen(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setOpen(false); setTimeout(onClose, 320) }
+
+  const weekStart = useMemo(() => { const d = new Date(week.week + 'T00:00:00'); d.setHours(0,0,0,0); return d }, [week.week])
   const weekEnd   = useMemo(() => { const d = new Date(weekStart); d.setDate(d.getDate() + 6); d.setHours(23,59,59,999); return d }, [weekStart])
 
   const weekActs = useMemo(() =>
@@ -4768,8 +4782,8 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     const LONG  = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(weekStart); d.setDate(d.getDate() + i)
-      const iso = d.toISOString().slice(0, 10)
-      const dayActs = weekActs.filter(a => a.started_at.slice(0,10) === iso)
+      const iso = localYMD(d)
+      const dayActs = weekActs.filter(a => localYMD(new Date(a.started_at)) === iso)
       const dayTime = dayActs.reduce((s, a) => s + (a.moving_time_s ?? 0), 0)
       const stMap = new Map<string, number>()
       dayActs.forEach(a => { const sp = normalizeSport(a.sport_type); stMap.set(sp, (stMap.get(sp) ?? 0) + (a.moving_time_s ?? 0)) })
@@ -4794,8 +4808,11 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   const bikeZones   = bikeZoneRow ? buildZones(bikeZoneRow) : null
 
   // ── Filtered acts for HR ───────────────────────────────────
+  // FC : seulement course à pied et vélo (sports à FC pertinente — cf. HR_SPORTS).
   const filteredActs = useMemo(() =>
-    sportFilter === 'all' ? weekActs : weekActs.filter(a => normalizeSport(a.sport_type) === sportFilter),
+    sportFilter === 'all'
+      ? weekActs.filter(a => HR_SPORTS.includes(normalizeSport(a.sport_type)))
+      : weekActs.filter(a => normalizeSport(a.sport_type) === sportFilter),
     [weekActs, sportFilter]
   )
 
@@ -4857,7 +4874,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   // ── Sport selector ─────────────────────────────────────────
   const sportSelectorEl = (
     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
-      {(['all', ...sportsPresent] as string[]).map(sp => {
+      {(['all', ...sportsPresent.filter(sp => HR_SPORTS.includes(sp))] as string[]).map(sp => {
         const active = sportFilter === sp
         return (
           <button key={sp} onClick={() => setSportFilter(sp)} style={{
@@ -5076,7 +5093,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
           )}
         </div>
         {!isMobile && (
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer',
+          <button onClick={requestClose} style={{ background: 'none', border: 'none', cursor: 'pointer',
             color: T.textMuted, fontSize: 18, padding: 4, lineHeight: 1, flexShrink: 0 }}>✕</button>
         )}
       </div>
@@ -5120,24 +5137,28 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     </>
   )
 
-  // ── Mobile → BottomSheet ───────────────────────────────────
+  // ── Mobile → BottomSheet (slide géré par isOpen) ───────────
   if (isMobile) {
     return (
-      <BottomSheet isOpen onClose={onClose}>
+      <BottomSheet isOpen={open} onClose={requestClose}>
         {headerEl}
         {bodyEl}
       </BottomSheet>
     )
   }
 
-  // ── Desktop → modal overlay ────────────────────────────────
+  // ── Desktop → sur-page coulissante bas→haut ────────────────
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 600,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      onClick={onClose}>
-      <div style={{ background: T.surface, borderRadius: T.radius, width: '100%', maxWidth: 900,
-        maxHeight: '90vh', overflowY: 'auto', boxShadow: T.shadowCard, padding: '24px 28px' }}
+    <div style={{ position: 'fixed', inset: 0, background: `rgba(0,0,0,${open ? 0.5 : 0})`, zIndex: 600,
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      transition: 'background .32s ease', backdropFilter: open ? 'blur(3px)' : 'none' }}
+      onClick={requestClose}>
+      <div style={{ background: T.surface, borderRadius: '22px 22px 0 0', width: '100%', maxWidth: 1100,
+        maxHeight: '93vh', overflowY: 'auto', boxShadow: '0 -10px 50px rgba(0,0,0,0.30)', padding: '12px 28px 28px',
+        transform: open ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform .34s cubic-bezier(.2,.8,.2,1)' }}
         onClick={e => e.stopPropagation()}>
+        <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '0 auto 16px' }} />
         {headerEl}
         {bodyEl}
       </div>
@@ -6495,38 +6516,27 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   // - sheetRef + isDraggingRef + currentOffsetRef remplacent les states
   // - On manipule le DOM direct (sheet + .leaflet-container)
   // - UN seul setSheetPos au touchend pour persister le snap dans React
-  const [sheetPos, setSheetPos] = useState<'collapsed' | 'default' | 'expanded'>('default')
+  // Sheet plein écran type Strava : 3 positions (low/mid/full) exprimées en
+  // translateY (px depuis le haut). La carte plein écran derrière se recadre
+  // (fitBounds animé) selon la hauteur couverte par la sheet (= winH - translateY).
+  const [sheetPos, setSheetPos] = useState<'low' | 'mid' | 'full'>('mid')
   const [winH,     setWinH]     = useState<number>(() =>
     typeof window !== 'undefined' ? window.innerHeight : 800,
   )
+  const [mapBottomInset, setMapBottomInset] = useState(0)
 
-  const sheetRef          = useRef<HTMLDivElement>(null)
-  const isDraggingRef     = useRef(false)
-  const currentOffsetRef  = useRef(0)
-  const dragStartY        = useRef(0)
-  const dragStartOffset   = useRef(0)
+  const sheetRef       = useRef<HTMLDivElement>(null)
+  const isDraggingRef  = useRef(false)
+  const currentTyRef   = useRef(0)
+  const dragStartY     = useRef(0)
+  const dragStartTy    = useRef(0)
 
-  function getOffsetForPos(pos: 'collapsed' | 'default' | 'expanded'): number {
-    if (pos === 'collapsed') return  winH * 0.25   // descend → +25vh
-    if (pos === 'expanded')  return -winH * 0.42   // monte    → -42vh
-    return 0
-  }
-
-  // Convertit l'offset du sheet en scale de la map (continu, monotone)
-  // collapsed (+25vh) → 1.0  |  default (0) → ~1.06  |  expanded (-42vh) → 1.15
-  function computeMapScale(offset: number): number {
-    const collapsed = winH * 0.25
-    const expanded  = -winH * 0.42
-    const range = expanded - collapsed   // négatif
-    const progress = Math.max(0, Math.min(1, (offset - collapsed) / range))
-    return 1 + progress * 0.15
-  }
-
-  function getLeafletEl(): HTMLElement | null {
-    const mapEl = mobileMapRef.current
-    if (!mapEl) return null
-    return mapEl.querySelector('.leaflet-container') as HTMLElement | null
-  }
+  const snapTy = useCallback((pos: 'low' | 'mid' | 'full'): number => {
+    if (pos === 'low')  return winH * 0.80   // sheet en bas → carte ~80% visible
+    if (pos === 'full') return winH * 0.06   // sheet quasi plein écran
+    return winH * 0.46                        // mid (défaut)
+  }, [winH])
+  const insetForTy = useCallback((ty: number) => Math.max(0, winH - ty), [winH])
 
   // Recalcule winH au resize
   useEffect(() => {
@@ -6536,118 +6546,47 @@ function ActivityDetail({ a, onClose, zones, profile }: {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  // Init position au mount + chaque resize : applique transform direct
-  // (le sheet n'a plus de transform inline contrôlé par React)
+  // Applique la position au mount / resize / changement de snap (hors drag).
   useEffect(() => {
-    if (winH <= 0) return
-    const target = getOffsetForPos(sheetPos)
-    currentOffsetRef.current = target
+    if (winH <= 0 || isDraggingRef.current) return
+    const ty = snapTy(sheetPos)
+    currentTyRef.current = ty
     if (sheetRef.current) {
-      sheetRef.current.style.transition = ''
-      sheetRef.current.style.transform  = `translateY(${target}px)`
+      sheetRef.current.style.transition = 'transform 0.34s cubic-bezier(0.2,0.8,0.2,1)'
+      sheetRef.current.style.transform  = `translateY(${ty}px)`
     }
-    const leaflet = getLeafletEl()
-    if (leaflet) {
-      leaflet.style.transformOrigin = 'center center'
-      leaflet.style.transition      = ''
-      leaflet.style.transform       = `scale(${computeMapScale(target)})`
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [winH])
-
-  // Sync DOM ↔ sheetPos pour les changements externes (hors drag)
-  useEffect(() => {
-    if (isDraggingRef.current) return
-    const target = getOffsetForPos(sheetPos)
-    if (currentOffsetRef.current === target) return  // déjà au bon endroit
-    currentOffsetRef.current = target
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-      sheetRef.current.style.transform  = `translateY(${target}px)`
-    }
-    const leaflet = getLeafletEl()
-    if (leaflet) {
-      leaflet.style.transformOrigin = 'center center'
-      leaflet.style.transition      = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-      leaflet.style.transform       = `scale(${computeMapScale(target)})`
-    }
-    const timer = setTimeout(() => {
-      if (sheetRef.current && !isDraggingRef.current) sheetRef.current.style.transition = ''
-      const l = getLeafletEl()
-      if (l && !isDraggingRef.current) l.style.transition = ''
-    }, 260)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sheetPos])
+    setMapBottomInset(insetForTy(ty))
+  }, [sheetPos, winH, snapTy, insetForTy])
 
   function onSheetTouchStart(e: React.TouchEvent) {
-    isDraggingRef.current  = true
-    dragStartY.current     = e.touches[0].clientY
-    dragStartOffset.current = currentOffsetRef.current
-    // Désactive les transitions pendant le drag (pas de retard sur le doigt)
-    if (sheetRef.current) {
-      sheetRef.current.classList.add('dragging')
-      sheetRef.current.style.transition = 'none'
-    }
-    const leaflet = getLeafletEl()
-    if (leaflet) leaflet.style.transition = 'none'
+    isDraggingRef.current = true
+    dragStartY.current  = e.touches[0].clientY
+    dragStartTy.current = currentTyRef.current
+    if (sheetRef.current) sheetRef.current.style.transition = 'none'
   }
 
   function onSheetTouchMove(e: React.TouchEvent) {
     if (!isDraggingRef.current) return
-    const delta     = e.touches[0].clientY - dragStartY.current
-    const newOff    = dragStartOffset.current + delta
-    const minOffset = -winH * 0.42
-    const maxOffset =  winH * 0.25
-    const clamped   = Math.max(minOffset, Math.min(maxOffset, newOff))
-    currentOffsetRef.current = clamped
-    // ⚠️ Aucun setState — manipulation DOM directe pour 60 fps fluide
-    if (sheetRef.current) {
-      sheetRef.current.style.transform = `translateY(${clamped}px)`
-    }
-    const leaflet = getLeafletEl()
-    if (leaflet) {
-      leaflet.style.transform = `scale(${computeMapScale(clamped)})`
-    }
+    const delta = e.touches[0].clientY - dragStartY.current
+    const ty = Math.max(snapTy('full'), Math.min(snapTy('low'), dragStartTy.current + delta))
+    currentTyRef.current = ty
+    if (sheetRef.current) sheetRef.current.style.transform = `translateY(${ty}px)`  // direct DOM, 60fps
   }
 
   function onSheetTouchEnd() {
     if (!isDraggingRef.current) return
     isDraggingRef.current = false
-    if (sheetRef.current) sheetRef.current.classList.remove('dragging')
-
-    const currentOffset = currentOffsetRef.current
-    const positions = [
-      { pos: 'collapsed' as const, val:  winH * 0.25 },
-      { pos: 'default'   as const, val:  0          },
-      { pos: 'expanded'  as const, val: -winH * 0.42 },
-    ]
-    const nearest = positions.reduce((best, curr) =>
-      Math.abs(curr.val - currentOffset) < Math.abs(best.val - currentOffset) ? curr : best,
-    )
-
-    // Anime le snap via transition CSS (pas de RAF, pas de setState dans la boucle)
-    currentOffsetRef.current = nearest.val
+    const ty = currentTyRef.current
+    const nearest = (['low', 'mid', 'full'] as const)
+      .map(p => ({ p, v: snapTy(p) }))
+      .reduce((b, c) => Math.abs(c.v - ty) < Math.abs(b.v - ty) ? c : b)
+    currentTyRef.current = nearest.v
     if (sheetRef.current) {
-      sheetRef.current.style.transition = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-      sheetRef.current.style.transform  = `translateY(${nearest.val}px)`
+      sheetRef.current.style.transition = 'transform 0.34s cubic-bezier(0.2,0.8,0.2,1)'
+      sheetRef.current.style.transform  = `translateY(${nearest.v}px)`
     }
-    const leaflet = getLeafletEl()
-    if (leaflet) {
-      leaflet.style.transition = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-      leaflet.style.transform  = `scale(${computeMapScale(nearest.val)})`
-    }
-
-    // UN SEUL setState — persiste le snap dans React pour cohérence
-    // (le useEffect [sheetPos] skip car currentOffsetRef est déjà à target)
-    setSheetPos(nearest.pos)
-
-    // Retire les transitions après l'animation pour ne pas gêner le prochain drag
-    setTimeout(() => {
-      if (sheetRef.current && !isDraggingRef.current) sheetRef.current.style.transition = ''
-      const l = getLeafletEl()
-      if (l && !isDraggingRef.current) l.style.transition = ''
-    }, 260)
+    setSheetPos(nearest.p)               // persiste le snap (recadre la carte via effet)
+    setMapBottomInset(insetForTy(nearest.v))
   }
 
   // Tracé GPS décodé (pour mapping curseur → point sur la carte)
@@ -7323,35 +7262,29 @@ conseil pour la prochaine séance similaire.`
   // FIX : layout strictement linéaire — la carte est dans le flux normal,
   // height: 50vh, et le contenu suit. Plus de fixed, plus de min-height,
   // plus d'animation slideUp. Scroll classique géré par le <main> parent.
-  return isMobile ? (
+  return isMobile ? createPortal((
     /* ══════════════════════════════════════════
-       MOBILE — layout Strava (map sticky + sheet overlap)
-       Étape 1+2 (DOM+CSS) : map sticky top:0 height:60vh, sheet glisse
-       par-dessus avec overlap visuel (margin-top:-20) + border-radius
-       + boxShadow. isolation:isolate sur la map contient les z-indexes
-       Leaflet (déjà en place via ActivityMapCard mobileHero).
+       MOBILE — fiche activité plein écran type Strava.
+       Overlay fixed (portal body) → couvre header + onglets + tab bar.
+       Carte plein écran DERRIÈRE, sheet flottante draggable à 3 positions
+       (low/mid/full). La carte se recadre (fitBounds animé) selon la hauteur
+       couverte par la sheet (bottomInset).
     ══════════════════════════════════════════ */
     <>
-      <div data-fullscreen-activity="" style={{ position: 'relative', minHeight: '100vh' }}>
+      <div data-fullscreen-activity="" style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'var(--bg)', overflow: 'hidden' }}>
 
-        {/* ── CARTE HERO — sticky, reste collée au top pendant le scroll ── */}
+        {/* ── CARTE plein écran (derrière la sheet) ── */}
         <div
           ref={mobileMapRef}
           className="thw-activity-map-sticky"
-          style={{
-            position: 'sticky',
-            top:      0,
-            width:    '100%',
-            height:   '60vh',
-            zIndex:   1,
-            overflow: 'hidden',
-          }}
+          style={{ position: 'absolute', inset: 0, zIndex: 1, overflow: 'hidden' }}
         >
           {polylinePoints && polylinePoints.length >= 2 ? (
             <ActivityMapCard
               activity={a as unknown as Record<string, unknown>}
               mobileHero={true}
               hoverGps={hoverGps}
+              bottomInset={mapBottomInset}
             />
           ) : (
             <div style={{
@@ -7362,59 +7295,46 @@ conseil pour la prochaine séance similaire.`
               <div style={{ width: 64, height: 64, borderRadius: 20, background: col, opacity: 0.25 }} />
             </div>
           )}
-          {/* Bouton retour — cercle 40px adaptatif (blanc en clair, noir en sombre),
-             ombre lisible, safe-area iOS, icône en currentColor */}
-          <button
-            onClick={onClose}
-            aria-label="Retour"
-            className="thw-activity-back-btn"
-            style={{
-              position:       'absolute',
-              top:            'calc(env(safe-area-inset-top, 0px) + 20px)',
-              left:           12,
-              zIndex:         10,
-              width:          40,
-              height:         40,
-              borderRadius:   '50%',
-              border:         'none',
-              cursor:         'pointer',
-              display:        'flex',
-              alignItems:     'center',
-              justifyContent: 'center',
-              boxShadow:      '0 2px 8px rgba(0, 0, 0, 0.25)',
-              padding:        0,
-            }}
-          >
-            <ChevronLeft size={20} strokeWidth={2.5} />
-          </button>
         </div>
 
-        {/* ── SHEET draggable — transform géré via ref pour 60fps (pas via state React) ── */}
+        {/* ── Bouton retour flottant (par-dessus la carte) ── */}
+        <button
+          onClick={onClose}
+          aria-label="Retour"
+          className="thw-activity-back-btn"
+          style={{
+            position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 16px)', left: 12,
+            zIndex: 10, width: 40, height: 40, borderRadius: '50%', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)', padding: 0,
+          }}
+        >
+          <ChevronLeft size={20} strokeWidth={2.5} />
+        </button>
+
+        {/* ── SHEET draggable plein écran (transform via ref, 60fps) ── */}
         <div
           ref={sheetRef}
           data-bottom-sheet=""
           className="thw-activity-sheet"
           style={{
-            position:      'relative',
-            zIndex:        2,
-            marginTop:     '-20px',
-            background:    'var(--bg)',
-            borderRadius:  '20px 20px 0 0',
-            boxShadow:     '0 -4px 24px rgba(0, 0, 0, 0.08)',
-            minHeight:     '50vh',
+            position: 'absolute', left: 0, right: 0, top: 0, height: '100dvh', zIndex: 2,
+            background: 'var(--bg)', borderRadius: '20px 20px 0 0',
+            boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.18)',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
             paddingBottom: 120,
-            /* transform appliqué via sheetRef.style dans les useEffects + handlers
-               — aucun re-render React pendant le drag */
+            transform: `translateY(${winH * 0.46}px)`,
           }}
         >
-          {/* Handle bar — zone tactile élargie, touch-action:none via CSS */}
+          {/* Handle (drag) — sticky en haut de la sheet */}
           <div
             className="thw-activity-sheet-handle"
             onTouchStart={onSheetTouchStart}
             onTouchMove={onSheetTouchMove}
             onTouchEnd={onSheetTouchEnd}
             onTouchCancel={onSheetTouchEnd}
-            style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}
+            style={{ position: 'sticky', top: 0, zIndex: 3, background: 'var(--bg)', borderRadius: '20px 20px 0 0', display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}
           >
             <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'var(--info-border)' }} />
           </div>
@@ -7738,7 +7658,7 @@ conseil pour la prochaine séance similaire.`
 
       {sharedModals}
     </>
-  ) : (
+  ), document.body) : (
     /* ══════════════════════════════════════════
        DESKTOP — layout existant inchangé
     ══════════════════════════════════════════ */
@@ -9418,7 +9338,7 @@ type Section = 'donnees' | 'analyse' | 'progression'
 const NAV: { id: Section; label: string; desc: string; Icon: React.ComponentType<{ size?: number; color?: string }> }[] = [
   { id: 'donnees',     label: 'Données',     desc: 'Charge et volume',      Icon: BarChart2 },
   { id: 'analyse',     label: 'Analyse',     desc: 'Activités et détails',  Icon: Search },
-  { id: 'progression', label: 'Progression', desc: 'Records et tendances',  Icon: TrendingUp },
+  // Onglet « Progression » retiré (trop complexe) — à réactiver plus tard.
 ]
 
 // ─────────────────────────────────────────────────────────────

@@ -14,6 +14,7 @@
  * en haut du module planning/page.tsx avant le call site.
  */
 import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { segmentElevationProfile, getSignificantClimbs } from '@/lib/gpx/parser'
@@ -4671,8 +4672,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       refs: { ftp: athleteData?.ftp ?? null, runThresholdPaceSec: athleteData?.runThresholdPaceSec ?? null, cssSecPer100m: athleteData?.cssSecPer100m ?? null },
       builderTab, setBuilderTab, saving, saved,
       onClose, onSave: handleSubmit, onExportPDF: handleExportPDF, onFavorite,
+      onDelete: isEdit && onDelete && session ? () => onDelete(session.id) : undefined,
     }
-    return wide ? <SessionEditorDesktop {...panelProps} /> : <SessionEditorMobile {...panelProps} />
+    // Portal vers document.body : sort des ancêtres transformés (MobileShell
+    // panelRef + framer-motion PageTransition) qui confinaient le position:fixed
+    // et laissaient des bandes noires en haut/bas. Couvre ainsi tout le viewport.
+    const panel = wide ? <SessionEditorDesktop {...panelProps} /> : <SessionEditorMobile {...panelProps} />
+    return typeof document !== 'undefined' ? createPortal(panel, document.body) : panel
   }
 
   return (

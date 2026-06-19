@@ -24,6 +24,7 @@ export interface SessionEditorPanelProps {
   builderTab: 'manual' | 'ai'; setBuilderTab: (t: 'manual' | 'ai') => void
   saving: boolean; saved: boolean
   onClose: () => void; onSave: () => void; onExportPDF: () => void; onFavorite: () => void
+  onDelete?: () => void
   // Muscu / Hyrox (builder par exercices) — sync vers les refs côté parent
   exercises: ExerciseItem[]; setExercises: (e: ExerciseItem[]) => void
   circuits: ExoCircuit[]; setCircuits: (c: ExoCircuit[]) => void

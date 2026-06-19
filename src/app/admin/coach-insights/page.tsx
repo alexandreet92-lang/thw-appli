@@ -45,6 +45,8 @@ export default function CoachInsightsAdminPage() {
   const [topic, setTopic] = useState("");
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [distilling, setDistilling] = useState(false);
+  const [distillMsg, setDistillMsg] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -102,6 +104,26 @@ export default function CoachInsightsAdminPage() {
     await load();
   }
 
+  async function distill() {
+    setDistilling(true);
+    setDistillMsg(null);
+    try {
+      const res = await fetch("/api/coach/learn", { method: "POST" });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error ?? "Erreur");
+      setDistillMsg(
+        j.skipped === "not_enough_feedback"
+          ? "Pas assez de nouveaux retours à distiller pour l'instant."
+          : `${j.created ?? 0} candidat(s) créé(s) · ${j.processed ?? 0} retour(s) traité(s) · ${j.updated ?? 0} score(s) mis à jour · ${j.retired ?? 0} retiré(s).`,
+      );
+      await load();
+    } catch (e) {
+      setDistillMsg(e instanceof Error ? e.message : "Erreur distillation");
+    } finally {
+      setDistilling(false);
+    }
+  }
+
   if (!authChecked) return null;
 
   return (
@@ -111,8 +133,18 @@ export default function CoachInsightsAdminPage() {
         <Link href="/admin/coach-feedback" style={{ fontSize: 13, color: "#06B6D4" }}>← Voir les retours 👍/👎</Link>
       </div>
       <p style={{ color: "#6B7280", fontSize: 14, marginTop: 6 }}>
-        Phase 2 : les leçons que tu valides ici sont injectées dans le coach (ciblées par sport + mots-clés). Validation 100 % manuelle.
+        Les leçons <strong>actives</strong> sont injectées dans le coach (ciblées par sport + mots-clés). Tu valides les candidats à la main.
       </p>
+
+      {/* Distillation automatique (phase 3) */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", margin: "14px 0 4px" }}>
+        <button onClick={() => void distill()} disabled={distilling}
+          style={{ padding: "8px 16px", borderRadius: 9, border: "1px solid #06B6D4", background: "rgba(6,182,212,0.10)", color: "#0E7490", fontWeight: 600, cursor: "pointer", opacity: distilling ? 0.5 : 1 }}>
+          {distilling ? "Distillation…" : "🧪 Distiller les retours maintenant"}
+        </button>
+        <span style={{ fontSize: 12, color: "#9CA3AF" }}>(auto chaque nuit · crée des candidats à valider)</span>
+      </div>
+      {distillMsg && <p style={{ fontSize: 13, color: "#0E7490", margin: "4px 0 0" }}>{distillMsg}</p>}
 
       {/* Création */}
       <div style={{ border: "1px solid #E5E7EB", borderRadius: 12, padding: 16, margin: "18px 0", background: "#fff" }}>

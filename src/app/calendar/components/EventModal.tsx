@@ -1,18 +1,19 @@
 'use client'
 // ══════════════════════════════════════════════════════════════════
-// EventModal — éditeur de STAGE (bloc d'entraînement multi-jours).
-// - Sports multi-sélection (sans triathlon, avec muscu)
-// - Durée auto via dates début/fin
-// - Par jour : séances structurées Matin / Après-midi (sport + détail + heure)
-// - Plusieurs parcours libres (GPX) avec carte + profil (ParcoursViewer)
-// - Supprimer + confirmation
-// Données persistées dans le JSONB daily_program (zéro migration) ; parcours
-// dans race_event_files (event_date sentinelle « parcours:… »).
+// EventModal — éditeur de STAGE en sheet bas→haut PLEINE LARGEUR,
+// même coquille que l'éditeur de course (RaceEditorSheet) : scrim, sheet
+// animée, header sticky, corps scrollable centré, footer sticky.
+// Logique métier inchangée : sports multi, durée auto, séances Matin/
+// Après-midi structurées, parcours multiples (GPX), suppression, et push
+// auto au planning géré côté page. Persistance JSONB daily_program.
 // ══════════════════════════════════════════════════════════════════
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import { IconX } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
 import { RaceStage, StageSport, StageSession } from './types'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
+import RaceDropZone from './RaceDropZone'
+import { RACE_EDITOR_CSS } from './raceTheme'
 
 interface ExistingFile { url: string; name: string; key: string }
 
@@ -35,9 +36,10 @@ const STAGE_SPORTS: { id: StageSport; label: string; color: string }[] = [
   { id:'muscu', label:'Muscu',         color:'#8b5cf6' },
 ]
 const sportLabel = (s: StageSport) => STAGE_SPORTS.find(x => x.id === s)?.label ?? s
+const sportColor = (s: StageSport) => STAGE_SPORTS.find(x => x.id === s)?.color ?? 'var(--text-dim)'
 
-const INP = { width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }
-const LBL = { fontSize:10,fontWeight:600 as const,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4,display:'block' as const }
+const LBL: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }
+const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13.5, outline: 'none' }
 const isGpx = (n: string) => /\.(gpx|tcx|kml)$/i.test(n)
 
 function getDaysBetween(start: string, end: string): string[] {
@@ -70,7 +72,6 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
 
   const [parcoursNew, setParcoursNew] = useState<File[]>([])
   const [parcoursExisting, setParcoursExisting] = useState<ExistingFile[]>([])
-  const parcoursRef = useRef<HTMLInputElement>(null)
 
   const days = getDaysBetween(startDate, endDate)
 
@@ -136,7 +137,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
         return { date: d, content: summary, matin: dp.matin, aprem: dp.aprem }
       })
       const stamp = Date.now()
-      const dayFiles = parcoursNew.map((file, i) => ({ date: `parcours:${stamp}:${i}`, file }))
+      const dayFiles = parcoursNew.filter(f => isGpx(f.name)).map((file, i) => ({ date: `parcours:${stamp}:${i}`, file }))
       await onSave(
         { name: name.trim(), startDate, endDate, description: desc || undefined, sports, dailyProgram },
         dayFiles,
@@ -146,142 +147,132 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
     finally { setSaving(false) }
   }
 
+  const accent = sports.length ? sportColor(sports[0]) : '#5b6fff'
+
   return (
-    <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:24,maxWidth:620,width:'100%',maxHeight:'92vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:16 }}>
+    <>
+      <style>{RACE_EDITOR_CSS}</style>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'raceScrimIn .2s ease' }} />
+      <div className="race-ed" onClick={e => e.stopPropagation()} style={{
+        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 401, height: '94vh',
+        background: 'var(--bg-card2)', borderRadius: '26px 26px 0 0', boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'raceSheetUp .34s cubic-bezier(.2,.8,.2,1) forwards',
+      }}>
+        <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 0', flexShrink: 0 }} />
 
-        {/* Header */}
-        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0 }}>{isEdit ? 'Modifier le stage' : 'Ajouter un stage'}</h3>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
+        {/* Header sticky */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px 14px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
+          <h3 className="ed-fr" style={{ margin: 0, fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>{isEdit ? 'Modifier le stage' : 'Ajouter un stage'}</h3>
+          <button onClick={onClose} aria-label="Fermer" style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} /></button>
         </div>
 
-        {/* Nom */}
-        <div>
-          <label style={LBL}>Nom du stage</label>
-          <input style={INP} value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Stage Haute Montagne" />
-        </div>
+        {/* Corps scrollable — contenu centré */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 28px' }}>
+          <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-        {/* Sports multi */}
-        <div>
-          <label style={LBL}>Sports</label>
-          <div style={{ display:'flex',gap:6,flexWrap:'wrap' }}>
-            {STAGE_SPORTS.map(s => {
-              const on = sports.includes(s.id)
-              return (
-                <button key={s.id} onClick={() => toggleSport(s.id)}
-                  style={{ padding:'6px 12px',borderRadius:99,fontSize:11,fontWeight:600,cursor:'pointer',
-                    border:`1px solid ${on ? s.color : 'var(--border)'}`,
-                    background: on ? `${s.color}1f` : 'transparent', color: on ? s.color : 'var(--text-dim)' }}>
-                  {s.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+            {/* Sports */}
+            <div>
+              <p style={LBL}>Sports</p>
+              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                {STAGE_SPORTS.map(s => {
+                  const on = sports.includes(s.id)
+                  return (
+                    <button key={s.id} onClick={() => toggleSport(s.id)} style={{ padding: '8px 14px', borderRadius: 999, border: `1px solid ${on ? s.color : 'var(--border)'}`, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: on ? `${s.color}1f` : 'var(--bg-card)', color: on ? s.color : 'var(--text-dim)' }}>{s.label}</button>
+                  )
+                })}
+              </div>
+            </div>
 
-        {/* Dates → durée auto */}
-        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
-          <div><label style={LBL}>Date de début</label><input type="date" style={INP} value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
-          <div><label style={LBL}>Date de fin</label><input type="date" style={INP} value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
-        </div>
-        {days.length > 0 && <p style={{ fontSize:11,color:'var(--text-dim)',margin:'-6px 0 0' }}>Durée : <strong style={{ color:'var(--text)' }}>{days.length} jour{days.length > 1 ? 's' : ''}</strong></p>}
+            {/* Nom + dates */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
+              <div><p style={LBL}>Nom du stage</p><input style={INP} value={name} onChange={e => setName(e.target.value)} placeholder="Ex : Stage Haute Montagne" /></div>
+              <div><p style={LBL}>Début</p><input type="date" style={INP} value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+              <div><p style={LBL}>Fin</p><input type="date" style={INP} value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
+            </div>
+            {days.length > 0 && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '-8px 0 0' }}>Durée : <strong style={{ color: 'var(--text)' }}>{days.length} jour{days.length > 1 ? 's' : ''}</strong></p>}
 
-        {/* Description */}
-        <div>
-          <label style={LBL}>Description</label>
-          <textarea rows={2} style={{ ...INP, resize:'vertical' as const }} value={desc} onChange={e => setDesc(e.target.value)} placeholder="Objectifs, contexte…" />
-        </div>
+            {/* Description */}
+            <div><p style={LBL}>Description</p>
+              <textarea rows={2} style={{ ...INP, resize: 'vertical' }} value={desc} onChange={e => setDesc(e.target.value)} placeholder="Objectifs, contexte…" /></div>
 
-        {/* Programme par jour : Matin / Après-midi */}
-        {days.length > 0 && (
-          <div>
-            <label style={LBL}>Programme — Matin / Après-midi</label>
-            <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-              {days.map(d => {
-                const dp = program[d] ?? { matin: [], aprem: [] }
-                return (
-                  <div key={d} style={{ borderLeft:'2px solid var(--border)',paddingLeft:12 }}>
-                    <p style={{ fontSize:11,fontWeight:700,color:'var(--text-mid)',margin:'0 0 8px',textTransform:'capitalize' }}>{labelDay(d)}</p>
-                    {(['matin','aprem'] as const).map(slot => (
-                      <div key={slot} style={{ marginBottom:10 }}>
-                        <p style={{ fontSize:10,fontWeight:600,color:'var(--text-dim)',margin:'0 0 5px' }}>{slot === 'matin' ? 'Matin' : 'Après-midi'}</p>
-                        <div style={{ display:'flex',flexDirection:'column',gap:6 }}>
-                          {dp[slot].map((ses, i) => (
-                            <div key={i} style={{ display:'flex',gap:6,alignItems:'center',flexWrap:'wrap' }}>
-                              <select value={ses.sport} onChange={e => updSession(d, slot, i, { sport: e.target.value as StageSport })}
-                                style={{ ...INP, width:'auto',flex:'none',minWidth:120 }}>
-                                {sportOptions.map(sp => <option key={sp} value={sp}>{sportLabel(sp)}</option>)}
-                              </select>
-                              <input type="time" value={ses.time ?? ''} onChange={e => updSession(d, slot, i, { time: e.target.value })}
-                                style={{ ...INP, width:'auto',flex:'none' }} />
-                              <input value={ses.detail} onChange={e => updSession(d, slot, i, { detail: e.target.value })}
-                                placeholder="Détail de la séance…" style={{ ...INP, flex:1,minWidth:120 }} />
-                              <button onClick={() => rmSession(d, slot, i)} style={{ background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:15,lineHeight:1,padding:'2px 4px',flexShrink:0 }}>×</button>
+            {/* Programme par jour : Matin / Après-midi */}
+            {days.length > 0 && (
+              <div>
+                <p style={LBL}>Programme — Matin / Après-midi</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {days.map(d => {
+                    const dp = program[d] ?? { matin: [], aprem: [] }
+                    return (
+                      <div key={d} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', background: 'var(--bg-card)' }}>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '0 0 10px', textTransform: 'capitalize' }}>{labelDay(d)}</p>
+                        {(['matin','aprem'] as const).map(slot => (
+                          <div key={slot} style={{ marginBottom: 10 }}>
+                            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px' }}>{slot === 'matin' ? 'Matin' : 'Après-midi'}</p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {dp[slot].map((ses, i) => (
+                                <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                                  <select value={ses.sport} onChange={e => updSession(d, slot, i, { sport: e.target.value as StageSport })} style={{ ...INP, width: 'auto', flex: 'none', minWidth: 130, padding: '8px 10px' }}>
+                                    {sportOptions.map(sp => <option key={sp} value={sp}>{sportLabel(sp)}</option>)}
+                                  </select>
+                                  <input type="time" value={ses.time ?? ''} onChange={e => updSession(d, slot, i, { time: e.target.value })} style={{ ...INP, width: 'auto', flex: 'none', padding: '8px 10px' }} />
+                                  <input value={ses.detail} onChange={e => updSession(d, slot, i, { detail: e.target.value })} placeholder="Détail de la séance…" style={{ ...INP, flex: 1, minWidth: 140, padding: '8px 10px' }} />
+                                  <button onClick={() => rmSession(d, slot, i)} aria-label="Retirer" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}><IconX size={16} /></button>
+                                </div>
+                              ))}
+                              <button onClick={() => addSession(d, slot)} style={{ alignSelf: 'flex-start', fontSize: 11.5, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', borderRadius: 9, padding: '7px 12px', cursor: 'pointer' }}>
+                                + Séance {slot === 'matin' ? 'du matin' : "de l'après-midi"}
+                              </button>
                             </div>
-                          ))}
-                          <button onClick={() => addSession(d, slot)} style={{ alignSelf:'flex-start',fontSize:10,color:'var(--text-dim)',background:'var(--bg-card2)',border:'1px dashed var(--border)',borderRadius:7,padding:'5px 10px',cursor:'pointer' }}>
-                            + Séance {slot === 'matin' ? 'du matin' : "de l'après-midi"}
-                          </button>
-                        </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
-        {/* Parcours (multiples) */}
-        <div>
-          <label style={LBL}>Parcours</label>
-          <button onClick={() => parcoursRef.current?.click()} style={{ fontSize:11,color:'var(--text-mid)',background:'var(--bg-card2)',border:'1px dashed var(--border)',borderRadius:8,padding:'7px 12px',cursor:'pointer' }}>
-            + Importer un parcours (GPX)
-          </button>
-          <input ref={parcoursRef} type="file" accept=".gpx,.tcx,.kml" style={{ display:'none' }}
-            onChange={e => { const f = e.target.files?.[0]; if (f && isGpx(f.name)) setParcoursNew(prev => [...prev, f]); if (e.target) e.target.value = '' }} />
-          <div style={{ display:'flex',flexDirection:'column',gap:10,marginTop:10 }}>
-            {parcoursExisting.map(p => (
-              <div key={p.key}>
-                <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:4 }}>
-                  <span style={{ fontSize:11,color:'var(--text-mid)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>📍 {p.name}</span>
-                </div>
-                <ParcoursViewer fileUrl={p.url} />
+            {/* Parcours (multiples) */}
+            <div>
+              <p style={LBL}>Parcours</p>
+              <RaceDropZone list={parcoursNew} setter={setParcoursNew} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+                {parcoursExisting.map(p => (
+                  <div key={p.key}>
+                    <p style={{ fontSize: 11.5, color: 'var(--text-mid)', margin: '0 0 4px' }}>📍 {p.name}</p>
+                    <ParcoursViewer fileUrl={p.url} />
+                  </div>
+                ))}
+                {parcoursNew.filter(f => isGpx(f.name)).map((f, i) => (
+                  <div key={i}>
+                    <p style={{ fontSize: 11.5, color: 'var(--text-mid)', margin: '0 0 4px' }}>📍 {f.name}</p>
+                    <ParcoursViewer file={f} />
+                  </div>
+                ))}
               </div>
-            ))}
-            {parcoursNew.map((f, i) => (
-              <div key={i}>
-                <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:4 }}>
-                  <span style={{ fontSize:11,color:'var(--text-mid)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>📍 {f.name}</span>
-                  <button onClick={() => setParcoursNew(prev => prev.filter((_, idx) => idx !== i))} style={{ background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:13 }}>✕</button>
-                </div>
-                <ParcoursViewer file={f} />
-              </div>
-            ))}
+            </div>
           </div>
         </div>
 
-        {/* Boutons */}
-        <div style={{ display:'flex',gap:8,alignItems:'center' }}>
-          {isEdit && onDelete && (confirmDelete ? (
-            <div style={{ display:'flex',gap:6,alignItems:'center',flex:1,flexWrap:'wrap' }}>
-              <span style={{ fontSize:12,fontWeight:600,color:'#ef4444' }}>Supprimer ce stage ?</span>
-              <button onClick={onDelete} style={{ padding:'9px 14px',borderRadius:10,background:'#ef4444',border:'none',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer' }}>Confirmer</button>
-              <button onClick={() => setConfirmDelete(false)} style={{ padding:'9px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
-            </div>
-          ) : (
-            <button onClick={() => setConfirmDelete(true)} style={{ padding:'10px 14px',borderRadius:10,background:'transparent',border:'1px solid #ef4444',color:'#ef4444',fontSize:12,fontWeight:600,cursor:'pointer',flexShrink:0 }}>Supprimer</button>
-          ))}
-          {!confirmDelete && (<>
-            <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Fermer</button>
-            <button onClick={handleSave} disabled={saving || !name.trim() || !startDate || !endDate}
-              style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:saving?'wait':'pointer',opacity:(!name.trim()||!startDate||!endDate)?0.5:1 }}>
-              {saving ? '…' : isEdit ? 'Enregistrer' : 'Ajouter'}
-            </button>
-          </>)}
+        {/* Footer sticky */}
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', gap: 10, padding: '12px 24px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
+          <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 900, alignItems: 'center' }}>
+            {isEdit && onDelete && (confirmDelete ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: '#ef4444' }}>Supprimer ce stage ?</span>
+                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: '#ef4444', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Confirmer</button>
+                <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>Annuler</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Supprimer</button>
+            ))}
+            {!confirmDelete && (<>
+              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Fermer</button>
+              <button onClick={handleSave} disabled={saving || !name.trim() || !startDate || !endDate} style={{ flex: 2, padding: 12, borderRadius: 999, background: accent, border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: (!name.trim() || !startDate || !endDate) ? 0.5 : 1 }}>{saving ? '…' : isEdit ? 'Enregistrer' : 'Ajouter'}</button>
+            </>)}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

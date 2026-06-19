@@ -2146,8 +2146,8 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
 // TRAINING TAB
 // ════════════════════════════════════════════════
 // Bulle compacte (mobile ET desktop, présentation unifiée) : logo sport + pastille durée.
-function DayBubble({ sport, label, done, onClick, draggable, onDragStart, onDragEnd, onTouchStart, onTouchMove, onTouchEnd, lifted }: {
-  sport: string; label: string; done?: boolean; onClick?: () => void
+function DayBubble({ sport, label, session, done, onClick, draggable, onDragStart, onDragEnd, onTouchStart, onTouchMove, onTouchEnd, lifted }: {
+  sport: string; label: string; session?: Session; done?: boolean; onClick?: () => void
   draggable?: boolean
   onDragStart?: React.DragEventHandler; onDragEnd?: React.DragEventHandler
   onTouchStart?: React.TouchEventHandler; onTouchMove?: React.TouchEventHandler; onTouchEnd?: React.TouchEventHandler
@@ -2157,6 +2157,31 @@ function DayBubble({ sport, label, done, onClick, draggable, onDragStart, onDrag
   const cfg = key ? SPORT_ICON[key] : null
   const color = cfg?.color ?? 'var(--text-mid)'
   const Ico = cfg?.Icon
+  const [tip, setTip] = useState<DOMRect | null>(null)
+
+  // Bulle riche (séance planifiée) : titre + durée · RPE, + sur-bulle au survol (desktop).
+  if (session) {
+    return (
+      <>
+        <button onClick={onClick} draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}
+          onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+          onMouseEnter={e => setTip(e.currentTarget.getBoundingClientRect())} onMouseLeave={() => setTip(null)}
+          style={{ display:'flex',flexDirection:'column',alignItems:'stretch',gap:2,padding:'4px 6px',borderRadius:8,border:'none',borderLeft:`2px solid ${color}`,background:'var(--bg-card2)',cursor:'pointer',width:'100%',boxSizing:'border-box',opacity:done?0.55:1,transform:lifted?'scale(1.06)':undefined,boxShadow:lifted?'0 6px 16px rgba(0,0,0,0.35)':undefined,transition:'transform .12s, box-shadow .12s',touchAction:onTouchStart?'pan-y':undefined,position:'relative',zIndex:lifted?20:undefined }}>
+          <div style={{ display:'flex',alignItems:'center',gap:4,minWidth:0 }}>
+            {Ico ? <Ico size={13} color={color} stroke={2.2} /> : <span style={{ width:7,height:7,borderRadius:'50%',background:color,flexShrink:0 }} />}
+            <span style={{ flex:1,minWidth:0,fontSize:9.5,fontWeight:700,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'left' }}>{session.title || (cfg?.label ?? sport)}</span>
+          </div>
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:5 }}>
+            <span className="tnum" style={{ fontSize:9,fontWeight:700,color }}>{formatHM(session.durationMin)}</span>
+            {session.rpe != null && <span className="tnum" style={{ fontSize:8.5,fontWeight:600,color:'var(--text-dim)' }}>RPE {session.rpe}</span>}
+          </div>
+        </button>
+        {tip && <SessionTipPortal anchor={tip} session={session} />}
+      </>
+    )
+  }
+
+  // Bulle simple (activité réalisée) : icône + durée.
   return (
     <button onClick={onClick} draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
@@ -2164,6 +2189,67 @@ function DayBubble({ sport, label, done, onClick, draggable, onDragStart, onDrag
       {Ico ? <Ico size={15} color={color} stroke={2.2} /> : <span style={{ width:7,height:7,borderRadius:'50%',background:color }} />}
       <span className="tnum" style={{ width:'100%',textAlign:'center',background:color,color:'var(--on-primary)',borderRadius:999,padding:'1px 0',fontSize:9.5,fontWeight:700,fontFamily:'var(--font-body)' }}>{label}</span>
     </button>
+  )
+}
+
+// Descripteur compact d'un bloc d'endurance (intervalle ou continu).
+function enduranceBlockLine(b: Block): string {
+  const parts: string[] = []
+  if (b.mode === 'interval' && b.reps && b.reps > 0) {
+    parts.push(`${b.reps} × ${b.effortMin ?? b.durationMin}′`)
+    if (b.recoveryMin) parts.push(`r ${b.recoveryMin}′`)
+  } else {
+    parts.push(`${b.durationMin}′`)
+  }
+  if (b.zone) parts.push(`Z${b.zone}`)
+  if (b.value) parts.push(b.value)
+  return parts.join(' · ')
+}
+
+// Sur-bulle (desktop) : description + intervalles (run/swim/bike) ou exercices (muscu).
+function SessionTipPortal({ anchor, session }: { anchor: DOMRect; session: Session }) {
+  const W = 248
+  const left = (anchor.right + 8 + W > window.innerWidth) ? Math.max(8, anchor.left - W - 8) : anchor.right + 8
+  const top = Math.max(8, Math.min(anchor.top, window.innerHeight - 260))
+  const isGym = sportKeyFromType(session.sport) === 'muscu'
+  const blocks = (session.blocks ?? []).filter(b => b.type !== 'circuit_header' || (b.label ?? '').trim())
+  return createPortal(
+    <div style={{ position:'fixed', top, left, width:W, zIndex:3000, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:12, padding:'12px 14px', boxShadow:'0 12px 34px rgba(0,0,0,0.3)', animation:'dpIn .14s ease-out', maxHeight:'70vh', overflowY:'auto' }}>
+      <style>{`@keyframes dpIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <p style={{ margin:'0 0 2px', fontSize:13, fontWeight:700, color:'var(--text)' }}>{session.title || 'Séance'}</p>
+      <p style={{ margin:'0 0 8px', fontSize:10.5, color:'var(--text-dim)', fontWeight:600 }}>
+        {formatHM(session.durationMin)}{session.rpe != null ? ` · RPE ${session.rpe}` : ''}
+      </p>
+      {session.notes?.trim() && (
+        <p style={{ margin:'0 0 10px', fontSize:11.5, color:'var(--text-mid)', lineHeight:1.45, whiteSpace:'pre-wrap' }}>{session.notes.trim()}</p>
+      )}
+      {blocks.length > 0 ? (
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          <p style={{ margin:0, fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)' }}>{isGym ? 'Exercices' : 'Intervalles'}</p>
+          {blocks.map((b, i) => {
+            if (isGym) {
+              const ex = parseGymExercise(b)
+              const meta = [ex.sets && ex.reps ? `${ex.sets}×${ex.reps}` : (ex.sets ? `${ex.sets} séries` : ''), ex.charge ? `@${ex.charge}` : ''].filter(Boolean).join(' ')
+              return (
+                <div key={i} style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:8 }}>
+                  <span style={{ fontSize:11.5, color:'var(--text)', fontWeight:600, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ex.nom}</span>
+                  {meta && <span className="tnum" style={{ fontSize:10.5, color:'var(--text-mid)', flexShrink:0 }}>{meta}</span>}
+                </div>
+              )
+            }
+            return (
+              <div key={i} style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:8 }}>
+                <span style={{ fontSize:11.5, color:'var(--text)', fontWeight:600, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{b.label || 'Bloc'}</span>
+                <span className="tnum" style={{ fontSize:10.5, color:'var(--text-mid)', flexShrink:0 }}>{enduranceBlockLine(b)}</span>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        !session.notes?.trim() && <p style={{ margin:0, fontSize:11, color:'var(--text-dim)', fontStyle:'italic' }}>Aucun détail renseigné.</p>
+      )}
+    </div>,
+    document.body,
   )
 }
 
@@ -2657,7 +2743,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                         <DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime / 60))} done onClick={() => setActivityDetail(a)} />
                       ))}
                       {d.sessions.filter(s => !d.activities.some(a => matchActivity(a, d.sessions)?.id === s.id)).map(s => (
-                        <DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status === 'done'}
+                        <DayBubble key={s.id} sport={s.sport} session={s} label={formatHM(s.durationMin)} done={s.status === 'done'}
                           draggable
                           onDragStart={e => { planDrag.current = { id: s.id, ws, day: i }; e.dataTransfer.effectAllowed = 'move' }}
                           onDragEnd={() => { planDrag.current = null; setDragCell(null) }}
@@ -2727,7 +2813,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                               plus onPlus={() => setDayPicker(p => p === `m_${hid}` ? null : `m_${hid}`)} open={dayPicker === `m_${hid}`}
                               onPick={(it) => { void setDayIntensityWeek(ws, i, it); setDayPicker(null) }}
                               onNum={() => { setAddModalFavorites(false); setAddModal({ dayIndex:i, plan:activePlan, weekStart:ws }) }} />
-                            {sess.map(s=><DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status==='done'} lifted={tDrag?.id===s.id} {...bubbleTouch(s.id, ws)} onClick={()=>{ if(tDragRef.current){ tDragRef.current=false; return } setDetailModal(s) }} />)}
+                            {sess.map(s=><DayBubble key={s.id} sport={s.sport} session={s} label={formatHM(s.durationMin)} done={s.status==='done'} lifted={tDrag?.id===s.id} {...bubbleTouch(s.id, ws)} onClick={()=>{ if(tDragRef.current){ tDragRef.current=false; return } setDetailModal(s) }} />)}
                             {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
                           </div>
                         )

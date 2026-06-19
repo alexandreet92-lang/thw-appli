@@ -3523,7 +3523,8 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   const [selPlan, setSelPlan] = useState<PlanVariant>(session?.planVariant ?? plan ?? 'A')
   const [blocks, setBlocks] = useState<Block[]>(session?.blocks ?? [])
   const [exercises, setExercises] = useState<ExerciseItem[]>([])
-  const [builderTab, setBuilderTab] = useState<'manual' | 'ai'>('manual')
+  // À la création : on ouvre directement sur l'IA (champ d'écriture → blocs).
+  const [builderTab, setBuilderTab] = useState<'manual' | 'ai'>(mode === 'create' ? 'ai' : 'manual')
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
@@ -4837,12 +4838,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/>
             </svg>
           </button>
-          <button onClick={() => parcoursInputRef.current?.click()} title="Importer un parcours GPX/TCX/KML"
-            style={{ flexShrink: 0, height: 34, padding: parcoursData ? '0 11px' : 0, width: parcoursData ? undefined : 34, borderRadius: 10, cursor: 'pointer', border: '1px solid var(--border)', background: parcoursData ? `${accent}12` : 'transparent', color: parcoursData ? accent : 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 11, fontWeight: 600 }}>
+          <button onClick={() => parcoursInputRef.current?.click()} title="Ajouter un parcours GPX/TCX/KML"
+            style={{ flexShrink: 0, height: 34, padding: '0 11px', borderRadius: 10, cursor: 'pointer', border: '1px solid var(--border)', background: parcoursData ? `${accent}12` : 'transparent', color: parcoursData ? accent : 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' as const }}>
             <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/>
             </svg>
-            {parcoursLoading ? '…' : parcoursData && parcoursData.distance != null ? `${parcoursData.distance}km` : ''}
+            {parcoursLoading ? '…' : parcoursData && parcoursData.distance != null ? `${parcoursData.distance}km` : 'Parcours'}
           </button>
         </div>
 

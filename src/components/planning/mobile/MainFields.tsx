@@ -18,6 +18,7 @@ const RPE_DESC = ['Très facile', 'Très facile', 'Facile', 'Facile', 'Modéré'
 export function MainFields(p: {
   sport: SportType; accent: string; onSportChange: (s: SportType) => void
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
+  brickRun: boolean; setBrickRun: (b: boolean) => void
   trainingTypes: string[]; setTrainingTypes: (t: string[]) => void
   date: string; setDate: (v: string) => void; time: string; setTime: (v: string) => void
   dur: number; setDur: (n: number) => void
@@ -66,6 +67,18 @@ export function MainFields(p: {
             return <button key={k} type="button" onClick={() => p.setCyclingSub(k)} style={{ flex: 1, padding: '11px 8px', borderRadius: 'var(--se-r-sm)', cursor: 'pointer', fontSize: 13, fontWeight: 600, border: `1px solid ${on ? p.accent : 'var(--se-rule)'}`, background: 'var(--se-card)', color: on ? p.accent : 'var(--se-dim)' }}>{CYCLING_SUB_LABEL[k]}</button>
           })}
         </div>
+      )}
+
+      {/* Brick Run : enchaînement vélo → course à pied (crée une course liée) */}
+      {p.sport === 'bike' && (
+        <button type="button" onClick={() => p.setBrickRun(!p.brickRun)} title="Enchaînement vélo → course à pied"
+          style={{ alignSelf: 'flex-start', padding: '10px 16px', borderRadius: 999, cursor: 'pointer', fontSize: 13, fontWeight: 700,
+            border: `1px solid ${p.brickRun ? sportColor('run') : 'var(--se-rule)'}`,
+            background: p.brickRun ? `${sportColor('run')}1f` : 'var(--se-card)',
+            color: p.brickRun ? sportColor('run') : 'var(--se-dim)', display: 'flex', alignItems: 'center', gap: 7 }}>
+          {p.brickRun ? '✓' : '+'} Brick Run
+          <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.85 }}>vélo → course</span>
+        </button>
       )}
 
       {/* Type de séance */}

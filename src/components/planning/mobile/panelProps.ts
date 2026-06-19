@@ -9,6 +9,7 @@ export interface SessionEditorPanelProps {
   mode: 'create' | 'edit'
   sport: SportType; accent: string; onSportChange: (s: SportType) => void
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
+  brickRun: boolean; setBrickRun: (b: boolean) => void
   trainingTypes: string[]; setTrainingTypes: (t: string[]) => void
   title: string; setTitle: (v: string) => void
   date: string; setDate: (v: string) => void; time: string; setTime: (v: string) => void

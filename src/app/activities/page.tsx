@@ -6533,7 +6533,7 @@ function ActivityDetail({ a, onClose, zones, profile }: {
 
   const snapTy = useCallback((pos: 'low' | 'mid' | 'full'): number => {
     if (pos === 'low')  return winH * 0.80   // sheet en bas → carte ~80% visible
-    if (pos === 'full') return winH * 0.06   // sheet quasi plein écran
+    if (pos === 'full') return 0              // sheet plein écran (jusqu'en haut)
     return winH * 0.46                        // mid (défaut)
   }, [winH])
   const insetForTy = useCallback((ty: number) => Math.max(0, winH - ty), [winH])
@@ -7319,10 +7319,11 @@ conseil pour la prochaine séance similaire.`
           className="thw-activity-sheet"
           style={{
             position: 'absolute', left: 0, right: 0, top: 0, height: '100dvh', zIndex: 2,
-            background: 'var(--bg)', borderRadius: '20px 20px 0 0',
+            background: 'var(--bg)', borderRadius: sheetPos === 'full' ? '0' : '20px 20px 0 0',
             boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.18)',
             overflowY: 'auto',
             WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+            paddingTop: sheetPos === 'full' ? 'env(safe-area-inset-top, 0px)' : 0,
             paddingBottom: 120,
             transform: `translateY(${winH * 0.46}px)`,
           }}

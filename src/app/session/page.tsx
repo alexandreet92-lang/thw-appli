@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { SportTabs } from '@/components/ui/SportTabs'
 import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout'
 import { Dumbbell, Library } from 'lucide-react'
+import { EXERCISE_DATABASE, type ExoCategory } from '@/components/planning/exercises'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { usePlanning } from '@/hooks/usePlanning'
 import { PageHelp } from '@/onboarding/system/PageHelp'
@@ -55,10 +56,12 @@ interface EnduranceBlock {
 }
 
 // — Natation
+type Stroke = 'crawl' | 'dos' | 'brasse' | 'papillon'
 interface SwimSet {
   id: string; reps: number; distanceM: number
   zone: Zone; restSec: number; note?: string
   targetPacePer100m?: string   // "1:35" format
+  stroke?: Stroke              // nage (4 nages) — défaut crawl
 }
 
 // — Hyrox
@@ -532,28 +535,6 @@ function IntensityProfile({
 }
 
 // ══════════════════════════════════════════════════════════════════
-// EXERCISE DATABASE
-// ══════════════════════════════════════════════════════════════════
-const EXERCISE_DB = [
-  // Push
-  'Développé couché','Développé incliné','Développé militaire','Dips','Pompes',
-  'Écarté poulie haute','Extensions triceps',
-  // Pull
-  'Tractions pronation','Tractions supination','Tractions lestées','Rowing barre',
-  'Rowing haltère','Tirage vertical','Curl biceps barre','Curl marteau',
-  // Legs
-  'Squat barre','Squat gobelet','Fentes','Presse à cuisses','Leg extension',
-  'Leg curl couché','Hip thrust','Soulevé de terre','Soulevé de terre roumain',
-  'Mollets debout',
-  // Core / Gainage
-  'Gainage frontal','Gainage latéral','Crunchs','Relevés de jambes','Russian twist',
-  'Roue abdominale','Bird dog',
-  // Hyrox
-  'Wall Balls','Farmer Carry','Sled Push','Sled Pull','SkiErg','Burpee Broad Jump',
-  'Rowing ergomètre','Sandbag Lunges',
-]
-
-// ══════════════════════════════════════════════════════════════════
 // MUSCU BUILDER
 // ══════════════════════════════════════════════════════════════════
 function MusculaireBuilder({ data, onChange }: {
@@ -635,11 +616,7 @@ function MusculaireBuilder({ data, onChange }: {
                         style={{ background:'none', border:'none', color:idx===exs.length-1?'var(--border)':'var(--text-dim)', cursor:idx===exs.length-1?'default':'pointer', padding:0, lineHeight:1, fontSize:13 }}>&#8595;</button>
                     </div>
                     <span style={{ fontSize:11, color:'var(--text-dim)', fontFamily:'DM Mono,monospace', width:16, textAlign:'center', flexShrink:0 }}>{idx+1}</span>
-                    <input list={`exo-list-${ex.id}`} value={ex.name} onChange={e => updExercise(ex.id, { name:e.target.value })}
-                      placeholder="Exercice..." style={{ ...inp }}/>
-                    <datalist id={`exo-list-${ex.id}`}>
-                      {EXERCISE_DB.map(n => <option key={n} value={n}/>)}
-                    </datalist>
+                    <ExoPicker value={ex.name} onPick={name => updExercise(ex.id, { name })}/>
                     <button onClick={() => rmExercise(ex.id)}
                       style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:16, padding:'4px', lineHeight:1, flexShrink:0 }}>×</button>
                   </div>
@@ -681,9 +658,82 @@ function MusculaireBuilder({ data, onChange }: {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// SWIM DISTANCES
+// SWIM DISTANCES + NAGES (4 nages)
 // ══════════════════════════════════════════════════════════════════
 const SWIM_DISTANCES = [25, 50, 75, 100, 150, 200, 300, 400, 500, 600, 800, 1000, 1500, 2000]
+const STROKES: { id: Stroke; label: string }[] = [
+  { id:'crawl',    label:'Crawl' },
+  { id:'dos',      label:'Dos' },
+  { id:'brasse',   label:'Brasse' },
+  { id:'papillon', label:'Papillon' },
+]
+
+// ══════════════════════════════════════════════════════════════════
+// MUSCU — catégories de la bibliothèque d'exos préenregistrés
+// (Push · Pull · Legs · Mixte · Core/Abdos), depuis EXERCISE_DATABASE
+// ══════════════════════════════════════════════════════════════════
+const MUSCU_CATS: { cat: ExoCategory; label: string }[] = [
+  { cat:'push',  label:'Push' },
+  { cat:'pull',  label:'Pull' },
+  { cat:'legs',  label:'Legs' },
+  { cat:'mixte', label:'Mixte' },
+  { cat:'abdos', label:'Core / Abdos' },
+]
+
+// Sélecteur d'exercice : liste préenregistrée triée par catégorie + création libre.
+function ExoPicker({ value, onPick }: { value: string; onPick: (name: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [custom, setCustom] = useState('')
+  const wrapRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    function onDoc(e: MouseEvent) { if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+
+  const fld: React.CSSProperties = { flex:1, minWidth:0, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color: value ? 'var(--text-main)' : 'var(--text-dim)', padding:'7px 10px', fontFamily:'DM Sans,sans-serif', fontSize:13, textAlign:'left' as const, cursor:'pointer', whiteSpace:'nowrap' as const, overflow:'hidden', textOverflow:'ellipsis' }
+
+  function add(name: string) { const n = name.trim(); if (!n) return; onPick(n); setCustom(''); setOpen(false) }
+
+  return (
+    <div ref={wrapRef} style={{ position:'relative', flex:1, minWidth:0 }}>
+      <button type="button" onClick={() => setOpen(o => !o)} style={fld}>{value || 'Choisir un exercice…'}</button>
+      {open && (
+        <div style={{ position:'absolute', zIndex:60, top:'calc(100% + 4px)', left:0, right:0, maxHeight:300, overflowY:'auto',
+          background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 8px 28px rgba(0,0,0,0.32)', padding:8 }}>
+          {MUSCU_CATS.map(({ cat, label }) => {
+            const items = EXERCISE_DATABASE.filter(e => e.category === cat)
+            if (!items.length) return null
+            return (
+              <div key={cat} style={{ marginBottom:6 }}>
+                <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', margin:'4px 6px' }}>{label}</p>
+                {items.map(e => (
+                  <button key={e.id} type="button" onClick={() => add(e.name)}
+                    style={{ display:'block', width:'100%', textAlign:'left', padding:'6px 8px', borderRadius:8, border:'none', background:'transparent', color:'var(--text-main)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}
+                    onMouseEnter={ev => (ev.currentTarget.style.background = 'var(--bg-card2)')}
+                    onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}>
+                    {e.name}
+                  </button>
+                ))}
+              </div>
+            )
+          })}
+          {/* Créer un exo */}
+          <div style={{ borderTop:'1px solid var(--border)', marginTop:4, paddingTop:8, display:'flex', gap:6 }}>
+            <input value={custom} onChange={e => setCustom(e.target.value)} placeholder="Créer un exo…"
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(custom) } }}
+              style={{ flex:1, minWidth:0, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Sans,sans-serif', fontSize:12, boxSizing:'border-box' as const }}/>
+            <button type="button" onClick={() => add(custom)}
+              style={{ padding:'6px 12px', borderRadius:8, border:'none', background:'#5b6fff', color:'#fff', fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+              Ajouter
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ══════════════════════════════════════════════════════════════════
 // ENDURANCE BUILDER (Running / Vélo / Aviron / Triathlon)
@@ -770,6 +820,32 @@ function EnduranceBuilder({
             Profil d'intensité · {totalMin}min total
           </p>
           <IntensityProfile blocks={blocks} sport={sport}/>
+          {/* Bulles réordonnables — glisser pour changer l'ordre des blocs */}
+          {blocks.length > 1 && (
+            <>
+              <p style={{ fontSize:9, color:'var(--text-dim)', margin:'10px 0 6px' }}>Glisse les bulles pour réordonner les blocs</p>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                {blocks.map((b, idx) => (
+                  <div key={b.id}
+                    draggable
+                    onDragStart={() => onDragStart(idx)}
+                    onDragOver={e => onDragOver(e, idx)}
+                    onDrop={() => onDrop(idx)}
+                    onDragEnd={() => setDragOverIdx(null)}
+                    style={{
+                      display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:99, cursor:'grab',
+                      background: dragOverIdx === idx ? `${color}18` : 'var(--bg-card)',
+                      border:`1px solid ${dragOverIdx === idx ? color : 'var(--border)'}`,
+                      borderLeft:`3px solid ${ZONE_COLOR[b.zone]}`,
+                    }}>
+                    <span style={{ fontSize:10, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{idx+1}</span>
+                    <span style={{ fontSize:11, fontWeight:600, color:'var(--text-main)', maxWidth:130, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{b.name || 'Bloc'}</span>
+                    <span style={{ width:7, height:7, borderRadius:'50%', background:ZONE_COLOR[b.zone], flexShrink:0 }}/>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -956,6 +1032,12 @@ function NatationBuilder({ data, onChange }: { data: NatationSession; onChange:(
             <span style={{ fontFamily:'DM Mono,monospace', fontSize:12, color:'var(--text-dim)', width:18, flexShrink:0, paddingBottom:8 }}>{idx+1}</span>
             <NumInput label="Reps" value={s.reps} onChange={v=>updSet(s.id,{reps:v})} min={1} max={50}/>
             <span style={{ fontSize:18, color:'var(--text-dim)', paddingBottom:6, fontWeight:300 }}>×</span>
+            <div>
+              <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Nage</label>
+              <select value={s.stroke ?? 'crawl'} onChange={e=>updSet(s.id,{stroke:e.target.value as Stroke})} style={sel}>
+                {STROKES.map(st=><option key={st.id} value={st.id}>{st.label}</option>)}
+              </select>
+            </div>
             <div>
               <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Distance</label>
               <select value={s.distanceM} onChange={e=>updSet(s.id,{distanceM:+e.target.value})}
@@ -1443,10 +1525,11 @@ const CYCLING_SUB: { id: CyclingSub; label: string }[] = [
 // ══════════════════════════════════════════════════════════════════
 // BUILD MODE — full session form + sport builder
 // ══════════════════════════════════════════════════════════════════
-function BuildMode({ initial, onSave, onCancel }: {
+function BuildMode({ initial, onSave, onCancel, onDelete }: {
   initial?: SessionTemplate
   onSave: (t: SessionTemplate) => void
   onCancel: () => void
+  onDelete?: () => void
 }) {
   const { addSession } = usePlanning()
   const { zones: trainingZones } = useTrainingZones()
@@ -1462,6 +1545,12 @@ function BuildMode({ initial, onSave, onCancel }: {
   const [planDate,     setPlanDate]     = useState('')
   const [planTime,     setPlanTime]     = useState('09:00')
   const [planSuccess,  setPlanSuccess]  = useState(false)
+  // Mode de construction : manuel ou génération IA (réutilise /api/session-builder)
+  const [buildMode,   setBuildMode]   = useState<'manuel'|'ia'>('manuel')
+  const [iaText,      setIaText]      = useState('')
+  const [iaLoading,   setIaLoading]   = useState(false)
+  const [iaError,     setIaError]     = useState<string|null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   // Reset session types when sport changes
   useEffect(() => { setSessionTypes([]) }, [sport])
@@ -1500,10 +1589,92 @@ function BuildMode({ initial, onSave, onCancel }: {
     onSave(t)
   }
 
+  // ── Génération IA : décris la séance → l'IA construit blocs + profil ──
+  async function generateIA() {
+    if (!iaText.trim() || iaLoading) return
+    setIaLoading(true); setIaError(null)
+    try {
+      const profil = {
+        ftp: trainingZones.bike?.ftp_watts ?? undefined,
+        sl1: trainingZones.run?.sl1 || undefined,
+        sl2: trainingZones.run?.sl2 || undefined,
+      }
+      const typesSeance = sessionTypes.length > 0 ? sessionTypes : [SESSION_TYPES[sport]?.[0] ?? 'Mixte']
+      const res = await fetch('/api/session-builder', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sport, typesSeance, descriptionLibre: iaText.trim(), profil }),
+      })
+      const data = await res.json() as { session?: SBLibRow & { intensite: string }; error?: string }
+      if (data.error || !data.session) { setIaError(data.error || "L'IA n'a pas pu générer la séance."); return }
+      const s = data.session
+      const tmpl = sbRowToTemplate({
+        id: uid(), nom: s.nom, sport: s.sport, type_seance: s.type_seance,
+        duree_estimee: s.duree_estimee, intensite: s.intensite, tss_estime: s.tss_estime ?? null,
+        rpe_cible: s.rpe_cible ?? null, tags: s.tags, description: s.description, blocs: s.blocs,
+      })
+      if (!tmpl) { setIaError('Sport non reconnu dans la séance générée.'); return }
+      setSport(tmpl.sport)
+      setName(tmpl.name)
+      setDuration(tmpl.durationMin)
+      setIntensity(tmpl.intensity)
+      if (tmpl.typeSeance?.length) setSessionTypes(tmpl.typeSeance)
+      if (tmpl.tags?.length) setTagsStr(tmpl.tags.join(', '))
+      if (tmpl.notes) setNotes(tmpl.notes)
+      if (typeof tmpl.rpe === 'number') setRpeTarget(tmpl.rpe)
+      if (tmpl.endurance) setEndur(tmpl.endurance)
+      setBuildMode('manuel')   // bascule sur le builder rempli pour ajuster
+    } catch (e) {
+      setIaError(e instanceof Error ? e.message : 'Erreur réseau')
+    } finally { setIaLoading(false) }
+  }
+
   const inp: React.CSSProperties = { width:'100%', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'9px 12px', fontFamily:'DM Sans,sans-serif', fontSize:13, boxSizing:'border-box' as const }
 
   return (
     <div>
+      {/* Toggle Manuel / IA */}
+      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:12 }}>
+        <div style={{ display:'inline-flex', gap:4, background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:99, padding:3 }}>
+          {(['manuel','ia'] as const).map(m => (
+            <button key={m} onClick={() => setBuildMode(m)}
+              style={{ padding:'6px 18px', borderRadius:99, border:'none', cursor:'pointer', fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:600,
+                background: buildMode===m ? (m==='ia' ? '#5b6fff' : 'var(--bg-card)') : 'transparent',
+                color: buildMode===m ? (m==='ia' ? '#fff' : 'var(--text-main)') : 'var(--text-dim)' }}>
+              {m==='manuel' ? 'Manuel' : '✨ IA'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Génération IA */}
+      {buildMode === 'ia' && (
+        <SectionCard>
+          <SectionHeader label="Assistant IA" title="Décris ta séance" color="#5b6fff"/>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
+            {SPORTS.map(s => (
+              <button key={s.id} onClick={()=>setSport(s.id)}
+                style={{ padding:'7px 14px', borderRadius:12, border:`1px solid ${sport===s.id?s.color:'var(--border)'}`,
+                  background:sport===s.id?`${s.color}15`:'transparent', color:sport===s.id?s.color:'var(--text-dim)',
+                  fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <textarea value={iaText} onChange={e=>setIaText(e.target.value)} rows={4}
+            placeholder="Ex : 5×5min à PMA (105–110% FTP), 5min de récup entre chaque, 15min d'échauffement Z2 puis 10min de retour au calme."
+            style={{ ...inp, resize:'none' as const, lineHeight:1.5 }}/>
+          {iaError && <p style={{ color:'#ef4444', fontSize:12, margin:'8px 0 0' }}>{iaError}</p>}
+          <button onClick={generateIA} disabled={iaLoading || !iaText.trim()}
+            style={{ width:'100%', marginTop:12, padding:'12px 0', borderRadius:10, border:'none',
+              background: iaLoading || !iaText.trim() ? 'var(--bg-card2)' : 'linear-gradient(135deg,#5b6fff,#06B6D4)',
+              color: iaLoading || !iaText.trim() ? 'var(--text-dim)' : '#fff',
+              fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, cursor: iaLoading || !iaText.trim() ? 'not-allowed' : 'pointer' }}>
+            {iaLoading ? 'Génération…' : 'Générer la séance'}
+          </button>
+        </SectionCard>
+      )}
+
+      {buildMode === 'manuel' && (<>
       {/* Header */}
       <SectionCard>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
@@ -1757,17 +1928,38 @@ function BuildMode({ initial, onSave, onCancel }: {
         </button>
       </SectionCard>
 
-      {/* Save */}
-      <div style={{ display:'flex', gap:10 }}>
-        <button onClick={onCancel}
-          style={{ flex:1, padding:'12px 0', borderRadius:12, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:14, cursor:'pointer' }}>
-          Annuler
-        </button>
-        <button onClick={save}
-          style={{ flex:3, padding:'12px 0', borderRadius:6, border:'none', background:'#1B6EF3', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 20px rgba(27,110,243,0.30)' }}>
-          Enregistrer la seance
-        </button>
+      {/* Save / Supprimer */}
+      <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+        {onDelete && (confirmDelete ? (
+          <div style={{ display:'flex', gap:8, alignItems:'center', flex:1, flexWrap:'wrap' }}>
+            <span style={{ fontSize:12, color:'#ef4444', fontFamily:'DM Sans,sans-serif', fontWeight:600 }}>Supprimer cette séance ?</span>
+            <button onClick={onDelete}
+              style={{ padding:'10px 16px', borderRadius:8, border:'none', background:'#ef4444', color:'#fff', fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              Confirmer la suppression
+            </button>
+            <button onClick={()=>setConfirmDelete(false)}
+              style={{ padding:'10px 14px', borderRadius:8, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer' }}>
+              Annuler
+            </button>
+          </div>
+        ) : (
+          <button onClick={()=>setConfirmDelete(true)}
+            style={{ padding:'12px 16px', borderRadius:12, border:'1px solid #ef4444', background:'transparent', color:'#ef4444', fontFamily:'DM Sans,sans-serif', fontSize:14, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+            Supprimer
+          </button>
+        ))}
+        {!confirmDelete && (<>
+          <button onClick={onCancel}
+            style={{ flex:1, padding:'12px 0', borderRadius:12, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:14, cursor:'pointer' }}>
+            Fermer
+          </button>
+          <button onClick={save}
+            style={{ flex:3, padding:'12px 0', borderRadius:6, border:'none', background:'#1B6EF3', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 20px rgba(27,110,243,0.30)' }}>
+            Enregistrer la seance
+          </button>
+        </>)}
       </div>
+      </>)}
     </div>
   )
 }
@@ -2196,6 +2388,7 @@ export default function SessionPage() {
                 initial={editTarget}
                 onSave={handleSave}
                 onCancel={()=>setMode('library')}
+                onDelete={editTarget ? () => { void handleDelete(editTarget); setMode('library') } : undefined}
               />
             )}
 

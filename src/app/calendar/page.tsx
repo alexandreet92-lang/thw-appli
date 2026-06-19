@@ -322,7 +322,6 @@ function useCalendar() {
     const { error: upErr } = await supabase.from('race_events').update({
       name: s.name, start_date: s.startDate, end_date: s.endDate,
       description: s.description ?? null, daily_program: serializeStageProgram(s),
-      updated_at: new Date().toISOString(),
     }).eq('id', s.id)
     if (upErr) console.error('[updateRaceStage] update error', upErr)
     for (const { date, file } of dayFiles) {

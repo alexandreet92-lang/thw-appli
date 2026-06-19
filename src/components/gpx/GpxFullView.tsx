@@ -109,6 +109,18 @@ export default function GpxFullView({ fileUrl, height = 320 }: { fileUrl: string
   }
 
   const hp = hoverIdx !== null ? profile[hoverIdx] : null
+  // Pente (%) au point survolé : dénivelé / distance horizontale sur une petite fenêtre.
+  function gradeAt(i: number): number {
+    const a = profile[Math.max(0, i - 1)]
+    const b = profile[Math.min(profile.length - 1, i + 1)]
+    const horizM = (b.dist - a.dist) * 1000
+    if (horizM <= 0) return 0
+    return ((b.ele - a.ele) / horizM) * 100
+  }
+  const grade = hoverIdx !== null ? gradeAt(hoverIdx) : 0
+  const gradeStr = `${grade >= 0 ? '+' : ''}${grade.toFixed(1)}%`
+  const tipLabel = hp ? `${gradeStr} · ${Math.round(hp.dist * 10) / 10}km · ${Math.round(hp.ele)}m` : ''
+  const TIP_W = 116
   // keep pts in deps but only used via syncRef — suppress unused warning
   void pts
 
@@ -148,14 +160,14 @@ export default function GpxFullView({ fileUrl, height = 320 }: { fileUrl: string
                 />
                 <circle cx={px(hp.dist)} cy={py(hp.ele)} r="3.5" fill="#06B6D4" stroke="#fff" strokeWidth="1.5" />
                 <rect
-                  x={Math.min(px(hp.dist) + 5, W - 64)} y={Math.max(py(hp.ele) - 18, PT)}
-                  width={60} height={14} rx={3} fill="rgba(0,0,0,0.8)"
+                  x={Math.min(px(hp.dist) + 5, W - TIP_W - 4)} y={Math.max(py(hp.ele) - 18, PT)}
+                  width={TIP_W} height={14} rx={3} fill="rgba(0,0,0,0.8)"
                 />
                 <text
-                  x={Math.min(px(hp.dist) + 8, W - 61)} y={Math.max(py(hp.ele) - 7, PT + 10)}
+                  x={Math.min(px(hp.dist) + 8, W - TIP_W - 1)} y={Math.max(py(hp.ele) - 7, PT + 10)}
                   fontSize="8" fill="#e5e7eb"
                 >
-                  {Math.round(hp.dist * 10) / 10}km · {Math.round(hp.ele)}m
+                  {tipLabel}
                 </text>
               </>
             )}

@@ -2219,16 +2219,19 @@ function BrickArrow() {
 }
 
 // Descripteur compact d'un bloc d'endurance (intervalle ou continu).
-function enduranceBlockLine(b: Block): string {
+function enduranceBlockLine(b: Block, sport?: string): string {
+  const mmss = (min: number): string => { const s = Math.round((min || 0) * 60); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
+  const key = sport ? sportKeyFromType(sport) : null
+  const unit = key === 'bike' ? 'w' : key === 'swim' ? '/100m' : key === 'run' ? '/km' : ''
+  const withUnit = (v: string) => /[a-z%/]/i.test(v) ? v : v + unit  // n'ajoute l'unité que si absente
   const parts: string[] = []
   if (b.mode === 'interval' && b.reps && b.reps > 0) {
-    parts.push(`${b.reps} × ${b.effortMin ?? b.durationMin}′`)
-    if (b.recoveryMin) parts.push(`r ${b.recoveryMin}′`)
-  } else {
-    parts.push(`${b.durationMin}′`)
+    parts.push(`${b.reps} × ${mmss(b.effortMin ?? b.durationMin)}`)
+    if (b.recoveryMin) parts.push(`r ${mmss(b.recoveryMin)}`)
+  } else if (b.value) {
+    parts.push(withUnit(b.value))
   }
-  if (b.zone) parts.push(`Z${b.zone}`)
-  if (b.value) parts.push(b.value)
+  if (b.durationMin) parts.push(formatHM(Math.round(b.durationMin)))
   return parts.join(' · ')
 }
 
@@ -2263,10 +2266,14 @@ function SessionTipPortal({ anchor, session }: { anchor: DOMRect; session: Sessi
                 </div>
               )
             }
+            const zcol = ZONE_COLORS_7[Math.max(0, Math.min(6, (b.zone || 1) - 1))]
             return (
               <div key={i} style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:8 }}>
-                <span style={{ fontSize:11.5, color:'var(--text)', fontWeight:600, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{b.label || 'Bloc'}</span>
-                <span className="tnum" style={{ fontSize:10.5, color:'var(--text-mid)', flexShrink:0 }}>{enduranceBlockLine(b)}</span>
+                <span style={{ display:'flex', alignItems:'baseline', gap:5, minWidth:0 }}>
+                  <span className="tnum" style={{ fontSize:8.5, fontWeight:800, color:zcol, flexShrink:0 }}>Z{b.zone}</span>
+                  <span style={{ fontSize:11.5, color:'var(--text)', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{b.label || 'Bloc'}</span>
+                </span>
+                <span className="tnum" style={{ fontSize:10.5, color:'var(--text-mid)', flexShrink:0 }}>{enduranceBlockLine(b, session.sport)}</span>
               </div>
             )
           })}

@@ -83,9 +83,10 @@ interface Props {
   onToggle?: () => void
   hoverGps?: { lat: number; lng: number } | null
   mobileHero?: boolean
+  bottomInset?: number
 }
 
-export function ActivityMapCard({ activity, isMobile = false, expanded = false, onToggle, hoverGps, mobileHero = false }: Props) {
+export function ActivityMapCard({ activity, isMobile = false, expanded = false, onToggle, hoverGps, mobileHero = false, bottomInset = 0 }: Props) {
   const [layer,           setLayer]           = useState<LayerId>('std')
   const [mobileFullscreen, setMobileFullscreen] = useState(false)
 
@@ -157,7 +158,7 @@ export function ActivityMapCard({ activity, isMobile = false, expanded = false, 
 
   return (
     <div style={cardStyle}>
-      <ActivityMapInner points={points} layer={layer} onLayerChange={setLayer} hoverGps={hoverGps} />
+      <ActivityMapInner points={points} layer={layer} onLayerChange={setLayer} hoverGps={hoverGps} bottomInset={bottomInset} />
 
       {/* Bouton plein écran mobile — masqué en mode mobileHero */}
       {isMobile && !mobileHero && (

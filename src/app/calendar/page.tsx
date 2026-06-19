@@ -10,8 +10,33 @@ import AnnualView from './components/AnnualView'
 import AppleCalendarView from './components/AppleCalendarView'
 import RaceModal from './components/RaceModal'
 import EventModal from './components/EventModal'
-import type { RaceStage, NutritionItem } from './components/types'
+import type { RaceStage, NutritionItem, StageSport } from './components/types'
 import { sanitizeFileName } from '@/lib/utils'
+
+// Sérialisation du programme de stage dans le JSONB daily_program (zéro migration).
+// Nouveau format : { sports, days } ; rétrocompat : ancien format = tableau de jours.
+function parseStageProgram(raw: unknown): { sports: StageSport[]; days: RaceStage['dailyProgram'] } {
+  if (Array.isArray(raw)) return { sports: [], days: raw as RaceStage['dailyProgram'] }
+  if (raw && typeof raw === 'object') {
+    const o = raw as { sports?: StageSport[]; days?: RaceStage['dailyProgram'] }
+    return { sports: o.sports ?? [], days: o.days ?? [] }
+  }
+  return { sports: [], days: [] }
+}
+function serializeStageProgram(s: { sports?: StageSport[]; dailyProgram: RaceStage['dailyProgram'] }) {
+  return { sports: s.sports ?? [], days: s.dailyProgram }
+}
+const mondayOf = (dateStr: string): string => {
+  const d = new Date(dateStr + 'T12:00:00'); const dow = (d.getDay() + 6) % 7
+  d.setDate(d.getDate() - dow); return d.toISOString().split('T')[0]
+}
+const dowOf = (dateStr: string): number => (new Date(dateStr + 'T12:00:00').getDay() + 6) % 7
+const STAGE_PLANNING_SPORT: Record<StageSport, string> = {
+  run: 'run', trail: 'run', bike: 'bike', swim: 'swim', hyrox: 'hyrox', rowing: 'rowing', muscu: 'gym',
+}
+const STAGE_SPORT_LABEL: Record<StageSport, string> = {
+  run: 'Course à pied', trail: 'Trail', bike: 'Cyclisme', swim: 'Natation', hyrox: 'Hyrox', rowing: 'Aviron', muscu: 'Muscu',
+}
 import ClockView, { type ClockEvent } from './components/ClockView'
 import DayModal from './components/DayModal'
 import { PageHelp } from '@/onboarding/system/PageHelp'
@@ -141,12 +166,16 @@ function useCalendar() {
       notes: x.notes as string | undefined,
     })))
 
-    setRaceStages((rs.data ?? []).map((x: Record<string, unknown>): RaceStage => ({
-      id: x.id as string, name: x.name as string,
-      startDate: x.start_date as string, endDate: x.end_date as string,
-      description: x.description as string | undefined,
-      dailyProgram: (x.daily_program as { date: string; content: string }[]) ?? [],
-    })))
+    setRaceStages((rs.data ?? []).map((x: Record<string, unknown>): RaceStage => {
+      const prog = parseStageProgram(x.daily_program)
+      return {
+        id: x.id as string, name: x.name as string,
+        startDate: x.start_date as string, endDate: x.end_date as string,
+        description: x.description as string | undefined,
+        sports: prog.sports,
+        dailyProgram: prog.days,
+      }
+    }))
 
     setEventTypes((et.data ?? []).map((x: Record<string, unknown>): CalEventType => ({
       id: x.id as string, name: x.name as string, color: x.color as string,
@@ -229,7 +258,7 @@ function useCalendar() {
     console.log('[addRaceStage] inserting event', s.name, 'dayFiles:', dayFiles.length)
     const { data, error } = await supabase.from('race_events').insert({
       user_id: user.id, name: s.name, start_date: s.startDate, end_date: s.endDate,
-      description: s.description ?? null, daily_program: s.dailyProgram,
+      description: s.description ?? null, daily_program: serializeStageProgram(s),
     }).select().single()
     if (error) { console.error('[addRaceStage] insert error', error); return }
     if (!data) { console.error('[addRaceStage] no data returned'); return }
@@ -267,7 +296,7 @@ function useCalendar() {
     if (!updatedProgram.find(d => d.date === date)) {
       updatedProgram.push({ date, content })
     }
-    await supabase.from('race_events').update({ daily_program: updatedProgram }).eq('id', stageId)
+    await supabase.from('race_events').update({ daily_program: serializeStageProgram({ sports: stage.sports, dailyProgram: updatedProgram }) }).eq('id', stageId)
     setRaceStages(p => p.map(s => s.id === stageId ? { ...s, dailyProgram: updatedProgram } : s))
 
     if (file) {
@@ -292,7 +321,7 @@ function useCalendar() {
     console.log('[updateRaceStage] updating event', s.id, s.name, 'dayFiles:', dayFiles.length)
     const { error: upErr } = await supabase.from('race_events').update({
       name: s.name, start_date: s.startDate, end_date: s.endDate,
-      description: s.description ?? null, daily_program: s.dailyProgram,
+      description: s.description ?? null, daily_program: serializeStageProgram(s),
       updated_at: new Date().toISOString(),
     }).eq('id', s.id)
     if (upErr) console.error('[updateRaceStage] update error', upErr)
@@ -401,10 +430,38 @@ function useCalendar() {
     }))
   }
 
+  async function deleteRaceStage(id: string) {
+    await supabase.from('race_events').delete().eq('id', id)
+    setRaceStages(p => p.filter(s => s.id !== id))
+  }
+
+  // Push auto des séances structurées d'un stage dans le planning (au save / create).
+  async function addStageSessionsToPlanning(stage: RaceStage) {
+    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const rows: Record<string, unknown>[] = []
+    for (const day of stage.dailyProgram) {
+      for (const slot of ['matin', 'aprem'] as const) {
+        for (const ses of day[slot] ?? []) {
+          if (!ses.detail?.trim() && !ses.sport) continue
+          rows.push({
+            user_id: user.id, week_start: mondayOf(day.date), day_index: dowOf(day.date),
+            sport: STAGE_PLANNING_SPORT[ses.sport] ?? 'run',
+            title: `${stage.name} — ${ses.detail?.trim() || STAGE_SPORT_LABEL[ses.sport]}`,
+            time: ses.time || (slot === 'matin' ? '09:00' : '15:00'),
+            duration_min: 60, status: 'planned', notes: ses.detail?.trim() || null,
+            blocks: [], validation_data: {},
+          })
+        }
+      }
+    }
+    if (rows.length) await supabase.from('planned_sessions').insert(rows)
+  }
+
   return {
     races, raceStages, eventTypes, events, loading,
     addRace, addRaceWithFiles, updateRace, deleteRace, markCompleted,
-    addRaceStage, updateRaceStage, saveStageDayContent, patchStageDayLocal, deleteStageDayLocal,
+    addRaceStage, updateRaceStage, deleteRaceStage, addStageSessionsToPlanning,
+    saveStageDayContent, patchStageDayLocal, deleteStageDayLocal,
     addEventType, updateEventType, deleteEventType,
     addEvent, updateEvent, deleteEvent,
   }
@@ -680,13 +737,15 @@ function RaceEventModal({ month, day, year, onClose, onSave }: {
 // ════════════════════════════════════════════════
 // RACE TAB — new component-based implementation
 // ════════════════════════════════════════════════
-function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, patchStageDayLocal, deleteStageDayLocal }: {
+function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, addStageSessionsToPlanning, patchStageDayLocal, deleteStageDayLocal }: {
   races: Race[]; raceStages: RaceStage[]
   addRaceWithFiles: (r: Omit<Race, 'id' | 'validated' | 'validationData'>, files: File[], fb?: File[], fr?: File[]) => Promise<void>
   updateRace: (r: Race) => void; deleteRace: (id: string) => void
   markCompleted: (id: string) => void
   addRaceStage: (s: Omit<RaceStage, 'id'>, dayFiles: { date: string; file: File }[]) => Promise<void>
   updateRaceStage: (s: RaceStage, dayFiles: { date: string; file: File }[]) => Promise<void>
+  deleteRaceStage: (id: string) => void
+  addStageSessionsToPlanning: (s: RaceStage) => Promise<void>
   patchStageDayLocal: (stageId: string, date: string, content: string) => void
   deleteStageDayLocal: (stageId: string, date: string) => void
 }) {
@@ -859,11 +918,16 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
           initialData={eventModal.stage}
           initialDate={eventModal.initialDate}
           onClose={() => setEventModal(null)}
+          onDelete={eventModal.mode === 'edit' && eventModal.stage
+            ? () => { deleteRaceStage(eventModal.stage!.id); setEventModal(null) }
+            : undefined}
           onSave={async (s, dayFiles) => {
             if (eventModal.mode === 'edit' && eventModal.stage) {
               await updateRaceStage({ ...eventModal.stage, ...s }, dayFiles)
             } else {
               await addRaceStage(s, dayFiles)
+              // Push auto des séances du stage dans le planning (création).
+              await addStageSessionsToPlanning({ ...s, id: 'tmp' })
             }
             setEventModal(null)
           }}
@@ -1490,7 +1554,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 // PAGE
 // ════════════════════════════════════════════════
 export default function CalendarPage() {
-  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, patchStageDayLocal, deleteStageDayLocal, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
+  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, addStageSessionsToPlanning, patchStageDayLocal, deleteStageDayLocal, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
   const { show, dismiss, reopen } = usePageOnboarding(CALENDAR_ONBOARDING.pageId, CALENDAR_ONBOARDING.version)
 
   const aiContext = {
@@ -1529,7 +1593,7 @@ export default function CalendarPage() {
       <SectionLayout
         header={header}
         sections={[
-          { id:'race',  label:'Course', subtitle:'Compétitions',  icon:Trophy,     content: loading ? loader : <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/> },
+          { id:'race',  label:'Course', subtitle:'Compétitions',  icon:Trophy,     content: loading ? loader : <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} deleteRaceStage={deleteRaceStage} addStageSessionsToPlanning={addStageSessionsToPlanning} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/> },
           { id:'pro',   label:'Pro',    subtitle:'Professionnel',  icon:Briefcase,  content: loading ? loader : <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
           { id:'perso', label:'Perso',  subtitle:'Personnel',      icon:Heart,      content: loading ? loader : <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
           { id:'all',   label:'Tout',   subtitle:'Vue globale',    icon:LayoutGrid, content: loading ? loader : <AllTab races={races} eventTypes={eventTypes} events={events}/> },

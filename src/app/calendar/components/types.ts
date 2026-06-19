@@ -12,11 +12,17 @@ export interface Race {
   validated?: boolean; validationData?: Record<string, unknown>
 }
 
+// Sports d'un Stage (sans triathlon, avec muscu)
+export type StageSport = 'run' | 'trail' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'muscu'
+export interface StageSession { sport: StageSport; detail: string; time?: string }
+
 export interface RaceStage {
   id: string; name: string
   startDate: string; endDate: string
   description?: string
-  dailyProgram: { date: string; content: string }[]
+  sports?: StageSport[]
+  // matin/aprem = séances structurées ; content = résumé (rétrocompat lecteurs existants)
+  dailyProgram: { date: string; content: string; matin?: StageSession[]; aprem?: StageSession[] }[]
 }
 
 export interface NutritionItem {

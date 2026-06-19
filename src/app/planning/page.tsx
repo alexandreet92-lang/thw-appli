@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -142,6 +142,8 @@ export interface Session {
   parcoursData?: ParcoursData
   parcoursId?: string
   nutritionItems?: NutritionItem[]
+  // Brick (enchaînement vélo→course) : id partagé entre la séance vélo et sa course.
+  brickId?: string
 }
 interface WeekTask {
   id:string; title:string; type:TaskType; dayIndex:number
@@ -715,7 +717,7 @@ function usePlanning(weekStartParam?:string) {
       user_id:user.id, week_start:weekStart, day_index:s.dayIndex,
       sport:s.sport, title:s.title, time:s.time, duration_min:s.durationMin,
       tss:s.tss??null, status:s.status, notes:s.notes??null,
-      rpe:s.rpe??null, blocks:s.blocks??[], validation_data:{},
+      rpe:s.rpe??null, blocks:s.blocks??[], validation_data: s.brickId ? { brickId:s.brickId } : {},
       plan_variant:s.planVariant??'A',
       parcours_data: s.parcoursData ?? null,
       parcours_id:   s.parcoursId   ?? null,
@@ -732,7 +734,7 @@ function usePlanning(weekStartParam?:string) {
       title:upd.title, time:upd.time, duration_min:upd.durationMin,
       notes:upd.notes??null, rpe:upd.rpe??null, blocks:upd.blocks??[],
       tss:upd.tss??null, status:upd.status,
-      validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed },
+      validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed, ...(upd.brickId ? { brickId:upd.brickId } : {}) },
       updated_at:new Date().toISOString(),
     }
     if (upd.sport) patch.sport = upd.sport
@@ -2192,6 +2194,30 @@ function DayBubble({ sport, label, session, done, onClick, draggable, onDragStar
   )
 }
 
+// Réordonne les séances pour placer chaque course « brick » juste après sa séance vélo,
+// et signale les paires (vélo↔course) à relier par une flèche.
+function orderBrickSessions(sessions: Session[]): { list: Session[]; brickRunIds: Set<string> } {
+  const used = new Set<string>(); const list: Session[] = []; const brickRunIds = new Set<string>()
+  for (const s of sessions) {
+    if (used.has(s.id)) continue
+    list.push(s); used.add(s.id)
+    if (s.brickId && sportKeyFromType(s.sport) === 'bike') {
+      const run = sessions.find(r => !used.has(r.id) && r.brickId === s.brickId && sportKeyFromType(r.sport) === 'run')
+      if (run) { list.push(run); used.add(run.id); brickRunIds.add(run.id) }
+    }
+  }
+  return { list, brickRunIds }
+}
+
+// Flèche reliant la bulle vélo à la bulle course (enchaînement brick).
+function BrickArrow() {
+  return (
+    <div aria-hidden style={{ display:'flex', justifyContent:'center', alignItems:'center', margin:'-3px 0', pointerEvents:'none' }}>
+      <svg width="16" height="13" viewBox="0 0 16 13"><path d="M8 1 V8 M4.5 5 L8 8.5 L11.5 5" stroke="var(--text-mid)" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+    </div>
+  )
+}
+
 // Descripteur compact d'un bloc d'endurance (intervalle ou continu).
 function enduranceBlockLine(b: Block): string {
   const parts: string[] = []
@@ -2742,13 +2768,20 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                       {d.activities.map(a => (
                         <DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime / 60))} done onClick={() => setActivityDetail(a)} />
                       ))}
-                      {d.sessions.filter(s => !d.activities.some(a => matchActivity(a, d.sessions)?.id === s.id)).map(s => (
-                        <DayBubble key={s.id} sport={s.sport} session={s} label={formatHM(s.durationMin)} done={s.status === 'done'}
-                          draggable
-                          onDragStart={e => { planDrag.current = { id: s.id, ws, day: i }; e.dataTransfer.effectAllowed = 'move' }}
-                          onDragEnd={() => { planDrag.current = null; setDragCell(null) }}
-                          onClick={() => setDetailModal(s)} />
-                      ))}
+                      {(() => {
+                        const filtered = d.sessions.filter(s => !d.activities.some(a => matchActivity(a, d.sessions)?.id === s.id))
+                        const { list, brickRunIds } = orderBrickSessions(filtered)
+                        return list.map(s => (
+                          <Fragment key={s.id}>
+                            {brickRunIds.has(s.id) && <BrickArrow />}
+                            <DayBubble sport={s.sport} session={s} label={formatHM(s.durationMin)} done={s.status === 'done'}
+                              draggable
+                              onDragStart={e => { planDrag.current = { id: s.id, ws, day: i }; e.dataTransfer.effectAllowed = 'move' }}
+                              onDragEnd={() => { planDrag.current = null; setDragCell(null) }}
+                              onClick={() => setDetailModal(s)} />
+                          </Fragment>
+                        ))
+                      })()}
                     </div>
                   )
                 })}
@@ -2813,7 +2846,15 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                               plus onPlus={() => setDayPicker(p => p === `m_${hid}` ? null : `m_${hid}`)} open={dayPicker === `m_${hid}`}
                               onPick={(it) => { void setDayIntensityWeek(ws, i, it); setDayPicker(null) }}
                               onNum={() => { setAddModalFavorites(false); setAddModal({ dayIndex:i, plan:activePlan, weekStart:ws }) }} />
-                            {sess.map(s=><DayBubble key={s.id} sport={s.sport} session={s} label={formatHM(s.durationMin)} done={s.status==='done'} lifted={tDrag?.id===s.id} {...bubbleTouch(s.id, ws)} onClick={()=>{ if(tDragRef.current){ tDragRef.current=false; return } setDetailModal(s) }} />)}
+                            {(() => {
+                              const { list, brickRunIds } = orderBrickSessions(sess)
+                              return list.map(s => (
+                                <Fragment key={s.id}>
+                                  {brickRunIds.has(s.id) && <BrickArrow />}
+                                  <DayBubble sport={s.sport} session={s} label={formatHM(s.durationMin)} done={s.status==='done'} lifted={tDrag?.id===s.id} {...bubbleTouch(s.id, ws)} onClick={()=>{ if(tDragRef.current){ tDragRef.current=false; return } setDetailModal(s) }} />
+                                </Fragment>
+                              ))
+                            })()}
                             {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
                           </div>
                         )
@@ -2927,7 +2968,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         user_id: user.id, week_start: targetWeekStart, day_index: dayIdx,
         sport: s.sport, title: s.title, time: s.time, duration_min: s.durationMin,
         tss: s.tss ?? null, status: s.status, notes: s.notes ?? null,
-        rpe: s.rpe ?? null, blocks: s.blocks ?? [], validation_data: {},
+        rpe: s.rpe ?? null, blocks: s.blocks ?? [], validation_data: s.brickId ? { brickId: s.brickId } : {},
         plan_variant: s.planVariant ?? activePlan,
         parcours_data: s.parcoursData ?? null,
         nutrition_data: typedS.nutritionItems ?? null,
@@ -3221,7 +3262,15 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                       <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.02em',margin:0,color:today?'var(--text)':'var(--text-dim)' }}>{d.day}</p>
                       <p className="tnum" style={{ fontSize:14,fontWeight:700,margin:0,color:'var(--text)' }}>{wDates[i]}</p>
                     </div>
-                    {sess.map(s=><DayBubble key={s.id} sport={s.sport} label={formatHM(s.durationMin)} done={s.status==='done'} onClick={()=>setDetailModal(s)} />)}
+                    {(() => {
+                      const { list, brickRunIds } = orderBrickSessions(sess)
+                      return list.map(s => (
+                        <Fragment key={s.id}>
+                          {brickRunIds.has(s.id) && <BrickArrow />}
+                          <DayBubble sport={s.sport} session={s} label={formatHM(s.durationMin)} done={s.status==='done'} onClick={()=>setDetailModal(s)} />
+                        </Fragment>
+                      ))
+                    })()}
                     {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
                   </div>
                 )
@@ -3281,6 +3330,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
           plan={addModal.plan}
           onClose={()=>{setAddModal(null);setAddModalFavorites(false)}}
           onSave={(s)=>{ handleAddSession(addModal.dayIndex, s, addModal.weekStart); setAddModal(null); setAddModalFavorites(false) }}
+          onCreateBrick={(run)=>handleAddSession(addModal.dayIndex, run, addModal.weekStart)}
           openWithFavorites={addModalFavorites}
         />
       )}
@@ -3294,6 +3344,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
           onValidate={handleValidate}
           onAutoSave={handleAutoSaveSession}
           onDuplicate={(dayIdx, s) => { addSession({ ...s, dayIndex: dayIdx, planVariant: s.planVariant ?? activePlan }); setDetailModal(null) }}
+          onCreateBrick={(run)=>handleAddSession(run.dayIndex, run)}
         />
       )}
       {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}

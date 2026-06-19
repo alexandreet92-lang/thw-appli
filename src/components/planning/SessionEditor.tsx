@@ -3487,7 +3487,14 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
 
 // ──────────────────────────────────────────────────────────────
 
-export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, openWithFavorites }: {
+// Ajoute des minutes à une heure "HH:MM" (clamp à 23:59).
+function addMinutesToTime(hhmm: string, addMin: number): string {
+  const [h, m] = (hhmm || '09:00').split(':').map(n => parseInt(n, 10) || 0)
+  const total = Math.min(h * 60 + m + Math.round(addMin), 23 * 60 + 59)
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
+export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, openWithFavorites }: {
   mode: 'create' | 'edit'
   session?: Session
   dayIndex?: number
@@ -3498,11 +3505,13 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   onValidate?: (s: Session) => void
   onAutoSave?: (s: Session) => void
   onDuplicate?: (dayIndex: number, session: Session) => void
+  onCreateBrick?: (run: Session) => void
   openWithFavorites?: boolean
 }) {
   const isEdit = mode === 'edit'
   const [sport, setSport] = useState<SportType>(session?.sport ?? 'run')
   const [cyclingSub, setCyclingSub] = useState<CyclingSub>('velo')
+  const [brickRun, setBrickRun] = useState<boolean>(!!session?.brickId)
   const [trainingTypes, setTrainingTypes] = useState<string[]>([])
   const [title, setTitle] = useState(session?.title ?? '')
   const [date, setDate] = useState('')
@@ -4119,6 +4128,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       : aiFlowStep === 'parcours' && parcoursData
         ? buildParcoursBlocks()
         : blocks
+    // Brick (vélo→course) : id partagé entre la séance vélo et sa course.
+    const wantBrick = sport === 'bike' && brickRun
+    const brickId = wantBrick ? (session?.brickId ?? `brk_${Date.now()}`) : undefined
     const savedSession: Session = {
       ...(session ?? {}),
       id: session?.id ?? '',
@@ -4130,8 +4142,19 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       parcoursData: parcoursDataWithConfig() ?? undefined,
       parcoursId: parcoursData?.parcoursId ?? undefined,
       nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
+      brickId,
     }
     onSave(savedSession)
+    // Création auto de la course d'enchaînement (uniquement quand on active le brick).
+    if (wantBrick && !session?.brickId && onCreateBrick) {
+      const runStart = addMinutesToTime(time, finalDur)
+      onCreateBrick({
+        id: '', dayIndex: savedSession.dayIndex, sport: 'run',
+        title: 'Brick run', time: runStart, durationMin: 20,
+        status: 'planned', rpe, planVariant: selPlan, brickId,
+        blocks: [{ id: `b_${Date.now()}`, mode: 'single', type: 'effort', durationMin: 20, zone: 2, value: '', hrAvg: '', label: 'Course à pied' }],
+      })
+    }
     onClose()
   }
 
@@ -4634,7 +4657,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     const panelProps: SessionEditorPanelProps = {
       mode,
       sport, accent: mobileSportColor(sport), onSportChange: handleSportChange,
-      cyclingSub, setCyclingSub, trainingTypes, setTrainingTypes,
+      cyclingSub, setCyclingSub, brickRun, setBrickRun, trainingTypes, setTrainingTypes,
       title, setTitle, date, setDate, time, setTime,
       dur, setDur, rpe, setRpe, desc, setDesc, selPlan,
       blocks, setBlocks,
@@ -4893,7 +4916,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               </div>
 
               {sport === 'bike' && (
-                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>
                   {(Object.keys(CYCLING_SUB_LABEL) as CyclingSub[]).map(sub => (
                     <button key={sub} onClick={() => setCyclingSub(sub)} style={{
                       padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer',
@@ -4902,6 +4925,18 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       color: cyclingSub === sub ? accent : 'var(--text-dim)',
                     }}>{CYCLING_SUB_LABEL[sub]}</button>
                   ))}
+                  {/* Brick Run : enchaînement vélo→course (crée une course liée). */}
+                  <button onClick={() => setBrickRun(b => !b)} title="Enchaînement vélo → course à pied"
+                    style={{
+                      padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                      marginLeft: 'auto',
+                      border: `1px solid ${brickRun ? SPORT_BORDER['run'] : 'var(--border)'}`,
+                      background: brickRun ? `${SPORT_BORDER['run']}1f` : 'transparent',
+                      color: brickRun ? SPORT_BORDER['run'] : 'var(--text-dim)',
+                      display: 'flex', alignItems: 'center', gap: 5,
+                    }}>
+                    {brickRun ? '✓ ' : '+ '}Brick Run
+                  </button>
                 </div>
               )}
             </div>

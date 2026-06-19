@@ -37,6 +37,7 @@ export function SessionEditorDesktop(p: SessionEditorPanelProps) {
             <MainFields
               sport={p.sport} accent={p.accent} onSportChange={p.onSportChange}
               cyclingSub={p.cyclingSub} setCyclingSub={p.setCyclingSub}
+              brickRun={p.brickRun} setBrickRun={p.setBrickRun}
               trainingTypes={p.trainingTypes} setTrainingTypes={p.setTrainingTypes}
               date={p.date} setDate={p.setDate} time={p.time} setTime={p.setTime}
               dur={p.dur} setDur={p.setDur} rpe={p.rpe} setRpe={p.setRpe}

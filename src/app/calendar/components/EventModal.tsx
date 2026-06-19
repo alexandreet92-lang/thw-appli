@@ -1,7 +1,9 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { RaceStage } from './types'
+import { RaceStage, RaceSport, SPORT_LABEL } from './types'
+
+const STAGE_SPORTS: RaceSport[] = ['run', 'trail', 'bike', 'swim', 'hyrox', 'triathlon', 'rowing']
 
 interface ExistingFile { file_url: string; file_name: string }
 
@@ -44,6 +46,22 @@ export default function EventModal({ mode = 'create', initialData, onClose, onSa
     const init: Record<string, string> = {}
     if (initialData?.dailyProgram) {
       for (const { date, content } of initialData.dailyProgram) init[date] = content
+    }
+    return init
+  })
+
+  // Titre + sport de la seance, par jour — synchronises vers le planning au save.
+  const [dayTitle, setDayTitle] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {}
+    if (initialData?.dailyProgram) {
+      for (const { date, title } of initialData.dailyProgram) if (title) init[date] = title
+    }
+    return init
+  })
+  const [daySport, setDaySport] = useState<Record<string, RaceSport>>(() => {
+    const init: Record<string, RaceSport> = {}
+    if (initialData?.dailyProgram) {
+      for (const { date, sport } of initialData.dailyProgram) if (sport) init[date] = sport
     }
     return init
   })
@@ -112,7 +130,12 @@ export default function EventModal({ mode = 'create', initialData, onClose, onSa
     if (!name.trim() || !startDate || !endDate) return
     setSaving(true)
     try {
-      const dailyProgram = visibleDays.map(d => ({ date: d, content: program[d] ?? '' }))
+      const dailyProgram = visibleDays.map(d => ({
+        date: d,
+        content: program[d] ?? '',
+        title: dayTitle[d]?.trim() || undefined,
+        sport: daySport[d] || undefined,
+      }))
       const allDayFiles = Object.entries(dayFiles)
         .filter((entry): entry is [string, File] => entry[1] !== null && visibleDays.includes(entry[0]))
         .map(([date, file]) => ({ date, file }))
@@ -132,7 +155,7 @@ export default function EventModal({ mode = 'create', initialData, onClose, onSa
         {/* Header */}
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
           <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0 }}>
-            {isEdit ? 'Modifier l\'événement' : 'Ajouter un événement'}
+            {isEdit ? 'Modifier le stage' : 'Ajouter un stage'}
           </h3>
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
@@ -188,6 +211,20 @@ export default function EventModal({ mode = 'create', initialData, onClose, onSa
                           opacity:visibleDays.length<=1?0.3:1,
                         }}
                       >×</button>
+                    </div>
+
+                    {/* Titre + sport de la seance (synchronises vers le planning) */}
+                    <div style={{ display:'grid',gridTemplateColumns:'1fr auto',gap:6,marginBottom:6 }}>
+                      <input style={INP} value={dayTitle[d] ?? ''} placeholder="Titre de la séance…"
+                        onChange={e => setDayTitle(prev => ({ ...prev, [d]: e.target.value }))} />
+                      <select
+                        value={daySport[d] ?? ''}
+                        onChange={e => setDaySport(prev => ({ ...prev, [d]: e.target.value as RaceSport }))}
+                        style={{ ...INP, width:'auto', cursor:'pointer' }}
+                      >
+                        <option value="">Sport…</option>
+                        {STAGE_SPORTS.map(s => <option key={s} value={s}>{SPORT_LABEL[s]}</option>)}
+                      </select>
                     </div>
 
                     <textarea rows={2} style={{ ...INP, resize:'vertical' as const }}

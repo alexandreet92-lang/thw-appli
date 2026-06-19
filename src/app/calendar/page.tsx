@@ -12,6 +12,8 @@ import RaceModal from './components/RaceModal'
 import EventModal from './components/EventModal'
 import type { RaceStage, NutritionItem } from './components/types'
 import { sanitizeFileName } from '@/lib/utils'
+import { parseRouteFile } from '@/lib/parcours/parseRouteFile'
+import { syncStageToPlanning, type StageDaySync } from '@/lib/parcours/stageSync'
 import ClockView, { type ClockEvent } from './components/ClockView'
 import DayModal from './components/DayModal'
 import { PageHelp } from '@/onboarding/system/PageHelp'
@@ -224,6 +226,20 @@ function useCalendar() {
   }
 
   // ── RaceStage CRUD ─────────────────────────────
+  // Projette les jours du stage (titre + sport + parcours parse) vers le planning.
+  async function syncStageDays(stageId: string, dp: RaceStage['dailyProgram'], dayFiles: { date: string; file: File }[]) {
+    try {
+      const fileByDate = new Map(dayFiles.map(f => [f.date, f.file]))
+      const days: StageDaySync[] = []
+      for (const d of dp) {
+        const f = fileByDate.get(d.date)
+        const parcours = f ? await parseRouteFile(f) : null
+        days.push({ date: d.date, title: d.title ?? '', sport: d.sport ?? 'run', parcours })
+      }
+      await syncStageToPlanning(stageId, days)
+    } catch (e) { console.error('[syncStageDays]', e) }
+  }
+
   async function addRaceStage(s: Omit<RaceStage, 'id'>, dayFiles: { date: string; file: File }[]) {
     const { data: { user } } = await supabase.auth.getUser(); if (!user) return
     console.log('[addRaceStage] inserting event', s.name, 'dayFiles:', dayFiles.length)
@@ -253,6 +269,7 @@ function useCalendar() {
       } catch (e) { console.error('[addRaceStage] file upload exception', e) }
     }
     setRaceStages(p => [...p, { ...s, id: stageId }])
+    await syncStageDays(stageId, s.dailyProgram, dayFiles)
     console.log('[addRaceStage] done')
   }
 
@@ -314,6 +331,7 @@ function useCalendar() {
       } catch (e) { console.error('[updateRaceStage] file upload exception', e) }
     }
     setRaceStages(p => p.map(x => x.id === s.id ? s : x))
+    await syncStageDays(s.id, s.dailyProgram, dayFiles)
     console.log('[updateRaceStage] done')
   }
 

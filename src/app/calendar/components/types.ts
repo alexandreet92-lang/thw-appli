@@ -16,7 +16,7 @@ export interface RaceStage {
   id: string; name: string
   startDate: string; endDate: string
   description?: string
-  dailyProgram: { date: string; content: string }[]
+  dailyProgram: { date: string; content: string; title?: string; sport?: RaceSport }[]
 }
 
 export interface NutritionItem {

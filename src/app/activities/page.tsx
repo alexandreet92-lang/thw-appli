@@ -14,7 +14,7 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
-import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, TrendingUp, BookOpen, Menu, AlignJustify, LayoutGrid, Square, type LucideIcon } from 'lucide-react'
+import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, BookOpen, Menu, AlignJustify, LayoutGrid, Square, type LucideIcon } from 'lucide-react'
 import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout'
 import { ActivityTitle } from '@/components/activity/ActivityTitle'
 import { Spinner } from '@/components/ui/Spinner'
@@ -235,9 +235,18 @@ function getWeekStart(d: Date): Date {
   return date
 }
 
-function isoWeek(d: Date): string {
-  return getWeekStart(d).toISOString().slice(0, 10)
+// Format YYYY-MM-DD en heure LOCALE (toISOString() convertit en UTC et décale
+// la date d'un jour en fuseau UTC+x → semaines/jours faux).
+function localYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+
+function isoWeek(d: Date): string {
+  return localYMD(getWeekStart(d))
+}
+
+// FC : seuls la course à pied et le vélo ont une FC pertinente (sélecteur + calculs).
+const HR_SPORTS = ['run', 'trail_run', 'bike']
 
 function cutoffDate(filter: TimeFilter): Date | null {
   const now = new Date()
@@ -4731,7 +4740,12 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   const isMobile = width < 768
   const [sportFilter, setSportFilter] = useState<string>('all')
 
-  const weekStart = useMemo(() => { const d = new Date(week.week); d.setHours(0,0,0,0); return d }, [week.week])
+  // Slide bas→haut à l'ouverture, haut→bas à la fermeture (avant démontage).
+  const [open, setOpen] = useState(false)
+  useEffect(() => { const r = requestAnimationFrame(() => setOpen(true)); return () => cancelAnimationFrame(r) }, [])
+  const requestClose = () => { setOpen(false); setTimeout(onClose, 320) }
+
+  const weekStart = useMemo(() => { const d = new Date(week.week + 'T00:00:00'); d.setHours(0,0,0,0); return d }, [week.week])
   const weekEnd   = useMemo(() => { const d = new Date(weekStart); d.setDate(d.getDate() + 6); d.setHours(23,59,59,999); return d }, [weekStart])
 
   const weekActs = useMemo(() =>
@@ -4768,8 +4782,8 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     const LONG  = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(weekStart); d.setDate(d.getDate() + i)
-      const iso = d.toISOString().slice(0, 10)
-      const dayActs = weekActs.filter(a => a.started_at.slice(0,10) === iso)
+      const iso = localYMD(d)
+      const dayActs = weekActs.filter(a => localYMD(new Date(a.started_at)) === iso)
       const dayTime = dayActs.reduce((s, a) => s + (a.moving_time_s ?? 0), 0)
       const stMap = new Map<string, number>()
       dayActs.forEach(a => { const sp = normalizeSport(a.sport_type); stMap.set(sp, (stMap.get(sp) ?? 0) + (a.moving_time_s ?? 0)) })
@@ -4794,8 +4808,11 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   const bikeZones   = bikeZoneRow ? buildZones(bikeZoneRow) : null
 
   // ── Filtered acts for HR ───────────────────────────────────
+  // FC : seulement course à pied et vélo (sports à FC pertinente — cf. HR_SPORTS).
   const filteredActs = useMemo(() =>
-    sportFilter === 'all' ? weekActs : weekActs.filter(a => normalizeSport(a.sport_type) === sportFilter),
+    sportFilter === 'all'
+      ? weekActs.filter(a => HR_SPORTS.includes(normalizeSport(a.sport_type)))
+      : weekActs.filter(a => normalizeSport(a.sport_type) === sportFilter),
     [weekActs, sportFilter]
   )
 
@@ -4857,7 +4874,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   // ── Sport selector ─────────────────────────────────────────
   const sportSelectorEl = (
     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
-      {(['all', ...sportsPresent] as string[]).map(sp => {
+      {(['all', ...sportsPresent.filter(sp => HR_SPORTS.includes(sp))] as string[]).map(sp => {
         const active = sportFilter === sp
         return (
           <button key={sp} onClick={() => setSportFilter(sp)} style={{
@@ -5076,7 +5093,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
           )}
         </div>
         {!isMobile && (
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer',
+          <button onClick={requestClose} style={{ background: 'none', border: 'none', cursor: 'pointer',
             color: T.textMuted, fontSize: 18, padding: 4, lineHeight: 1, flexShrink: 0 }}>✕</button>
         )}
       </div>
@@ -5120,24 +5137,28 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     </>
   )
 
-  // ── Mobile → BottomSheet ───────────────────────────────────
+  // ── Mobile → BottomSheet (slide géré par isOpen) ───────────
   if (isMobile) {
     return (
-      <BottomSheet isOpen onClose={onClose}>
+      <BottomSheet isOpen={open} onClose={requestClose}>
         {headerEl}
         {bodyEl}
       </BottomSheet>
     )
   }
 
-  // ── Desktop → modal overlay ────────────────────────────────
+  // ── Desktop → sur-page coulissante bas→haut ────────────────
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 600,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      onClick={onClose}>
-      <div style={{ background: T.surface, borderRadius: T.radius, width: '100%', maxWidth: 900,
-        maxHeight: '90vh', overflowY: 'auto', boxShadow: T.shadowCard, padding: '24px 28px' }}
+    <div style={{ position: 'fixed', inset: 0, background: `rgba(0,0,0,${open ? 0.5 : 0})`, zIndex: 600,
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      transition: 'background .32s ease', backdropFilter: open ? 'blur(3px)' : 'none' }}
+      onClick={requestClose}>
+      <div style={{ background: T.surface, borderRadius: '22px 22px 0 0', width: '100%', maxWidth: 1100,
+        maxHeight: '93vh', overflowY: 'auto', boxShadow: '0 -10px 50px rgba(0,0,0,0.30)', padding: '12px 28px 28px',
+        transform: open ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform .34s cubic-bezier(.2,.8,.2,1)' }}
         onClick={e => e.stopPropagation()}>
+        <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '0 auto 16px' }} />
         {headerEl}
         {bodyEl}
       </div>
@@ -9418,7 +9439,7 @@ type Section = 'donnees' | 'analyse' | 'progression'
 const NAV: { id: Section; label: string; desc: string; Icon: React.ComponentType<{ size?: number; color?: string }> }[] = [
   { id: 'donnees',     label: 'Données',     desc: 'Charge et volume',      Icon: BarChart2 },
   { id: 'analyse',     label: 'Analyse',     desc: 'Activités et détails',  Icon: Search },
-  { id: 'progression', label: 'Progression', desc: 'Records et tendances',  Icon: TrendingUp },
+  // Onglet « Progression » retiré (trop complexe) — à réactiver plus tard.
 ]
 
 // ─────────────────────────────────────────────────────────────

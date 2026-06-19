@@ -8,6 +8,7 @@ import { SportTabs } from '@/components/ui/SportTabs'
 import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout'
 import { Dumbbell, Library } from 'lucide-react'
 import { EXERCISE_DATABASE, type ExoCategory } from '@/components/planning/exercises'
+import RouteIntervals, { type RouteData } from '@/components/session/RouteIntervals'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { usePlanning } from '@/hooks/usePlanning'
 import { PageHelp } from '@/onboarding/system/PageHelp'
@@ -76,6 +77,7 @@ interface MusculaireSession {
 }
 interface EnduranceSession {
   blocks: EnduranceBlock[]
+  route?: RouteData   // parcours importé (GPX) + intervalles posés dessus
 }
 interface NatationSession {
   sets: SwimSet[]
@@ -759,7 +761,7 @@ function EnduranceBuilder({
   const dragIdx = useRef<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
 
-  function upd(b: EnduranceBlock[]) { onChange({ blocks: b }) }
+  function upd(b: EnduranceBlock[]) { onChange({ ...data, blocks: b }) }
   function addBlock() {
     upd([...blocks, {
       id: uid(), name: 'Bloc',
@@ -803,6 +805,24 @@ function EnduranceBuilder({
 
   return (
     <div>
+      {/* Parcours : upload GPX + intervalles posés sur carte + profil */}
+      <RouteIntervals
+        value={data.route}
+        onChange={r => onChange({ ...data, route: r })}
+        zoneColor={ZONE_COLOR}
+        accent={color}
+        onApply={segments => {
+          const newBlocks: EnduranceBlock[] = segments.map((seg, i) => ({
+            id: uid(), name: `Parcours — Seg ${i + 1}`,
+            reps: 1, intervalType: 'distance' as const,
+            effortMmSs: '0:00', effortDistanceM: Math.round(seg.distanceM),
+            zone: seg.zone as Zone,
+            recoveryMmSs: '0:00', recoveryZone: 1 as Zone,
+          }))
+          onChange({ ...data, blocks: [...blocks, ...newBlocks] })
+        }}
+      />
+
       {/* Athlete zones banner */}
       {zones && (zones.ftp || zones.runThresholdPace || zones.runZ2 || zones.bikeZ4) && (
         <div style={{ padding:'8px 12px', borderRadius:9, background:'rgba(91,111,255,0.07)', border:'1px solid rgba(91,111,255,0.15)', marginBottom:12, fontSize:11, color:'var(--text-mid)', display:'flex', gap:16, flexWrap:'wrap' }}>

@@ -17,7 +17,7 @@ import DayModal from './components/DayModal'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { CALENDAR_ONBOARDING } from '@/onboarding/configs/calendar.config'
-import { Trophy, Briefcase, Heart, LayoutGrid } from 'lucide-react'
+import { Trophy, Briefcase, Heart, LayoutGrid, CalendarDays } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 type CalView       = 'year' | 'month'
 type TimelineMode  = 'vertical' | 'horizontal'
@@ -696,7 +696,9 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
   const [editRace,    setEditRace]    = useState<Race | null>(null)
   const [prefillDate, setPrefillDate] = useState<string | undefined>(undefined)
   // EventModal: null = closed, {mode,stage?} = open
-  const [eventModal, setEventModal] = useState<{ mode: 'create' | 'edit'; stage?: RaceStage } | null>(null)
+  const [eventModal, setEventModal] = useState<{ mode: 'create' | 'edit'; stage?: RaceStage; initialDate?: string } | null>(null)
+  // Chooser « ajouter un objectif » : date du jour cliqué (null = fermé)
+  const [chooserDate, setChooserDate] = useState<string | null>(null)
   // DayModal
   const [dayModal,   setDayModal]   = useState<{ stage: RaceStage; date: string } | null>(null)
   // Year selector
@@ -798,21 +800,8 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
           </div>
         </div>
 
-        {/* Right: action buttons */}
-        <div style={{ display:'flex',gap:6 }}>
-          <button onClick={() => setEventModal({ mode: 'create' })} style={{
-            padding:'6px 12px',borderRadius:9,fontSize:11,fontWeight:600,cursor:'pointer',
-            background:'rgba(59,130,246,0.10)',border:'1px solid rgba(59,130,246,0.3)',color:'#3b82f6',
-          }}>
-            Événement
-          </button>
-          <button onClick={() => openNewRace()} style={{
-            padding:'6px 12px',borderRadius:9,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',
-            border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer',
-          }}>
-            + Course
-          </button>
-        </div>
+        {/* Astuce : l'ajout se fait en cliquant un jour du calendrier */}
+        <span style={{ fontSize:11, color:'var(--text-dim)' }}>Clique sur un jour pour ajouter un objectif</span>
       </div>
 
       {/* Close year picker on outside click */}
@@ -835,7 +824,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
           races={yearRaces} stages={yearStages} year={selectedYear}
           onRaceClick={r => { setEditRace(r); setPrefillDate(undefined); setShowRaceModal(true) }}
           onStageDayClick={(s, date) => setDayModal({ stage: s, date })}
-          onDayClick={date => openNewRace(date)}
+          onDayClick={date => setChooserDate(date)}
         />
       )}
 
@@ -845,12 +834,12 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
       {/* Empty state */}
       {yearRaces.length === 0 && yearStages.length === 0 && (
         <div style={{ padding:'32px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>Aucune course planifiée en {selectedYear}</p>
-          <button onClick={() => openNewRace()} style={{
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>Aucun objectif planifié en {selectedYear}</p>
+          <button onClick={() => setChooserDate(new Date().toISOString().split('T')[0])} style={{
             padding:'9px 20px',borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',
             border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer',
           }}>
-            + Ajouter une course
+            + Ajouter un objectif
           </button>
         </div>
       )}
@@ -868,6 +857,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
         <EventModal
           mode={eventModal.mode}
           initialData={eventModal.stage}
+          initialDate={eventModal.initialDate}
           onClose={() => setEventModal(null)}
           onSave={async (s, dayFiles) => {
             if (eventModal.mode === 'edit' && eventModal.stage) {
@@ -888,7 +878,57 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
           onDeleted={(date) => { deleteStageDayLocal(dayModal.stage.id, date); setDayModal(null) }}
         />
       )}
+
+      {/* Chooser « Ajouter un objectif » — ouvert au clic sur un jour */}
+      {chooserDate && (
+        <ObjectiveChooser
+          date={chooserDate}
+          onClose={() => setChooserDate(null)}
+          onCourse={() => { const d = chooserDate; setChooserDate(null); openNewRace(d) }}
+          onStage={() => { const d = chooserDate; setChooserDate(null); setEventModal({ mode: 'create', initialDate: d }) }}
+        />
+      )}
     </div>
+  )
+}
+
+// ════════════════════════════════════════════════
+// OBJECTIVE CHOOSER — feuille basse : Course ou Stage
+// ════════════════════════════════════════════════
+function ObjectiveChooser({ date, onClose, onCourse, onStage }: {
+  date: string; onClose: () => void; onCourse: () => void; onStage: () => void
+}) {
+  const pretty = new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const card: React.CSSProperties = {
+    flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '22px 16px',
+    borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer',
+    color: 'var(--text)', fontFamily: 'inherit',
+  }
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
+      <div onClick={e => e.stopPropagation()} style={{
+        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 401,
+        background: 'var(--bg-card2)', borderRadius: '26px 26px 0 0', padding: '20px 24px calc(24px + env(safe-area-inset-bottom))',
+        boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
+      }}>
+        <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '0 auto 14px' }} />
+        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0, textAlign: 'center' }}>Ajouter un objectif</p>
+        <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: '4px 0 18px', textAlign: 'center', textTransform: 'capitalize' }}>{pretty}</h3>
+        <div style={{ display: 'flex', gap: 12, maxWidth: 460, margin: '0 auto' }}>
+          <button onClick={onCourse} style={card}>
+            <Trophy size={26} color="#06B6D4" />
+            <span style={{ fontWeight: 700, fontSize: 15 }}>Course</span>
+            <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>Compétition : course à pied, trail, cyclisme…</span>
+          </button>
+          <button onClick={onStage} style={card}>
+            <CalendarDays size={26} color="#5b6fff" />
+            <span style={{ fontWeight: 700, fontSize: 15 }}>Stage</span>
+            <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>Bloc d'entraînement sur plusieurs jours</span>
+          </button>
+        </div>
+      </div>
+    </>
   )
 }
 

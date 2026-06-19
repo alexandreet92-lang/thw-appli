@@ -8,6 +8,7 @@ interface ExistingFile { file_url: string; file_name: string }
 interface Props {
   mode?: 'create' | 'edit'
   initialData?: RaceStage
+  initialDate?: string   // jour cliqué → pré-remplit la date de début
   onClose: () => void
   onSave: (stage: Omit<RaceStage, 'id'>, dayFiles: { date: string; file: File }[]) => Promise<void>
 }
@@ -31,11 +32,11 @@ function labelDay(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' })
 }
 
-export default function EventModal({ mode = 'create', initialData, onClose, onSave }: Props) {
+export default function EventModal({ mode = 'create', initialData, initialDate, onClose, onSave }: Props) {
   const supabase = createClient()
   const isEdit = mode === 'edit'
   const [name,      setName]      = useState(initialData?.name ?? '')
-  const [startDate, setStartDate] = useState(initialData?.startDate ?? '')
+  const [startDate, setStartDate] = useState(initialData?.startDate ?? initialDate ?? '')
   const [endDate,   setEndDate]   = useState(initialData?.endDate ?? '')
   const [desc,      setDesc]      = useState(initialData?.description ?? '')
   const [saving,    setSaving]    = useState(false)

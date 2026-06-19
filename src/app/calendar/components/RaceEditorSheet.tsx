@@ -11,19 +11,22 @@ import { Race, RaceLevel, RaceSport, RACE_CFG, SPORT_LABEL, SPORT_COLOR, SPORT_B
 import SportFields from './SportFields'
 import TriSegments from './TriSegments'
 import RaceDropZone from './RaceDropZone'
+import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import { SegmentCard } from './RaceSegmentCard'
 import { RACE_EDITOR_CSS } from './raceTheme'
 
 interface Props {
   race?: Race; initialDate?: string; onClose: () => void
   onSave: (r: Omit<Race, 'id'>, files: File[], filesBike?: File[], filesRun?: File[]) => Promise<void>
+  onDelete?: () => void
 }
 const SPORTS: RaceSport[] = ['run', 'trail', 'bike', 'swim', 'hyrox', 'triathlon', 'rowing']
 const LEVELS: RaceLevel[] = ['main', 'important', 'secondary', 'gty']  // GTY = donnée existante, conservée
 const LBL: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }
 const INP: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13.5, outline: 'none' }
+const findGpx = (list: File[]) => list.find(f => /\.(gpx|tcx|kml)$/i.test(f.name))
 
-export default function RaceEditorSheet({ race, initialDate, onClose, onSave }: Props) {
+export default function RaceEditorSheet({ race, initialDate, onClose, onSave, onDelete }: Props) {
   const isEdit = !!race
   const [sport, setSport] = useState<RaceSport>(race?.sport ?? 'run')
   const [level, setLevel] = useState<RaceLevel>(race?.level ?? 'important')
@@ -32,6 +35,7 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave }: 
   const [notes, setNotes] = useState(race?.notes ?? '')
   const [pd, setPd] = useState<Record<string, unknown>>(race?.performanceData ?? {})
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [files, setFiles] = useState<File[]>([])
   const [filesBike, setFilesBike] = useState<File[]>([])
   const [filesRun, setFilesRun] = useState<File[]>([])
@@ -105,10 +109,21 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave }: 
               <p style={LBL}>Parcours</p>
               {sport === 'triathlon' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <RaceDropZone label="Parcours vélo" list={filesBike} setter={setFilesBike} />
-                  <RaceDropZone label="Parcours course" list={filesRun} setter={setFilesRun} />
+                  <div>
+                    <RaceDropZone label="Parcours vélo" list={filesBike} setter={setFilesBike} />
+                    {findGpx(filesBike) && <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(filesBike)} /></div>}
+                  </div>
+                  <div>
+                    <RaceDropZone label="Parcours course" list={filesRun} setter={setFilesRun} />
+                    {findGpx(filesRun) && <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(filesRun)} /></div>}
+                  </div>
                 </div>
-              ) : <RaceDropZone list={files} setter={setFiles} />}
+              ) : (
+                <>
+                  <RaceDropZone list={files} setter={setFiles} />
+                  {findGpx(files) && <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(files)} /></div>}
+                </>
+              )}
             </div>
             {/* Notes */}
             <div><p style={LBL}>Notes</p>
@@ -118,9 +133,20 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave }: 
 
         {/* Footer sticky */}
         <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', gap: 10, padding: '12px 24px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
-          <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 900 }}>
-            <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-            <button onClick={handleSave} disabled={saving || !name.trim()} style={{ flex: 2, padding: 12, borderRadius: 999, background: SPORT_COLOR[sport], border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: !name.trim() ? 0.5 : 1 }}>{saving ? '…' : isEdit ? 'Enregistrer' : 'Ajouter'}</button>
+          <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 900, alignItems: 'center' }}>
+            {isEdit && onDelete && (confirmDelete ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: '#ef4444' }}>Supprimer cette course ?</span>
+                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: '#ef4444', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Confirmer</button>
+                <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>Annuler</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Supprimer</button>
+            ))}
+            {!confirmDelete && (<>
+              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Fermer</button>
+              <button onClick={handleSave} disabled={saving || !name.trim()} style={{ flex: 2, padding: 12, borderRadius: 999, background: SPORT_COLOR[sport], border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: !name.trim() ? 0.5 : 1 }}>{saving ? '…' : isEdit ? 'Enregistrer' : 'Ajouter'}</button>
+            </>)}
           </div>
         </div>
       </div>

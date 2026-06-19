@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 function isAdminEmail(email: string | undefined | null): boolean {
@@ -87,7 +88,10 @@ export default function CoachFeedbackAdminPage() {
 
   return (
     <div style={{ maxWidth: 880, margin: "0 auto", padding: "32px 20px", fontFamily: "DM Sans, sans-serif", color: "#111827" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Retours du coach IA</h1>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Retours du coach IA</h1>
+        <Link href="/admin/coach-insights" style={{ fontSize: 13, color: "#06B6D4" }}>Curer les enseignements →</Link>
+      </div>
       <p style={{ color: "#6B7280", fontSize: 14, marginTop: 6 }}>
         Phase 1 de l&apos;apprentissage : ce que les athlètes jugent bon ou mauvais. Sert de base à la curation des insights.
       </p>

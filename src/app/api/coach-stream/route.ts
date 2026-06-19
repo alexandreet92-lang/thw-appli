@@ -38,6 +38,7 @@ import { methodsIndexText } from '@/lib/coach/methods'
 import { buildDoctrineForChat } from '@/lib/coach/doctrine/registry'
 import { buildAthleteContext } from '@/lib/coach/athlete-context'
 import { buildCoachMemory } from '@/lib/coach/coach-memory'
+import { buildLearnedInsights } from '@/lib/coach/learned-insights'
 
 // ── System prompts côté serveur ───────────────────────────────
 
@@ -430,6 +431,20 @@ export async function POST(req: NextRequest) {
       if (memory) systemWithTools = `${systemWithTools}\n\n${memory}`
     } catch (e) {
       console.error('[coach-stream] athlete context / memory injection failed:', e)
+    }
+  }
+
+  // ── Enseignements appris (couche d'apprentissage, phase 2) ──
+  //    Insights inter-utilisateurs validés manuellement, ciblés sur le
+  //    sport + les mots-clés du dernier message. Fail-open.
+  if ((chatBody as { agentId?: string }).agentId === 'central') {
+    try {
+      const lastUser = [...(chatBody.messages ?? [])].reverse().find(m => m.role === 'user')
+      const lastText = typeof lastUser?.content === 'string' ? lastUser.content : ''
+      const insights = await buildLearnedInsights(lastText)
+      if (insights) systemWithTools = `${systemWithTools}\n\n${insights}`
+    } catch (e) {
+      console.error('[coach-stream] learned insights injection failed:', e)
     }
   }
 

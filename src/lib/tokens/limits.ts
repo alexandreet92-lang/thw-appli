@@ -24,11 +24,14 @@ interface PlanLimitsRow {
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000
 
+// Doit rester aligné avec la migration tokens_limits_rebalance.sql (source de
+// vérité = table token_plan_limits). Calibré pour ~70 % de marge en usage
+// normal dès Pro/Expert, en tenant compte du prompt caching de la boucle coach.
 const FALLBACK_LIMITS: Record<string, PlanLimitsRow> = {
-  trial:   { monthly_tokens: 50000,   rolling_6h_tokens: 15000,  per_request_tokens: 8000 },
-  premium: { monthly_tokens: 250000,  rolling_6h_tokens: 60000,  per_request_tokens: 15000 },
-  pro:     { monthly_tokens: 750000,  rolling_6h_tokens: 150000, per_request_tokens: 25000 },
-  expert:  { monthly_tokens: 2000000, rolling_6h_tokens: 350000, per_request_tokens: 50000 },
+  trial:   { monthly_tokens: 120000,  rolling_6h_tokens: 40000,   per_request_tokens: 12000 },
+  premium: { monthly_tokens: 700000,  rolling_6h_tokens: 200000,  per_request_tokens: 25000 },
+  pro:     { monthly_tokens: 3000000, rolling_6h_tokens: 800000,  per_request_tokens: 60000 },
+  expert:  { monthly_tokens: 8000000, rolling_6h_tokens: 2000000, per_request_tokens: 150000 },
 }
 
 function sumTokens(rows: { tokens_used: number }[] | null): number {

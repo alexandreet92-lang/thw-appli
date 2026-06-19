@@ -488,6 +488,23 @@ Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS
   const allTools = [...coachTools, ...readTools]
   const MAX_STEPS = 6
 
+  // ── PROMPT CACHING ──────────────────────────────────────────────
+  // Le bloc système (prompt + contexte athlète + doctrine + mémoire) et la
+  // liste d'outils sont IDENTIQUES à chaque tour de boucle agentique (et d'un
+  // message à l'autre dans la fenêtre de 5 min). On les marque `ephemeral` :
+  //  • tour 1 → écriture cache (≈125 % du coût, une seule fois) ;
+  //  • tours 2→6 + messages suivants → lecture cache à 10 %.
+  // Effet : la boucle ne refacture plus le gros préambule plein tarif à chaque
+  // étape → conso réelle divisée par ~3-4 sur une analyse multi-outils.
+  const systemBlocks: Anthropic.TextBlockParam[] = [
+    { type: 'text', text: systemWithTools, cache_control: { type: 'ephemeral' } },
+  ]
+  const cachedTools = allTools.map((t, i) =>
+    i === allTools.length - 1
+      ? ({ ...t, cache_control: { type: 'ephemeral' } })
+      : t,
+  ) as typeof allTools
+
   // Client Supabase dédié aux outils de lecture (réutilisé sur toute la boucle)
   const sbForTools = await createClient()
 
@@ -506,9 +523,9 @@ Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS
           const ms = client.messages.stream({
             model: chatModel,
             max_tokens: chatMaxTokens,
-            system: systemWithTools,
+            system: systemBlocks,
             messages: convMessages,
-            tools: allTools,
+            tools: cachedTools,
             tool_choice: { type: 'auto' },
           })
 
@@ -520,8 +537,18 @@ Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS
           }
 
           const finalMsg = await ms.finalMessage()
-          totalIn  += finalMsg.usage?.input_tokens  ?? 0
-          totalOut += finalMsg.usage?.output_tokens ?? 0
+          // Conso d'entrée pondérée par le coût réel du cache :
+          //  • input_tokens          = entrée non cachée (plein tarif) ;
+          //  • cache_creation_tokens = écriture cache (~125 %, ≈ plein tarif) ;
+          //  • cache_read_tokens     = lecture cache → facturée 10 %.
+          const u = finalMsg.usage as Anthropic.Usage & {
+            cache_creation_input_tokens?: number | null
+            cache_read_input_tokens?: number | null
+          }
+          totalIn  += (u?.input_tokens ?? 0)
+                    + (u?.cache_creation_input_tokens ?? 0)
+                    + Math.ceil((u?.cache_read_input_tokens ?? 0) * 0.1)
+          totalOut += u?.output_tokens ?? 0
           lastStop  = finalMsg.stop_reason ?? null
 
           const toolUses = finalMsg.content.filter(

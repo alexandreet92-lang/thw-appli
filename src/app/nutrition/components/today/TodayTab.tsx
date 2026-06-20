@@ -10,6 +10,7 @@ import type { PlannedSession } from '@/hooks/usePlanning'
 import { DayFoodJournal } from '@/app/nutrition/components/DayFoodJournal'
 import { FuelingHero } from './FuelingHero'
 import { DayStrip } from './DayStrip'
+import { SessionFueling } from './SessionFueling'
 import { dateLabel, type DayType } from '../plan/planFormat'
 
 interface Macro { proteines: number; glucides: number; lipides: number }
@@ -73,27 +74,10 @@ export function TodayTab(p: Props) {
         isDesktop={p.isDesktop}
       />
 
-      {/* Autour de ta séance — pas de règle de fueling en base : aucun chiffre inventé */}
+      {/* Autour de ta séance — fueling avant/pendant/après (reco auto + log) */}
       <div>
         <h2 style={sectionTitle}>Autour de ta séance</h2>
-        {p.todaySessions.length ? (
-          <>
-            {p.todaySessions.map(s => (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0, transform: 'translateY(-2px)' }} />
-                <span title={s.title} style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: FB, fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{s.title}</span>
-                <span className="tnum" style={{ flexShrink: 0, fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>
-                  {s.duration_min} min{s.intensity ? ` · ${s.intensity}` : ''}{s.tss != null ? ` · TSS ${s.tss}` : ''}
-                </span>
-              </div>
-            ))}
-            <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 'var(--space-2) 0 0', lineHeight: 1.5 }}>
-              Le fueling personnalisé avant/pendant/après la séance arrivera bientôt — rien n&apos;est estimé pour l&apos;instant.
-            </p>
-          </>
-        ) : (
-          <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>Jour de repos — pas de séance à caler aujourd&apos;hui.</p>
-        )}
+        <SessionFueling sessions={p.todaySessions} weightKg={p.weightKg} />
       </div>
 
       {/* Hydratation */}

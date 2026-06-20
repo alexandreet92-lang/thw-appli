@@ -5,6 +5,15 @@ import type { SportType, CyclingSub, PlanVariant, Block } from '@/app/planning/p
 import type { AthleteRefs } from './editorial'
 import type { ExerciseItem, ExoCircuit } from './strength'
 
+// Parcours déjà parsé (parcours_data d'une séance, ex. liée à un stage).
+export interface PanelParcours {
+  gpsTrace?: { lat: number; lon: number }[]
+  elevationProfile?: { distKm: number; ele: number }[]
+  distance?: number | null
+  elevation?: number | null
+  name?: string
+}
+
 export interface SessionEditorPanelProps {
   mode: 'create' | 'edit'
   sport: SportType; accent: string; onSportChange: (s: SportType) => void
@@ -18,6 +27,7 @@ export interface SessionEditorPanelProps {
   desc: string; setDesc: (v: string) => void
   selPlan: PlanVariant
   blocks: Block[]; setBlocks: (b: Block[]) => void
+  parcoursData?: PanelParcours
   sm: number; sn: number
   athlete: { ftp: number | null; lthrBike: number | null; lthrRun: number | null; runThresholdPaceStr: string | null; swimCSSStr: string | null; hrMax: number | null } | null
   refs: AthleteRefs

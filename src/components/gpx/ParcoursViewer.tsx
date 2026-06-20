@@ -50,9 +50,36 @@ function analyse(gpxText: string): Parsed | null {
   }
 }
 
-export default function ParcoursViewer({ file, fileUrl, mapHeight = 230 }: {
+// Données de parcours déjà parsées (ex. parcours_data d'une séance liée à un stage).
+export interface ParcoursViewerData {
+  gpsTrace?: { lat: number; lon: number }[]
+  elevationProfile?: { distKm: number; ele: number }[]
+  distance?: number | null   // km
+  elevation?: number | null  // D+ (m)
+}
+
+function fromData(d: ParcoursViewerData): Parsed | null {
+  const ep = d.elevationProfile ?? []
+  if (ep.length < 2) return null
+  let loss = 0
+  for (let i = 1; i < ep.length; i++) { const diff = ep[i].ele - ep[i - 1].ele; if (diff < 0) loss -= diff }
+  const alts = ep.map(e => e.ele)
+  const lastKm = ep[ep.length - 1].distKm
+  return {
+    points: (d.gpsTrace ?? []).map(p => ({ lat: p.lat, lng: p.lon })),
+    elev: ep.map(e => ({ distanceM: e.distKm * 1000, altitudeM: e.ele })),
+    distanceM: (d.distance ?? lastKm) * 1000,
+    gain: d.elevation ?? Math.round(ep.reduce((s, e, i) => i > 0 && e.ele > ep[i - 1].ele ? s + (e.ele - ep[i - 1].ele) : s, 0)),
+    loss: Math.round(loss),
+    altMin: alts.length ? Math.min(...alts) : 0,
+    altMax: alts.length ? Math.max(...alts) : 0,
+  }
+}
+
+export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeight = 230 }: {
   file?: File
   fileUrl?: string
+  data?: ParcoursViewerData
   mapHeight?: number
 }) {
   const [data, setData] = useState<Parsed | null>(null)
@@ -63,6 +90,12 @@ export default function ParcoursViewer({ file, fileUrl, mapHeight = 230 }: {
   useEffect(() => {
     let cancelled = false
     setStatus('loading'); setData(null)
+    // Mode « données parsées » (parcours_data) — pas de fichier à lire.
+    if (dataProp) {
+      const parsed = fromData(dataProp)
+      if (parsed) { setData(parsed); setStatus('ok') } else setStatus('error')
+      return
+    }
     ;(async () => {
       try {
         const text = file ? await file.text() : fileUrl ? await fetch(fileUrl).then(r => r.text()) : null
@@ -74,7 +107,7 @@ export default function ParcoursViewer({ file, fileUrl, mapHeight = 230 }: {
       } catch { if (!cancelled) setStatus('error') }
     })()
     return () => { cancelled = true }
-  }, [file, fileUrl])
+  }, [file, fileUrl, dataProp])
 
   // ── Profil SVG ──
   const W = 500, H = 120, PL = 34, PR = 8, PT = 10, PB = 18

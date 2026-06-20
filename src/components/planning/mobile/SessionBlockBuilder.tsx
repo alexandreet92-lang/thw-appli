@@ -12,10 +12,11 @@ import { toBars, totalMin, totalDistance, newSingle, newInterval, type MBlock } 
 import { BlockCard } from './BlockCard'
 import { Segmented } from './ui'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
+import type { PanelParcours } from './panelProps'
 
-export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, refs, builderTab, onBuilderTab }: {
+export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, refs, parcoursData, builderTab, onBuilderTab }: {
   sport: SportType; accent: string; blocks: MBlock[]; onChange: (b: MBlock[]) => void
-  sm: number; sn: number; refs: AthleteRefs
+  sm: number; sn: number; refs: AthleteRefs; parcoursData?: PanelParcours
   builderTab: 'manual' | 'ai'; onBuilderTab: (t: 'manual' | 'ai') => void
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
@@ -203,7 +204,7 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
         </div>
       )}
 
-      {/* Parcours : importer / voir le parcours (ex. parcours lié au stage) */}
+      {/* Parcours : parcours lié au stage (auto) OU import manuel */}
       <div style={{ marginTop: 14 }}>
         {parcoursFile ? (
           <div>
@@ -213,6 +214,15 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
               <button type="button" onClick={() => setParcoursFile(null)} aria-label="Retirer le parcours" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
             </div>
             <ParcoursViewer file={parcoursFile} />
+          </div>
+        ) : (parcoursData?.elevationProfile && parcoursData.elevationProfile.length > 1) ? (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <IconMapPin size={15} color={accent} />
+              <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parcoursData.name || 'Parcours du stage'}</span>
+              <button type="button" onClick={() => parcoursInputRef.current?.click()} style={{ background: 'none', border: 'none', color: accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Remplacer</button>
+            </div>
+            <ParcoursViewer data={parcoursData} />
           </div>
         ) : (
           <button type="button" onClick={() => parcoursInputRef.current?.click()} style={addBtn}>

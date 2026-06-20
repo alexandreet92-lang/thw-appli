@@ -4674,6 +4674,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         hrMax: athleteData.hrMax,
       } : null,
       refs: { ftp: athleteData?.ftp ?? null, runThresholdPaceSec: athleteData?.runThresholdPaceSec ?? null, cssSecPer100m: athleteData?.cssSecPer100m ?? null },
+      parcoursData: parcoursData ? {
+        gpsTrace: parcoursData.gpsTrace, elevationProfile: parcoursData.elevationProfile,
+        distance: parcoursData.distance, elevation: parcoursData.elevation, name: parcoursData.name,
+      } : undefined,
       builderTab, setBuilderTab, saving, saved,
       onClose, onSave: handleSubmit, onExportPDF: handleExportPDF, onFavorite,
       onDelete: isEdit && onDelete && session ? () => onDelete(session.id) : undefined,

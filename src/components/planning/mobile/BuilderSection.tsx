@@ -32,7 +32,7 @@ export function BuilderSection({ p }: { p: SessionEditorPanelProps }) {
     <SessionBlockBuilder
       sport={p.sport} accent={p.accent} blocks={p.blocks as MBlock[]}
       onChange={b => p.setBlocks(b as Block[])}
-      sm={p.sm} sn={p.sn} refs={p.refs}
+      sm={p.sm} sn={p.sn} refs={p.refs} parcoursData={p.parcoursData}
       builderTab={p.builderTab} onBuilderTab={p.setBuilderTab} />
   )
 }

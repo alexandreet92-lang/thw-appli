@@ -4,13 +4,14 @@
 // résumé 4 cellules + PROFIL D'INTENSITÉ (barres verticales par zone,
 // CSS pur) + liste de BlockCard + boutons d'ajout. Adaptatif par sport.
 // ══════════════════════════════════════════════════════════════════
-import { useState } from 'react'
-import { IconPlus, IconRefresh, IconSparkles } from '@tabler/icons-react'
+import { useState, useRef } from 'react'
+import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX } from '@tabler/icons-react'
 import type { SportType } from '@/app/planning/page'
 import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editorial'
 import { toBars, totalMin, totalDistance, newSingle, newInterval, type MBlock } from './blocks'
 import { BlockCard } from './BlockCard'
 import { Segmented } from './ui'
+import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 
 export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, refs, builderTab, onBuilderTab }: {
   sport: SportType; accent: string; blocks: MBlock[]; onChange: (b: MBlock[]) => void
@@ -18,6 +19,11 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
   builderTab: 'manual' | 'ai'; onBuilderTab: (t: 'manual' | 'ai') => void
 }) {
   const [openId, setOpenId] = useState<string | null>(null)
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [parcoursFile, setParcoursFile] = useState<File | null>(null)
+  const parcoursInputRef = useRef<HTMLInputElement>(null)
   const bars = toBars(blocks)
   const tot = totalMin(blocks)
   const dist = totalDistance(blocks)
@@ -50,6 +56,70 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
     const i = blocks.findIndex(x => x.id === id); if (i < 0) return
     const copy = { ...blocks[i], id: `b_${Date.now()}_${Math.random().toString(36).slice(2, 5)}` }
     const nb = [...blocks]; nb.splice(i + 1, 0, copy); onChange(nb)
+  }
+
+  // Génération IA : on décrit la séance → l'IA renvoie les blocs d'intensité.
+  async function generate() {
+    if (!aiPrompt.trim() || aiLoading) return
+    setAiLoading(true); setAiError(null)
+    try {
+      const res = await fetch('/api/coach-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: aiPrompt }], sport }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`)
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder()
+      let raw = ''
+      if (reader) {
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          for (const line of decoder.decode(value, { stream: true }).split('\n')) {
+            if (!line.startsWith('data: ')) continue
+            const p = line.slice(6).trim()
+            if (p === '[DONE]') continue
+            try { const d = JSON.parse(p) as Record<string, unknown>; if (typeof d.text === 'string') raw += d.text }
+            catch { raw += p }
+          }
+        }
+      }
+      let jsonStr = ''
+      const arr = raw.match(/\[[\s\S]*\]/)
+      if (arr) jsonStr = arr[0]
+      else {
+        const obj = raw.match(/\{[\s\S]*\}/)
+        if (obj) { try { const o = JSON.parse(obj[0]) as Record<string, unknown>; const a = (o.blocks ?? o.blocs) as unknown; if (Array.isArray(a)) jsonStr = JSON.stringify(a) } catch { /* noop */ } }
+      }
+      if (!jsonStr) { setAiError(`Réponse IA invalide : ${raw.slice(0, 200) || '(vide)'}`); return }
+      const parsed = JSON.parse(jsonStr) as Record<string, unknown>[]
+      const newBlocks: MBlock[] = parsed.map((b, i) => {
+        const value = String(b.value ?? '')
+        const mode = (typeof b.mode === 'string' ? b.mode : 'single') as 'single' | 'interval'
+        const reps = typeof b.reps === 'number' ? b.reps : 1
+        const effortMin = typeof b.effortMin === 'number' ? b.effortMin : 0
+        const recoveryMin = typeof b.recoveryMin === 'number' ? b.recoveryMin : 0
+        const durationMin = typeof b.durationMin === 'number' ? b.durationMin : 0
+        const zone = Math.max(1, Math.min(7, typeof b.zone === 'number' ? b.zone : 3))
+        return {
+          id: `ai_${Date.now()}_${i}`, mode, type: (typeof b.type === 'string' ? b.type : 'effort') as MBlock['type'],
+          durationMin: mode === 'interval' ? Math.round(reps * (effortMin + recoveryMin) * 100) / 100 : durationMin,
+          zone, value, hrAvg: typeof b.hrAvg === 'string' ? b.hrAvg : '',
+          label: typeof b.label === 'string' ? b.label : 'Bloc',
+          reps: reps || undefined, effortMin: effortMin || undefined, recoveryMin: recoveryMin || undefined,
+          recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
+        }
+      })
+      if (newBlocks.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
+      onChange(newBlocks)
+      setAiPrompt('')
+      onBuilderTab('manual')
+    } catch (e) {
+      setAiError(`Erreur : ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   return (
@@ -110,11 +180,48 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
         <button type="button" onClick={() => add(newInterval(sport))} style={addBtn}><IconRefresh size={15} /> {isSwim ? 'Série' : 'Intervalle'}</button>
       </div>
 
+      {/* IA : champ d'écriture → génération des blocs d'intensité */}
       {builderTab === 'ai' && (
-        <div style={{ marginTop: 14, padding: 14, border: '1px dashed var(--se-rule)', borderRadius: 'var(--se-r)', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--se-dim)', fontSize: 12 }}>
-          <IconSparkles size={16} /> Génération IA disponible depuis le panneau Coach.
+        <div style={{ marginTop: 14, padding: 14, border: '1px dashed var(--se-rule)', borderRadius: 'var(--se-r)' }}>
+          <p style={{ margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: accent }}>
+            <IconSparkles size={15} /> Décris ta séance, l&apos;IA crée les blocs
+          </p>
+          <textarea
+            value={aiPrompt}
+            onChange={e => { setAiPrompt(e.target.value); if (aiError) setAiError(null) }}
+            rows={4}
+            placeholder={sport === 'bike' ? 'Ex : 3×10min à 300W récup 5min, échauffement 15min…' : 'Ex : 10×400m @3:30/km récup 1min, échauffement 15min…'}
+            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-card2)', border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', color: 'var(--se-text)', padding: 12, fontSize: 13, outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
+          />
+          <button type="button" onClick={() => void generate()} disabled={aiLoading || !aiPrompt.trim()}
+            style={{ marginTop: 8, width: '100%', padding: 12, borderRadius: 'var(--se-r)', border: 'none', background: aiLoading ? 'var(--se-rule)' : accent, color: '#fff', fontSize: 13, fontWeight: 700, cursor: aiLoading || !aiPrompt.trim() ? 'default' : 'pointer', opacity: !aiPrompt.trim() ? 0.5 : 1 }}>
+            {aiLoading ? 'Génération…' : 'Générer les blocs'}
+          </button>
+          {aiError && (
+            <p style={{ margin: '8px 0 0', padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, lineHeight: 1.4 }}>{aiError}</p>
+          )}
         </div>
       )}
+
+      {/* Parcours : importer / voir le parcours (ex. parcours lié au stage) */}
+      <div style={{ marginTop: 14 }}>
+        {parcoursFile ? (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <IconMapPin size={15} color={accent} />
+              <span style={{ flex: 1, fontSize: 12, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parcoursFile.name}</span>
+              <button type="button" onClick={() => setParcoursFile(null)} aria-label="Retirer le parcours" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
+            </div>
+            <ParcoursViewer file={parcoursFile} />
+          </div>
+        ) : (
+          <button type="button" onClick={() => parcoursInputRef.current?.click()} style={addBtn}>
+            <IconMapPin size={15} /> Intégrer un parcours
+          </button>
+        )}
+        <input ref={parcoursInputRef} type="file" accept=".gpx,.tcx,.kml" style={{ display: 'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) setParcoursFile(f); e.target.value = '' }} />
+      </div>
     </div>
   )
 }

@@ -2235,7 +2235,23 @@ function enduranceBlockLine(b: Block, sport?: string): string {
   return parts.join(' · ')
 }
 
-// Sur-bulle (desktop) : description + intervalles (run/swim/bike) ou exercices (muscu).
+// Expansion des blocs en barres (1 barre par effort/récup), pour le profil d'intensité.
+function tipIntensityBars(blocks: Block[]): { id: string; min: number; zone: number; recovery: boolean }[] {
+  const out: { id: string; min: number; zone: number; recovery: boolean }[] = []
+  blocks.forEach((b, bi) => {
+    if (b.mode === 'interval' && b.reps && b.reps > 0) {
+      for (let r = 0; r < b.reps; r++) {
+        out.push({ id: `${bi}-e-${r}`, min: b.effortMin ?? 1, zone: b.zone || 1, recovery: false })
+        if ((b.recoveryMin ?? 0) > 0) out.push({ id: `${bi}-r-${r}`, min: b.recoveryMin ?? 0, zone: b.recoveryZone ?? 1, recovery: true })
+      }
+    } else {
+      out.push({ id: `${bi}`, min: b.durationMin || 1, zone: b.zone || 1, recovery: b.type === 'recovery' || b.type === 'warmup' || b.type === 'cooldown' })
+    }
+  })
+  return out
+}
+
+// Sur-bulle (desktop) : description + profil d'intensité (run/swim/bike) ou exercices (muscu).
 function SessionTipPortal({ anchor, session }: { anchor: DOMRect; session: Session }) {
   const W = 248
   const left = (anchor.right + 8 + W > window.innerWidth) ? Math.max(8, anchor.left - W - 8) : anchor.right + 8
@@ -2253,10 +2269,10 @@ function SessionTipPortal({ anchor, session }: { anchor: DOMRect; session: Sessi
         <p style={{ margin:'0 0 10px', fontSize:11.5, color:'var(--text-mid)', lineHeight:1.45, whiteSpace:'pre-wrap' }}>{session.notes.trim()}</p>
       )}
       {blocks.length > 0 ? (
-        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          <p style={{ margin:0, fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)' }}>{isGym ? 'Exercices' : 'Intervalles'}</p>
-          {blocks.map((b, i) => {
-            if (isGym) {
+        isGym ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            <p style={{ margin:0, fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)' }}>Exercices</p>
+            {blocks.map((b, i) => {
               const ex = parseGymExercise(b)
               const meta = [ex.sets && ex.reps ? `${ex.sets}×${ex.reps}` : (ex.sets ? `${ex.sets} séries` : ''), ex.charge ? `@${ex.charge}` : ''].filter(Boolean).join(' ')
               return (
@@ -2265,19 +2281,23 @@ function SessionTipPortal({ anchor, session }: { anchor: DOMRect; session: Sessi
                   {meta && <span className="tnum" style={{ fontSize:10.5, color:'var(--text-mid)', flexShrink:0 }}>{meta}</span>}
                 </div>
               )
-            }
-            const zcol = ZONE_COLORS_7[Math.max(0, Math.min(6, (b.zone || 1) - 1))]
-            return (
-              <div key={i} style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:8 }}>
-                <span style={{ display:'flex', alignItems:'baseline', gap:5, minWidth:0 }}>
-                  <span className="tnum" style={{ fontSize:8.5, fontWeight:800, color:zcol, flexShrink:0 }}>Z{b.zone}</span>
-                  <span style={{ fontSize:11.5, color:'var(--text)', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{b.label || 'Bloc'}</span>
-                </span>
-                <span className="tnum" style={{ fontSize:10.5, color:'var(--text-mid)', flexShrink:0 }}>{enduranceBlockLine(b, session.sport)}</span>
+            })}
+          </div>
+        ) : (() => {
+          // Profil d'intensité (barres par zone), comme l'éditeur — pas de liste texte.
+          const bars = tipIntensityBars(blocks)
+          return (
+            <div>
+              <p style={{ margin:'0 0 8px', fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)' }}>Profil d&apos;intensité</p>
+              <div style={{ display:'flex', alignItems:'flex-end', gap:2, height:66, borderBottom:'1px solid var(--border)', paddingBottom:2 }}>
+                {bars.map(bar => (
+                  <div key={bar.id} title={`Z${bar.zone} · ${Math.round(bar.min)}min`}
+                    style={{ flexGrow:Math.max(1, bar.min), flexBasis:0, minWidth:3, height:`${(Math.max(1, Math.min(7, bar.zone)) / 7) * 100}%`, background:ZONE_COLORS_7[Math.max(0, Math.min(6, bar.zone - 1))], opacity:bar.recovery ? 0.5 : 1, borderRadius:'2px 2px 0 0' }} />
+                ))}
               </div>
-            )
-          })}
-        </div>
+            </div>
+          )
+        })()
       ) : (
         !session.notes?.trim() && <p style={{ margin:0, fontSize:11, color:'var(--text-dim)', fontStyle:'italic' }}>Aucun détail renseigné.</p>
       )}

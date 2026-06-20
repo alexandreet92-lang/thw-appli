@@ -5,7 +5,7 @@
 // CSS pur) + liste de BlockCard + boutons d'ajout. Adaptatif par sport.
 // ══════════════════════════════════════════════════════════════════
 import { useState, useRef } from 'react'
-import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX } from '@tabler/icons-react'
+import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical } from '@tabler/icons-react'
 import type { SportType } from '@/app/planning/page'
 import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editorial'
 import { toBars, totalMin, totalDistance, newSingle, newInterval, type MBlock } from './blocks'
@@ -25,6 +25,10 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
   const [aiError, setAiError] = useState<string | null>(null)
   const [parcoursFile, setParcoursFile] = useState<File | null>(null)
   const parcoursInputRef = useRef<HTMLInputElement>(null)
+  // Drag-to-reorder (souris + tactile via pointer events)
+  const dragId = useRef<string | null>(null)
+  const [dragging, setDragging] = useState<string | null>(null)
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const bars = toBars(blocks)
   const tot = totalMin(blocks)
   const dist = totalDistance(blocks)
@@ -58,6 +62,33 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
     const copy = { ...blocks[i], id: `b_${Date.now()}_${Math.random().toString(36).slice(2, 5)}` }
     const nb = [...blocks]; nb.splice(i + 1, 0, copy); onChange(nb)
   }
+
+  // ── Réordonnancement par glisser (poignée) ──
+  function onDragStart(id: string, e: React.PointerEvent) {
+    e.preventDefault()
+    dragId.current = id; setDragging(id)
+    try { (e.target as HTMLElement).setPointerCapture(e.pointerId) } catch { /* noop */ }
+  }
+  function onDragMove(e: React.PointerEvent) {
+    if (!dragId.current) return
+    const ids = blocks.map(b => b.id)
+    const from = ids.indexOf(dragId.current)
+    if (from < 0) return
+    let to = from
+    for (let i = 0; i < ids.length; i++) {
+      const el = rowRefs.current[ids[i]]; if (!el) continue
+      const r = el.getBoundingClientRect()
+      if (e.clientY < r.top + r.height / 2) { to = i; break }
+      to = i
+    }
+    if (to !== from) {
+      const nb = [...blocks]
+      const [m] = nb.splice(from, 1)
+      nb.splice(to, 0, m)
+      onChange(nb)
+    }
+  }
+  function onDragEnd() { dragId.current = null; setDragging(null) }
 
   // Génération IA : on décrit la séance → l'IA renvoie les blocs d'intensité.
   async function generate() {
@@ -166,12 +197,22 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
         </div>
       </div>
 
-      {/* Liste des blocs */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+      {/* Liste des blocs — glisser la poignée pour réordonner (souris + tactile) */}
+      <div onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}
+        style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
         {blocks.map(b => (
-          <BlockCard key={b.id} block={b} sport={sport} accent={accent} refs={refs}
-            expanded={openId === b.id} onToggle={() => setOpenId(id => id === b.id ? null : b.id)}
-            onChange={update} onRemove={() => remove(b.id)} onDuplicate={() => duplicate(b.id)} />
+          <div key={b.id} ref={el => { rowRefs.current[b.id] = el }}
+            style={{ display: 'flex', alignItems: 'stretch', gap: 6, opacity: dragging === b.id ? 0.55 : 1, transition: 'opacity 0.12s' }}>
+            <div onPointerDown={e => onDragStart(b.id, e)} aria-label="Déplacer le bloc" title="Glisser pour déplacer"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px', color: 'var(--se-dim)', cursor: 'grab', touchAction: 'none', flexShrink: 0 }}>
+              <IconGripVertical size={16} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <BlockCard block={b} sport={sport} accent={accent} refs={refs}
+                expanded={openId === b.id} onToggle={() => setOpenId(id => id === b.id ? null : b.id)}
+                onChange={update} onRemove={() => remove(b.id)} onDuplicate={() => duplicate(b.id)} />
+            </div>
+          </div>
         ))}
       </div>
 

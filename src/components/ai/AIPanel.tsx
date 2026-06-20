@@ -39,6 +39,20 @@ const ACTIVITIES_SELECT_WITH_STREAMS = ACTIVITIES_SELECT + ',streams'
 
 type THWModel = 'hermes' | 'athena' | 'zeus'
 
+// Libellé animé affiché pendant que le coach consulte tes données (read-tools
+// de la boucle agentique). Premier outil de la salve → message clair.
+const TOOL_STATUS_LABELS: Record<string, string> = {
+  get_activities:        '🔍 Analyse de tes activités…',
+  analyze_sport_metrics: '📊 Calcul de tes métriques…',
+  get_training_plan:     '📋 Lecture de ton plan…',
+  get_planned_sessions:  '🗓️ Lecture de tes séances prévues…',
+}
+function toolStatusLabel(tools: string[] | undefined): string {
+  const first = (tools ?? []).find(t => TOOL_STATUS_LABELS[t]) ?? (tools ?? [])[0]
+  if (!first) return ''
+  return TOOL_STATUS_LABELS[first] ?? '🔧 Consultation de tes données…'
+}
+
 interface AIMsg {
   id: string
   role: 'user' | 'assistant'
@@ -18339,6 +18353,8 @@ export default function AIPanel({
   const [copiedMsgId,      setCopiedMsgId]      = useState<string | null>(null)
   // Retour qualité 👍/👎 par message (couche d'apprentissage — phase 1)
   const [feedbackByMsg,    setFeedbackByMsg]    = useState<Record<string, 1 | -1>>({})
+  // Statut « le coach consulte tes données » par message en cours de streaming
+  const [toolStatusByMsg,  setToolStatusByMsg]  = useState<Record<string, string>>({})
 
   // Enregistre (ou bascule) le retour de l'athlète sur une réponse du coach.
   // Optimiste : on colore tout de suite, on persiste en best-effort.
@@ -19659,11 +19675,19 @@ export default function AIPanel({
               // fallback : si non JSON-encodé (ancienne version), utilise data brut
               textAccumulated += data
             }
+            // Du texte arrive → le coach a fini de consulter, on retire le statut
+            setToolStatusByMsg(prev => { if (!prev[aiMsgId]) return prev; const n = { ...prev }; delete n[aiMsgId]; return n })
             setConvs(prev => prev.map(c =>
               c.id === cid
                 ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: textAccumulated } : m), updatedAt: Date.now() }
                 : c
             ))
+          } else if (eventType === 'tool_status') {
+            try {
+              const { tools } = JSON.parse(data) as { tools?: string[] }
+              const label = toolStatusLabel(tools)
+              if (label) setToolStatusByMsg(prev => ({ ...prev, [aiMsgId]: label }))
+            } catch { /* ignore */ }
           } else if (eventType === 'tool_use') {
             try {
               const tool = JSON.parse(data) as PendingToolCall
@@ -19719,6 +19743,8 @@ export default function AIPanel({
 
       abortRef.current = null
       streamDone = true  // stream complété normalement
+      // Sécurité : retire un éventuel statut d'outil resté affiché
+      setToolStatusByMsg(prev => { if (!prev[aiMsgId]) return prev; const n = { ...prev }; delete n[aiMsgId]; return n })
 
       // Mode vocal : la réponse contient deux parties (###ECRIT### / ###ORAL###).
       // L'écrit (structuré) reste dans le chat, l'oral (conversationnel) est lu à voix haute.
@@ -20778,6 +20804,20 @@ export default function AIPanel({
                         text={msg.content}
                         isStreaming={loading && idx === active.msgs.length - 1}
                       />
+                    )}
+                    {/* Statut animé : le coach consulte tes données (boucle agentique) */}
+                    {msg.role === 'assistant' && toolStatusByMsg[msg.id] && (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8, marginLeft: 34, marginTop: 2,
+                        fontSize: 13, color: 'var(--ai-mid)', animation: 'ai_msg_in 0.18s ease both',
+                      }}>
+                        <span style={{ animation: 'ai_dot_pulse 1.3s ease-in-out infinite' }}>{toolStatusByMsg[msg.id]}</span>
+                        <span style={{ display: 'inline-flex', gap: 3 }}>
+                          {(['aip-dot-1', 'aip-dot-2', 'aip-dot-3'] as const).map(cls => (
+                            <span key={cls} className={cls} style={{ display: 'inline-block', width: 4, height: 4, borderRadius: '50%', background: 'var(--ai-dim)' }} />
+                          ))}
+                        </span>
+                      </div>
                     )}
                     {/* Questions de clarification IA — carte interactive */}
                     {msg.role === 'assistant' && msg.clarifyingQuestions && (

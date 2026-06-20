@@ -585,6 +585,11 @@ Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS
 
           // Uniquement des lectures → on résout puis on reboucle
           convMessages = [...convMessages, { role: 'assistant', content: finalMsg.content }]
+          // Statut « le coach consulte tes données » émis au front (chat central
+          // uniquement, pour ne pas perturber les parseurs des flows guidés).
+          if ((chatBody as { agentId?: string }).agentId === 'central') {
+            send('tool_status', JSON.stringify({ tools: reads.map(r => r.name) }))
+          }
           const results: Anthropic.ToolResultBlockParam[] = []
           for (const r of reads) {
             console.log('[coach-stream] read-tool:', r.name)

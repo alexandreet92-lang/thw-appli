@@ -3532,7 +3532,8 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   const [slashFilter, setSlashFilter] = useState('')
   // Parcours AI flow
   type AIFlowStep = 'ask' | 'parcours' | 'free'
-  const [aiFlowStep, setAiFlowStep] = useState<AIFlowStep>('ask')
+  // Défaut IA = champ d'écriture libre dans TOUS les cas (le flow parcours est opt-in).
+  const [aiFlowStep, setAiFlowStep] = useState<AIFlowStep>('free')
   interface BlockIntervalsCfg {
     blocks: { type: 'effort' | 'recovery'; sec: number; watts: number }[]
     reps: number
@@ -3639,12 +3640,14 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
         setSpecificBlocks([])
         initClimbConfigs()
       }
-      setAiFlowStep('parcours')
+      // On NE force PAS le flow parcours : l'IA reste sur le champ d'écriture
+      // (l'utilisateur peut basculer via « Intégrer le parcours »).
+      setAiFlowStep('free')
     } else {
       setTotalDuration('')
       setSpecificBlocks([])
       setClimbConfigs([])
-      setAiFlowStep('ask')
+      setAiFlowStep('free')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parcoursData?.name])

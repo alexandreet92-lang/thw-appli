@@ -81,8 +81,8 @@ export function TodayTab(p: Props) {
             {p.todaySessions.map(s => (
               <div key={s.id} style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0, transform: 'translateY(-2px)' }} />
-                <span style={{ fontFamily: FB, fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{s.title}</span>
-                <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>
+                <span title={s.title} style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: FB, fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{s.title}</span>
+                <span className="tnum" style={{ flexShrink: 0, fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>
                   {s.duration_min} min{s.intensity ? ` · ${s.intensity}` : ''}{s.tss != null ? ` · TSS ${s.tss}` : ''}
                 </span>
               </div>

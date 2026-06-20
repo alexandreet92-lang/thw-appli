@@ -1,14 +1,14 @@
 'use client'
-// Frise des jours : aujourd'hui + jours précédents (aujourd'hui à droite, sélectionné
-// par défaut). Chaque jour : abréviation + anneau dont les 3 segments colorés montrent
-// la répartition macro consommée (protéines = rouge, glucides = vert, lipides = jaune),
-// la longueur totale = part du target kcal atteinte. Défilement : au doigt (mobile) et
-// par flèches (ordinateur). SVG brut, tokens.
-import { useEffect, useRef, useState } from 'react'
+// Frise des jours, PAGINÉE par 7 : une page = 7 jours, aujourd'hui à droite de la
+// page courante (donc TOUJOURS visible par défaut). Défilement fixe (snap) par
+// pages de 7 jours : flèches (ordinateur) + glissement au doigt (mobile). Chaque
+// jour : anneau à 3 segments colorés (protéines = rouge, glucides = vert, lipides
+// = jaune), longueur = part du target kcal. SVG brut, tokens.
+import { useRef, useState } from 'react'
 import { useDaysTotals } from '@/hooks/useDaysTotals'
 
 const FB = 'var(--font-body)'
-const N_DAYS = 14
+const PAGE = 7
 
 // Couleurs des segments (mapping demandé) : prot=rouge, gluc=vert, lip=jaune.
 const SEG = [
@@ -28,51 +28,46 @@ export function DayStrip({ today, selected, targetKcal, onSelect }: {
   targetKcal: number
   onSelect: (date: string) => void
 }) {
-  const days = Array.from({ length: N_DAYS }, (_, i) => addDays(today, i - (N_DAYS - 1)))
+  // page 0 = semaine courante (aujourd'hui à droite) ; page négative = plus ancien.
+  const [page, setPage] = useState(0)
+  const touchX = useRef<number | null>(null)
+
+  // Jour le plus à droite de la page : aujourd'hui décalé de page×7 (page ≤ 0).
+  const anchor = addDays(today, page * PAGE)
+  const days = Array.from({ length: PAGE }, (_, i) => addDays(anchor, i - (PAGE - 1)))
   const totals = useDaysTotals(days)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [isDesktop, setIsDesktop] = useState(false)
 
-  useEffect(() => {
-    const check = () => setIsDesktop(window.innerWidth >= 768)
-    check(); window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
+  const prev = () => setPage(p => p - 1)            // 7 jours plus tôt
+  const next = () => setPage(p => Math.min(0, p + 1)) // 7 jours plus tard (max = aujourd'hui)
 
-  // Démarre la frise calée tout à droite (aujourd'hui visible).
-  useEffect(() => {
-    const el = scrollRef.current
-    if (el) el.scrollLeft = el.scrollWidth
-  }, [])
-
-  function scrollBy(dir: -1 | 1) {
-    scrollRef.current?.scrollBy({ left: dir * 200, behavior: 'smooth' })
+  function onTouchStart(e: React.TouchEvent) { touchX.current = e.touches[0].clientX }
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchX.current === null) return
+    const dx = e.changedTouches[0].clientX - touchX.current
+    touchX.current = null
+    if (dx > 40) prev()        // glissement vers la droite → jours plus anciens
+    else if (dx < -40) next()  // glissement vers la gauche → jours plus récents
   }
 
-  const arrowBtn: React.CSSProperties = {
+  const arrowBtn = (disabled: boolean): React.CSSProperties => ({
     flexShrink: 0, width: 26, height: 26, borderRadius: '50%', border: '1px solid var(--border)',
-    background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-  }
+    background: 'var(--bg-card2)', color: 'var(--text-mid)', cursor: disabled ? 'default' : 'pointer',
+    opacity: disabled ? 0.35 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+  })
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
-      {isDesktop && (
-        <button type="button" aria-label="Jours précédents" onClick={() => scrollBy(-1)} style={arrowBtn}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
-        </button>
-      )}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}
+      onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <button type="button" aria-label="7 jours précédents" onClick={prev} style={arrowBtn(false)}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+      </button>
 
-      <div
-        ref={scrollRef}
-        className="daystrip-scroll"
-        style={{ display: 'flex', gap: 'var(--space-1)', overflowX: 'auto', flex: 1, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}
-      >
-        <style>{`.daystrip-scroll::-webkit-scrollbar{display:none}`}</style>
+      <div style={{ display: 'flex', gap: 'var(--space-1)', flex: 1, minWidth: 0 }}>
         {days.map(d => {
           const t = totals[d] ?? { kcal: 0, prot: 0, gluc: 0, lip: 0 }
           const pct = targetKcal > 0 ? Math.min(t.kcal / targetKcal, 1) : 0
           const on = d === selected
+          const isToday = d === today
           const dt = new Date(d + 'T00:00:00')
           const abbr = dt.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')
           const dayNum = d.slice(8, 10)
@@ -80,18 +75,16 @@ export function DayStrip({ today, selected, targetKcal, onSelect }: {
           const filled = pct * c
           const macroKcal = SEG.map(s => t[s.key] * s.kcalPerG)
           const macroTotal = macroKcal.reduce((a, b) => a + b, 0)
-          // Segments colorés : longueur = part macro × longueur remplie.
           let acc = 0
           const segs = SEG.map((s, i) => {
             const len = macroTotal > 0 ? filled * (macroKcal[i] / macroTotal) : 0
-            const off = acc
-            acc += len
+            const off = acc; acc += len
             return { color: s.color, len, off }
           })
           return (
             <button key={d} type="button" onClick={() => onSelect(d)}
-              style={{ flex: '0 0 auto', width: 46, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 2px', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-md)', background: on ? 'var(--primary-dim)' : 'transparent', transition: 'background 0.15s', boxSizing: 'border-box' }}>
-              <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, textTransform: 'capitalize', color: on ? 'var(--primary)' : 'var(--text-dim)' }}>{abbr}</span>
+              style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 2px', border: 'none', cursor: 'pointer', borderRadius: 'var(--r-md)', background: on ? 'var(--primary-dim)' : 'transparent', transition: 'background 0.15s', boxSizing: 'border-box' }}>
+              <span style={{ fontFamily: FB, fontSize: 10, fontWeight: isToday ? 700 : 600, textTransform: 'capitalize', color: on ? 'var(--primary)' : isToday ? 'var(--text)' : 'var(--text-dim)' }}>{abbr}</span>
               <div style={{ position: 'relative', width: size, height: size }}>
                 <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', display: 'block' }}>
                   <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--bg-card2)" strokeWidth={sw} />
@@ -101,18 +94,16 @@ export function DayStrip({ today, selected, targetKcal, onSelect }: {
                       style={{ transition: 'stroke-dasharray 0.5s ease, stroke-dashoffset 0.5s ease' }} />
                   ))}
                 </svg>
-                <span className="tnum" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FB, fontSize: 13, fontWeight: 600, color: on ? 'var(--primary)' : 'var(--text)' }}>{dayNum}</span>
+                <span className="tnum" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FB, fontSize: 13, fontWeight: isToday ? 700 : 600, color: on ? 'var(--primary)' : 'var(--text)' }}>{dayNum}</span>
               </div>
             </button>
           )
         })}
       </div>
 
-      {isDesktop && (
-        <button type="button" aria-label="Jours suivants" onClick={() => scrollBy(1)} style={arrowBtn}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
-        </button>
-      )}
+      <button type="button" aria-label="7 jours suivants" onClick={next} disabled={page >= 0} style={arrowBtn(page >= 0)}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+      </button>
     </div>
   )
 }

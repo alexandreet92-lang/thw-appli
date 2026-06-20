@@ -81,7 +81,7 @@ export function FuelingHero(p: Props) {
 
       <div style={{ marginTop: 'var(--space-3)' }}>
         {sessTitles ? (
-          <a href="/planning" style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>Calé sur {sessTitles} →</a>
+          <a href="/planning" title={sessTitles} style={{ display: 'block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>Calé sur {sessTitles} →</a>
         ) : (
           <span style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>Jour de repos — aucune séance calée</span>
         )}

@@ -849,7 +849,9 @@ function NutritionTabs({ tab, onChange }: { tab: NutritionTab; onChange: (t: Nut
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════════
 export default function NutritionPage() {
-  const realToday = new Date().toISOString().split('T')[0]
+  // Date du jour en heure LOCALE (toISOString = UTC → décale d'un jour le soir).
+  const _now = new Date()
+  const realToday = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`
   // « today » = jour SÉLECTIONNÉ dans la frise (par défaut aujourd'hui) ; tout le wiring
   // du jour (repas, hydratation, séances, target) suit ce jour automatiquement.
   const [today, setSelDay] = useState(realToday)
@@ -1113,7 +1115,7 @@ export default function NutritionPage() {
       )}
 
       {/* ── HEADER ─────────────────────────────────────────────── */}
-      <div className="px-4 md:px-7" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 24, boxSizing: 'border-box' }}>
+      <div className="px-4 md:px-7" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 24, width: '100%', maxWidth: 1100, margin: '0 auto', boxSizing: 'border-box' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, margin: 0 }}>Nutrition</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Bouton scanner — visible mobile uniquement (md:hidden via Tailwind) */}
@@ -1154,7 +1156,7 @@ export default function NutritionPage() {
           Mobile : onglets en haut (inchangés). */}
       <div style={{ display: isDesktop ? 'flex' : 'block', alignItems: 'flex-start', width: '100%', maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box' }}>
         {isDesktop && <NutritionRail tab={tab} onChange={changeTab} />}
-        <div className="px-3 md:px-7 pt-[14px] md:pt-7" style={{ paddingBottom: 0, flex: 1, minWidth: 0, width: '100%', maxWidth: 1100, margin: '0 auto', boxSizing: 'border-box' }}>
+        <div className="px-4 md:px-7 pt-[14px] md:pt-7" style={{ paddingBottom: 0, flex: 1, minWidth: 0, width: '100%', maxWidth: 1100, margin: '0 auto', boxSizing: 'border-box' }}>
 
         {!isDesktop && <NutritionTabs tab={tab} onChange={changeTab} />}
 

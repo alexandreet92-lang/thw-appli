@@ -5153,7 +5153,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
       transition: 'background .32s ease', backdropFilter: open ? 'blur(3px)' : 'none' }}
       onClick={requestClose}>
-      <div style={{ background: T.surface, borderRadius: '22px 22px 0 0', width: '100%', maxWidth: 1100,
+      <div style={{ background: T.surface, borderRadius: '22px 22px 0 0', width: '100%', maxWidth: '100%',
         maxHeight: '93vh', overflowY: 'auto', boxShadow: '0 -10px 50px rgba(0,0,0,0.30)', padding: '12px 28px 28px',
         transform: open ? 'translateY(0)' : 'translateY(100%)',
         transition: 'transform .34s cubic-bezier(.2,.8,.2,1)' }}

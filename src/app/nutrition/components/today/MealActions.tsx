@@ -24,8 +24,8 @@ export function MealActions({ onPhoto, onSearch, onManual }: {
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Photo IA</span>
       </button>
       <button style={btn} onClick={onSearch}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Recherche</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}><path d="M12 2l1.7 5.8L19.5 9.5l-5.8 1.7L12 17l-1.7-5.8L4.5 9.5l5.8-1.7z"/></svg>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>IA</span>
       </button>
       <button style={btn} onClick={onManual}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M12 5v14M5 12h14"/></svg>

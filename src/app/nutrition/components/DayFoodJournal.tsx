@@ -12,22 +12,16 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react'
-import dynamic from 'next/dynamic'
 import {
   SLOT_KEYS, SLOT_LABELS,
   type MealSlotKey, type DailyMealEntry, type MealIngredient,
 } from '@/hooks/useDailyMeals'
-import type { FoodItem } from '@/lib/food-search'
 import { PhotoMealEditor } from './today/PhotoMealEditor'
 import { FoodEditSheet, type EditableFood } from './today/FoodEditSheet'
 import { MealCard } from './today/MealCard'
 import { MealEmpty } from './today/MealEmpty'
+import { AiMealSheet } from './today/AiMealSheet'
 import { foodsOf, uploadPhoto } from './today/mealJournalUtils'
-
-const FoodSearchSheet = dynamic(
-  () => import('@/components/nutrition/FoodSearchSheet').then(m => ({ default: m.FoodSearchSheet })),
-  { ssr: false },
-)
 
 interface Props {
   entries:     DailyMealEntry[]
@@ -40,7 +34,7 @@ interface Props {
 
 export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Props) {
   const [editing, setEditing]   = useState<{ slot: MealSlotKey; index: number | null } | null>(null)
-  const [searchFor, setSearchFor] = useState<MealSlotKey | null>(null)
+  const [aiFor, setAiFor] = useState<MealSlotKey | null>(null)
   const [photoFor, setPhotoFor] = useState<{ slot: MealSlotKey; file: File } | null>(null)
   const [meta, setMeta] = useState<Partial<Record<MealSlotKey, { score: number | null; advice: string | null }>>>({})
   const [isMobile, setIsMobile] = useState(false)
@@ -83,18 +77,6 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
     void commit(slot, next)
   }
 
-  async function addSearchFood(slot: MealSlotKey, food: FoodItem, grams: number) {
-    const r = grams / 100, n = food.nutriments
-    const item: EditableFood = {
-      name: food.product_name, qty: String(grams), unit: 'g',
-      kcal: Math.round(n['energy-kcal_100g'] * r),
-      prot: +(n.proteins_100g * r).toFixed(1),
-      gluc: +(n.carbohydrates_100g * r).toFixed(1),
-      lip:  +(n.fat_100g * r).toFixed(1),
-    }
-    await commit(slot, [...foodsOf(entryFor(slot)), item])
-  }
-
   function onPhotoInput(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; e.target.value = ''
     if (f && pendingSlot.current) setPhotoFor({ slot: pendingSlot.current, file: f })
@@ -132,7 +114,7 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
             onTapFood={i => setEditing({ slot, index: i })}
             onDeleteFood={i => deleteFood(slot, i)}
             onPhoto={() => triggerPhoto(slot)}
-            onAddSearch={() => setSearchFor(slot)}
+            onAddSearch={() => setAiFor(slot)}
             onAddManual={() => setEditing({ slot, index: null })}
             onClear={() => { if (entry?.id) void deleteEntry(entry.id) }}
           />
@@ -141,7 +123,7 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
             key={slot}
             slotLabel={SLOT_LABELS[slot]}
             onPhoto={() => triggerPhoto(slot)}
-            onSearch={() => setSearchFor(slot)}
+            onSearch={() => setAiFor(slot)}
             onAdd={() => setEditing({ slot, index: null })}
           />
         )
@@ -156,10 +138,11 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
         />
       )}
 
-      {searchFor && (
-        <FoodSearchSheet
-          onClose={() => setSearchFor(null)}
-          onSelect={(food, grams) => { const s = searchFor; setSearchFor(null); void addSearchFood(s, food, grams) }}
+      {aiFor && (
+        <AiMealSheet
+          slotLabel={SLOT_LABELS[aiFor]}
+          onClose={() => setAiFor(null)}
+          onConfirm={food => { const s = aiFor; setAiFor(null); void commit(s, [...foodsOf(entryFor(s)), food]) }}
         />
       )}
 

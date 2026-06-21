@@ -97,23 +97,28 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
     )
   }
 
-  // ── Mobile : onglets pleine largeur en haut ──
+  // ── Mobile : onglets « pilule » (segmented control, identique à Nutrition) ──
   return (
     <div style={{ width: '100%', padding: '20px 16px 80px', overflowX: 'hidden' }}>
       {header}
-      <div style={{ display: 'flex', width: '100%', borderBottom: '1px solid var(--border)', marginBottom: 'var(--space-4)' }}>
-        {tabs.map(t => {
-          const on = t.id === active
-          return (
-            <button key={t.id} onClick={() => onChange(t.id)}
-              style={{ flex: 1, minWidth: 0, position: 'relative', textAlign: 'center', padding: '12px 4px', background: 'transparent',
-                border: 'none', cursor: 'pointer', fontFamily: FB, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                fontSize: tabs.length >= 4 ? 12 : 14, fontWeight: on ? 600 : 500, color: on ? 'var(--text)' : 'var(--text-dim)' }}>
-              {t.short ?? t.label}
-              {on && <span style={{ position: 'absolute', bottom: -1, left: 10, right: 10, height: 2, background: 'var(--text)' }} />}
-            </button>
-          )
-        })}
+      <div className="tpl-tabscroll" style={{ marginBottom: 'var(--space-5)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
+        <style>{`.tpl-tabscroll{scrollbar-width:none}.tpl-tabscroll::-webkit-scrollbar{display:none}`}</style>
+        <div role="tablist" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
+          {tabs.map(t => {
+            const on = t.id === active
+            return (
+              <button key={t.id} role="tab" aria-selected={on} onClick={() => onChange(t.id)}
+                style={{ border: 'none', cursor: 'pointer', borderRadius: 999, padding: '7px 16px', fontFamily: FB, whiteSpace: 'nowrap',
+                  fontSize: 13, fontWeight: on ? 700 : 600,
+                  background: on ? 'var(--bg-elev)' : 'transparent',
+                  color: on ? 'var(--text)' : 'var(--text-mid)',
+                  boxShadow: on ? 'var(--shadow-card)' : 'none',
+                  transition: 'background 0.18s, color 0.18s' }}>
+                {t.short ?? t.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
       {content}
     </div>

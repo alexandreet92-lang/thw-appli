@@ -7,35 +7,63 @@ import { durationDays, isRecidive, zonesRanking, sportsRanking } from '../lib'
 
 const FB = 'var(--font-body)'
 const lbl: React.CSSProperties = { fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 var(--space-3)' }
-const BANDS: { sev: Severity; y: number; label: string }[] = [
-  { sev: 'blessure', y: 24, label: 'Blessure' }, { sev: 'douleur', y: 56, label: 'Douleur' }, { sev: 'gene', y: 88, label: 'Gêne' },
+const LANES: { sev: Severity; label: string }[] = [
+  { sev: 'blessure', label: 'Blessure' }, { sev: 'douleur', label: 'Douleur' }, { sev: 'gene', label: 'Gêne' },
 ]
 const ts = (d: string) => new Date(d).getTime()
+const moYr = (t: number) => { const d = new Date(t); return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(2)}` }
 
+// Frise des épisodes — lanes de sévérité, pastilles auréolées (taille = durée),
+// axe temporel daté. SVG brut (aucune lib), couleurs = tokens de sévérité.
 function Frise({ injuries, onOpen }: { injuries: Injury[]; onOpen: (i: Injury) => void }) {
   if (!injuries.length) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>Aucun épisode enregistré.</p>
-  const W = 320, H = 112, padL = 56, padR = 8
+  const W = 340, padT = 14, padB = 30, laneH = 48, laneGap = 10, plotL = 92, padR = 16
+  const H = padT + LANES.length * laneH + (LANES.length - 1) * laneGap + padB
   const times = injuries.map(i => ts(i.onset_date))
-  const min = Math.min(...times), max = Math.max(...times, min + 1)
-  const x = (t: number) => padL + ((t - min) / (max - min)) * (W - padL - padR)
+  const min = Math.min(...times), max = Math.max(...times)
+  const single = max === min
+  const span = single ? 1 : max - min
+  const x = (t: number) => single ? plotL + (W - plotL - padR) / 2 : plotL + ((t - min) / span) * (W - plotL - padR)
+  const laneY = (i: number) => padT + i * (laneH + laneGap)
+  const laneMid = (i: number) => laneY(i) + laneH / 2
+  const axisY = H - padB + 4
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-      {BANDS.map(b => (
-        <g key={b.sev}>
-          <line x1={padL} y1={b.y} x2={W - padR} y2={b.y} stroke="var(--border)" strokeWidth={1} />
-          <text x={4} y={b.y + 3} fontFamily={FB} fontSize={9} fill="var(--text-dim)">{b.label}</text>
-        </g>
-      ))}
-      {injuries.map(i => {
-        const band = BANDS.find(b => b.sev === i.severity)!
-        const r = Math.max(3, Math.min(9, durationDays(i) / 14 + 3))
+      {LANES.map((b, idx) => {
+        const c = SEV[b.sev].varc
+        const my = laneMid(idx)
         return (
-          <circle key={i.id} cx={x(ts(i.onset_date))} cy={band.y} r={r} fill={SEV[i.severity].varc} opacity={0.85}
-            style={{ cursor: 'pointer' }} onClick={() => onOpen(i)}>
-            <title>{`${i.zone}${i.structure ? ' · ' + i.structure : ''} · ${SEV[i.severity].label} · ${durationDays(i)} j${i.activity ? ' · ' + i.activity : ''} · ${i.onset_date}`}</title>
-          </circle>
+          <g key={b.sev}>
+            <rect x={0} y={laneY(idx)} width={W} height={laneH} rx={14} fill="var(--bg-card2)" />
+            {/* chip libellé coloré */}
+            <rect x={10} y={my - 12} width={70} height={24} rx={12} fill={c} opacity={0.15} />
+            <circle cx={24} cy={my} r={3.5} fill={c} />
+            <text x={34} y={my + 3.5} fontFamily={FB} fontSize={11} fontWeight={600} fill={c}>{b.label}</text>
+            {/* guide temporel */}
+            <line x1={plotL} y1={my} x2={W - padR} y2={my} stroke="var(--border)" strokeWidth={1} strokeDasharray="2 5" opacity={0.7} />
+          </g>
         )
       })}
+      {injuries.map(i => {
+        const idx = LANES.findIndex(b => b.sev === i.severity)
+        if (idx < 0) return null
+        const c = SEV[i.severity].varc
+        const r = Math.max(5, Math.min(13, durationDays(i) / 12 + 5))
+        const cx = x(ts(i.onset_date)), cy = laneMid(idx)
+        return (
+          <g key={i.id} style={{ cursor: 'pointer' }} onClick={() => onOpen(i)}>
+            <circle cx={cx} cy={cy} r={r + 4} fill={c} opacity={0.16} />
+            <circle cx={cx} cy={cy} r={r} fill={c} stroke="var(--bg-card)" strokeWidth={1.5}>
+              <title>{`${i.zone}${i.structure ? ' · ' + i.structure : ''} · ${SEV[i.severity].label} · ${durationDays(i)} j${i.activity ? ' · ' + i.activity : ''} · ${i.onset_date}`}</title>
+            </circle>
+          </g>
+        )
+      })}
+      {/* axe temporel */}
+      <line x1={plotL} y1={axisY} x2={W - padR} y2={axisY} stroke="var(--border)" strokeWidth={1} />
+      <text x={plotL} y={axisY + 14} fontFamily={FB} fontSize={9} fill="var(--text-dim)" textAnchor="start">{moYr(min)}</text>
+      {!single && <text x={W - padR} y={axisY + 14} fontFamily={FB} fontSize={9} fill="var(--text-dim)" textAnchor="end">{moYr(max)}</text>}
     </svg>
   )
 }
@@ -62,7 +90,12 @@ export function HistoryTab({ injuries, onOpen }: { injuries: Injury[]; onOpen: (
   const resolved = injuries.filter(i => i.status === 'resolved')
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
-      <div><p style={lbl}>Frise des épisodes</p><Frise injuries={injuries} onOpen={onOpen} /></div>
+      <div>
+        <p style={lbl}>Frise des épisodes</p>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 'var(--space-4)' }}>
+          <Frise injuries={injuries} onOpen={onOpen} />
+        </div>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-6)' }}>
         <Ranking title="Zones les plus touchées" data={zonesRanking(injuries)} />
         <Ranking title="Sports les plus à risque" data={sportsRanking(injuries)} />

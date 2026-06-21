@@ -123,6 +123,18 @@ export function usePlanning() {
 
   useEffect(() => { load() }, [load])
 
+  // Plan vivant : après un changement de séance, recale le plan nutrition des
+  // jours impactés (best-effort, ne bloque jamais le planning).
+  function syncNutrition(dayIndexes: number[]) {
+    const uniq = [...new Set(dayIndexes)].filter(d => d >= 0 && d <= 6)
+    if (uniq.length === 0) return
+    void fetch('/api/nutrition/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ week_start: weekStart, day_indexes: uniq }),
+    }).catch(() => { /* fail-open */ })
+  }
+
   // ── Sessions ──────────────────────────────────
   async function addSession(dayIndex: number, session: Omit<PlannedSession, 'id'>) {
     const { data: { user } } = await supabase.auth.getUser()
@@ -137,26 +149,35 @@ export function usePlanning() {
     }).select().single()
     if (!error && data) {
       setSessions(p => [...p, { ...session, id: data.id }])
+      syncNutrition([dayIndex])
     }
   }
 
   async function updateSession(id: string, updates: Partial<PlannedSession>) {
+    const prev = sessions.find(s => s.id === id)
     await supabase.from('planned_sessions').update({
       ...updates, updated_at: new Date().toISOString()
     }).eq('id', id)
     setSessions(p => p.map(s => s.id===id ? { ...s, ...updates } : s))
+    // Recalc seulement si la charge du jour peut avoir bougé (tss/durée/intensité/sport)
+    const loadTouched = ['tss', 'duration_min', 'intensity', 'sport', 'day_index'].some(k => k in updates)
+    if (loadTouched) syncNutrition([updates.day_index ?? prev?.day_index ?? -1])
   }
 
   async function deleteSession(id: string) {
+    const prev = sessions.find(s => s.id === id)
     await supabase.from('planned_sessions').delete().eq('id', id)
     setSessions(p => p.filter(s => s.id !== id))
+    if (prev) syncNutrition([prev.day_index])
   }
 
   async function moveSession(sessionId: string, toDay: number) {
+    const prev = sessions.find(s => s.id === sessionId)
     await supabase.from('planned_sessions').update({
       day_index: toDay, updated_at: new Date().toISOString()
     }).eq('id', sessionId)
     setSessions(p => p.map(s => s.id===sessionId ? { ...s, day_index: toDay } : s))
+    syncNutrition([toDay, prev?.day_index ?? -1])   // jour de départ ET d'arrivée
   }
 
   // ── Tasks ─────────────────────────────────────

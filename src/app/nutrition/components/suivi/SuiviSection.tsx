@@ -10,8 +10,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { DailyLog, NutritionPlanData } from '@/hooks/useNutrition'
-import { buildPeriod, periodSummary, adherenceByType } from './suiviData'
-import { AdherenceByTypeChart, ProteinGkgChart, HydrationChart, LoggingGrid } from './SuiviCharts'
+import { useDaysTotals } from '@/hooks/useDaysTotals'
+import { buildPeriod, periodSummary, adherenceByType, periodDates } from './suiviData'
+import { KcalTrendChart, AdherenceByTypeChart, ProteinGkgChart, HydrationChart, LoggingGrid } from './SuiviCharts'
 
 interface Props {
   dailyLogs: DailyLog[]
@@ -43,15 +44,15 @@ function Mod({ title, subtitle, children }: { title: string; subtitle: string; c
   )
 }
 
-function Unavailable({ text }: { text: string }) {
-  return <div style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>{text}</div>
-}
-
 export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
   const [days, setDays] = useState<number>(7)
   const [hydro, setHydro] = useState<Record<string, number>>({})
 
-  const rows = useMemo(() => buildPeriod(dailyLogs, plan, days, today), [dailyLogs, plan, days, today])
+  // Totaux réels du journal alimentaire (nutrition_meal_logs) agrégés par jour.
+  const dates = useMemo(() => periodDates(days, today), [days, today])
+  const realTotals = useDaysTotals(dates)
+
+  const rows = useMemo(() => buildPeriod(dailyLogs, plan, days, today, realTotals), [dailyLogs, plan, days, today, realTotals])
   const summary = useMemo(() => periodSummary(rows, weightKg), [rows, weightKg])
   const byType = useMemo(() => adherenceByType(rows), [rows])
 
@@ -74,44 +75,53 @@ export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
 
   const hydroSeries = rows.map(r => ({ date: r.date, liters: hydro[r.date] ?? 0 }))
 
+  const hasPlan = !!plan
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', padding: 'var(--space-2) 0 var(--space-6)' }}>
-      {/* Sélecteur de période (le nom de l'onglet est porté par la nav, pas de titre redondant) */}
-      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+      {/* Intro courte : à quoi sert cet onglet (le user trouvait la page obscure). */}
+      <div>
+        <h2 style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Ton suivi sur la période</h2>
+        <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 'var(--space-1) 0 0', lineHeight: 1.5 }}>
+          Ce que tu as réellement loggé dans l&apos;onglet Aujourd&apos;hui, agrégé jour par jour : quantité, régularité et — si tu as un plan — l&apos;écart à ta cible.
+        </p>
+      </div>
+
+      {/* Sélecteur de période */}
+      <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
         {PERIODS.map(p => (
           <button key={p} onClick={() => setDays(p)} style={{
-            border: 'none', background: 'transparent', cursor: 'pointer', padding: '0 var(--space-1)',
+            border: 'none', background: days === p ? 'var(--bg-card2)' : 'transparent', cursor: 'pointer',
+            borderRadius: 999, padding: '5px 14px',
             fontFamily: FB, fontSize: 13, fontWeight: days === p ? 600 : 500,
             color: days === p ? 'var(--text)' : 'var(--text-dim)',
-          }}>{p} j</button>
+          }}>{p} jours</button>
         ))}
       </div>
 
-      {/* Bilan — 4 stats nues */}
-      <div style={{ display: 'flex', gap: 'var(--space-5)', flexWrap: 'wrap' }}>
+      {/* Bilan — 4 stats nues, grille responsive (2 col mobile, 4 desktop) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 'var(--space-5) var(--space-4)' }} className="suivi-stats">
+        <style>{`@media(min-width:560px){.suivi-stats{grid-template-columns:repeat(4,minmax(0,1fr))!important}}`}</style>
         <StatNu label="Jours loggés" value={`${summary.daysLogged}/${summary.totalDays}`} note={`${summary.loggedPct}%`} />
         <StatNu label="Adhérence" value={summary.adherencePct == null ? '—' : `${summary.adherencePct}%`} note={summary.adherencePct == null ? 'pas de plan' : 'jours dans la cible'} />
-        <StatNu label="Kcal moy." value={summary.avgKcal == null ? '—' : `${summary.avgKcal}`} note={summary.avgTargetKcal ? `cible ${summary.avgTargetKcal}` : 'consommé'} />
+        <StatNu label="Kcal moy." value={summary.avgKcal == null ? '—' : `${summary.avgKcal}`} note={summary.avgTargetKcal ? `cible ${summary.avgTargetKcal}` : 'par jour loggé'} />
         <StatNu label="Protéines" value={summary.avgGkg == null ? '—' : `${summary.avgGkg}`} note={summary.avgGkg == null ? 'poids manquant' : 'g/kg moy.'} />
       </div>
 
-      {/* Hero — glucides vs charge (charge non accessible : état honnête, pas de boîte) */}
-      <div>
-        <h2 style={{ fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: 0 }}>Glucides consommés vs charge d&apos;entraînement</h2>
-        <div style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 'var(--space-1) 0 var(--space-2)' }}>Ton fueling suit-il le travail ?</div>
-        <Unavailable text="La charge d'entraînement (TSS) n'est pas encore exposée à la nutrition. Ce module s'activera quand la charge par jour sera disponible — rien n'est estimé en attendant." />
-      </div>
+      {/* Hero — calories par jour (consommé vs cible) : le module le plus clair */}
+      <Mod title="Calories par jour" subtitle={hasPlan ? 'Barre = consommé · tiret = cible du jour' : 'Barre = consommé (définis un plan pour voir tes cibles)'}>
+        <KcalTrendChart rows={rows} />
+      </Mod>
 
-      {/* Modules secondaires */}
+      {/* Modules secondaires — uniquement ce qui a une vraie source de données */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-4)' }}>
-        <Mod title="Adhérence par type de jour" subtitle="Consommé (plein) vs cible (clair)">
-          <AdherenceByTypeChart data={byType} />
-        </Mod>
+        {hasPlan && (
+          <Mod title="Adhérence par type de jour" subtitle="Consommé (plein) vs cible (clair)">
+            <AdherenceByTypeChart data={byType} />
+          </Mod>
+        )}
         <Mod title="Protéines (g/kg)" subtitle="Manges-tu assez de protéines pour ta charge ?">
           <ProteinGkgChart rows={rows} weightKg={weightKg} />
-        </Mod>
-        <Mod title="Fueling × récupération" subtitle="Croisement fueling / readiness (J+1)">
-          <Unavailable text="La readiness quotidienne n'est pas encore branchée à une source réelle. Module masqué tant qu'il n'y a pas de jours croisés à observer." />
         </Mod>
         <Mod title="Hydratation" subtitle="Litres loggés par jour · objectif 2,5 L">
           <HydrationChart data={hydroSeries} />

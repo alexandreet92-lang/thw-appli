@@ -1,12 +1,15 @@
 // ══════════════════════════════════════════════════════════════════
 // suiviData — agrégations lecture seule pour l'onglet « Suivi ».
-// Sources réelles uniquement (nutrition_daily_logs + plan + poids profil).
-// Aucune donnée inventée : un jour non loggé reste `logged:false`.
+// Sources réelles : journal alimentaire (nutrition_meal_logs, agrégé par jour)
+// + plan + poids profil. Fallback sur nutrition_daily_logs (ancien format) si
+// aucun repas loggé ce jour-là. Aucune donnée inventée.
 // ══════════════════════════════════════════════════════════════════
 
 import type { DailyLog, NutritionPlanData } from '@/hooks/useNutrition'
 
 export type DayType = 'low' | 'mid' | 'hard'
+
+export interface DayTotals { kcal: number; prot: number; gluc: number; lip: number }
 
 export interface DayRow {
   date:        string
@@ -28,25 +31,36 @@ function isoDaysAgo(today: string, back: number): string {
   return d.toISOString().split('T')[0]
 }
 
+// Liste des dates de la période (ancienne → récente), partagée avec useDaysTotals.
+export function periodDates(days: number, today: string): string[] {
+  const out: string[] = []
+  for (let i = days - 1; i >= 0; i--) out.push(isoDaysAgo(today, i))
+  return out
+}
+
 export function buildPeriod(
   logs: DailyLog[], plan: NutritionPlanData | null, days: number, today: string,
+  realTotals?: Record<string, DayTotals>,
 ): DayRow[] {
   const byDate = new Map(logs.map(l => [l.date, l]))
   const rows: DayRow[] = []
-  for (let i = days - 1; i >= 0; i--) {
-    const date = isoDaysAgo(today, i)
+  for (const date of periodDates(days, today)) {
+    const real = realTotals?.[date]
     const log = byDate.get(date)
     const planDay = plan?.jours?.find(j => j.date === date) ?? null
     const type = planDay?.type_jour ?? null
     const tKcal = type && plan ? plan[`calories_${type}`] ?? null : null
     const tMacro = type && plan ? plan[`macros_${type}`] ?? null : null
+    // Priorité au journal alimentaire réel (nutrition_meal_logs) ; sinon ancien daily_log.
+    const useReal = real && real.kcal > 0
+    const kcal = useReal ? real!.kcal : (log?.kcal_consommees ?? 0)
+    const prot = useReal ? real!.prot : (log?.proteines ?? 0)
+    const gluc = useReal ? real!.gluc : (log?.glucides ?? 0)
+    const lip  = useReal ? real!.lip  : (log?.lipides ?? 0)
     rows.push({
       date,
-      logged: !!log && (log.kcal_consommees ?? 0) > 0,
-      kcal: log?.kcal_consommees ?? 0,
-      prot: log?.proteines ?? 0,
-      gluc: log?.glucides ?? 0,
-      lip:  log?.lipides ?? 0,
+      logged: kcal > 0,
+      kcal, prot, gluc, lip,
       type,
       targetKcal: tKcal,
       targetProt: tMacro?.proteines ?? null,

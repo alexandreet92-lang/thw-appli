@@ -61,9 +61,9 @@ export function CompositionTab(p: Props) {
   const openYear = summaries.find(s => s.year === year) ?? null
 
   const stat = (label: string, value: string) => (
-    <div style={{ flex: 1, minWidth: 64 }}>
-      <div style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{label}</div>
-      <div className="tnum" style={{ fontFamily: FB, fontSize: 22, fontWeight: 600, color: 'var(--text)', marginTop: 'var(--space-1)' }}>{value}</div>
+    <div style={{ minWidth: 0, background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-3)' }}>
+      <div style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+      <div className="tnum" style={{ fontFamily: FB, fontSize: 19, fontWeight: 600, color: 'var(--text)', marginTop: 'var(--space-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
     </div>
   )
 
@@ -100,8 +100,9 @@ export function CompositionTab(p: Props) {
             })}
           </div>
 
-          {/* Stats nues — variation neutre, jamais alarmiste */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+          {/* Stats — grille responsive (2 col mobile, 4 desktop), jamais alarmiste */}
+          <div className="comp-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 'var(--space-2)' }}>
+            <style>{`@media(min-width:560px){.comp-stats{grid-template-columns:repeat(4,minmax(0,1fr))!important}}`}</style>
             {stat('Actuel', stats ? `${stats.current}${unit}` : '—')}
             {stat('Variation', stats ? `${stats.delta > 0 ? '+' : ''}${stats.delta}${unit}` : '—')}
             {stat('Min', stats ? `${stats.min}${unit}` : '—')}

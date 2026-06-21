@@ -11,7 +11,7 @@ import { smooth, type Pt } from './compositionData'
 
 interface Props { pts: Pt[]; unit: string; goal: number | null; periodDays: number; isDesktop: boolean }
 
-const H = 200, PADY = 18, PADX = 14
+const H = 210, PADY = 30, PADX = 18
 const FB = 'var(--font-body)'
 const empty = (text: string) => (
   <div style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', padding: 'var(--space-6) 0' }}>{text}</div>
@@ -54,12 +54,20 @@ export function WeightGraph({ pts, unit, goal, periodDays, isDesktop }: Props) {
   const spanDays = Math.max((last - first) / 86400000, 1)
   const pxPerDay = vw > 0 ? Math.max(vw / periodDays, 0.5) : 6
   const totalW = Math.max(vw || 320, PADX * 2 + spanDays * pxPerDay)
+  // Échelle verticale : marge de 6 % en haut/bas pour ne pas coller la courbe aux bords.
   const allV = pts.map(p => p.v).concat(goal != null ? [goal] : [])
-  const minV = Math.min(...allV), range = (Math.max(...allV) - minV) || 1
+  const rawMin = Math.min(...allV), rawMax = Math.max(...allV)
+  const pad = (rawMax - rawMin) * 0.18 || Math.max(rawMax * 0.02, 0.5)
+  const minV = rawMin - pad, range = (rawMax + pad - minV) || 1
   const x = (t: number) => PADX + ((t - first) / 86400000) * pxPerDay
   const y = (v: number) => PADY + (1 - (v - minV) / range) * (H - 2 * PADY)
   const sm = smooth(pts.map(p => p.v))
-  const path = sm.map((v, i) => `${i ? 'L' : 'M'}${x(pts[i].t).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  const linePath = sm.map((v, i) => `${i ? 'L' : 'M'}${x(pts[i].t).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  // Aire sous la courbe (remplissage dégradé léger).
+  const areaPath = `${linePath} L${x(last).toFixed(1)},${(H - PADY).toFixed(1)} L${x(first).toFixed(1)},${(H - PADY).toFixed(1)} Z`
+  // Repères horizontaux : valeurs réelles min / milieu / max.
+  const grid = [rawMin, (rawMin + rawMax) / 2, rawMax]
+  const lastV = pts[pts.length - 1].v
 
   const scrollBy = (dir: number) => scrollRef.current?.scrollBy({ left: dir * (vw * 0.6), behavior: 'smooth' })
   const chevron = (dir: number, d: string) => (
@@ -78,14 +86,37 @@ export function WeightGraph({ pts, unit, goal, periodDays, isDesktop }: Props) {
       <div ref={scrollRef} style={{ overflowX: 'auto', overflowY: 'hidden',
         paddingLeft: isDesktop ? 'var(--space-8)' : 'var(--space-1)', paddingRight: isDesktop ? 'var(--space-8)' : 'var(--space-1)' }}>
         <svg width={totalW} height={H} style={{ display: 'block' }}>
-          {goal != null && (
-            <line x1={0} y1={y(goal)} x2={totalW} y2={y(goal)} stroke="var(--text-dim)" strokeWidth={1} strokeDasharray="5 4" />
-          )}
-          <path d={path} fill="none" stroke="var(--primary)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-          {pts.map((p, i) => (
-            <circle key={i} cx={x(p.t)} cy={y(p.v)} r={3.5} fill="var(--text-mid)" opacity={0.55}
-              style={{ cursor: 'pointer' }} onClick={e => setTip({ log: p.log, x: e.clientX, y: e.clientY })} />
+          <defs>
+            <linearGradient id="wgArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.22} />
+              <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          {/* Repères horizontaux + valeurs */}
+          {grid.map((gv, i) => (
+            <g key={i}>
+              <line x1={0} y1={y(gv)} x2={totalW} y2={y(gv)} stroke="var(--border)" strokeWidth={1} opacity={0.5} />
+              <text x={PADX} y={y(gv) - 3} fontSize="9" fill="var(--text-dim)" fontFamily={FB}>{+gv.toFixed(1)}{unit}</text>
+            </g>
           ))}
+          {goal != null && (
+            <g>
+              <line x1={0} y1={y(goal)} x2={totalW} y2={y(goal)} stroke="var(--primary)" strokeWidth={1.5} strokeDasharray="5 4" opacity={0.7} />
+              <text x={PADX} y={y(goal) - 3} fontSize="9" fill="var(--primary)" fontFamily={FB}>objectif {goal}{unit}</text>
+            </g>
+          )}
+          <path d={areaPath} fill="url(#wgArea)" />
+          <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+          {pts.map((p, i) => {
+            const isLast = i === pts.length - 1
+            return (
+              <circle key={i} cx={x(p.t)} cy={y(p.v)} r={isLast ? 5 : 3} fill={isLast ? 'var(--primary)' : 'var(--bg-card)'}
+                stroke={isLast ? 'var(--bg-card)' : 'var(--text-mid)'} strokeWidth={isLast ? 2 : 1.5} opacity={isLast ? 1 : 0.7}
+                style={{ cursor: 'pointer' }} onClick={e => setTip({ log: p.log, x: e.clientX, y: e.clientY })} />
+            )
+          })}
+          {/* Valeur courante au-dessus du dernier point */}
+          <text x={Math.min(x(last), totalW - PADX)} y={Math.max(y(lastV) - 12, 12)} textAnchor="end" fontSize="11" fontWeight={600} fill="var(--text)" fontFamily={FB}>{lastV}{unit}</text>
         </svg>
       </div>
       {tip && createPortal(<PointTip tip={tip} unit={unit} onClose={() => setTip(null)} />, document.body)}

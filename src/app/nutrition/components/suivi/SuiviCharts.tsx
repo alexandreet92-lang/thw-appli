@@ -14,6 +14,43 @@ const TYPE_COLOR: Record<string, string> = {
 const TYPE_LABEL: Record<string, string> = { low: 'Low', mid: 'Mid', hard: 'Hard' }
 const FONT = 'var(--font-body)'
 
+// ── Calories par jour : barre = consommé, trait pointillé = cible (si plan) ──
+export function KcalTrendChart({ rows }: { rows: DayRow[] }) {
+  const logged = rows.filter(r => r.logged)
+  if (!logged.length) return <Empty text="Aucune journée loggée sur la période. Renseigne tes repas dans l'onglet Aujourd'hui pour voir ta tendance." />
+  const W = 320, H = 168, padB = 22, padT = 10, padL = 4
+  const targets = rows.map(r => r.targetKcal ?? 0).filter(v => v > 0)
+  const maxV = Math.max(...rows.map(r => r.kcal), ...targets, 1) * 1.12
+  const n = rows.length
+  const slot = (W - padL) / n
+  const bw = Math.min(22, slot * 0.6)
+  const yOf = (v: number) => padT + (1 - v / maxV) * (H - padB - padT)
+  const hasTarget = targets.length > 0
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+      {rows.map((r, i) => {
+        const cx = padL + (i + 0.5) * slot
+        const h = (r.kcal / maxV) * (H - padB - padT)
+        return (
+          <g key={r.date}>
+            <rect x={cx - bw / 2} y={H - padB - h} width={bw} height={h} rx={3}
+              fill="var(--primary)" opacity={r.logged ? 0.85 : 0.12} />
+            {/* repère cible du jour (petit tiret) */}
+            {r.targetKcal != null && r.targetKcal > 0 && (
+              <line x1={cx - bw / 2 - 2} y1={yOf(r.targetKcal)} x2={cx + bw / 2 + 2} y2={yOf(r.targetKcal)}
+                stroke="var(--text-mid)" strokeWidth={1.5} />
+            )}
+          </g>
+        )
+      })}
+      {/* étiquettes : 1ère et dernière date pour situer la période */}
+      <text x={padL + slot * 0.5} y={H - 6} textAnchor="middle" fontSize="9" fill="var(--text-dim)" fontFamily={FONT}>{rows[0].date.slice(8)}</text>
+      <text x={padL + slot * (n - 0.5)} y={H - 6} textAnchor="middle" fontSize="9" fill="var(--text-dim)" fontFamily={FONT}>{rows[n - 1].date.slice(8)}</text>
+      {hasTarget && <text x={padL} y={padT + 2} fontSize="9" fill="var(--text-mid)" fontFamily={FONT}>— cible du jour</text>}
+    </svg>
+  )
+}
+
 // ── Adhérence par type de jour : consommé (plein) vs cible (teinte claire) ──
 export function AdherenceByTypeChart({ data }: { data: TypeAdherence[] }) {
   const shown = data.filter(d => d.days > 0)

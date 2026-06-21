@@ -1179,6 +1179,7 @@ export default function NutritionPage() {
             todayKcalObj={todayKcalObj}
             baseKcal={activePlan?.plan_data?.calories_low ?? null}
             todayMacroObj={todayMacroObj}
+            aiPlan={activePlan ? { kcal: todayKcalObj, macros: todayMacroObj, dayType: todayType } : null}
             dayMeals={dayMeals}
             hydration={hydration}
             todaySessions={todaySessions}

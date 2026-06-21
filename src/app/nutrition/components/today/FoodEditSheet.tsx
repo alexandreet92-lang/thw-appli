@@ -3,9 +3,9 @@
 // Nom, Quantité (+unité intégrée à droite), Protéines / Glucides / Lipides.
 // kcal recalculées (4/4/9) et affichées en NEUTRE. « Enregistrer » en cyan.
 // Champs arrondis 10px, focus cyan + halo --primary-dim. Aucune lib.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { MealIngredient } from '@/hooks/useDailyMeals'
+import type { MealIngredient, MealCourse } from '@/hooks/useDailyMeals'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const UNITS = ['g', 'ml', 'portion', 'pièce']
@@ -18,6 +18,7 @@ export interface EditableFood {
   prot: number
   gluc: number
   lip:  number
+  course?: MealCourse
 }
 
 interface Draft { name: string; qty: string; unit: string; prot: string; gluc: string; lip: string }
@@ -38,16 +39,29 @@ export function FoodEditSheet({ food, slotLabel, onClose, onSave }: {
   onSave: (f: EditableFood) => void
 }) {
   const [d, setD] = useState<Draft>(() => toDraft(food))
-  useEffect(() => { setD(toDraft(food)) }, [food])
+  const base = useRef<MealIngredient | null>(food)   // référence pour le recalcul proportionnel
+  useEffect(() => { base.current = food; setD(toDraft(food)) }, [food])
 
   const num = (v: string) => Math.max(0, parseFloat(v.replace(',', '.')) || 0)
+
+  // Changer la quantité → recalcule les macros au prorata (à partir de la valeur de base).
+  function onQty(v: string) {
+    const b = base.current
+    const baseQ = num(b?.qty ?? ''), newQ = num(v)
+    setD(p => {
+      if (!b || baseQ <= 0 || newQ <= 0) return { ...p, qty: v }
+      const r = newQ / baseQ
+      const sc = (x: number | undefined) => String(Math.round(((x ?? 0) * r) * 10) / 10)
+      return { ...p, qty: v, prot: sc(b.prot), gluc: sc(b.gluc), lip: sc(b.lip) }
+    })
+  }
   const prot = num(d.prot), gluc = num(d.gluc), lip = num(d.lip)
   const kcal = Math.round(prot * 4 + gluc * 4 + lip * 9)
   const canSave = d.name.trim().length > 0
 
   function save() {
     if (!canSave) return
-    onSave({ name: d.name.trim(), qty: d.qty.trim(), unit: d.unit, prot, gluc, lip, kcal })
+    onSave({ name: d.name.trim(), qty: d.qty.trim(), unit: d.unit, prot, gluc, lip, kcal, course: food?.course })
   }
 
   const field: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: FB, fontSize: 14, outline: 'none', boxSizing: 'border-box' }
@@ -87,7 +101,7 @@ export function FoodEditSheet({ food, slotLabel, onClose, onSave }: {
           <div>
             <p style={lbl}>Quantité</p>
             <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-              <input className="fes-input tnum" type="number" inputMode="decimal" value={d.qty} onChange={e => setD(p => ({ ...p, qty: e.target.value }))} placeholder="0" style={{ ...field, flex: 1, textAlign: 'right' }} />
+              <input className="fes-input tnum" type="number" inputMode="decimal" value={d.qty} onChange={e => onQty(e.target.value)} placeholder="0" style={{ ...field, flex: 1, textAlign: 'right' }} />
               <select className="fes-input" value={d.unit} onChange={e => setD(p => ({ ...p, unit: e.target.value }))} style={{ ...field, width: 96, flexShrink: 0 }}>
                 {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
               </select>

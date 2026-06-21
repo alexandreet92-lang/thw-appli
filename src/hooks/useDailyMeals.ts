@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+export type MealCourse = 'entree' | 'plat' | 'dessert'
+
 export interface MealIngredient {
   name: string
   qty:  string
@@ -11,6 +13,8 @@ export interface MealIngredient {
   prot?: number
   gluc?: number
   lip?:  number
+  // Sous-section (déjeuner / dîner) — purement UI, stockée dans le jsonb (aucune migration).
+  course?: MealCourse
 }
 
 export interface DailyMealEntry {
@@ -25,6 +29,7 @@ export interface DailyMealEntry {
   actual_gluc:   number | null
   actual_lip:    number | null
   photo_url:     string | null
+  photos:        string[] | null
   source:        string | null
   validated:     boolean
 }

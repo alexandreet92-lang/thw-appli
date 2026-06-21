@@ -14,7 +14,7 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   SLOT_KEYS, SLOT_LABELS,
-  type MealSlotKey, type DailyMealEntry, type MealIngredient,
+  type MealSlotKey, type DailyMealEntry, type MealIngredient, type MealCourse,
 } from '@/hooks/useDailyMeals'
 import { PhotoMealEditor } from './today/PhotoMealEditor'
 import { FoodEditSheet, type EditableFood } from './today/FoodEditSheet'
@@ -33,8 +33,8 @@ interface Props {
 }
 
 export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Props) {
-  const [editing, setEditing]   = useState<{ slot: MealSlotKey; index: number | null } | null>(null)
-  const [aiFor, setAiFor] = useState<MealSlotKey | null>(null)
+  const [editing, setEditing]   = useState<{ slot: MealSlotKey; index: number | null; course?: MealCourse } | null>(null)
+  const [aiFor, setAiFor] = useState<{ slot: MealSlotKey; course?: MealCourse } | null>(null)
   const [photoFor, setPhotoFor] = useState<{ slot: MealSlotKey; file: File } | null>(null)
   const [meta, setMeta] = useState<Partial<Record<MealSlotKey, { score: number | null; advice: string | null }>>>({})
   const [isMobile, setIsMobile] = useState(false)
@@ -54,20 +54,25 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
     const entry = entryFor(slot)
     if (!foods.length) { if (entry?.id) await deleteEntry(entry.id); return }
     const t = foods.reduce((a, f) => ({ kcal: a.kcal + f.kcal, prot: a.prot + f.prot, gluc: a.gluc + f.gluc, lip: a.lip + f.lip }), { kcal: 0, prot: 0, gluc: 0, lip: 0 })
-    const ingredients: MealIngredient[] = foods.map(f => ({ name: f.name, qty: f.qty, unit: f.unit, kcal: f.kcal, prot: f.prot, gluc: f.gluc, lip: f.lip }))
+    const ingredients: MealIngredient[] = foods.map(f => ({ name: f.name, qty: f.qty, unit: f.unit, kcal: f.kcal, prot: f.prot, gluc: f.gluc, lip: f.lip, course: f.course }))
+    // Multi-photos : on accumule les URLs (seed depuis l'ancien photo_url unique).
+    const existingPhotos = entry?.photos?.length ? entry.photos : (entry?.photo_url ? [entry.photo_url] : [])
+    const photos = (photoUrl !== undefined && photoUrl) ? [...existingPhotos, photoUrl] : existingPhotos
     await saveEntry(slot, {
       meal_name: foods.map(f => f.name).join(', '),
       actual_kcal: Math.round(t.kcal), actual_prot: Math.round(t.prot), actual_gluc: Math.round(t.gluc), actual_lip: Math.round(t.lip),
       ingredients, source: 'manual', validated: true,
-      photo_url: photoUrl !== undefined ? photoUrl : (entry?.photo_url ?? null),
+      photos,
+      photo_url: photos.length ? photos[photos.length - 1] : null,
     })
   }
 
   function saveFood(food: EditableFood) {
     if (!editing) return
-    const { slot, index } = editing
+    const { slot, index, course } = editing
+    const withCourse = index == null && course ? { ...food, course } : food
     const foods = foodsOf(entryFor(slot))
-    const next = index == null ? [...foods, food] : foods.map((f, i) => i === index ? food : f)
+    const next = index == null ? [...foods, withCourse] : foods.map((f, i) => i === index ? withCourse : f)
     setEditing(null)
     void commit(slot, next)
   }
@@ -103,19 +108,22 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
         const entry = entryFor(slot)
         const foods = foodsOf(entry)
         const m = meta[slot]
+        const courses = slot === 'lunch' || slot === 'dinner'
         return foods.length ? (
           <MealCard
             key={slot}
             slotLabel={SLOT_LABELS[slot]}
             foods={foods}
+            courses={courses}
             photoUrl={entry?.photo_url ?? null}
+            photos={entry?.photos ?? null}
             score={m?.score ?? null}
             advice={m?.advice ?? null}
             onTapFood={i => setEditing({ slot, index: i })}
             onDeleteFood={i => deleteFood(slot, i)}
             onPhoto={() => triggerPhoto(slot)}
-            onAddSearch={() => setAiFor(slot)}
-            onAddManual={() => setEditing({ slot, index: null })}
+            onAddSearch={c => setAiFor({ slot, course: c })}
+            onAddManual={c => setEditing({ slot, index: null, course: c })}
             onClear={() => { if (entry?.id) void deleteEntry(entry.id) }}
           />
         ) : (
@@ -123,7 +131,7 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
             key={slot}
             slotLabel={SLOT_LABELS[slot]}
             onPhoto={() => triggerPhoto(slot)}
-            onSearch={() => setAiFor(slot)}
+            onSearch={() => setAiFor({ slot })}
             onAdd={() => setEditing({ slot, index: null })}
           />
         )
@@ -140,9 +148,9 @@ export function DayFoodJournal({ entries, loading, saveEntry, deleteEntry }: Pro
 
       {aiFor && (
         <AiMealSheet
-          slotLabel={SLOT_LABELS[aiFor]}
+          slotLabel={SLOT_LABELS[aiFor.slot]}
           onClose={() => setAiFor(null)}
-          onConfirm={food => { const s = aiFor; setAiFor(null); void commit(s, [...foodsOf(entryFor(s)), food]) }}
+          onConfirm={food => { const { slot, course } = aiFor; setAiFor(null); const f = course ? { ...food, course } : food; void commit(slot, [...foodsOf(entryFor(slot)), f]) }}
         />
       )}
 

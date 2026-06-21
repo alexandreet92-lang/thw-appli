@@ -9,8 +9,26 @@ import { createClient } from '@/lib/supabase/client'
 import type { PlannedSession } from '@/hooks/usePlanning'
 import { AiMealSheet } from './AiMealSheet'
 import type { EditableFood } from './FoodEditSheet'
+import type { AiPlanTarget } from './TodayTab'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
+const DAY_LABEL: Record<string, string> = { low: 'Jour Low', mid: 'Jour Mid', hard: 'Jour Hard' }
+
+// Bandeau rappel du plan IA pour la journée (s'affiche s'il existe un plan actif).
+function AiPlanBanner({ plan }: { plan: AiPlanTarget }) {
+  return (
+    <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--ai-accent)', borderRadius: 'var(--r-md)', padding: 'var(--space-3) var(--space-4)', marginBottom: 'var(--space-3)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 4 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logos/logo_4bras.png" alt="" style={{ width: 14, height: 14, objectFit: 'contain', flexShrink: 0 }} />
+        <span style={{ fontFamily: FD, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Plan IA — {DAY_LABEL[plan.dayType] ?? 'Objectif du jour'}</span>
+      </div>
+      <p className="tnum" style={{ margin: 0, fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>
+        Cible : {Math.round(plan.kcal)} kcal · P {Math.round(plan.macros.proteines)} · G {Math.round(plan.macros.glucides)} · L {Math.round(plan.macros.lipides)} g
+      </p>
+    </div>
+  )
+}
 
 function SessionCard({ session }: { session: PlannedSession }) {
   const supabase = createClient()
@@ -85,12 +103,18 @@ function SessionCard({ session }: { session: PlannedSession }) {
   )
 }
 
-export function SessionFueling({ sessions }: { sessions: PlannedSession[] }) {
+export function SessionFueling({ sessions, aiPlan }: { sessions: PlannedSession[]; aiPlan?: AiPlanTarget | null }) {
   if (!sessions.length) {
-    return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>Jour de repos — pas de séance à caler aujourd&apos;hui.</p>
+    return (
+      <>
+        {aiPlan && <AiPlanBanner plan={aiPlan} />}
+        <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>Jour de repos — pas de séance à caler aujourd&apos;hui.</p>
+      </>
+    )
   }
   return (
     <>
+      {aiPlan && <AiPlanBanner plan={aiPlan} />}
       {sessions.map(s => <SessionCard key={s.id} session={s} />)}
       <a href="/planning" style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>Voir la séance dans le planning →</a>
     </>

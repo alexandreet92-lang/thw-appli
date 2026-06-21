@@ -11,10 +11,12 @@ import { DayFoodJournal } from '@/app/nutrition/components/DayFoodJournal'
 import { FuelingHero } from './FuelingHero'
 import { DayStrip } from './DayStrip'
 import { SessionFueling } from './SessionFueling'
+import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { dateLabel, type DayType } from '../plan/planFormat'
 
 interface Macro { proteines: number; glucides: number; lipides: number }
 interface Suggestion { title: string; description: string; kcal: number; prot: number; gluc: number; lip: number }
+export interface AiPlanTarget { kcal: number; macros: Macro; dayType: DayType }
 
 interface Props {
   today:         string
@@ -25,6 +27,7 @@ interface Props {
   todayKcalObj:  number
   baseKcal:      number | null
   todayMacroObj: Macro
+  aiPlan:        AiPlanTarget | null
   dayMeals:      ReturnType<typeof useDailyMeals>
   hydration:     ReturnType<typeof useHydration>
   todaySessions: PlannedSession[]
@@ -45,7 +48,12 @@ export function TodayTab(p: Props) {
   const { dayMeals, hydration } = p
   const hydroPct = Math.min(hydration.liters / 2.5, 1)
 
+  async function refresh() {
+    await Promise.all([dayMeals.reload(), hydration.reload()])
+  }
+
   return (
+    <PullToRefresh onRefresh={refresh}>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', padding: 'var(--space-2) 0 var(--space-6)' }}>
       <style>{`
         @keyframes ntSlideR { from { transform: translateX(26px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
@@ -77,7 +85,7 @@ export function TodayTab(p: Props) {
       {/* Autour de ta séance — fueling avant/pendant/après (reco auto + log) */}
       <div>
         <h2 style={sectionTitle}>Autour de ta séance</h2>
-        <SessionFueling sessions={p.todaySessions} />
+        <SessionFueling sessions={p.todaySessions} aiPlan={p.aiPlan} />
       </div>
 
       {/* Hydratation */}
@@ -127,5 +135,6 @@ export function TodayTab(p: Props) {
       </div>
       </div>
     </div>
+    </PullToRefresh>
   )
 }

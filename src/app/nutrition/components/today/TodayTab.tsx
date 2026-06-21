@@ -86,7 +86,7 @@ export function TodayTab(p: Props) {
           <h2 style={{ ...sectionTitle, margin: 0 }}>Hydratation</h2>
           <span className="tnum" style={{ fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{fmtL(hydration.liters)} / 2,5 L</span>
         </div>
-        <svg width="100%" height={6} style={{ display: 'block', marginBottom: 'var(--space-3)' }}>
+        <svg width="100%" height={6} style={{ display: 'block', margin: 'var(--space-2) 0 var(--space-4)' }}>
           <rect x={0} y={0} width="100%" height={6} rx={3} fill="var(--border)" />
           <rect x={0} y={0} width={`${hydroPct * 100}%`} height={6} rx={3} fill="var(--primary)" style={{ transition: 'width 0.4s ease' }} />
         </svg>

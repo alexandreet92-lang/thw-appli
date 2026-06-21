@@ -238,6 +238,114 @@ const HEADING_STYLES: Record<number, React.CSSProperties> = {
        color: 'var(--ai-mid)', letterSpacing: '0.02em' },
 }
 
+// ══════════════════════════════════════════════════════════════
+// ChartBlock — graphique SVG raw généré par l'IA dans le fil du chat.
+// L'IA insère un bloc ```thw-chart {json}``` ; on le rend ici en SVG
+// (zéro lib externe, conforme à la règle design). line | bar | area.
+// ══════════════════════════════════════════════════════════════
+interface ChartSeries { name?: string; color?: string; points: { x: string | number; y: number }[] }
+interface ChartSpec { type?: 'line' | 'bar' | 'area'; title?: string; y_unit?: string; series: ChartSeries[] }
+
+const CHART_COLORS = ['#06B6D4', '#A855F7', '#f59e0b']
+
+function parseChartSpec(raw: string): ChartSpec | null {
+  try {
+    const obj = JSON.parse(raw) as ChartSpec
+    if (!obj || !Array.isArray(obj.series) || obj.series.length === 0) return null
+    const series = obj.series
+      .filter(s => s && Array.isArray(s.points))
+      .map(s => ({ ...s, points: s.points.filter(p => p && typeof p.y === 'number' && isFinite(p.y)) }))
+      .filter(s => s.points.length > 0)
+      .slice(0, 3)
+    if (series.length === 0) return null
+    return { type: obj.type ?? 'line', title: obj.title, y_unit: obj.y_unit, series }
+  } catch { return null }
+}
+
+function ChartBlock({ spec }: { spec: ChartSpec }) {
+  const W = 640, H = 280, PL = 46, PR = 16, PT = spec.title ? 34 : 16, PB = 34
+  const plotW = W - PL - PR, plotH = H - PT - PB
+  const type = spec.type ?? 'line'
+
+  // Catégories = x de la 1ʳᵉ série (toutes les séries partagent les mêmes x)
+  const cats = spec.series[0].points.map(p => String(p.x))
+  const n = cats.length
+  const allY = spec.series.flatMap(s => s.points.map(p => p.y))
+  let yMin = Math.min(...allY), yMax = Math.max(...allY)
+  if (type !== 'line') yMin = Math.min(0, yMin)        // bar/area ancrés à 0
+  if (yMin === yMax) { yMax += 1; yMin -= 1 }
+  const pad = (yMax - yMin) * 0.12
+  yMax += pad; if (type === 'line') yMin -= pad
+  const yToPx = (y: number) => PT + plotH - ((y - yMin) / (yMax - yMin)) * plotH
+  const xToPx = (i: number) => n <= 1 ? PL + plotW / 2 : PL + (i / (n - 1)) * plotW
+
+  // Grille horizontale + labels Y (4 paliers)
+  const yTicks = Array.from({ length: 5 }, (_, k) => yMin + ((yMax - yMin) * k) / 4)
+  const fmtY = (v: number) => Math.abs(v) >= 100 ? String(Math.round(v)) : (Math.round(v * 10) / 10).toString()
+
+  return (
+    <div style={{ margin: '10px 0', marginLeft: 34, border: '1px solid var(--ai-border)', borderRadius: 12, background: 'var(--ai-bg2)', padding: '12px 8px 6px', overflow: 'hidden' }}>
+      {spec.title && (
+        <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', padding: '0 8px 6px' }}>
+          {spec.title}{spec.y_unit ? ` (${spec.y_unit})` : ''}
+        </div>
+      )}
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} preserveAspectRatio="xMidYMid meet">
+        {/* Grille + axes Y */}
+        {yTicks.map((v, k) => {
+          const y = yToPx(v)
+          return (
+            <g key={k}>
+              <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="var(--ai-border)" strokeWidth={1} />
+              <text x={PL - 6} y={y + 3} textAnchor="end" fontSize={10} fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{fmtY(v)}</text>
+            </g>
+          )
+        })}
+        {/* Labels X (sous-échantillonnés si trop nombreux) */}
+        {cats.map((c, i) => {
+          const step = Math.ceil(n / 8)
+          if (n > 8 && i % step !== 0 && i !== n - 1) return null
+          return <text key={i} x={xToPx(i)} y={H - 12} textAnchor="middle" fontSize={10} fill="var(--ai-dim)">{c}</text>
+        })}
+        {/* Séries */}
+        {spec.series.map((s, si) => {
+          const color = s.color ?? CHART_COLORS[si % CHART_COLORS.length]
+          if (type === 'bar') {
+            const groupW = (plotW / Math.max(n, 1)) * 0.7
+            const barW = groupW / spec.series.length
+            return s.points.map((p, i) => {
+              const x0 = xToPx(i) - groupW / 2 + si * barW
+              const y = yToPx(p.y), y0 = yToPx(Math.max(0, yMin))
+              return <rect key={i} x={x0} y={Math.min(y, y0)} width={Math.max(1, barW - 1)} height={Math.abs(y0 - y)} rx={2} fill={color} opacity={0.85} />
+            })
+          }
+          const pts = s.points.map((p, i) => `${xToPx(i)},${yToPx(p.y)}`).join(' ')
+          return (
+            <g key={si}>
+              {type === 'area' && (
+                <polygon points={`${PL},${yToPx(Math.max(0, yMin))} ${pts} ${xToPx(n - 1)},${yToPx(Math.max(0, yMin))}`} fill={color} opacity={0.14} />
+              )}
+              <polyline points={pts} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+              {s.points.map((p, i) => <circle key={i} cx={xToPx(i)} cy={yToPx(p.y)} r={3} fill={color} />)}
+            </g>
+          )
+        })}
+      </svg>
+      {/* Légende (si plusieurs séries nommées) */}
+      {spec.series.length > 1 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '4px 10px 2px' }}>
+          {spec.series.map((s, si) => (
+            <span key={si} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--ai-mid)' }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: s.color ?? CHART_COLORS[si % CHART_COLORS.length] }} />
+              {s.name ?? `Série ${si + 1}`}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string }) {
   const blocks: React.ReactNode[] = []
   const lines = text.split('\n')
@@ -262,6 +370,21 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
         i++
       }
       i++ // skip closing ```
+      // Graphique IA : ```thw-chart {json}``` → SVG raw (sinon code normal)
+      if (lang === 'thw-chart' || lang === 'chart') {
+        const spec = parseChartSpec(codeLines.join('\n'))
+        if (spec) {
+          blocks.push(<ChartBlock key={`chart-${i}`} spec={spec} />)
+        } else {
+          // JSON incomplet (en cours de streaming) ou invalide → placeholder discret
+          blocks.push(
+            <div key={`chart-ph-${i}`} style={{ marginLeft: 34, margin: '8px 0', fontSize: 13, color: 'var(--ai-dim)' }}>
+              📊 Génération du graphique…
+            </div>
+          )
+        }
+        continue
+      }
       blocks.push(<CodeBlock key={`code-${i}`} lang={lang} code={codeLines.join('\n')} />)
       continue
     }

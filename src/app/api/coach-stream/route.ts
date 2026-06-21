@@ -386,6 +386,26 @@ export async function POST(req: NextRequest) {
   const client = getAnthropicClient()
   let systemWithTools = `${chatSystemPrompt}\n\n${TOOL_INSTRUCTIONS}`
 
+  // ── Graphiques dans le chat (Athéna/Zeus uniquement) ──
+  //    L'IA peut insérer un graphe SVG dans le fil de sa réponse via un bloc
+  //    ```thw-chart {json}```. Réservé aux modèles avancés et au coach central.
+  if ((chatBody as { agentId?: string }).agentId === 'central' && (cappedKey === 'athena' || cappedKey === 'zeus')) {
+    systemWithTools += `
+
+═══════════ GRAPHIQUES DANS LA RÉPONSE ═══════════
+Quand un graphique aide VRAIMENT à comprendre (évolution dans le temps, comparaison,
+répartition, courbe de charge), tu peux en insérer un DANS ta réponse via un bloc de
+code de langage \`thw-chart\` contenant un JSON :
+\`\`\`thw-chart
+{"type":"line","title":"Évolution FTP","y_unit":"W","series":[{"name":"FTP","points":[{"x":"Jan","y":240},{"x":"Fév","y":248},{"x":"Mar","y":255}]}]}
+\`\`\`
+Règles : "type" ∈ line | bar | area ; 1 à 3 séries partageant les MÊMES x ; "y" numérique ;
+au plus ~12 points par série ; couleurs auto (n'en mets pas). Écris du texte avant/après
+le graphe normalement. N'utilise un graphe QUE s'il apporte vraiment ; sinon, texte ou
+tableau markdown. Base TOUJOURS les données sur les chiffres réels de l'athlète (jamais
+inventés).`
+  }
+
   // ── Doctrine ciblée injectée (principes + méthode choisie + doc selon mots-clés) ──
   if ((chatBody as { agentId?: string }).agentId === 'central') {
     try {

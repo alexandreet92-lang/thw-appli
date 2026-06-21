@@ -419,6 +419,27 @@ l'athlète (jamais inventés) ; si tu n'as pas encore les chiffres, lis-les d'ab
 avec tes outils.`
   }
 
+  // ── Recherche web + fiabilité des chiffres (Athéna/Zeus) ──
+  if ((chatBody as { agentId?: string }).agentId === 'central' && (cappedKey === 'athena' || cappedKey === 'zeus')) {
+    systemWithTools += `
+
+═══════════ RECHERCHE WEB & RIGUEUR DES CHIFFRES ═══════════
+Tu DISPOSES d'un outil de recherche web (web_search). Utilise-le dès que la
+réponse dépend d'un fait à jour, d'une référence scientifique, ou d'un chiffre
+que tu n'es pas certain de connaître précisément (besoins caloriques, dépense
+énergétique d'un sport, apports glucidiques recommandés, normes physiologiques…).
+Mieux vaut vérifier que répondre de mémoire.
+
+RIGUEUR QUANTITATIVE (impératif) : pour toute recommandation chiffrée (calories,
+macros, allures, charges), RAISONNE à partir des données réelles de l'athlète
+(poids, volume et intensité d'entraînement) et de méthodes établies — au besoin
+vérifie par une recherche. Ne SOUS-ESTIME JAMAIS les besoins énergétiques d'un
+gros volume d'entraînement : un athlète qui enchaîne plusieurs heures (vélo long,
+PMA, natation, côtes…) peut avoir besoin de 3 500–5 000 kcal/jour. Calcule le
+besoin = métabolisme de base + dépense réelle des séances du jour ; explicite ton
+calcul. Si un chiffre te paraît bas pour la charge, c'est qu'il est faux : recalcule.`
+  }
+
   // ── Doctrine ciblée injectée (principes + méthode choisie + doc selon mots-clés) ──
   if ((chatBody as { agentId?: string }).agentId === 'central') {
     try {
@@ -547,11 +568,19 @@ Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS
   const systemBlocks: Anthropic.TextBlockParam[] = [
     { type: 'text', text: systemWithTools, cache_control: { type: 'ephemeral' } },
   ]
-  const cachedTools = allTools.map((t, i) =>
+  const cachedCustom = allTools.map((t, i) =>
     i === allTools.length - 1
       ? ({ ...t, cache_control: { type: 'ephemeral' } })
       : t,
   ) as typeof allTools
+  // ── Web search (Athéna/Zeus) ──
+  // Recherche web côté serveur Anthropic : ancre les réponses sur la science /
+  // les faits à jour au lieu de répondre « de mémoire » (chiffres fiables).
+  // Réservé aux modèles avancés (Haiku ne supporte pas cette version d'outil).
+  const webEnabled = cappedKey === 'athena' || cappedKey === 'zeus'
+  const cachedTools = (webEnabled
+    ? [...cachedCustom, { type: 'web_search_20260209', name: 'web_search', max_uses: 5 }]
+    : cachedCustom) as unknown as Anthropic.ToolUnion[]
 
   // Client Supabase dédié aux outils de lecture (réutilisé sur toute la boucle)
   const sbForTools = await createClient()
@@ -577,10 +606,19 @@ Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS
             tool_choice: { type: 'auto' },
           })
 
-          // Streaming live du texte token-par-token
+          // Streaming live du texte token-par-token + statut recherche web
+          let webAnnounced = false
           for await (const ev of ms) {
             if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta' && ev.delta.text) {
               send('text', JSON.stringify(ev.delta.text))
+            } else if (
+              !webAnnounced &&
+              ev.type === 'content_block_start' &&
+              (ev.content_block as { type?: string })?.type === 'server_tool_use' &&
+              (chatBody as { agentId?: string }).agentId === 'central'
+            ) {
+              webAnnounced = true
+              send('tool_status', JSON.stringify({ tools: ['web_search'] }))
             }
           }
 
@@ -602,7 +640,14 @@ Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS
           const toolUses = finalMsg.content.filter(
             (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
           )
-          if (toolUses.length === 0) break // réponse finale déjà streamée
+          if (toolUses.length === 0) {
+            // Recherche web côté serveur non terminée → on relance pour continuer.
+            if (lastStop === 'pause_turn') {
+              convMessages = [...convMessages, { role: 'assistant', content: finalMsg.content }]
+              continue
+            }
+            break // réponse finale déjà streamée
+          }
 
           const reads     = toolUses.filter(t => READ_TOOL_NAMES.has(t.name))
           const terminals = toolUses.filter(t => !READ_TOOL_NAMES.has(t.name))

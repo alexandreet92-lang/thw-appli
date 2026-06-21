@@ -46,6 +46,7 @@ const TOOL_STATUS_LABELS: Record<string, string> = {
   analyze_sport_metrics: 'Calcul de tes métriques…',
   get_training_plan:     'Lecture de ton plan…',
   get_planned_sessions:  'Lecture de tes séances prévues…',
+  web_search:            'Recherche sur le web…',
 }
 function toolStatusLabel(tools: string[] | undefined): string {
   const first = (tools ?? []).find(t => TOOL_STATUS_LABELS[t]) ?? (tools ?? [])[0]

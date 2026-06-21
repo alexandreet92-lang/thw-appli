@@ -50,6 +50,15 @@ ${mealTemplates.map(t => `- [${t.type_repas}] ${t.nom} | ${t.kcal ?? '?'} kcal |
 IMPORTANT : Base le plan sur ces repas habituels. Adapte-les si nécessaire mais ne les ignore jamais.` : ''}
 
 INSTRUCTIONS :
+- RIGUEUR CALORIQUE (CRUCIAL) : calcule le besoin de CHAQUE jour comme
+  métabolisme de base (BMR, ~22 kcal/kg/j) + dépense de vie courante + DÉPENSE
+  RÉELLE DES SÉANCES DU JOUR. Une séance d'endurance coûte ~600–900 kcal/h, un
+  gros enchaînement (vélo long, PMA, natation, côtes, double séance) peut
+  dépasser 1 500–2 500 kcal sur la journée. Ne SOUS-ESTIME JAMAIS : un athlète
+  à fort volume a souvent besoin de 3 500–5 000 kcal sur les jours hard. Si un
+  total te paraît bas pour la charge du jour, il est FAUX — recalcule. Les jours
+  hard doivent être nettement plus caloriques que les jours low (écart typique
+  800–1 500 kcal).
 - Génère exactement 7 jours (une semaine type) à partir d'aujourd'hui
 - Chaque jour doit avoir un type_jour (low, mid, hard) cohérent avec le planning d'entraînement
 - CALAGE SUR LA CHARGE RÉELLE (section CONTEXTE ATHLÈTE, si présente) : détermine type_jour (low/mid/hard) à partir de la SEMAINE PLANIFIÉE (séances, TSS) et de la charge réelle (CTL/TSB). Plus de glucides les jours hard (autour des séances clés), moins les jours low.

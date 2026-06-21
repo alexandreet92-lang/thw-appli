@@ -6,7 +6,7 @@
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border-mid)',
+  width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border-mid)',
   borderRadius: 'var(--r-sm)', padding: '8px 10px', fontFamily: FB, fontSize: 13, color: 'var(--text)', outline: 'none',
 }
 const labelStyle: React.CSSProperties = {
@@ -28,7 +28,7 @@ interface Props {
 
 export function MeasureForm(p: Props) {
   const field = (label: string, value: string, on: (v: string) => void, type: string) => (
-    <div>
+    <div style={{ minWidth: 0 }}>
       <label style={labelStyle}>{label}</label>
       <input type={type} step={type === 'number' ? '0.1' : undefined} value={value} onChange={e => on(e.target.value)} style={inputStyle} />
     </div>
@@ -37,7 +37,7 @@ export function MeasureForm(p: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       <div>
         <h2 style={title}>Ajouter une mesure</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 'var(--space-4) var(--space-3)', marginBottom: 'var(--space-4)' }}>
           {field('Date', p.date, p.onDate, 'date')}
           {field('Poids (kg)', p.weight, p.onWeight, 'number')}
           {field('Masse grasse (%)', p.mg, p.onMg, 'number')}

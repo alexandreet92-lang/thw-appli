@@ -15,38 +15,53 @@ const TYPE_LABEL: Record<string, string> = { low: 'Low', mid: 'Mid', hard: 'Hard
 const FONT = 'var(--font-body)'
 
 // ── Calories par jour : barre = consommé, trait pointillé = cible (si plan) ──
-export function KcalTrendChart({ rows }: { rows: DayRow[] }) {
+// Cliquable : chaque jour loggé ouvre le détail des repas (donuts + photos + ingrédients).
+export function KcalTrendChart({ rows, onSelectDay }: { rows: DayRow[]; onSelectDay?: (date: string) => void }) {
   const logged = rows.filter(r => r.logged)
   if (!logged.length) return <Empty text="Aucune journée loggée sur la période. Renseigne tes repas dans l'onglet Aujourd'hui pour voir ta tendance." />
-  const W = 320, H = 168, padB = 22, padT = 10, padL = 4
-  const targets = rows.map(r => r.targetKcal ?? 0).filter(v => v > 0)
-  const maxV = Math.max(...rows.map(r => r.kcal), ...targets, 1) * 1.12
+  const W = 320, H = 192, padB = 28, padT = 10, padL = 32
+  const maxKcal = Math.max(...rows.map(r => r.kcal), ...rows.map(r => r.targetKcal ?? 0), 1)
+  // Axe Y : graduations rondes tous les 1000 kcal.
+  const yMax = Math.max(1000, Math.ceil(maxKcal / 1000) * 1000)
+  const ticks: number[] = []
+  for (let v = 0; v <= yMax; v += 1000) ticks.push(v)
   const n = rows.length
   const slot = (W - padL) / n
   const bw = Math.min(22, slot * 0.6)
-  const yOf = (v: number) => padT + (1 - v / maxV) * (H - padB - padT)
-  const hasTarget = targets.length > 0
+  const yOf = (v: number) => padT + (1 - v / yMax) * (H - padB - padT)
+  // Axe X : date jour/mois. On espace les étiquettes si la période est longue.
+  const dm = (iso: string) => { const p = iso.split('-'); return `${p[2]}/${p[1]}` }
+  const step = n <= 10 ? 1 : Math.ceil(n / 7)
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+      {/* Graduations Y (tous les 1000 kcal) + valeurs */}
+      {ticks.map(v => (
+        <g key={v}>
+          <line x1={padL} y1={yOf(v)} x2={W} y2={yOf(v)} stroke="var(--border)" strokeWidth={1} opacity={0.4} />
+          <text x={padL - 5} y={yOf(v) + 3} textAnchor="end" fontSize="8" fill="var(--text-dim)" fontFamily={FONT}>{v}</text>
+        </g>
+      ))}
       {rows.map((r, i) => {
         const cx = padL + (i + 0.5) * slot
-        const h = (r.kcal / maxV) * (H - padB - padT)
+        const h = (r.kcal / yMax) * (H - padB - padT)
+        const clickable = r.logged && !!onSelectDay
         return (
-          <g key={r.date}>
+          <g key={r.date} style={{ cursor: clickable ? 'pointer' : 'default' }}
+            onClick={clickable ? () => onSelectDay!(r.date) : undefined}>
+            {/* zone cliquable sur toute la colonne */}
+            <rect x={padL + i * slot} y={padT} width={slot} height={H - padB - padT} fill="transparent" />
             <rect x={cx - bw / 2} y={H - padB - h} width={bw} height={h} rx={3}
-              fill="var(--primary)" opacity={r.logged ? 0.85 : 0.12} />
-            {/* repère cible du jour (petit tiret) */}
+              fill="var(--primary)" opacity={r.logged ? 0.85 : 0.1} />
             {r.targetKcal != null && r.targetKcal > 0 && (
               <line x1={cx - bw / 2 - 2} y1={yOf(r.targetKcal)} x2={cx + bw / 2 + 2} y2={yOf(r.targetKcal)}
                 stroke="var(--text-mid)" strokeWidth={1.5} />
             )}
+            {i % step === 0 && (
+              <text x={cx} y={H - padB + 14} textAnchor="middle" fontSize="8.5" fill="var(--text-dim)" fontFamily={FONT}>{dm(r.date)}</text>
+            )}
           </g>
         )
       })}
-      {/* étiquettes : 1ère et dernière date pour situer la période */}
-      <text x={padL + slot * 0.5} y={H - 6} textAnchor="middle" fontSize="9" fill="var(--text-dim)" fontFamily={FONT}>{rows[0].date.slice(8)}</text>
-      <text x={padL + slot * (n - 0.5)} y={H - 6} textAnchor="middle" fontSize="9" fill="var(--text-dim)" fontFamily={FONT}>{rows[n - 1].date.slice(8)}</text>
-      {hasTarget && <text x={padL} y={padT + 2} fontSize="9" fill="var(--text-mid)" fontFamily={FONT}>— cible du jour</text>}
     </svg>
   )
 }

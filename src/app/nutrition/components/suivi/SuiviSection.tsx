@@ -13,6 +13,7 @@ import type { DailyLog, NutritionPlanData } from '@/hooks/useNutrition'
 import { useDaysTotals } from '@/hooks/useDaysTotals'
 import { buildPeriod, periodSummary, adherenceByType, periodDates } from './suiviData'
 import { KcalTrendChart, AdherenceByTypeChart, ProteinGkgChart, HydrationChart, LoggingGrid } from './SuiviCharts'
+import { DayMealsSheet } from './DayMealsSheet'
 
 interface Props {
   dailyLogs: DailyLog[]
@@ -47,6 +48,7 @@ function Mod({ title, subtitle, children }: { title: string; subtitle: string; c
 export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
   const [days, setDays] = useState<number>(7)
   const [hydro, setHydro] = useState<Record<string, number>>({})
+  const [dayOpen, setDayOpen] = useState<string | null>(null)
 
   // Totaux réels du journal alimentaire (nutrition_meal_logs) agrégés par jour.
   const dates = useMemo(() => periodDates(days, today), [days, today])
@@ -109,8 +111,8 @@ export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
       </div>
 
       {/* Hero — calories par jour (consommé vs cible) : le module le plus clair */}
-      <Mod title="Calories par jour" subtitle={hasPlan ? 'Barre = consommé · tiret = cible du jour' : 'Barre = consommé (définis un plan pour voir tes cibles)'}>
-        <KcalTrendChart rows={rows} />
+      <Mod title="Calories par jour" subtitle={hasPlan ? 'Touche un jour pour voir tes repas · tiret = cible du jour' : 'Touche un jour pour voir tes repas'}>
+        <KcalTrendChart rows={rows} onSelectDay={setDayOpen} />
       </Mod>
 
       {/* Modules secondaires — uniquement ce qui a une vraie source de données */}
@@ -135,6 +137,8 @@ export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
           )}
         </Mod>
       </div>
+
+      {dayOpen && <DayMealsSheet date={dayOpen} onClose={() => setDayOpen(null)} />}
     </div>
   )
 }

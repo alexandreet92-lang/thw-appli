@@ -42,15 +42,15 @@ type THWModel = 'hermes' | 'athena' | 'zeus'
 // Libellé animé affiché pendant que le coach consulte tes données (read-tools
 // de la boucle agentique). Premier outil de la salve → message clair.
 const TOOL_STATUS_LABELS: Record<string, string> = {
-  get_activities:        '🔍 Analyse de tes activités…',
-  analyze_sport_metrics: '📊 Calcul de tes métriques…',
-  get_training_plan:     '📋 Lecture de ton plan…',
-  get_planned_sessions:  '🗓️ Lecture de tes séances prévues…',
+  get_activities:        'Analyse de tes activités…',
+  analyze_sport_metrics: 'Calcul de tes métriques…',
+  get_training_plan:     'Lecture de ton plan…',
+  get_planned_sessions:  'Lecture de tes séances prévues…',
 }
 function toolStatusLabel(tools: string[] | undefined): string {
   const first = (tools ?? []).find(t => TOOL_STATUS_LABELS[t]) ?? (tools ?? [])[0]
   if (!first) return ''
-  return TOOL_STATUS_LABELS[first] ?? '🔧 Consultation de tes données…'
+  return TOOL_STATUS_LABELS[first] ?? 'Consultation de tes données…'
 }
 
 interface AIMsg {
@@ -292,9 +292,9 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
   const showValueLabels = nSeries === 1 && n <= 12
 
   return (
-    <div style={{ margin: '10px 0', marginLeft: 34, border: '1px solid var(--ai-border)', borderRadius: 14, background: 'var(--ai-bg2)', padding: '12px 10px 6px', overflow: 'hidden' }}>
+    <div style={{ margin: '12px 0', marginLeft: 34, background: 'transparent', overflow: 'hidden' }}>
       {spec.title && (
-        <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', padding: '0 4px 8px' }}>
+        <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', padding: '0 2px 8px' }}>
           {spec.title}{unit ? ` · ${unit}` : ''}
         </div>
       )}
@@ -344,7 +344,7 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
             <g key={si}>
               {type === 'area' && <polygon points={`${cx(0)},${baseY} ${pts} ${cx(n - 1)},${baseY}`} fill={`url(#${uid}-g${si})`} opacity={0.25} />}
               <polyline points={pts} fill="none" stroke={c} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-              {s.points.map((p, i) => <circle key={i} cx={cx(i)} cy={yToPx(p.y)} r={active === i ? 5 : 3} fill={c} stroke="var(--ai-bg2)" strokeWidth={active === i ? 2 : 0} />)}
+              {s.points.map((p, i) => <circle key={i} cx={cx(i)} cy={yToPx(p.y)} r={active === i ? 5 : 3} fill={c} stroke="var(--ai-bg)" strokeWidth={active === i ? 2 : 0} />)}
             </g>
           )
         })}
@@ -1544,38 +1544,32 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
               onClick={() => { onChange(m); setOpen(false) }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                width: '100%', padding: isMobile ? '12px 14px' : '9px 14px',
+                width: '100%', padding: isMobile ? '13px 14px' : '10px 14px',
                 border: 'none', borderRadius: 10,
-                background: isA ? 'var(--ai-bg2)' : 'transparent',
+                background: isA ? 'rgba(120,130,150,0.10)' : 'transparent',
                 cursor: 'pointer', textAlign: 'left',
                 transition: 'background 0.1s',
               }}
-              onMouseEnter={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+              onMouseEnter={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(120,130,150,0.08)' }}
               onMouseLeave={e => { if (!isA) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                alt={mc.name}
-                style={{ width: isMobile ? 24 : 20, height: isMobile ? 24 : 20, objectFit: 'contain', flexShrink: 0, opacity: isA ? 1 : 0.6 }}
-              />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  fontSize: isMobile ? 14 : 12, fontWeight: isA ? 700 : 500,
-                  color: isA ? 'var(--ai-text)' : 'var(--ai-mid)',
-                  fontFamily: 'Syne,sans-serif', lineHeight: 1.2,
+                  fontSize: isMobile ? 15 : 13, fontWeight: isA ? 700 : 600,
+                  color: 'var(--ai-text)',
+                  fontFamily: 'Syne,sans-serif', lineHeight: 1.25,
                 }}>
                   {mc.name}
                 </div>
                 <div style={{
-                  fontSize: isMobile ? 12 : 10, color: 'var(--ai-dim)',
+                  fontSize: isMobile ? 12 : 11, color: 'var(--ai-mid)',
                   fontFamily: 'DM Sans,sans-serif', marginTop: 2,
                 }}>
                   {mc.desc}
                 </div>
               </div>
               {isA && (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.5" strokeLinecap="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 6L9 17l-5-5"/>
                 </svg>
               )}
@@ -20281,6 +20275,16 @@ export default function AIPanel({
         .aip-dot-2 { animation: ai_bounce_dot 1.4s ease infinite 0.2s; }
         .aip-dot-3 { animation: ai_bounce_dot 1.4s ease infinite 0.4s; }
 
+        /* Texte « réflexion » premium — balayage shimmer */
+        @keyframes ai_shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .ai-shimmer {
+          background: linear-gradient(90deg, var(--text-dim) 30%, var(--text) 50%, var(--text-dim) 70%);
+          background-size: 200% 100%;
+          -webkit-background-clip: text; background-clip: text;
+          -webkit-text-fill-color: transparent; color: transparent;
+          animation: ai_shimmer 1.5s linear infinite;
+        }
+
         /* B3 — Voice recording bar animation */
         @keyframes ai_voice_bar {
           0%, 100% { transform: scaleY(0.3); }
@@ -20907,14 +20911,14 @@ export default function AIPanel({
                             animation: 'fadeUp 0.2s ease-out',
                           }}>
                             {showThinking ? (
-                              <div style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '4px 2px' }}>
-                                {[0, 1, 2].map(i => (
-                                  <span key={i} style={{
-                                    width: 7, height: 7, borderRadius: '50%',
-                                    background: 'var(--text-dim)',
-                                    animation: `dotPulse 1.2s ease-in-out ${i * 0.2}s infinite`,
-                                  }} />
-                                ))}
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 2px' }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                                  alt=""
+                                  style={{ width: 16, height: 16, objectFit: 'contain', animation: 'spin 2.4s linear infinite', opacity: 0.85 }}
+                                />
+                                <span className="ai-shimmer" style={{ fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-display)' }}>Réflexion…</span>
                               </div>
                             ) : (
                               <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily="var(--font-display)" />
@@ -20990,13 +20994,16 @@ export default function AIPanel({
                     {msg.role === 'assistant' && toolStatusByMsg[msg.id] && (
                       <div style={{
                         display: 'flex', alignItems: 'center', gap: 8, marginLeft: 34, marginTop: 2,
-                        fontSize: 13, color: 'var(--ai-mid)', animation: 'ai_msg_in 0.18s ease both',
+                        animation: 'ai_msg_in 0.18s ease both',
                       }}>
-                        <span style={{ animation: 'ai_dot_pulse 1.3s ease-in-out infinite' }}>{toolStatusByMsg[msg.id]}</span>
-                        <span style={{ display: 'inline-flex', gap: 3 }}>
-                          {(['aip-dot-1', 'aip-dot-2', 'aip-dot-3'] as const).map(cls => (
-                            <span key={cls} className={cls} style={{ display: 'inline-block', width: 4, height: 4, borderRadius: '50%', background: 'var(--ai-dim)' }} />
-                          ))}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                          alt=""
+                          style={{ width: 15, height: 15, objectFit: 'contain', animation: 'spin 2.4s linear infinite', opacity: 0.85 }}
+                        />
+                        <span className="ai-shimmer" style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>
+                          {toolStatusByMsg[msg.id]}
                         </span>
                       </div>
                     )}

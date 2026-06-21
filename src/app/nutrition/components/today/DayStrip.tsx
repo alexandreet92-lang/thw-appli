@@ -20,7 +20,8 @@ const SEG = [
 
 function addDays(iso: string, n: number): string {
   const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n)
-  return d.toISOString().slice(0, 10)
+  // Format LOCAL (toISOString = UTC → décalerait d'un jour en France).
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export function DayStrip({ today, selected, targetKcal, onSelect }: {

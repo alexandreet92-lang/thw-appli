@@ -12,7 +12,10 @@ export function MacroBar({ label, consumed, target, color }: {
   target: number
   color: string
 }) {
-  const pct = target > 0 ? Math.min(consumed / target, 1) : 0
+  const ratio = target > 0 ? consumed / target : 0
+  const pct = Math.min(ratio, 1)
+  const over = target > 0 && consumed > target * 1.02   // dépassement (>2 %)
+  const barColor = over ? 'var(--charge-hard)' : color
   const [w, setW] = useState(0)
   const reduce = useRef(false)
 
@@ -27,12 +30,13 @@ export function MacroBar({ label, consumed, target, color }: {
     <div style={{ marginBottom: 'var(--space-3)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
         <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-        <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', flexShrink: 0 }}>
-          {Math.round(consumed)} / {Math.round(target)} g
+        <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: over ? 'var(--charge-hard)' : 'var(--text-mid)', fontWeight: over ? 600 : 400, flexShrink: 0 }}>
+          {Math.round(consumed)} / {Math.round(target)} g{over ? ' · dépassé' : ''}
         </span>
       </div>
-      <div style={{ width: '100%', height: 6, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', boxSizing: 'border-box' }}>
-        <div style={{ width: `${w * 100}%`, height: '100%', background: color, borderRadius: 999, transition: reduce.current ? 'none' : 'width 0.9s cubic-bezier(0.22,1,0.36,1)' }} />
+      {/* Piste + repère d'objectif (100 %) à droite ; remplissage coloré (rouge si dépassé) */}
+      <div style={{ position: 'relative', width: '100%', height: 6, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', boxSizing: 'border-box' }}>
+        <div style={{ width: `${w * 100}%`, height: '100%', background: barColor, borderRadius: 999, transition: reduce.current ? 'none' : 'width 0.9s cubic-bezier(0.22,1,0.36,1)' }} />
       </div>
     </div>
   )

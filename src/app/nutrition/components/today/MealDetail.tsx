@@ -24,8 +24,9 @@ export function MealDetail({ foods, onTapFood, onDeleteFood }: {
 
       {open && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 'var(--space-1)' }}>
+          <style>{`@keyframes thwFoodIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@media(prefers-reduced-motion:reduce){.thw-food-in{animation:none!important}}`}</style>
           {foods.map((f, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%' }}>
+            <div key={i} className="thw-food-in" style={{ animation: 'thwFoodIn 0.28s ease both', display: 'flex', alignItems: 'center', gap: 'var(--space-2)', width: '100%' }}>
               <button onClick={() => onTapFood(i)} style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card)', cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
                   <span style={{ flex: 1, minWidth: 0, fontFamily: FB, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

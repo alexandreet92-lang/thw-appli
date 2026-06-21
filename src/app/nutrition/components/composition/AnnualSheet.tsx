@@ -4,7 +4,7 @@
 // document.body. Tout est calculé depuis les vraies mesures de l'année.
 // Fermeture : bouton, tap backdrop, glissement vers le bas (mobile).
 
-import { useRef } from 'react'
+import { useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import type { YearSummary } from './compositionData'
 
@@ -26,6 +26,12 @@ function Spark({ pts }: { pts: { t: number; v: number }[] }) {
 
 export function AnnualSheet({ summary, metricLabel, unit, onClose }: { summary: YearSummary; metricLabel: string; unit: string; onClose: () => void }) {
   const startY = useRef<number | null>(null)
+  const [closing, setClosing] = useState(false)
+  // Fermeture animée : on joue le glissement vers le bas avant de démonter.
+  const requestClose = useCallback(() => {
+    setClosing(true)
+    setTimeout(onClose, 260)
+  }, [onClose])
   const stat = (label: string, value: string) => (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>{label}</div>
@@ -33,15 +39,16 @@ export function AnnualSheet({ summary, metricLabel, unit, onClose }: { summary: 
     </div>
   )
   return createPortal(
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'var(--bg)', opacity: 0.001 }}>
-      <div style={{ position: 'fixed', inset: 0, background: 'var(--text)', opacity: 0.32 }} />
+    <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 3000 }}>
+      <div style={{ position: 'fixed', inset: 0, background: 'var(--text)', opacity: 0.32,
+        animation: `${closing ? 'fadeOutOverlay' : 'fadeInOverlay'} 260ms ease both` }} />
       <div
         onClick={e => e.stopPropagation()}
         onTouchStart={e => { startY.current = e.touches[0].clientY }}
-        onTouchEnd={e => { if (startY.current != null && e.changedTouches[0].clientY - startY.current > 60) onClose() }}
+        onTouchEnd={e => { if (startY.current != null && e.changedTouches[0].clientY - startY.current > 60) requestClose() }}
         style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 1, margin: '0 auto', maxWidth: 560,
           background: 'var(--bg-card)', borderRadius: 'var(--r-lg) var(--r-lg) 0 0', padding: 'var(--space-6)',
-          animation: 'sheet-open 300ms cubic-bezier(0.16,1,0.3,1) both' }}
+          animation: `${closing ? 'sheet-close' : 'sheet-open'} 280ms cubic-bezier(0.16,1,0.3,1) both` }}
       >
         <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border)', margin: '0 auto var(--space-4)' }} />
         <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-1)' }}>{summary.year} · {metricLabel}</h2>
@@ -57,7 +64,7 @@ export function AnnualSheet({ summary, metricLabel, unit, onClose }: { summary: 
           {stat('Amplitude', `${summary.amplitude}${unit}`)}
           {stat('Variation', `${summary.delta > 0 ? '+' : ''}${summary.delta}${unit}`)}
         </div>
-        <button onClick={onClose} style={{ width: '100%', height: 40, border: 'none', borderRadius: 'var(--r-sm)',
+        <button onClick={requestClose} style={{ width: '100%', height: 40, border: 'none', borderRadius: 'var(--r-sm)',
           background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
           Fermer
         </button>

@@ -77,7 +77,7 @@ export function CompositionTab(p: Props) {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="xl:col-span-2" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
           {/* Période = zoom + métriques */}
           <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
             {PERIODS.map(([lbl, d]) => (
@@ -111,14 +111,20 @@ export function CompositionTab(p: Props) {
 
           <WeightGraph pts={pts} unit={unit} goal={goal} periodDays={period} isDesktop={p.isDesktop} />
 
-          {/* Résumés annuels */}
+          {/* Résumés annuels — chaque année ouvre une feuille coulissante */}
           {summaries.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>Résumés annuels</span>
-              {summaries.map(s => (
-                <button key={s.year} onClick={() => setYear(s.year)} style={{ border: 'none', background: 'var(--bg-card2)', cursor: 'pointer',
-                  borderRadius: 'var(--r-sm)', padding: '4px 12px', fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{s.year}</button>
-              ))}
+            <div>
+              <div style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', marginBottom: 'var(--space-3)' }}>Résumés annuels</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                {summaries.map(s => (
+                  <button key={s.year} onClick={() => setYear(s.year)} style={{ border: '1px solid var(--border)', background: 'var(--bg-card2)', cursor: 'pointer',
+                    borderRadius: 999, padding: '9px 20px', fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--text)',
+                    display: 'flex', alignItems: 'center', gap: 7 }}>
+                    {s.year}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M18 15l-6-6-6 6" /></svg>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

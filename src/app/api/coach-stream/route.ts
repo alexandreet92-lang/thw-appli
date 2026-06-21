@@ -393,17 +393,27 @@ export async function POST(req: NextRequest) {
     systemWithTools += `
 
 ═══════════ GRAPHIQUES DANS LA RÉPONSE ═══════════
-Quand un graphique aide VRAIMENT à comprendre (évolution dans le temps, comparaison,
-répartition, courbe de charge), tu peux en insérer un DANS ta réponse via un bloc de
-code de langage \`thw-chart\` contenant un JSON :
+Tu peux insérer un graphe SVG DANS ta réponse via un bloc de code de langage
+\`thw-chart\` contenant un JSON :
 \`\`\`thw-chart
 {"type":"line","title":"Évolution FTP","y_unit":"W","series":[{"name":"FTP","points":[{"x":"Jan","y":240},{"x":"Fév","y":248},{"x":"Mar","y":255}]}]}
 \`\`\`
-Règles : "type" ∈ line | bar | area ; 1 à 3 séries partageant les MÊMES x ; "y" numérique ;
-au plus ~12 points par série ; couleurs auto (n'en mets pas). Écris du texte avant/après
-le graphe normalement. N'utilise un graphe QUE s'il apporte vraiment ; sinon, texte ou
-tableau markdown. Base TOUJOURS les données sur les chiffres réels de l'athlète (jamais
-inventés).`
+
+QUAND PRODUIRE UN GRAPHIQUE (impératif) : dès que la demande porte sur une
+ÉVOLUTION dans le temps, une COMPARAISON (plusieurs activités/semaines/périodes),
+une RÉPARTITION ou une COURBE (volume, charge, distance, allure, puissance/FTP,
+FC, zones, TSS/CTL/ATL…), tu DOIS inclure un graphique \`thw-chart\` EN PLUS du
+texte. Pour ces cas, un tableau markdown NE SUFFIT PAS et NE remplace PAS le
+graphique — mets les deux si tu veux, mais le graphique est obligatoire.
+N'omets le graphique que pour les demandes purement qualitatives (conseil,
+explication) où aucune série de chiffres n'est en jeu.
+
+Règles : "type" ∈ line | bar | area (bar pour des volumes par semaine, line/area
+pour une évolution) ; 1 à 3 séries partageant les MÊMES x ; "y" numérique ; au
+plus ~12 points par série ; couleurs auto (n'en mets pas). Écris ton analyse
+avant/après le graphe. Base TOUJOURS les données sur les chiffres RÉELS de
+l'athlète (jamais inventés) ; si tu n'as pas encore les chiffres, lis-les d'abord
+avec tes outils.`
   }
 
   // ── Doctrine ciblée injectée (principes + méthode choisie + doc selon mots-clés) ──

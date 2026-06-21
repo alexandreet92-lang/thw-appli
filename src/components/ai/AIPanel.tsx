@@ -262,10 +262,10 @@ function parseChartSpec(raw: string): ChartSpec | null {
   } catch { return null }
 }
 
-function ChartBlock({ spec }: { spec: ChartSpec }) {
+function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: boolean }) {
   const [active, setActive] = useState<number | null>(null)
   const [uid] = useState(() => 'chart-' + Math.random().toString(36).slice(2, 8))
-  const W = 640, H = 300, PL = 50, PR = 18, PT = 16, PB = 38
+  const W = 640, H = embedded ? 340 : 300, PL = 50, PR = 18, PT = 16, PB = 38
   const plotW = W - PL - PR, plotH = H - PT - PB
   const type = spec.type ?? 'line'
   const series = spec.series
@@ -292,8 +292,8 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
   const showValueLabels = nSeries === 1 && n <= 12
 
   return (
-    <div style={{ margin: '12px 0', marginLeft: 34, background: 'transparent', overflow: 'hidden' }}>
-      {spec.title && (
+    <div style={{ margin: embedded ? 0 : '12px 0', marginLeft: embedded ? 0 : 34, background: 'transparent', overflow: 'hidden' }}>
+      {!embedded && spec.title && (
         <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', padding: '0 2px 8px' }}>
           {spec.title}{unit ? ` · ${unit}` : ''}
         </div>
@@ -404,6 +404,96 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
   )
 }
 
+// Mini-aperçu (thumbnail) du graphe pour la carte cliquable.
+function ChartThumb({ spec }: { spec: ChartSpec }) {
+  const W = 60, H = 40, P = 4
+  const s0 = spec.series[0]
+  const ys = s0.points.map(p => p.y)
+  const n = ys.length
+  const lo = Math.min(0, ...ys), hi = Math.max(...ys, lo + 1)
+  const x = (i: number) => P + (n <= 1 ? (W - 2 * P) / 2 : (i / (n - 1)) * (W - 2 * P))
+  const y = (v: number) => H - P - ((v - lo) / (hi - lo)) * (H - 2 * P)
+  const c = s0.color ?? CHART_COLORS[0]
+  if ((spec.type ?? 'line') === 'bar') {
+    const band = (W - 2 * P) / Math.max(n, 1)
+    const bw = band * 0.66
+    return (
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+        {ys.map((v, i) => <rect key={i} x={P + band * i + (band - bw) / 2} y={y(v)} width={bw} height={Math.max(1, H - P - y(v))} rx={1.5} fill={c} opacity={0.85} />)}
+      </svg>
+    )
+  }
+  const pts = ys.map((v, i) => `${x(i)},${y(v)}`).join(' ')
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+      {(spec.type ?? 'line') === 'area' && <polygon points={`${x(0)},${H - P} ${pts} ${x(n - 1)},${H - P}`} fill={c} opacity={0.18} />}
+      <polyline points={pts} fill="none" stroke={c} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+// Carte cliquable (façon « artifact » Claude) → ouvre le graphe en grand.
+function ChartCard({ spec }: { spec: ChartSpec }) {
+  const [open, setOpen] = useState(false)
+  const title = spec.title || 'Graphique'
+  const sub = `Graphique interactif · ${spec.series[0].points.length} points${spec.y_unit ? ' · ' + spec.y_unit : ''}`
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 460,
+          margin: '10px 0 10px 34px', padding: '10px 12px',
+          border: '1px solid var(--ai-border)', borderRadius: 14, background: 'var(--ai-bg)',
+          cursor: 'pointer', textAlign: 'left', transition: 'box-shadow 0.14s, border-color 0.14s',
+        }}
+        onMouseEnter={e => { const t = e.currentTarget as HTMLButtonElement; t.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'; t.style.borderColor = 'var(--ai-mid)' }}
+        onMouseLeave={e => { const t = e.currentTarget as HTMLButtonElement; t.style.boxShadow = 'none'; t.style.borderColor = 'var(--ai-border)' }}
+      >
+        <div style={{ width: 60, height: 40, borderRadius: 9, background: 'rgba(6,182,212,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <ChartThumb spec={spec} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+          <div style={{ fontSize: 11.5, color: 'var(--ai-mid)', marginTop: 2 }}>{sub}</div>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ai-mid)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+        </svg>
+      </button>
+      {open && <ChartViewer spec={spec} onClose={() => setOpen(false)} />}
+    </>
+  )
+}
+
+// Vue plein écran (panneau qui glisse du bas) avec le graphe interactif en grand.
+function ChartViewer({ spec, onClose }: { spec: ChartSpec; onClose: () => void }) {
+  return createPortal(
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'aip_fade_in 0.16s ease' }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: '100%', maxWidth: 680, maxHeight: '90vh', background: 'var(--ai-bg)',
+        borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: '8px 18px 28px',
+        boxShadow: '0 -10px 44px rgba(0,0,0,0.22)', animation: 'ai_sheet_up 0.24s cubic-bezier(.2,.8,.2,1)',
+        overflowY: 'auto',
+      }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--ai-border)', margin: '6px auto 14px' }} />
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', lineHeight: 1.25 }}>{spec.title || 'Graphique'}</div>
+            {spec.y_unit && <div style={{ fontSize: 12, color: 'var(--ai-mid)', marginTop: 2 }}>Unité : {spec.y_unit}</div>}
+          </div>
+          <button onClick={onClose} aria-label="Fermer" style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'var(--ai-bg2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <ChartBlock spec={spec} embedded />
+        <div style={{ fontSize: 12, color: 'var(--ai-mid)', textAlign: 'center', marginTop: 10 }}>Touche une barre ou un point pour voir la valeur exacte.</div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
 function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string }) {
   const blocks: React.ReactNode[] = []
   const lines = text.split('\n')
@@ -432,7 +522,7 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
       if (lang === 'thw-chart' || lang === 'chart') {
         const spec = parseChartSpec(codeLines.join('\n'))
         if (spec) {
-          blocks.push(<ChartBlock key={`chart-${i}`} spec={spec} />)
+          blocks.push(<ChartCard key={`chart-${i}`} spec={spec} />)
         } else {
           // JSON incomplet (en cours de streaming) ou invalide → placeholder discret
           blocks.push(
@@ -20044,6 +20134,10 @@ export default function AIPanel({
         @keyframes ai_slidein {
           from { opacity:0; transform:translateY(8px); }
           to   { opacity:1; transform:translateY(0); }
+        }
+        @keyframes ai_sheet_up {
+          from { transform:translateY(100%); }
+          to   { transform:translateY(0); }
         }
         @keyframes aip_menu_up {
           from { opacity:0; transform:translateY(8px); }

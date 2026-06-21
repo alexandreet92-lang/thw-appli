@@ -40,7 +40,7 @@ export function AnnualSheet({ summary, metricLabel, unit, onClose }: { summary: 
   )
   return createPortal(
     <div onClick={requestClose} style={{ position: 'fixed', inset: 0, zIndex: 3000 }}>
-      <div style={{ position: 'fixed', inset: 0, background: 'var(--text)', opacity: 0.32,
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)' /* design-allow-color: voile de modale standard */, backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
         animation: `${closing ? 'fadeOutOverlay' : 'fadeInOverlay'} 260ms ease both` }} />
       <div
         onClick={e => e.stopPropagation()}

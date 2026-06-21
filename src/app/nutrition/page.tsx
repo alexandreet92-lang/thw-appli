@@ -1115,7 +1115,7 @@ export default function NutritionPage() {
       )}
 
       {/* ── HEADER ─────────────────────────────────────────────── */}
-      <div className="px-4 md:px-7" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 24, width: '100%', maxWidth: 1100, margin: '0 auto', boxSizing: 'border-box' }}>
+      <div className="px-5 md:px-7" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 24, width: '100%', maxWidth: 1100, margin: '0 auto', boxSizing: 'border-box' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, margin: 0 }}>Nutrition</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Bouton scanner — visible mobile uniquement (md:hidden via Tailwind) */}
@@ -1156,7 +1156,7 @@ export default function NutritionPage() {
           Mobile : onglets en haut (inchangés). */}
       <div style={{ display: isDesktop ? 'flex' : 'block', alignItems: 'flex-start', width: '100%', maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box' }}>
         {isDesktop && <NutritionRail tab={tab} onChange={changeTab} />}
-        <div className="px-4 md:px-7 pt-[14px] md:pt-7" style={{ paddingBottom: 0, flex: 1, minWidth: 0, width: '100%', maxWidth: 1100, margin: '0 auto', boxSizing: 'border-box' }}>
+        <div className="px-5 md:px-7 pt-[14px] md:pt-7" style={{ paddingBottom: 0, flex: 1, minWidth: 0, width: '100%', maxWidth: 1100, margin: '0 auto', boxSizing: 'border-box' }}>
 
         {!isDesktop && <NutritionTabs tab={tab} onChange={changeTab} />}
 

@@ -109,7 +109,10 @@ export function CompositionTab(p: Props) {
             {stat('Max', stats ? `${stats.max}${unit}` : '—')}
           </div>
 
-          <WeightGraph pts={pts} unit={unit} goal={goal} periodDays={period} isDesktop={p.isDesktop} />
+          {/* Graphe dans une carte (floating) pour ne pas être collé aux bords */}
+          <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)' }}>
+            <WeightGraph pts={pts} unit={unit} goal={goal} periodDays={period} isDesktop={p.isDesktop} />
+          </div>
 
           {/* Résumés annuels — chaque année ouvre une feuille coulissante */}
           {summaries.length > 0 && (

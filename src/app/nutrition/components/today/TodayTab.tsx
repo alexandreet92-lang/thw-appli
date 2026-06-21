@@ -77,7 +77,7 @@ export function TodayTab(p: Props) {
       {/* Autour de ta séance — fueling avant/pendant/après (reco auto + log) */}
       <div>
         <h2 style={sectionTitle}>Autour de ta séance</h2>
-        <SessionFueling sessions={p.todaySessions} weightKg={p.weightKg} />
+        <SessionFueling sessions={p.todaySessions} />
       </div>
 
       {/* Hydratation */}

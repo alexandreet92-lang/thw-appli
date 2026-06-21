@@ -386,10 +386,10 @@ export async function POST(req: NextRequest) {
   const client = getAnthropicClient()
   let systemWithTools = `${chatSystemPrompt}\n\n${TOOL_INSTRUCTIONS}`
 
-  // ── Graphiques dans le chat (Athéna/Zeus uniquement) ──
+  // ── Graphiques dans le chat (coach central) ──
   //    L'IA peut insérer un graphe SVG dans le fil de sa réponse via un bloc
-  //    ```thw-chart {json}```. Réservé aux modèles avancés et au coach central.
-  if ((chatBody as { agentId?: string }).agentId === 'central' && (cappedKey === 'athena' || cappedKey === 'zeus')) {
+  //    ```thw-chart {json}```. Injecté pour tout le chat central (tous modèles).
+  if ((chatBody as { agentId?: string }).agentId === 'central') {
     systemWithTools += `
 
 ═══════════ GRAPHIQUES DANS LA RÉPONSE ═══════════

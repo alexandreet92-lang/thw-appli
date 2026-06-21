@@ -153,8 +153,10 @@ const APPS: AppDef[] = [
 // Providers with working OAuth flow
 const OAUTH_PROVIDERS = new Set(['strava', 'wahoo', 'withings', 'polar'])
 
-// Blue accent used consistently across all CTAs
-const ACCENT = '#5b6fff'
+// Accent de marque (cyan), cohérent avec --primary et le bouton record.
+const ACCENT = '#06B6D4'
+const ACCENT_HOVER = '#0596b3'
+const ACCENT_GLOW = 'rgba(6,182,212,0.30)'
 
 // ── Spinner ─────────────────────────────────────────────────────
 
@@ -230,7 +232,7 @@ function StatusBadge({ status }: { status: ConnectionStatus }) {
     </span>
   )
   if (status === 'pending') return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 20, background: 'rgba(91,111,255,0.12)', color: ACCENT, fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 20, background: 'var(--primary-dim)', color: ACCENT, fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
       <Spinner size={8} color={ACCENT} />
       En cours
     </span>
@@ -425,6 +427,31 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
   )
 }
 
+// ── ComingGrid ──────────────────────────────────────────────────
+// Applis pas encore intégrées : affichage DISCRET (petites pastilles ternies,
+// regroupées, sans bouton) au lieu de grandes lignes avec CTA.
+function ComingGrid({ apps, logoErrors, onLogoError }: {
+  apps: AppDef[]; logoErrors: Set<string>; onLogoError: (id: string) => void
+}) {
+  if (!apps.length) return null
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 8 }}>
+        Bientôt disponible
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {apps.map(app => (
+          <div key={app.id} title={`${app.name} — bientôt disponible`}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 5px', borderRadius: 20, border: '1px solid var(--border)', background: 'var(--bg-card2)', opacity: 0.5 }}>
+            <AppLogo app={app} size={18} logoErrors={logoErrors} onError={onLogoError} />
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>{app.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── PillFilter ──────────────────────────────────────────────────
 
 function PillFilter({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
@@ -485,7 +512,7 @@ function ConnectModal({ modal, app, logoErrors, onLogoError, onCancel, onContinu
               </button>
               <button onClick={onContinue}
                 onMouseEnter={() => setContinueHov(true)} onMouseLeave={() => setContinueHov(false)}
-                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: continueHov ? '#4a5bef' : ACCENT, color: '#fff', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: '0 2px 14px rgba(91,111,255,0.35)', transition: 'background 0.14s' }}>
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: continueHov ? ACCENT_HOVER : ACCENT, color: '#fff', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: `0 2px 14px ${ACCENT_GLOW}`, transition: 'background 0.14s' }}>
                 Continuer
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                   <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
@@ -773,12 +800,12 @@ function ConnectionsInner() {
                   height: isMobile ? 44 : 'auto',
                   width: isMobile ? '100%' : 'auto',
                   borderRadius: 10, border: 'none',
-                  background: (syncingAll || connectedCount === 0) ? 'var(--bg-card2)' : syncAllHov ? '#4a5bef' : ACCENT,
+                  background: (syncingAll || connectedCount === 0) ? 'var(--bg-card2)' : syncAllHov ? ACCENT_HOVER : 'var(--primary-gradient)',
                   color: (syncingAll || connectedCount === 0) ? 'var(--text-dim)' : '#fff',
                   fontFamily: 'DM Sans, sans-serif', fontWeight: 700, fontSize: 13,
                   cursor: (syncingAll || connectedCount === 0) ? 'default' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  boxShadow: (syncingAll || connectedCount === 0) ? 'none' : '0 2px 16px rgba(91,111,255,0.30)',
+                  boxShadow: (syncingAll || connectedCount === 0) ? 'none' : `0 2px 16px ${ACCENT_GLOW}`,
                   transition: 'background 0.18s',
                   whiteSpace: 'nowrap', flexShrink: 0,
                 }}>
@@ -919,7 +946,8 @@ function ConnectionsInner() {
                       </div>
                     </div>
 
-                    {catApps.map(app => {
+                    {/* Applis fonctionnelles = lignes complètes ; à venir = grille discrète */}
+                    {catApps.filter(a => getEffectiveStatus(a) !== 'coming').map(app => {
                       const effStatus = getEffectiveStatus(app)
                       return (
                         <AppRow key={app.id} app={app} effectiveStatus={effStatus}
@@ -936,6 +964,7 @@ function ConnectionsInner() {
                           needsReconnect={app.provider ? isPolarV3Token(connectedProviders[app.provider]) : false} />
                       )
                     })}
+                    <ComingGrid apps={catApps.filter(a => getEffectiveStatus(a) === 'coming')} logoErrors={logoErrors} onLogoError={handleLogoError} />
                   </section>
                 )
               })

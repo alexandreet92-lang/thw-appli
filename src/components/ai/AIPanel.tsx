@@ -263,85 +263,143 @@ function parseChartSpec(raw: string): ChartSpec | null {
 }
 
 function ChartBlock({ spec }: { spec: ChartSpec }) {
-  const W = 640, H = 280, PL = 46, PR = 16, PT = spec.title ? 34 : 16, PB = 34
+  const [active, setActive] = useState<number | null>(null)
+  const [uid] = useState(() => 'chart-' + Math.random().toString(36).slice(2, 8))
+  const W = 640, H = 300, PL = 50, PR = 18, PT = 16, PB = 38
   const plotW = W - PL - PR, plotH = H - PT - PB
   const type = spec.type ?? 'line'
+  const series = spec.series
+  const nSeries = series.length
 
   // Catégories = x de la 1ʳᵉ série (toutes les séries partagent les mêmes x)
-  const cats = spec.series[0].points.map(p => String(p.x))
+  const cats = series[0].points.map(p => String(p.x))
   const n = cats.length
-  const allY = spec.series.flatMap(s => s.points.map(p => p.y))
+  const unit = spec.y_unit ?? ''
+
+  const allY = series.flatMap(s => s.points.map(p => p.y))
   let yMin = Math.min(...allY), yMax = Math.max(...allY)
   if (type !== 'line') yMin = Math.min(0, yMin)        // bar/area ancrés à 0
-  if (yMin === yMax) { yMax += 1; yMin -= 1 }
-  const pad = (yMax - yMin) * 0.12
-  yMax += pad; if (type === 'line') yMin -= pad
+  if (yMin === yMax) { yMax += 1; if (type === 'line') yMin -= 1; else yMin = 0 }
+  yMax += (yMax - yMin) * 0.20                          // marge haute (labels de valeur)
+  if (type === 'line') yMin -= (yMax - yMin) * 0.06
   const yToPx = (y: number) => PT + plotH - ((y - yMin) / (yMax - yMin)) * plotH
-  const xToPx = (i: number) => n <= 1 ? PL + plotW / 2 : PL + (i / (n - 1)) * plotW
-
-  // Grille horizontale + labels Y (4 paliers)
+  const band = plotW / Math.max(n, 1)
+  const cx = (i: number) => PL + band * (i + 0.5)
+  const baseY = yToPx(Math.max(0, yMin))
+  const fmt = (v: number) => Math.abs(v) >= 100 ? String(Math.round(v)) : (Math.round(v * 10) / 10).toString()
   const yTicks = Array.from({ length: 5 }, (_, k) => yMin + ((yMax - yMin) * k) / 4)
-  const fmtY = (v: number) => Math.abs(v) >= 100 ? String(Math.round(v)) : (Math.round(v * 10) / 10).toString()
+  const colorOf = (si: number) => series[si].color ?? CHART_COLORS[si % CHART_COLORS.length]
+  const showValueLabels = nSeries === 1 && n <= 12
 
   return (
-    <div style={{ margin: '10px 0', marginLeft: 34, border: '1px solid var(--ai-border)', borderRadius: 12, background: 'var(--ai-bg2)', padding: '12px 8px 6px', overflow: 'hidden' }}>
+    <div style={{ margin: '10px 0', marginLeft: 34, border: '1px solid var(--ai-border)', borderRadius: 14, background: 'var(--ai-bg2)', padding: '12px 10px 6px', overflow: 'hidden' }}>
       {spec.title && (
-        <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', padding: '0 8px 6px' }}>
-          {spec.title}{spec.y_unit ? ` (${spec.y_unit})` : ''}
+        <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', padding: '0 4px 8px' }}>
+          {spec.title}{unit ? ` · ${unit}` : ''}
         </div>
       )}
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} preserveAspectRatio="xMidYMid meet">
-        {/* Grille + axes Y */}
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block', touchAction: 'manipulation' }} preserveAspectRatio="xMidYMid meet" onMouseLeave={() => setActive(null)}>
+        <defs>
+          {series.map((s, si) => {
+            const c = colorOf(si)
+            return (
+              <linearGradient key={si} id={`${uid}-g${si}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={c} stopOpacity={0.95} />
+                <stop offset="100%" stopColor={c} stopOpacity={0.5} />
+              </linearGradient>
+            )
+          })}
+        </defs>
+
+        {/* Grille + axe Y */}
         {yTicks.map((v, k) => {
           const y = yToPx(v)
           return (
             <g key={k}>
-              <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="var(--ai-border)" strokeWidth={1} />
-              <text x={PL - 6} y={y + 3} textAnchor="end" fontSize={10} fill="var(--ai-dim)" fontFamily="DM Mono,monospace">{fmtY(v)}</text>
+              <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="var(--ai-border)" strokeWidth={1} strokeDasharray={k === 0 ? undefined : '2 4'} />
+              <text x={PL - 8} y={y + 3.5} textAnchor="end" fontSize={11} fill="var(--ai-mid)" fontFamily="DM Mono,monospace">{fmt(v)}</text>
             </g>
           )
         })}
-        {/* Labels X (sous-échantillonnés si trop nombreux) */}
-        {cats.map((c, i) => {
-          const step = Math.ceil(n / 8)
-          if (n > 8 && i % step !== 0 && i !== n - 1) return null
-          return <text key={i} x={xToPx(i)} y={H - 12} textAnchor="middle" fontSize={10} fill="var(--ai-dim)">{c}</text>
-        })}
+
+        {/* Guide verticale (catégorie active) */}
+        {active !== null && (
+          <line x1={cx(active)} y1={PT} x2={cx(active)} y2={PT + plotH} stroke="var(--ai-mid)" strokeWidth={1} strokeDasharray="3 3" opacity={0.45} />
+        )}
+
         {/* Séries */}
-        {spec.series.map((s, si) => {
-          const color = s.color ?? CHART_COLORS[si % CHART_COLORS.length]
-          if (type === 'bar') {
-            const groupW = (plotW / Math.max(n, 1)) * 0.7
-            const barW = groupW / spec.series.length
-            return s.points.map((p, i) => {
-              const x0 = xToPx(i) - groupW / 2 + si * barW
-              const y = yToPx(p.y), y0 = yToPx(Math.max(0, yMin))
-              return <rect key={i} x={x0} y={Math.min(y, y0)} width={Math.max(1, barW - 1)} height={Math.abs(y0 - y)} rx={2} fill={color} opacity={0.85} />
-            })
-          }
-          const pts = s.points.map((p, i) => `${xToPx(i)},${yToPx(p.y)}`).join(' ')
+        {type === 'bar' ? series.map((s, si) => {
+          const groupW = band * 0.66
+          const barW = groupW / nSeries
+          return s.points.map((p, i) => {
+            const x0 = cx(i) - groupW / 2 + si * barW
+            const y = yToPx(p.y)
+            return <rect key={`${si}-${i}`} x={x0} y={Math.min(y, baseY)} width={Math.max(2, barW - 2)} height={Math.max(1, Math.abs(baseY - y))} rx={3}
+              fill={`url(#${uid}-g${si})`} opacity={active === null || active === i ? 1 : 0.5} />
+          })
+        }) : series.map((s, si) => {
+          const c = colorOf(si)
+          const pts = s.points.map((p, i) => `${cx(i)},${yToPx(p.y)}`).join(' ')
           return (
             <g key={si}>
-              {type === 'area' && (
-                <polygon points={`${PL},${yToPx(Math.max(0, yMin))} ${pts} ${xToPx(n - 1)},${yToPx(Math.max(0, yMin))}`} fill={color} opacity={0.14} />
-              )}
-              <polyline points={pts} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-              {s.points.map((p, i) => <circle key={i} cx={xToPx(i)} cy={yToPx(p.y)} r={3} fill={color} />)}
+              {type === 'area' && <polygon points={`${cx(0)},${baseY} ${pts} ${cx(n - 1)},${baseY}`} fill={`url(#${uid}-g${si})`} opacity={0.25} />}
+              <polyline points={pts} fill="none" stroke={c} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+              {s.points.map((p, i) => <circle key={i} cx={cx(i)} cy={yToPx(p.y)} r={active === i ? 5 : 3} fill={c} stroke="var(--ai-bg2)" strokeWidth={active === i ? 2 : 0} />)}
             </g>
           )
         })}
+
+        {/* Valeurs sur chaque barre/point (série unique) */}
+        {showValueLabels && series[0].points.map((p, i) => (
+          <text key={i} x={cx(i)} y={yToPx(p.y) - 7} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--ai-text)" fontFamily="DM Mono,monospace">{fmt(p.y)}</text>
+        ))}
+
+        {/* Labels X */}
+        {cats.map((c, i) => {
+          const step = Math.ceil(n / 7)
+          if (n > 7 && i % step !== 0 && i !== n - 1) return null
+          return <text key={i} x={cx(i)} y={H - 12} textAnchor="middle" fontSize={11} fill="var(--ai-mid)">{c.length > 9 ? c.slice(0, 8) + '…' : c}</text>
+        })}
+
+        {/* Tooltip (catégorie active) */}
+        {active !== null && (() => {
+          const lines = [cats[active], ...series.map(s => `${nSeries > 1 ? (s.name ?? '') + ' : ' : ''}${fmt(s.points[active]?.y ?? 0)}${unit ? ' ' + unit : ''}`)]
+          const tw = Math.max(...lines.map(l => l.length)) * 7 + 20
+          const th = 12 + lines.length * 16
+          let tx = cx(active) + 12
+          if (tx + tw > W - 4) tx = cx(active) - tw - 12
+          if (tx < 4) tx = 4
+          const ty = PT + 4
+          return (
+            <g pointerEvents="none">
+              <rect x={tx} y={ty} width={tw} height={th} rx={8} fill="#0F172A" opacity={0.92} />
+              {lines.map((l, k) => (
+                <text key={k} x={tx + 10} y={ty + 18 + k * 16} fontSize={k === 0 ? 12 : 11} fontWeight={k === 0 ? 700 : 500} fill={k === 0 ? '#fff' : '#CBD5E1'}>{l}</text>
+              ))}
+            </g>
+          )
+        })()}
+
+        {/* Zones de capture tap/survol (au-dessus) */}
+        {cats.map((_, i) => (
+          <rect key={i} x={PL + band * i} y={PT} width={band} height={plotH} fill="transparent" style={{ cursor: 'pointer' }}
+            onMouseEnter={() => setActive(i)}
+            onClick={() => setActive(a => (a === i ? null : i))} />
+        ))}
       </svg>
-      {/* Légende (si plusieurs séries nommées) */}
-      {spec.series.length > 1 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '4px 10px 2px' }}>
-          {spec.series.map((s, si) => (
+
+      {/* Légende */}
+      {nSeries > 1 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '6px 6px 2px' }}>
+          {series.map((s, si) => (
             <span key={si} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--ai-mid)' }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: s.color ?? CHART_COLORS[si % CHART_COLORS.length] }} />
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: colorOf(si) }} />
               {s.name ?? `Série ${si + 1}`}
             </span>
           ))}
         </div>
       )}
+      <div style={{ fontSize: 10, color: 'var(--ai-dim)', textAlign: 'center', padding: '3px 0 0' }}>Touche le graphique pour les valeurs</div>
     </div>
   )
 }

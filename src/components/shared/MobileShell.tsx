@@ -10,7 +10,7 @@ import dynamic from 'next/dynamic'
 import { useProfile } from '@/hooks/useProfile'
 import { SidebarContent, Avatar } from '@/components/shared/Sidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
-import { NotificationsOverlay } from '@/components/shared/NotificationsOverlay'
+import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
@@ -24,6 +24,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const unreadNotifs = useUnreadNotifCount(notifOpen)
   const [reduce, setReduce] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0 })
@@ -134,6 +135,11 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
+            {unreadNotifs > 0 && (
+              <span style={{ position: 'absolute', top: 7, right: 7, minWidth: 15, height: 15, padding: '0 4px', borderRadius: 8, background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, boxShadow: '0 0 0 2px var(--bg)' }}>
+                {unreadNotifs > 9 ? '9+' : unreadNotifs}
+              </span>
+            )}
           </button>
           <button aria-label="Coach IA" onClick={() => setAiOpen(true)}
             style={{ ...fab, right: 12, borderRadius: 12, overflow: 'hidden' }}>

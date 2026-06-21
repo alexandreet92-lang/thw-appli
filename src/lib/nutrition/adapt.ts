@@ -55,8 +55,29 @@ const TIER_LABELS: Record<Tier, string> = { low: 'jour léger', mid: 'jour modé
 
 interface MacroSet { proteines?: number; glucides?: number; lipides?: number }
 
+const MEAL_SLOTS = ['petit_dejeuner', 'collation_matin', 'dejeuner', 'collation_apres_midi', 'diner', 'collation_soir']
+
+// Met à l'échelle les portions des repas d'un jour par un ratio (déterministe,
+// instantané) : les plats restent les mêmes, les quantités montent/descendent.
+function scaleMeals(jour: any, ratio: number): void {
+  if (!isFinite(ratio) || ratio <= 0 || Math.abs(ratio - 1) < 0.02) return
+  const repas = jour?.repas
+  if (!repas || typeof repas !== 'object') return
+  for (const optKey of ['option_A', 'option_B']) {
+    const opt = repas[optKey]
+    if (!opt || typeof opt !== 'object') continue
+    for (const slot of MEAL_SLOTS) {
+      const meal = opt[slot]
+      if (!meal || typeof meal !== 'object') continue
+      for (const k of ['kcal', 'proteines', 'glucides', 'lipides']) {
+        if (typeof meal[k] === 'number') meal[k] = Math.round(meal[k] * ratio)
+      }
+    }
+  }
+}
+
 // Applique le palier `tier` à un objet "jour" du plan, en lisant les jeux
-// calories_<tier> / macros_<tier> du variant. Retourne l'ancien/nouveau kcal.
+// calories_<tier> / macros_<tier> du variant. Met aussi à l'échelle les repas.
 function applyTierToDay(variant: any, jour: any, tier: Tier): { oldKcal: number; newKcal: number; oldG: number; newG: number } {
   const oldKcal = Number(jour.kcal) || 0
   const oldG = Number(jour.glucides) || 0
@@ -67,6 +88,8 @@ function applyTierToDay(variant: any, jour: any, tier: Tier): { oldKcal: number;
   if (typeof macros.proteines === 'number') jour.proteines = macros.proteines
   if (typeof macros.glucides === 'number') jour.glucides = macros.glucides
   if (typeof macros.lipides === 'number') jour.lipides = macros.lipides
+  // Phase 2 : les repas suivent le nouveau total (portions ajustées au prorata)
+  if (oldKcal > 0 && newKcal > 0) scaleMeals(jour, newKcal / oldKcal)
   jour.adapted = true   // marque : ce jour a été réajusté automatiquement
   return { oldKcal, newKcal, oldG, newG: Number(jour.glucides) || 0 }
 }

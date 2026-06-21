@@ -9,6 +9,30 @@ import { createClient } from '@/lib/supabase/client'
 
 const FD = 'var(--font-display)'
 
+// Compteur de notifications non lues — se rafraîchit quand `signal` change
+// (on passe l'état d'ouverture de l'overlay : à la fermeture, le compte retombe).
+export function useUnreadNotifCount(signal: unknown): number {
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) { if (!cancelled) setCount(0); return }
+        const { count: c } = await sb
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('read', false)
+        if (!cancelled) setCount(c ?? 0)
+      } catch { /* ignore */ }
+    })()
+    return () => { cancelled = true }
+  }, [signal])
+  return count
+}
+
 interface Notif {
   id: string
   type: string

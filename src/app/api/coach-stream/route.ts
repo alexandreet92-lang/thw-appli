@@ -393,8 +393,11 @@ export async function POST(req: NextRequest) {
     systemWithTools += `
 
 ═══════════ GRAPHIQUES DANS LA RÉPONSE ═══════════
-Tu peux insérer un graphe SVG DANS ta réponse via un bloc de code de langage
-\`thw-chart\` contenant un JSON :
+IMPORTANT : tu DISPOSES de la capacité d'afficher des graphiques dans le chat.
+Ne dis JAMAIS le contraire (jamais « je ne peux pas générer de graphique », jamais
+« regarde dans l'app »). Pour tracer un graphe, il te suffit d'écrire un bloc de
+code de langage \`thw-chart\` contenant un JSON — l'app le transforme en graphe.
+Modèle :
 \`\`\`thw-chart
 {"type":"line","title":"Évolution FTP","y_unit":"W","series":[{"name":"FTP","points":[{"x":"Jan","y":240},{"x":"Fév","y":248},{"x":"Mar","y":255}]}]}
 \`\`\`

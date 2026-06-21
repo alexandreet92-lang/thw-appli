@@ -294,7 +294,7 @@ function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: bo
   return (
     <div style={{ margin: embedded ? 0 : '12px 0', marginLeft: embedded ? 0 : 34, background: 'transparent', overflow: 'hidden' }}>
       {!embedded && spec.title && (
-        <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', padding: '0 2px 8px' }}>
+        <div style={{ fontFamily: 'Syne,sans-serif', fontSize: 13, fontWeight: 700, color: 'var(--text)', padding: '0 2px 8px' }}>
           {spec.title}{unit ? ` · ${unit}` : ''}
         </div>
       )}
@@ -316,15 +316,15 @@ function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: bo
           const y = yToPx(v)
           return (
             <g key={k}>
-              <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="var(--ai-border)" strokeWidth={1} strokeDasharray={k === 0 ? undefined : '2 4'} />
-              <text x={PL - 8} y={y + 3.5} textAnchor="end" fontSize={11} fill="var(--ai-mid)" fontFamily="DM Mono,monospace">{fmt(v)}</text>
+              <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="var(--border)" strokeWidth={1} strokeDasharray={k === 0 ? undefined : '2 4'} />
+              <text x={PL - 8} y={y + 3.5} textAnchor="end" fontSize={11} fill="var(--text-mid)" fontFamily="DM Mono,monospace">{fmt(v)}</text>
             </g>
           )
         })}
 
         {/* Guide verticale (catégorie active) */}
         {active !== null && (
-          <line x1={cx(active)} y1={PT} x2={cx(active)} y2={PT + plotH} stroke="var(--ai-mid)" strokeWidth={1} strokeDasharray="3 3" opacity={0.45} />
+          <line x1={cx(active)} y1={PT} x2={cx(active)} y2={PT + plotH} stroke="var(--text-mid)" strokeWidth={1} strokeDasharray="3 3" opacity={0.45} />
         )}
 
         {/* Séries */}
@@ -344,21 +344,21 @@ function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: bo
             <g key={si}>
               {type === 'area' && <polygon points={`${cx(0)},${baseY} ${pts} ${cx(n - 1)},${baseY}`} fill={`url(#${uid}-g${si})`} opacity={0.25} />}
               <polyline points={pts} fill="none" stroke={c} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-              {s.points.map((p, i) => <circle key={i} cx={cx(i)} cy={yToPx(p.y)} r={active === i ? 5 : 3} fill={c} stroke="var(--ai-bg)" strokeWidth={active === i ? 2 : 0} />)}
+              {s.points.map((p, i) => <circle key={i} cx={cx(i)} cy={yToPx(p.y)} r={active === i ? 5 : 3} fill={c} stroke="var(--bg-card)" strokeWidth={active === i ? 2 : 0} />)}
             </g>
           )
         })}
 
         {/* Valeurs sur chaque barre/point (série unique) */}
         {showValueLabels && series[0].points.map((p, i) => (
-          <text key={i} x={cx(i)} y={yToPx(p.y) - 7} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--ai-text)" fontFamily="DM Mono,monospace">{fmt(p.y)}</text>
+          <text key={i} x={cx(i)} y={yToPx(p.y) - 7} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text)" fontFamily="DM Mono,monospace">{fmt(p.y)}</text>
         ))}
 
         {/* Labels X */}
         {cats.map((c, i) => {
           const step = Math.ceil(n / 7)
           if (n > 7 && i % step !== 0 && i !== n - 1) return null
-          return <text key={i} x={cx(i)} y={H - 12} textAnchor="middle" fontSize={11} fill="var(--ai-mid)">{c.length > 9 ? c.slice(0, 8) + '…' : c}</text>
+          return <text key={i} x={cx(i)} y={H - 12} textAnchor="middle" fontSize={11} fill="var(--text-mid)">{c.length > 9 ? c.slice(0, 8) + '…' : c}</text>
         })}
 
         {/* Tooltip (catégorie active) */}
@@ -392,14 +392,14 @@ function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: bo
       {nSeries > 1 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '6px 6px 2px' }}>
           {series.map((s, si) => (
-            <span key={si} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--ai-mid)' }}>
+            <span key={si} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-mid)' }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: colorOf(si) }} />
               {s.name ?? `Série ${si + 1}`}
             </span>
           ))}
         </div>
       )}
-      <div style={{ fontSize: 10, color: 'var(--ai-dim)', textAlign: 'center', padding: '3px 0 0' }}>Touche le graphique pour les valeurs</div>
+      <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center', padding: '3px 0 0' }}>Touche le graphique pour les valeurs</div>
     </div>
   )
 }
@@ -443,21 +443,21 @@ function ChartCard({ spec }: { spec: ChartSpec }) {
         onClick={() => setOpen(true)}
         style={{
           display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 460,
-          margin: '10px 0 10px 34px', padding: '10px 12px',
-          border: '1px solid var(--ai-border)', borderRadius: 14, background: 'var(--ai-bg)',
+          margin: '12px auto', padding: '11px 13px',
+          border: '1px solid var(--border)', borderRadius: 14, background: 'var(--bg-card)',
           cursor: 'pointer', textAlign: 'left', transition: 'box-shadow 0.14s, border-color 0.14s',
         }}
-        onMouseEnter={e => { const t = e.currentTarget as HTMLButtonElement; t.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'; t.style.borderColor = 'var(--ai-mid)' }}
-        onMouseLeave={e => { const t = e.currentTarget as HTMLButtonElement; t.style.boxShadow = 'none'; t.style.borderColor = 'var(--ai-border)' }}
+        onMouseEnter={e => { const t = e.currentTarget as HTMLButtonElement; t.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'; t.style.borderColor = 'var(--text-mid)' }}
+        onMouseLeave={e => { const t = e.currentTarget as HTMLButtonElement; t.style.boxShadow = 'none'; t.style.borderColor = 'var(--border)' }}
       >
         <div style={{ width: 60, height: 40, borderRadius: 9, background: 'rgba(6,182,212,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <ChartThumb spec={spec} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
-          <div style={{ fontSize: 11.5, color: 'var(--ai-mid)', marginTop: 2 }}>{sub}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+          <div style={{ fontSize: 11.5, color: 'var(--text-mid)', marginTop: 2 }}>{sub}</div>
         </div>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ai-mid)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
           <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
         </svg>
       </button>
@@ -471,23 +471,23 @@ function ChartViewer({ spec, onClose }: { spec: ChartSpec; onClose: () => void }
   return createPortal(
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'aip_fade_in 0.16s ease' }}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: '100%', maxWidth: 680, maxHeight: '90vh', background: 'var(--ai-bg)',
+        width: '100%', maxWidth: 680, maxHeight: '90vh', background: 'var(--bg-card)',
         borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: '8px 18px 28px',
         boxShadow: '0 -10px 44px rgba(0,0,0,0.22)', animation: 'ai_sheet_up 0.24s cubic-bezier(.2,.8,.2,1)',
         overflowY: 'auto',
       }}>
-        <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--ai-border)', margin: '6px auto 14px' }} />
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)', margin: '6px auto 14px' }} />
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', lineHeight: 1.25 }}>{spec.title || 'Graphique'}</div>
-            {spec.y_unit && <div style={{ fontSize: 12, color: 'var(--ai-mid)', marginTop: 2 }}>Unité : {spec.y_unit}</div>}
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif', lineHeight: 1.25 }}>{spec.title || 'Graphique'}</div>
+            {spec.y_unit && <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 2 }}>Unité : {spec.y_unit}</div>}
           </div>
-          <button onClick={onClose} aria-label="Fermer" style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'var(--ai-bg2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ai-text)" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          <button onClick={onClose} aria-label="Fermer" style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'var(--bg-alt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
         <ChartBlock spec={spec} embedded />
-        <div style={{ fontSize: 12, color: 'var(--ai-mid)', textAlign: 'center', marginTop: 10 }}>Touche une barre ou un point pour voir la valeur exacte.</div>
+        <div style={{ fontSize: 12, color: 'var(--text-mid)', textAlign: 'center', marginTop: 10 }}>Touche une barre ou un point pour voir la valeur exacte.</div>
       </div>
     </div>,
     document.body,
@@ -1646,13 +1646,13 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   fontSize: isMobile ? 15 : 13, fontWeight: isA ? 700 : 600,
-                  color: 'var(--ai-text)',
+                  color: 'var(--text)',
                   fontFamily: 'Syne,sans-serif', lineHeight: 1.25,
                 }}>
                   {mc.name}
                 </div>
                 <div style={{
-                  fontSize: isMobile ? 12 : 11, color: 'var(--ai-mid)',
+                  fontSize: isMobile ? 12 : 11, color: 'var(--text-mid)',
                   fontFamily: 'DM Sans,sans-serif', marginTop: 2,
                 }}>
                   {mc.desc}
@@ -12085,32 +12085,32 @@ function HistoryDrawer({
         <button
           onClick={() => onAgentChange('training')}
           style={{
-            display: 'flex', alignItems: 'center', gap: 9,
-            width: '100%', padding: '8px 8px', borderRadius: 8,
+            display: 'flex', alignItems: 'center', gap: 10,
+            width: '100%', padding: '9px 9px', borderRadius: 9,
             border: 'none',
             background: activeAgent === 'training' ? 'var(--bg-hover)' : 'transparent',
-            color: 'var(--text)', fontSize: 14,
-            fontWeight: activeAgent === 'training' ? 500 : 400,
-            cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+            color: 'var(--text)', fontSize: 15,
+            fontWeight: activeAgent === 'training' ? 600 : 500,
+            cursor: 'pointer', fontFamily: 'Syne,DM Sans,sans-serif', textAlign: 'left',
             transition: 'background 0.12s',
           }}
           onMouseEnter={e => { if (activeAgent !== 'training') (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
           onMouseLeave={e => { if (activeAgent !== 'training') (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
         >
-          <Zap size={15} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+          <Zap size={16} color={activeAgent === 'training' ? '#06B6D4' : 'var(--text-mid)'} style={{ flexShrink: 0 }} />
           Training
         </button>
         <div
           title="Bientôt disponible"
           style={{
-            display: 'flex', alignItems: 'center', gap: 9,
-            width: '100%', padding: '8px 8px', borderRadius: 8,
-            color: 'var(--text)', fontSize: 14, fontWeight: 400,
-            fontFamily: 'DM Sans,sans-serif',
-            opacity: 0.38, cursor: 'not-allowed', pointerEvents: 'none',
+            display: 'flex', alignItems: 'center', gap: 10,
+            width: '100%', padding: '9px 9px', borderRadius: 9,
+            color: 'var(--text)', fontSize: 15, fontWeight: 500,
+            fontFamily: 'Syne,DM Sans,sans-serif',
+            opacity: 0.4, cursor: 'not-allowed', pointerEvents: 'none',
           }}
         >
-          <Globe size={15} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+          <Globe size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
           Networks
         </div>
       </div>
@@ -12177,10 +12177,10 @@ function HistoryDrawer({
                   )}
                   <div style={{
                     flex: 1, minWidth: 0,
-                    fontSize: 13, fontWeight: 600,
-                    color: 'var(--ai-text)',
+                    fontSize: 13, fontWeight: conv.id === activeId ? 550 : 430,
+                    color: conv.id === activeId ? 'var(--ai-text)' : 'var(--ai-mid)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    lineHeight: 1.3,
+                    lineHeight: 1.3, letterSpacing: '-0.005em',
                   }}>
                     {conv.title}
                   </div>

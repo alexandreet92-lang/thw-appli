@@ -1946,7 +1946,7 @@ function IASettingsBloc() {
 function ProfileContent() {
   const header = (
     <div>
-      <p style={{ fontFamily:'Syne,sans-serif', fontSize:24, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.02em', color:'var(--text)' }}>Mon Profil</p>
+      <p style={{ fontFamily:'var(--font-display)', fontSize:24, fontWeight:600, margin:'0 0 4px', color:'var(--text)' }}>Mon Profil</p>
       <p style={{ fontSize:13, color:'var(--text-dim)', margin:0 }}>Paramètres · Coaching · Connexions</p>
     </div>
   )

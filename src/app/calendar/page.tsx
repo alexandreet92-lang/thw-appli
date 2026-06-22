@@ -1579,7 +1579,7 @@ export default function CalendarPage() {
   const header = (
     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
       <div>
-        <h1 style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,letterSpacing:'-0.03em',margin:0 }}>Calendar</h1>
+        <h1 style={{ fontFamily:'var(--font-display)',fontSize:24,fontWeight:600,margin:0 }}>Calendar</h1>
         <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Course · Pro · Perso · Tout</p>
       </div>
       <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>

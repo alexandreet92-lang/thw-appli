@@ -568,12 +568,12 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
         const headers = rows[0]
         const dataRows = rows.slice(1)
         blocks.push(
-          <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '10px 0' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'DM Sans,sans-serif', border: '1px solid #E5E7EB' }}>
+          <div key={`table-${i}`} style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], margin: '10px 0', maxWidth: '100%' }}>
+            <table style={{ width: 'auto', minWidth: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'DM Sans,sans-serif', border: '1px solid #E5E7EB' }}>
               <thead>
                 <tr style={{ background: '#F9FAFB' }}>
                   {headers.map((h, hi) => (
-                    <th key={hi} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12, color: 'var(--ai-text)', border: '1px solid #E5E7EB', whiteSpace: 'nowrap' as const }}>
+                    <th key={hi} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12, color: 'var(--ai-text)', border: '1px solid #E5E7EB', whiteSpace: 'nowrap' as const, wordBreak: 'normal' as const, overflowWrap: 'normal' as const }}>
                       {parseBold(h)}
                     </th>
                   ))}
@@ -583,7 +583,7 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
                 {dataRows.map((row, ri) => (
                   <tr key={ri}>
                     {row.map((cell, ci) => (
-                      <td key={ci} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--ai-mid)', border: '1px solid #E5E7EB' }}>
+                      <td key={ci} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--ai-mid)', border: '1px solid #E5E7EB', wordBreak: 'normal' as const, overflowWrap: 'normal' as const, whiteSpace: ci === 0 ? ('nowrap' as const) : ('normal' as const), maxWidth: ci === 0 ? undefined : 280 }}>
                         {parseBold(cell)}
                       </td>
                     ))}

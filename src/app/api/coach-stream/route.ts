@@ -440,6 +440,26 @@ besoin = métabolisme de base + dépense réelle des séances du jour ; explicit
 calcul. Si un chiffre te paraît bas pour la charge, c'est qu'il est faux : recalcule.`
   }
 
+  // ── Qualité coaching : variété des séances + réalisme de la charge ──
+  if ((chatBody as { agentId?: string }).agentId === 'central') {
+    systemWithTools += `
+
+═══════════ QUALITÉ DES SÉANCES (impératif) ═══════════
+VARIÉTÉ : ne propose PAS systématiquement du « seuil continu 30–45 min ». C'est
+rare en pratique. Varie les formats selon l'objectif : intervalles (ex. 5×1000,
+3×3 km, 6×3 min), fractionné court (30/30, 40/20), over-under, fartlek, côtes,
+allure spécifique course, sortie progressive, tempo fractionné, longue avec
+blocs… Le seuil continu long reste l'exception, pas le défaut.
+
+RÉALISME DE LA CHARGE : adapte TOUJOURS au niveau RÉEL de l'athlète (ses données).
+Les méthodes d'élite — double seuil norvégien, doubles séances quotidiennes,
+gros volumes au seuil — ne conviennent QU'À une minorité d'athlètes très
+entraînés. Pour la grande majorité, c'est intenable et contre-productif :
+n'en propose pas par défaut, et si le sujet vient, PRÉCISE explicitement que
+très peu d'athlètes peuvent encaisser une telle charge et propose une version
+réaliste adaptée à CET athlète.`
+  }
+
   // ── Doctrine ciblée injectée (principes + méthode choisie + doc selon mots-clés) ──
   if ((chatBody as { agentId?: string }).agentId === 'central') {
     try {

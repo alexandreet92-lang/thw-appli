@@ -38,6 +38,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth', request.url))
   }
 
+  // ── Présence : last_seen_at, throttlé à 60 s via cookie (pas de heartbeat client) ──
+  const lastPing = request.cookies.get('thw_ls')?.value
+  if (!lastPing || Date.now() - Number(lastPing) > 60_000) {
+    await supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id)
+    response.cookies.set('thw_ls', String(Date.now()), { httpOnly: true, sameSite: 'lax', maxAge: 120, path: '/' })
+  }
+
+  // ── Cockpit admin (/admin) : refus RÉEL (403) pour tout autre que l'admin ──
+  if (path === '/admin') {
+    const admin = process.env.ADMIN_EMAIL
+    if (!admin || (user.email ?? '').toLowerCase() !== admin.toLowerCase()) {
+      return new NextResponse('Forbidden', { status: 403 })
+    }
+    // Admin authentifié : on saute les contrôles abonnement/onboarding ci-dessous.
+    return response
+  }
+
   // Vérifier le statut de l'abonnement
   const { data: subscription } = await supabase
     .from('user_subscriptions')

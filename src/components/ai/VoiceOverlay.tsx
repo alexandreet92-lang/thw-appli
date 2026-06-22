@@ -1,15 +1,16 @@
 'use client'
 
 // ══════════════════════════════════════════════════════════════
-// VoiceOverlay — mode dictée (style Claude mobile).
+// VoiceOverlay — mode dictée vocale (style Claude).
 //
 // · Fond translucide + blur : la conversation et le champ d'écriture
 //   restent visibles, floutés en arrière-plan.
-// · Transcription serif ancrée juste au-dessus de la barre de contrôle.
-// · Waveform réactive au VRAI volume du micro (Web Audio API) :
-//   points plats au silence, barres qui montent à la voix. Repli
-//   automatique « piloté par la parole » si le micro est indisponible.
+// · Orbe « écoute » centrée qui respire et réagit au volume réel du
+//   micro (Web Audio API), avec anneaux concentriques pulsés.
+// · Transcription serif sous l'orbe.
 // · Pilule compacte : ✕ · waveform · ✓ (bleu shuriken #3C90D5).
+// · Repli automatique « piloté par la parole » si le micro est
+//   indisponible (conflit iOS, autorisation partielle…).
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState } from 'react'
@@ -33,6 +34,7 @@ export function VoiceOverlay({
   const scrollRef = useRef<HTMLDivElement>(null)
   const bufRef = useRef<number[]>(new Array(NBARS).fill(0))
   const waveRef = useRef<HTMLDivElement>(null)
+  const orbRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const audioRef = useRef<{ ctx: any; stream: MediaStream; analyser: AnalyserNode; data: Uint8Array } | null>(null)
   const fallbackRef = useRef(false)
@@ -52,7 +54,7 @@ export function VoiceOverlay({
     if (el) el.scrollTop = el.scrollHeight
   }, [transcript, interim])
 
-  // ── Analyse du volume micro + animation de la waveform ──────
+  // ── Analyse du volume micro + animation orbe/waveform ───────
   useEffect(() => {
     let cancelled = false
 
@@ -106,13 +108,18 @@ export function VoiceOverlay({
       }
       const buf = bufRef.current
       buf.push(v); buf.shift()
-      // Les barres bougent en continu (animation CSS). Le volume amplifie
-      // l'ensemble : silence → idle, fort → barres plus hautes.
+      // Waveform : barres animées en continu, amplifiées par le volume.
       const cont = waveRef.current
       if (cont) {
         const amp = 0.55 + Math.min(1, v) * 1.2
         cont.style.transform = `scaleY(${amp})`
         cont.style.opacity = String(0.6 + Math.min(1, v) * 0.4)
+      }
+      // Orbe : respire au repos, gonfle à la voix.
+      const orb = orbRef.current
+      if (orb) {
+        const s = 1 + Math.min(1, v) * 0.22
+        orb.style.transform = `scale(${s.toFixed(3)})`
       }
     }, 65)
 
@@ -133,9 +140,12 @@ export function VoiceOverlay({
   return createPortal(
     <>
       <style>{`
-        @keyframes vo_in   { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes vo_pill { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
-        @keyframes vo_wave { 0%,100% { transform: scaleY(0.25) } 50% { transform: scaleY(0.9) } }
+        @keyframes vo_in    { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes vo_pill  { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes vo_wave  { 0%,100% { transform: scaleY(0.25) } 50% { transform: scaleY(0.9) } }
+        @keyframes vo_orb   { 0%,100% { transform: scale(1) } 50% { transform: scale(1.06) } }
+        @keyframes vo_ring  { 0% { transform: scale(0.85); opacity: 0.5 } 100% { transform: scale(1.7); opacity: 0 } }
+        @keyframes vo_spin  { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
       `}</style>
       <div
         role="dialog"
@@ -143,28 +153,69 @@ export function VoiceOverlay({
         aria-label="Dictée vocale"
         style={{
           position: 'fixed', inset: 0, zIndex: 1500,
-          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-          background: 'color-mix(in srgb, var(--ai-bg) 58%, transparent)',
-          backdropFilter: 'blur(18px) saturate(1.05)',
-          WebkitBackdropFilter: 'blur(18px) saturate(1.05)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 26,
+          background: 'color-mix(in srgb, var(--ai-bg) 62%, transparent)',
+          backdropFilter: 'blur(22px) saturate(1.05)',
+          WebkitBackdropFilter: 'blur(22px) saturate(1.05)',
           animation: 'vo_in 0.22s ease',
-          paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+          padding: 'calc(24px + env(safe-area-inset-top, 0px)) 24px calc(20px + env(safe-area-inset-bottom, 0px))',
         }}
       >
-        {/* Transcription — juste au-dessus de la pilule */}
+        {/* ── Orbe « écoute » + anneaux pulsés ─────────────────── */}
+        <div style={{ position: 'relative', width: 132, height: 132, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          {/* Anneaux concentriques qui s'évanouissent vers l'extérieur */}
+          {[0, 1].map(i => (
+            <span
+              key={i}
+              style={{
+                position: 'absolute', width: 96, height: 96, borderRadius: '50%',
+                border: `1.5px solid ${SHURIKEN}`,
+                animation: `vo_ring 2.6s ease-out ${i * 1.3}s infinite`,
+              }}
+            />
+          ))}
+          {/* Halo dégradé rotatif */}
+          <span
+            style={{
+              position: 'absolute', width: 120, height: 120, borderRadius: '50%',
+              background: `conic-gradient(from 0deg, ${SHURIKEN}, color-mix(in srgb, ${SHURIKEN} 30%, transparent), ${SHURIKEN})`,
+              filter: 'blur(10px)', opacity: 0.55,
+              animation: 'vo_spin 7s linear infinite',
+            }}
+          />
+          {/* Cœur de l'orbe (scale piloté par le volume) */}
+          <div
+            ref={orbRef}
+            style={{
+              position: 'relative', width: 92, height: 92, borderRadius: '50%',
+              background: `radial-gradient(circle at 32% 28%, color-mix(in srgb, ${SHURIKEN} 18%, var(--ai-bg)) 0%, var(--ai-bg) 70%)`,
+              border: `1px solid color-mix(in srgb, ${SHURIKEN} 45%, transparent)`,
+              boxShadow: `0 8px 32px rgba(60,144,213,0.30), inset 0 0 22px rgba(60,144,213,0.18)`,
+              animation: 'vo_orb 3.4s ease-in-out infinite',
+              transition: 'transform 0.09s linear', willChange: 'transform',
+              display: 'grid', placeItems: 'center',
+            }}
+          >
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={SHURIKEN} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="3" width="6" height="11" rx="3" />
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+            </svg>
+          </div>
+        </div>
+
+        {/* ── Transcription ─────────────────────────────────────── */}
         <div
           ref={scrollRef}
           style={{
-            flexShrink: 0, maxHeight: '36vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-            padding: '0 24px 14px',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 42px)',
-            maskImage: 'linear-gradient(to bottom, transparent 0, #000 42px)',
+            flexShrink: 0, maxHeight: '30vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+            display: 'flex', flexDirection: 'column', justifyContent: 'flex-start',
+            width: '100%', maxWidth: 560, padding: '0 8px', textAlign: 'center',
           }}
         >
           <p style={{
             margin: 0, fontFamily: 'var(--font-display, Fraunces), Georgia, serif',
-            fontSize: 'clamp(22px, 5.4vw, 30px)', lineHeight: 1.32, fontWeight: 400, fontStyle: 'italic',
+            fontSize: 'clamp(20px, 4.6vw, 28px)', lineHeight: 1.34, fontWeight: 400, fontStyle: 'italic',
             letterSpacing: '-0.01em',
           }}>
             {hasText ? (
@@ -178,9 +229,9 @@ export function VoiceOverlay({
           </p>
         </div>
 
-        {/* Pilule de contrôle — ✕ · waveform · ✓ */}
+        {/* ── Pilule de contrôle — ✕ · waveform · ✓ ─────────────── */}
         <div style={{
-          flexShrink: 0, margin: '0 14px', display: 'flex', alignItems: 'center', gap: 10,
+          flexShrink: 0, width: '100%', maxWidth: 420, display: 'flex', alignItems: 'center', gap: 10,
           background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 999,
           padding: '7px 9px', boxShadow: '0 8px 28px rgba(0,0,0,0.16)',
           animation: 'vo_pill 0.26s cubic-bezier(0.32,0.72,0,1)',
@@ -223,7 +274,7 @@ export function VoiceOverlay({
               boxShadow: '0 4px 14px rgba(60,144,213,0.42)',
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
           </button>
         </div>
       </div>

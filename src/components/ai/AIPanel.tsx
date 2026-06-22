@@ -205,7 +205,21 @@ const MODEL_CONFIGS: Record<THWModel, ModelConfig> = {
 }
 
 function getGreeting() {
-  return new Date().getHours() >= 18 ? 'Bonsoir' : 'Bonjour'
+  const h = new Date().getHours()
+  // 0h–4h : encore debout
+  if (h >= 0 && h <= 4) return 'Toujours levé'
+  // 5h–6h
+  if (h >= 5 && h <= 6) return 'Déjà levé'
+  // 7h–10h
+  if (h >= 7 && h <= 10) return 'Bonne matinée'
+  // 11h–13h
+  if (h >= 11 && h <= 13) return 'Bonne journée'
+  // 14h–18h
+  if (h >= 14 && h <= 18) return 'Bon après-midi'
+  // 19h–22h
+  if (h >= 19 && h <= 22) return 'Bonne soirée'
+  // 23h
+  return 'Bonne nuit'
 }
 
 // Largeur de la sidebar coulissante (mobile) — doit matcher l'underlay
@@ -20385,124 +20399,47 @@ export default function AIPanel({
           0%, 100% { transform: scaleY(0.3); }
           50% { transform: scaleY(1); }
         }
+
+        /* ── Recherche internet — badge animé (style « radar ») ── */
+        @keyframes ai_search_sweep {
+          0%   { transform: scale(0.4); opacity: 0.55; }
+          100% { transform: scale(1.9); opacity: 0; }
+        }
+        @keyframes ai_search_scan {
+          0%, 100% { transform: translate(0, 0); }
+          25%      { transform: translate(1.2px, -1.2px); }
+          50%      { transform: translate(0, 0); }
+          75%      { transform: translate(-1.2px, 1.2px); }
+        }
+        @keyframes ai_search_dot {
+          0%, 80%, 100% { opacity: 0.25; }
+          40%           { opacity: 1; }
+        }
+        .ai-search-badge {
+          position: relative; width: 22px; height: 22px; flex-shrink: 0;
+          display: grid; place-items: center;
+        }
+        .ai-search-badge .ai-search-ring {
+          position: absolute; inset: 0; border-radius: 50%;
+          border: 1.5px solid var(--ai-accent, #06B6D4);
+          animation: ai_search_sweep 1.6s ease-out infinite;
+        }
+        .ai-search-badge .ai-search-ring.r2 { animation-delay: 0.8s; }
+        .ai-search-badge svg { animation: ai_search_scan 1.5s ease-in-out infinite; }
+        .ai-search-dots span {
+          display: inline-block; animation: ai_search_dot 1.4s ease-in-out infinite;
+        }
+        .ai-search-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .ai-search-dots span:nth-child(3) { animation-delay: 0.4s; }
       `}</style>
 
       {/* ══ PANNEAU ═══════════════════════════════════════════ */}
       <div className={`aip-root${open ? '' : ' closed'}${fullscr ? ' fullscreen' : ''}`}>
 
-        {/* ══ HEADER (desktop) — sur mobile : boutons flottants ══════ */}
-        {isDesktop && <div style={{
-          height: 50, padding: '10px 12px 10px 16px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-          flexShrink: 0, background: 'var(--ai-bg)',
-        }}>
-          {/* Titre = nom de la conversation active */}
-          <span style={{
-            fontSize: 14, fontWeight: 500, color: 'var(--text)',
-            fontFamily: 'DM Sans,sans-serif', lineHeight: 1.2,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            flex: 1, minWidth: 0,
-          }}>
-            {active ? active.title : ''}
-          </span>
-
-          {/* Actions droite */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-
-            {/* History — mobile uniquement (ouvre la sidebar overlay) */}
-            {!isDesktop && (
-              <button
-                onClick={() => setHistOpen(h => !h)}
-                title="Conversations"
-                style={{
-                  width: 26, height: 26, borderRadius: 8,
-                  border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0, position: 'relative',
-                  transition: 'background 150ms',
-                }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                </svg>
-                {convs.length > 0 && (
-                  <div style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: '#06B6D4' }} />
-                )}
-              </button>
-            )}
-
-            {/* Export Markdown (si conversation active) */}
-            {active && (
-              <button
-                onClick={exportMarkdown}
-                title="Exporter en Markdown"
-                style={{
-                  width: 26, height: 26, borderRadius: 8,
-                  border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
-                  transition: 'background 150ms',
-                }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-                </svg>
-              </button>
-            )}
-
-            {/* Plein écran — desktop uniquement */}
-            {isDesktop && (
-              <button
-                onClick={() => setFullscr(f => !f)}
-                title={fullscr ? 'Réduire' : 'Plein écran'}
-                style={{
-                  width: 26, height: 26, borderRadius: 8,
-                  border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
-                  transition: 'background 150ms',
-                }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-              >
-                {fullscr ? (
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
-                  </svg>
-                ) : (
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-                  </svg>
-                )}
-              </button>
-            )}
-
-            {/* Fermer */}
-            <button
-              onClick={onClose}
-              title="Fermer"
-              style={{
-                width: 26, height: 26, borderRadius: 8,
-                border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
-                transition: 'background 150ms',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
-          </div>{/* /actions */}
-        </div>}
-
-        {/* ══ BODY — flex-row : sidebar | chat ══════════════ */}
+        {/* ══ BODY — flex-row : sidebar | chat ══════════════
+             Le header desktop a été déplacé À L'INTÉRIEUR de la colonne chat
+             (cf. plus bas) pour que la sidebar « Hybrid » remonte tout en haut
+             de l'interface et qu'il n'y ait plus de bande vide en haut à droite. */}
         <div className="aip-body">
 
           {/* ── Sidebar desktop (persistante, toujours visible) ── */}
@@ -20549,7 +20486,6 @@ export default function AIPanel({
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             style={{
-              justifyContent: activeAgent === 'training' && showEmpty && !activeFlow ? 'center' : undefined,
               ...(isDesktop ? {} : {
                 position: 'relative', zIndex: 2, background: 'var(--ai-bg)',
                 transform: `translateX(${histOpen ? AI_SIDEBAR_W : 0}px)`,
@@ -20560,6 +20496,92 @@ export default function AIPanel({
               }),
             }}
           >
+
+          {/* ══ HEADER (desktop) — uniquement au-dessus de la colonne chat ══════ */}
+          {isDesktop && <div style={{
+            height: 50, padding: '10px 12px 10px 16px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+            flexShrink: 0, background: 'var(--ai-bg)',
+          }}>
+            {/* Titre = nom de la conversation active */}
+            <span style={{
+              fontSize: 14, fontWeight: 500, color: 'var(--text)',
+              fontFamily: 'DM Sans,sans-serif', lineHeight: 1.2,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              flex: 1, minWidth: 0,
+            }}>
+              {active ? active.title : ''}
+            </span>
+
+            {/* Actions droite */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+
+              {/* Export Markdown (si conversation active) */}
+              {active && (
+                <button
+                  onClick={exportMarkdown}
+                  title="Exporter en Markdown"
+                  style={{
+                    width: 26, height: 26, borderRadius: 8,
+                    border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
+                    transition: 'background 150ms',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                  </svg>
+                </button>
+              )}
+
+              {/* Plein écran — desktop uniquement */}
+              <button
+                onClick={() => setFullscr(f => !f)}
+                title={fullscr ? 'Réduire' : 'Plein écran'}
+                style={{
+                  width: 26, height: 26, borderRadius: 8,
+                  border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
+                  transition: 'background 150ms',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+              >
+                {fullscr ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
+                  </svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Fermer */}
+              <button
+                onClick={onClose}
+                title="Fermer"
+                style={{
+                  width: 26, height: 26, borderRadius: 8,
+                  border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
+                  transition: 'background 150ms',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+            </div>{/* /actions */}
+          </div>}
 
           {/* ── Boutons flottants (mobile) : menu à gauche, sortie à droite ── */}
           {!isDesktop && (
@@ -20611,7 +20633,7 @@ export default function AIPanel({
           {activeAgent === 'training' && <div
             ref={scrollContainerRef}
             className="aip-messages"
-            style={{ padding: isDesktop ? '24px 20px 0' : '62px 20px 0', flex: showEmpty && !activeFlow ? '0 0 auto' : undefined }}
+            style={{ padding: isDesktop ? '24px 20px 0' : '62px 20px 0', flex: showEmpty && !activeFlow ? '0 0 auto' : undefined, marginTop: showEmpty && !activeFlow ? 'auto' : undefined }}
             onMouseUp={handleMsgMouseUp}
             onScroll={() => {
               const el = scrollContainerRef.current
@@ -20636,8 +20658,8 @@ export default function AIPanel({
                 />
                 <p style={{
                   textAlign: 'center', margin: 0,
-                  fontSize: 24, fontWeight: 600, color: 'var(--ai-text)',
-                  fontFamily: 'var(--font-display)', lineHeight: 1.3, letterSpacing: '-0.01em',
+                  fontSize: isDesktop ? 38 : 30, fontWeight: 400, color: 'var(--ai-text)',
+                  fontFamily: 'var(--font-display)', lineHeight: 1.15, letterSpacing: '-0.02em',
                 }}>
                   {mounted ? getGreeting() : 'Bonjour'}{userFirstName ? `, ${userFirstName}` : ''}
                 </p>
@@ -21087,20 +21109,47 @@ export default function AIPanel({
                     )}
                     {/* Statut animé : le coach consulte tes données (boucle agentique) */}
                     {msg.role === 'assistant' && toolStatusByMsg[msg.id] && (
-                      <div style={{
-                        display: 'flex', alignItems: 'center', gap: 8, marginLeft: 34, marginTop: 2,
-                        animation: 'ai_msg_in 0.18s ease both',
-                      }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
-                          alt=""
-                          style={{ width: 15, height: 15, objectFit: 'contain', animation: 'spin 2.4s linear infinite', opacity: 0.85 }}
-                        />
-                        <span className="ai-shimmer" style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>
-                          {toolStatusByMsg[msg.id]}
-                        </span>
-                      </div>
+                      toolStatusByMsg[msg.id] === TOOL_STATUS_LABELS.web_search ? (
+                        /* Recherche internet — animation « radar » dédiée pour
+                           bien voir quand le coach part chercher sur le web. */
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 9, marginLeft: 34, marginTop: 2,
+                          padding: '5px 11px 5px 8px', borderRadius: 999,
+                          border: '1px solid var(--ai-accent-line, rgba(6,182,212,0.40))',
+                          background: 'var(--ai-accent-soft, rgba(6,182,212,0.06))',
+                          animation: 'ai_msg_in 0.18s ease both',
+                        }}>
+                          <span className="ai-search-badge">
+                            <span className="ai-search-ring" />
+                            <span className="ai-search-ring r2" />
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--ai-accent, #06B6D4)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="11" cy="11" r="7" />
+                              <path d="M21 21l-4.3-4.3" />
+                            </svg>
+                          </span>
+                          <span className="ai-shimmer" style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>
+                            Recherche sur internet
+                          </span>
+                          <span className="ai-search-dots" style={{ color: 'var(--ai-accent, #06B6D4)', fontWeight: 700, letterSpacing: 1, fontSize: 13.5 }}>
+                            <span>.</span><span>.</span><span>.</span>
+                          </span>
+                        </div>
+                      ) : (
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 8, marginLeft: 34, marginTop: 2,
+                          animation: 'ai_msg_in 0.18s ease both',
+                        }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+                            alt=""
+                            style={{ width: 15, height: 15, objectFit: 'contain', animation: 'spin 2.4s linear infinite', opacity: 0.85 }}
+                          />
+                          <span className="ai-shimmer" style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>
+                            {toolStatusByMsg[msg.id]}
+                          </span>
+                        </div>
+                      )
                     )}
                     {/* Questions de clarification IA — carte interactive */}
                     {msg.role === 'assistant' && msg.clarifyingQuestions && (
@@ -21256,6 +21305,9 @@ export default function AIPanel({
             borderTop: showEmpty && !activeFlow ? 'none' : '1px solid var(--ai-border)',
             flexShrink: 0, background: 'var(--ai-bg)',
             position: 'relative',
+            // Empty state : centrer verticalement {messages + saisie} sous le
+            // header (qui reste collé en haut) — marges auto haut/bas.
+            marginBottom: showEmpty && !activeFlow ? 'auto' : undefined,
           }}>
             {/* Hidden file inputs */}
             <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileSelected} />

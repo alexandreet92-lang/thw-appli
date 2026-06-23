@@ -9,6 +9,7 @@ import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout
 import { Dumbbell, Library } from 'lucide-react'
 import { EXERCISE_DATABASE, type ExoCategory } from '@/components/planning/exercises'
 import RouteIntervals, { type RouteData } from '@/components/session/RouteIntervals'
+import { BibliothequeTab } from '@/components/session/biblio/BibliothequeTab'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { usePlanning } from '@/hooks/usePlanning'
 import { PageHelp } from '@/onboarding/system/PageHelp'
@@ -2260,57 +2261,10 @@ function sbRowToTemplate(row: SBLibRow): SessionTemplate | null {
 // PAGE
 // ══════════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════════
-// BIBLIOTHÈQUE — référentiel de séances & exos types (objectif, déroulé,
-// quand la programmer). Coquille stylée ; le contenu est ajouté ensuite.
+// BIBLIOTHÈQUE — référentiel de séances & exos types par sport.
+// Navigation + contenu réel des Exercices Muscu : src/components/session/biblio.
 // ══════════════════════════════════════════════════════════════════
-const FD = 'var(--font-display)', FB = 'var(--font-body)'
-
-function BibliothequeTab() {
-  const [sport, setSport] = useState<Sport | 'all'>('all')
-
-  return (
-    <div>
-      {/* Accroche éditoriale */}
-      <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: '0 0 4px', lineHeight: 1.35 }}>
-        Des séances et exercices types, expliqués.
-      </p>
-      <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', margin: '0 0 20px', maxWidth: 560, lineHeight: 1.5 }}>
-        Pour chaque type de séance : son objectif, son déroulé détaillé, et le bon moment pour la programmer dans ta semaine.
-      </p>
-
-      {/* Filtre sport */}
-      <SportTabs
-        tabs={[
-          { id: 'all', label: 'Tous', color: 'var(--primary)' },
-          ...SPORTS.map(s => ({ id: s.id, label: s.label, color: s.color })),
-        ]}
-        value={sport}
-        onChange={(id) => setSport(id as Sport | 'all')}
-      />
-
-      {/* État vide — invitation, en attendant le contenu */}
-      <div style={{
-        marginTop: 28, padding: '56px 24px', borderRadius: 'var(--r-lg, 20px)',
-        background: 'var(--bg-card2)', textAlign: 'center',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
-      }}>
-        <div style={{
-          width: 52, height: 52, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'var(--primary-dim)', color: 'var(--primary)',
-        }}>
-          <Library size={24} />
-        </div>
-        <h3 style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
-          Bibliothèque en préparation
-        </h3>
-        <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', margin: 0, maxWidth: 420, lineHeight: 1.5 }}>
-          Des dizaines de séances par sport arrivent ici — running, vélo, muscu, natation, hyrox, aviron, triathlon.
-          {sport !== 'all' && ` Filtre actuel : ${sportLabel(sport as Sport)}.`}
-        </p>
-      </div>
-    </div>
-  )
-}
+const FB = 'var(--font-body)'
 
 export default function SessionPage() {
   const [templates,     setTemplates]     = useState<SessionTemplate[]>(MOCK_TEMPLATES)

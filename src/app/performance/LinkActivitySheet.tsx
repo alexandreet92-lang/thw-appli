@@ -16,6 +16,7 @@ export function LinkActivitySheet({ segment, onClose, onLink }: {
 }) {
   const [acts, setActs] = useState<ActivityLite[] | null>(null)
   const [q, setQ] = useState('')
+  const [closing, setClosing] = useState(false)
 
   useEffect(() => { void fetchActivities(segment).then(setActs) }, [segment])
 
@@ -26,17 +27,19 @@ export function LinkActivitySheet({ segment, onClose, onLink }: {
     return acts.filter(a => (a.title ?? '').toLowerCase().includes(s) || fmtDate(a.started_at).toLowerCase().includes(s))
   }, [acts, q])
 
+  const close = () => { setClosing(true); setTimeout(onClose, 240) }
+
   return createPortal(
-    <div onClick={onClose}
+    <div onClick={close}
       style={{ position: 'fixed', inset: 0, zIndex: 3200, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>
-      <div onClick={e => e.stopPropagation()}
-        style={{ width: '100%', maxHeight: '88vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div onClick={e => e.stopPropagation()} className={closing ? 'sheet-close' : 'sheet-open'}
+        style={{ width: '100%', maxHeight: '88vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', willChange: 'transform' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', gap: 8 }}>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
             Lier une activité — {SEG_LABEL[segment]}
           </h2>
-          <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <button onClick={close} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         {/* Recherche */}
@@ -53,7 +56,7 @@ export function LinkActivitySheet({ segment, onClose, onLink }: {
           ) : filtered.length === 0 ? (
             <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)' }}>Aucune activité {SEG_LABEL[segment].toLowerCase()} trouvée.</p>
           ) : filtered.map(a => (
-            <button key={a.id} onClick={() => { onLink(a); onClose() }}
+            <button key={a.id} onClick={() => { onLink(a); close() }}
               style={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%', textAlign: 'left', padding: '10px 12px', marginBottom: 6, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--bg-card2)', cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title ?? 'Sans titre'}</span>

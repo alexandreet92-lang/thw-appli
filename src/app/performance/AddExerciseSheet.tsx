@@ -11,6 +11,8 @@ const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de feuille
 export function AddExerciseSheet({ onClose, onAdded }: { onClose: () => void; onAdded: (ex: GymExercise) => void }) {
   const [name, setName] = useState('')
   const [types, setTypes] = useState<string[]>(['1RM'])
+  const [closing, setClosing] = useState(false)
+  const close = () => { setClosing(true); setTimeout(onClose, 240) }
 
   const canSave = !!name.trim() && types.length > 0
   function toggle(t: string) { setTypes(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]) }
@@ -20,12 +22,12 @@ export function AddExerciseSheet({ onClose, onAdded }: { onClose: () => void; on
     const ex: GymExercise = { name: name.trim(), types: ordered }
     addCustom(ex)
     onAdded(ex)
-    onClose()
+    close()
   }
 
   return createPortal(
-    <div onClick={onClose} className="rec-drawer" style={{ position: 'fixed', inset: 0, zIndex: 3000, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div onClick={close} className="rec-drawer" style={{ position: 'fixed', inset: 0, zIndex: 3000, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>
+      <div onClick={e => e.stopPropagation()} className={closing ? 'sheet-close' : 'sheet-open'} style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', willChange: 'transform' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0, gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -34,7 +36,7 @@ export function AddExerciseSheet({ onClose, onAdded }: { onClose: () => void; on
             </span>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Nouvel exercice</h2>
           </div>
-          <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <button onClick={close} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         {/* Body */}

@@ -12,6 +12,8 @@ interface Props {
 export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose, isDark }: Props) {
   const [isPublic, setIsPublic] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const close = () => { setClosing(true); setTimeout(onClose, 240) }
   const bg = isDark ? '#111827' : '#FFFFFF'
   const text = isDark ? '#FFFFFF' : '#0A0A0A'
   const separator = isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'
@@ -27,8 +29,8 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 20000, display: 'flex', alignItems: 'flex-end' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
-      <div style={{ position: 'relative', width: '100%', background: bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: '20px', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)', fontFamily: 'DM Sans, sans-serif' }}>
+      <div onClick={close} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
+      <div className={closing ? 'sheet-close' : 'sheet-open'} style={{ position: 'relative', width: '100%', background: bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: '20px', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)', fontFamily: 'DM Sans, sans-serif', willChange: 'transform' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
           <div style={{ width: 40, height: 4, borderRadius: 2, background: separator }} />
         </div>

@@ -22,6 +22,8 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
   const [value, setValue] = useState(cur?.performance ?? '')
   const [date, setDate] = useState(cur?.achieved_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10))
   const [saving, setSaving] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const close = () => { setClosing(true); setTimeout(onClose, 240) }
 
   // À chaque changement de type, recharger la valeur courante du type sélectionné.
   function pickType(t: string) {
@@ -40,12 +42,12 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
     setSaving(true)
     const rec = await upsertGym({ id: cur?.id ?? null, name: exercise, type, value: value.trim(), dateISO: date })
     setSaving(false)
-    if (rec) { onSaved(rec); onClose() }
+    if (rec) { onSaved(rec); close() }
   }
 
   return createPortal(
-    <div onClick={onClose} className="rec-drawer" style={{ position: 'fixed', inset: 0, zIndex: 3000, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div onClick={close} className="rec-drawer" style={{ position: 'fixed', inset: 0, zIndex: 3000, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>
+      <div onClick={e => e.stopPropagation()} className={closing ? 'sheet-close' : 'sheet-open'} style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', willChange: 'transform' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -55,7 +57,7 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
             <span style={{ padding: '3px 9px', borderRadius: 8, background: 'var(--bg-card2)', fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{exercise}</span>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Modifier le record</h2>
           </div>
-          <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <button onClick={close} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         {/* Body */}

@@ -22,6 +22,8 @@ export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSa
   const [runs, setRuns] = useState<string[]>(() => Array(8).fill('') as string[])
   const [roxzone, setRoxzone] = useState('')
   const [saving, setSaving] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const close = () => { setClosing(true); setTimeout(onClose, 240) }
 
   const runSec = runs.reduce((a, r) => a + toSec(r), 0)
   const stationSec = HYROX_STATIONS.reduce((a, s) => a + toSec(stations[s] ?? ''), 0)
@@ -37,12 +39,12 @@ export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSa
       stations, runs: runs.filter(x => x !== ''),
     })
     setSaving(false)
-    if (r) { onSaved(r); onClose() }
+    if (r) { onSaved(r); close() }
   }
 
   return createPortal(
-    <div onClick={onClose} className="rec-drawer" style={{ position: 'fixed', inset: 0, zIndex: 3000, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div onClick={close} className="rec-drawer" style={{ position: 'fixed', inset: 0, zIndex: 3000, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>
+      <div onClick={e => e.stopPropagation()} className={closing ? 'sheet-close' : 'sheet-open'} style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', willChange: 'transform' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0, gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -53,7 +55,7 @@ export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSa
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="rec-drawer" style={{ padding: '5px 9px', borderRadius: 8, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
-            <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
+            <button onClick={close} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
           </div>
         </div>
 

@@ -19,6 +19,7 @@ export function AiMealSheet({ slotLabel, onClose, onConfirm }: {
   const [loading, setLoading] = useState(false)
   const [res, setRes] = useState<Macros | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [closing, setClosing] = useState(false)
 
   async function analyze() {
     if (!text.trim() || loading) return
@@ -58,13 +59,15 @@ export function AiMealSheet({ slotLabel, onClose, onConfirm }: {
     { k: 'kcal', label: 'Calories', unit: 'kcal' },
   ]
 
+  const close = () => { setClosing(true); setTimeout(onClose, 240) }
+
   return createPortal(
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 700, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, background: 'var(--bg-card)', borderRadius: '18px 18px 0 0', border: '1px solid var(--border-mid)', borderBottom: 'none', padding: 'var(--space-5)', maxHeight: '88vh', overflowY: 'auto', boxSizing: 'border-box' }}>
+    <div onClick={close} style={{ position: 'fixed', inset: 0, zIndex: 700, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={e => e.stopPropagation()} className={closing ? 'sheet-close' : 'sheet-open'} style={{ width: '100%', maxWidth: 520, background: 'var(--bg-card)', borderRadius: '18px 18px 0 0', border: '1px solid var(--border-mid)', borderBottom: 'none', padding: 'var(--space-5)', maxHeight: '88vh', overflowY: 'auto', boxSizing: 'border-box', willChange: 'transform' }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '0 auto var(--space-4)' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
           <h3 style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, margin: 0, color: 'var(--text)' }}>Décrire le repas — {slotLabel}</h3>
-          <button onClick={onClose} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 14 }}>✕</button>
+          <button onClick={close} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 14 }}>✕</button>
         </div>
 
         <textarea

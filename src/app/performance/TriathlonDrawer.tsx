@@ -44,8 +44,11 @@ export function TriathlonDrawer(p: TriathlonDrawerProps) {
   const [bikeHr, setBikeHr] = useState('')
   const [runHr, setRunHr] = useState('')
   const [chips, setChips] = useState<Partial<Record<Segment, Chips>>>({})
+  const [closing, setClosing] = useState(false)
   useEffect(() => { setMounted(true) }, [])
   if (!mounted) return null
+
+  const close = () => { setClosing(true); setTimeout(onClose, 240) }
 
   const dist = DIST[fmtId]
   const swimSec = toSec(swim), runSec = toSec(run), bikeS = toSec(bikeTime)
@@ -74,8 +77,8 @@ export function TriathlonDrawer(p: TriathlonDrawerProps) {
   const fieldLbl: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '12px 0 5px' }
 
   return createPortal(
-    <div onClick={onClose} className="rec-drawer" style={{ position: 'fixed', inset: 0, zIndex: 3000, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div onClick={close} className="rec-drawer" style={{ position: 'fixed', inset: 0, zIndex: 3000, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>
+      <div onClick={e => e.stopPropagation()} className={closing ? 'sheet-close' : 'sheet-open'} style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', willChange: 'transform' }}>
         {/* Header neutre */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -87,7 +90,7 @@ export function TriathlonDrawer(p: TriathlonDrawerProps) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="rec-drawer" style={{ padding: '5px 9px', borderRadius: 8, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
-            <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
+            <button onClick={close} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
           </div>
         </div>
 

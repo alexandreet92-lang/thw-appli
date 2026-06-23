@@ -56,3 +56,68 @@ export function modePrimaire(exo: Exercice): Mode {
 export function aFiche(exo: Exercice): boolean {
   return exo.fiche !== undefined
 }
+
+// ══════════════════════════════════════════════════════════════════
+// Modèle familles + variantes (mode C) — Push · Pull · Haltéro · Core.
+// Une variante hérite de la famille pour tout champ non redéfini.
+// ══════════════════════════════════════════════════════════════════
+export interface Variante {
+  id: string
+  nom: string
+  difficulteTechnique: number          // obligatoire
+  muscles?: Muscle[]                    // hérite de la famille si absent
+  modes?: ExerciceMode[]
+  equipement?: Equipement[]
+  flags?: FlagExo[]
+  note?: string                        // 1 ligne, variante non-évidente (pas une fiche)
+  deriveRecommande?: string
+}
+
+export interface FamilleExercice {
+  id: string
+  nom: string
+  sport: 'muscu'
+  groupe: Groupe                       // domicile unique
+  muscles: Muscle[]
+  modes: ExerciceMode[]
+  equipement: Equipement[]
+  flags: FlagExo[]
+  difficulteTechnique: number
+  fiche?: FicheExercice                // sur le mouvement-clé ; absente = brique
+  accessoire?: boolean                 // transfert faible, à doser
+  deriveRecommande?: string            // id d'un dérivé plus sûr (proposition)
+  variantes: Variante[]
+}
+
+export function primaryMode(modes: ExerciceMode[]): Mode {
+  return (modes.find(m => m.primaire) ?? modes[0]).mode
+}
+
+// Champs effectifs d'une variante (héritage depuis la famille).
+export interface UniteMatch {
+  nom: string
+  muscles: Muscle[]
+  modes: ExerciceMode[]
+  equipement: Equipement[]
+  flags: FlagExo[]
+  difficulteTechnique: number
+}
+export function varianteEffective(f: FamilleExercice, v: Variante): UniteMatch {
+  return {
+    nom: v.nom,
+    muscles: v.muscles ?? f.muscles,
+    modes: v.modes ?? f.modes,
+    equipement: v.equipement ?? f.equipement,
+    flags: v.flags ?? f.flags,
+    difficulteTechnique: v.difficulteTechnique,
+  }
+}
+// Famille + ses variantes, sous forme d'unités comparables par le filtre.
+export function unitesMatch(f: FamilleExercice): UniteMatch[] {
+  const tete: UniteMatch = {
+    nom: f.nom, muscles: f.muscles, modes: f.modes,
+    equipement: f.equipement, flags: f.flags, difficulteTechnique: f.difficulteTechnique,
+  }
+  return [tete, ...f.variantes.map(v => varianteEffective(f, v))]
+}
+

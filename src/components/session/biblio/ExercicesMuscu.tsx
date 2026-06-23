@@ -1,15 +1,16 @@
 'use client'
 // Muscu › Exercices : écran GROUPES (5 bulles) → LISTE filtrable → FICHE.
+// Modèle familles/variantes : une carte = une famille (N variantes).
 import { useState, useMemo } from 'react'
 import { IconSearch, IconAdjustmentsHorizontal, IconArrowLeft, IconChevronRight } from '@tabler/icons-react'
 import {
-  EXERCICES_MUSCU, GROUPE_ORDER, GROUPE_LABEL, MODE_LABEL,
-  modePrimaire, type Exercice, type Groupe,
+  FAMILLES_MUSCU, GROUPE_ORDER, GROUPE_LABEL, MODE_LABEL,
+  primaryMode, type FamilleExercice, type Groupe,
 } from '@/data/exercices'
 import { SlideView } from '@/components/ui/SlideView'
 import { useExerciceFilter, appliquerFiltre } from './useExerciceFilter'
 import { FiltreSheet } from './FiltreSheet'
-import { ExerciceFiche } from './ExerciceFiche'
+import { FamilleFiche } from './ExerciceFiche'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
 
@@ -36,24 +37,29 @@ function FiltreBtn({ n, onClick }: { n: number; onClick: () => void }) {
   )
 }
 
-function ExoCard({ exo, showGroupe, onClick }: { exo: Exercice; showGroupe: boolean; onClick: () => void }) {
+function FamilleCard({ fam, showGroupe, onClick }: { fam: FamilleExercice; showGroupe: boolean; onClick: () => void }) {
+  const nbVar = fam.variantes.length
   return (
     <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%',
       textAlign: 'left', padding: 'var(--space-4)', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer',
       background: 'var(--bg-card2)' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{exo.nom}</span>
-          {exo.flags.includes('a-encadrer') && (
+          <span style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{fam.nom}</span>
+          {fam.flags.includes('a-encadrer') && (
             <span style={{ padding: '2px 8px', borderRadius: 'var(--r-sm)', background: 'var(--zone-bad-bg)',
               color: 'var(--zone-bad-border)', fontFamily: FB, fontSize: 10, fontWeight: 600 }}>À encadrer</span>
           )}
+          {fam.accessoire && (
+            <span style={{ padding: '2px 8px', borderRadius: 'var(--r-sm)', background: 'var(--bg-elev)',
+              color: 'var(--text-dim)', fontFamily: FB, fontSize: 10, fontWeight: 600 }}>Accessoire</span>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 4, fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)' }}>
-          <span>{MODE_LABEL[modePrimaire(exo)]}</span>
-          {showGroupe && <span>· {GROUPE_LABEL[exo.groupe]}</span>}
-          <span style={{ fontVariantNumeric: 'tabular-nums' }}>· Diff. {exo.difficulteTechnique}/10</span>
-          {exo.flags.includes('unilateral') && <span>· Unilatéral</span>}
+        <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 4, fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', flexWrap: 'wrap' }}>
+          <span>{MODE_LABEL[primaryMode(fam.modes)]}</span>
+          {showGroupe && <span>· {GROUPE_LABEL[fam.groupe]}</span>}
+          <span style={{ fontVariantNumeric: 'tabular-nums' }}>· Diff. {fam.difficulteTechnique}/10</span>
+          {nbVar > 0 && <span style={{ fontVariantNumeric: 'tabular-nums' }}>· {nbVar} variante{nbVar > 1 ? 's' : ''}</span>}
         </div>
       </div>
       <IconChevronRight size={18} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
@@ -65,34 +71,33 @@ export function ExercicesMuscu() {
   const [view, setView] = useState<'groupes' | 'list'>('groupes')
   const [groupeLock, setGroupeLock] = useState<Groupe | null>(null)
   const [query, setQuery] = useState('')
-  const [exo, setExo] = useState<Exercice | null>(null)
+  const [fiche, setFiche] = useState<FamilleExercice | null>(null)
   const [sheet, setSheet] = useState(false)
   const [dir, setDir] = useState(1)
   const fh = useExerciceFilter()
 
   const results = useMemo(
-    () => appliquerFiltre(EXERCICES_MUSCU, fh.filtre, groupeLock, query),
+    () => appliquerFiltre(FAMILLES_MUSCU, fh.filtre, groupeLock, query),
     [fh.filtre, groupeLock, query],
   )
-  // Aperçu live pour le bouton « Voir N » de la sheet (transversal si ouvert depuis Groupes).
   const sheetPreview = useMemo(
-    () => appliquerFiltre(EXERCICES_MUSCU, fh.filtre, view === 'list' ? groupeLock : null, query),
+    () => appliquerFiltre(FAMILLES_MUSCU, fh.filtre, view === 'list' ? groupeLock : null, query),
     [fh.filtre, groupeLock, query, view],
   )
 
   function openGroupe(g: Groupe) { setDir(1); setGroupeLock(g); setView('list') }
   function openTransversal() { setDir(1); setGroupeLock(null); setView('list') }
   function backToGroupes() { setDir(-1); setView('groupes'); setGroupeLock(null) }
-  function openFiche(e: Exercice) { setDir(1); setExo(e) }
-  function closeFiche() { setDir(-1); setExo(null) }
+  function openFiche(f: FamilleExercice) { setDir(1); setFiche(f) }
+  function closeFiche() { setDir(-1); setFiche(null) }
 
-  const screenKey = exo ? 'fiche' : view
+  const screenKey = fiche ? 'fiche' : view
 
   return (
     <div style={{ overflowX: 'hidden' }}>
       <SlideView screenKey={screenKey} direction={dir}>
-      {exo ? (
-        <ExerciceFiche exo={exo} onBack={closeFiche} />
+      {fiche ? (
+        <FamilleFiche famille={fiche} onBack={closeFiche} />
       ) : view === 'groupes' ? (
         <>
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
@@ -101,14 +106,14 @@ export function ExercicesMuscu() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {GROUPE_ORDER.map(g => {
-              const n = EXERCICES_MUSCU.filter(e => e.groupe === g).length
+              const n = FAMILLES_MUSCU.filter(f => f.groupe === g).length
               return (
                 <button key={g} onClick={() => openGroupe(g)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
                   width: '100%', textAlign: 'left', padding: 'var(--space-5)', borderRadius: 'var(--r-md)', border: 'none',
                   cursor: 'pointer', background: 'var(--bg-card2)' }}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--sport-gym)', flexShrink: 0 }} />
                   <span style={{ flex: 1, fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{GROUPE_LABEL[g]}</span>
-                  <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{n} exo{n > 1 ? 's' : ''}</span>
+                  <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{n} famille{n > 1 ? 's' : ''}</span>
                   <IconChevronRight size={18} style={{ color: 'var(--text-dim)' }} />
                 </button>
               )
@@ -141,7 +146,7 @@ export function ExercicesMuscu() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              {results.map(e => <ExoCard key={e.id} exo={e} showGroupe={!groupeLock} onClick={() => openFiche(e)} />)}
+              {results.map(f => <FamilleCard key={f.id} fam={f} showGroupe={!groupeLock} onClick={() => openFiche(f)} />)}
             </div>
           )}
         </>

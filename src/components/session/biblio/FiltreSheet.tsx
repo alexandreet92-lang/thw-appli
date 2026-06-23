@@ -19,7 +19,7 @@ interface Props {
   toggleMuscle: (m: FiltreState['muscles'][number]) => void
   toggleEquip: (e: FiltreState['equipement'][number]) => void
   setDifficulteMax: (v: number) => void
-  toggleFlag: (k: 'unilateral' | 'aEncadrer' | 'avecFiche') => void
+  toggleFlag: (k: 'unilateral' | 'aEncadrer' | 'avecFiche' | 'masquerAccessoires') => void
   reset: () => void
   onClose: () => void
 }
@@ -111,6 +111,7 @@ export function FiltreSheet(p: Props) {
             <Chip active={f.unilateral} label="Unilatéral" onClick={() => p.toggleFlag('unilateral')} />
             <Chip active={f.aEncadrer} label="À encadrer" onClick={() => p.toggleFlag('aEncadrer')} />
             <Chip active={f.avecFiche} label="Avec fiche" onClick={() => p.toggleFlag('avecFiche')} />
+            <Chip active={f.masquerAccessoires} label="Masquer les accessoires" onClick={() => p.toggleFlag('masquerAccessoires')} />
           </Bloc>
         </div>
 

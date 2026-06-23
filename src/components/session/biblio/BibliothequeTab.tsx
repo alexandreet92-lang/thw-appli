@@ -11,6 +11,7 @@ import {
 } from '@tabler/icons-react'
 import { SlideView } from '@/components/ui/SlideView'
 import { ExercicesMuscu } from './ExercicesMuscu'
+import { SeancesRunning } from './running/SeancesRunning'
 import { EnPreparation } from './EnPreparation'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
@@ -76,7 +77,8 @@ function SportDetail({ sport, onBack }: { sport: SportMeta; onBack: () => void }
             <EnPreparation titre="Exercices Hyrox en préparation"
               texte="Sled, ergo, wall ball, carry — les ateliers Hyrox détaillés arrivent ici, dans le même esprit que la muscu." />
           )}
-          {tab === 'seances' && (
+          {tab === 'seances' && sport.id === 'running' && <SeancesRunning />}
+          {tab === 'seances' && sport.id !== 'running' && (
             <EnPreparation titre="Séances en préparation"
               texte={`Des dizaines de séances ${sport.label.toLowerCase()} structurées par objectif arrivent ici — échauffement, corps de séance, retour au calme.`} />
           )}

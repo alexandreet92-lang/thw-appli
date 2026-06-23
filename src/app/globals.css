@@ -46,6 +46,8 @@
   --zone-3: #eab308; /* Tempo        */
   --zone-4: #f97316; /* Seuil        */
   --zone-5: #ef4444; /* VO2max       */
+  --zone-6: #9333ea; /* Anaérobie    */
+  --zone-7: #1d4ed8; /* Sprint       */
 
   /* ── Charge sémantique — points uniquement (DESIGN_SYSTEM.md §2) ── */
   --charge-low:  #22c55e;

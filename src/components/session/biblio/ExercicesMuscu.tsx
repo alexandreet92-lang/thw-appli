@@ -6,6 +6,7 @@ import {
   EXERCICES_MUSCU, GROUPE_ORDER, GROUPE_LABEL, MODE_LABEL,
   modePrimaire, type Exercice, type Groupe,
 } from '@/data/exercices'
+import { SlideView } from '@/components/ui/SlideView'
 import { useExerciceFilter, appliquerFiltre } from './useExerciceFilter'
 import { FiltreSheet } from './FiltreSheet'
 import { ExerciceFiche } from './ExerciceFiche'
@@ -66,6 +67,7 @@ export function ExercicesMuscu() {
   const [query, setQuery] = useState('')
   const [exo, setExo] = useState<Exercice | null>(null)
   const [sheet, setSheet] = useState(false)
+  const [dir, setDir] = useState(1)
   const fh = useExerciceFilter()
 
   const results = useMemo(
@@ -78,15 +80,20 @@ export function ExercicesMuscu() {
     [fh.filtre, groupeLock, query, view],
   )
 
-  if (exo) return <ExerciceFiche exo={exo} onBack={() => setExo(null)} />
+  function openGroupe(g: Groupe) { setDir(1); setGroupeLock(g); setView('list') }
+  function openTransversal() { setDir(1); setGroupeLock(null); setView('list') }
+  function backToGroupes() { setDir(-1); setView('groupes'); setGroupeLock(null) }
+  function openFiche(e: Exercice) { setDir(1); setExo(e) }
+  function closeFiche() { setDir(-1); setExo(null) }
 
-  function openGroupe(g: Groupe) { setGroupeLock(g); setView('list') }
-  function openTransversal() { setGroupeLock(null); setView('list') }
-  function backToGroupes() { setView('groupes'); setGroupeLock(null) }
+  const screenKey = exo ? 'fiche' : view
 
   return (
-    <div>
-      {view === 'groupes' ? (
+    <div style={{ overflowX: 'hidden' }}>
+      <SlideView screenKey={screenKey} direction={dir}>
+      {exo ? (
+        <ExerciceFiche exo={exo} onBack={closeFiche} />
+      ) : view === 'groupes' ? (
         <>
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
             <SearchBar value={query} onChange={v => { setQuery(v); if (v.trim()) openTransversal() }} />
@@ -134,20 +141,20 @@ export function ExercicesMuscu() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              {results.map(e => <ExoCard key={e.id} exo={e} showGroupe={!groupeLock} onClick={() => setExo(e)} />)}
+              {results.map(e => <ExoCard key={e.id} exo={e} showGroupe={!groupeLock} onClick={() => openFiche(e)} />)}
             </div>
           )}
         </>
       )}
+      </SlideView>
 
-      {sheet && (
-        <FiltreSheet
-          filtre={fh.filtre} nbResultats={sheetPreview.length}
-          toggleMode={fh.toggleMode} toggleMuscle={fh.toggleMuscle} toggleEquip={fh.toggleEquip}
-          setDifficulteMax={fh.setDifficulteMax} toggleFlag={fh.toggleFlag} reset={fh.reset}
-          onClose={() => { setSheet(false); if (fh.nbActifs > 0 && view === 'groupes') openTransversal() }}
-        />
-      )}
+      <FiltreSheet
+        open={sheet}
+        filtre={fh.filtre} nbResultats={sheetPreview.length}
+        toggleMode={fh.toggleMode} toggleMuscle={fh.toggleMuscle} toggleEquip={fh.toggleEquip}
+        setDifficulteMax={fh.setDifficulteMax} toggleFlag={fh.toggleFlag} reset={fh.reset}
+        onClose={() => { setSheet(false); if (fh.nbActifs > 0 && view === 'groupes') openTransversal() }}
+      />
     </div>
   )
 }

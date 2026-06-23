@@ -4,7 +4,7 @@
 // → 220px au survol (icône + libellé + sous-titre + indicateur actif), onglets mobile
 // en haut + transition. Version CONTRÔLÉE (active/onChange) + tokens uniquement.
 // Transparent tant qu'il y a < 2 onglets ; respecte prefers-reduced-motion.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
 
@@ -36,6 +36,12 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
   const isDesktop = useWidth() >= 1024
   const [railOpen, setRailOpen] = useState(false)
 
+  // Sens du glissement selon l'ordre des onglets (mouvement directionnel).
+  const activeIdx = tabs.findIndex(t => t.id === active)
+  const prevIdx = useRef(activeIdx)
+  const dir = activeIdx >= prevIdx.current ? 1 : -1
+  useEffect(() => { prevIdx.current = activeIdx }, [activeIdx])
+
   const header = (title || headerExtra) ? (
     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
       {title && <h1 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{title}</h1>}
@@ -44,11 +50,14 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
   ) : null
 
   const content = (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div key={active}
-        initial={reduce ? { opacity: 0 } : { opacity: 0, x: 12 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={reduce ? { opacity: 0 } : { opacity: 0, x: -12 }}
+    <AnimatePresence mode="wait" initial={false} custom={dir}>
+      <motion.div key={active} custom={dir}
+        variants={{
+          enter: (d: number) => ({ opacity: 0, x: reduce ? 0 : d * 28 }),
+          center: { opacity: 1, x: 0 },
+          exit: (d: number) => ({ opacity: 0, x: reduce ? 0 : d * -28 }),
+        }}
+        initial="enter" animate="center" exit="exit"
         transition={{ duration: reduce ? 0 : 0.28, ease: [0.32, 0.72, 0, 1] }}>
         {children}
       </motion.div>

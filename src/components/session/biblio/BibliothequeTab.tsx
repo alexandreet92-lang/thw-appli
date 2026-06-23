@@ -9,6 +9,7 @@ import {
   IconBarbell, IconRun, IconBike, IconSwimming, IconFlame, IconKayak, IconTrophy,
   IconArrowLeft, IconChevronRight, type Icon,
 } from '@tabler/icons-react'
+import { SlideView } from '@/components/ui/SlideView'
 import { ExercicesMuscu } from './ExercicesMuscu'
 import { EnPreparation } from './EnPreparation'
 
@@ -52,6 +53,8 @@ function SousOnglets({ value, onChange }: { value: 'exos' | 'seances'; onChange:
 function SportDetail({ sport, onBack }: { sport: SportMeta; onBack: () => void }) {
   const hasExos = SPORTS_AVEC_EXERCICES.includes(sport.id)
   const [tab, setTab] = useState<'exos' | 'seances'>(hasExos ? 'exos' : 'seances')
+  const [tabDir, setTabDir] = useState(1)
+  const changeTab = (t: 'exos' | 'seances') => { setTabDir(t === 'seances' ? 1 : -1); setTab(t) }
 
   return (
     <div>
@@ -64,26 +67,35 @@ function SportDetail({ sport, onBack }: { sport: SportMeta; onBack: () => void }
         <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{sport.label}</h2>
       </div>
 
-      {hasExos && <SousOnglets value={tab} onChange={setTab} />}
+      {hasExos && <SousOnglets value={tab} onChange={changeTab} />}
 
-      {tab === 'exos' && sport.id === 'muscu' && <ExercicesMuscu />}
-      {tab === 'exos' && sport.id === 'hyrox' && (
-        <EnPreparation titre="Exercices Hyrox en préparation"
-          texte="Sled, ergo, wall ball, carry — les ateliers Hyrox détaillés arrivent ici, dans le même esprit que la muscu." />
-      )}
-      {tab === 'seances' && (
-        <EnPreparation titre="Séances en préparation"
-          texte={`Des dizaines de séances ${sport.label.toLowerCase()} structurées par objectif arrivent ici — échauffement, corps de séance, retour au calme.`} />
-      )}
+      <div style={{ overflowX: 'hidden' }}>
+        <SlideView screenKey={tab} direction={tabDir}>
+          {tab === 'exos' && sport.id === 'muscu' && <ExercicesMuscu />}
+          {tab === 'exos' && sport.id === 'hyrox' && (
+            <EnPreparation titre="Exercices Hyrox en préparation"
+              texte="Sled, ergo, wall ball, carry — les ateliers Hyrox détaillés arrivent ici, dans le même esprit que la muscu." />
+          )}
+          {tab === 'seances' && (
+            <EnPreparation titre="Séances en préparation"
+              texte={`Des dizaines de séances ${sport.label.toLowerCase()} structurées par objectif arrivent ici — échauffement, corps de séance, retour au calme.`} />
+          )}
+        </SlideView>
+      </div>
     </div>
   )
 }
 
 export function BibliothequeTab() {
   const [sport, setSport] = useState<SportMeta | null>(null)
-  if (sport) return <SportDetail sport={sport} onBack={() => setSport(null)} />
+  const [dir, setDir] = useState(1)
 
   return (
+    <div style={{ overflowX: 'hidden' }}>
+      <SlideView screenKey={sport ? `sport-${sport.id}` : 'grid'} direction={dir}>
+        {sport ? (
+          <SportDetail sport={sport} onBack={() => { setDir(-1); setSport(null) }} />
+        ) : (
     <div>
       <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: '0 0 4px', lineHeight: 1.35 }}>
         Des séances et exercices types, expliqués.
@@ -96,7 +108,7 @@ export function BibliothequeTab() {
         {SPORTS.map(s => {
           const Ic = s.icon
           return (
-            <button key={s.id} onClick={() => setSport(s)} style={{ position: 'relative', display: 'flex', flexDirection: 'column',
+            <button key={s.id} onClick={() => { setDir(1); setSport(s) }} style={{ position: 'relative', display: 'flex', flexDirection: 'column',
               gap: 'var(--space-3)', alignItems: 'flex-start', textAlign: 'left', padding: 'var(--space-5)', minHeight: 116,
               borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', background: 'var(--bg-card2)',
               opacity: s.pret ? 1 : 0.72 }}>
@@ -119,6 +131,9 @@ export function BibliothequeTab() {
           )
         })}
       </div>
+    </div>
+        )}
+      </SlideView>
     </div>
   )
 }

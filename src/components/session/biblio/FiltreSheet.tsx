@@ -1,7 +1,9 @@
 'use client'
 // Bottom sheet de filtre à facettes (portail sur document.body).
 // Facettes : mode · muscle (par région) · équipement · difficulté · flags.
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { IconX } from '@tabler/icons-react'
 import {
   MODE_LABEL, MODE_ORDER, MUSCLE_LABEL, MUSCLES_PAR_REGION, REGION_LABEL, REGION_ORDER,
@@ -10,6 +12,7 @@ import {
 import type { FiltreState } from './useExerciceFilter'
 
 interface Props {
+  open: boolean
   filtre: FiltreState
   nbResultats: number
   toggleMode: (m: FiltreState['modes'][number]) => void
@@ -44,10 +47,27 @@ function Bloc({ titre, children }: { titre: string; children: React.ReactNode })
 
 export function FiltreSheet(p: Props) {
   const { filtre: f } = p
+  const reduce = useReducedMotion()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  if (!mounted) return null
+
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} onClick={p.onClose} />
-      <div style={{ position: 'relative', background: 'var(--bg-card)', borderRadius: 'var(--r-lg) var(--r-lg) 0 0',
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', flexDirection: 'column',
+      justifyContent: 'flex-end', pointerEvents: p.open ? 'auto' : 'none' }}>
+      <AnimatePresence>
+        {p.open && (
+          <motion.div key="bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }} onClick={p.onClose}
+            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
+        )}
+        {p.open && (
+      <motion.div key="panel"
+        initial={reduce ? { opacity: 0 } : { y: '100%' }}
+        animate={reduce ? { opacity: 1 } : { y: 0 }}
+        exit={reduce ? { opacity: 0 } : { y: '100%' }}
+        transition={{ duration: reduce ? 0.12 : 0.34, ease: [0.32, 0.72, 0, 1] }}
+        style={{ position: 'relative', background: 'var(--bg-card)', borderRadius: 'var(--r-lg) var(--r-lg) 0 0',
         maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow)' }}>
         <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)' }} />
@@ -104,7 +124,9 @@ export function FiltreSheet(p: Props) {
             Voir {p.nbResultats} exercice{p.nbResultats > 1 ? 's' : ''}
           </button>
         </div>
-      </div>
+      </motion.div>
+        )}
+      </AnimatePresence>
     </div>,
     document.body,
   )

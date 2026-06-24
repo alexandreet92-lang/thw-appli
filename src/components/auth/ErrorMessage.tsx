@@ -17,7 +17,7 @@ export function ErrorMessage({ error }: Props) {
         <circle cx="8" cy="8" r="7" stroke="#EF4444" strokeWidth="1.5"/>
         <path d="M8 5v4M8 10.5v.5" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
-      <p style={{ fontSize: 13, color: '#EF4444', margin: 0, lineHeight: 1.5, fontFamily: 'DM Sans, sans-serif' }}>
+      <p style={{ fontSize: 13, color: '#EF4444', margin: 0, lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
         {error}
       </p>
     </div>

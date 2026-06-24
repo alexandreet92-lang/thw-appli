@@ -47,16 +47,16 @@ export function EmailVerification({ email, onBack }: Props) {
         </svg>
       </div>
 
-      <h2 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: '0 0 12px', fontFamily: 'Syne, sans-serif' }}>
+      <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', margin: '0 0 12px', fontFamily: 'var(--font-display)' }}>
         Vérifie ta boîte mail
       </h2>
-      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, margin: '0 0 8px', fontFamily: 'DM Sans, sans-serif' }}>
+      <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 8px', fontFamily: 'var(--font-body)' }}>
         Un lien de confirmation a été envoyé à
       </p>
-      <p style={{ fontSize: 15, fontWeight: 600, color: '#06B6D4', margin: '0 0 32px', padding: '8px 16px', borderRadius: 8, background: 'rgba(6,182,212,0.1)', display: 'inline-block', fontFamily: 'DM Sans, sans-serif' }}>
+      <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--primary)', margin: '0 0 32px', padding: '8px 16px', borderRadius: 8, background: 'var(--primary-dim)', display: 'inline-block', fontFamily: 'var(--font-body)' }}>
         {email}
       </p>
-      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', margin: '0 0 24px', lineHeight: 1.5, fontFamily: 'DM Sans, sans-serif' }}>
+      <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 24px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
         Clique sur le lien dans l&apos;email pour activer ton compte.
         Pense à vérifier tes spams.
       </p>
@@ -66,17 +66,17 @@ export function EmailVerification({ email, onBack }: Props) {
         disabled={resending || countdown > 0}
         style={{
           width: '100%', height: 48, borderRadius: 12, marginBottom: 12,
-          background: resent ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)',
-          border: `1px solid ${resent ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.15)'}`,
-          color: resent ? '#10B981' : countdown > 0 ? 'rgba(255,255,255,0.3)' : 'white',
+          background: resent ? 'rgba(16,185,129,0.15)' : 'var(--bg-card2)',
+          border: `1px solid ${resent ? 'rgba(16,185,129,0.4)' : 'var(--border-mid)'}`,
+          color: resent ? '#10B981' : countdown > 0 ? 'var(--text-dim)' : 'var(--text)',
           fontSize: 14, cursor: countdown > 0 ? 'not-allowed' : 'pointer',
-          transition: 'all 200ms', fontFamily: 'DM Sans, sans-serif',
+          transition: 'all 200ms', fontFamily: 'var(--font-body)',
         }}
       >
         {resending ? 'Envoi…' : resent ? '✓ Email renvoyé' : countdown > 0 ? `Renvoyer dans ${countdown}s` : "Renvoyer l'email"}
       </button>
 
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
         ← Retour à la connexion
       </button>
     </div>

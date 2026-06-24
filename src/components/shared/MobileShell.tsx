@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic'
 import { useProfile } from '@/hooks/useProfile'
 import { SidebarContent, Avatar } from '@/components/shared/Sidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -90,6 +91,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
   // /topup : page autonome (lien email), aucun chrome.
   if (pathname?.startsWith('/topup')) return <>{children}</>
+  // Pages d'entrée (connexion, onboarding…) : plein écran, sans chrome.
+  if (isFullscreenRoute(pathname)) {
+    return <div className="md:hidden" style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg)' }}>{children}</div>
+  }
   const hideHeader = pathname?.startsWith('/competences')
 
   const hybridHeader = (

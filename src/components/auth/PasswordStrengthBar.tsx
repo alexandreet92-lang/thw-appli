@@ -27,12 +27,12 @@ export function PasswordStrengthBar({ password }: { password: string }) {
         {[1, 2, 3, 4].map(i => (
           <div key={i} style={{
             flex: 1, height: 3, borderRadius: 2,
-            background: i <= s ? cfg.color : 'rgba(255,255,255,0.1)',
+            background: i <= s ? cfg.color : 'var(--border)',
             transition: 'background 300ms',
           }} />
         ))}
       </div>
-      <p style={{ fontSize: 11, color: cfg.color, margin: 0, fontFamily: 'DM Sans, sans-serif' }}>
+      <p style={{ fontSize: 11, color: cfg.color, margin: 0, fontFamily: 'var(--font-body)' }}>
         {cfg.label}
       </p>
     </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import type { LucideIcon } from 'lucide-react'
 import {
   CalendarDays, BarChart3, Grid3x3, ChevronLeft,
@@ -112,6 +113,8 @@ export default function MobileTabBar() {
   if (pathname?.startsWith('/competences')) return null
   // Page /topup : standalone (lien email)
   if (pathname?.startsWith('/topup')) return null
+  // Pages d'entrée (connexion, onboarding…) : pas de barre d'onglets
+  if (isFullscreenRoute(pathname)) return null
 
   const activeTab = ROUTE_TO_TAB[pathname]
   const col       = (on: boolean) => on ? ACCENT : DIM

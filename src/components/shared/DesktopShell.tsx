@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic'
 import { useProfile } from '@/hooks/useProfile'
 import { SidebarContent, Avatar } from '@/components/shared/Sidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
+import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -40,6 +41,11 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
 
   // /topup : page autonome (lien email), aucun chrome.
   if (pathname?.startsWith('/topup')) {
+    return <div className="hidden md:block" style={{ height: '100vh', overflowY: 'auto', background: 'var(--bg)' }}>{children}</div>
+  }
+
+  // Pages d'entrée (connexion, onboarding…) : plein écran, sans sidebar.
+  if (isFullscreenRoute(pathname)) {
     return <div className="hidden md:block" style={{ height: '100vh', overflowY: 'auto', background: 'var(--bg)' }}>{children}</div>
   }
 

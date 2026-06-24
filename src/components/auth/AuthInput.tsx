@@ -16,10 +16,10 @@ export function AuthInput({ label, type, placeholder, value, onChange, showToggl
   return (
     <div style={{ marginBottom: 16 }}>
       <label style={{
-        display: 'block', fontSize: 12, fontWeight: 600,
-        color: 'rgba(255,255,255,0.5)',
+        display: 'block', fontSize: 11, fontWeight: 600,
+        color: 'var(--text-dim)',
         textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8,
-        fontFamily: 'DM Sans, sans-serif',
+        fontFamily: 'var(--font-body)',
       }}>
         {label}
       </label>
@@ -31,16 +31,16 @@ export function AuthInput({ label, type, placeholder, value, onChange, showToggl
           onChange={e => onChange(e.target.value)}
           style={{
             width: '100%', height: 50,
-            background: 'rgba(255,255,255,0.07)',
-            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'var(--input-bg)',
+            border: '1px solid var(--border-mid)',
             borderRadius: 12, padding: '0 44px 0 16px',
-            color: 'white', fontSize: 15, outline: 'none',
+            color: 'var(--text)', fontSize: 15, outline: 'none',
             boxSizing: 'border-box',
-            fontFamily: 'DM Sans, sans-serif',
-            transition: 'border-color 200ms',
+            fontFamily: 'var(--font-body)',
+            transition: 'border-color 200ms, box-shadow 200ms',
           }}
-          onFocus={e => { e.target.style.borderColor = 'rgba(6,182,212,0.5)' }}
-          onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.12)' }}
+          onFocus={e => { e.target.style.borderColor = 'var(--primary)'; e.target.style.boxShadow = '0 0 0 3px var(--primary-dim)' }}
+          onBlur={e => { e.target.style.borderColor = 'var(--border-mid)'; e.target.style.boxShadow = 'none' }}
         />
         {showToggle && (
           <button
@@ -50,7 +50,7 @@ export function AuthInput({ label, type, placeholder, value, onChange, showToggl
               position: 'absolute', right: 14, top: '50%',
               transform: 'translateY(-50%)',
               background: 'none', border: 'none',
-              color: 'rgba(255,255,255,0.4)',
+              color: 'var(--text-dim)',
               cursor: 'pointer', fontSize: 16, lineHeight: 1,
               padding: 0,
             }}

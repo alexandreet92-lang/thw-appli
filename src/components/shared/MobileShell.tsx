@@ -12,6 +12,7 @@ import { SidebarContent, Avatar } from '@/components/shared/Sidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
+import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
@@ -26,6 +27,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const [aiOpen, setAiOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const unreadNotifs = useUnreadNotifCount(notifOpen)
+  useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0 })

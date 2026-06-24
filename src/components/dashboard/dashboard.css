@@ -8,9 +8,11 @@
    mortes sur desktop). Le souffle vient du padding + des gouttières. */
 .dash-wrap {
   width: 100%;
-  max-width: none;
+  max-width: 100%;
   margin: 0;
   padding: var(--space-5) var(--space-5) var(--space-12);
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .dash-grid {

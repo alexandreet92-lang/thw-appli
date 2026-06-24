@@ -20,9 +20,11 @@ export function DashboardContent() {
   return (
     <div className="dash-wrap">
       <Greeting rightSlot={
-        <div className="dash-desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          {switch_}
-          <QuickActions />
+        <div className="dash-desktop-only">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            {switch_}
+            <QuickActions />
+          </div>
         </div>
       } />
 

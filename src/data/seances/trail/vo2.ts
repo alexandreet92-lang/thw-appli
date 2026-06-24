@@ -1,0 +1,46 @@
+import type { Seance } from '../common'
+
+export const SEANCES_TR_VO2: Seance[] = [
+  {
+    id: 'trail-vo2-montee-3',
+    nom: 'VO2 en montée 3′',
+    sport: 'trail',
+    bucket: 'vo2',
+    objectif: "VO2max ; la pente impose l'intensité sans courir vite et limite l'impact (moins de risque blessure). ~80% des intervalles trail se font en montée.",
+    dureeMinMin: 50,
+    dureeMaxMin: 65,
+    intensite: 'maximum',
+    rpe: 9,
+    pourQui: 'Build→Spé',
+    phase: 'Build',
+    support: ['sentier', 'tapis'],
+    tags: ['montée', 'intervalles', 'sentier', 'tapis'],
+    blocs: [
+      { phase: 'echauffement', zone: 'Z2', label: 'Échauffement', intensiteRef: 'RPE 3-4', dureeSec: 900 },
+      { phase: 'corps', zone: 'Z5', label: 'Montée 3′ @VO2', intensiteRef: '@VO2', gradient: 'montée', dureeSec: 180, reps: 5, recup: { zone: 'Z1', label: 'descente', dureeSec: 180, actif: true } },
+      { phase: 'retour-calme', zone: 'Z2', label: 'Retour au calme', intensiteRef: 'RPE 3-4', dureeSec: 600 },
+    ],
+    conseil: "Bouts de 3-8′, total 16-24′ de travail ; même effort sur toutes les reps.",
+  },
+  {
+    id: 'trail-vo2-30-30-cote',
+    nom: '30/30 en côte',
+    sport: 'trail',
+    bucket: 'vo2',
+    objectif: "Sollicitations VO2 répétées et efficience neuromusculaire en terrain raide.",
+    dureeMinMin: 45,
+    dureeMaxMin: 60,
+    intensite: 'maximum',
+    rpe: 9,
+    pourQui: 'Build',
+    phase: 'Build',
+    support: ['sentier', 'tapis'],
+    tags: ['montée', 'intervalles', 'sentier', 'tapis'],
+    blocs: [
+      { phase: 'echauffement', zone: 'Z2', label: 'Échauffement', intensiteRef: 'RPE 3-4', dureeSec: 900 },
+      { phase: 'corps', zone: 'Z5', label: '30″ fort en côte', intensiteRef: 'fort', gradient: 'montée', dureeSec: 30, reps: 9, recup: { zone: 'Z1', dureeSec: 45, actif: true } },
+      { phase: 'retour-calme', zone: 'Z2', label: 'Retour au calme', intensiteRef: 'RPE 3-4', dureeSec: 600 },
+    ],
+    conseil: "Court et vif ; idéal quand le relief disponible est limité.",
+  },
+]

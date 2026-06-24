@@ -1,0 +1,48 @@
+import type { Seance } from '../common'
+
+export const SEANCES_NAT_AERO: Seance[] = [
+  {
+    id: 'natation-endurance-continue',
+    nom: 'Endurance continue',
+    sport: 'natation',
+    bucket: 'aerobie',
+    objectif: "Base aérobie — améliore l'apport d'oxygène et la densité mitochondriale, le « pain quotidien » du nageur distance.",
+    dureeMinMin: 30,
+    dureeMaxMin: 55,
+    intensite: 'faible',
+    rpe: 4,
+    pourQui: 'Base → toute saison',
+    phase: 'Base',
+    support: ['piscine'],
+    tags: ['aerobie', 'endurance', 'crawl'],
+    blocs: [
+      { phase: 'corps', zone: 'Z2', label: 'Endurance continue', intensiteRef: 'EN1', nage: 'crawl', distanceM: 2250 },
+    ],
+    conseil: "Effort facile et régulier, respiration confortable.",
+  },
+  {
+    id: 'natation-pyramide-aerobie',
+    nom: 'Pyramide aérobie',
+    sport: 'natation',
+    bucket: 'aerobie',
+    objectif: "Volume aérobie avec variété de distances pour entretenir le pacing sans monter en intensité.",
+    dureeMinMin: 30,
+    dureeMaxMin: 45,
+    intensite: 'faible',
+    rpe: 4,
+    pourQui: 'Base',
+    phase: 'Base',
+    support: ['piscine'],
+    tags: ['aerobie', 'pyramide', 'crawl'],
+    blocs: [
+      { phase: 'corps', zone: 'Z2', label: '100 EN1', intensiteRef: 'EN1', nage: 'crawl', distanceM: 100, recup: { zone: 'Z1', dureeSec: 20, actif: false } },
+      { phase: 'corps', zone: 'Z2', label: '200 EN1', intensiteRef: 'EN1', nage: 'crawl', distanceM: 200, recup: { zone: 'Z1', dureeSec: 20, actif: false } },
+      { phase: 'corps', zone: 'Z2', label: '300 EN1', intensiteRef: 'EN1', nage: 'crawl', distanceM: 300, recup: { zone: 'Z1', dureeSec: 20, actif: false } },
+      { phase: 'corps', zone: 'Z2', label: '400 EN1', intensiteRef: 'EN1', nage: 'crawl', distanceM: 400, recup: { zone: 'Z1', dureeSec: 20, actif: false } },
+      { phase: 'corps', zone: 'Z2', label: '300 EN1', intensiteRef: 'EN1', nage: 'crawl', distanceM: 300, recup: { zone: 'Z1', dureeSec: 20, actif: false } },
+      { phase: 'corps', zone: 'Z2', label: '200 EN1', intensiteRef: 'EN1', nage: 'crawl', distanceM: 200, recup: { zone: 'Z1', dureeSec: 20, actif: false } },
+      { phase: 'corps', zone: 'Z2', label: '100 EN1', intensiteRef: 'EN1', nage: 'crawl', distanceM: 100, recup: { zone: 'Z1', dureeSec: 20, actif: false } },
+    ],
+    conseil: "Même allure EN1 du plus court au plus long.",
+  },
+]

@@ -1,0 +1,45 @@
+import type { Seance } from '../common'
+
+export const SEANCES_TR_HIKE: Seance[] = [
+  { id:'trail-powerhike-repeats', nom:'Power hiking — répétitions en forte pente', sport:'trail', bucket:'power-hiking', objectif:"Le power hiking (marche active rapide) est une compétence à entraîner, pas un échec : au-delà de ~10-15 % de pente il devient plus économique que courir. En ultra/D+, savoir marcher vite et efficacement fait gagner plus de temps que courir les côtes.", dureeMinMin:50, dureeMaxMin:75, intensite:'eleve', rpe:7, pourQui:'Trail long/ultra · prépa D+', phase:'Build', support:['sentier','tapis','stairmaster'], tags:['power-hiking','montée','batons'], blocs:[ { phase:'echauffement', zone:'Z2', label:'Échauffement', intensiteRef:'RPE 3-4', dureeSec:900 }, { phase:'corps', zone:'Z3', label:'Power hike pente raide', intensiteRef:'RPE 7-8', gradient:'montée 15%+', dureeSec:180, reps:6, recup:{ zone:'Z1', label:'descente marche', dureeSec:150, actif:false } }, { phase:'retour-calme', zone:'Z2', label:'Retour au calme', intensiteRef:'RPE 3', dureeSec:600 } ], conseil:"Petits pas rapides et constants (pense 'locomotive', pas 'kangourou'), mains/bâtons qui poussent sur les cuisses, gainage. Marche AVEC intention, pas en traînant." },
+  {
+    id: 'trail-powerhike-rando-vert',
+    nom: 'Rando-vert continue',
+    sport: 'trail',
+    bucket: 'power-hiking',
+    objectif: "Accumuler du dénivelé en marche active efficace ; le moyen le plus durable de bâtir la capacité de grimpe pour l'ultra.",
+    dureeMinMin: 60,
+    dureeMaxMin: 120,
+    intensite: 'eleve',
+    rpe: 7,
+    pourQui: 'Base→Spé ultra',
+    phase: 'Base',
+    support: ['sentier', 'tapis', 'stairmaster'],
+    tags: ['power-hiking', 'montée', 'batons'],
+    blocs: [
+      { phase: 'corps', zone: 'Z3', label: 'Power hike continu', intensiteRef: 'effort 6-7', gradient: 'forte pente', dureeSec: 5400 },
+    ],
+    conseil: "1-2×/sem ; bâtons si course à bâtons ; pas de flânerie, effort 6-7/10.",
+  },
+  {
+    id: 'trail-powerhike-stairmaster',
+    nom: 'Stairmaster (option indoor)',
+    sport: 'trail',
+    bucket: 'power-hiking',
+    objectif: "Reproduire la mécanique de montée marchée quand on n'a pas de relief — entraîne directement le power hiking.",
+    dureeMinMin: 50,
+    dureeMaxMin: 70,
+    intensite: 'eleve',
+    rpe: 7,
+    pourQui: 'toute saison (ville/hiver)',
+    phase: 'Base',
+    support: ['stairmaster', 'tapis'],
+    tags: ['power-hiking', 'indoor'],
+    blocs: [
+      { phase: 'echauffement', zone: 'Z2', label: 'Échauffement', intensiteRef: 'RPE 3-4', dureeSec: 900 },
+      { phase: 'corps', zone: 'Z3', label: 'Stairmaster 3/2', intensiteRef: 'RPE 7-8', dureeSec: 180, reps: 9, recup: { zone: 'Z2', label: 'RPE 4-5', dureeSec: 120, actif: true } },
+      { phase: 'retour-calme', zone: 'Z2', label: 'Retour au calme', intensiteRef: 'RPE 3-4', dureeSec: 600 },
+    ],
+    conseil: "Posture droite, pas de triche en s'appuyant sur la rampe.",
+  },
+]

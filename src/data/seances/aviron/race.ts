@@ -1,0 +1,46 @@
+import type { Seance } from '../common'
+
+export const SEANCES_AV_RACE: Seance[] = [
+  {
+    id: 'aviron-race-2k-decompose',
+    nom: '2k décomposé',
+    sport: 'aviron',
+    bucket: 'race',
+    objectif: "Tenir l'allure 2k sur fatigue, répéter le split-cible et la cadence de course — gestion de course.",
+    dureeMinMin: 40,
+    dureeMaxMin: 50,
+    intensite: 'maximum',
+    rpe: 9,
+    pourQui: 'Spé',
+    phase: 'Spé',
+    support: ['erg', 'bateau'],
+    tags: ['race', '2k'],
+    blocs: [
+      { phase: 'echauffement', zone: 'Z2', label: 'Échauffement progressif', intensiteRef: 'UT2→UT1', dureeSec: 720 },
+      { phase: 'corps', zone: 'Z5', label: '500m @allure 2k', intensiteRef: '@2k', cadenceSpm: '32-36', distanceM: 500, reps: 4, recup: { zone: 'Z1', dureeSec: 60, actif: false } },
+      { phase: 'retour-calme', zone: 'Z2', label: 'Retour au calme', intensiteRef: 'UT2', dureeSec: 480 },
+    ],
+    conseil: "Même split que ton objectif 2k sur chaque 500, pas plus vite.",
+  },
+  {
+    id: 'aviron-race-8x500-wolverine',
+    nom: '8×500 (Wolverine)',
+    sport: 'aviron',
+    bucket: 'race',
+    objectif: "Grand volume à allure-course+, séance classique de prépa au 2k ; la récup généreuse maintient la qualité.",
+    dureeMinMin: 60,
+    dureeMaxMin: 75,
+    intensite: 'maximum',
+    rpe: 9,
+    pourQui: 'Spé',
+    phase: 'Spé',
+    support: ['erg', 'bateau'],
+    tags: ['race', '2k'],
+    blocs: [
+      { phase: 'echauffement', zone: 'Z2', label: 'Échauffement progressif', intensiteRef: 'UT2→UT1', dureeSec: 720 },
+      { phase: 'corps', zone: 'Z5', label: '500m', intensiteRef: 'split > allure 2k', cadenceSpm: '32-38', distanceM: 500, reps: 8, recup: { zone: 'Z1', dureeSec: 210, actif: true } },
+      { phase: 'retour-calme', zone: 'Z2', label: 'Retour au calme', intensiteRef: 'UT2', dureeSec: 480 },
+    ],
+    conseil: "Ramène le HR sous UT2 entre les reps tant que possible.",
+  },
+]

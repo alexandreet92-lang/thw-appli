@@ -6,28 +6,31 @@
 // ══════════════════════════════════════════════════════════════════
 import { useState } from 'react'
 import {
-  IconBarbell, IconRun, IconBike, IconSwimming, IconFlame, IconKayak, IconTrophy,
+  IconBarbell, IconRun, IconBike, IconSwimming, IconFlame, IconKayak, IconTrophy, IconMountain,
   IconArrowLeft, IconChevronRight, type Icon,
 } from '@tabler/icons-react'
 import { SlideView } from '@/components/ui/SlideView'
 import { ExercicesMuscu } from './ExercicesMuscu'
 import { SeancesRunning } from './running/SeancesRunning'
 import { SeancesVelo } from './velo/SeancesVelo'
+import { SeancesEndurance } from './endurance/SeancesEndurance'
+import { AVIRON_CONFIG, NATATION_CONFIG, TRAIL_CONFIG } from './endurance/config'
 import { EnPreparation } from './EnPreparation'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
 
-type SportId = 'muscu' | 'running' | 'velo' | 'natation' | 'hyrox' | 'aviron' | 'triathlon'
+type SportId = 'muscu' | 'running' | 'velo' | 'natation' | 'hyrox' | 'aviron' | 'triathlon' | 'trail'
 const SPORTS_AVEC_EXERCICES: SportId[] = ['muscu', 'hyrox']
 
 interface SportMeta { id: SportId; label: string; icon: Icon; color: string; pret: boolean }
 const SPORTS: SportMeta[] = [
   { id: 'muscu',     label: 'Muscu / Renfo', icon: IconBarbell,  color: 'var(--sport-gym)',    pret: true  },
-  { id: 'running',   label: 'Running',       icon: IconRun,      color: 'var(--sport-run)',    pret: false },
-  { id: 'velo',      label: 'Vélo',          icon: IconBike,     color: 'var(--sport-bike)',   pret: false },
-  { id: 'natation',  label: 'Natation',      icon: IconSwimming, color: 'var(--sport-swim)',   pret: false },
+  { id: 'running',   label: 'Running',       icon: IconRun,      color: 'var(--sport-run)',    pret: true  },
+  { id: 'trail',     label: 'Trail',         icon: IconMountain, color: 'var(--sport-run)',    pret: true  },
+  { id: 'velo',      label: 'Vélo',          icon: IconBike,     color: 'var(--sport-bike)',   pret: true  },
+  { id: 'natation',  label: 'Natation',      icon: IconSwimming, color: 'var(--sport-swim)',   pret: true  },
+  { id: 'aviron',    label: 'Aviron',        icon: IconKayak,    color: 'var(--sport-rowing)', pret: true  },
   { id: 'hyrox',     label: 'Hyrox',         icon: IconFlame,    color: 'var(--sport-hyrox)',  pret: false },
-  { id: 'aviron',    label: 'Aviron',        icon: IconKayak,    color: 'var(--sport-rowing)', pret: false },
   { id: 'triathlon', label: 'Triathlon',     icon: IconTrophy,   color: 'var(--primary)',      pret: false },
 ]
 
@@ -80,7 +83,10 @@ function SportDetail({ sport, onBack }: { sport: SportMeta; onBack: () => void }
           )}
           {tab === 'seances' && sport.id === 'running' && <SeancesRunning />}
           {tab === 'seances' && sport.id === 'velo' && <SeancesVelo />}
-          {tab === 'seances' && sport.id !== 'running' && sport.id !== 'velo' && (
+          {tab === 'seances' && sport.id === 'aviron' && <SeancesEndurance cfg={AVIRON_CONFIG} />}
+          {tab === 'seances' && sport.id === 'natation' && <SeancesEndurance cfg={NATATION_CONFIG} />}
+          {tab === 'seances' && sport.id === 'trail' && <SeancesEndurance cfg={TRAIL_CONFIG} />}
+          {tab === 'seances' && !['running', 'velo', 'aviron', 'natation', 'trail'].includes(sport.id) && (
             <EnPreparation titre="Séances en préparation"
               texte={`Des dizaines de séances ${sport.label.toLowerCase()} structurées par objectif arrivent ici — échauffement, corps de séance, retour au calme.`} />
           )}

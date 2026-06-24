@@ -1,0 +1,46 @@
+import type { Seance } from '../common'
+
+export const SEANCES_TR_SEUIL: Seance[] = [
+  {
+    id: 'trail-seuil-tempo-vallonne',
+    nom: 'Tempo vallonné',
+    sport: 'trail',
+    bucket: 'seuil',
+    objectif: "Endurance de seuil en conditions trail (relances permanentes du terrain) ; total 30-60′ en zone tempo.",
+    dureeMinMin: 45,
+    dureeMaxMin: 65,
+    intensite: 'eleve',
+    rpe: 7,
+    pourQui: 'Build',
+    phase: 'Build',
+    support: ['sentier', 'tapis'],
+    tags: ['vallonné', 'tempo', 'sentier', 'tapis'],
+    blocs: [
+      { phase: 'echauffement', zone: 'Z2', label: 'Échauffement', intensiteRef: 'RPE 3-4', dureeSec: 900 },
+      { phase: 'corps', zone: 'Z4', label: 'Tempo vallonné', intensiteRef: '@seuil', gradient: 'vallonné', dureeSec: 1800 },
+      { phase: 'retour-calme', zone: 'Z2', label: 'Retour au calme', intensiteRef: 'RPE 3-4', dureeSec: 600 },
+    ],
+    conseil: "Gère l'effort, pas l'allure — le terrain dicte la vitesse.",
+  },
+  {
+    id: 'trail-seuil-cruise-intervals',
+    nom: 'Cruise intervals',
+    sport: 'trail',
+    bucket: 'seuil',
+    objectif: "Fractionner le seuil pour accumuler 16-30′ de qualité avec une exécution propre.",
+    dureeMinMin: 50,
+    dureeMaxMin: 70,
+    intensite: 'eleve',
+    rpe: 7,
+    pourQui: 'Build→Spé',
+    phase: 'Build',
+    support: ['sentier', 'tapis'],
+    tags: ['intervalles', 'seuil', 'sentier', 'tapis'],
+    blocs: [
+      { phase: 'echauffement', zone: 'Z2', label: 'Échauffement', intensiteRef: 'RPE 3-4', dureeSec: 900 },
+      { phase: 'corps', zone: 'Z4', label: 'Cruise 6-8′', intensiteRef: '@seuil', dureeSec: 420, reps: 5, recup: { zone: 'Z1', dureeSec: 180, actif: true } },
+      { phase: 'retour-calme', zone: 'Z2', label: 'Retour au calme', intensiteRef: 'RPE 3-4', dureeSec: 600 },
+    ],
+    conseil: "Sur une pente proche de celle de ta course-cible.",
+  },
+]

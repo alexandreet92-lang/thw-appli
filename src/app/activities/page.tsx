@@ -2167,7 +2167,11 @@ function ZoneDonut({ data, title }: { data: ZoneArc[]; title: string }) {
       <div style={titleStyle}>{title}</div>
       <svg viewBox="0 0 100 100" style={{ width: 100, height: 100, flexShrink: 0 }}>
         <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke="var(--bg-card2)" strokeWidth={R_OUT - R_IN} />
-        {data.map((d, i) => {
+        {visible.length === 1 ? (
+          // Une seule zone (100 %) : un arc plein-cercle ne se rend pas (point
+          // de départ = point d'arrivée) → on dessine un anneau complet.
+          <circle cx={CX} cy={CY} r={(R_OUT + R_IN) / 2} fill="none" stroke={visible[0].color} strokeWidth={R_OUT - R_IN} />
+        ) : data.map((d, i) => {
           if (d.pct <= 0) return null
           const startAng = -Math.PI / 2 + (cum / totalPct) * 2 * Math.PI
           const endAng   = -Math.PI / 2 + ((cum + d.pct) / totalPct) * 2 * Math.PI
@@ -2305,6 +2309,10 @@ function SelectionSheet(props: SelectionSheetProps) {
 
   // ── Données puissance présentes ? ──
   const hasPowerData = !!wS && wS.length > 0 && wS.some(w => w != null && w > 0)
+  // Running : on n'affiche jamais la puissance (watts / W/kg / NP), même si la
+  // montre en fournit — données non pertinentes pour la course à pied.
+  const isRunSel = ['run', 'trail_run'].includes(activity.sport_type)
+  const showPower = hasPowerData && !isRunSel
 
   // ── Zones de PUISSANCE (7 zones Coggan) — fallback FTP 200 W si non défini ──
   const ftpForZones = (ftp && ftp > 0) ? ftp : 200
@@ -2417,7 +2425,7 @@ function SelectionSheet(props: SelectionSheetProps) {
   const _wAvg = avgOf(wS)
   const _vAvg = avgOf(vS)
   const _hrAvg = avgOf(hrS)
-  const heroPower: Hero = _wAvg != null
+  const heroPower: Hero = (showPower && _wAvg != null)
     ? { label: 'Puiss. moy.', value: `${Math.round(_wAvg)}`, unit: 'W' }
     : (_vAvg != null
         ? { label: 'Allure moy.', value: fmtClock(1000 / Math.max(0.1, _vAvg / 3.6)), unit: '/km' }
@@ -2453,6 +2461,13 @@ function SelectionSheet(props: SelectionSheetProps) {
     { label: 'D+ / D−',   value: aS ? `+${Math.round(dPlus)} / −${Math.round(dMinus)} m` : '—' },
     { label: 'Alt. moy/max', value: (_aAvg != null && _aMax != null) ? `${Math.round(_aAvg)} / ${Math.round(_aMax)} m` : '—' },
     { label: 'T moy/max', value: (_tAvg != null && _tMax != null && _tMin != null) ? `${Math.round(_tAvg)} / ${Math.round(_tMax)} °C` : '—' },
+  ]
+  // Colonnes affichées : Puissance retirée pour la course à pied.
+  const detailColumns: { title: string; rows: Detail[] }[] = [
+    { title: 'Effort', rows: colEffortDetails },
+    ...(showPower ? [{ title: 'Puissance', rows: colPowerDetails }] : []),
+    { title: 'FC & Cadence', rows: colHrCadDetails },
+    { title: 'Terrain & Temp.', rows: colTerrainDetails },
   ]
 
   // ── Styles partagés ──
@@ -2501,7 +2516,7 @@ function SelectionSheet(props: SelectionSheetProps) {
   // Compte les donuts visibles pour ajuster le layout
   const visibleDonuts: { title: string; data: ZoneArc[] }[] = []
   if (hasHrData)    visibleDonuts.push({ title: 'Répartition FC',          data: hrDist   })
-  if (hasPowerData) visibleDonuts.push({ title: 'Répartition Puissance',   data: pwDist   })
+  if (showPower)    visibleDonuts.push({ title: 'Répartition Puissance',   data: pwDist   })
   if (hasTempData)  visibleDonuts.push({ title: 'Répartition Température', data: tempDist })
   if (hasCadData)   visibleDonuts.push({ title: 'Répartition Cadence',     data: cadDist  })
 
@@ -2530,7 +2545,7 @@ function SelectionSheet(props: SelectionSheetProps) {
         }
         @media (min-width: 1024px) {
           .sel-hero-grid    { grid-template-columns: repeat(4, 1fr); row-gap: 0; }
-          .sel-details-grid { grid-template-columns: repeat(4, 1fr); }
+          .sel-details-grid { grid-template-columns: repeat(${detailColumns.length}, 1fr); }
           .sel-donuts-grid  { grid-template-columns: repeat(${Math.max(1, visibleDonuts.length)}, 1fr); }
         }
       `}</style>
@@ -2606,7 +2621,7 @@ function SelectionSheet(props: SelectionSheetProps) {
           ))}
         </div>
 
-        {/* DÉTAILS COMPACTS — 4 colonnes catégorisées */}
+        {/* DÉTAILS COMPACTS — colonnes catégorisées (Puissance masquée en running) */}
         <div
           className="sel-details-grid"
           style={{
@@ -2615,22 +2630,12 @@ function SelectionSheet(props: SelectionSheetProps) {
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <div>
-            <div style={sectionTitleStyle}>Effort</div>
-            {colEffortDetails.map(d => <DetailLine key={d.label} {...d} />)}
-          </div>
-          <div>
-            <div style={sectionTitleStyle}>Puissance</div>
-            {colPowerDetails.map(d => <DetailLine key={d.label} {...d} />)}
-          </div>
-          <div>
-            <div style={sectionTitleStyle}>FC & Cadence</div>
-            {colHrCadDetails.map(d => <DetailLine key={d.label} {...d} />)}
-          </div>
-          <div>
-            <div style={sectionTitleStyle}>Terrain & Temp.</div>
-            {colTerrainDetails.map(d => <DetailLine key={d.label} {...d} />)}
-          </div>
+          {detailColumns.map(col => (
+            <div key={col.title}>
+              <div style={sectionTitleStyle}>{col.title}</div>
+              {col.rows.map(d => <DetailLine key={d.label} {...d} />)}
+            </div>
+          ))}
         </div>
 
         {/* DONUTS — FC / Puissance / Température / Cadence (masquage auto si pas de data) */}
@@ -2684,6 +2689,10 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
 
   const [cursorPct, setCursorPct]   = useState<number | null>(null)
   const [mousePos, setMousePos]     = useState<{x:number;y:number}|null>(null)
+  // Zone de tracé (offset gauche + largeur, relatifs au container) — pour aligner
+  // le curseur et la bande de sélection sur les courbes (la col. gauche desktop
+  // décale le plot par rapport au container).
+  const [plotBox, setPlotBox]       = useState<{left:number;width:number}|null>(null)
   const [isOverCharts, setIsOverCharts] = useState(false)
   const [inPlot, setInPlot]         = useState(false)
   const [selection, setSelection]   = useState<[number,number] | null>(null)
@@ -2723,6 +2732,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
     const chartRect = firstSvg
       ? firstSvg.getBoundingClientRect()
       : (tracksAreaRef.current ?? containerRef.current).getBoundingClientRect()
+    setPlotBox({ left: chartRect.left - rect.left, width: chartRect.width })
     // pct brut (non clampé) → détecte si le curseur est DANS la zone de tracé
     const rawPct = (clientX - chartRect.left) / chartRect.width
     setInPlot(rawPct >= 0 && rawPct <= 1)
@@ -2913,6 +2923,8 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
   const maxIntensity = watts ? Math.max(...watts) : hr ? Math.max(...hr) : 1
 
   const selLap = selectedLap !== null && laps[selectedLap] ? laps[selectedLap] : null
+  // X du curseur, ancré sur la zone de tracé (et non le container) → suit la souris.
+  const cursorX = (plotBox && cursorPct !== null) ? plotBox.left + cursorPct * plotBox.width : (mousePos?.x ?? 0)
 
   return (
     <div>
@@ -2961,19 +2973,19 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
         {/* Cursor line — uniquement dans la zone de tracé effective */}
         {isOverCharts && inPlot && cursorPct !== null && mousePos !== null && (
           <div style={{
-            position: 'absolute', top: 0, bottom: 0, left: mousePos.x,
+            position: 'absolute', top: 0, bottom: 0, left: cursorX,
             width: 1, background: T.text, pointerEvents: 'none', zIndex: 50,
           }} />
         )}
 
-        {/* Selection overlay */}
-        {selection && (() => {
-          const x1 = (selection[0] / (N-1)) * 100
-          const x2 = (selection[1] / (N-1)) * 100
+        {/* Selection overlay — ancrée sur la zone de tracé (offset col. gauche) */}
+        {selection && plotBox && (() => {
+          const f1 = selection[0] / (N-1)
+          const f2 = selection[1] / (N-1)
           return (
             <div style={{
               position: 'absolute', top: 0, bottom: 0,
-              left: `${x1}%`, width: `${x2-x1}%`,
+              left: plotBox.left + f1 * plotBox.width, width: (f2 - f1) * plotBox.width,
               background: T.accent, opacity: 0.08, pointerEvents: 'none', zIndex: 9,
             }} />
           )
@@ -3132,7 +3144,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
             data-chart-tooltip=""
             style={{
               position: 'absolute',
-              left: (cursorPct ?? 0) > 0.75 ? mousePos.x - 160 : mousePos.x + 12,
+              left: (cursorPct ?? 0) > 0.75 ? cursorX - 160 : cursorX + 12,
               top: 80,
               pointerEvents: 'none',
               zIndex: 200,
@@ -3161,7 +3173,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
         {hoveredWin && mousePos && !selection && (
           <div style={{
             position: 'absolute',
-            left: (cursorPct ?? 0) > 0.75 ? mousePos.x - 175 : mousePos.x + 12,
+            left: (cursorPct ?? 0) > 0.75 ? cursorX - 175 : cursorX + 12,
             top: Math.max(4, mousePos.y - 56),
             background: T.surface,
             border: `1px solid ${T.border}`,
@@ -5092,10 +5104,9 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
             </div>
           )}
         </div>
-        {!isMobile && (
-          <button onClick={requestClose} style={{ background: 'none', border: 'none', cursor: 'pointer',
-            color: T.textMuted, fontSize: 18, padding: 4, lineHeight: 1, flexShrink: 0 }}>✕</button>
-        )}
+        <button onClick={requestClose} aria-label="Fermer" style={{ background: T.bgAlt, border: 'none', cursor: 'pointer',
+          color: T.textMuted, fontSize: 18, lineHeight: 1, flexShrink: 0, width: 32, height: 32, borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
       </div>
     </div>
   )
@@ -6333,8 +6344,8 @@ function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit }: {
         transition: 'color 0.3s ease',
       }}>{isSet && descriptor ? descriptor.label : 'Non renseigné'}</div>
       <button onClick={onEdit} style={{
-        fontSize: 10, color: '#06b6d4', textDecoration: 'underline',
-        cursor: 'pointer', background: 'none', border: 'none', padding: 0, marginTop: 2,
+        fontSize: 11, color: '#06b6d4', textDecoration: 'underline',
+        cursor: 'pointer', background: 'none', border: 'none', padding: '8px 14px', marginTop: 0,
       }}>{isSet ? 'Modifier' : 'Ajouter'}</button>
     </div>
   )
@@ -6350,7 +6361,18 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
   const max = kind === 'feeling' ? 5 : 10
   const [draft,  setDraft]  = useState<number>(value ?? max / 2)
   const [saving, setSaving] = useState(false)
-  useEffect(() => { setDraft(value ?? max / 2); setSaving(false) }, [value, open, max])
+  // Garde anti « ghost click » mobile : le tap qui ouvre la modale génère un
+  // click synthétique ~300ms plus tard qui retombait sur le backdrop et la
+  // refermait aussitôt (→ « rien ne se passe »). On ignore la fermeture par
+  // backdrop tant que la modale n'est pas « prête ».
+  const [ready,  setReady]  = useState(false)
+  useEffect(() => {
+    setDraft(value ?? max / 2); setSaving(false)
+    if (!open) { setReady(false); return }
+    setReady(false)
+    const t = setTimeout(() => setReady(true), 350)
+    return () => clearTimeout(t)
+  }, [value, open, max])
   if (!open || typeof document === 'undefined') return null
   const descriptor = kind === 'feeling' ? feelingDescriptor(draft) : difficultyDescriptor(draft)
   const color  = descriptor.color
@@ -6363,7 +6385,7 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
         @keyframes fdModalBackdrop { from{opacity:0} to{opacity:1} }
         @keyframes fdModalEnter  { from{opacity:0;transform:translate(-50%,-46%) scale(0.96)} to{opacity:1;transform:translate(-50%,-50%) scale(1)} }
       `}</style>
-      <div onClick={onClose} style={{
+      <div onClick={() => { if (ready) onClose() }} style={{
         position: 'fixed', inset: 0, zIndex: 9998,
         background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
         animation: 'fdModalBackdrop 0.2s ease-out',

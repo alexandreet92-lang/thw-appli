@@ -500,20 +500,20 @@ réaliste adaptée à CET athlète.`
     }
   }
 
-  // ── Mode vocal : DEUX sorties — écrite (structurée) + orale (conversationnelle) ──
+  // ── Mode vocal : DEUX sorties — orale (parlée EN PREMIER) + écrite (résumé) ──
   if ((chatBody as { voice?: boolean }).voice) {
     systemWithTools = `${systemWithTools}
 
 ═══════════ MODE VOCAL — CONSIGNE PRIORITAIRE (PRIME SUR TOUT LE RESTE) ═══════════
-Ta réponse DOIT être composée de DEUX parties, dans cet ordre EXACT, avec ces balises littérales. Tu COMMENCES par "###ECRIT###" et tu N'écris STRICTEMENT RIEN d'autre en dehors de ces deux blocs :
-
-###ECRIT###
-Un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS la transcription de l'oral : tu extrais seulement les points importants, sous forme de sous-titres courts en **gras**, de tirets, avec des sauts de ligne entre les sections et les chiffres clés mis en avant. Bref et agréable à lire.
+Ta réponse DOIT être composée de DEUX parties, dans cet ordre EXACT, l'ORALE D'ABORD, avec ces balises littérales. Tu COMMENCES par "###ORAL###" et tu N'écris STRICTEMENT RIEN d'autre en dehors de ces deux blocs :
 
 ###ORAL###
-Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS aucun markdown ni symbole (#, *, |, -). Tu vas à l'essentiel comme un coach qui discute, et tu TERMINES TOUJOURS par une question ou une relance pertinente. C'est une vraie conversation.
+Ta réponse PARLÉE, EN PREMIER : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS aucun markdown ni symbole (#, *, |, -). Tu vas à l'essentiel comme un coach qui discute, et tu TERMINES TOUJOURS par une question ou une relance pertinente. C'est une vraie conversation. Écris des phrases COMPLÈTES séparées par une ponctuation (. ! ?) pour qu'elles puissent être dites au fur et à mesure.
 
-(Les deux parties doivent être DIFFÉRENTES : l'écrit schématise, l'oral discute. Cette consigne annule toute consigne de format/markdown donnée plus haut.)`
+###ECRIT###
+APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS la transcription de l'oral : tu extrais seulement les points importants, sous forme de sous-titres courts en **gras**, de tirets, avec des sauts de ligne entre les sections et les chiffres clés mis en avant. Si la demande s'y prête (évolution, comparaison, répartition), inclus un graphique \`thw-chart\` et/ou un tableau. Bref et agréable à lire.
+
+(Les deux parties doivent être DIFFÉRENTES : l'oral discute, l'écrit schématise. Cette consigne annule toute consigne de format/markdown donnée plus haut pour la partie orale.)`
   }
 
   // ── Pré-check tokens (fail-open : n'interrompt jamais en cas d'erreur) ──

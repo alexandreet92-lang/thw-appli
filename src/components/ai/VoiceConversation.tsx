@@ -84,7 +84,9 @@ function RichEcrit({ text }: { text: string }) {
 }
 
 export function VoiceConversation({ onTurn, onClose }: {
-  onTurn: (text: string) => Promise<{ speak: string; show: string }>
+  // onOral est appelé au fil de l'eau avec l'oral accumulé (streaming) →
+  // permet de PARLER phrase par phrase sans attendre toute la réponse.
+  onTurn: (text: string, onOral: (oralSoFar: string) => void) => Promise<{ speak: string; show: string }>
   onClose: () => void
 }) {
   const [mounted, setMounted] = useState(false)
@@ -109,6 +111,13 @@ export function VoiceConversation({ onTurn, onClose }: {
 
   // Audio serveur (lecture directe)
   const audioElRef = useRef<HTMLAudioElement | null>(null)
+  // Streaming TTS : file de phrases à dire, lues au fur et à mesure
+  const ttsQueueRef = useRef<string[]>([])
+  const spokenIdxRef = useRef(0)        // position déjà mise en file dans l'oral
+  const streamDoneRef = useRef(false)   // l'oral est-il complètement reçu ?
+  const runningRef = useRef(false)      // un lecteur de file tourne-t-il ?
+  const lastOralRef = useRef('')        // dernier oral accumulé (streaming)
+  const nextAudioRef = useRef<Promise<string | null> | null>(null)  // préchargement
 
   const setPhaseBoth = (p: Phase) => { phaseRef.current = p; setPhase(p) }
   const setMutedBoth = (m: boolean) => { mutedRef.current = m; setMuted(m) }
@@ -199,15 +208,35 @@ export function VoiceConversation({ onTurn, onClose }: {
     finalRef.current = ''
     if (!userText) { setPhaseBoth('listening'); return }
     setPhaseBoth('thinking')
+    // Réinitialise l'état de streaming TTS
+    ttsQueueRef.current = []
+    spokenIdxRef.current = 0
+    streamDoneRef.current = false
+    lastOralRef.current = ''
+    nextAudioRef.current = null
+    // On coupe l'écoute pendant la réponse (anti-écho — barge-in en Phase 1b).
+    try { recRef.current?.stop() } catch { /* ignore */ }
+
     let res = { speak: '', show: '' }
-    try { res = await onTurn(userText) } catch { /* erreur réseau */ }
+    try { res = await onTurn(userText, handleOralChunk) } catch { /* erreur réseau */ }
     if (endedRef.current) return
-    await speak(res.speak, res.show)
+    // Enfile le reste de l'oral (dernière phrase éventuellement sans ponctuation)
+    const finalOral = res.speak || lastOralRef.current
+    if (spokenIdxRef.current === 0) {
+      // Pas de balises détectées (ancien format) → on parle tout d'un bloc
+      const clean = stripForSpeech(finalOral)
+      if (clean) ttsQueueRef.current.push(clean)
+    } else {
+      const rest = stripForSpeech(lastOralRef.current.slice(spokenIdxRef.current))
+      if (rest) ttsQueueRef.current.push(rest)
+    }
+    setShow(res.show)
+    streamDoneRef.current = true
+    if (ttsQueueRef.current.length === 0 && !runningRef.current) { onSpeakDone(); return }
+    void runQueue()
   }
 
-  // ── Lecture de la réponse : TTS serveur, repli navigateur ───
-  // Déverrouille la lecture audio (iOS/Safari) au 1er geste : sans ça, la voix
-  // serveur ne peut pas se lancer en mains libres → repli voix navigateur.
+  // Déverrouille la lecture audio (iOS/Safari) au 1er geste.
   function unlockAudio() {
     if (unlockedRef.current || !audioElRef.current) return
     unlockedRef.current = true
@@ -217,6 +246,91 @@ export function VoiceConversation({ onTurn, onClose }: {
       const p = el.play()
       if (p && typeof p.catch === 'function') p.catch(() => {})
     } catch { /* ignore */ }
+  }
+
+  // ── Streaming oral : on dit chaque phrase dès qu'elle est complète ──
+  function handleOralChunk(oralSoFar: string) {
+    lastOralRef.current = oralSoFar
+    const pending = oralSoFar.slice(spokenIdxRef.current)
+    // jusqu'à la DERNIÈRE frontière de phrase présente dans le texte en attente
+    const m = pending.match(/[\s\S]*[.!?…\n](?=\s|$)/)
+    if (!m) return
+    const ready = m[0]
+    const sentences = ready.split(/(?<=[.!?…])\s+|\n+/).map(s => stripForSpeech(s)).filter(Boolean)
+    spokenIdxRef.current += ready.length
+    if (sentences.length === 0) return
+    for (const s of sentences) ttsQueueRef.current.push(s)
+    void runQueue()
+  }
+
+  async function fetchAudio(text: string): Promise<string | null> {
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, style: settingsRef.current.style, language: settingsRef.current.lang }),
+      })
+      if (!res.ok) return null
+      const blob = await res.blob()
+      return URL.createObjectURL(blob)
+    } catch { return null }
+  }
+
+  function playUrl(url: string): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const el = audioElRef.current
+      if (!el) { URL.revokeObjectURL(url); resolve(); return }
+      el.src = url
+      const done = () => { URL.revokeObjectURL(url); el.onended = null; el.onerror = null; resolve() }
+      el.onended = done
+      el.onerror = done
+      const p = el.play()
+      if (p && typeof p.catch === 'function') p.catch(() => done())
+    })
+  }
+
+  function speakBrowserOnce(text: string): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const synth = window.speechSynthesis
+      if (!synth) { resolve(); return }
+      const u = new SpeechSynthesisUtterance(text)
+      u.lang = settingsRef.current.lang
+      u.rate = settingsRef.current.style === 'energique' ? 1.12 : settingsRef.current.style === 'douce' ? 0.96 : 1.03
+      const v = synth.getVoices().find(vv => vv.lang === settingsRef.current.lang)
+        ?? synth.getVoices().find(vv => vv.lang?.toLowerCase().startsWith(settingsRef.current.lang.slice(0, 2)))
+      if (v) u.voice = v
+      u.onend = () => resolve()
+      u.onerror = () => resolve()
+      synth.speak(u)
+    })
+  }
+
+  // Lecteur de la file : joue les phrases en séquence, en préchargeant la suivante.
+  async function runQueue() {
+    if (runningRef.current) return
+    runningRef.current = true
+    setPhaseBoth('speaking')
+    try {
+      while (!endedRef.current) {
+        const text = ttsQueueRef.current.shift()
+        if (text === undefined) {
+          if (streamDoneRef.current) break
+          await new Promise(r => setTimeout(r, 60))   // attend la suite de l'oral
+          continue
+        }
+        const audioPromise = nextAudioRef.current ?? fetchAudio(text)
+        nextAudioRef.current = null
+        const url = await audioPromise
+        if (endedRef.current) { if (url) URL.revokeObjectURL(url); break }
+        // précharge la phrase suivante pendant qu'on joue celle-ci
+        if (ttsQueueRef.current[0]) nextAudioRef.current = fetchAudio(ttsQueueRef.current[0])
+        if (url) await playUrl(url)
+        else await speakBrowserOnce(text)
+      }
+    } finally {
+      runningRef.current = false
+    }
+    if (!endedRef.current && streamDoneRef.current && ttsQueueRef.current.length === 0) onSpeakDone()
   }
 
   function onSpeakDone() {
@@ -230,61 +344,11 @@ export function VoiceConversation({ onTurn, onClose }: {
   }
 
   function stopSpeaking() {
+    ttsQueueRef.current = []
+    streamDoneRef.current = true
+    nextAudioRef.current = null
     try { audioElRef.current?.pause() } catch { /* ignore */ }
     try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
-  }
-
-  async function speak(oral: string, ecrit: string) {
-    setShow(ecrit || oral)
-    const clean = stripForSpeech(oral || ecrit)
-    if (!clean) { onSpeakDone(); return }
-    setPhaseBoth('speaking')
-    // On coupe l'écoute pendant que l'IA parle (anti-écho / anti-auto-coupure).
-    try { recRef.current?.stop() } catch { /* ignore */ }
-
-    // 1) TTS serveur (OpenAI). 2) repli synthèse navigateur.
-    const ok = await speakServer(clean)
-    if (!ok && !endedRef.current) speakBrowser(clean)
-  }
-
-  async function speakServer(clean: string): Promise<boolean> {
-    try {
-      const res = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: clean, style: settingsRef.current.style, language: settingsRef.current.lang }),
-      })
-      if (!res.ok) return false
-      const blob = await res.blob()
-      if (endedRef.current) return true
-      const url = URL.createObjectURL(blob)
-      const el = audioElRef.current
-      if (!el) return false
-      // Lecture DIRECTE (pas de routage Web Audio → pas de risque de son muet
-      // sur un AudioContext suspendu).
-      el.src = url
-      el.onended = () => { URL.revokeObjectURL(url); onSpeakDone() }
-      el.onerror = () => { URL.revokeObjectURL(url); onSpeakDone() }
-      await el.play()
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  function speakBrowser(clean: string) {
-    const synth = window.speechSynthesis
-    if (!synth) { onSpeakDone(); return }
-    synth.cancel()
-    const u = new SpeechSynthesisUtterance(clean)
-    u.lang = settingsRef.current.lang
-    u.rate = settingsRef.current.style === 'energique' ? 1.12 : settingsRef.current.style === 'douce' ? 0.96 : 1.03
-    const v = synth.getVoices().find(vv => vv.lang === settingsRef.current.lang)
-      ?? synth.getVoices().find(vv => vv.lang?.toLowerCase().startsWith(settingsRef.current.lang.slice(0, 2)))
-    if (v) u.voice = v
-    u.onend = onSpeakDone
-    u.onerror = onSpeakDone
-    synth.speak(u)
   }
 
   // ── Micro (mains libres = mute/écoute ; push = maintenir) ───

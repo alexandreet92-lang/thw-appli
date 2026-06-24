@@ -19878,7 +19878,7 @@ export default function AIPanel({
   }, [model])
 
   // SEND MESSAGE
-  const send = useCallback(async (presetDisplay?: string, presetApi?: string, opts?: { voice?: boolean }) => {
+  const send = useCallback(async (presetDisplay?: string, presetApi?: string, opts?: { voice?: boolean; onOral?: (oral: string) => void }) => {
     const txt = (presetDisplay ?? input).trim()
     const hasAttachment = !!attachment
     if (!txt && !hasAttachment && !activeQA || loading) return
@@ -20100,6 +20100,16 @@ export default function AIPanel({
             }
             // Du texte arrive → le coach a fini de consulter, on retire le statut
             setToolStatusByMsg(prev => { if (!prev[aiMsgId]) return prev; const n = { ...prev }; delete n[aiMsgId]; return n })
+            // Mode vocal : on streame la partie ORALE au fil de l'eau (parole en
+            // continu, phrase par phrase côté VoiceConversation). ORAL-first.
+            if (opts?.voice && opts.onOral) {
+              const oi = textAccumulated.indexOf('###ORAL###')
+              if (oi !== -1) {
+                const after = textAccumulated.slice(oi + '###ORAL###'.length)
+                const ei = after.indexOf('###ECRIT###')
+                opts.onOral(ei === -1 ? after : after.slice(0, ei))
+              }
+            }
             setConvs(prev => prev.map(c =>
               c.id === cid
                 ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: textAccumulated } : m), updatedAt: Date.now() }
@@ -20185,13 +20195,16 @@ export default function AIPanel({
       // Mode vocal : la réponse contient deux parties (###ECRIT### / ###ORAL###).
       // L'écrit (structuré) reste dans le chat, l'oral (conversationnel) est lu à voix haute.
       if (opts?.voice) {
-        const oralTag = '###ORAL###'
+        // ORAL-first : ###ORAL### <parlé> ###ECRIT### <résumé écrit>
+        const oralTag = '###ORAL###', ecritTag = '###ECRIT###'
         const oralIdx = textAccumulated.indexOf(oralTag)
         if (oralIdx !== -1) {
-          const ecrit = textAccumulated.slice(0, oralIdx).replace(/###ECRIT###/g, '').trim()
-          const oral = textAccumulated.slice(oralIdx + oralTag.length).trim()
+          const after = textAccumulated.slice(oralIdx + oralTag.length)
+          const ecritIdx = after.indexOf(ecritTag)
+          const oral  = (ecritIdx === -1 ? after : after.slice(0, ecritIdx)).trim()
+          const ecrit = ecritIdx === -1 ? '' : after.slice(ecritIdx + ecritTag.length).trim()
           lastResponseTextRef.current = oral || ecrit
-          const ecritFinal = ecrit || textAccumulated
+          const ecritFinal = ecrit || oral || textAccumulated
           lastEcritTextRef.current = ecritFinal
           setConvs(prev => prev.map(c =>
             c.id === cid ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: ecritFinal } : m), updatedAt: Date.now() } : c
@@ -21635,7 +21648,7 @@ export default function AIPanel({
               {/* Discussion vocale (v1) — boucle écoute → coach → voix */}
               {voiceConvOpen && (
                 <VoiceConversation
-                  onTurn={async (t) => { await send(t, undefined, { voice: true }); return { speak: lastResponseTextRef.current, show: lastEcritTextRef.current } }}
+                  onTurn={async (t, onOral) => { await send(t, undefined, { voice: true, onOral }); return { speak: lastResponseTextRef.current, show: lastEcritTextRef.current } }}
                   onClose={() => setVoiceConvOpen(false)}
                 />
               )}

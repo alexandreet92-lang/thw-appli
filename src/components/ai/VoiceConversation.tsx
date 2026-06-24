@@ -18,6 +18,8 @@ import { MobileSheet } from './MobileSheet'
 
 const ACCENT = '#3C90D5'
 const SILENCE_MS = 2200
+// WAV silencieux minimal — sert à déverrouiller la lecture audio sur iOS.
+const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='
 
 type Phase = 'listening' | 'thinking' | 'speaking'
 type StyleKey = 'douce' | 'neutre' | 'energique'
@@ -98,6 +100,7 @@ export function VoiceConversation({ onTurn, onClose }: {
   const phaseRef = useRef<Phase>('listening')
   const mutedRef = useRef(false)
   const pressingRef = useRef(false)
+  const unlockedRef = useRef(false)
   const settingsRef = useRef<VoiceSettings>(DEFAULT_SETTINGS)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recRef = useRef<any>(null)
@@ -212,6 +215,21 @@ export function VoiceConversation({ onTurn, onClose }: {
   }
 
   // ── Lecture de la réponse : TTS serveur, repli navigateur ───
+  // Déverrouille la lecture audio (iOS/Safari) au 1er geste : sans ça, la voix
+  // serveur ne peut pas se lancer en mains libres → repli voix navigateur.
+  function unlockAudio() {
+    if (unlockedRef.current || !audioElRef.current) return
+    unlockedRef.current = true
+    try {
+      ensureAudioGraph()
+      audioCtxRef.current?.resume?.()
+      const el = audioElRef.current
+      el.src = SILENT_WAV
+      const p = el.play()
+      if (p && typeof p.catch === 'function') p.catch(() => {})
+    } catch { /* ignore */ }
+  }
+
   function ensureAudioGraph() {
     if (audioCtxRef.current || !audioElRef.current) return
     try {
@@ -358,7 +376,7 @@ export function VoiceConversation({ onTurn, onClose }: {
   const micActive = settings.mode === 'push' ? pressing : !muted
 
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Conversation vocale" style={{
+    <div role="dialog" aria-modal="true" aria-label="Conversation vocale" onPointerDown={unlockAudio} style={{
       position: 'fixed', inset: 0, zIndex: 1500,
       display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
       background: 'color-mix(in srgb, var(--ai-bg) 64%, transparent)',

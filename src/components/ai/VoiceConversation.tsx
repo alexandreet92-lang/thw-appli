@@ -107,14 +107,8 @@ export function VoiceConversation({ onTurn, onClose }: {
   const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const endedRef = useRef(false)
 
-  // Audio serveur + analyse pour l'orbe
+  // Audio serveur (lecture directe)
   const audioElRef = useRef<HTMLAudioElement | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const audioCtxRef = useRef<any>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const analyserDataRef = useRef<Uint8Array | null>(null)
-  const orbRef = useRef<HTMLDivElement | null>(null)
-  const rafRef = useRef<number | null>(null)
 
   const setPhaseBoth = (p: Phase) => { phaseRef.current = p; setPhase(p) }
   const setMutedBoth = (m: boolean) => { mutedRef.current = m; setMuted(m) }
@@ -190,11 +184,9 @@ export function VoiceConversation({ onTurn, onClose }: {
     return () => {
       endedRef.current = true
       if (silenceRef.current) clearTimeout(silenceRef.current)
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
       try { rec.stop() } catch { /* ignore */ }
       try { audioElRef.current?.pause() } catch { /* ignore */ }
       try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
-      try { audioCtxRef.current?.close?.() } catch { /* ignore */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted])
@@ -220,8 +212,6 @@ export function VoiceConversation({ onTurn, onClose }: {
     if (unlockedRef.current || !audioElRef.current) return
     unlockedRef.current = true
     try {
-      ensureAudioGraph()
-      audioCtxRef.current?.resume?.()
       const el = audioElRef.current
       el.src = SILENT_WAV
       const p = el.play()
@@ -229,48 +219,8 @@ export function VoiceConversation({ onTurn, onClose }: {
     } catch { /* ignore */ }
   }
 
-  function ensureAudioGraph() {
-    if (audioCtxRef.current || !audioElRef.current) return
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const Ctx = window.AudioContext || (window as any).webkitAudioContext
-      const ctx = new Ctx()
-      const src = ctx.createMediaElementSource(audioElRef.current)
-      const analyser: AnalyserNode = ctx.createAnalyser()
-      analyser.fftSize = 256
-      src.connect(analyser); analyser.connect(ctx.destination)
-      audioCtxRef.current = ctx
-      analyserRef.current = analyser
-      analyserDataRef.current = new Uint8Array(analyser.fftSize)
-    } catch { /* graphe audio indisponible → orbe animée par défaut */ }
-  }
-
-  function startOrbLoop() {
-    const tick = () => {
-      const orb = orbRef.current
-      const an = analyserRef.current
-      const data = analyserDataRef.current
-      if (orb) {
-        let v = 0
-        if (an && data) {
-          an.getByteTimeDomainData(data)
-          let sum = 0
-          for (let i = 0; i < data.length; i++) { const d = (data[i] - 128) / 128; sum += d * d }
-          v = Math.min(1, Math.sqrt(sum / data.length) * 4.5)
-        }
-        const s = 1 + v * 0.28
-        orb.style.transform = `scale(${s.toFixed(3)})`
-        orb.style.boxShadow = `0 0 ${(28 + v * 60).toFixed(0)}px rgba(60,144,213,${(0.3 + v * 0.5).toFixed(2)})`
-      }
-      if (phaseRef.current === 'speaking') rafRef.current = requestAnimationFrame(tick)
-    }
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    rafRef.current = requestAnimationFrame(tick)
-  }
-
   function onSpeakDone() {
     if (endedRef.current) return
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
     if (settingsRef.current.mode === 'hands' && !mutedRef.current) {
       setPhaseBoth('listening')
       try { recRef.current?.start() } catch { /* déjà démarrée */ }
@@ -282,7 +232,6 @@ export function VoiceConversation({ onTurn, onClose }: {
   function stopSpeaking() {
     try { audioElRef.current?.pause() } catch { /* ignore */ }
     try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
   }
 
   async function speak(oral: string, ecrit: string) {
@@ -311,13 +260,12 @@ export function VoiceConversation({ onTurn, onClose }: {
       const url = URL.createObjectURL(blob)
       const el = audioElRef.current
       if (!el) return false
-      ensureAudioGraph()
-      try { await audioCtxRef.current?.resume?.() } catch { /* ignore */ }
+      // Lecture DIRECTE (pas de routage Web Audio → pas de risque de son muet
+      // sur un AudioContext suspendu).
       el.src = url
       el.onended = () => { URL.revokeObjectURL(url); onSpeakDone() }
       el.onerror = () => { URL.revokeObjectURL(url); onSpeakDone() }
       await el.play()
-      startOrbLoop()
       return true
     } catch {
       return false
@@ -336,7 +284,6 @@ export function VoiceConversation({ onTurn, onClose }: {
     if (v) u.voice = v
     u.onend = onSpeakDone
     u.onerror = onSpeakDone
-    startOrbLoop()   // orbe animée (pas d'analyse possible sur la voix navigateur)
     synth.speak(u)
   }
 
@@ -410,14 +357,12 @@ export function VoiceConversation({ onTurn, onClose }: {
               <span style={{ position: 'absolute', width: '70%', height: '70%', borderRadius: '50%', border: `1.5px solid ${ACCENT}`, animation: 'vc_ring 2.4s ease-out infinite' }} />
             )}
             <div
-              ref={orbRef}
               style={{
                 width: '70%', height: '70%', borderRadius: '50%',
                 background: `radial-gradient(circle at 32% 28%, color-mix(in srgb, ${ACCENT} 26%, var(--ai-bg)) 0%, var(--ai-bg) 74%)`,
                 border: `1px solid color-mix(in srgb, ${ACCENT} 45%, transparent)`,
                 boxShadow: '0 0 30px rgba(60,144,213,0.30)',
-                transition: 'transform 0.08s linear, box-shadow 0.12s linear',
-                animation: speaking ? 'none' : 'vc_breathe_orb 3.6s ease-in-out infinite',
+                animation: speaking ? 'vc_speak 0.9s ease-in-out infinite' : 'vc_breathe_orb 3.6s ease-in-out infinite',
                 display: 'grid', placeItems: 'center',
               }}
             >
@@ -546,6 +491,7 @@ export function VoiceConversation({ onTurn, onClose }: {
         @keyframes vc_dot       { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
         @keyframes vc_spin      { to { transform: rotate(360deg) } }
         @keyframes vc_breathe_orb { 0%,100% { transform: scale(1) } 50% { transform: scale(1.05) } }
+        @keyframes vc_speak     { 0%,100% { transform: scale(1); box-shadow: 0 0 30px rgba(60,144,213,0.30) } 50% { transform: scale(1.12); box-shadow: 0 0 56px rgba(60,144,213,0.55) } }
         @keyframes vc_ring      { 0% { transform: scale(0.8); opacity: 0.5 } 100% { transform: scale(1.6); opacity: 0 } }
       `}</style>
     </div>,

@@ -1,11 +1,15 @@
 'use client'
 
 // ══════════════════════════════════════════════════════════════
-// VoiceConversation — mode discussion vocale (v1, 100 % navigateur).
+// VoiceConversation — mode discussion vocale (style Claude, image 5).
 //
-// Boucle : écoute (STT) → silence = fin de tour → coach (Claude) →
-// l'IA PARLE la version orale (TTS) ET affiche la version ÉCRITE
-// schématisée dans l'overlay. Barge-in : parler coupe la voix.
+// Boucle : écoute (STT navigateur) → silence = fin de tour → coach (Claude)
+// → l'IA PARLE (TTS serveur OpenAI, repli synthèse navigateur) et affiche
+// la version écrite. Barge-in : parler coupe la voix.
+//
+// Barre de contrôle : ⚙️ Réglages · 🎤 Micro · ✕ Fermer.
+// Orbe centrale qui réagit au volume réel de la voix de l'IA.
+// Réglages : Style de voix · Langue · Mode (mains libres / appuyer pour parler).
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState } from 'react'
@@ -13,10 +17,27 @@ import { createPortal } from 'react-dom'
 import { MobileSheet } from './MobileSheet'
 
 const ACCENT = '#3C90D5'
-const SILENCE_MS = 2500
-const NBARS = 28
+const SILENCE_MS = 2200
 
 type Phase = 'listening' | 'thinking' | 'speaking'
+type StyleKey = 'douce' | 'neutre' | 'energique'
+type LangKey = 'fr-FR' | 'en-US' | 'es-ES'
+type ModeKey = 'hands' | 'push'
+
+interface VoiceSettings { style: StyleKey; lang: LangKey; mode: ModeKey }
+const DEFAULT_SETTINGS: VoiceSettings = { style: 'douce', lang: 'fr-FR', mode: 'hands' }
+const SETTINGS_KEY = 'thw_voice_settings'
+
+const STYLE_LABEL: Record<StyleKey, string> = { douce: 'Douce', neutre: 'Neutre', energique: 'Énergique' }
+const LANG_LABEL: Record<LangKey, string> = { 'fr-FR': 'Français', 'en-US': 'English', 'es-ES': 'Español' }
+
+function loadSettings(): VoiceSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY)
+    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
+  } catch { /* ignore */ }
+  return DEFAULT_SETTINGS
+}
 
 function stripForSpeech(s: string): string {
   return s
@@ -38,7 +59,6 @@ function parseBold(text: string): React.ReactNode[] {
       : <span key={i}>{p}</span>)
 }
 
-// Rendu schématisé de la version écrite (titres, tirets, gras, espaces)
 function RichEcrit({ text }: { text: string }) {
   return (
     <div style={{ width: '100%', maxWidth: 460 }}>
@@ -68,45 +88,83 @@ export function VoiceConversation({ onTurn, onClose }: {
 }) {
   const [mounted, setMounted] = useState(false)
   const [phase, setPhase] = useState<Phase>('listening')
-  const [live, setLive] = useState('')        // transcription utilisateur en cours
-  const [show, setShow] = useState('')         // version écrite affichée (IA)
+  const [live, setLive] = useState('')
+  const [show, setShow] = useState('')
   const [supported, setSupported] = useState(true)
   const [lastUser, setLastUser] = useState('')
-  const [showThink, setShowThink] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const [pressing, setPressing] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settings, setSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS)
 
   const phaseRef = useRef<Phase>('listening')
+  const mutedRef = useRef(false)
+  const pressingRef = useRef(false)
+  const settingsRef = useRef<VoiceSettings>(DEFAULT_SETTINGS)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recRef = useRef<any>(null)
   const finalRef = useRef('')
   const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const endedRef = useRef(false)
 
+  // Audio serveur + analyse pour l'orbe
+  const audioElRef = useRef<HTMLAudioElement | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const audioCtxRef = useRef<any>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const analyserDataRef = useRef<Uint8Array | null>(null)
+  const orbRef = useRef<HTMLDivElement | null>(null)
+  const rafRef = useRef<number | null>(null)
+
   const setPhaseBoth = (p: Phase) => { phaseRef.current = p; setPhase(p) }
+  const setMutedBoth = (m: boolean) => { mutedRef.current = m; setMuted(m) }
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => { setMounted(true); setSettings(loadSettings()) }, [])
+  useEffect(() => { settingsRef.current = settings }, [settings])
 
+  // Persistance des réglages
+  const updateSettings = (patch: Partial<VoiceSettings>) => {
+    setSettings(prev => {
+      const next = { ...prev, ...patch }
+      try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+      // Changement de langue → recaler la reconnaissance
+      if (patch.lang && recRef.current) { try { recRef.current.lang = patch.lang } catch { /* ignore */ } }
+      return next
+    })
+  }
+
+  // ── Reconnaissance vocale ───────────────────────────────────
   useEffect(() => {
     if (!mounted) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR || typeof window.speechSynthesis === 'undefined') { setSupported(false); return }
-    window.speechSynthesis.getVoices()
+    if (!SR) { setSupported(false); return }
+
+    audioElRef.current = new Audio()
+    audioElRef.current.crossOrigin = 'anonymous'
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rec: any = new SR()
-    rec.lang = 'fr-FR'; rec.continuous = true; rec.interimResults = true
+    rec.lang = settingsRef.current.lang
+    rec.continuous = true
+    rec.interimResults = true
+    rec.maxAlternatives = 1
     recRef.current = rec
 
     const armSilence = () => {
+      if (settingsRef.current.mode === 'push') return   // en push-to-talk, on finalise au relâchement
       if (silenceRef.current) clearTimeout(silenceRef.current)
       silenceRef.current = setTimeout(() => {
-        if (phaseRef.current === 'listening' && finalRef.current.trim()) void finalizeTurn()
+        if (phaseRef.current === 'listening' && !mutedRef.current && finalRef.current.trim()) void finalizeTurn()
       }, SILENCE_MS)
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onresult = (e: any) => {
-      if (endedRef.current) return
+      if (endedRef.current || mutedRef.current) return
+      // On n'accumule QUE pendant l'écoute (évite de polluer le tour suivant
+      // avec ce qui est capté pendant la réflexion / la réponse de l'IA).
+      if (phaseRef.current !== 'listening') return
       let interim = ''
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const t = e.results[i][0].transcript
@@ -114,26 +172,40 @@ export function VoiceConversation({ onTurn, onClose }: {
         else interim += t
       }
       const txt = (finalRef.current + interim).trim()
-      if (phaseRef.current === 'speaking' && txt.length > 2) {   // barge-in
-        window.speechSynthesis.cancel()
-        setShow('')
-        setPhaseBoth('listening')
-      }
-      if (phaseRef.current === 'listening') { setLive(txt); armSilence() }
+      setLive(txt)
+      armSilence()
     }
-    rec.onend = () => { if (!endedRef.current) { try { rec.start() } catch { /* déjà démarrée */ } } }
+    rec.onend = () => {
+      if (endedRef.current) return
+      // Pas de relance pendant que l'IA parle (sinon le micro capte la voix de
+      // l'IA → l'IA se coupe elle-même / écho).
+      if (phaseRef.current === 'speaking') return
+      // En mains libres, on relance ; en push, seulement si on presse.
+      if ((settingsRef.current.mode === 'hands' && !mutedRef.current) || pressingRef.current) {
+        setTimeout(() => { if (!endedRef.current && phaseRef.current !== 'speaking') { try { rec.start() } catch { /* déjà démarrée */ } } }, 120)
+      }
+    }
     rec.onerror = () => { /* no-speech / aborted… */ }
-    try { rec.start() } catch { /* ignore */ }
+
+    if (settingsRef.current.mode === 'hands') {
+      try { rec.start() } catch { /* ignore */ }
+    }
     setPhaseBoth('listening')
 
     return () => {
       endedRef.current = true
       if (silenceRef.current) clearTimeout(silenceRef.current)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
       try { rec.stop() } catch { /* ignore */ }
-      window.speechSynthesis.cancel()
+      try { audioElRef.current?.pause() } catch { /* ignore */ }
+      try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
+      try { audioCtxRef.current?.close?.() } catch { /* ignore */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted])
+
+  // Ref miroir pour pressing (utilisé dans rec.onend)
+  useEffect(() => { pressingRef.current = pressing }, [pressing])
 
   async function finalizeTurn() {
     const userText = finalRef.current.trim()
@@ -145,127 +217,370 @@ export function VoiceConversation({ onTurn, onClose }: {
     let res = { speak: '', show: '' }
     try { res = await onTurn(userText) } catch { /* erreur réseau */ }
     if (endedRef.current) return
-    speak(res.speak, res.show)
+    await speak(res.speak, res.show)
   }
 
-  function speak(oral: string, ecrit: string) {
+  // ── Lecture de la réponse : TTS serveur, repli navigateur ───
+  function ensureAudioGraph() {
+    if (audioCtxRef.current || !audioElRef.current) return
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext
+      const ctx = new Ctx()
+      const src = ctx.createMediaElementSource(audioElRef.current)
+      const analyser: AnalyserNode = ctx.createAnalyser()
+      analyser.fftSize = 256
+      src.connect(analyser); analyser.connect(ctx.destination)
+      audioCtxRef.current = ctx
+      analyserRef.current = analyser
+      analyserDataRef.current = new Uint8Array(analyser.fftSize)
+    } catch { /* graphe audio indisponible → orbe animée par défaut */ }
+  }
+
+  function startOrbLoop() {
+    const tick = () => {
+      const orb = orbRef.current
+      const an = analyserRef.current
+      const data = analyserDataRef.current
+      if (orb) {
+        let v = 0
+        if (an && data) {
+          an.getByteTimeDomainData(data)
+          let sum = 0
+          for (let i = 0; i < data.length; i++) { const d = (data[i] - 128) / 128; sum += d * d }
+          v = Math.min(1, Math.sqrt(sum / data.length) * 4.5)
+        }
+        const s = 1 + v * 0.28
+        orb.style.transform = `scale(${s.toFixed(3)})`
+        orb.style.boxShadow = `0 0 ${(28 + v * 60).toFixed(0)}px rgba(60,144,213,${(0.3 + v * 0.5).toFixed(2)})`
+      }
+      if (phaseRef.current === 'speaking') rafRef.current = requestAnimationFrame(tick)
+    }
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    rafRef.current = requestAnimationFrame(tick)
+  }
+
+  function onSpeakDone() {
+    if (endedRef.current) return
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    if (settingsRef.current.mode === 'hands' && !mutedRef.current) {
+      setPhaseBoth('listening')
+      try { recRef.current?.start() } catch { /* déjà démarrée */ }
+    } else {
+      setPhaseBoth('listening')
+    }
+  }
+
+  function stopSpeaking() {
+    try { audioElRef.current?.pause() } catch { /* ignore */ }
+    try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+  }
+
+  async function speak(oral: string, ecrit: string) {
     setShow(ecrit || oral)
-    const synth = window.speechSynthesis
     const clean = stripForSpeech(oral || ecrit)
-    if (!clean || !synth) { setPhaseBoth('speaking'); return }   // au moins on affiche l'écrit
+    if (!clean) { onSpeakDone(); return }
     setPhaseBoth('speaking')
+    // On coupe l'écoute pendant que l'IA parle (anti-écho / anti-auto-coupure).
+    try { recRef.current?.stop() } catch { /* ignore */ }
+
+    // 1) TTS serveur (OpenAI). 2) repli synthèse navigateur.
+    const ok = await speakServer(clean)
+    if (!ok && !endedRef.current) speakBrowser(clean)
+  }
+
+  async function speakServer(clean: string): Promise<boolean> {
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: clean, style: settingsRef.current.style, language: settingsRef.current.lang }),
+      })
+      if (!res.ok) return false
+      const blob = await res.blob()
+      if (endedRef.current) return true
+      const url = URL.createObjectURL(blob)
+      const el = audioElRef.current
+      if (!el) return false
+      ensureAudioGraph()
+      try { await audioCtxRef.current?.resume?.() } catch { /* ignore */ }
+      el.src = url
+      el.onended = () => { URL.revokeObjectURL(url); onSpeakDone() }
+      el.onerror = () => { URL.revokeObjectURL(url); onSpeakDone() }
+      await el.play()
+      startOrbLoop()
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  function speakBrowser(clean: string) {
+    const synth = window.speechSynthesis
+    if (!synth) { onSpeakDone(); return }
     synth.cancel()
     const u = new SpeechSynthesisUtterance(clean)
-    u.lang = 'fr-FR'; u.rate = 1.03
-    const fr = synth.getVoices().find(v => v.lang?.toLowerCase().startsWith('fr'))
-    if (fr) u.voice = fr
-    const finish = () => { if (!endedRef.current) setPhaseBoth('listening') }
-    u.onend = finish
-    u.onerror = finish
+    u.lang = settingsRef.current.lang
+    u.rate = settingsRef.current.style === 'energique' ? 1.12 : settingsRef.current.style === 'douce' ? 0.96 : 1.03
+    const v = synth.getVoices().find(vv => vv.lang === settingsRef.current.lang)
+      ?? synth.getVoices().find(vv => vv.lang?.toLowerCase().startsWith(settingsRef.current.lang.slice(0, 2)))
+    if (v) u.voice = v
+    u.onend = onSpeakDone
+    u.onerror = onSpeakDone
+    startOrbLoop()   // orbe animée (pas d'analyse possible sur la voix navigateur)
     synth.speak(u)
+  }
+
+  // ── Micro (mains libres = mute/écoute ; push = maintenir) ───
+  const toggleMute = () => {
+    if (settingsRef.current.mode !== 'hands') return
+    const next = !mutedRef.current
+    setMutedBoth(next)
+    if (next) { try { recRef.current?.stop() } catch { /* ignore */ } stopSpeaking() }
+    else { setPhaseBoth('listening'); try { recRef.current?.start() } catch { /* ignore */ } }
+  }
+  const pushStart = () => {
+    if (settingsRef.current.mode !== 'push') return
+    setPressing(true)
+    stopSpeaking()
+    finalRef.current = ''
+    setPhaseBoth('listening')
+    try { recRef.current?.start() } catch { /* ignore */ }
+  }
+  const pushEnd = () => {
+    if (settingsRef.current.mode !== 'push') return
+    setPressing(false)
+    try { recRef.current?.stop() } catch { /* ignore */ }
+    setTimeout(() => { if (finalRef.current.trim()) void finalizeTurn() }, 150)
   }
 
   if (!mounted) return null
 
   const status = !supported ? 'Vocal non supporté sur ce navigateur'
-    : phase === 'listening' ? 'Je t’écoute…'
-    : phase === 'thinking' ? '' : 'Réponse'
+    : phase === 'thinking' ? 'Je réfléchis…'
+    : phase === 'speaking' ? 'Réponse'
+    : muted ? 'Micro coupé'
+    : settings.mode === 'push' ? (pressing ? 'Je t’écoute…' : 'Maintiens le micro pour parler')
+    : 'Je t’écoute…'
+
+  const micActive = settings.mode === 'push' ? pressing : !muted
 
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label="Conversation vocale" style={{
       position: 'fixed', inset: 0, zIndex: 1500,
       display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-      background: 'color-mix(in srgb, var(--ai-bg) 62%, transparent)',
-      backdropFilter: 'blur(22px) saturate(1.05)', WebkitBackdropFilter: 'blur(22px) saturate(1.05)',
+      background: 'color-mix(in srgb, var(--ai-bg) 64%, transparent)',
+      backdropFilter: 'blur(24px) saturate(1.05)', WebkitBackdropFilter: 'blur(24px) saturate(1.05)',
       paddingTop: 'calc(30px + env(safe-area-inset-top, 0px))',
-      paddingBottom: 'calc(28px + env(safe-area-inset-bottom, 0px))',
+      paddingBottom: 'calc(26px + env(safe-area-inset-bottom, 0px))',
       animation: 'vc_in 0.22s ease',
     }}>
       {/* Statut */}
-      <div style={{ textAlign: 'center', minHeight: 20 }}>
+      <div style={{ textAlign: 'center', minHeight: 22 }}>
         {status && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: 'var(--ai-mid)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: phase === 'speaking' ? ACCENT : '#22c55e', animation: 'vc_dot 1.1s ease-in-out infinite' }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: phase === 'speaking' ? ACCENT : muted ? 'var(--ai-dim)' : '#22c55e', animation: phase === 'thinking' ? 'vc_dot 1.1s ease-in-out infinite' : 'none' }} />
             {status}
           </span>
         )}
       </div>
 
-      {/* Centre */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 24px', overflowY: 'auto' }}>
-        {phase === 'thinking' ? (
-          <button onClick={() => setShowThink(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, background: 'none', border: 'none', cursor: 'pointer' }}>
-            {/* Animation : anneau dégradé qui tourne + cœur qui respire */}
-            <span style={{ position: 'relative', width: 64, height: 64, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: `conic-gradient(from 0deg, transparent 0deg, ${ACCENT} 300deg, transparent 360deg)`, animation: 'vc_spin 1s linear infinite', WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))', mask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))' }} />
-              <span style={{ width: 30, height: 30, borderRadius: '50%', background: ACCENT, opacity: 0.9, animation: 'vc_breathe 1.4s ease-in-out infinite' }} />
-            </span>
-            <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', animation: 'vc_dim 1.6s ease-in-out infinite' }}>Je réfléchis…</span>
-            {lastUser && (
-              <span style={{ fontSize: 12.5, color: 'var(--ai-dim)', maxWidth: 300, textAlign: 'center', lineHeight: 1.4 }}>
-                « {lastUser.length > 64 ? lastUser.slice(0, 64) + '…' : lastUser} »<br />
-                <span style={{ color: ACCENT, fontWeight: 600 }}>voir le détail ▾</span>
-              </span>
-            )}
-          </button>
-        ) : phase === 'speaking' && show ? (
+      {/* Centre : orbe réactive + contenu */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '12px 24px', gap: 26, overflowY: 'auto' }}>
+        {/* Orbe / halo */}
+        <div style={{ position: 'relative', width: 132, height: 132, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          {phase === 'thinking' && (
+            <span style={{ position: 'absolute', width: 116, height: 116, borderRadius: '50%', background: `conic-gradient(from 0deg, transparent 0deg, ${ACCENT} 300deg, transparent 360deg)`, animation: 'vc_spin 1s linear infinite', WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))', mask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))' }} />
+          )}
+          <div
+            ref={orbRef}
+            style={{
+              width: 96, height: 96, borderRadius: '50%',
+              background: `radial-gradient(circle at 32% 28%, color-mix(in srgb, ${ACCENT} 22%, var(--ai-bg)) 0%, var(--ai-bg) 72%)`,
+              border: `1px solid color-mix(in srgb, ${ACCENT} 45%, transparent)`,
+              boxShadow: '0 0 28px rgba(60,144,213,0.3)',
+              transition: 'transform 0.08s linear, box-shadow 0.12s linear',
+              animation: phase === 'speaking' ? 'none' : 'vc_breathe_orb 3.4s ease-in-out infinite',
+              display: 'grid', placeItems: 'center',
+            }}
+          >
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.9 }}>
+              {phase === 'speaking'
+                ? <><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4" /></>
+                : <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>}
+            </svg>
+          </div>
+        </div>
+
+        {/* Contenu (transcription utilisateur ou réponse écrite) */}
+        {phase === 'speaking' && show ? (
           <div style={{ width: '100%', display: 'flex', justifyContent: 'center', animation: 'vc_in 0.25s ease' }}>
             <RichEcrit text={show} />
           </div>
-        ) : (
-          <p style={{ margin: 0, textAlign: 'center', fontFamily: 'var(--font-display, Fraunces), Georgia, serif', fontSize: 'clamp(20px, 5vw, 30px)', lineHeight: 1.4, color: 'var(--ai-text)', fontStyle: !live ? 'italic' : 'normal' }}>
-            {live || 'Parle, je t’écoute…'}
+        ) : phase === 'thinking' && lastUser ? (
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--ai-dim)', maxWidth: 320, textAlign: 'center', lineHeight: 1.45 }}>
+            « {lastUser.length > 80 ? lastUser.slice(0, 80) + '…' : lastUser} »
           </p>
-        )}
+        ) : phase === 'listening' ? (
+          <p style={{ margin: 0, textAlign: 'center', fontFamily: 'var(--font-display, Fraunces), Georgia, serif', fontSize: 'clamp(19px, 4.6vw, 27px)', lineHeight: 1.4, color: 'var(--ai-text)', fontStyle: !live ? 'italic' : 'normal' }}>
+            {live || (muted ? '' : '…')}
+          </p>
+        ) : null}
       </div>
 
-      {/* Détail réflexion (surpage) */}
-      {showThink && (
-        <MobileSheet title="Réflexion en cours" onClose={() => setShowThink(false)}>
-          <div style={{ padding: '4px 8px 14px' }}>
-            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Ta question</p>
-            <p style={{ fontSize: 14, color: 'var(--text)', margin: '0 0 16px', lineHeight: 1.45 }}>{lastUser || '—'}</p>
-            <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Ce que je fais</p>
-            {['J’analyse ta demande et le contexte', 'Je croise tes données (zones, historique, objectif)', 'Je prépare une réponse adaptée'].map((s, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, margin: '6px 0', fontSize: 13.5, color: 'var(--text)' }}>
-                <span style={{ color: ACCENT, flexShrink: 0 }}>•</span><span>{s}</span>
-              </div>
-            ))}
+      {/* Barre de contrôle : ⚙️ · 🎤 · ✕ (image 5) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 34 }}>
+        {/* Réglages */}
+        <button onClick={() => setSettingsOpen(true)} aria-label="Paramètres vocaux" style={ctrlBtn('var(--ai-bg2, rgba(127,127,127,0.16))', 'var(--ai-text)')}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+
+        {/* Micro — central, plus gros */}
+        <button
+          onClick={toggleMute}
+          onPointerDown={pushStart}
+          onPointerUp={pushEnd}
+          onPointerLeave={() => { if (pressing) pushEnd() }}
+          aria-label={settings.mode === 'push' ? 'Maintiens pour parler' : (muted ? 'Réactiver le micro' : 'Couper le micro')}
+          style={{
+            width: 68, height: 68, borderRadius: '50%', border: 'none', flexShrink: 0,
+            background: micActive ? ACCENT : 'var(--ai-bg2, rgba(127,127,127,0.16))',
+            color: micActive ? '#fff' : 'var(--ai-text)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: micActive ? '0 6px 20px rgba(60,144,213,0.45)' : 'none',
+            transition: 'background 0.15s, box-shadow 0.15s, transform 0.1s',
+            transform: pressing ? 'scale(0.94)' : 'scale(1)', touchAction: 'none',
+          }}
+        >
+          {micActive ? (
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="2" width="6" height="11" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3M8 22h8" />
+            </svg>
+          ) : (
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 1l22 22M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V5a3 3 0 0 0-5.94-.6" /><path d="M17 16.95A7 7 0 0 1 5 12M12 19v3" />
+            </svg>
+          )}
+        </button>
+
+        {/* Fermer */}
+        <button onClick={onClose} aria-label="Terminer la conversation" style={ctrlBtn('var(--ai-bg2, rgba(127,127,127,0.16))', 'var(--ai-text)')}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </div>
+
+      {/* Panneau Paramètres vocaux */}
+      {settingsOpen && (
+        <MobileSheet title="Paramètres vocaux" onClose={() => setSettingsOpen(false)}>
+          <div style={{ padding: '4px 6px 18px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {/* Style de voix */}
+            <Segment
+              label="Style de voix"
+              value={settings.style}
+              options={(Object.keys(STYLE_LABEL) as StyleKey[]).map(k => ({ value: k, label: STYLE_LABEL[k] }))}
+              onChange={v => updateSettings({ style: v as StyleKey })}
+            />
+            {/* Langue */}
+            <Segment
+              label="Langue"
+              value={settings.lang}
+              options={(Object.keys(LANG_LABEL) as LangKey[]).map(k => ({ value: k, label: LANG_LABEL[k] }))}
+              onChange={v => updateSettings({ lang: v as LangKey })}
+            />
+            {/* Mode */}
+            <div>
+              <p style={segLabelStyle}>Mode</p>
+              <button onClick={() => updateSettings({ mode: 'hands' })} style={modeRow(settings.mode === 'hands')}>
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Mains libres</span>
+                  <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 1 }}>Idéal pour les environnements calmes</span>
+                </span>
+                {settings.mode === 'hands' && <Check />}
+              </button>
+              <button onClick={() => updateSettings({ mode: 'push' })} style={modeRow(settings.mode === 'push')}>
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Appuyer pour parler</span>
+                  <span style={{ display: 'block', fontSize: 12, color: 'var(--text-dim)', marginTop: 1 }}>Maintenez pour parler, relâchez pour envoyer</span>
+                </span>
+                {settings.mode === 'push' && <Check />}
+              </button>
+            </div>
           </div>
         </MobileSheet>
       )}
 
-      {/* Waveform + raccrocher */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-        <div style={{ height: 28, display: 'flex', alignItems: 'center', gap: 3 }}>
-          {Array.from({ length: NBARS }, (_, i) => (
-            <span key={i} style={{
-              width: 3, height: '100%', borderRadius: 3, transformOrigin: 'center',
-              background: phase === 'speaking' ? ACCENT : 'var(--ai-text)',
-              opacity: phase === 'thinking' ? 0.25 : 0.8,
-              animation: `vc_wave ${0.7 + (i % 5) * 0.13}s ease-in-out ${((i * 0.07) % 0.9).toFixed(2)}s infinite`,
-              animationPlayState: phase === 'thinking' ? 'paused' : 'running',
-            }} />
-          ))}
-        </div>
-        <button onClick={onClose} aria-label="Terminer la conversation" style={{
-          width: 44, height: 44, borderRadius: '50%', border: 'none', background: '#ef4444', color: '#fff',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 5px 14px rgba(239,68,68,0.38)',
-        }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-        </button>
-        <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>Coupe-moi la parole quand tu veux · rouge = terminer</span>
-      </div>
-
       <style>{`
         @keyframes vc_in   { from { opacity: 0 } to { opacity: 1 } }
         @keyframes vc_dot  { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
-        @keyframes vc_wave { 0%,100% { transform: scaleY(.25) } 50% { transform: scaleY(.9) } }
         @keyframes vc_spin { to { transform: rotate(360deg) } }
-        @keyframes vc_breathe { 0%,100% { transform: scale(0.7); opacity: .6 } 50% { transform: scale(1); opacity: 1 } }
-        @keyframes vc_dim  { 0%,100% { opacity: .55 } 50% { opacity: 1 } }
+        @keyframes vc_breathe_orb { 0%,100% { transform: scale(1) } 50% { transform: scale(1.05) } }
       `}</style>
     </div>,
     document.body,
   )
 }
+
+function ctrlBtn(bg: string, color: string): React.CSSProperties {
+  return {
+    width: 52, height: 52, borderRadius: '50%', border: 'none', flexShrink: 0,
+    background: bg, color, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  }
+}
+
+const segLabelStyle: React.CSSProperties = {
+  margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--text-mid)',
+  textTransform: 'uppercase', letterSpacing: '0.04em',
+}
+
+function modeRow(active: boolean): React.CSSProperties {
+  return {
+    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+    padding: '12px 12px', borderRadius: 12, marginBottom: 6,
+    border: `1px solid ${active ? ACCENT : 'var(--border)'}`,
+    background: active ? 'color-mix(in srgb, #3C90D5 8%, transparent)' : 'transparent',
+    cursor: 'pointer', textAlign: 'left',
+  }
+}
+
+function Segment({ label, value, options, onChange }: {
+  label: string
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (v: string) => void
+}) {
+  return (
+    <div>
+      <p style={segLabelStyle}>{label}</p>
+      <div style={{ display: 'flex', gap: 6, background: 'var(--bg-alt)', borderRadius: 12, padding: 4 }}>
+        {options.map(o => {
+          const active = o.value === value
+          return (
+            <button
+              key={o.value}
+              onClick={() => onChange(o.value)}
+              style={{
+                flex: 1, padding: '10px 8px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                background: active ? 'var(--bg-card)' : 'transparent',
+                color: active ? 'var(--text)' : 'var(--text-mid)',
+                fontWeight: active ? 700 : 500, fontSize: 13, fontFamily: 'DM Sans,sans-serif',
+                boxShadow: active ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                transition: 'background 0.12s, color 0.12s',
+              }}
+            >
+              {o.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+const Check = () => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>
+)

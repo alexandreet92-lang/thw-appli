@@ -3,16 +3,19 @@
 import { useState, useMemo } from 'react'
 import { IconSearch, IconAdjustmentsHorizontal, IconArrowLeft, IconChevronRight } from '@tabler/icons-react'
 import {
-  SEANCES_RUNNING, BUCKET_ORDER, BUCKET_LABEL, BUCKET_SHORT, FILIERE_LABEL,
+  SEANCES_RUNNING, BUCKET_ORDER, BUCKET_LABEL, BUCKET_SHORT, BUCKET_SUBTITLE, FILIERE_LABEL,
   type Seance, type RunBucket,
 } from '@/data/seances/running'
 import { SlideView } from '@/components/ui/SlideView'
+import { CategoryPanel, CategoryRow } from '../CategoryRow'
+import { SPORT_THEME } from '../sportTheme'
 import { RunProfil } from './RunProfil'
 import { SeanceDetail } from './SeanceDetail'
 import { RunFiltreSheet } from './RunFiltreSheet'
 import { useRunFilter, appliquerRunFiltre } from './useRunFilter'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
+const TH = SPORT_THEME.running
 
 function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
@@ -83,26 +86,19 @@ export function SeancesRunning() {
       {detail ? (
         <SeanceDetail seance={detail} onBack={closeDetail} />
       ) : view === 'buckets' ? (
-        <>
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
             <SearchBar value={query} onChange={v => { setQuery(v); if (v.trim()) openTransversal() }} />
             <FiltreBtn n={rf.nbActifs} onClick={() => setSheet(true)} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            {BUCKET_ORDER.map(b => {
-              const n = SEANCES_RUNNING.filter(s => s.bucket === b).length
-              return (
-                <button key={b} onClick={() => openBucket(b)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
-                  width: '100%', textAlign: 'left', padding: 'var(--space-5)', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', background: 'var(--bg-card2)' }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--sport-run)', flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{BUCKET_LABEL[b]}</span>
-                  <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{n} séance{n > 1 ? 's' : ''}</span>
-                  <IconChevronRight size={18} style={{ color: 'var(--text-dim)' }} />
-                </button>
-              )
-            })}
-          </div>
-        </>
+          <CategoryPanel>
+            {BUCKET_ORDER.map(b => (
+              <CategoryRow key={b} icon={TH.icon} accent={TH.accent} soft={TH.soft}
+                name={BUCKET_LABEL[b]} subtitle={BUCKET_SUBTITLE[b]}
+                count={SEANCES_RUNNING.filter(s => s.bucket === b).length} onClick={() => openBucket(b)} />
+            ))}
+          </CategoryPanel>
+        </div>
       ) : (
         <>
           <button onClick={backToBuckets} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',

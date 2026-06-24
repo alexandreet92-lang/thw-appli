@@ -5,6 +5,8 @@ import { useState, useMemo } from 'react'
 import { IconSearch, IconAdjustmentsHorizontal, IconArrowLeft, IconChevronRight } from '@tabler/icons-react'
 import type { Seance } from '@/data/seances/common'
 import { SlideView } from '@/components/ui/SlideView'
+import { CategoryPanel, CategoryRow } from '../CategoryRow'
+import { SPORT_THEME } from '../sportTheme'
 import { EnduranceProfil } from './EnduranceProfil'
 import { SeanceEnduranceDetail } from './SeanceEnduranceDetail'
 import { EnduranceFiltreSheet, SUPPORT_LABEL } from './EnduranceFiltreSheet'
@@ -50,6 +52,7 @@ function SeanceCard({ s, cfg, showBucket, onClick }: { s: Seance; cfg: Endurance
 }
 
 export function SeancesEndurance({ cfg }: { cfg: EnduranceConfig }) {
+  const TH = SPORT_THEME[cfg.sport]
   const [view, setView] = useState<'buckets' | 'list'>('buckets')
   const [lock, setLock] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -76,28 +79,19 @@ export function SeancesEndurance({ cfg }: { cfg: EnduranceConfig }) {
       {detail ? (
         <SeanceEnduranceDetail seance={detail} cfg={cfg} onBack={closeDetail} />
       ) : view === 'buckets' ? (
-        <>
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
             <SearchBar value={query} onChange={v => { setQuery(v); if (v.trim()) openTransversal() }} placeholder={cfg.searchPlaceholder} />
             <FiltreBtn n={ef.nbActifs} onClick={() => setSheet(true)} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            {cfg.bucketOrder.map(b => {
-              const n = cfg.seances.filter(s => s.bucket === b).length
-              return (
-                <button key={b} onClick={() => openBucket(b)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%', textAlign: 'left', padding: 'var(--space-5)', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', background: 'var(--bg-card2)' }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.dotColor, flexShrink: 0 }} />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{cfg.bucketLabel[b] ?? b}</span>
-                    <span style={{ display: 'block', fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)' }}>{cfg.bucketSub[b] ?? ''}</span>
-                  </span>
-                  <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{n}</span>
-                  <IconChevronRight size={18} style={{ color: 'var(--text-dim)' }} />
-                </button>
-              )
-            })}
-          </div>
-        </>
+          <CategoryPanel>
+            {cfg.bucketOrder.map(b => (
+              <CategoryRow key={b} icon={TH.icon} accent={TH.accent} soft={TH.soft}
+                name={cfg.bucketLabel[b] ?? b} subtitle={cfg.bucketSub[b]}
+                count={cfg.seances.filter(s => s.bucket === b).length} onClick={() => openBucket(b)} />
+            ))}
+          </CategoryPanel>
+        </div>
       ) : (
         <>
           <button onClick={backToBuckets} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, padding: '4px 0', marginBottom: 'var(--space-4)' }}>

@@ -77,6 +77,15 @@ export const MUSCLES_PAR_REGION: Record<RegionMuscle, Muscle[]> = {
   tronc: ['erecteurs', 'transverse', 'obliques'],
 }
 
+// Sous-titres de contenu (affichés sous le nom de groupe dans la liste).
+export const GROUPE_SUBTITLE: Record<Groupe, string> = {
+  push:    'Pectoraux, épaules, triceps',
+  pull:    'Dos, biceps, trapèzes',
+  legs:    'Quadriceps, ischios, fessiers, mollets',
+  haltero: 'Arraché, épaulé-jeté, polyarticulaires',
+  core:    'Sangle abdominale, lombaires, stabilité',
+}
+
 export const GROUPE_ORDER: Groupe[] = ['push', 'pull', 'legs', 'haltero', 'core']
 export const EQUIP_ORDER: Equipement[] = ['barre', 'halteres', 'kettlebell', 'poids-de-corps', 'elastique']
 export const MODE_ORDER: Mode[] = ['strength', 'explosivite', 'strength-endurance']

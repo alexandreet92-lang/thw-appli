@@ -7,12 +7,15 @@ import {
   type Seance, type VeloBucket,
 } from '@/data/seances/velo'
 import { SlideView } from '@/components/ui/SlideView'
+import { CategoryPanel, CategoryRow } from '../CategoryRow'
+import { SPORT_THEME } from '../sportTheme'
 import { VeloProfil } from './VeloProfil'
 import { SeanceVeloDetail } from './SeanceVeloDetail'
 import { VeloFiltreSheet } from './VeloFiltreSheet'
 import { useVeloFilter, appliquerVeloFiltre } from './useVeloFilter'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
+const TH = SPORT_THEME.velo
 
 function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
@@ -78,28 +81,19 @@ export function SeancesVelo() {
       {detail ? (
         <SeanceVeloDetail seance={detail} onBack={closeDetail} />
       ) : view === 'buckets' ? (
-        <>
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
             <SearchBar value={query} onChange={v => { setQuery(v); if (v.trim()) openTransversal() }} />
             <FiltreBtn n={vf.nbActifs} onClick={() => setSheet(true)} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            {VELO_BUCKET_ORDER.map(b => {
-              const n = SEANCES_VELO.filter(s => s.bucket === b).length
-              return (
-                <button key={b} onClick={() => openBucket(b)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%', textAlign: 'left', padding: 'var(--space-5)', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', background: 'var(--bg-card2)' }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--sport-bike)', flexShrink: 0 }} />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{VELO_BUCKET_LABEL[b]}</span>
-                    <span style={{ display: 'block', fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)' }}>{VELO_BUCKET_SUB[b]}</span>
-                  </span>
-                  <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{n}</span>
-                  <IconChevronRight size={18} style={{ color: 'var(--text-dim)' }} />
-                </button>
-              )
-            })}
-          </div>
-        </>
+          <CategoryPanel>
+            {VELO_BUCKET_ORDER.map(b => (
+              <CategoryRow key={b} icon={TH.icon} accent={TH.accent} soft={TH.soft}
+                name={VELO_BUCKET_LABEL[b]} subtitle={VELO_BUCKET_SUB[b]}
+                count={SEANCES_VELO.filter(s => s.bucket === b).length} onClick={() => openBucket(b)} />
+            ))}
+          </CategoryPanel>
+        </div>
       ) : (
         <>
           <button onClick={backToBuckets} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, padding: '4px 0', marginBottom: 'var(--space-4)' }}>

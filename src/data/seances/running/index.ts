@@ -27,6 +27,13 @@ export const BUCKET_LABEL: Record<RunBucket, string> = {
 export const BUCKET_SHORT: Record<RunBucket, string> = {
   '5k': '5k', '10k': '10k', semi: 'Semi', marathon: 'Marathon', neuro: 'Neuro',
 }
+export const BUCKET_SUBTITLE: Record<RunBucket, string> = {
+  '5k': 'VO2max, vitesse spécifique, tolérance lactique',
+  '10k': 'Seuil, VO2max long, endurance d\'allure',
+  semi: 'Seuil, allure spécifique, endurance',
+  marathon: 'Allure spécifique, sortie longue',
+  neuro: 'Sprints, côtes, strides, vitesse pure',
+}
 
 export const FILIERE_ORDER: Filiere[] = [
   'aerobie', 'seuil', 'vma', 'specifique', 'neuromusculaire', 'mixte', 'test',

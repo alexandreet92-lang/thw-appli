@@ -12,6 +12,7 @@ import {
 import { SlideView } from '@/components/ui/SlideView'
 import { ExercicesMuscu } from './ExercicesMuscu'
 import { SeancesRunning } from './running/SeancesRunning'
+import { SeancesVelo } from './velo/SeancesVelo'
 import { EnPreparation } from './EnPreparation'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
@@ -78,7 +79,8 @@ function SportDetail({ sport, onBack }: { sport: SportMeta; onBack: () => void }
               texte="Sled, ergo, wall ball, carry — les ateliers Hyrox détaillés arrivent ici, dans le même esprit que la muscu." />
           )}
           {tab === 'seances' && sport.id === 'running' && <SeancesRunning />}
-          {tab === 'seances' && sport.id !== 'running' && (
+          {tab === 'seances' && sport.id === 'velo' && <SeancesVelo />}
+          {tab === 'seances' && sport.id !== 'running' && sport.id !== 'velo' && (
             <EnPreparation titre="Séances en préparation"
               texte={`Des dizaines de séances ${sport.label.toLowerCase()} structurées par objectif arrivent ici — échauffement, corps de séance, retour au calme.`} />
           )}

@@ -41,6 +41,7 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'sports' | MethodSport>('sports')
   const ref = useRef<HTMLDivElement>(null)
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!open || isMobile) return
@@ -48,6 +49,22 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [open, isMobile])
+
+  useEffect(() => () => { if (hoverTimer.current) clearTimeout(hoverTimer.current) }, [])
+
+  // Desktop : ouverture au survol (comme le menu « + »). Délai à la sortie pour
+  // pouvoir traverser l'espace bouton → dropdown sans que ça se referme.
+  const hoverOpen = () => {
+    if (isMobile) return
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    setView('sports')
+    setOpen(true)
+  }
+  const hoverClose = () => {
+    if (isMobile) return
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    hoverTimer.current = setTimeout(() => setOpen(false), 160)
+  }
 
   const current = methodById(method)
   const label = current ? current.name : 'Auto'
@@ -119,7 +136,12 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
   const content = view === 'sports' ? sportsView : methodsView(view)
 
   return (
-    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+    <div
+      ref={ref}
+      style={{ position: 'relative', flexShrink: 0 }}
+      onMouseEnter={hoverOpen}
+      onMouseLeave={hoverClose}
+    >
       <button
         onClick={() => { if (!disabled) { setView('sports'); setOpen(o => !o) } }}
         title={current ? `Méthode : ${current.name}` : 'Méthode d\'entraînement'}

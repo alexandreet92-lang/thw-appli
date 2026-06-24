@@ -11588,11 +11588,21 @@ function PlusMenu({
   const [mobileTheme, setMobileTheme] = useState<QuickActionTheme | null>(null)
   const [compCount, setCompCount] = useState<number | null>(null)
   const [compLimit, setCompLimit] = useState(3)
+  const [compNames, setCompNames] = useState<string[]>([])
   // Desktop : flyout latéral (style Claude) ouvert au survol d'une rubrique.
-  const [flyout, setFlyout] = useState<null | 'actions' | 'connecteurs'>(null)
+  // Porté vers document.body (position fixe) pour échapper à l'overflow:hidden
+  // de la colonne chat qui sinon le coupe.
+  type FlyoutKey = 'actions' | 'connecteurs' | 'competences'
+  const [flyout, setFlyout] = useState<FlyoutKey | null>(null)
+  const [flyoutRect, setFlyoutRect] = useState<{ left: number; right: number; bottom: number; top: number } | null>(null)
   const flyoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const openFlyout = (f: 'actions' | 'connecteurs') => {
+  const openFlyout = (f: FlyoutKey) => {
     if (flyoutTimer.current) clearTimeout(flyoutTimer.current)
+    const menuEl = ref.current
+    if (menuEl) {
+      const r = menuEl.getBoundingClientRect()
+      setFlyoutRect({ left: r.left, right: r.right, bottom: r.bottom, top: r.top })
+    }
     setFlyout(f)
   }
   const keepFlyout = () => { if (flyoutTimer.current) clearTimeout(flyoutTimer.current) }
@@ -11611,9 +11621,9 @@ function PlusMenu({
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
         if (!user) return
-        const { count } = await sb
+        const { data: compRows } = await sb
           .from('user_competences')
-          .select('id', { count: 'exact', head: true })
+          .select('competence_id, competences ( nom )')
           .eq('user_id', user.id)
           .eq('active', true)
         const { data: sub } = await sb
@@ -11624,7 +11634,12 @@ function PlusMenu({
         if (!alive) return
         const tier = (sub as { tier?: string } | null)?.tier
         setCompLimit(tier === 'pro' ? 7 : tier === 'expert' ? 20 : 3)
-        setCompCount(count ?? 0)
+        const rows = (compRows ?? []) as { competences: { nom: string } | { nom: string }[] | null }[]
+        const names = rows
+          .map(r => { const c = Array.isArray(r.competences) ? r.competences[0] : r.competences; return c?.nom ?? null })
+          .filter((x): x is string => !!x)
+        setCompNames(names)
+        setCompCount(names.length)
       } catch { /* silencieux */ }
     })()
     return () => { alive = false }
@@ -11721,7 +11736,7 @@ function PlusMenu({
 
   // ── Contenus réutilisables (sous-écran plein OU flyout desktop) ──
   const actionsTwoColumns = (
-    <div style={{ display: 'flex', minWidth: 460, height: 380 }}>
+    <div style={{ display: 'flex', minWidth: 460, height: 'min(380px, 66vh)' }}>
       {/* Colonne gauche — thèmes */}
       <div style={{ width: 168, flexShrink: 0, borderRight: '1px solid var(--border)', padding: 6, overflowY: 'auto' }}>
         {QA_THEMES.map(t => {
@@ -11792,6 +11807,42 @@ function PlusMenu({
     </div>
   )
 
+  const competencesList = (
+    <div style={{ padding: 8, minWidth: 232, maxWidth: 280, maxHeight: 'min(380px, 66vh)', overflowY: 'auto' }}>
+      <div style={{ padding: '4px 8px 8px', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>
+        {compNames.length > 0
+          ? `${compNames.length} / ${compLimit} active${compNames.length > 1 ? 's' : ''}`
+          : 'Aucune compétence active'}
+      </div>
+      {compNames.map((nom, i) => (
+        <div key={i} style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 10px', borderRadius: 9, marginBottom: 3,
+          border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#06B6D4', flexShrink: 0 }} />
+          <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nom}</span>
+        </div>
+      ))}
+      {/* Bulle « + Ajouter » → page Compétences */}
+      <button
+        onClick={() => { onClose(); onClosePanel(); router.push('/competences') }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+          padding: '9px 10px', borderRadius: 9, marginTop: 3,
+          border: '1px dashed var(--border-mid)', background: 'transparent',
+          color: 'var(--text-mid)', cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+          fontSize: 13, fontWeight: 600, transition: 'background 120ms',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+        Ajouter
+      </button>
+    </div>
+  )
+
   const body = (
     <>
 
@@ -11846,12 +11897,12 @@ function PlusMenu({
             <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
           </button>
 
-          {/* 6. Compétences → page dédiée */}
+          {/* 6. Compétences — desktop : flyout (liste + Ajouter) ; mobile : page dédiée */}
           <button
-            style={{ ...rowStyle, alignItems: 'flex-start' }}
-            onClick={() => { onClose(); onClosePanel(); router.push('/competences') }}
-            onMouseEnter={e => { hoverOn(e); if (!isMobile) scheduleCloseFlyout() }}
-            onMouseLeave={hoverOff}
+            style={{ ...rowStyle, alignItems: 'flex-start', background: !isMobile && flyout === 'competences' ? 'var(--bg-hover)' : 'transparent' }}
+            onClick={() => { if (isMobile) { onClose(); onClosePanel(); router.push('/competences') } else openFlyout('competences') }}
+            onMouseEnter={e => { hoverOn(e); if (!isMobile) openFlyout('competences') }}
+            onMouseLeave={e => { if (!(flyout === 'competences')) hoverOff(e); if (!isMobile) scheduleCloseFlyout() }}
           >
             <Brain size={16} color="var(--text-mid)" style={{ flexShrink: 0, marginTop: 2 }} />
             <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -11991,34 +12042,42 @@ function PlusMenu({
     return <MobileSheet title="Ajouter à la discussion" onClose={onClose}>{body}</MobileSheet>
   }
   return (
-    <div ref={ref} style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 200 }}>
-      <div className="aip-plus-menu" style={{
-        position: 'relative',
-        minWidth: 260, borderRadius: 12, padding: 6,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
-        maxHeight: '72vh', overflow: activeScreen === 'main' ? 'visible' : 'hidden',
-        animation: 'aip_menu_up 0.18s ease-out',
-      }}>
-        {body}
+    <div ref={ref} className="aip-plus-menu" style={{
+      position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 200,
+      minWidth: 260, borderRadius: 12, padding: 6,
+      boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
+      maxHeight: '72vh', overflow: activeScreen === 'main' ? 'visible' : 'hidden',
+      animation: 'aip_menu_up 0.18s ease-out',
+    }}>
+      {body}
 
-        {/* ── Flyout latéral (desktop) — ouvre la rubrique survolée à côté ── */}
-        {!isMobile && flyout && activeScreen === 'main' && (
+      {/* ── Flyout latéral (desktop) — porté vers document.body (position fixe)
+          pour ne pas être coupé par l'overflow:hidden de la colonne chat. ── */}
+      {!isMobile && flyout && activeScreen === 'main' && flyoutRect && (() => {
+        const estW = flyout === 'actions' ? 472 : 270
+        const openLeft = flyoutRect.right + 6 + estW > window.innerWidth
+        return createPortal(
           <div
             className="aip-plus-menu"
+            onMouseDown={e => e.stopPropagation()}
             onMouseEnter={keepFlyout}
             onMouseLeave={scheduleCloseFlyout}
             style={{
-              position: 'absolute', left: 'calc(100% + 6px)', bottom: 0,
-              borderRadius: 12, padding: flyout === 'actions' ? 0 : 0,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
-              maxHeight: '72vh', overflow: 'hidden',
-              animation: 'ai_slidein 0.14s ease',
+              position: 'fixed', zIndex: 1300,
+              ...(openLeft
+                ? { right: Math.max(8, window.innerWidth - flyoutRect.left + 6) }
+                : { left: flyoutRect.right + 6 }),
+              bottom: Math.max(8, window.innerHeight - flyoutRect.bottom),
+              maxHeight: `min(66vh, ${Math.round(flyoutRect.bottom - 8)}px)`,
+              borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
+              overflow: 'hidden', animation: 'ai_slidein 0.14s ease',
             }}
           >
-            {flyout === 'actions' ? actionsTwoColumns : connectorsList}
-          </div>
-        )}
-      </div>
+            {flyout === 'actions' ? actionsTwoColumns : flyout === 'connecteurs' ? connectorsList : competencesList}
+          </div>,
+          document.body,
+        )
+      })()}
     </div>
   )
 }
@@ -18865,17 +18924,19 @@ export default function AIPanel({
         const parts = name.trim().split(/\s+/)
         if (parts.length >= 2) setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase())
         else if (parts[0]) setUserInitials(parts[0][0].toUpperCase())
-        // Prénom — depuis full_name si dispo (jamais l'email)
+        // Prénom — depuis full_name auth si dispo (jamais l'email)
         const metaFirst = (user.user_metadata?.full_name ?? '').trim().split(/\s+/)[0] ?? ''
-        // Photo de profil + prénom — depuis la table profiles (source fiable)
-        const { data: prof } = await sb.from('profiles').select('avatar_url,first_name').eq('id', user.id).maybeSingle()
+        // Photo de profil + prénom — depuis profiles.full_name (source fiable,
+        // identique au dashboard via useProfile ; la table n'a PAS de first_name)
+        const { data: prof } = await sb.from('profiles').select('avatar_url,full_name').eq('id', user.id).maybeSingle()
         if (prof?.avatar_url) setUserAvatarUrl(prof.avatar_url as string)
+        const profFull = ((prof?.full_name as string | null) ?? '').trim()
+        const profFirst = profFull ? profFull.split(/\s+/)[0] : ''
         // Le prénom du profil prime sur le full_name auth (souvent vide en prod)
-        const profFirst = ((prof?.first_name as string | null) ?? '').trim()
         const first = profFirst || metaFirst
         if (first) {
           setUserFirstName(first)
-          if (!parts[0] || parts.length < 1) setUserInitials(first[0].toUpperCase())
+          if (parts.length < 1 || !parts[0]) setUserInitials(first[0].toUpperCase())
         }
       } catch { /* silent */ }
     })()
@@ -21546,37 +21607,6 @@ export default function AIPanel({
                 </div>
               )}
 
-              {/* Chip « Recherche Web » active */}
-              {webSearchMode && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 12px',
-                  background: 'var(--ai-accent-soft, rgba(6,182,212,0.07))',
-                  borderBottom: '1px solid var(--ai-accent-line, rgba(6,182,212,0.15))',
-                }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-accent, #06B6D4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-                  </svg>
-                  <span style={{
-                    flex: 1, fontSize: 11, fontWeight: 600, color: 'var(--ai-accent, #06B6D4)',
-                    fontFamily: 'DM Sans, sans-serif',
-                  }}>
-                    Recherche Web — le coach cherchera sur internet
-                  </span>
-                  <button
-                    onClick={() => setWebSearchMode(false)}
-                    title="Désactiver"
-                    style={{
-                      width: 18, height: 18, borderRadius: '50%', border: 'none',
-                      background: 'var(--ai-accent-dim, rgba(6,182,212,0.15))', color: 'var(--ai-accent, #06B6D4)',
-                      cursor: 'pointer', fontSize: 13, flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      lineHeight: 1,
-                    }}
-                  >×</button>
-                </div>
-              )}
-
               {/* Textarea — hidden during recording */}
               {!recording && (
                 <textarea
@@ -21765,6 +21795,39 @@ export default function AIPanel({
                   })()}
               </div>
             </div>
+
+            {/* Bulle « Recherche Web » — sous le champ, sans entourer la saisie */}
+            {webSearchMode && (
+              <div style={{ maxWidth: 756, margin: '8px auto 0', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '6px 8px 6px 12px', borderRadius: 999,
+                  background: 'var(--ai-accent-soft, rgba(6,182,212,0.08))',
+                  border: '1px solid var(--ai-accent-line, rgba(6,182,212,0.35))',
+                  animation: 'ai_slidein 0.18s ease',
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ai-accent, #06B6D4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+                  </svg>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-accent, #06B6D4)', fontFamily: 'DM Sans, sans-serif' }}>
+                    Recherche Web activée
+                  </span>
+                  <button
+                    onClick={() => setWebSearchMode(false)}
+                    title="Désactiver"
+                    aria-label="Désactiver la recherche web"
+                    style={{
+                      width: 20, height: 20, borderRadius: '50%', border: 'none',
+                      background: 'var(--ai-accent-dim, rgba(6,182,212,0.15))', color: 'var(--ai-accent, #06B6D4)',
+                      cursor: 'pointer', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 5, textAlign: 'center' }}>
               Entrée · Shift+Entrée pour nouvelle ligne

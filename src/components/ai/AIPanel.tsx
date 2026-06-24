@@ -60,6 +60,7 @@ interface AIMsg {
   content: string
   ts: number
   modelId?: THWModel   // modèle utilisé pour cette réponse
+  thinking?: string    // raisonnement étendu (extended thinking) — feuille « Processus de réflexion »
   clarifyingQuestions?: ClarifyingQuestions  // questions IA (tool ask_clarifying_questions)
   planProposal?: PlanProposal  // aperçu de plan avant validation (tool create_training_plan)
   sessionData?: SBSession  // données structurées SessionBuilder (persiste en localStorage)
@@ -18675,6 +18676,9 @@ export default function AIPanel({
   // Mode « Recherche Web » : force le coach à chercher sur internet pour le
   // prochain message (instruction injectée + bascule sur un modèle compatible).
   const [webSearchMode, setWebSearchMode] = useState(false)
+  // Feuille « Processus de réflexion » : id du message dont on affiche le
+  // raisonnement étendu (null = fermée).
+  const [reasoningMsgId, setReasoningMsgId] = useState<string | null>(null)
   const [isDesktop,   setIsDesktop]   = useState(false)
   const [model,       setModel]       = useState<THWModel>('athena')
   const [method,      setMethod]      = useState<string>('auto')   // méthode d'entraînement (composer)
@@ -20004,6 +20008,7 @@ export default function AIPanel({
       const reader      = res.body.getReader()
       const decoder     = new TextDecoder()
       let textAccumulated = ''
+      let thinkingAccumulated = ''
       let sseBuffer       = ''
       // Création de plan : on génère l'aperçu APRÈS le stream (40s), pas pendant
       let planGenRequest: { msgId: string; requirements: PlanRequirements } | null = null
@@ -20034,6 +20039,19 @@ export default function AIPanel({
             setConvs(prev => prev.map(c =>
               c.id === cid
                 ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, content: textAccumulated } : m), updatedAt: Date.now() }
+                : c
+            ))
+          } else if (eventType === 'thinking') {
+            // Raisonnement étendu en direct → accumulé sur le message (feuille
+            // « Processus de réflexion », ouvrable depuis l'indicateur Réflexion…)
+            try {
+              thinkingAccumulated += JSON.parse(data) as string
+            } catch {
+              thinkingAccumulated += data
+            }
+            setConvs(prev => prev.map(c =>
+              c.id === cid
+                ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, thinking: thinkingAccumulated } : m), updatedAt: Date.now() }
                 : c
             ))
           } else if (eventType === 'tool_status') {
@@ -21109,7 +21127,16 @@ export default function AIPanel({
                             animation: 'fadeUp 0.2s ease-out',
                           }}>
                             {showThinking ? (
-                              <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 2px' }}>
+                              <button
+                                onClick={() => { if (msg.thinking) setReasoningMsgId(msg.id) }}
+                                title={msg.thinking ? 'Voir le raisonnement' : undefined}
+                                style={{
+                                  display: 'flex', gap: 8, alignItems: 'center', padding: '4px 8px 4px 2px',
+                                  border: 'none', background: 'transparent',
+                                  cursor: msg.thinking ? 'pointer' : 'default', borderRadius: 8,
+                                  fontFamily: 'inherit',
+                                }}
+                              >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
@@ -21117,7 +21144,12 @@ export default function AIPanel({
                                   style={{ width: 16, height: 16, objectFit: 'contain', animation: 'spin 2.4s linear infinite', opacity: 0.85 }}
                                 />
                                 <span className="ai-shimmer" style={{ fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-display)' }}>Réflexion…</span>
-                              </div>
+                                {msg.thinking && (
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                    <path d="M9 18l6-6-6-6" />
+                                  </svg>
+                                )}
+                              </button>
                             ) : (
                               <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily="var(--font-display)" />
                             )}
@@ -21125,6 +21157,27 @@ export default function AIPanel({
                         )
                       })()}
                     </div>
+                    {/* Lien « Processus de réflexion » — visible quand le message a
+                        un raisonnement et n'est plus en cours de streaming */}
+                    {msg.role === 'assistant' && msg.thinking && msg.content.trim() && !(loading && idx === active.msgs.length - 1) && (
+                      <button
+                        onClick={() => setReasoningMsgId(msg.id)}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 34, marginTop: 4,
+                          padding: '4px 10px 4px 8px', borderRadius: 999,
+                          border: '1px solid var(--ai-border)', background: 'transparent',
+                          color: 'var(--ai-mid)', cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+                          fontSize: 11.5, fontWeight: 600, transition: 'background 120ms',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9.5 2a6.5 6.5 0 0 0-3.8 11.8c.5.4.8.9.8 1.5v.7h6v-.7c0-.6.3-1.1.8-1.5A6.5 6.5 0 0 0 9.5 2z" /><path d="M7 19h5M8 22h3" />
+                        </svg>
+                        Processus de réflexion
+                      </button>
+                    )}
                     {/* Session card — rendu riche si données structurées présentes, sinon parsing texte */}
                     {msg.role === 'assistant' && msg.sessionData && (
                       <div style={{ marginLeft: 34 }}>
@@ -21723,6 +21776,88 @@ export default function AIPanel({
         {/* /body */}
         </div>
       </div>
+
+      {/* ── Feuille « Processus de réflexion » (raisonnement étendu) ── */}
+      {reasoningMsgId && mounted && (() => {
+        const rMsg = (active?.msgs.find(m => m.id === reasoningMsgId))
+          ?? convs.flatMap(c => c.msgs).find(m => m.id === reasoningMsgId)
+        const txt = rMsg?.thinking ?? ''
+        const close = () => setReasoningMsgId(null)
+        return createPortal(
+          <>
+            <style>{`
+              @keyframes rsheet_in   { from { opacity: 0 } to { opacity: 1 } }
+              @keyframes rsheet_up   { from { transform: translateY(100%) } to { transform: translateY(0) } }
+              @keyframes rsheet_side { from { transform: translateX(100%) } to { transform: translateX(0) } }
+            `}</style>
+            <div
+              role="dialog" aria-modal="true" aria-label="Processus de réflexion"
+              onClick={close}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 1600,
+                background: 'rgba(0,0,0,0.32)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
+                animation: 'rsheet_in 0.2s ease',
+                display: 'flex', alignItems: isDesktop ? 'stretch' : 'flex-end',
+                justifyContent: isDesktop ? 'flex-end' : 'center',
+              }}
+            >
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  background: 'var(--ai-bg)', color: 'var(--ai-text)',
+                  display: 'flex', flexDirection: 'column',
+                  ...(isDesktop
+                    ? { width: 'min(460px, 90vw)', height: '100%', borderLeft: '1px solid var(--ai-border)', animation: 'rsheet_side 0.28s cubic-bezier(0.32,0.72,0,1)' }
+                    : { width: '100%', maxHeight: '82vh', borderTopLeftRadius: 20, borderTopRightRadius: 20, animation: 'rsheet_up 0.3s cubic-bezier(0.32,0.72,0,1)' }),
+                }}
+              >
+                {/* En-tête */}
+                <div style={{
+                  flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10,
+                  padding: isDesktop ? '18px 18px 14px' : '14px 18px 12px',
+                  borderBottom: '1px solid var(--ai-border)',
+                }}>
+                  {!isDesktop && (
+                    <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)', width: 38, height: 4, borderRadius: 2, background: 'var(--ai-border)' }} />
+                  )}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ai-mid)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M9.5 2a6.5 6.5 0 0 0-3.8 11.8c.5.4.8.9.8 1.5v.7h6v-.7c0-.6.3-1.1.8-1.5A6.5 6.5 0 0 0 9.5 2z" /><path d="M7 19h5M8 22h3" />
+                  </svg>
+                  <span style={{ flex: 1, fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-display)' }}>Processus de réflexion</span>
+                  <button
+                    onClick={close} aria-label="Fermer"
+                    style={{
+                      width: 30, height: 30, borderRadius: '50%', border: 'none', flexShrink: 0,
+                      background: 'var(--ai-bg2)', color: 'var(--ai-text)', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                  </button>
+                </div>
+                {/* Corps — raisonnement */}
+                <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '16px 20px 28px' }}>
+                  {txt.trim() ? (
+                    <p style={{
+                      margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
+                      fontFamily: 'var(--font-display, Fraunces), Georgia, serif',
+                      fontSize: 16, lineHeight: 1.62, color: 'var(--ai-text)',
+                    }}>
+                      {txt}
+                      {loading && active?.msgs[active.msgs.length - 1]?.id === reasoningMsgId && (
+                        <span className="ai-shimmer" style={{ fontWeight: 600 }}> ▍</span>
+                      )}
+                    </p>
+                  ) : (
+                    <p style={{ margin: 0, color: 'var(--ai-dim)', fontSize: 14 }}>Le coach n&apos;a pas exposé de raisonnement pour cette réponse.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>,
+          document.body,
+        )
+      })()}
 
       {/* ── Modal d'achat de tokens ───────────────────────── */}
       <TopupEmailModal isOpen={topupOpen} onClose={() => setTopupOpen(false)} />

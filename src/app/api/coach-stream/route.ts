@@ -602,6 +602,20 @@ Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS
     ? [...cachedCustom, { type: 'web_search_20260209', name: 'web_search', max_uses: 5 }]
     : cachedCustom) as unknown as Anthropic.ToolUnion[]
 
+  // ── Raisonnement étendu (extended thinking) ──
+  // Streamé en direct vers le front (event « thinking ») et affiché dans la
+  // feuille « Processus de réflexion ». Réservé aux modèles avancés (Athéna/Zeus)
+  // pour ne pas ralentir Hermès. Les blocs de pensée sont automatiquement
+  // réinjectés dans convMessages (finalMsg.content) entre les étapes d'outils.
+  // Central uniquement : les flows guidés attendent une sortie JSON stricte et
+  // n'affichent pas la feuille de raisonnement → on évite la latence superflue.
+  const thinkingEnabled =
+    (chatBody as { agentId?: string }).agentId === 'central' &&
+    (cappedKey === 'athena' || cappedKey === 'zeus')
+  const thinkingParam = thinkingEnabled
+    ? { thinking: { type: 'enabled' as const, budget_tokens: 2048 } }
+    : {}
+
   // Client Supabase dédié aux outils de lecture (réutilisé sur toute la boucle)
   const sbForTools = await createClient()
 
@@ -624,13 +638,17 @@ Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS
             messages: convMessages,
             tools: cachedTools,
             tool_choice: { type: 'auto' },
+            ...thinkingParam,
           })
 
-          // Streaming live du texte token-par-token + statut recherche web
+          // Streaming live du texte token-par-token + raisonnement + statut web
           let webAnnounced = false
           for await (const ev of ms) {
             if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta' && ev.delta.text) {
               send('text', JSON.stringify(ev.delta.text))
+            } else if (ev.type === 'content_block_delta' && ev.delta.type === 'thinking_delta' && ev.delta.thinking) {
+              // Raisonnement étendu en direct → feuille « Processus de réflexion »
+              send('thinking', JSON.stringify(ev.delta.thinking))
             } else if (
               !webAnnounced &&
               ev.type === 'content_block_start' &&

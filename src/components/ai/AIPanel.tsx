@@ -1691,7 +1691,7 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
             transform: 'translateX(-50%)', background: 'var(--ai-bg)',
             border: '1px solid var(--ai-border)', borderRadius: 13,
             boxShadow: '0 8px 28px rgba(0,0,0,0.13)', overflow: 'hidden',
-            minWidth: 188, zIndex: 50, padding: 4, animation: 'ai_slidein 0.14s ease',
+            minWidth: 188, zIndex: 50, padding: 4, animation: 'ai_slidein_center 0.14s ease',
           }}>
             <div style={{
               padding: '6px 10px 6px', fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)',
@@ -11563,6 +11563,7 @@ function PlusMenu({
   onPhotos,
   onFiles,
   onForceModel,
+  onWebSearch,
   isMobile = false,
 }: {
   onPrepare:    (label: string, apiPrompt: string) => void
@@ -11574,6 +11575,7 @@ function PlusMenu({
   onPhotos:     () => void
   onFiles:      () => void
   onForceModel: (m: THWModel) => void
+  onWebSearch:  () => void
   isMobile?:    boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -11585,6 +11587,19 @@ function PlusMenu({
   const [mobileTheme, setMobileTheme] = useState<QuickActionTheme | null>(null)
   const [compCount, setCompCount] = useState<number | null>(null)
   const [compLimit, setCompLimit] = useState(3)
+  // Desktop : flyout latéral (style Claude) ouvert au survol d'une rubrique.
+  const [flyout, setFlyout] = useState<null | 'actions' | 'connecteurs'>(null)
+  const flyoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const openFlyout = (f: 'actions' | 'connecteurs') => {
+    if (flyoutTimer.current) clearTimeout(flyoutTimer.current)
+    setFlyout(f)
+  }
+  const keepFlyout = () => { if (flyoutTimer.current) clearTimeout(flyoutTimer.current) }
+  const scheduleCloseFlyout = () => {
+    if (flyoutTimer.current) clearTimeout(flyoutTimer.current)
+    flyoutTimer.current = setTimeout(() => setFlyout(null), 160)
+  }
+  useEffect(() => () => { if (flyoutTimer.current) clearTimeout(flyoutTimer.current) }, [])
 
   // Comptage léger des compétences actives + limite du plan
   useEffect(() => {
@@ -11703,6 +11718,79 @@ function PlusMenu({
   }
   const photoTileLabel: React.CSSProperties = { fontSize: 12, color: 'var(--text)', fontWeight: 500 }
 
+  // ── Contenus réutilisables (sous-écran plein OU flyout desktop) ──
+  const actionsTwoColumns = (
+    <div style={{ display: 'flex', minWidth: 460, height: 380 }}>
+      {/* Colonne gauche — thèmes */}
+      <div style={{ width: 168, flexShrink: 0, borderRight: '1px solid var(--border)', padding: 6, overflowY: 'auto' }}>
+        {QA_THEMES.map(t => {
+          const active = t.id === activeTheme
+          return (
+            <button
+              key={t.id}
+              onMouseEnter={() => setActiveTheme(t.id)}
+              onClick={() => setActiveTheme(t.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                width: '100%', padding: '9px 10px', borderRadius: 8,
+                fontSize: 13, cursor: 'pointer', border: 'none', textAlign: 'left',
+                fontFamily: 'DM Sans,sans-serif',
+                transition: 'background 120ms, color 120ms',
+                background: active ? 'var(--bg-hover)' : 'transparent',
+                color: active ? 'var(--ai-text)' : 'var(--text-mid)',
+                fontWeight: active ? 600 : 400,
+              }}
+            >
+              <span style={{ flexShrink: 0, display: 'flex' }}>{themeIcon(t.id)}</span>
+              <span style={{ flex: 1 }}>{t.label}</span>
+              <ChevronRight size={12} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+            </button>
+          )
+        })}
+      </div>
+      {/* Colonne droite — actions du thème actif */}
+      <div key={activeTheme} style={{ flex: 1, padding: 6, overflowY: 'auto', animation: 'aip_fade_in 0.15s ease-out' }}>
+        {actionsOfTheme(activeTheme).map((qa, i) => renderActionButton(qa, i))}
+      </div>
+    </div>
+  )
+
+  const connectorsList = (
+    <div style={{ padding: 6, minWidth: 240, maxHeight: 380, overflowY: 'auto' }}>
+      {PLUS_CONNECTORS.map(c => (
+        <div key={c.id} style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '7px 10px', borderRadius: 10,
+          border: '0.5px solid var(--border)', marginBottom: 4,
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={c.logo} alt={c.name} width={20} height={20} style={{ borderRadius: 5, objectFit: 'contain', flexShrink: 0, background: '#fff' }} />
+          <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text)' }}>{c.name}</span>
+          {c.connected ? (
+            <>
+              <div style={{
+                width: 28, height: 15, borderRadius: 8, background: '#06B6D4', position: 'relative', flexShrink: 0,
+                animation: 'aip_toggle_pulse 0.3s ease-out',
+              }}>
+                <div style={{ position: 'absolute', top: 2, right: 2, width: 11, height: 11, borderRadius: '50%', background: '#fff' }} />
+              </div>
+              <span style={{ fontSize: 10, color: '#06B6D4', fontWeight: 500, flexShrink: 0 }}>Connecté</span>
+            </>
+          ) : (
+            <>
+              <div style={{ width: 28, height: 15, borderRadius: 8, background: 'var(--border)', position: 'relative', flexShrink: 0 }}>
+                <div style={{ position: 'absolute', top: 2, left: 2, width: 11, height: 11, borderRadius: '50%', background: '#fff' }} />
+              </div>
+              <a href="/connections" style={{ fontSize: 10, color: '#06B6D4', border: '0.5px solid #06B6D4', borderRadius: 4, padding: '2px 6px', marginLeft: 6, textDecoration: 'none', flexShrink: 0 }}>
+                Connecter →
+              </a>
+            </>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+
   const body = (
     <>
 
@@ -11733,15 +11821,25 @@ function PlusMenu({
 
           <div style={sepStyle} />
 
-          {/* 4. Actions rapides */}
-          <button style={rowStyle} onClick={() => { setMobileTheme(null); goTo('actions') }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+          {/* 4. Actions rapides — desktop : flyout au survol ; mobile : navigation */}
+          <button
+            style={{ ...rowStyle, background: !isMobile && flyout === 'actions' ? 'var(--bg-hover)' : 'transparent' }}
+            onClick={() => { if (isMobile) { setMobileTheme(null); goTo('actions') } else openFlyout('actions') }}
+            onMouseEnter={e => { hoverOn(e); if (!isMobile) openFlyout('actions') }}
+            onMouseLeave={e => { if (!(flyout === 'actions')) hoverOff(e); if (!isMobile) scheduleCloseFlyout() }}
+          >
             <Zap size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
             <span style={{ flex: 1 }}>Actions rapides</span>
             <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
           </button>
 
-          {/* 5. Connecteurs */}
-          <button style={rowStyle} onClick={() => goTo('connecteurs')} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+          {/* 5. Connecteurs — desktop : flyout au survol ; mobile : navigation */}
+          <button
+            style={{ ...rowStyle, background: !isMobile && flyout === 'connecteurs' ? 'var(--bg-hover)' : 'transparent' }}
+            onClick={() => { if (isMobile) goTo('connecteurs'); else openFlyout('connecteurs') }}
+            onMouseEnter={e => { hoverOn(e); if (!isMobile) openFlyout('connecteurs') }}
+            onMouseLeave={e => { if (!(flyout === 'connecteurs')) hoverOff(e); if (!isMobile) scheduleCloseFlyout() }}
+          >
             <Plug size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
             <span style={{ flex: 1 }}>Connecteurs</span>
             <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
@@ -11751,7 +11849,7 @@ function PlusMenu({
           <button
             style={{ ...rowStyle, alignItems: 'flex-start' }}
             onClick={() => { onClose(); onClosePanel(); router.push('/competences') }}
-            onMouseEnter={hoverOn}
+            onMouseEnter={e => { hoverOn(e); if (!isMobile) scheduleCloseFlyout() }}
             onMouseLeave={hoverOff}
           >
             <Brain size={16} color="var(--text-mid)" style={{ flexShrink: 0, marginTop: 2 }} />
@@ -11770,17 +11868,18 @@ function PlusMenu({
 
           <div style={sepStyle} />
 
-          {/* 8. Recherche — inactif */}
-          <div style={{ ...rowStyle, opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'none' }}>
+          {/* 8. Recherche — inactif (bientôt) */}
+          <div style={{ ...rowStyle, opacity: 0.45, cursor: 'not-allowed' }} title="Bientôt disponible">
             <Search size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-            Recherche
+            <span style={{ flex: 1 }}>Recherche</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>Bientôt</span>
           </div>
 
-          {/* 9. Recherche Web — inactif */}
-          <div style={{ ...rowStyle, opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'none' }}>
+          {/* 9. Recherche Web — active le mode recherche internet */}
+          <button style={rowStyle} onClick={() => { onWebSearch(); onClose() }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
             <Globe size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-            Recherche Web
-          </div>
+            <span style={{ flex: 1 }}>Recherche Web</span>
+          </button>
         </div>
       )}
 
@@ -11849,39 +11948,7 @@ function PlusMenu({
                 </button>
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Actions rapides</span>
               </div>
-              <div style={{ display: 'flex', minWidth: 460, height: 380 }}>
-                {/* Colonne gauche — thèmes */}
-                <div style={{ width: 168, flexShrink: 0, borderRight: '1px solid var(--border)', padding: 6, overflowY: 'auto' }}>
-                  {QA_THEMES.map(t => {
-                    const active = t.id === activeTheme
-                    return (
-                      <button
-                        key={t.id}
-                        onMouseEnter={() => setActiveTheme(t.id)}
-                        onClick={() => setActiveTheme(t.id)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 8,
-                          width: '100%', padding: '9px 10px', borderRadius: 8,
-                          fontSize: 13, cursor: 'pointer', border: 'none', textAlign: 'left',
-                          fontFamily: 'DM Sans,sans-serif',
-                          transition: 'background 120ms, color 120ms',
-                          background: active ? 'var(--bg-hover)' : 'transparent',
-                          color: active ? 'var(--ai-text)' : 'var(--text-mid)',
-                          fontWeight: active ? 600 : 400,
-                        }}
-                      >
-                        <span style={{ flexShrink: 0, display: 'flex' }}>{themeIcon(t.id)}</span>
-                        <span style={{ flex: 1 }}>{t.label}</span>
-                        <ChevronRight size={12} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
-                      </button>
-                    )
-                  })}
-                </div>
-                {/* Colonne droite — actions du thème actif */}
-                <div key={activeTheme} style={{ flex: 1, padding: 6, overflowY: 'auto', animation: 'aip_fade_in 0.15s ease-out' }}>
-                  {actionsOfTheme(activeTheme).map((qa, i) => renderActionButton(qa, i))}
-                </div>
-              </div>
+              {actionsTwoColumns}
             </>
           )}
         </div>
@@ -11889,44 +11956,14 @@ function PlusMenu({
 
       {/* ════ SOUS-ÉCRAN : CONNECTEURS ════ */}
       {activeScreen === 'connecteurs' && (
-        <div key="connecteurs" style={{ padding: 14, maxHeight: '72vh', overflowY: 'auto', animation: 'aip_slide_in_right 0.22s ease-out' }}>
-          <div style={subHeaderStyle}>
+        <div key="connecteurs" style={{ padding: 8, maxHeight: '72vh', overflowY: 'auto', animation: 'aip_slide_in_right 0.22s ease-out' }}>
+          <div style={{ ...subHeaderStyle, padding: '6px 6px 2px' }}>
             <button onClick={goBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
               <ArrowLeft size={14} color="var(--text-mid)" />
             </button>
             <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Connecteurs</span>
           </div>
-          {PLUS_CONNECTORS.map(c => (
-            <div key={c.id} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '7px 10px', borderRadius: 10,
-              border: '0.5px solid var(--border)', marginBottom: 4,
-            }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={c.logo} alt={c.name} width={20} height={20} style={{ borderRadius: 5, objectFit: 'contain', flexShrink: 0, background: '#fff' }} />
-              <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text)' }}>{c.name}</span>
-              {c.connected ? (
-                <>
-                  <div style={{
-                    width: 28, height: 15, borderRadius: 8, background: '#06B6D4', position: 'relative', flexShrink: 0,
-                    animation: 'aip_toggle_pulse 0.3s ease-out',
-                  }}>
-                    <div style={{ position: 'absolute', top: 2, right: 2, width: 11, height: 11, borderRadius: '50%', background: '#fff' }} />
-                  </div>
-                  <span style={{ fontSize: 10, color: '#06B6D4', fontWeight: 500, flexShrink: 0 }}>Connecté</span>
-                </>
-              ) : (
-                <>
-                  <div style={{ width: 28, height: 15, borderRadius: 8, background: 'var(--border)', position: 'relative', flexShrink: 0 }}>
-                    <div style={{ position: 'absolute', top: 2, left: 2, width: 11, height: 11, borderRadius: '50%', background: '#fff' }} />
-                  </div>
-                  <a href="/connections" style={{ fontSize: 10, color: '#06B6D4', border: '0.5px solid #06B6D4', borderRadius: 4, padding: '2px 6px', marginLeft: 6, textDecoration: 'none', flexShrink: 0 }}>
-                    Connecter →
-                  </a>
-                </>
-              )}
-            </div>
-          ))}
+          {connectorsList}
         </div>
       )}
 
@@ -11953,13 +11990,34 @@ function PlusMenu({
     return <MobileSheet title="Ajouter à la discussion" onClose={onClose}>{body}</MobileSheet>
   }
   return (
-    <div ref={ref} className="aip-plus-menu" style={{
-      position: 'absolute', bottom: 'calc(100% + 8px)', left: 0,
-      minWidth: 260, borderRadius: 12, padding: 6,
-      boxShadow: '0 8px 32px rgba(0,0,0,0.24)', zIndex: 200,
-      maxHeight: '72vh', overflow: 'hidden', animation: 'aip_menu_up 0.18s ease-out',
-    }}>
-      {body}
+    <div ref={ref} style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 200 }}>
+      <div className="aip-plus-menu" style={{
+        position: 'relative',
+        minWidth: 260, borderRadius: 12, padding: 6,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
+        maxHeight: '72vh', overflow: activeScreen === 'main' ? 'visible' : 'hidden',
+        animation: 'aip_menu_up 0.18s ease-out',
+      }}>
+        {body}
+
+        {/* ── Flyout latéral (desktop) — ouvre la rubrique survolée à côté ── */}
+        {!isMobile && flyout && activeScreen === 'main' && (
+          <div
+            className="aip-plus-menu"
+            onMouseEnter={keepFlyout}
+            onMouseLeave={scheduleCloseFlyout}
+            style={{
+              position: 'absolute', left: 'calc(100% + 6px)', bottom: 0,
+              borderRadius: 12, padding: flyout === 'actions' ? 0 : 0,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
+              maxHeight: '72vh', overflow: 'hidden',
+              animation: 'ai_slidein 0.14s ease',
+            }}
+          >
+            {flyout === 'actions' ? actionsTwoColumns : connectorsList}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -18614,6 +18672,9 @@ export default function AIPanel({
   const [tokenLimitMsg, setTokenLimitMsg] = useState<string | null>(null)
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
   const [activeQA,    setActiveQA]    = useState<ActiveQuickAction | null>(null)
+  // Mode « Recherche Web » : force le coach à chercher sur internet pour le
+  // prochain message (instruction injectée + bascule sur un modèle compatible).
+  const [webSearchMode, setWebSearchMode] = useState(false)
   const [isDesktop,   setIsDesktop]   = useState(false)
   const [model,       setModel]       = useState<THWModel>('athena')
   const [method,      setMethod]      = useState<string>('auto')   // méthode d'entraînement (composer)
@@ -18800,12 +18861,18 @@ export default function AIPanel({
         const parts = name.trim().split(/\s+/)
         if (parts.length >= 2) setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase())
         else if (parts[0]) setUserInitials(parts[0][0].toUpperCase())
-        // Prénom — uniquement depuis full_name (jamais l'email)
-        const fullName = (user.user_metadata?.full_name ?? '').trim()
-        if (fullName) setUserFirstName(fullName.split(/\s+/)[0])
-        // Photo de profil — depuis profiles.avatar_url
-        const { data: prof } = await sb.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle()
+        // Prénom — depuis full_name si dispo (jamais l'email)
+        const metaFirst = (user.user_metadata?.full_name ?? '').trim().split(/\s+/)[0] ?? ''
+        // Photo de profil + prénom — depuis la table profiles (source fiable)
+        const { data: prof } = await sb.from('profiles').select('avatar_url,first_name').eq('id', user.id).maybeSingle()
         if (prof?.avatar_url) setUserAvatarUrl(prof.avatar_url as string)
+        // Le prénom du profil prime sur le full_name auth (souvent vide en prod)
+        const profFirst = ((prof?.first_name as string | null) ?? '').trim()
+        const first = profFirst || metaFirst
+        if (first) {
+          setUserFirstName(first)
+          if (!parts[0] || parts.length < 1) setUserInitials(first[0].toUpperCase())
+        }
       } catch { /* silent */ }
     })()
   }, [mounted])
@@ -19763,6 +19830,7 @@ export default function AIPanel({
     const quoteForSend = quotedText // capture before clearing
     setActiveQA(null)
     setQuotedText(null)
+    setWebSearchMode(false)         // le mode ne vaut que pour ce message
     if (areaRef.current) { areaRef.current.style.height = 'auto'; areaRef.current.focus() }
     setLoading(true)
 
@@ -19819,9 +19887,15 @@ export default function AIPanel({
       return displayText
     })()
     // Si une citation est active, la préfixer dans le prompt API
-    const apiContentText = quoteForSend
+    const quotedApiText = quoteForSend
       ? `À propos de ce passage : "${quoteForSend}"\n\n${rawApiText}`
       : rawApiText
+    // Mode « Recherche Web » : on instruit explicitement le coach d'utiliser sa
+    // recherche web. Capturé avant reset pour ne s'appliquer qu'à ce message.
+    const webForSend = webSearchMode
+    const apiContentText = webForSend
+      ? `[Recherche web demandée] Effectue une recherche web (outil web_search) pour fonder ta réponse sur des informations à jour et fiables, puis cite tes sources.\n\n${quotedApiText}`
+      : quotedApiText
 
     if (hasAttachment && attachment) {
       const blocks: { type: string; [k: string]: unknown }[] = []
@@ -20109,7 +20183,7 @@ export default function AIPanel({
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext])
+  }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext, webSearchMode])
 
   // ── Enriched actions — charge les données puis appelle send ──
   const handleEnrichedAction = useCallback(async (id: string, label: string) => {
@@ -20149,6 +20223,13 @@ export default function AIPanel({
         @keyframes ai_slidein {
           from { opacity:0; transform:translateY(8px); }
           to   { opacity:1; transform:translateY(0); }
+        }
+        /* Variante pour les dropdowns centrés (translateX(-50%)) : préserve le
+           centrage pendant l'animation, sinon l'élément saute horizontalement
+           puis « se remet » à la fin de l'anim. */
+        @keyframes ai_slidein_center {
+          from { opacity:0; transform:translate(-50%, 8px); }
+          to   { opacity:1; transform:translate(-50%, 0); }
         }
         @keyframes ai_sheet_up {
           from { transform:translateY(100%); }
@@ -21412,6 +21493,37 @@ export default function AIPanel({
                 </div>
               )}
 
+              {/* Chip « Recherche Web » active */}
+              {webSearchMode && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 12px',
+                  background: 'var(--ai-accent-soft, rgba(6,182,212,0.07))',
+                  borderBottom: '1px solid var(--ai-accent-line, rgba(6,182,212,0.15))',
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--ai-accent, #06B6D4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+                  </svg>
+                  <span style={{
+                    flex: 1, fontSize: 11, fontWeight: 600, color: 'var(--ai-accent, #06B6D4)',
+                    fontFamily: 'DM Sans, sans-serif',
+                  }}>
+                    Recherche Web — le coach cherchera sur internet
+                  </span>
+                  <button
+                    onClick={() => setWebSearchMode(false)}
+                    title="Désactiver"
+                    style={{
+                      width: 18, height: 18, borderRadius: '50%', border: 'none',
+                      background: 'var(--ai-accent-dim, rgba(6,182,212,0.15))', color: 'var(--ai-accent, #06B6D4)',
+                      cursor: 'pointer', fontSize: 13, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      lineHeight: 1,
+                    }}
+                  >×</button>
+                </div>
+              )}
+
               {/* Textarea — hidden during recording */}
               {!recording && (
                 <textarea
@@ -21486,6 +21598,13 @@ export default function AIPanel({
                       onClose={() => setPlusOpen(false)}
                       onClosePanel={onClose}
                       onForceModel={setModel}
+                      onWebSearch={() => {
+                        setPlusOpen(false)
+                        setWebSearchMode(true)
+                        // La recherche web n'est dispo que sur Athéna/Zeus → bascule si Hermès
+                        setModel(m => (m === 'hermes' ? 'athena' : m))
+                        setTimeout(() => areaRef.current?.focus(), 60)
+                      }}
                       onCamera={() => cameraRef.current?.click()}
                       onPhotos={() => photosRef.current?.click()}
                       onFiles={() => filesRef.current?.click()}

@@ -140,7 +140,7 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
           position: 'absolute', bottom: 'calc(100% + 10px)', left: '50%', transform: 'translateX(-50%)',
           background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14,
           boxShadow: '0 8px 28px rgba(0,0,0,0.16)', overflowY: 'auto', maxHeight: '60vh',
-          width: 264, zIndex: 50, padding: 6, color: 'var(--text)', animation: 'ai_slidein 0.14s ease',
+          width: 264, zIndex: 50, padding: 6, color: 'var(--text)', animation: 'ai_slidein_center 0.14s ease',
         }}>
           {content}
         </div>

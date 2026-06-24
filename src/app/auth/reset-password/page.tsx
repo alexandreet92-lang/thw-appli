@@ -48,7 +48,9 @@ export default function ResetPasswordPage() {
     const { error: e } = await sb.auth.updateUser({ password })
     setLoading(false)
     if (e) { setError(getAuthError(e)); return }
-    localStorage.setItem('last_auth_date', Date.now().toString())
+    const now = Date.now().toString()
+    localStorage.setItem('last_auth_date', now)
+    localStorage.setItem('thw_last_pw_auth', now)
     setSuccess(true)
     setTimeout(() => router.replace('/'), 2000)
   }

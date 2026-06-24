@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { SplashScreen } from '@/components/ui/SplashScreen'
 import GlobalSaveToast from '@/components/ui/GlobalSaveToast'
+import { ReauthGate } from '@/components/auth/ReauthGate'
 
 interface ClientShellProps {
   children: React.ReactNode
@@ -33,6 +34,7 @@ export function ClientShell({ children }: ClientShellProps) {
       )}
       {children}
       <GlobalSaveToast />
+      <ReauthGate />
     </>
   )
 }

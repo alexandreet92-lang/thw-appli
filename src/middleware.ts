@@ -67,15 +67,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/access-expired', request.url))
   }
 
-  // Vérifier onboarding uniquement si accès autorisé
+  // Mini-questionnaire one-shot : tant que le profil n'est pas configuré, on
+  // redirige vers /bienvenue (l'écran d'abonnement /onboarding viendra plus tard).
   const { data: profile } = await supabase
     .from('profiles')
-    .select('onboarding_completed')
+    .select('profile_setup_done')
     .eq('id', user.id)
     .single()
 
-  if (profile && !profile.onboarding_completed && path !== '/onboarding') {
-    return NextResponse.redirect(new URL('/onboarding', request.url))
+  if (profile && !profile.profile_setup_done && path !== '/bienvenue') {
+    return NextResponse.redirect(new URL('/bienvenue', request.url))
   }
 
   return response

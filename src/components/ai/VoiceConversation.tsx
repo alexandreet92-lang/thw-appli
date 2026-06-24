@@ -88,10 +88,8 @@ export function VoiceConversation({ onTurn, onClose }: {
 }) {
   const [mounted, setMounted] = useState(false)
   const [phase, setPhase] = useState<Phase>('listening')
-  const [live, setLive] = useState('')
   const [show, setShow] = useState('')
   const [supported, setSupported] = useState(true)
-  const [lastUser, setLastUser] = useState('')
   const [muted, setMuted] = useState(false)
   const [pressing, setPressing] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -165,14 +163,9 @@ export function VoiceConversation({ onTurn, onClose }: {
       // On n'accumule QUE pendant l'écoute (évite de polluer le tour suivant
       // avec ce qui est capté pendant la réflexion / la réponse de l'IA).
       if (phaseRef.current !== 'listening') return
-      let interim = ''
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript
-        if (e.results[i].isFinal) finalRef.current += t + ' '
-        else interim += t
+        if (e.results[i].isFinal) finalRef.current += e.results[i][0].transcript + ' '
       }
-      const txt = (finalRef.current + interim).trim()
-      setLive(txt)
       armSilence()
     }
     rec.onend = () => {
@@ -210,9 +203,7 @@ export function VoiceConversation({ onTurn, onClose }: {
   async function finalizeTurn() {
     const userText = finalRef.current.trim()
     finalRef.current = ''
-    setLive('')
     if (!userText) { setPhaseBoth('listening'); return }
-    setLastUser(userText)
     setPhaseBoth('thinking')
     let res = { speak: '', show: '' }
     try { res = await onTurn(userText) } catch { /* erreur réseau */ }
@@ -358,8 +349,8 @@ export function VoiceConversation({ onTurn, onClose }: {
   if (!mounted) return null
 
   const status = !supported ? 'Vocal non supporté sur ce navigateur'
-    : phase === 'thinking' ? 'Je réfléchis…'
-    : phase === 'speaking' ? 'Réponse'
+    : phase === 'thinking' ? 'Ok, je m’en occupe…'
+    : phase === 'speaking' ? ''
     : muted ? 'Micro coupé'
     : settings.mode === 'push' ? (pressing ? 'Je t’écoute…' : 'Maintiens le micro pour parler')
     : 'Je t’écoute…'
@@ -413,20 +404,13 @@ export function VoiceConversation({ onTurn, onClose }: {
           </div>
         </div>
 
-        {/* Contenu (transcription utilisateur ou réponse écrite) */}
-        {phase === 'speaking' && show ? (
+        {/* Contenu : on n'affiche QUE la réponse écrite de l'IA (pas ce que dit
+            l'utilisateur — l'orbe + le statut suffisent en écoute/réflexion). */}
+        {phase === 'speaking' && show && (
           <div style={{ width: '100%', display: 'flex', justifyContent: 'center', animation: 'vc_in 0.25s ease' }}>
             <RichEcrit text={show} />
           </div>
-        ) : phase === 'thinking' && lastUser ? (
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--ai-dim)', maxWidth: 320, textAlign: 'center', lineHeight: 1.45 }}>
-            « {lastUser.length > 80 ? lastUser.slice(0, 80) + '…' : lastUser} »
-          </p>
-        ) : phase === 'listening' ? (
-          <p style={{ margin: 0, textAlign: 'center', fontFamily: 'var(--font-display, Fraunces), Georgia, serif', fontSize: 'clamp(19px, 4.6vw, 27px)', lineHeight: 1.4, color: 'var(--ai-text)', fontStyle: !live ? 'italic' : 'normal' }}>
-            {live || (muted ? '' : '…')}
-          </p>
-        ) : null}
+        )}
       </div>
 
       {/* Barre de contrôle : ⚙️ · 🎤 · ✕ (image 5) */}

@@ -602,16 +602,13 @@ Ta réponse PARLÉE : conversationnelle, naturelle, 2 à 5 phrases courtes, SANS
     ? [...cachedCustom, { type: 'web_search_20260209', name: 'web_search', max_uses: 5 }]
     : cachedCustom) as unknown as Anthropic.ToolUnion[]
 
-  // ── Raisonnement étendu (extended thinking) ──
-  // Streamé en direct vers le front (event « thinking ») et affiché dans la
-  // feuille « Processus de réflexion ». Réservé aux modèles avancés (Athéna/Zeus)
-  // pour ne pas ralentir Hermès. Les blocs de pensée sont automatiquement
-  // réinjectés dans convMessages (finalMsg.content) entre les étapes d'outils.
-  // Central uniquement : les flows guidés attendent une sortie JSON stricte et
-  // n'affichent pas la feuille de raisonnement → on évite la latence superflue.
-  const thinkingEnabled =
-    (chatBody as { agentId?: string }).agentId === 'central' &&
-    (cappedKey === 'athena' || cappedKey === 'zeus')
+  // ── Raisonnement étendu (extended thinking) — DÉSACTIVÉ ──
+  // Mis en pause : il ajoutait trop de latence (le coach « réfléchissait » trop
+  // longtemps, même pour une question simple) et déclenchait des erreurs sur le
+  // chat. On privilégie des réponses rapides. Pour le réactiver plus tard
+  // (feuille « Processus de réflexion »), repasser thinkingEnabled à la condition
+  // agentId === 'central' && (athena|zeus) et streamer l'event « thinking ».
+  const thinkingEnabled = false
   const thinkingParam = thinkingEnabled
     ? { thinking: { type: 'enabled' as const, budget_tokens: 2048 } }
     : {}

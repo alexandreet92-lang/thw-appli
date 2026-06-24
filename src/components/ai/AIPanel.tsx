@@ -21189,29 +21189,15 @@ export default function AIPanel({
                             animation: 'fadeUp 0.2s ease-out',
                           }}>
                             {showThinking ? (
-                              <button
-                                onClick={() => { if (msg.thinking) setReasoningMsgId(msg.id) }}
-                                title={msg.thinking ? 'Voir le raisonnement' : undefined}
-                                style={{
-                                  display: 'flex', gap: 8, alignItems: 'center', padding: '4px 8px 4px 2px',
-                                  border: 'none', background: 'transparent',
-                                  cursor: msg.thinking ? 'pointer' : 'default', borderRadius: 8,
-                                  fontFamily: 'inherit',
-                                }}
-                              >
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 2px' }}>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={model === 'hermes' ? '/logos/logo_3bras.png' : model === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
                                   alt=""
                                   style={{ width: 16, height: 16, objectFit: 'contain', animation: 'spin 2.4s linear infinite', opacity: 0.85 }}
                                 />
-                                <span className="ai-shimmer" style={{ fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-display)' }}>Réflexion…</span>
-                                {msg.thinking && (
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                                    <path d="M9 18l6-6-6-6" />
-                                  </svg>
-                                )}
-                              </button>
+                                <span className="ai-shimmer" style={{ fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-display)' }}>Ok, je m&apos;en occupe…</span>
+                              </div>
                             ) : (
                               <TypedText text={msg.content} isStreaming={isStreamingMsg} fontFamily="var(--font-display)" />
                             )}

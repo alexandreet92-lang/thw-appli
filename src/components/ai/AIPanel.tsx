@@ -23,7 +23,6 @@ import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard
 import { fetchRemoteConvs, pushConvs, deleteRemoteConv, mergeConvs, type SyncConv } from '@/lib/ai/conversations-sync'
 import { PlanProposalCard, type PlanProposal, type GenProgram, type PlanRequirements } from './PlanProposalCard'
 import { MethodPicker } from './MethodPicker'
-import ActiveCompetencesBadge from '@/components/ai-coach/ActiveCompetencesBadge'
 import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
 import TopupEmailModal from '@/components/topup/TopupEmailModal'
 import { MODEL_BADGE, quickActionEstimate, fmtEstimate } from '@/lib/quick-actions/models'
@@ -19708,6 +19707,7 @@ export default function AIPanel({
     rec.lang = 'fr-FR'
     rec.continuous = true
     rec.interimResults = true
+    rec.maxAlternatives = 1
     speechRef.current = rec
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onresult = (e: any) => {
@@ -19730,11 +19730,12 @@ export default function AIPanel({
     }
     rec.onend = () => {
       // Reconnaissance terminée (pause sur iOS) : relancer tant qu'on enregistre.
+      // Léger délai pour éviter l'erreur « already started » sur certains navigateurs.
       if (speechRef.current === rec) {
-        try { rec.start() } catch { /* déjà démarrée */ }
+        setTimeout(() => { if (speechRef.current === rec) { try { rec.start() } catch { /* déjà démarrée */ } } }, 120)
       }
     }
-    rec.start()
+    try { rec.start() } catch { /* déjà démarrée */ }
   }, [stopVoice])
 
   // ── Création de plan : génération de l'aperçu (avant validation) ──
@@ -21509,8 +21510,8 @@ export default function AIPanel({
             <input ref={photosRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileSelected} />
             <input ref={filesRef}  type="file" accept=".pdf,image/*,.doc,.docx,.txt" style={{ display: 'none' }} onChange={handleFileSelected} />
 
-            {/* ── Compétences actives (Training uniquement) ── */}
-            <ActiveCompetencesBadge />
+            {/* Compétences actives : visibles via le flyout du bouton Compétences
+                (menu « + »), plus affichées en pastilles bleues au-dessus du champ. */}
 
             {/* ── Conteneur principal de saisie ── */}
             <div className="aip-input-wrap" style={{

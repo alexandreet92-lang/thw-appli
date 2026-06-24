@@ -14,6 +14,15 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+// Diagnostic public (aucun secret exposé) : permet de vérifier en ouvrant
+// /api/tts dans le navigateur si la clé OpenAI est bien prise en compte.
+export async function GET() {
+  return new Response(
+    JSON.stringify({ configured: !!process.env.OPENAI_API_KEY }),
+    { headers: { 'Content-Type': 'application/json' } },
+  )
+}
+
 type StyleKey = 'douce' | 'neutre' | 'energique'
 
 // Voix OpenAI + consigne de ton par style (manière de parler)
@@ -63,20 +72,28 @@ export async function POST(req: Request) {
     const { voice, instructions } = STYLES[styleKey]
     const langLabel = LANG_LABEL[body.language ?? 'fr-FR'] ?? 'français'
 
-    const res = await fetch('https://api.openai.com/v1/audio/speech', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini-tts',
-        input,
-        voice,
-        instructions: `${instructions} Parle en ${langLabel}.`,
-        response_format: 'mp3',
-      }),
+    const callOpenAI = (body: Record<string, unknown>) =>
+      fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+    // 1) Modèle premium avec contrôle du ton (instructions).
+    let res = await callOpenAI({
+      model: 'gpt-4o-mini-tts',
+      input,
+      voice,
+      instructions: `${instructions} Parle en ${langLabel}.`,
+      response_format: 'mp3',
     })
+
+    // 2) Repli sur tts-1 si le compte n'a pas accès au modèle premium.
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '')
+      console.error('[api/tts] gpt-4o-mini-tts error', res.status, detail.slice(0, 200))
+      res = await callOpenAI({ model: 'tts-1', input, voice, response_format: 'mp3' })
+    }
 
     if (!res.ok) {
       const detail = await res.text().catch(() => '')

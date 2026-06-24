@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 const ACCENT = '#3C90D5'
-const SILENCE_MS = 2200
+const SILENCE_MS = 1400
 // WAV silencieux minimal — sert à déverrouiller la lecture audio sur iOS.
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='
 

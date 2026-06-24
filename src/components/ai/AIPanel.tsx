@@ -19934,7 +19934,9 @@ export default function AIPanel({
     if (isNew) setActiveId(updated.id)
 
     const cid      = updated.id
-    const snapshot = model   // capture le modèle au moment du send
+    // Mode vocal → modèle rapide (Hermès) pour une conversation réactive.
+    // Sinon on garde le modèle choisi par l'utilisateur.
+    const snapshot: THWModel = opts?.voice ? 'hermes' : model
 
     // Construire le contenu du dernier message utilisateur
     // Les messages précédents restent en texte ; le dernier peut avoir un bloc image/doc

@@ -475,50 +475,28 @@ réaliste adaptée à CET athlète.`
     }
   }
 
-  // ── Compétences actives — uniquement agent Training (agentId 'central') ──
-  if ((chatBody as { agentId?: string }).agentId === 'central') {
-    try {
-      const competencesBlock = await getActiveCompetencesPrompt(userId)
-      if (competencesBlock) systemWithTools = `${systemWithTools}\n\n${competencesBlock}`
-    } catch (e) {
-      console.error('[coach-stream] competences injection failed:', e)
-    }
-  }
-
-  // ── Contexte athlète (socle de cohérence) — chargé côté serveur à
-  //    CHAQUE message du coach central, pour que même une phrase tapée
-  //    soit raisonnée sur les données réelles (charge, activités, récup,
-  //    planning, courses, blessures, plan en cours). Fail-open : si la
-  //    construction échoue, le coach répond quand même.
-  //    Mémoire = souvenir des échanges passés (continuité, conversation
-  //    en cours exclue via convId). Les deux sont fail-open et partagent
-  //    un même client Supabase.
+  // ── Contexte central : compétences + contexte athlète + mémoire + insights
+  //    chargés EN PARALLÈLE (avant c'était partiellement séquentiel → latence).
+  //    Tous fail-open : si l'un échoue, le coach répond quand même.
   if ((chatBody as { agentId?: string }).agentId === 'central') {
     try {
       const sbCtx = await createClient()
       const convId = (chatBody as { convId?: string }).convId
-      const [athleteCtx, memory] = await Promise.all([
+      const lastUserMsg = [...(chatBody.messages ?? [])].reverse().find(m => m.role === 'user')
+      const lastText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : ''
+      const [competencesBlock, athleteCtx, memory, insights] = await Promise.all([
+        getActiveCompetencesPrompt(userId).catch(() => ''),
         buildAthleteContext(sbCtx, userId).catch(() => ''),
         buildCoachMemory(sbCtx, userId, convId).catch(() => ''),
+        buildLearnedInsights(lastText).catch(() => ''),
       ])
-      if (athleteCtx) systemWithTools = `${systemWithTools}\n\n${athleteCtx}`
-      if (memory) systemWithTools = `${systemWithTools}\n\n${memory}`
+      // Append dans l'ordre stable (compétences → contexte → mémoire → insights)
+      if (competencesBlock) systemWithTools = `${systemWithTools}\n\n${competencesBlock}`
+      if (athleteCtx)       systemWithTools = `${systemWithTools}\n\n${athleteCtx}`
+      if (memory)           systemWithTools = `${systemWithTools}\n\n${memory}`
+      if (insights)         systemWithTools = `${systemWithTools}\n\n${insights}`
     } catch (e) {
-      console.error('[coach-stream] athlete context / memory injection failed:', e)
-    }
-  }
-
-  // ── Enseignements appris (couche d'apprentissage, phase 2) ──
-  //    Insights inter-utilisateurs validés manuellement, ciblés sur le
-  //    sport + les mots-clés du dernier message. Fail-open.
-  if ((chatBody as { agentId?: string }).agentId === 'central') {
-    try {
-      const lastUser = [...(chatBody.messages ?? [])].reverse().find(m => m.role === 'user')
-      const lastText = typeof lastUser?.content === 'string' ? lastUser.content : ''
-      const insights = await buildLearnedInsights(lastText)
-      if (insights) systemWithTools = `${systemWithTools}\n\n${insights}`
-    } catch (e) {
-      console.error('[coach-stream] learned insights injection failed:', e)
+      console.error('[coach-stream] central context injection failed:', e)
     }
   }
 

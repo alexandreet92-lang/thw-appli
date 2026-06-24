@@ -106,7 +106,7 @@ export function TriathlonDrawer(p: TriathlonDrawerProps) {
             <p style={fieldLbl}>FC moyenne (bpm)</p>{subInp(bikeHr, setBikeHr, 'ex : 152', 'number')}
           </TriSegment>
           <TriSegment title="T2 — Transition" time={t2} setTime={setT2} timeLabel="Durée (mm:ss)" />
-          <TriSegment title="Course à pied" distLabel={fmtRun} dot={RUN_DOT} segment="run" time={run} setTime={setRun} auto={runAuto} onLink={a => link('run', a)} chips={chips.run} linked={!!chips.run}>
+          <TriSegment title="Running" distLabel={fmtRun} dot={RUN_DOT} segment="run" time={run} setTime={setRun} auto={runAuto} onLink={a => link('run', a)} chips={chips.run} linked={!!chips.run}>
             <p style={fieldLbl}>FC moyenne (bpm)</p>{subInp(runHr, setRunHr, 'ex : 158', 'number')}
           </TriSegment>
 

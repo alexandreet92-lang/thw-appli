@@ -369,7 +369,7 @@ function formatZonesSection(zones: Record<string, any>): string {
   const lines: string[] = []
 
   const zoneMap: Record<string, string> = {
-    run:       'Course à pied',
+    run:       'Running',
     bike:      'Cyclisme',
     swim:      'Natation',
     rowing:    'Aviron',

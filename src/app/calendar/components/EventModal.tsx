@@ -25,7 +25,7 @@ interface Props {
 }
 
 const STAGE_SPORTS: { id: StageSport; label: string; color: string }[] = [
-  { id:'run',   label:'Course à pied', color:'#f97316' },
+  { id:'run',   label:'Running', color:'#22c55e' },
   { id:'trail', label:'Trail',         color:'#84cc16' },
   { id:'bike',  label:'Cyclisme',      color:'#3b82f6' },
   { id:'swim',  label:'Natation',      color:'#06b6d4' },

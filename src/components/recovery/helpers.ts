@@ -54,10 +54,10 @@ export function localToday(): string {
 }
 
 export const SPORT_COLORS: Record<string, string> = {
-  run:'#f97316', running:'#f97316',
+  run:'#22c55e', running:'#22c55e',
   bike:'#3b82f6', cycling:'#3b82f6', ride:'#3b82f6',
   swim:'#06b6d4', swimming:'#06b6d4',
-  gym:'#8b5cf6', weighttraining:'#8b5cf6', workout:'#8b5cf6',
+  gym:'#f97316', weighttraining:'#f97316', workout:'#f97316',
   hyrox:'#ef4444',
   rowing:'#14b8a6',
   elliptique:'#a855f7',

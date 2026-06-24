@@ -219,6 +219,6 @@ Anatomie validée, à imiter :
 
 ## Annexe — couleurs immuables (référence)
 
-Sport : `run #f97316` · `bike #3b82f6` · `swim #06b6d4` · `gym #8b5cf6` ·
+Sport : `run #22c55e` (vert) · `bike #3b82f6` · `swim #06b6d4` · `gym #f97316` (orange) ·
 `hyrox #ec4899` · `rowing #14b8a6`.
 Zones : `Z1 #9ca3af` · `Z2 #22c55e` · `Z3 #eab308` · `Z4 #f97316` · `Z5 #ef4444`.

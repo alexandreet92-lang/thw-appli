@@ -80,7 +80,7 @@ const SPORT_LABEL: Record<string,string> = {
 }
 const SPORT_COLOR: Record<string,string> = {
   run:'#22c55e', bike:'#3b82f6', swim:'#38bdf8', rowing:'#14b8a6',
-  hyrox:'#ef4444', triathlon:'#a855f7', trail:'#f97316', gym:'#ffb340'
+  hyrox:'#ef4444', triathlon:'#a855f7', trail:'#f97316', gym:'#f97316'
 }
 
 // ══════════════════════════════════════════════════

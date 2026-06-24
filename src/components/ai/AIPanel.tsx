@@ -1166,7 +1166,7 @@ function SessionBlockChart({ blocks, total, sport }: { blocks: SessionBlock[]; t
 // ── AddToPlanningModal ────────────────────────────────────────
 
 const SPORT_LABELS_FR: Record<string, string> = {
-  running: 'Course à pied', cycling: 'Vélo', swim: 'Natation',
+  running: 'Running', cycling: 'Vélo', swim: 'Natation',
   rowing: 'Aviron', hyrox: 'Hyrox', gym: 'Muscu',
 }
 
@@ -2310,7 +2310,7 @@ const NUTRITION_STEPS: NutritionStep[] = [
   },
   {
     question: 'Quels sports pratiques-tu principalement ?',
-    options: ['Course à pied', 'Cyclisme', 'Natation', 'Hyrox', 'Musculation', 'Aviron', 'Trail'],
+    options: ['Running', 'Cyclisme', 'Natation', 'Hyrox', 'Musculation', 'Aviron', 'Trail'],
     multi: true,
   },
   {
@@ -7507,8 +7507,8 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
       <TpSectionWrap id="performance" label="Performance" ok={perfOk} total={11} isOpen={open.performance} onToggle={() => toggle('performance')}>
         <TpSubRow label="Zones puissance vélo"       ok={s?.zones_bike   ?? false} link="/performance" />
         <TpSubRow label="Records puissance vélo"      ok={!!(s?.records_bike)} count={s?.records_bike} link="/performance" />
-        <TpSubRow label="Zones allure course à pied"  ok={s?.zones_run    ?? false} link="/performance" />
-        <TpSubRow label="Records course à pied"       ok={!!(s?.records_run)}  count={s?.records_run}  link="/performance" />
+        <TpSubRow label="Zones allure running"  ok={s?.zones_run    ?? false} link="/performance" />
+        <TpSubRow label="Records running"       ok={!!(s?.records_run)}  count={s?.records_run}  link="/performance" />
         <TpSubRow label="Zones allure natation"       ok={s?.zones_swim   ?? false} link="/performance" />
         <TpSubRow label="Records natation"            ok={!!(s?.records_swim)} count={s?.records_swim} link="/performance" />
         <TpSubRow label="Zones FC"                    ok={s?.zones_hr     ?? false} link="/performance" />
@@ -9149,7 +9149,7 @@ function TrainingPlanFlow({
                         { label: 'T1',             value: race.tri_goal_t1  ?? '', onCh: (v: string) => updateGoalRace(idx, { tri_goal_t1:   v }), fmt: 'mm:ss' },
                         { label: 'Vélo',           value: race.tri_goal_bike ?? '', onCh: (v: string) => updateGoalRace(idx, { tri_goal_bike: v }), fmt: 'hh:mm' },
                         { label: 'T2',             value: race.tri_goal_t2  ?? '', onCh: (v: string) => updateGoalRace(idx, { tri_goal_t2:   v }), fmt: 'mm:ss' },
-                        { label: 'Course à pied',  value: race.tri_goal_run ?? '', onCh: (v: string) => updateGoalRace(idx, { tri_goal_run:  v }), fmt: 'hh:mm' },
+                        { label: 'Running',  value: race.tri_goal_run ?? '', onCh: (v: string) => updateGoalRace(idx, { tri_goal_run:  v }), fmt: 'hh:mm' },
                       ].map(({ label, value, onCh, fmt }) => (
                         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 11, color: '#9ca3af', width: 90, flexShrink: 0 }}>{label}</span>

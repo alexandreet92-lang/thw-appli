@@ -103,11 +103,11 @@ export function estimateTss(row: ActivityRow): number {
 
 /** Sport color */
 export const SPORT_COLORS: Record<string, string> = {
-  run:'#f97316', running:'#f97316',
+  run:'#22c55e', running:'#22c55e',
   trail_run:'#84cc16', trail:'#84cc16',
   bike:'#3b82f6', cycling:'#3b82f6', ride:'#3b82f6', virtualride:'#3b82f6', virtual_bike:'#60a5fa',
   swim:'#06b6d4', swimming:'#06b6d4', open_water_swim:'#0891b2',
-  gym:'#8b5cf6', weighttraining:'#8b5cf6', workout:'#8b5cf6', crossfit:'#a855f7', hiit:'#c084fc', yoga:'#d8b4fe',
+  gym:'#f97316', weighttraining:'#f97316', workout:'#f97316', crossfit:'#a855f7', hiit:'#c084fc', yoga:'#d8b4fe',
   hyrox:'#ef4444', rowing:'#14b8a6',
   ski:'#93c5fd', other:'#6b7280',
 }

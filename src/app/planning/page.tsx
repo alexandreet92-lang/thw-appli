@@ -46,7 +46,7 @@ export type CyclingSub    = 'velo' | 'vtt' | 'ht'
 
 // ── Constants ─────────────────────────────────────
 export const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.13)', run:'rgba(249,115,22,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(239,68,68,0.13)', gym:'rgba(139,92,246,0.13)', rowing:'rgba(20,184,166,0.13)', elliptique:'rgba(168,85,247,0.13)' }
-export const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#f97316', bike:'#3b82f6', hyrox:'#ef4444', gym:'#8b5cf6', rowing:'#14b8a6', elliptique:'#a855f7' }
+export const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#22c55e', bike:'#3b82f6', hyrox:'#ef4444', gym:'#f97316', rowing:'#14b8a6', elliptique:'#a855f7' }
 
 export const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron', elliptique:'Elliptique' }
 export const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW', elliptique:'ELLIP' }
@@ -1437,12 +1437,12 @@ function AiPlanBubble({ plan }: { plan: AiTrainingPlan }) {
 function exportPlanToPDF(plan: AiTrainingPlan) {
   const semaines = plan.ai_context?.program?.semaines ?? []
   const SPORT_NAMES: Record<string, string> = {
-    run:'Course à pied', bike:'Cyclisme', swim:'Natation',
+    run:'Running', bike:'Cyclisme', swim:'Natation',
     hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron',
   }
   const SPORT_COLORS: Record<string, string> = {
-    run:'#f97316', bike:'#3b82f6', swim:'#06b6d4',
-    hyrox:'#ec4899', gym:'#8b5cf6', rowing:'#14b8a6',
+    run:'#22c55e', bike:'#3b82f6', swim:'#06b6d4',
+    hyrox:'#ec4899', gym:'#f97316', rowing:'#14b8a6',
   }
   const INTENS_LABEL_PDF: Record<string, string> = {
     low:'Endurance', moderate:'Tempo / Z3', high:'Intensif / Z4', max:'VO2max / Z5',
@@ -4686,7 +4686,7 @@ function RaceAddModal({ month, day, year, onClose, onSave }:{ month:number; day?
   const dd = `${year}-${String(month+1).padStart(2,'0')}-${String(day||1).padStart(2,'0')}`
   const [sport,setSport]=useState<RaceSport>('run'); const [name,setName]=useState(''); const [date,setDate]=useState(dd); const [level,setLevel]=useState<RaceLevel>('important'); const [runDist,setRunDist]=useState(RUN_DISTANCES[2]); const [triDist,setTriDist]=useState(TRI_DISTANCES[1]); const [hyroxCat,setHyroxCat]=useState(''); const [hyroxLvl,setHyroxLvl]=useState(''); const [hyroxGen,setHyroxGen]=useState(''); const [goalTime,setGoalTime]=useState(''); const [goalSwim,setGoalSwim]=useState(''); const [goalBike,setGoalBike]=useState(''); const [goalRun,setGoalRun]=useState('')
   const RACE_SPORTS: RaceSport[] = ['run','trail','bike','swim','hyrox','triathlon','rowing']
-  const RSL: Record<RaceSport,string> = {run:'Course à pied',trail:'Trail',bike:'Cyclisme',swim:'Natation',hyrox:'Hyrox',triathlon:'Triathlon',rowing:'Aviron'}
+  const RSL: Record<RaceSport,string> = {run:'Running',trail:'Trail',bike:'Cyclisme',swim:'Natation',hyrox:'Hyrox',triathlon:'Triathlon',rowing:'Aviron'}
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
       <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:500,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>

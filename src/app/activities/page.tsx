@@ -185,8 +185,8 @@ function normalizeSport(sport: string): string {
 }
 
 const SPORT_COLOR: Record<SportType, string> = {
-  run: '#f97316', trail_run: '#f97316', bike: '#3b82f6', virtual_bike: '#60a5fa',
-  swim: '#06b6d4', rowing: '#14b8a6', hyrox: '#ec4899', gym: '#8b5cf6', other: '#94a3b8',
+  run: '#22c55e', trail_run: '#f97316', bike: '#3b82f6', virtual_bike: '#60a5fa',
+  swim: '#06b6d4', rowing: '#14b8a6', hyrox: '#ec4899', gym: '#f97316', other: '#94a3b8',
 }
 
 const TIME_FILTER_LABEL: Record<TimeFilter, string> = {
@@ -4321,11 +4321,11 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
 // ─────────────────────────────────────────────────────────────
 
 const SPORT_PILL_COLOR: Record<string, string> = {
-  run:       '#10B981',
+  run:       '#22c55e',
   trail_run: '#F97316',
   bike:      '#06B6D4',
   swim:      '#0EA5E9',
-  gym:       '#8B5CF6',
+  gym:       '#f97316',
   hyrox:     '#7C3AED',
   rowing:    '#EF4444',
 }

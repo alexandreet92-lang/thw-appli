@@ -4157,7 +4157,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         id: '', dayIndex: savedSession.dayIndex, sport: 'run',
         title: 'Brick run', time: runStart, durationMin: 20,
         status: 'planned', rpe, planVariant: selPlan, brickId,
-        blocks: [{ id: `b_${Date.now()}`, mode: 'single', type: 'effort', durationMin: 20, zone: 2, value: '', hrAvg: '', label: 'Course à pied' }],
+        blocks: [{ id: `b_${Date.now()}`, mode: 'single', type: 'effort', durationMin: 20, zone: 2, value: '', hrAvg: '', label: 'Running' }],
       })
     }
     onClose()
@@ -4940,7 +4940,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     }}>{CYCLING_SUB_LABEL[sub]}</button>
                   ))}
                   {/* Brick Run : enchaînement vélo→course (crée une course liée). */}
-                  <button onClick={() => setBrickRun(b => !b)} title="Enchaînement vélo → course à pied"
+                  <button onClick={() => setBrickRun(b => !b)} title="Enchaînement vélo → running"
                     style={{
                       padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
                       marginLeft: 'auto',

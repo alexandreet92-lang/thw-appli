@@ -33,10 +33,10 @@
 
 :root {
   /* ── Sport colors — fixes, immuables ─────────── */
-  --sport-run:    #f97316;
+  --sport-run:    #22c55e;
   --sport-bike:   #3b82f6;
   --sport-swim:   #06b6d4;
-  --sport-gym:    #8b5cf6;
+  --sport-gym:    #f97316;
   --sport-hyrox:  #ec4899;
   --sport-rowing: #14b8a6;
 
@@ -51,7 +51,7 @@
 
   /* ── Bibliothèque — teintes par sport (accent + soft) ── */
   --lib-muscu: #f97316;     --lib-muscu-soft: rgba(249,115,22,0.14);
-  --lib-running: #10b981;   --lib-running-soft: rgba(16,185,129,0.14);
+  --lib-running: #22c55e;   --lib-running-soft: rgba(34,197,94,0.14);
   --lib-trail: #14b8a6;     --lib-trail-soft: rgba(20,184,166,0.14);
   --lib-velo: #3b82f6;      --lib-velo-soft: rgba(59,130,246,0.14);
   --lib-natation: #06b6d4;  --lib-natation-soft: rgba(6,182,212,0.14);

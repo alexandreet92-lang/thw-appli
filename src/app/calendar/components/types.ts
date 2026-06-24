@@ -48,7 +48,7 @@ export const RACE_CFG: Record<RaceLevel, { label: string; color: string; bg: str
 }
 
 export const SPORT_LABEL: Record<RaceSport, string> = {
-  run:'Course à pied', trail:'Trail', bike:'Cyclisme', swim:'Natation',
+  run:'Running', trail:'Trail', bike:'Cyclisme', swim:'Natation',
   hyrox:'Hyrox', triathlon:'Triathlon', rowing:'Aviron',
 }
 export const SPORT_COLOR: Record<RaceSport, string> = {

@@ -35,7 +35,7 @@ const STAGE_PLANNING_SPORT: Record<StageSport, string> = {
   run: 'run', trail: 'run', bike: 'bike', swim: 'swim', hyrox: 'hyrox', rowing: 'rowing', muscu: 'gym',
 }
 const STAGE_SPORT_LABEL: Record<StageSport, string> = {
-  run: 'Course à pied', trail: 'Trail', bike: 'Cyclisme', swim: 'Natation', hyrox: 'Hyrox', rowing: 'Aviron', muscu: 'Muscu',
+  run: 'Running', trail: 'Trail', bike: 'Cyclisme', swim: 'Natation', hyrox: 'Hyrox', rowing: 'Aviron', muscu: 'Muscu',
 }
 import ClockView, { type ClockEvent } from './components/ClockView'
 import DayModal from './components/DayModal'
@@ -495,7 +495,7 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
   const [goalBike, setGoalBike] = useState('')
   const [goalRun,  setGoalRun]  = useState('')
   const RACE_SPORTS: RaceSport[] = ['run','trail','bike','swim','hyrox','triathlon','rowing']
-  const RSL: Record<RaceSport, string> = { run:'Course à pied',trail:'Trail',bike:'Cyclisme',swim:'Natation',hyrox:'Hyrox',triathlon:'Triathlon',rowing:'Aviron' }
+  const RSL: Record<RaceSport, string> = { run:'Running',trail:'Trail',bike:'Cyclisme',swim:'Natation',hyrox:'Hyrox',triathlon:'Triathlon',rowing:'Aviron' }
 
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
@@ -986,7 +986,7 @@ function ObjectiveChooser({ date, onClose, onCourse, onStage }: {
           <button onClick={onCourse} style={card}>
             <Trophy size={26} color="#06B6D4" />
             <span style={{ fontWeight: 700, fontSize: 15 }}>Course</span>
-            <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>Compétition : course à pied, trail, cyclisme…</span>
+            <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>Compétition : running, trail, cyclisme…</span>
           </button>
           <button onClick={onStage} style={card}>
             <CalendarDays size={26} color="#5b6fff" />

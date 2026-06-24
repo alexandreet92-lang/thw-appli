@@ -52,7 +52,7 @@ const SPORT_DS_COLOR: Record<string, string> = {
   swimming: '#06b6d4',
   rowing:   '#14b8a6',
   hyrox:    '#ec4899',
-  gym:      '#8b5cf6',
+  gym:      '#f97316',
   ski:      '#9ca3af',
   other:    '#9ca3af',
 }
@@ -787,7 +787,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
   if (!mounted) return null
 
   const COLOR: Partial<Record<RecordSport, string>> = {
-    bike: '#EAB308', run: '#F97316', swim: '#06B6D4',
+    bike: '#EAB308', run: '#22c55e', swim: '#06B6D4',
     rowing: '#0EA5E9', hyrox: '#EF4444', triathlon: '#8B5CF6', gym: '#f97316',
   }
   const SPORT_LABEL: Partial<Record<RecordSport, string>> = {
@@ -2843,7 +2843,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
           <RunningRadar profile={profile} />
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records course à pied</h2>
+              <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records running</h2>
             </div>
             <TimeBarChart records={allSpRecords.filter(r => r.sport === 'run')} chartDists={CHART_DISTS.run} color="#22c55e" />
             {RUN_DISTS.map(d => {

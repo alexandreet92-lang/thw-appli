@@ -71,7 +71,7 @@ export function MainFields(p: {
 
       {/* Brick Run : enchaînement vélo → course à pied (crée une course liée) */}
       {p.sport === 'bike' && (
-        <button type="button" onClick={() => p.setBrickRun(!p.brickRun)} title="Enchaînement vélo → course à pied"
+        <button type="button" onClick={() => p.setBrickRun(!p.brickRun)} title="Enchaînement vélo → running"
           style={{ alignSelf: 'flex-start', padding: '10px 16px', borderRadius: 999, cursor: 'pointer', fontSize: 13, fontWeight: 700,
             border: `1px solid ${p.brickRun ? sportColor('run') : 'var(--se-rule)'}`,
             background: p.brickRun ? `${sportColor('run')}1f` : 'var(--se-card)',

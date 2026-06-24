@@ -163,7 +163,7 @@ const SPORT_CATEGORIES: { name: string; sports: Sport[] }[] = [
   {
     name: 'Sports à pied',
     sports: [
-      { id: 'running', label: 'Course à pied', icon: <RunIcon /> },
+      { id: 'running', label: 'Running', icon: <RunIcon /> },
       { id: 'trail',   label: 'Trail',         icon: <TrailIcon /> },
       { id: 'hiking',  label: 'Randonnée',     icon: <HikingIcon /> },
     ],

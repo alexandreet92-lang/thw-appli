@@ -119,8 +119,8 @@ const SESSION_TYPES: Record<string, string[]> = {
 }
 
 const SPORTS: { id: Sport; label: string; sub: string; color: string }[] = [
-  { id:'muscu',    label:'Muscu / Renfo',  sub:'Circuits, séries, reps',   color:'#8b5cf6' },
-  { id:'running',  label:'Running',        sub:'Blocs, intervalles, allure',color:'#f97316' },
+  { id:'muscu',    label:'Muscu / Renfo',  sub:'Circuits, séries, reps',   color:'#f97316' },
+  { id:'running',  label:'Running',        sub:'Blocs, intervalles, allure',color:'#22c55e' },
   { id:'velo',     label:'Vélo / Home trainer', sub:'Watts, zones, blocs',  color:'#3b82f6' },
   { id:'natation', label:'Natation',       sub:'Séries, distances, zones',  color:'#06b6d4' },
   { id:'hyrox',    label:'Hyrox',          sub:'Ateliers, circuits, runs',  color:'#ec4899' },

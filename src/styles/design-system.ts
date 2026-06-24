@@ -12,10 +12,10 @@ export const color = {
 
   // Sports
   sport: {
-    running:  '#f97316',   // orange vif
+    running:  '#22c55e',   // vert
     cycling:  '#06B6D4',   // cyan
     hyrox:    '#a855f7',   // violet
-    gym:      '#22c55e',   // vert
+    gym:      '#f97316',   // orange
   },
 
   // Sémantique

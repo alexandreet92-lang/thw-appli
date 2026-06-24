@@ -14,7 +14,7 @@ export const SPORT_LABELS: Record<string, string> = {
 
 // Teintes sport (immuables, sanctionnées) — utilisées via cette constante, jamais en dur.
 export const SPORT_COLORS: Record<string, string> = {
-  velo: '#3b82f6', running: '#f97316', hyrox: '#ec4899', natation: '#0ea5b7', muscu: '#8b5cf6',
+  velo: '#3b82f6', running: '#22c55e', hyrox: '#ec4899', natation: '#0ea5b7', muscu: '#f97316',
 }
 
 export const BLOC_SPORT_KEYS = ['velo', 'running', 'hyrox', 'natation', 'muscu'] as const

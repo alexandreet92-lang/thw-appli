@@ -6642,6 +6642,9 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const isGym  = a.sport_type === 'gym'
   const isHyrox = a.sport_type === 'hyrox'
   const isRowing = a.sport_type === 'rowing'
+  // Terrain (D+, altitude) : pertinent uniquement pour les sports outdoor à
+  // dénivelé (running/trail/vélo). Masqué pour natation, muscu, hyrox, aviron.
+  const showTerrainData = isRun || isBike
   // Natation : eau libre si tracé GPS présent, sinon piscine.
   const hasGpsTrace = (a.streams?.latlng?.length ?? 0) > 0 || !!a.summary_polyline
   const isOpenWater = isSwim && hasGpsTrace
@@ -6999,6 +7002,15 @@ conseil pour la prochaine séance similaire.`
           </button>
         </div>
       </BottomSheet>
+      {/* Édition Ressenti / Difficulté — montée ici (sharedModals) pour s'afficher
+          AUSSI sur mobile ; le mount desktop-only ne s'ouvrait jamais au tap mobile. */}
+      <GaugeEditModal
+        open={fdEditing !== null}
+        kind={fdEditing ?? 'feeling'}
+        value={fdEditing === 'feeling' ? localFeeling : localDifficulty}
+        onClose={() => setFdEditing(null)}
+        onSave={async v => { if (fdEditing) await saveFdValue(fdEditing, v) }}
+      />
     </>
   )
 
@@ -7235,19 +7247,19 @@ conseil pour la prochaine séance similaire.`
 
       {/* BLOC 5 — Contexte */}
       <div style={{ flex: '1 1 140px', paddingBottom: 12 }}>
-        {(a.elevation_gain_m ?? 0) > 5 && (
+        {showTerrainData && (a.elevation_gain_m ?? 0) > 5 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: 12, color: T.textMuted }}>D+</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>+{Math.round(Number(a.elevation_gain_m))} m</span>
           </div>
         )}
-        {maxAlt != null && (
+        {showTerrainData && maxAlt != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: 12, color: T.textMuted }}>Alt. max.</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxAlt} m</span>
           </div>
         )}
-        {avgAlt != null && (
+        {showTerrainData && avgAlt != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: 12, color: T.textMuted }}>Alt. moy.</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{avgAlt} m</span>
@@ -7375,6 +7387,11 @@ conseil pour la prochaine séance similaire.`
             </p>
           </div>
 
+          {/* Type d'entraînement (mobile, tous sports) — sélection manuelle */}
+          <div style={{ padding: '0 16px' }}>
+            <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />
+          </div>
+
           {/* Jauges Ressenti / Difficulté (mobile) */}
           <div style={{ padding: '0 16px' }}>
             <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} />
@@ -7403,7 +7420,9 @@ conseil pour la prochaine séance similaire.`
               { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
               { label: 'Vitesse',    value: avgSpeedKmh ? `${avgSpeedKmh} km/h` : '—' },
               { label: isBike ? 'Watts moy.' : 'Allure', value: isBike ? (avgWattsVal ?? '—') : (paceS ? fmtPace(paceS) : '—') },
-              { label: 'D+',         value: elevGainVal ?? '—' },
+              showTerrainData
+                ? { label: 'D+', value: elevGainVal ?? '—' }
+                : { label: 'Calories', value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
               { label: 'SM · SN',    value: `${smsn.sm} · ${smsn.sn}` },
             ]
             return (
@@ -7474,14 +7493,14 @@ conseil pour la prochaine séance similaire.`
                   { label: 'Watts max',     value: isBike && maxWatts ? `${maxWatts} W` : null },
                   { label: 'Cadence moy.',  value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} ${isBike ? 'rpm' : 'spm'}` : null },
                   { label: 'Cadence max',   value: maxCad ? `${Math.round(Number(maxCad))} ${isBike ? 'rpm' : 'spm'}` : null },
-                  { label: 'W/kg',          value: wkgMoy ? `${wkgMoy} w/kg` : null },
+                  { label: 'W/kg',          value: isBike && wkgMoy ? `${wkgMoy} w/kg` : null },
                   { label: 'Roue libre',    value: isBike && freewheelPowerS && freewheelPowerS > 60 ? `${fmtDur(freewheelPowerS)} (${freewheelPowerPct}%)` : null },
                   { label: 'Durée Z2',      value: z2DurationS && z2DurationS > 60 ? fmtDur(z2DurationS) : null },
                   { label: 'Découplage P/FC', value: (!isRun && decoupling != null) ? `${decoupling.toFixed(1)}%` : null },
                   { label: 'FC max',        value: (a.max_hr ?? maxHrStream) != null ? `${a.max_hr ?? maxHrStream} bpm (${Math.round((Number(a.max_hr ?? maxHrStream)/maxHrEst)*100)}%)` : null },
-                  { label: 'D+',            value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
-                  { label: 'Alt. max.',     value: maxAlt != null ? `${maxAlt} m` : null },
-                  { label: 'Alt. moy.',     value: avgAlt != null ? `${avgAlt} m` : null },
+                  { label: 'D+',            value: showTerrainData && (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
+                  { label: 'Alt. max.',     value: showTerrainData && maxAlt != null ? `${maxAlt} m` : null },
+                  { label: 'Alt. moy.',     value: showTerrainData && avgAlt != null ? `${avgAlt} m` : null },
                   { label: 'Temp. moy.',    value: a.avg_temp_c != null ? `${Math.round(Number(a.avg_temp_c))} °C` : null },
                   { label: 'Temp. max',     value: maxTempStream != null ? `${maxTempStream} °C` : null },
                   { label: 'Calories',      value: a.calories != null ? `${Math.round(Number(a.calories))} kcal` : null },
@@ -7731,10 +7750,8 @@ conseil pour la prochaine séance similaire.`
 
       <div style={{ padding: '20px 24px' }}>
 
-        {/* ── Badges de type d'entraînement (muscu / hyrox) — sélection manuelle ── */}
-        {(isGym || isHyrox) && (
-          <WorkoutTypeBadges activityId={a.id} sport={isHyrox ? 'hyrox' : 'gym'} />
-        )}
+        {/* ── Badges de type d'entraînement (tous sports) — sélection manuelle ── */}
+        <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />
 
         {/* ── MUSCU : layout dédié (remplace entièrement le générique cardio) ── */}
         {isGym && (
@@ -7824,7 +7841,9 @@ conseil pour la prochaine séance similaire.`
                   { label: isBike ? 'Watts moy.' : 'Allure',
                     value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : '—') : (paceS ? fmtPace(paceS) : '—'),
                     color: isBike ? '#818CF8' : undefined },
-                  { label: 'D+',        value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' },
+                  showTerrainData
+                    ? { label: 'D+', value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' }
+                    : { label: 'Calories', value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
                   { label: 'SM · SN',   value: `${smsn.sm} · ${smsn.sn}` },
                 ]
                 return (
@@ -7964,9 +7983,9 @@ conseil pour la prochaine séance similaire.`
                 Terrain
               </div>
               {[
-                { label: 'D+',         value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
-                { label: 'Alt. max',   value: maxAlt ? `${maxAlt} m` : null },
-                { label: 'Alt. moy.',  value: avgAlt ? `${avgAlt} m` : null },
+                { label: 'D+',         value: showTerrainData && (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
+                { label: 'Alt. max',   value: showTerrainData && maxAlt ? `${maxAlt} m` : null },
+                { label: 'Alt. moy.',  value: showTerrainData && avgAlt ? `${avgAlt} m` : null },
                 { label: 'Distance',   value: a.distance_m ? fmtDist(a.distance_m) : null },
               ].filter(r => r.value != null).map(r => (
                 <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
@@ -8408,15 +8427,6 @@ conseil pour la prochaine séance similaire.`
       </div>
 
       {sharedModals}
-
-      {/* Modal jauges Ressenti / Difficulté — partagé entre carte gauges + lignes du tableau */}
-      <GaugeEditModal
-        open={fdEditing !== null}
-        kind={fdEditing ?? 'feeling'}
-        value={fdEditing === 'feeling' ? localFeeling : localDifficulty}
-        onClose={() => setFdEditing(null)}
-        onSave={async v => { if (fdEditing) await saveFdValue(fdEditing, v) }}
-      />
 
       {/* Vue détaillée des laps (slide droite, portal sur body) */}
       <LapsDetailView

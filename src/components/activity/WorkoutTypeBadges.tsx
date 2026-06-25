@@ -13,19 +13,71 @@ import { createPortal } from 'react-dom'
 
 interface TypeDef { id: string; label: string; color: string }
 
+// Palette zonale réutilisée : EF (vert) → seuil (bleu) → intensité (orange/rouge).
+const C = { ef: '#10b981', sl1: '#22c55e', sl2: '#3b82f6', hard: '#f97316', max: '#ef4444', tech: '#06b6d4', extra: '#ec4899', strength: '#7c3aed', lime: '#65a30d', red2: '#dc2626' }
+
 const MUSCU_TYPES: TypeDef[] = [
-  { id: 'strength',   label: 'Strength',          color: '#7c3aed' },
-  { id: 'endurance',  label: 'Endurance Strength', color: '#10b981' },
-  { id: 'explosivite', label: 'Explosivité',       color: '#f97316' },
-  { id: 'pliometrie', label: 'Pliométrie',        color: '#ef4444' },
+  { id: 'push',      label: 'Push',              color: C.sl2 },
+  { id: 'pull',      label: 'Pull',              color: C.tech },
+  { id: 'legs',      label: 'Legs',              color: C.extra },
+  { id: 'strength',  label: 'Strength',          color: C.strength },
+  { id: 'endurance', label: 'Strength endurance', color: C.ef },
+  { id: 'explosivite', label: 'Explosivité',     color: C.hard },
+]
+const BIKE_TYPES: TypeDef[] = [
+  { id: 'ef',     label: 'EF',      color: C.ef },
+  { id: 'sl1',    label: 'SL1',     color: C.sl1 },
+  { id: 'sl2',    label: 'SL2',     color: C.sl2 },
+  { id: 'pma',    label: 'PMA',     color: C.hard },
+  { id: 'mixte',  label: 'Mixte',   color: C.extra },
+  { id: 'sprints', label: 'Sprints', color: C.max },
+]
+const RUN_TYPES: TypeDef[] = [
+  { id: 'ef',     label: 'EF',          color: C.ef },
+  { id: 'sl1',    label: 'SL1',         color: C.sl1 },
+  { id: 'sl2',    label: 'SL2',         color: C.sl2 },
+  { id: 'vma',    label: 'VMA',         color: C.hard },
+  { id: 'sprints', label: 'Sprints',    color: C.max },
+  { id: 'hills',  label: 'Hills',       color: C.strength },
+  { id: 'strides', label: 'VMA Strides', color: C.extra },
+]
+const TRAIL_TYPES: TypeDef[] = [
+  { id: 'ef',     label: 'EF',       color: C.ef },
+  { id: 'sl1',    label: 'SL1',      color: C.sl1 },
+  { id: 'sl2',    label: 'SL2',      color: C.sl2 },
+  { id: 'vma',    label: 'VMA',      color: C.hard },
+  { id: 'hills',  label: 'Côtes',    color: C.strength },
+  { id: 'descente', label: 'Descente', color: C.extra },
+]
+const SWIM_TYPES: TypeDef[] = [
+  { id: 'ef',     label: 'EF',        color: C.ef },
+  { id: 'sl1',    label: 'SL1',       color: C.sl1 },
+  { id: 'sl2',    label: 'SL2',       color: C.sl2 },
+  { id: 'vma',    label: 'VMA',       color: C.hard },
+  { id: 'technique', label: 'Technique', color: C.tech },
+  { id: 'sprints', label: 'Sprints',  color: C.max },
+]
+const ROWING_TYPES: TypeDef[] = [
+  { id: 'ef',     label: 'EF',        color: C.ef },
+  { id: 'sl1',    label: 'SL1',       color: C.sl1 },
+  { id: 'sl2',    label: 'SL2',       color: C.sl2 },
+  { id: 'pma',    label: 'PMA',       color: C.hard },
+  { id: 'sprints', label: 'Sprints',  color: C.max },
+  { id: 'technique', label: 'Technique', color: C.tech },
 ]
 const HYROX_TYPES: TypeDef[] = [
-  { id: 'sim',    label: 'Simulation course', color: '#ef4444' },
-  { id: 'ergo',   label: 'Spé Ergo',          color: '#06b6d4' },
-  { id: 'wb',     label: 'Spé Wall Ball',     color: '#ec4899' },
-  { id: 'sled',   label: 'Spé Sled',          color: '#dc2626' },
-  { id: 'lunges', label: 'Spé Lunges',        color: '#65a30d' },
+  { id: 'sim',    label: 'Simulation course', color: C.max },
+  { id: 'ergo',   label: 'Spé Ergo',          color: C.tech },
+  { id: 'wb',     label: 'Spé Wall Ball',     color: C.extra },
+  { id: 'sled',   label: 'Spé Sled',          color: C.red2 },
+  { id: 'lunges', label: 'Spé Lunges',        color: C.lime },
 ]
+const TYPES_BY_SPORT: Record<string, TypeDef[]> = {
+  gym: MUSCU_TYPES, hyrox: HYROX_TYPES,
+  bike: BIKE_TYPES, virtual_bike: BIKE_TYPES,
+  run: RUN_TYPES, trail_run: TRAIL_TYPES,
+  swim: SWIM_TYPES, rowing: ROWING_TYPES,
+}
 const CUSTOM_COLORS = ['#7c3aed', '#3b82f6', '#10b981', '#f97316', '#ef4444', '#ec4899', '#06b6d4', '#eab308']
 
 function lsGet<T>(key: string, fallback: T): T {
@@ -36,8 +88,8 @@ function lsSet(key: string, value: unknown) {
   if (typeof window !== 'undefined') try { window.localStorage.setItem(key, JSON.stringify(value)) } catch { /* ignore */ }
 }
 
-export function WorkoutTypeBadges({ activityId, sport }: { activityId: string; sport: 'gym' | 'hyrox' }) {
-  const base = sport === 'hyrox' ? HYROX_TYPES : MUSCU_TYPES
+export function WorkoutTypeBadges({ activityId, sport }: { activityId: string; sport: string }) {
+  const base = TYPES_BY_SPORT[sport] ?? MUSCU_TYPES
   const selKey = `workout-types-${activityId}`
   const customKey = `workout-custom-types-${sport}`
 

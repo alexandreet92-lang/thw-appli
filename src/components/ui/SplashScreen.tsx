@@ -5,25 +5,20 @@ interface SplashScreenProps {
   onDone: () => void
 }
 
+// Splash de marque (cold open) : halo cyan qui respire, shuriken en arrivée
+// ressort + rotation lente, wordmark « Hybrid » (Fraunces) + tagline, puis fondu.
+// Respecte prefers-reduced-motion (version statique, fondu rapide). À la charte
+// (tokens : var(--bg), var(--text), var(--primary)).
 export function SplashScreen({ onDone }: SplashScreenProps) {
-  /*
-    Phases de l'animation :
-    'logo'    (0ms)    → logo apparaît et tourne
-    'explode' (1200ms) → logo grossit et disparaît
-    'title'   (1500ms) → texte "Hybrid" apparaît
-    'fadeout' (2400ms) → tout disparaît
-    → onDone() (2800ms)
-  */
-  const [phase, setPhase] = useState<
-    'logo' | 'explode' | 'title' | 'fadeout'
-  >('logo')
+  const [out, setOut] = useState(false)
 
   useEffect(() => {
+    const reduce = typeof window !== 'undefined'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const holdT = reduce ? 700 : 1900
     const timers = [
-      setTimeout(() => setPhase('explode'),  1200),
-      setTimeout(() => setPhase('title'),    1500),
-      setTimeout(() => setPhase('fadeout'),  2400),
-      setTimeout(() => onDone(),             2800),
+      setTimeout(() => setOut(true), holdT),
+      setTimeout(() => onDone(), holdT + 420),
     ]
     return () => timers.forEach(clearTimeout)
   }, [onDone])
@@ -32,79 +27,58 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
     <div
       data-splash-screen=""
       style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: phase === 'fadeout' ? 0 : 1,
-        transition: phase === 'fadeout'
-          ? 'opacity 400ms ease-out'
-          : 'none',
+        position: 'fixed', inset: 0, zIndex: 9999,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg)',
+        opacity: out ? 0 : 1,
+        transition: 'opacity 400ms ease-out',
       }}
     >
-      {/* ── Logo shuriken ── */}
-      <div
-        style={{
-          position: 'absolute',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition:
-            'transform 350ms ease-out, opacity 300ms ease-out',
-          transform:
-            phase === 'explode' ||
-            phase === 'title'   ||
-            phase === 'fadeout'
-              ? 'scale(5)'
-              : 'scale(1)',
-          opacity:
-            phase === 'explode' ||
-            phase === 'title'   ||
-            phase === 'fadeout'
-              ? 0
-              : 1,
-          animation:
-            phase === 'logo'
-              ? 'spinPause 3s ease-in-out infinite'
-              : 'none',
-        }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/logos/logo_4bras.png"
-          alt=""
-          width={72}
-          height={72}
-          style={{ width: 72, height: 72, display: 'block' }}
-        />
+      <style>{`
+        @keyframes splashHalo { 0%,100% { transform: scale(0.9); opacity: 0.5 } 50% { transform: scale(1.1); opacity: 0.9 } }
+        @keyframes splashLogoIn { 0% { transform: scale(0.4) rotate(-120deg); opacity: 0 } 60% { transform: scale(1.08) rotate(8deg); opacity: 1 } 100% { transform: scale(1) rotate(0deg); opacity: 1 } }
+        @keyframes splashSpin { to { transform: rotate(360deg) } }
+        @keyframes splashRise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
+        .splash-halo { animation: splashHalo 2.4s ease-in-out infinite }
+        .splash-logo { animation: splashLogoIn 0.7s cubic-bezier(0.16,1,0.3,1) both }
+        .splash-logo-spin { animation: splashSpin 9s linear infinite }
+        .splash-word { animation: splashRise 0.6s ease-out 0.65s both }
+        .splash-tag { animation: splashRise 0.6s ease-out 0.9s both }
+        @media (prefers-reduced-motion: reduce) {
+          .splash-halo, .splash-logo, .splash-logo-spin, .splash-word, .splash-tag { animation: none !important; opacity: 1 !important; transform: none !important }
+        }
+      `}</style>
+
+      {/* Halo cyan qui respire */}
+      <div className="splash-halo" aria-hidden style={{
+        position: 'absolute', width: 360, height: 360, borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(6,182,212,0.22), transparent 62%)',
+        filter: 'blur(8px)', pointerEvents: 'none',
+      }} />
+
+      {/* Shuriken : arrivée ressort + rotation lente continue */}
+      <div className="splash-logo" style={{ position: 'relative' }}>
+        <div className="splash-logo-spin">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logos/logo_4bras.png" alt="" width={84} height={84} style={{ width: 84, height: 84, display: 'block', objectFit: 'contain' }} />
+        </div>
       </div>
 
-      {/* ── Texte "Hybrid" ── */}
-      <div
-        style={{
-          position: 'absolute',
-          transition: 'opacity 350ms ease-out, transform 350ms ease-out',
-          opacity: phase === 'title' ? 1 : 0,
-          transform: phase === 'title' ? 'scale(1)' : 'scale(0.7)',
-        }}
-      >
-        <span
-          data-splash-title=""
-          style={{
-            fontSize: 46,
-            fontWeight: 700,
-            letterSpacing: '-0.025em',
-            fontFamily: 'inherit',
-          }}
-        >
-          Hybrid
-        </span>
-      </div>
+      {/* Wordmark + tagline */}
+      <span className="splash-word" style={{
+        position: 'relative', marginTop: 22,
+        fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 600,
+        letterSpacing: '-0.02em', color: 'var(--text)',
+      }}>
+        Hybrid
+      </span>
+      <span className="splash-tag" style={{
+        position: 'relative', marginTop: 8,
+        fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 500,
+        letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-dim)',
+      }}>
+        by The Hybrid Way
+      </span>
     </div>
   )
 }

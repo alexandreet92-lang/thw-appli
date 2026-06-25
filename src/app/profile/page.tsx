@@ -827,6 +827,70 @@ function NotificationsBloc() {
 }
 
 // ══════════════════════════════════════════════════
+// APPARENCE BLOC — thème jour/nuit + localisation précise
+// ══════════════════════════════════════════════════
+
+function ApparenceBloc() {
+  const [precise, setPrecise] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    try { setPrecise(!!localStorage.getItem('thw-geo')) } catch { /* ignore */ }
+  }, [])
+
+  async function enable() {
+    if (!('geolocation' in navigator)) { setMsg("La géolocalisation n'est pas disponible sur cet appareil."); return }
+    setBusy(true); setMsg(null)
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        try { localStorage.setItem('thw-geo', JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude })) } catch { /* ignore */ }
+        void import('@/hooks/useTheme').then(m => m.refreshAutoTheme())
+        setPrecise(true); setBusy(false); setMsg('Localisation activée — basculement jour/nuit précis.')
+      },
+      () => { setBusy(false); setMsg("Accès refusé. Le thème reste basé sur ton fuseau horaire.") },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 6 * 3600_000 },
+    )
+  }
+
+  function disable() {
+    try { localStorage.removeItem('thw-geo') } catch { /* ignore */ }
+    void import('@/hooks/useTheme').then(m => m.refreshAutoTheme())
+    setPrecise(false); setMsg('Localisation désactivée — thème basé sur ton fuseau horaire.')
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <Card>
+        <div>
+          <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 3px' }}>Thème jour / nuit automatique</p>
+          <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: 0, lineHeight: 1.6 }}>
+            Le fond s&apos;adapte à la lumière du jour : clair quand il fait jour, sombre la nuit, selon le lever et le coucher du soleil à ta position. Par défaut, ta position est estimée via ton fuseau horaire (sans rien partager).
+          </p>
+        </div>
+      </Card>
+
+      <Card>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 3px' }}>Localisation précise</p>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
+              Active la géolocalisation pour un basculement à la minute exacte, où que tu sois. {precise ? 'Activée.' : 'Désactivée.'}
+            </p>
+          </div>
+          {precise ? (
+            <button onClick={disable} style={{ flexShrink: 0, height: 36, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Désactiver</button>
+          ) : (
+            <button onClick={() => void enable()} disabled={busy} style={{ flexShrink: 0, height: 36, padding: '0 16px', borderRadius: 10, border: 'none', background: busy ? 'var(--bg-card2)' : 'var(--primary-gradient)', color: busy ? 'var(--text-dim)' : '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>{busy ? 'Activation…' : 'Activer'}</button>
+          )}
+        </div>
+        {msg && <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '10px 0 0', lineHeight: 1.5 }}>{msg}</p>}
+      </Card>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════
 // RÉGLAGES IA BLOC — Onglet 3
 // ══════════════════════════════════════════════════
 
@@ -1965,6 +2029,7 @@ function ProfileContent() {
         header={header}
         sections={[
           { id:'profil',        label:'Profil',        short:'Profil',        subtitle:'Identité et matériel',   icon:User, content:<ProfilBloc/> },
+          { id:'apparence',     label:'Apparence',     short:'Apparence',     subtitle:'Thème jour / nuit',      icon:Moon, content:<ApparenceBloc/> },
           { id:'notifications', label:'Notifications', short:'Notifications', subtitle:'Alertes et rappels',     icon:Bell, content:<NotificationsBloc/> },
           { id:'ia',            label:'Réglages IA',   short:'Réglages',      subtitle:'Modèles et préférences', icon:Zap,  content:<IASettingsBloc/> },
         ]}

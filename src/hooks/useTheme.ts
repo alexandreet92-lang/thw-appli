@@ -35,6 +35,13 @@ function applyTheme(mode: ThemeMode) {
   root.classList.add(mode)
 }
 
+// Recalcule + applique le thème auto immédiatement (sauf surcharge manuelle active).
+// Appelé après activation/désactivation de la localisation précise.
+export function refreshAutoTheme(): void {
+  try { if (localStorage.getItem(MANUAL_KEY)) return } catch { /* ignore */ }
+  applyTheme(computeAutoMode())
+}
+
 export function useTheme() {
   const [mode, setMode]         = useState<ThemeMode>('dark')
   const [isManual, setIsManual] = useState(false)

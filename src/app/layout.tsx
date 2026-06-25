@@ -29,6 +29,12 @@ export function generateViewport(): Viewport {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" className="dark">
+      <head>
+        {/* Anti-flash : applique le thème (clair le jour / sombre la nuit) AVANT le
+            paint. Surcharge manuelle > dernier mode auto calculé > heure locale.
+            useTheme affine ensuite avec le lever/coucher du soleil exact. */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var m=localStorage.getItem('thw-theme')||localStorage.getItem('thw-auto-mode');if(!m){var h=new Date().getHours();m=(h>=7&&h<20)?'light':'dark';}var r=document.documentElement;r.classList.remove('light','dark');r.classList.add(m);}catch(e){}})();` }} />
+      </head>
       <body style={{ margin: 0, background: 'var(--bg)', height: '100vh', overflow: 'hidden' }}>
         <ClientShell>
 

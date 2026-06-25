@@ -250,15 +250,24 @@ function Integrations({ m }: { m: AdminMetrics }) {
 
 export function AdminDashboard({ metrics, adminEmail }: { metrics: AdminMetrics; adminEmail: string | null }) {
   const header = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/logos/logo_4bras.png" alt="" style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0 }} />
-      <div style={{ minWidth: 0 }}>
+      <div style={{ minWidth: 0, flex: 1 }}>
         <h1 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Cockpit</h1>
         <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {adminEmail} · {new Date(metrics.generatedAt).toLocaleString('fr-FR')}
         </p>
       </div>
+      {/* Aperçu de la page de connexion (admin only) — nouvel onglet, session conservée */}
+      <a href="/auth" target="_blank" rel="noopener noreferrer" style={{
+        flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px',
+        borderRadius: 999, border: '1px solid var(--border-mid)', background: 'var(--bg-card2)',
+        color: 'var(--text)', fontFamily: FB, fontSize: 12, fontWeight: 600, textDecoration: 'none',
+      }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>
+        Voir la page de connexion
+      </a>
     </div>
   )
 

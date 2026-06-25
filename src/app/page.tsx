@@ -28,12 +28,13 @@ export default function DashboardPage() {
 
       const [{ data: sub }, { data: profile }] = await Promise.all([
         supabase.from('user_subscriptions').select('status').eq('user_id', user.id).maybeSingle(),
-        supabase.from('profiles').select('onboarding_completed').eq('id', user.id).maybeSingle(),
+        supabase.from('profiles').select('profile_setup_done').eq('id', user.id).maybeSingle(),
       ])
       if (cancelled) return
 
       if (sub && BLOCKED.includes((sub as { status: string }).status)) { router.replace('/access-expired'); return }
-      if (profile && (profile as { onboarding_completed: boolean }).onboarding_completed === false) { router.replace('/onboarding'); return }
+      // Mini-questionnaire one-shot tant que le profil n'est pas configuré.
+      if (profile && (profile as { profile_setup_done: boolean }).profile_setup_done === false) { router.replace('/bienvenue'); return }
 
       setReady(true)
     })()

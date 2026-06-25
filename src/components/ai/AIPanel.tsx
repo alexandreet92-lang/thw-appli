@@ -21571,6 +21571,10 @@ export default function AIPanel({
             {/* ── Conteneur principal de saisie ── */}
             <div className="aip-input-wrap" style={{
               transition: 'border-color 0.15s',
+              // Dictée en cours → on masque le champ d'écriture (l'overlay de
+              // dictée prend toute la place, comme Claude). Le VoiceOverlay
+              // rendu à l'intérieur reste visible (portail vers document.body).
+              display: recording ? 'none' : undefined,
             }}>
 
               {/* Citation de texte sélectionné */}
@@ -21853,7 +21857,7 @@ export default function AIPanel({
             </div>
 
             {/* Bulle « Recherche Web » — sous le champ, sans entourer la saisie */}
-            {webSearchMode && (
+            {webSearchMode && !recording && (
               <div style={{ maxWidth: 756, margin: '8px auto 0', width: '100%', display: 'flex', justifyContent: 'center' }}>
                 <div style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -21885,9 +21889,11 @@ export default function AIPanel({
               </div>
             )}
 
-            <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 5, textAlign: 'center' }}>
-              Entrée · Shift+Entrée pour nouvelle ligne
-            </div>
+            {!recording && (
+              <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 5, textAlign: 'center' }}>
+                Entrée · Shift+Entrée pour nouvelle ligne
+              </div>
+            )}
           </div>
           </>}
           {/* /chat-col */}

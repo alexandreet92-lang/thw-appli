@@ -1,21 +1,23 @@
 'use client'
 
 // ══════════════════════════════════════════════════════════════
-// VoiceOverlay — mode dictée vocale (style Claude, image 2).
+// VoiceOverlay — mode dictée vocale (style Claude).
 //
-// Barre compacte ancrée en bas : ✕ · waveform · ✓.
-// · La waveform reflète le VRAI volume du micro (Web Audio API) :
-//   barres plates au silence, qui montent à la voix (historique
-//   défilant, pilotage par barre).
-// · Transcription discrète au-dessus de la barre.
-// · Repli « piloté par la parole » si le micro est indisponible.
+// · Transcription fine et discrète, qui remonte avec un fondu en haut.
+// · Léger flou en bas (la conversation derrière reste lisible, adoucie).
+// · Waveform qui DÉFILE en continu pendant qu'on parle (onde voyageuse),
+//   amplifiée par l'activité de reconnaissance ; quasi plate au silence.
+// · Barre compacte : ✕ · waveform · ✓.
+//
+// On n'ouvre PAS getUserMedia ici : tenir le micro via Web Audio en
+// parallèle de SpeechRecognition fait échouer la reco sur Safari/iOS.
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 const SHURIKEN = '#3C90D5'        // bleu du logo shuriken
-const NBARS = 40                  // barres de la waveform (historique défilant)
+const NBARS = 30
 
 export function VoiceOverlay({
   transcript,
@@ -29,12 +31,9 @@ export function VoiceOverlay({
   onConfirm: () => void
 }) {
   const [mounted, setMounted] = useState(false)
-  const bufRef = useRef<number[]>(new Array(NBARS).fill(0))
-  const barsRef = useRef<(HTMLSpanElement | null)[]>([])
+  const waveRef = useRef<HTMLDivElement>(null)
   const energyRef = useRef(0)
-  const lastInterimRef = useRef('')
-  const lastChangeRef = useRef(0)
-  const tickRef = useRef(0)
+  const lastLiveRef = useRef('')
   const interimRef = useRef(interim)
   const transcriptRef = useRef(transcript)
   interimRef.current = interim
@@ -44,42 +43,20 @@ export function VoiceOverlay({
 
   useEffect(() => { setMounted(true) }, [])
 
-  // ── Animation de la waveform pilotée par l'ACTIVITÉ DE RECONNAISSANCE ──
-  // On n'ouvre volontairement PAS getUserMedia ici : sur Safari/iOS, tenir le
-  // micro via Web Audio en parallèle de SpeechRecognition fait échouer la
-  // reconnaissance (« ça ne capte pas »). La waveform suit donc l'arrivée des
-  // mots reconnus : barres qui montent quand tu parles, qui retombent au silence.
+  // Amplitude de la waveform pilotée par l'activité de reconnaissance.
   useEffect(() => {
     const id = window.setInterval(() => {
-      tickRef.current += 1
-      const live = (transcriptRef.current + interimRef.current)
-      if (live !== lastInterimRef.current) {
-        energyRef.current = 1
-        lastChangeRef.current = tickRef.current
-        lastInterimRef.current = live
-      } else {
-        // décroissance douce dès qu'il n'y a plus de nouveaux mots
-        energyRef.current *= 0.86
-      }
+      const live = transcriptRef.current + interimRef.current
+      if (live !== lastLiveRef.current) { energyRef.current = 1; lastLiveRef.current = live }
+      else energyRef.current *= 0.9
       const e = energyRef.current
-      const speaking = e > 0.06
-      // Volume « simulé » lissé + variation par tick pour un rendu vivant.
-      const v = speaking ? e * (0.55 + 0.45 * Math.abs(Math.sin(tickRef.current * 0.6))) : 0
-
-      const buf = bufRef.current
-      buf.push(v); buf.shift()
-      for (let i = 0; i < NBARS; i++) {
-        const el = barsRef.current[i]
-        if (!el) continue
-        const val = buf[i]
-        // Ondulation au repos pour que la barre « respire » même au silence.
-        const idle = 0.12 + 0.05 * Math.abs(Math.sin(i * 0.5 + tickRef.current * 0.18))
-        const h = val > 0 ? 0.2 + val * 0.8 : idle
-        el.style.transform = `scaleY(${h.toFixed(3)})`
-        el.style.opacity = String(val > 0 ? 1 : 0.5)
+      const cont = waveRef.current
+      if (cont) {
+        const amp = 0.32 + Math.min(1, e) * 1.15      // plat au silence, haut à la voix
+        cont.style.transform = `scaleY(${amp.toFixed(3)})`
+        cont.style.opacity = String(0.45 + Math.min(1, e) * 0.55)
       }
-    }, 60)
-
+    }, 70)
     return () => window.clearInterval(id)
   }, [])
 
@@ -90,6 +67,8 @@ export function VoiceOverlay({
       <style>{`
         @keyframes vo_in   { from { opacity: 0 } to { opacity: 1 } }
         @keyframes vo_pill { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
+        /* Onde voyageuse : chaque barre est décalée → la vague défile */
+        @keyframes vo_wave { 0%, 100% { transform: scaleY(0.22) } 50% { transform: scaleY(1) } }
       `}</style>
       <div
         role="dialog"
@@ -98,80 +77,94 @@ export function VoiceOverlay({
         style={{
           position: 'fixed', inset: 0, zIndex: 1500,
           display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center',
-          // Léger voile pour focaliser, sans masquer la conversation (cf. image 2).
-          background: 'linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--ai-bg) 30%, transparent) 78%, color-mix(in srgb, var(--ai-bg) 62%, transparent) 100%)',
           animation: 'vo_in 0.2s ease',
-          padding: 'calc(16px + env(safe-area-inset-bottom, 0px)) 14px',
           pointerEvents: 'none',
         }}
       >
-        {/* Transcription discrète au-dessus de la barre */}
-        {hasText && (
-          <div style={{
-            pointerEvents: 'none', maxWidth: 520, width: '100%', textAlign: 'center',
-            margin: '0 0 12px', maxHeight: '26vh', overflow: 'hidden',
-            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-          }}>
-            <p style={{
-              margin: 0, fontFamily: 'var(--font-display, Fraunces), Georgia, serif',
-              fontSize: 'clamp(18px, 4.4vw, 24px)', lineHeight: 1.34, fontWeight: 400, fontStyle: 'italic',
-            }}>
-              <span style={{ color: 'var(--ai-text)' }}>{transcript}</span>
-              <span style={{ color: 'var(--ai-dim)' }}>{interim}</span>
-            </p>
-          </div>
-        )}
-
-        {/* Barre de contrôle compacte — ✕ · waveform · ✓ (style image 2) */}
+        {/* Bloc bas : transcription fine + barre, posé sur un léger flou */}
         <div style={{
-          pointerEvents: 'auto',
-          width: '100%', maxWidth: 460, display: 'flex', alignItems: 'center', gap: 10,
-          background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 999,
-          padding: '7px 9px', boxShadow: '0 10px 34px rgba(0,0,0,0.18)',
-          animation: 'vo_pill 0.26s cubic-bezier(0.32,0.72,0,1)',
+          width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center',
+          padding: 'clamp(24px,8vh,80px) 16px calc(16px + env(safe-area-inset-bottom, 0px))',
+          background: 'linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--ai-bg) 55%, transparent) 38%, var(--ai-bg) 100%)',
+          backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 56px)',
+          maskImage: 'linear-gradient(to bottom, transparent 0, #000 56px)',
         }}>
-          {/* Annuler */}
-          <button
-            onClick={onCancel}
-            aria-label="Annuler"
-            style={{
-              width: 42, height: 42, borderRadius: '50%', border: 'none', flexShrink: 0,
-              background: 'var(--ai-bg2, rgba(127,127,127,0.14))', color: 'var(--ai-text)', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
+          {/* Transcription — fine, plus petite, fondu en haut */}
+          {hasText && (
+            <div style={{
+              maxWidth: 520, width: '100%', textAlign: 'center',
+              margin: '0 0 14px', maxHeight: '24vh', overflow: 'hidden',
+              display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 34px)',
+              maskImage: 'linear-gradient(to bottom, transparent 0, #000 34px)',
+            }}>
+              <p style={{
+                margin: 0, fontFamily: 'var(--font-display, Fraunces), Georgia, serif',
+                fontSize: 'clamp(15px, 3.7vw, 19px)', lineHeight: 1.4, fontWeight: 400, fontStyle: 'italic',
+                letterSpacing: '0.01em',
+              }}>
+                <span style={{ color: 'var(--ai-text)' }}>{transcript}</span>
+                <span style={{ color: 'var(--ai-dim)' }}>{interim}</span>
+              </p>
+            </div>
+          )}
 
-          {/* Waveform — barres pilotées par le volume réel du micro */}
-          <div style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2.5, overflow: 'hidden' }}>
-            {Array.from({ length: NBARS }, (_, i) => (
-              <span
-                key={i}
-                ref={el => { barsRef.current[i] = el }}
-                style={{
-                  width: 3, height: '70%', borderRadius: 3, flexShrink: 0,
-                  background: 'var(--ai-text)', transformOrigin: 'center',
-                  transform: 'scaleY(0.12)', opacity: 0.5,
-                  transition: 'transform 0.08s linear, opacity 0.12s linear', willChange: 'transform',
-                }}
-              />
-            ))}
+          {/* Barre de contrôle — ✕ · waveform · ✓ */}
+          <div style={{
+            pointerEvents: 'auto',
+            width: '100%', maxWidth: 440, display: 'flex', alignItems: 'center', gap: 10,
+            background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 999,
+            padding: '7px 9px', boxShadow: '0 10px 34px rgba(0,0,0,0.18)',
+            animation: 'vo_pill 0.26s cubic-bezier(0.32,0.72,0,1)',
+          }}>
+            <button
+              onClick={onCancel}
+              aria-label="Annuler"
+              style={{
+                width: 42, height: 42, borderRadius: '50%', border: 'none', flexShrink: 0,
+                background: 'var(--ai-bg2, rgba(127,127,127,0.14))', color: 'var(--ai-text)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
+
+            {/* Waveform — onde voyageuse (défile), amplifiée par la voix */}
+            <div
+              ref={waveRef}
+              style={{
+                flex: 1, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 3, overflow: 'hidden', transformOrigin: 'center',
+                transition: 'transform 0.1s linear, opacity 0.14s linear', willChange: 'transform',
+              }}
+            >
+              {Array.from({ length: NBARS }, (_, i) => (
+                <span
+                  key={i}
+                  style={{
+                    width: 3, height: '100%', borderRadius: 3, flexShrink: 0,
+                    background: 'var(--ai-text)', transformOrigin: 'center',
+                    animation: 'vo_wave 1.05s ease-in-out infinite',
+                    animationDelay: `${(i * 0.05).toFixed(2)}s`,   // décalage → la vague défile
+                  }}
+                />
+              ))}
+            </div>
+
+            <button
+              onClick={onConfirm}
+              aria-label="Valider"
+              style={{
+                width: 42, height: 42, borderRadius: '50%', border: 'none', flexShrink: 0,
+                background: SHURIKEN, color: '#fff', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 14px rgba(60,144,213,0.42)',
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+            </button>
           </div>
-
-          {/* Valider */}
-          <button
-            onClick={onConfirm}
-            aria-label="Valider"
-            style={{
-              width: 42, height: 42, borderRadius: '50%', border: 'none', flexShrink: 0,
-              background: SHURIKEN, color: '#fff', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(60,144,213,0.42)',
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-          </button>
         </div>
       </div>
     </>,

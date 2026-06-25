@@ -2,218 +2,234 @@
 export const dynamic = 'force-dynamic'
 
 // ══════════════════════════════════════════════════════════════════
-// /bienvenue — mini-questionnaire one-shot (1re connexion). Remplit `profiles`
-// puis pose profile_setup_done=true → l'utilisateur ne le revoit plus (gate
-// middleware). Plein écran, à la charte (tokens, Fraunces/Inter, shuriken).
+// /bienvenue — questionnaire d'onboarding one-shot (carte unique, une question
+// par écran, slide horizontal + swipe, écran final animé). Persiste sur le
+// profil athlète puis pose profile_setup_done=true. À la charte (tokens).
 // ══════════════════════════════════════════════════════════════════
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Check, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
 import { LanguageDropdown } from '@/components/i18n/LanguageDropdown'
 
-const FD = 'var(--font-body)', FT = 'var(--font-display)'
+const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
-const SPORT_KEYS = ['running', 'trail', 'cycling', 'triathlon', 'hyrox', 'gym', 'aviron', 'boxe']
-const GOAL_KEYS = ['performance', 'sante', 'perte_poids', 'hybride']
-const EXP_KEYS = ['<1', '1-3', '3-5', '5-10', '10+']
-const GENDER_KEYS = ['homme', 'femme', 'autre']
+type QType = 'single' | 'multi'
+interface Question { id: string; field: 'primary_goal' | 'sports' | 'weekly_volume' | 'level'; type: QType; titleKey: string; options: string[]; prefix: string; desc: boolean; skippable: boolean; other?: boolean }
 
-interface Form {
-  full_name: string
-  sports: string[]
-  primary_goal: string | null
-  sport_experience: string | null
-  weekly_sessions: number | null
-  height_cm: string
-  weight_kg: string
-  birth_date: string
-  gender: string | null
-}
+const QUESTIONS: Question[] = [
+  { id: 'goal', field: 'primary_goal', type: 'single', titleKey: 'q.goal.title', prefix: 'q.goal.', desc: true, skippable: false, other: true,
+    options: ['endurance', 'force', 'hybride', 'sante'] },
+  { id: 'sports', field: 'sports', type: 'multi', titleKey: 'q.sports.title', prefix: 'q.sport.', desc: false, skippable: true,
+    options: ['running', 'velo', 'natation', 'trail', 'triathlon', 'aviron', 'boxe', 'force'] },
+  { id: 'vol', field: 'weekly_volume', type: 'single', titleKey: 'q.vol.title', prefix: 'q.vol.', desc: false, skippable: true,
+    options: ['<4', '4-7', '7-12', '>12'] },
+  { id: 'lvl', field: 'level', type: 'single', titleKey: 'q.lvl.title', prefix: 'q.lvl.', desc: true, skippable: true,
+    options: ['debutant', 'intermediaire', 'confirme', 'elite'] },
+]
+const TOTAL = QUESTIONS.length
 
-const TOTAL = 6
-
-// ── Primitives UI ────────────────────────────────────────────────
-function Chip({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{
-      padding: '10px 16px', borderRadius: 999, cursor: 'pointer',
-      border: `1px solid ${active ? 'var(--primary)' : 'var(--border-mid)'}`,
-      background: active ? 'var(--primary-dim)' : 'var(--bg-card2)',
-      color: active ? 'var(--primary)' : 'var(--text)',
-      fontFamily: FD, fontSize: 14, fontWeight: active ? 600 : 500, transition: 'all 0.15s',
-    }}>{label}</button>
-  )
-}
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <label style={{ display: 'block', fontFamily: FD, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-dim)', marginBottom: 6 }}>{label}</label>
-      {children}
-    </div>
-  )
-}
-const inputStyle: React.CSSProperties = {
-  width: '100%', height: 48, boxSizing: 'border-box', background: 'var(--input-bg)',
-  border: '1px solid var(--border-mid)', borderRadius: 12, padding: '0 14px',
-  color: 'var(--text)', fontFamily: FD, fontSize: 15, outline: 'none',
-}
+interface Answers { primary_goal: string | null; sports: string[]; weekly_volume: string | null; level: string | null }
 
 export default function BienvenuePage() {
   const router = useRouter()
   const { t } = useI18n()
-  const [step, setStep] = useState(0)
+  const [step, setStep] = useState(0)              // 0..TOTAL-1, puis TOTAL = écran final
+  const [dir, setDir] = useState<'r' | 'l'>('r')
+  const [a, setA] = useState<Answers>({ primary_goal: null, sports: [], weekly_volume: null, level: null })
+  const [other, setOther] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [f, setF] = useState<Form>({
-    full_name: '', sports: [], primary_goal: null, sport_experience: null,
-    weekly_sessions: null, height_cm: '', weight_kg: '', birth_date: '', gender: null,
-  })
+  const touch = useRef<number | null>(null)
 
-  // Préremplissage depuis le profil existant (si déjà renseigné ailleurs).
+  // Idempotent : si déjà configuré → dashboard ; sinon préremplir.
   useEffect(() => {
     let cancel = false
     void (async () => {
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { router.replace('/auth'); return }
-      const { data } = await sb.from('profiles')
-        .select('full_name, sports, primary_goal, sport_experience, weekly_sessions, height_cm, weight_kg, birth_date, gender')
-        .eq('id', user.id).maybeSingle()
+      const { data } = await sb.from('profiles').select('primary_goal, sports, weekly_volume, level, profile_setup_done').eq('id', user.id).maybeSingle()
       if (cancel || !data) return
-      setF(prev => ({
-        ...prev,
-        full_name: data.full_name ?? '',
-        sports: data.sports ?? [],
+      if (data.profile_setup_done) { router.replace('/'); return }
+      setA({
         primary_goal: data.primary_goal ?? null,
-        sport_experience: data.sport_experience ?? null,
-        weekly_sessions: data.weekly_sessions ?? null,
-        height_cm: data.height_cm != null ? String(data.height_cm) : '',
-        weight_kg: data.weight_kg != null ? String(data.weight_kg) : '',
-        birth_date: data.birth_date ?? '',
-        gender: data.gender ?? null,
-      }))
+        sports: data.sports ?? [],
+        weekly_volume: data.weekly_volume ?? null,
+        level: data.level ?? null,
+      })
     })()
     return () => { cancel = true }
   }, [router])
 
-  const toggleSport = (k: string) => setF(p => ({ ...p, sports: p.sports.includes(k) ? p.sports.filter(s => s !== k) : [...p.sports, k] }))
-  const num = (v: string) => { const n = parseFloat(v.replace(',', '.')); return isNaN(n) ? null : n }
+  const q = QUESTIONS[step]
+  const canNext = step >= TOTAL ? true : q.type === 'multi' ? true : q.skippable ? true : (q.id === 'goal' ? (!!a.primary_goal || other.trim().length > 0) : !!a[q.field])
 
-  const canNext = (
-    step === 0 ? f.full_name.trim().length > 1 :
-    step === 1 ? f.sports.length > 0 :
-    step === 2 ? !!f.primary_goal :
-    step === 3 ? !!f.sport_experience :
-    step === 4 ? f.weekly_sessions != null :
-    true
-  )
+  function selSingle(field: Question['field'], val: string) {
+    setA(p => ({ ...p, [field]: val }))
+    if (field === 'primary_goal') setOther('')
+  }
+  function toggleMulti(val: string) {
+    setA(p => ({ ...p, sports: p.sports.includes(val) ? p.sports.filter(s => s !== val) : [...p.sports, val] }))
+  }
+
+  function go(next: number, d: 'r' | 'l') { setDir(d); setStep(next); setError('') }
+  const onNext = () => { if (step < TOTAL - 1) go(step + 1, 'r'); else void finish() }
+  const onBack = () => { if (step > 0) go(step - 1, 'l') }
+  const onSkip = () => { if (step < TOTAL - 1) go(step + 1, 'r'); else void finish() }
 
   async function finish() {
     setSaving(true); setError('')
     const sb = createClient()
     const { data: { user } } = await sb.auth.getUser()
     if (!user) { router.replace('/auth'); return }
+    const goal = a.primary_goal === null && other.trim() ? other.trim() : (a.primary_goal === 'autre' ? (other.trim() || 'autre') : a.primary_goal)
     const { error: e } = await sb.from('profiles').update({
-      full_name: f.full_name.trim(),
-      sports: f.sports,
-      primary_goal: f.primary_goal,
-      sport_experience: f.sport_experience,
-      weekly_sessions: f.weekly_sessions,
-      height_cm: num(f.height_cm),
-      weight_kg: num(f.weight_kg),
-      birth_date: f.birth_date || null,
-      gender: f.gender,
-      profile_setup_done: true,
+      primary_goal: goal, sports: a.sports, weekly_volume: a.weekly_volume, level: a.level, profile_setup_done: true,
     }).eq('id', user.id)
     setSaving(false)
     if (e) { setError(t('welcome.saveError')); return }
-    router.replace('/'); router.refresh()
+    setDir('r'); setStep(TOTAL)
   }
 
-  const next = () => { if (step < TOTAL - 1) setStep(s => s + 1); else void finish() }
-  const back = () => setStep(s => Math.max(0, s - 1))
+  // Swipe tactile
+  function onTouchStart(e: React.TouchEvent) { touch.current = e.touches[0].clientX }
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touch.current == null || step >= TOTAL) return
+    const dx = e.changedTouches[0].clientX - touch.current
+    touch.current = null
+    if (dx < -55 && canNext) onNext()
+    else if (dx > 55 && step > 0) onBack()
+  }
+
+  const isFinal = step >= TOTAL
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
+      <style>{`
+        @keyframes qIn { from { opacity: 0; transform: translateX(var(--qx)) } to { opacity: 1; transform: translateX(0) } }
+        @keyframes qCheck { from { stroke-dashoffset: 60 } to { stroke-dashoffset: 0 } }
+        @keyframes qPop { 0% { transform: scale(0.6); opacity: 0 } 60% { transform: scale(1.08) } 100% { transform: scale(1); opacity: 1 } }
+        .q-slide { animation: qIn 0.32s cubic-bezier(0.32,0.72,0,1) both }
+        @media (prefers-reduced-motion: reduce) { .q-slide { animation: none } .q-check, .q-pop { animation: none !important } }
+      `}</style>
       <LanguageDropdown />
-      <div style={{ width: '100%', maxWidth: 440, padding: '0 24px' }}>
-        {/* En-tête : shuriken + progression */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logos/logo_4bras.png" alt="" style={{ width: 44, height: 44, objectFit: 'contain' }} />
-          <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginTop: 18 }}>
-            {Array.from({ length: TOTAL }).map((_, i) => (
-              <span key={i} style={{ width: i === step ? 22 : 7, height: 7, borderRadius: 99, background: i <= step ? 'var(--primary)' : 'var(--border)', transition: 'all 0.25s' }} />
-            ))}
-          </div>
-        </div>
 
-        <h1 style={{ fontFamily: FT, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 24px', lineHeight: 1.2, textAlign: 'center' }}>{t(`welcome.t${step}`)}</h1>
-
-        <div style={{ minHeight: 180 }}>
-          {step === 0 && (
-            <Field label={t('welcome.nameLabel')}>
-              <input autoFocus value={f.full_name} onChange={e => setF(p => ({ ...p, full_name: e.target.value }))} placeholder={t('welcome.namePh')} style={inputStyle} />
-            </Field>
-          )}
-          {step === 1 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-              {SPORT_KEYS.map(k => <Chip key={k} active={f.sports.includes(k)} label={t(`sport.${k}`)} onClick={() => toggleSport(k)} />)}
-            </div>
-          )}
-          {step === 2 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {GOAL_KEYS.map(k => <Chip key={k} active={f.primary_goal === k} label={t(`goal.${k}`)} onClick={() => setF(p => ({ ...p, primary_goal: k }))} />)}
-            </div>
-          )}
-          {step === 3 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {EXP_KEYS.map(k => <Chip key={k} active={f.sport_experience === k} label={t(`exp.${k}`)} onClick={() => setF(p => ({ ...p, sport_experience: k }))} />)}
-            </div>
-          )}
-          {step === 4 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-              {[1, 2, 3, 4, 5, 6, 7].map(n => <Chip key={n} active={f.weekly_sessions === n} label={n === 7 ? '7+' : String(n)} onClick={() => setF(p => ({ ...p, weekly_sessions: n }))} />)}
-            </div>
-          )}
-          {step === 5 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <Field label={t('welcome.height')}><input type="number" inputMode="numeric" value={f.height_cm} onChange={e => setF(p => ({ ...p, height_cm: e.target.value }))} placeholder="178" style={inputStyle} /></Field>
-                <Field label={t('welcome.weight')}><input type="number" inputMode="decimal" value={f.weight_kg} onChange={e => setF(p => ({ ...p, weight_kg: e.target.value }))} placeholder="72" style={inputStyle} /></Field>
+      <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{
+        width: '100%', maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border)',
+        borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-card)', padding: '20px 22px 22px', overflow: 'hidden',
+      }}>
+        {!isFinal && (
+          <>
+            {/* En-tête : progression + N sur M + Passer */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+              <div style={{ flex: 1, height: 4, borderRadius: 99, background: 'var(--bg-card2)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${((step + 1) / TOTAL) * 100}%`, background: 'var(--primary-gradient)', borderRadius: 99, transition: 'width 0.3s ease' }} />
               </div>
-              <Field label={t('welcome.birth')}><input type="date" value={f.birth_date} onChange={e => setF(p => ({ ...p, birth_date: e.target.value }))} style={inputStyle} /></Field>
-              <Field label={t('welcome.sex')}>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {GENDER_KEYS.map(k => <Chip key={k} active={f.gender === k} label={t(`gender.${k}`)} onClick={() => setF(p => ({ ...p, gender: k }))} />)}
-                </div>
-              </Field>
+              <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', flexShrink: 0 }}>{t('q.of', { n: step + 1, m: TOTAL })}</span>
+              {q.skippable && (
+                <button onClick={onSkip} style={{ flexShrink: 0, background: 'none', border: 'none', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>{t('q.skip')}</button>
+              )}
             </div>
-          )}
-        </div>
 
-        {error && <p style={{ color: '#EF4444', fontFamily: FD, fontSize: 13, margin: '12px 0 0', textAlign: 'center' }}>{error}</p>}
+            <div key={step} className="q-slide" style={{ ['--qx' as string]: dir === 'r' ? '28px' : '-28px' }}>
+              <h1 style={{ fontFamily: FD, fontSize: 23, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, margin: '0 0 20px' }}>{t(q.titleKey)}</h1>
 
-        <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
-          {step > 0 && (
-            <button onClick={back} style={{ height: 50, padding: '0 22px', borderRadius: 12, border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FD, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('common.back')}</button>
-          )}
-          <button onClick={next} disabled={!canNext || saving} style={{
-            flex: 1, height: 50, borderRadius: 12, border: 'none', cursor: (!canNext || saving) ? 'not-allowed' : 'pointer',
-            background: (!canNext || saving) ? 'var(--bg-card2)' : 'var(--primary-gradient)',
-            color: (!canNext || saving) ? 'var(--text-dim)' : '#fff', fontFamily: FD, fontSize: 15, fontWeight: 700,
-          }}>
-            {saving ? t('common.saving') : step === TOTAL - 1 ? t('common.finish') : t('common.continue')}
-          </button>
-        </div>
-        {step === TOTAL - 1 && (
-          <p style={{ textAlign: 'center', fontFamily: FD, fontSize: 12, color: 'var(--text-dim)', margin: '14px 0 0' }}>
-            {t('welcome.editLater')}
-          </p>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {q.options.map((opt, i) => {
+                  const selected = q.type === 'multi' ? a.sports.includes(opt) : a[q.field] === opt
+                  return (
+                    <button key={opt} onClick={() => q.type === 'multi' ? toggleMulti(opt) : selSingle(q.field, opt)} style={{
+                      display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', cursor: 'pointer', width: '100%',
+                      padding: '14px 14px', border: 'none', borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                      borderRadius: selected ? 'var(--r-md)' : 0,
+                      background: selected ? 'var(--primary-dim)' : 'transparent',
+                      boxShadow: selected ? 'inset 0 0 0 1px var(--primary)' : 'none', transition: 'background 0.15s',
+                    }}>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontFamily: FB, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{t(q.prefix + opt)}</span>
+                        {q.desc && <span style={{ display: 'block', fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', marginTop: 3, lineHeight: 1.45 }}>{t(q.prefix + opt + 'D')}</span>}
+                      </span>
+                      <span style={{
+                        width: 22, height: 22, borderRadius: q.type === 'multi' ? 6 : '50%', flexShrink: 0,
+                        border: `2px solid ${selected ? 'var(--primary)' : 'var(--border-mid)'}`,
+                        background: selected ? 'var(--primary)' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
+                      }}>{selected && <Check size={13} color="#fff" strokeWidth={3} />}</span>
+                    </button>
+                  )
+                })}
+
+                {/* Option « Autre » avec champ libre (objectif) */}
+                {q.other && (
+                  <div style={{ borderTop: '1px solid var(--border)', padding: '14px 14px 4px' }}>
+                    <input value={other} onChange={e => { setOther(e.target.value); if (e.target.value) setA(p => ({ ...p, primary_goal: 'autre' })) }}
+                      placeholder={t('q.other')} style={{
+                        width: '100%', height: 44, boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border-mid)',
+                        borderRadius: 'var(--r-sm)', padding: '0 14px', color: 'var(--text)', fontFamily: FB, fontSize: 14, outline: 'none',
+                      }} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {error && <p style={{ color: 'var(--charge-hard)', fontFamily: FB, fontSize: 13, margin: '14px 0 0', textAlign: 'center' }}>{error}</p>}
+
+            {/* Pied : retour + Suivant/Terminer */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 22 }}>
+              {step > 0 ? (
+                <button onClick={onBack} aria-label="Retour" style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ArrowLeft size={18} /></button>
+              ) : <span />}
+              <button onClick={onNext} disabled={!canNext || saving} style={{
+                height: 48, padding: '0 24px', borderRadius: 999, border: 'none',
+                background: (!canNext || saving) ? 'var(--bg-card2)' : 'var(--primary-gradient)',
+                color: (!canNext || saving) ? 'var(--text-dim)' : '#fff', fontFamily: FB, fontSize: 15, fontWeight: 700,
+                cursor: (!canNext || saving) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
+                boxShadow: (!canNext || saving) ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(6,182,212,0.28)',
+              }}>
+                {saving ? <Loader2 size={18} style={{ animation: 'spin 0.8s linear infinite' }} /> : <>{step === TOTAL - 1 ? t('q.finish') : t('q.next')}<ArrowRight size={17} /></>}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── Écran final ── */}
+        {isFinal && (
+          <div style={{ textAlign: 'center', padding: '12px 0 4px' }}>
+            <svg className="q-pop" width="72" height="72" viewBox="0 0 72 72" style={{ margin: '0 auto', display: 'block', animation: 'qPop 0.5s cubic-bezier(0.16,1,0.3,1) both' }}>
+              <circle cx="36" cy="36" r="33" fill="var(--primary-dim)" />
+              <path className="q-check" d="M22 37l9 9 19-21" fill="none" stroke="var(--primary)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="60" style={{ animation: 'qCheck 0.5s ease 0.25s both' }} />
+            </svg>
+            <h1 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '20px 0 4px' }}>{t('q.doneTitle')}</h1>
+            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: '0 0 22px' }}>{t('q.doneSub')}</p>
+
+            {/* Récap */}
+            <div style={{ textAlign: 'left', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 22 }}>
+              <RecapRow label="Objectif" value={(a.primary_goal && a.primary_goal !== 'autre') ? t('q.goal.' + a.primary_goal) : (other.trim() || t('q.other'))} fallbackRaw />
+              {a.sports.length > 0 && <RecapRow label="Sports" value={a.sports.map(s => t('q.sport.' + s)).join(', ')} />}
+              {a.weekly_volume && <RecapRow label="Volume" value={t('q.vol.' + a.weekly_volume)} />}
+              {a.level && <RecapRow label="Niveau" value={t('q.lvl.' + a.level)} />}
+            </div>
+
+            <button onClick={() => { router.replace('/'); router.refresh() }} style={{
+              width: '100%', height: 50, borderRadius: 'var(--r-md)', border: 'none', background: 'var(--primary-gradient)', color: '#fff',
+              fontFamily: FB, fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(6,182,212,0.28)',
+            }}>{t('q.enter')}<ArrowRight size={17} /></button>
+          </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function RecapRow({ label, value, fallbackRaw }: { label: string; value: string; fallbackRaw?: boolean }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '5px 0' }}>
+      <span style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-dim)', flexShrink: 0 }}>{label}</span>
+      <span style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)', textAlign: 'right', textTransform: fallbackRaw ? 'capitalize' : 'none' }}>{value}</span>
     </div>
   )
 }

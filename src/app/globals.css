@@ -130,6 +130,7 @@
 
 :root, .light {
   --bg:          #ffffff;
+  color-scheme: light;
   --bg-alt:      #e4eaf2;
   --bg-card:     #ffffff;
   --bg-card2:    #f8fafc;
@@ -157,6 +158,7 @@
 
 .dark {
   --bg:          #080A0F;
+  color-scheme: dark;
   --bg-alt:      #0B0E15;
   --bg-card:     #0F1117;
   --bg-card2:    #0D1219;

@@ -47,29 +47,71 @@ export function VoiceOverlay({
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Buffer défilant : à CHAQUE frame on pousse une nouvelle amplitude à droite
-  // et on décale tout vers la gauche → l'onde « défile » en continu.
+  // Buffer défilant piloté par le VRAI volume du micro (Web Audio) → les barres
+  // réagissent réellement à la voix, comme Claude. L'analyse N'EST PAS reliée à
+  // la sortie (aucun retour audio). Repli sur l'activité de reconnaissance si le
+  // micro est indisponible.
   useEffect(() => {
+    let cancelled = false
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let ctx: any = null
+    let analyser: AnalyserNode | null = null
+    let data: Uint8Array | null = null
+    let stream: MediaStream | null = null
+
+    ;(async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Ctx = window.AudioContext || (window as any).webkitAudioContext
+        ctx = new Ctx()
+        const src = ctx.createMediaStreamSource(stream)
+        const a: AnalyserNode = ctx.createAnalyser()
+        a.fftSize = 256
+        src.connect(a)                   // PAS de connexion à destination (pas de larsen)
+        await ctx.resume?.()
+        analyser = a
+        data = new Uint8Array(a.fftSize)
+      } catch { /* pas de micro → repli reconnaissance */ }
+    })()
+
     const id = window.setInterval(() => {
-      const live = transcriptRef.current + interimRef.current
-      if (live !== lastLiveRef.current) { energyRef.current = 1; lastLiveRef.current = live }
-      else energyRef.current *= 0.9
-      const e = energyRef.current
-      // amplitude de la nouvelle barre : forte si on parle, minuscule au silence
-      const newVal = e > 0.12
-        ? Math.min(1, (0.35 + Math.random() * 0.65) * (0.5 + e * 0.5))
-        : 0.05 + Math.random() * 0.05
+      let v = 0
+      const an = analyser
+      const dt = data
+      if (an && dt) {
+        if (ctx?.state === 'suspended') ctx.resume?.()
+        an.getByteTimeDomainData(dt)
+        let sum = 0
+        for (let i = 0; i < dt.length; i++) { const d = (dt[i] - 128) / 128; sum += d * d }
+        v = Math.min(1, Math.sqrt(sum / dt.length) * 7.5)   // RMS + gain
+        if (v < 0.04) v = 0                                  // noise gate
+      } else {
+        // Repli : enveloppe pilotée par l'arrivée des mots reconnus
+        const live = transcriptRef.current + interimRef.current
+        if (live !== lastLiveRef.current) { energyRef.current = 1; lastLiveRef.current = live }
+        else energyRef.current *= 0.9
+        const e = energyRef.current
+        v = e > 0.12 ? (0.35 + Math.random() * 0.65) * (0.5 + e * 0.5) : 0
+      }
       const buf = bufRef.current
-      buf.push(newVal); buf.shift()
+      buf.push(v); buf.shift()
       for (let i = 0; i < NBARS; i++) {
         const el = barsRef.current[i]
         if (!el) continue
-        const h = 0.16 + buf[i] * 0.84            // plancher visible → on voit toujours défiler
+        const h = 0.14 + buf[i] * 0.86            // plancher visible → on voit toujours défiler
         el.style.transform = `scaleY(${h.toFixed(3)})`
-        el.style.opacity = String(0.4 + buf[i] * 0.6)
+        el.style.opacity = String(0.5 + buf[i] * 0.5)
       }
     }, 55)
-    return () => window.clearInterval(id)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+      try { stream?.getTracks().forEach(t => t.stop()) } catch { /* ignore */ }
+      try { ctx?.close?.() } catch { /* ignore */ }
+    }
   }, [])
 
   if (!mounted) return null
@@ -129,16 +171,16 @@ export function VoiceOverlay({
         </button>
 
         {/* Waveform défilante */}
-        <div style={{ flex: 1, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, overflow: 'hidden' }}>
+        <div style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, overflow: 'hidden' }}>
           {Array.from({ length: NBARS }, (_, i) => (
             <span
               key={i}
               ref={el => { barsRef.current[i] = el }}
               style={{
-                width: 3, height: '100%', borderRadius: 3, flexShrink: 0,
+                width: 3.5, height: '100%', borderRadius: 4, flexShrink: 0,
                 background: 'var(--ai-text)', transformOrigin: 'center',
-                transform: 'scaleY(0.16)', opacity: 0.45,
-                transition: 'transform 0.07s linear, opacity 0.1s linear', willChange: 'transform',
+                transform: 'scaleY(0.14)', opacity: 0.5,
+                transition: 'transform 0.06s linear, opacity 0.1s linear', willChange: 'transform',
               }}
             />
           ))}

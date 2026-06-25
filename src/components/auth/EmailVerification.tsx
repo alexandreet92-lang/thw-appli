@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   email: string
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function EmailVerification({ email, onBack }: Props) {
+  const { t } = useI18n()
   const [resent,     setResent]     = useState(false)
   const [resending,  setResending]  = useState(false)
   const [countdown,  setCountdown]  = useState(0)
@@ -48,17 +50,16 @@ export function EmailVerification({ email, onBack }: Props) {
       </div>
 
       <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', margin: '0 0 12px', fontFamily: 'var(--font-display)' }}>
-        Vérifie ta boîte mail
+        {t('verify.title')}
       </h2>
       <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 8px', fontFamily: 'var(--font-body)' }}>
-        Un lien de confirmation a été envoyé à
+        {t('verify.sentTo')}
       </p>
       <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--primary)', margin: '0 0 32px', padding: '8px 16px', borderRadius: 8, background: 'var(--primary-dim)', display: 'inline-block', fontFamily: 'var(--font-body)' }}>
         {email}
       </p>
       <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 24px', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
-        Clique sur le lien dans l&apos;email pour activer ton compte.
-        Pense à vérifier tes spams.
+        {t('verify.activate')}
       </p>
 
       <button
@@ -73,11 +74,11 @@ export function EmailVerification({ email, onBack }: Props) {
           transition: 'all 200ms', fontFamily: 'var(--font-body)',
         }}
       >
-        {resending ? 'Envoi…' : resent ? '✓ Email renvoyé' : countdown > 0 ? `Renvoyer dans ${countdown}s` : "Renvoyer l'email"}
+        {resending ? t('verify.resending') : resent ? t('verify.resent') : countdown > 0 ? t('verify.resendIn', { s: countdown }) : t('verify.resend')}
       </button>
 
       <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-        ← Retour à la connexion
+        {t('verify.back')}
       </button>
     </div>
   )

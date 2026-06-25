@@ -10,27 +10,15 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
+import { LanguageSelector } from '@/components/i18n/LanguageSelector'
 
 const FD = 'var(--font-body)', FT = 'var(--font-display)'
 
-const SPORTS = [
-  { key: 'running', label: 'Running' }, { key: 'trail', label: 'Trail' },
-  { key: 'cycling', label: 'Cyclisme' }, { key: 'triathlon', label: 'Triathlon' },
-  { key: 'hyrox', label: 'Hyrox' }, { key: 'gym', label: 'Muscu / Gym' },
-  { key: 'aviron', label: 'Aviron' }, { key: 'boxe', label: 'Boxe' },
-]
-const GOALS = [
-  { key: 'performance', label: 'Performance' }, { key: 'sante', label: 'Santé / forme' },
-  { key: 'perte_poids', label: 'Perte de poids' }, { key: 'hybride', label: 'Hybride (force + endurance)' },
-]
-const EXPERIENCE = [
-  { key: '<1', label: "Moins d'1 an" }, { key: '1-3', label: '1 – 3 ans' },
-  { key: '3-5', label: '3 – 5 ans' }, { key: '5-10', label: '5 – 10 ans' },
-  { key: '10+', label: 'Plus de 10 ans' },
-]
-const GENDERS = [
-  { key: 'homme', label: 'Homme' }, { key: 'femme', label: 'Femme' }, { key: 'autre', label: 'Autre' },
-]
+const SPORT_KEYS = ['running', 'trail', 'cycling', 'triathlon', 'hyrox', 'gym', 'aviron', 'boxe']
+const GOAL_KEYS = ['performance', 'sante', 'perte_poids', 'hybride']
+const EXP_KEYS = ['<1', '1-3', '3-5', '5-10', '10+']
+const GENDER_KEYS = ['homme', 'femme', 'autre']
 
 interface Form {
   full_name: string
@@ -74,6 +62,7 @@ const inputStyle: React.CSSProperties = {
 
 export default function BienvenuePage() {
   const router = useRouter()
+  const { t } = useI18n()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -139,25 +128,21 @@ export default function BienvenuePage() {
       profile_setup_done: true,
     }).eq('id', user.id)
     setSaving(false)
-    if (e) { setError("L'enregistrement a échoué. Réessaie."); return }
+    if (e) { setError(t('welcome.saveError')); return }
     router.replace('/'); router.refresh()
   }
 
   const next = () => { if (step < TOTAL - 1) setStep(s => s + 1); else void finish() }
   const back = () => setStep(s => Math.max(0, s - 1))
 
-  const TITLES = [
-    'Comment tu t’appelles ?',
-    'Tes sports principaux',
-    'Ton objectif principal',
-    'Depuis combien de temps tu pratiques régulièrement ?',
-    'Combien de séances par semaine ?',
-    'Quelques mesures pour personnaliser',
-  ]
-
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0' }}>
       <div style={{ width: '100%', maxWidth: 440, padding: '0 24px' }}>
+        {/* Sélecteur de langue — au tout début de l'app */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+          <LanguageSelector size="sm" />
+        </div>
+
         {/* En-tête : shuriken + progression */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -169,27 +154,27 @@ export default function BienvenuePage() {
           </div>
         </div>
 
-        <h1 style={{ fontFamily: FT, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 24px', lineHeight: 1.2, textAlign: 'center' }}>{TITLES[step]}</h1>
+        <h1 style={{ fontFamily: FT, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 24px', lineHeight: 1.2, textAlign: 'center' }}>{t(`welcome.t${step}`)}</h1>
 
         <div style={{ minHeight: 180 }}>
           {step === 0 && (
-            <Field label="Nom complet">
-              <input autoFocus value={f.full_name} onChange={e => setF(p => ({ ...p, full_name: e.target.value }))} placeholder="Prénom Nom" style={inputStyle} />
+            <Field label={t('welcome.nameLabel')}>
+              <input autoFocus value={f.full_name} onChange={e => setF(p => ({ ...p, full_name: e.target.value }))} placeholder={t('welcome.namePh')} style={inputStyle} />
             </Field>
           )}
           {step === 1 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-              {SPORTS.map(s => <Chip key={s.key} active={f.sports.includes(s.key)} label={s.label} onClick={() => toggleSport(s.key)} />)}
+              {SPORT_KEYS.map(k => <Chip key={k} active={f.sports.includes(k)} label={t(`sport.${k}`)} onClick={() => toggleSport(k)} />)}
             </div>
           )}
           {step === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {GOALS.map(g => <Chip key={g.key} active={f.primary_goal === g.key} label={g.label} onClick={() => setF(p => ({ ...p, primary_goal: g.key }))} />)}
+              {GOAL_KEYS.map(k => <Chip key={k} active={f.primary_goal === k} label={t(`goal.${k}`)} onClick={() => setF(p => ({ ...p, primary_goal: k }))} />)}
             </div>
           )}
           {step === 3 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {EXPERIENCE.map(x => <Chip key={x.key} active={f.sport_experience === x.key} label={x.label} onClick={() => setF(p => ({ ...p, sport_experience: x.key }))} />)}
+              {EXP_KEYS.map(k => <Chip key={k} active={f.sport_experience === k} label={t(`exp.${k}`)} onClick={() => setF(p => ({ ...p, sport_experience: k }))} />)}
             </div>
           )}
           {step === 4 && (
@@ -200,13 +185,13 @@ export default function BienvenuePage() {
           {step === 5 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', gap: 12 }}>
-                <Field label="Taille (cm)"><input type="number" inputMode="numeric" value={f.height_cm} onChange={e => setF(p => ({ ...p, height_cm: e.target.value }))} placeholder="178" style={inputStyle} /></Field>
-                <Field label="Poids (kg)"><input type="number" inputMode="decimal" value={f.weight_kg} onChange={e => setF(p => ({ ...p, weight_kg: e.target.value }))} placeholder="72" style={inputStyle} /></Field>
+                <Field label={t('welcome.height')}><input type="number" inputMode="numeric" value={f.height_cm} onChange={e => setF(p => ({ ...p, height_cm: e.target.value }))} placeholder="178" style={inputStyle} /></Field>
+                <Field label={t('welcome.weight')}><input type="number" inputMode="decimal" value={f.weight_kg} onChange={e => setF(p => ({ ...p, weight_kg: e.target.value }))} placeholder="72" style={inputStyle} /></Field>
               </div>
-              <Field label="Date de naissance"><input type="date" value={f.birth_date} onChange={e => setF(p => ({ ...p, birth_date: e.target.value }))} style={inputStyle} /></Field>
-              <Field label="Sexe">
+              <Field label={t('welcome.birth')}><input type="date" value={f.birth_date} onChange={e => setF(p => ({ ...p, birth_date: e.target.value }))} style={inputStyle} /></Field>
+              <Field label={t('welcome.sex')}>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {GENDERS.map(g => <Chip key={g.key} active={f.gender === g.key} label={g.label} onClick={() => setF(p => ({ ...p, gender: g.key }))} />)}
+                  {GENDER_KEYS.map(k => <Chip key={k} active={f.gender === k} label={t(`gender.${k}`)} onClick={() => setF(p => ({ ...p, gender: k }))} />)}
                 </div>
               </Field>
             </div>
@@ -217,19 +202,19 @@ export default function BienvenuePage() {
 
         <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
           {step > 0 && (
-            <button onClick={back} style={{ height: 50, padding: '0 22px', borderRadius: 12, border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FD, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>Retour</button>
+            <button onClick={back} style={{ height: 50, padding: '0 22px', borderRadius: 12, border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FD, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{t('common.back')}</button>
           )}
           <button onClick={next} disabled={!canNext || saving} style={{
             flex: 1, height: 50, borderRadius: 12, border: 'none', cursor: (!canNext || saving) ? 'not-allowed' : 'pointer',
             background: (!canNext || saving) ? 'var(--bg-card2)' : 'var(--primary-gradient)',
             color: (!canNext || saving) ? 'var(--text-dim)' : '#fff', fontFamily: FD, fontSize: 15, fontWeight: 700,
           }}>
-            {saving ? 'Enregistrement…' : step === TOTAL - 1 ? 'Terminer' : 'Continuer'}
+            {saving ? t('common.saving') : step === TOTAL - 1 ? t('common.finish') : t('common.continue')}
           </button>
         </div>
         {step === TOTAL - 1 && (
           <p style={{ textAlign: 'center', fontFamily: FD, fontSize: 12, color: 'var(--text-dim)', margin: '14px 0 0' }}>
-            Tu pourras tout modifier plus tard dans ton profil.
+            {t('welcome.editLater')}
           </p>
         )}
       </div>

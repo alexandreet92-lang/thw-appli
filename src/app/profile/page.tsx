@@ -8,6 +8,8 @@ import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
+import { useI18n } from '@/lib/i18n'
+import { LanguageSelector } from '@/components/i18n/LanguageSelector'
 
 // ══════════════════════════════════════════════════
 // TYPES
@@ -831,6 +833,7 @@ function NotificationsBloc() {
 // ══════════════════════════════════════════════════
 
 function ApparenceBloc() {
+  const { t } = useI18n()
   const [precise, setPrecise] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -861,6 +864,14 @@ function ApparenceBloc() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <Card>
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 3px' }}>{t('profile.langTitle')}</p>
+          <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: 0, lineHeight: 1.6 }}>{t('profile.langDesc')}</p>
+        </div>
+        <LanguageSelector size="sm" />
+      </Card>
+
       <Card>
         <div>
           <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 3px' }}>Thème jour / nuit automatique</p>

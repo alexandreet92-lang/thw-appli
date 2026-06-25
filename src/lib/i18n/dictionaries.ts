@@ -1,0 +1,126 @@
+// Dictionnaires i18n — FR (défaut) / EN / ES. Système maison léger (aucune dépendance).
+// On migre les chaînes de l'app progressivement vers t('clé'). Première surface
+// couverte : entrée (connexion + bienvenue) + sélecteur de langue.
+
+export type Lang = 'fr' | 'en' | 'es'
+export const LANGS: { code: Lang; label: string; flag: string }[] = [
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+]
+export const DEFAULT_LANG: Lang = 'fr'
+
+type Dict = Record<string, string>
+
+const fr: Dict = {
+  'common.continue': 'Continuer', 'common.back': 'Retour', 'common.finish': 'Terminer',
+  'common.saving': 'Enregistrement…',
+  // Auth
+  'auth.tagline': 'by The Hybrid Way',
+  'auth.tabLogin': 'Connexion', 'auth.tabSignup': 'Créer un compte',
+  'auth.email': 'Adresse email', 'auth.password': 'Mot de passe', 'auth.confirm': 'Confirmer le mot de passe',
+  'auth.remember': 'Rester connecté', 'auth.forgot': 'Mot de passe oublié ?',
+  'auth.login': 'Se connecter', 'auth.signup': 'Créer mon compte', 'auth.loading': 'Chargement…',
+  'auth.or': 'ou', 'auth.apple': 'Continuer avec Apple', 'auth.google': 'Continuer avec Google',
+  'auth.termsAccept': "J'accepte les", 'auth.termsCgu': "conditions d'utilisation",
+  'auth.termsAnd': 'et la', 'auth.termsPrivacy': 'politique de confidentialité',
+  'auth.pwMismatch': 'Les mots de passe ne correspondent pas.',
+  'auth.expired': 'Session expirée. Reconnecte-toi.',
+  'auth.forgotTitle': 'Réinitialiser le mot de passe',
+  'auth.forgotDesc': 'Entre ton email. Un lien de réinitialisation sera envoyé.',
+  'auth.forgotSend': 'Envoyer le lien', 'auth.forgotSending': 'Envoi…',
+  'auth.forgotSent': 'Email envoyé. Vérifie ta boîte mail.',
+  'verify.title': 'Vérifie ta boîte mail', 'verify.sentTo': 'Un lien de confirmation a été envoyé à',
+  'verify.activate': "Clique sur le lien dans l'email pour activer ton compte. Pense à vérifier tes spams.",
+  'verify.resend': "Renvoyer l'email", 'verify.resending': 'Envoi…', 'verify.resent': '✓ Email renvoyé',
+  'verify.resendIn': 'Renvoyer dans {s}s', 'verify.back': '← Retour à la connexion',
+  // Bienvenue
+  'welcome.lang': 'Langue', 'welcome.editLater': 'Tu pourras tout modifier plus tard dans ton profil.',
+  'welcome.saveError': "L'enregistrement a échoué. Réessaie.",
+  'welcome.t0': 'Comment tu t’appelles ?', 'welcome.t1': 'Tes sports principaux',
+  'welcome.t2': 'Ton objectif principal', 'welcome.t3': 'Depuis combien de temps tu pratiques régulièrement ?',
+  'welcome.t4': 'Combien de séances par semaine ?', 'welcome.t5': 'Quelques mesures pour personnaliser',
+  'welcome.nameLabel': 'Nom complet', 'welcome.namePh': 'Prénom Nom',
+  'welcome.height': 'Taille (cm)', 'welcome.weight': 'Poids (kg)', 'welcome.birth': 'Date de naissance', 'welcome.sex': 'Sexe',
+  'goal.performance': 'Performance', 'goal.sante': 'Santé / forme', 'goal.perte_poids': 'Perte de poids', 'goal.hybride': 'Hybride (force + endurance)',
+  'exp.<1': "Moins d'1 an", 'exp.1-3': '1 – 3 ans', 'exp.3-5': '3 – 5 ans', 'exp.5-10': '5 – 10 ans', 'exp.10+': 'Plus de 10 ans',
+  'gender.homme': 'Homme', 'gender.femme': 'Femme', 'gender.autre': 'Autre',
+  'sport.running': 'Running', 'sport.trail': 'Trail', 'sport.cycling': 'Cyclisme', 'sport.triathlon': 'Triathlon',
+  'sport.hyrox': 'Hyrox', 'sport.gym': 'Muscu / Gym', 'sport.aviron': 'Aviron', 'sport.boxe': 'Boxe',
+  // Profil
+  'profile.langTitle': 'Langue de l’application', 'profile.langDesc': 'Choisis la langue de l’interface.',
+}
+
+const en: Dict = {
+  'common.continue': 'Continue', 'common.back': 'Back', 'common.finish': 'Finish',
+  'common.saving': 'Saving…',
+  'auth.tagline': 'by The Hybrid Way',
+  'auth.tabLogin': 'Log in', 'auth.tabSignup': 'Sign up',
+  'auth.email': 'Email address', 'auth.password': 'Password', 'auth.confirm': 'Confirm password',
+  'auth.remember': 'Stay logged in', 'auth.forgot': 'Forgot password?',
+  'auth.login': 'Log in', 'auth.signup': 'Create my account', 'auth.loading': 'Loading…',
+  'auth.or': 'or', 'auth.apple': 'Continue with Apple', 'auth.google': 'Continue with Google',
+  'auth.termsAccept': 'I accept the', 'auth.termsCgu': 'terms of use',
+  'auth.termsAnd': 'and the', 'auth.termsPrivacy': 'privacy policy',
+  'auth.pwMismatch': 'Passwords do not match.',
+  'auth.expired': 'Session expired. Please log in again.',
+  'auth.forgotTitle': 'Reset your password',
+  'auth.forgotDesc': 'Enter your email. A reset link will be sent.',
+  'auth.forgotSend': 'Send the link', 'auth.forgotSending': 'Sending…',
+  'auth.forgotSent': 'Email sent. Check your inbox.',
+  'verify.title': 'Check your inbox', 'verify.sentTo': 'A confirmation link was sent to',
+  'verify.activate': 'Click the link in the email to activate your account. Remember to check your spam.',
+  'verify.resend': 'Resend email', 'verify.resending': 'Sending…', 'verify.resent': '✓ Email resent',
+  'verify.resendIn': 'Resend in {s}s', 'verify.back': '← Back to login',
+  'welcome.lang': 'Language', 'welcome.editLater': 'You can change everything later in your profile.',
+  'welcome.saveError': 'Saving failed. Please try again.',
+  'welcome.t0': 'What’s your name?', 'welcome.t1': 'Your main sports',
+  'welcome.t2': 'Your main goal', 'welcome.t3': 'How long have you been training regularly?',
+  'welcome.t4': 'How many sessions per week?', 'welcome.t5': 'A few details to personalize',
+  'welcome.nameLabel': 'Full name', 'welcome.namePh': 'First Last',
+  'welcome.height': 'Height (cm)', 'welcome.weight': 'Weight (kg)', 'welcome.birth': 'Date of birth', 'welcome.sex': 'Sex',
+  'goal.performance': 'Performance', 'goal.sante': 'Health / fitness', 'goal.perte_poids': 'Weight loss', 'goal.hybride': 'Hybrid (strength + endurance)',
+  'exp.<1': 'Less than 1 year', 'exp.1-3': '1 – 3 years', 'exp.3-5': '3 – 5 years', 'exp.5-10': '5 – 10 years', 'exp.10+': 'Over 10 years',
+  'gender.homme': 'Male', 'gender.femme': 'Female', 'gender.autre': 'Other',
+  'sport.running': 'Running', 'sport.trail': 'Trail', 'sport.cycling': 'Cycling', 'sport.triathlon': 'Triathlon',
+  'sport.hyrox': 'Hyrox', 'sport.gym': 'Strength / Gym', 'sport.aviron': 'Rowing', 'sport.boxe': 'Boxing',
+  'profile.langTitle': 'App language', 'profile.langDesc': 'Choose the interface language.',
+}
+
+const es: Dict = {
+  'common.continue': 'Continuar', 'common.back': 'Atrás', 'common.finish': 'Finalizar',
+  'common.saving': 'Guardando…',
+  'auth.tagline': 'by The Hybrid Way',
+  'auth.tabLogin': 'Iniciar sesión', 'auth.tabSignup': 'Crear cuenta',
+  'auth.email': 'Correo electrónico', 'auth.password': 'Contraseña', 'auth.confirm': 'Confirmar contraseña',
+  'auth.remember': 'Mantener sesión iniciada', 'auth.forgot': '¿Olvidaste tu contraseña?',
+  'auth.login': 'Iniciar sesión', 'auth.signup': 'Crear mi cuenta', 'auth.loading': 'Cargando…',
+  'auth.or': 'o', 'auth.apple': 'Continuar con Apple', 'auth.google': 'Continuar con Google',
+  'auth.termsAccept': 'Acepto las', 'auth.termsCgu': 'condiciones de uso',
+  'auth.termsAnd': 'y la', 'auth.termsPrivacy': 'política de privacidad',
+  'auth.pwMismatch': 'Las contraseñas no coinciden.',
+  'auth.expired': 'Sesión expirada. Vuelve a iniciar sesión.',
+  'auth.forgotTitle': 'Restablecer la contraseña',
+  'auth.forgotDesc': 'Introduce tu correo. Te enviaremos un enlace de restablecimiento.',
+  'auth.forgotSend': 'Enviar el enlace', 'auth.forgotSending': 'Enviando…',
+  'auth.forgotSent': 'Correo enviado. Revisa tu bandeja de entrada.',
+  'verify.title': 'Revisa tu correo', 'verify.sentTo': 'Se ha enviado un enlace de confirmación a',
+  'verify.activate': 'Haz clic en el enlace del correo para activar tu cuenta. Revisa también el spam.',
+  'verify.resend': 'Reenviar correo', 'verify.resending': 'Enviando…', 'verify.resent': '✓ Correo reenviado',
+  'verify.resendIn': 'Reenviar en {s}s', 'verify.back': '← Volver al inicio de sesión',
+  'welcome.lang': 'Idioma', 'welcome.editLater': 'Podrás cambiar todo más tarde en tu perfil.',
+  'welcome.saveError': 'No se pudo guardar. Inténtalo de nuevo.',
+  'welcome.t0': '¿Cómo te llamas?', 'welcome.t1': 'Tus deportes principales',
+  'welcome.t2': 'Tu objetivo principal', 'welcome.t3': '¿Cuánto tiempo llevas entrenando con regularidad?',
+  'welcome.t4': '¿Cuántas sesiones por semana?', 'welcome.t5': 'Algunos datos para personalizar',
+  'welcome.nameLabel': 'Nombre completo', 'welcome.namePh': 'Nombre Apellido',
+  'welcome.height': 'Altura (cm)', 'welcome.weight': 'Peso (kg)', 'welcome.birth': 'Fecha de nacimiento', 'welcome.sex': 'Sexo',
+  'goal.performance': 'Rendimiento', 'goal.sante': 'Salud / forma', 'goal.perte_poids': 'Pérdida de peso', 'goal.hybride': 'Híbrido (fuerza + resistencia)',
+  'exp.<1': 'Menos de 1 año', 'exp.1-3': '1 – 3 años', 'exp.3-5': '3 – 5 años', 'exp.5-10': '5 – 10 años', 'exp.10+': 'Más de 10 años',
+  'gender.homme': 'Hombre', 'gender.femme': 'Mujer', 'gender.autre': 'Otro',
+  'sport.running': 'Running', 'sport.trail': 'Trail', 'sport.cycling': 'Ciclismo', 'sport.triathlon': 'Triatlón',
+  'sport.hyrox': 'Hyrox', 'sport.gym': 'Musculación / Gym', 'sport.aviron': 'Remo', 'sport.boxe': 'Boxeo',
+  'profile.langTitle': 'Idioma de la aplicación', 'profile.langDesc': 'Elige el idioma de la interfaz.',
+}
+
+export const DICTS: Record<Lang, Dict> = { fr, en, es }

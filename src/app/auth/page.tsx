@@ -10,6 +10,8 @@ import { ErrorMessage } from '@/components/auth/ErrorMessage'
 import { PasswordStrengthBar } from '@/components/auth/PasswordStrengthBar'
 import { EmailVerification } from '@/components/auth/EmailVerification'
 import { getAuthError } from '@/lib/auth/errors'
+import { useI18n } from '@/lib/i18n'
+import { LanguageSelector } from '@/components/i18n/LanguageSelector'
 
 const BG = 'var(--bg)'
 
@@ -40,6 +42,7 @@ function Logo() {
 }
 
 function SocialButtons({ onError }: { onError: (msg: string) => void }) {
+  const { t } = useI18n()
   const handleOAuth = async (provider: 'apple' | 'google') => {
     const sb = createClient()
     const { error } = await sb.auth.signInWithOAuth({
@@ -53,7 +56,7 @@ function SocialButtons({ onError }: { onError: (msg: string) => void }) {
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
         <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-        <span style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>ou</span>
+        <span style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'var(--font-body)' }}>{t('auth.or')}</span>
         <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
       </div>
 
@@ -62,7 +65,7 @@ function SocialButtons({ onError }: { onError: (msg: string) => void }) {
           <path d="M14.5 11.5c0-2.5 2-3.7 2.1-3.8-1.1-1.6-2.9-1.8-3.5-1.9-1.5-.1-2.9.9-3.6.9-.8 0-1.9-.9-3.2-.8-1.6.1-3.1 1-4 2.4-1.7 2.9-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3 2.4 1.2-.1 1.7-.8 3.1-.8 1.4 0 1.8.8 3.1.7 1.3-.1 2.1-1.2 2.9-2.4.9-1.3 1.3-2.7 1.3-2.7s-2.4-1.3-2.4-3.7z" fill="black"/>
           <path d="M12.5 3.5c.6-.8 1.1-1.9 1-3-.9.1-2.1.6-2.7 1.5-.6.7-1.1 1.8-1 2.9 1 .1 2-.5 2.7-1.4z" fill="black"/>
         </svg>
-        <span style={{ fontSize: 15, fontWeight: 600, color: '#000', fontFamily: 'var(--font-body)' }}>Continuer avec Apple</span>
+        <span style={{ fontSize: 15, fontWeight: 600, color: '#000', fontFamily: 'var(--font-body)' }}>{t('auth.apple')}</span>
       </button>
 
       <button onClick={() => handleOAuth('google')} style={{ width: '100%', height: 50, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer', transition: 'all 200ms' }}>
@@ -72,7 +75,7 @@ function SocialButtons({ onError }: { onError: (msg: string) => void }) {
           <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
           <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
         </svg>
-        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>Continuer avec Google</span>
+        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-body)' }}>{t('auth.google')}</span>
       </button>
     </>
   )
@@ -80,6 +83,7 @@ function SocialButtons({ onError }: { onError: (msg: string) => void }) {
 
 function AuthPageInner() {
   const router = useRouter()
+  const { t } = useI18n()
   const params = useSearchParams()
   const expired = params.get('expired') === '1'
 
@@ -90,13 +94,13 @@ function AuthPageInner() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptedTerms,   setAcceptedTerms]   = useState(false)
   const [loading,         setLoading]         = useState(false)
-  const [error,           setError]           = useState(expired ? 'Session expirée. Reconnecte-toi.' : '')
+  const [error,           setError]           = useState(expired ? t('auth.expired') : '')
   const [resetSent,       setResetSent]       = useState(false)
   const [remember,        setRemember]        = useState(true)
 
   useEffect(() => {
-    if (expired) setError('Session expirée. Reconnecte-toi.')
-  }, [expired])
+    if (expired) setError(t('auth.expired'))
+  }, [expired, t])
 
   const canSignup = acceptedTerms && password === confirmPassword && password.length >= 6
 
@@ -161,20 +165,20 @@ function AuthPageInner() {
               ← Retour
             </button>
             <h3 style={{ color: 'var(--text)', fontSize: 20, fontWeight: 600, margin: '0 0 8px', fontFamily: 'var(--font-display)' }}>
-              Réinitialiser le mot de passe
+              {t('auth.forgotTitle')}
             </h3>
             <p style={{ color: 'var(--text-mid)', fontSize: 14, margin: '0 0 24px', fontFamily: 'var(--font-body)' }}>
-              Entre ton email. Un lien de réinitialisation sera envoyé.
+              {t('auth.forgotDesc')}
             </p>
-            <AuthInput label="Email" type="email" placeholder="ton@email.com" value={email} onChange={setEmail} />
+            <AuthInput label={t('auth.email')} type="email" placeholder="ton@email.com" value={email} onChange={setEmail} />
             <ErrorMessage error={error} />
             <div style={{ height: 12 }} />
             <button onClick={handleForgotPassword} disabled={loading} style={{ ...primaryBtn, opacity: loading ? 0.7 : 1 }}>
-              {loading ? 'Envoi…' : 'Envoyer le lien'}
+              {loading ? t('auth.forgotSending') : t('auth.forgotSend')}
             </button>
             {resetSent && (
               <div style={{ padding: '12px 16px', borderRadius: 12, marginTop: 16, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}>
-                <p style={{ color: '#10B981', fontSize: 13, margin: 0, fontFamily: 'var(--font-body)' }}>Email envoyé. Vérifie ta boîte mail.</p>
+                <p style={{ color: '#10B981', fontSize: 13, margin: 0, fontFamily: 'var(--font-body)' }}>{t('auth.forgotSent')}</p>
               </div>
             )}
           </>
@@ -182,7 +186,7 @@ function AuthPageInner() {
           <>
             {/* Tabs */}
             <div style={{ display: 'flex', background: 'var(--bg-card2)', borderRadius: 12, padding: 4, marginBottom: 28 }}>
-              {['Connexion', 'Créer un compte'].map((tab, i) => (
+              {[t('auth.tabLogin'), t('auth.tabSignup')].map((tab, i) => (
                 <button key={i} onClick={() => { setActiveTab(i); setError('') }} style={{
                   flex: 1, padding: '9px', borderRadius: 9,
                   background: activeTab === i ? 'var(--bg-elev)' : 'transparent',
@@ -196,16 +200,16 @@ function AuthPageInner() {
               ))}
             </div>
 
-            <AuthInput label="Adresse email" type="email" placeholder="ton@email.com" value={email} onChange={setEmail} />
-            <AuthInput label="Mot de passe" type="password" placeholder="••••••••" value={password} onChange={setPassword} showToggle />
+            <AuthInput label={t('auth.email')} type="email" placeholder="ton@email.com" value={email} onChange={setEmail} />
+            <AuthInput label={t('auth.password')} type="password" placeholder="••••••••" value={password} onChange={setPassword} showToggle />
 
             {activeTab === 1 && (
               <>
                 <PasswordStrengthBar password={password} />
-                <AuthInput label="Confirmer le mot de passe" type="password" placeholder="••••••••" value={confirmPassword} onChange={setConfirmPassword} showToggle />
+                <AuthInput label={t('auth.confirm')} type="password" placeholder="••••••••" value={confirmPassword} onChange={setConfirmPassword} showToggle />
                 {confirmPassword && password !== confirmPassword && (
                   <p style={{ fontSize: 12, color: '#EF4444', margin: '4px 0 0', fontFamily: 'var(--font-body)' }}>
-                    Les mots de passe ne correspondent pas.
+                    {t('auth.pwMismatch')}
                   </p>
                 )}
 
@@ -228,13 +232,13 @@ function AuthPageInner() {
                     )}
                   </div>
                   <p style={{ fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5, margin: 0, fontFamily: 'var(--font-body)' }}>
-                    J&apos;accepte les{' '}
+                    {t('auth.termsAccept')}{' '}
                     <a href="/legal/cgu" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'none' }} onClick={e => e.stopPropagation()}>
-                      conditions d&apos;utilisation
+                      {t('auth.termsCgu')}
                     </a>
-                    {' '}et la{' '}
+                    {' '}{t('auth.termsAnd')}{' '}
                     <a href="/legal/privacy" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'none' }} onClick={e => e.stopPropagation()}>
-                      politique de confidentialité
+                      {t('auth.termsPrivacy')}
                     </a>
                   </p>
                 </div>
@@ -245,13 +249,13 @@ function AuthPageInner() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '6px 0 20px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)' }}>
                   <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ width: 16, height: 16, accentColor: 'var(--primary)', cursor: 'pointer' }} />
-                  Rester connecté
+                  {t('auth.remember')}
                 </label>
                 <button onClick={() => { setView('forgot'); setError('') }} style={{
                   background: 'none', border: 'none', color: 'var(--primary)', fontSize: 13,
                   cursor: 'pointer', padding: 0, fontFamily: 'var(--font-body)',
                 }}>
-                  Mot de passe oublié ?
+                  {t('auth.forgot')}
                 </button>
               </div>
             )}
@@ -264,12 +268,17 @@ function AuthPageInner() {
               disabled={loading || (activeTab === 1 && !canSignup)}
               style={{ ...primaryBtn, opacity: loading || (activeTab === 1 && !canSignup) ? 0.4 : 1, cursor: loading || (activeTab === 1 && !canSignup) ? 'not-allowed' : 'pointer' }}
             >
-              {loading ? 'Chargement…' : activeTab === 0 ? 'Se connecter' : 'Créer mon compte'}
+              {loading ? t('auth.loading') : activeTab === 0 ? t('auth.login') : t('auth.signup')}
             </button>
 
             <SocialButtons onError={setError} />
           </>
         )}
+
+        {/* Sélecteur de langue */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 28 }}>
+          <LanguageSelector size="sm" />
+        </div>
       </div>
     </div>
   )

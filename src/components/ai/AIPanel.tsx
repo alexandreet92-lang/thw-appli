@@ -61,6 +61,7 @@ interface AIMsg {
   modelId?: THWModel   // modèle utilisé pour cette réponse
   thinking?: string    // raisonnement étendu (extended thinking) — feuille « Processus de réflexion »
   clarifyingQuestions?: ClarifyingQuestions  // questions IA (tool ask_clarifying_questions)
+  webSearches?: string[]  // requêtes web effectuées (indicateur persistant)
   planProposal?: PlanProposal  // aperçu de plan avant validation (tool create_training_plan)
   sessionData?: SBSession  // données structurées SessionBuilder (persiste en localStorage)
   trainingReport?: TrainingReportData  // données structurées AnalyzeTrainingFlow (persiste en localStorage)
@@ -415,6 +416,43 @@ function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: bo
         </div>
       )}
       <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center', padding: '3px 0 0' }}>Touche le graphique pour les valeurs</div>
+    </div>
+  )
+}
+
+// Indicateur persistant « Recherche web » — chip dépliable listant les requêtes
+// réellement envoyées par l'IA (preuve visible qu'elle a cherché sur internet).
+function WebSearchBadge({ queries }: { queries: string[] }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div style={{ marginLeft: 34, marginTop: 6 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer',
+          padding: '5px 10px', borderRadius: 999, border: '1px solid var(--border)',
+          background: 'var(--bg-card)', fontSize: 12, color: 'var(--text-mid)', fontFamily: 'DM Sans,sans-serif',
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
+        </svg>
+        <span style={{ fontWeight: 600, color: 'var(--text)' }}>Recherche web</span>
+        <span>· {queries.length} requête{queries.length > 1 ? 's' : ''}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {queries.map((q, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-mid)', padding: '4px 2px' }}>
+              <span style={{ color: '#06B6D4', flexShrink: 0 }}>🔍</span>
+              <span style={{ fontStyle: 'italic' }}>« {q} »</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -20134,6 +20172,18 @@ export default function AIPanel({
               const label = toolStatusLabel(tools)
               if (label) setToolStatusByMsg(prev => ({ ...prev, [aiMsgId]: label }))
             } catch { /* ignore */ }
+          } else if (eventType === 'web_search') {
+            try {
+              const { queries } = JSON.parse(data) as { queries?: string[] }
+              const qs = (queries ?? []).filter(q => typeof q === 'string' && q.trim())
+              if (qs.length > 0) {
+                setConvs(prev => prev.map(c =>
+                  c.id === cid
+                    ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, webSearches: [...(m.webSearches ?? []), ...qs] } : m) }
+                    : c
+                ))
+              }
+            } catch { /* ignore */ }
           } else if (eventType === 'tool_use') {
             try {
               const tool = JSON.parse(data) as PendingToolCall
@@ -21347,6 +21397,10 @@ export default function AIPanel({
                           </span>
                         </div>
                       )
+                    )}
+                    {/* Indicateur persistant : recherches web effectuées */}
+                    {msg.role === 'assistant' && msg.webSearches && msg.webSearches.length > 0 && (
+                      <WebSearchBadge queries={msg.webSearches} />
                     )}
                     {/* Questions de clarification IA — carte interactive */}
                     {msg.role === 'assistant' && msg.clarifyingQuestions && (

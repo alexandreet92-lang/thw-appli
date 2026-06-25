@@ -650,6 +650,15 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
           totalOut += u?.output_tokens ?? 0
           lastStop  = finalMsg.stop_reason ?? null
 
+          // Recherches web réellement effectuées → indicateur persistant au front.
+          if ((chatBody as { agentId?: string }).agentId === 'central') {
+            const queries = finalMsg.content
+              .filter(b => (b as { type?: string }).type === 'server_tool_use' && (b as { name?: string }).name === 'web_search')
+              .map(b => (b as { input?: { query?: string } }).input?.query)
+              .filter((q): q is string => typeof q === 'string' && q.length > 0)
+            if (queries.length > 0) send('web_search', JSON.stringify({ queries }))
+          }
+
           const toolUses = finalMsg.content.filter(
             (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
           )

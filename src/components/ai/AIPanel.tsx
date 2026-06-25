@@ -21700,6 +21700,7 @@ export default function AIPanel({
                   interim={liveInterim}
                   onCancel={cancelVoice}
                   onConfirm={confirmVoice}
+                  isDesktop={isDesktop}
                 />
               )}
 

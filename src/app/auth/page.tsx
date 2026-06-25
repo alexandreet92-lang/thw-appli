@@ -11,7 +11,7 @@ import { PasswordStrengthBar } from '@/components/auth/PasswordStrengthBar'
 import { EmailVerification } from '@/components/auth/EmailVerification'
 import { getAuthError } from '@/lib/auth/errors'
 import { useI18n } from '@/lib/i18n'
-import { LanguageSelector } from '@/components/i18n/LanguageSelector'
+import { LanguageDropdown } from '@/components/i18n/LanguageDropdown'
 
 const BG = 'var(--bg)'
 
@@ -147,15 +147,19 @@ function AuthPageInner() {
 
   if (view === 'verify') {
     return (
-      <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0' }}>
-        <EmailVerification email={email} onBack={() => { setView('auth'); setActiveTab(0); setError('') }} />
+      <div style={{ minHeight: '100dvh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
+        <LanguageDropdown />
+        <div style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '32px 24px', boxShadow: 'var(--shadow-card)' }}>
+          <EmailVerification email={email} onBack={() => { setView('auth'); setActiveTab(0); setError('') }} />
+        </div>
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0' }}>
-      <div style={{ width: '100%', maxWidth: 380, padding: '0 24px' }}>
+    <div style={{ minHeight: '100dvh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
+      <LanguageDropdown />
+      <div style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '32px 24px', boxShadow: 'var(--shadow-card)' }}>
 
         <Logo />
 
@@ -271,14 +275,17 @@ function AuthPageInner() {
               {loading ? t('auth.loading') : activeTab === 0 ? t('auth.login') : t('auth.signup')}
             </button>
 
+            {/* Pas de compte ? → bascule vers Créer un compte (et inversement) */}
+            <p style={{ textAlign: 'center', marginTop: 22, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)' }}>
+              {activeTab === 0 ? t('auth.noAccount') : t('auth.hasAccount')}{' '}
+              <button onClick={() => { setActiveTab(activeTab === 0 ? 1 : 0); setError('') }} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                {activeTab === 0 ? t('auth.tabSignup') : t('auth.tabLogin')}
+              </button>
+            </p>
+
             <SocialButtons onError={setError} />
           </>
         )}
-
-        {/* Sélecteur de langue */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 28 }}>
-          <LanguageSelector size="sm" />
-        </div>
       </div>
     </div>
   )

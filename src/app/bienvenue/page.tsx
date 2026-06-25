@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
-import { LanguageSelector } from '@/components/i18n/LanguageSelector'
+import { LanguageDropdown } from '@/components/i18n/LanguageDropdown'
 
 const FD = 'var(--font-body)', FT = 'var(--font-display)'
 
@@ -137,12 +137,8 @@ export default function BienvenuePage() {
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0' }}>
+      <LanguageDropdown />
       <div style={{ width: '100%', maxWidth: 440, padding: '0 24px' }}>
-        {/* Sélecteur de langue — au tout début de l'app */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-          <LanguageSelector size="sm" />
-        </div>
-
         {/* En-tête : shuriken + progression */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}

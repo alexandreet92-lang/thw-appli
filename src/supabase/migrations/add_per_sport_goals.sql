@@ -1,0 +1,13 @@
+-- Objectifs hebdomadaires PAR SPORT.
+-- Remplace le modèle global (sessions_per_week / weekly_hours / distances) par
+-- une structure par sport : pour chaque sport, l'athlète choisit les métriques
+-- pertinentes (séances, volume horaire, distance).
+--   per_sport = {
+--     "run":  { "sessions": 4, "distance": 40, "hours": 4 },
+--     "bike": { "sessions": 2, "distance": 120 },
+--     "gym":  { "sessions": 3 },
+--     ...
+--   }
+-- Clés sport : run | bike | swim | rowing | ski | gym | hyrox.
+-- Les anciennes colonnes sont conservées (compat) mais ne sont plus écrites.
+ALTER TABLE public.training_goals ADD COLUMN IF NOT EXISTS per_sport jsonb;

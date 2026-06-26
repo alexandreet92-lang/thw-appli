@@ -6535,8 +6535,8 @@ function FeelingDifficultyCard({ feeling, difficulty, onEdit }: {
 // ─────────────────────────────────────────────────────────────
 // ACTIVITY DETAIL
 // ─────────────────────────────────────────────────────────────
-function ActivityDetail({ a, onClose, zones, profile }: {
-  a: Activity; onClose: () => void
+function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
+  a: Activity; onClose: () => void; closing?: boolean
   zones: TrainingZoneRow[]; profile: Profile
 }) {
   const width    = useWindowWidth()
@@ -7363,7 +7363,20 @@ conseil pour la prochaine séance similaire.`
        couverte par la sheet (bottomInset).
     ══════════════════════════════════════════ */
     <>
-      <div data-fullscreen-activity="" style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'var(--bg)', overflow: 'hidden' }}>
+      <style>{`
+        @keyframes thwActSheetIn { from { transform: translateX(100%) } to { transform: translateX(0) } }
+        .thw-actsheet-in { animation: thwActSheetIn 0.32s cubic-bezier(0.32,0.72,0,1); }
+        @media (prefers-reduced-motion: reduce) { .thw-actsheet-in { animation: none; } }
+      `}</style>
+      <div
+        data-fullscreen-activity=""
+        className={closing ? undefined : 'thw-actsheet-in'}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 2000, background: 'var(--bg)', overflow: 'hidden',
+          transform: closing ? 'translateX(100%)' : undefined,
+          transition: closing ? 'transform 0.26s cubic-bezier(0.32,0.72,0,1)' : undefined,
+        }}
+      >
 
         {/* ── CARTE plein écran (derrière la sheet) ── */}
         <div
@@ -8928,6 +8941,16 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
     if (typeof window !== 'undefined') localStorage.setItem('thw_activities_view', view)
   }, [view])
   const [selected, setSelected] = useState<Activity | null>(null)
+  const [detailClosing, setDetailClosing] = useState(false)
+  // Fermeture animée du détail : on glisse vers la droite puis on démonte
+  // (la liste réapparaît avec son propre fondu glissant). prefers-reduced-motion
+  // → fermeture immédiate.
+  const closeDetail = useCallback(() => {
+    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (reduce) { setSelected(null); return }
+    setDetailClosing(true)
+    setTimeout(() => { setSelected(null); setDetailClosing(false) }, 260)
+  }, [])
   const [search, setSearch]     = useState('')
   const [sport, setSport]       = useState<'all' | SportType>('all')
   const [raceFilter, setRaceFilter] = useState<'all'|'race'|'training'>('all')
@@ -8967,23 +8990,46 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
 
   if (selected) {
     return (
-      <div>
+      <div
+        key="act-detail"
+        className={detailClosing ? 'thw-detail-out' : 'thw-detail-in'}
+        style={{ willChange: 'transform, opacity' }}
+      >
+        <style>{`
+          @keyframes thwDetailIn  { from { opacity: 0; transform: translateX(26px) } to { opacity: 1; transform: translateX(0) } }
+          @keyframes thwDetailOut { from { opacity: 1; transform: translateX(0) }    to { opacity: 0; transform: translateX(34px) } }
+          /* enter: pas de fill → le transform revient à 'none' (ne confine pas les overlays fixed) */
+          .thw-detail-in  { animation: thwDetailIn  0.30s cubic-bezier(0.32,0.72,0,1); }
+          /* exit: forwards → garde l'état final jusqu'au démontage (~260ms) */
+          .thw-detail-out { animation: thwDetailOut 0.26s cubic-bezier(0.32,0.72,0,1) forwards; }
+          @media (prefers-reduced-motion: reduce) {
+            .thw-detail-in, .thw-detail-out { animation: none; }
+          }
+        `}</style>
         {/* Bouton retour masqué sur mobile — remplacé par le header fixe dans ActivityDetail */}
         {!isMobileSA && (
           <button
-            onClick={() => setSelected(null)}
+            onClick={closeDetail}
             style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6,
               background: 'none', border: 'none', cursor: 'pointer', color: T.textSub, fontSize: 13, padding: 0 }}>
             <span style={{ fontSize: 16 }}>←</span> Retour à la liste
           </button>
         )}
-        <ActivityDetail a={selected} onClose={() => setSelected(null)} zones={zones} profile={profile} />
+        <ActivityDetail a={selected} onClose={closeDetail} closing={detailClosing} zones={zones} profile={profile} />
       </div>
     )
   }
 
   return (
-    <div>
+    <div
+      key="act-list"
+      className="thw-list-in"
+    >
+      <style>{`
+        @keyframes thwListIn { from { opacity: 0; transform: translateX(-18px) } to { opacity: 1; transform: translateX(0) } }
+        .thw-list-in { animation: thwListIn 0.28s cubic-bezier(0.32,0.72,0,1) both; }
+        @media (prefers-reduced-motion: reduce) { .thw-list-in { animation: none; } }
+      `}</style>
       <ViewSegmented value={view} onChange={setView} />
 
 

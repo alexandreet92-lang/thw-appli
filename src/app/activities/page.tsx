@@ -38,6 +38,7 @@ import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
 import { computeVapKmh, avgAdjustedPaceMinKm } from '@/lib/utils/vap'
 import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
 import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
+import { WeeklyGoals } from '@/components/activity/WeeklyGoals'
 import { useSmSn } from '@/hooks/useSmSn'
 import { smSnFromRow } from '@/lib/metrics/smSn'
 import { PowerDistribution } from '@/components/activity/PowerDistribution'
@@ -5584,6 +5585,9 @@ function SectionDonnees({ activities, zones, profile }: {
       {/* === DONNÉES GÉNÉRALES === */}
       {dataTab === 'general' && (
         <>
+
+          {/* ── Objectifs hebdomadaires + série ── */}
+          <WeeklyGoals activities={activities} />
 
           {/* ── SECTION 1: Hero ─────────────────────────────────────────────── */}
           {dbMetrics.loading

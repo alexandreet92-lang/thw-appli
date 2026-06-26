@@ -11,6 +11,7 @@ import {
   type ExerciseItem, type ExoCircuit, itemFromDef, customItem, genCircuitId, fmtSec,
 } from './strength'
 import { ExerciseCard } from './ExerciseCard'
+import { ExercisePicker } from './ExercisePicker'
 
 export function GroupBuilder({ variant, accent, exercises, setExercises, circuits, setCircuits, map, setMap, banner, presets }: {
   variant: 'muscu' | 'hyrox'; accent: string
@@ -82,23 +83,29 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
 
           {/* Panneau d'ajout */}
           {adding === c.id ? (
-            <div style={{ marginTop: 10, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', background: 'var(--se-card)', padding: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <IconSearch size={15} color="var(--se-dim)" />
-                <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher ou nom libre…"
-                  style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: 'var(--se-text)' }} />
+            variant === 'hyrox' ? (
+              <div style={{ marginTop: 10, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', background: 'var(--se-card)', padding: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <IconSearch size={15} color="var(--se-dim)" />
+                  <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher ou nom libre…"
+                    style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: 'var(--se-text)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
+                  {results.map(def => (
+                    <button key={def.id} type="button" onClick={() => addItem(itemFromDef(def), c.id)}
+                      style={{ textAlign: 'left', border: 'none', background: 'transparent', color: 'var(--se-text)', fontSize: 13, padding: '7px 6px', borderRadius: 8, cursor: 'pointer' }}>{def.name}</button>
+                  ))}
+                  {query.trim() && (
+                    <button type="button" onClick={() => addItem(customItem(query.trim(), 'hyrox'), c.id)}
+                      style={{ textAlign: 'left', border: '1px dashed var(--se-rule)', background: 'transparent', color: accent, fontSize: 13, fontWeight: 600, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', marginTop: 2 }}>+ Créer « {query.trim()} »</button>
+                  )}
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
-                {results.map(def => (
-                  <button key={def.id} type="button" onClick={() => addItem(itemFromDef(def), c.id)}
-                    style={{ textAlign: 'left', border: 'none', background: 'transparent', color: 'var(--se-text)', fontSize: 13, padding: '7px 6px', borderRadius: 8, cursor: 'pointer' }}>{def.name}</button>
-                ))}
-                {query.trim() && (
-                  <button type="button" onClick={() => addItem(customItem(query.trim(), variant === 'hyrox' ? 'hyrox' : 'mixte'), c.id)}
-                    style={{ textAlign: 'left', border: '1px dashed var(--se-rule)', background: 'transparent', color: accent, fontSize: 13, fontWeight: 600, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', marginTop: 2 }}>+ Créer « {query.trim()} »</button>
-                )}
-              </div>
-            </div>
+            ) : (
+              <ExercisePicker accent={accent}
+                onPick={def => addItem(itemFromDef(def), c.id)}
+                onCustom={name => { if (name) addItem(customItem(name, 'mixte'), c.id) }} />
+            )
           ) : (
             <button type="button" onClick={() => { setAdding(c.id); setQuery('') }} style={addBtn(accent)}>
               <IconPlus size={15} /> {variant === 'hyrox' ? 'Ajouter une station / exercice' : 'Ajouter un exercice'}

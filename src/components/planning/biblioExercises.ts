@@ -36,13 +36,18 @@ function toDef(id: string, nom: string, groupe: Groupe, mode: Mode, equip: Equip
   }
 }
 
+// Définition builder pour la « tête » de famille (le mouvement-clé).
+export function defForFamille(f: FamilleExercice): ExoDefinition {
+  return toDef(f.id, f.nom, f.groupe, primaryMode(f.modes), f.equipement)
+}
+// Définition builder pour une variante (hérite de la famille via varianteEffective).
+export function defForVariante(f: FamilleExercice, v: Variante): ExoDefinition {
+  const eff = varianteEffective(f, v)
+  return toDef(v.id, v.nom, f.groupe, primaryMode(eff.modes), eff.equipement)
+}
+
 function familleDefs(f: FamilleExercice): ExoDefinition[] {
-  const head = toDef(f.id, f.nom, f.groupe, primaryMode(f.modes), f.equipement)
-  const vars = f.variantes.map((v: Variante) => {
-    const eff = varianteEffective(f, v)
-    return toDef(v.id, v.nom, f.groupe, primaryMode(eff.modes), eff.equipement)
-  })
-  return [head, ...vars]
+  return [defForFamille(f), ...f.variantes.map(v => defForVariante(f, v))]
 }
 
 // Toutes les unités (familles + variantes) de la bibliothèque, prêtes pour le

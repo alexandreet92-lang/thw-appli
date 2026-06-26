@@ -346,22 +346,38 @@ function useActivities() {
     busyRef.current = true
     if (reset) { setLoading(true); setError(null) }
     else setLoadingMore(true)
+    // Les coupures réseau / blips Supabase étaient affichés en « [object Object] ».
+    // On retente silencieusement (jusqu'à 3 fois) avant d'éventuellement afficher
+    // une vraie erreur — et seulement au chargement initial.
+    let lastErr: unknown = null
     try {
-      const sb = createClient()
-      const from = pageNum * PAGE_SIZE
-      const { data, error: err, count } = await sb
-        .from('activities')
-        .select('*', { count: 'exact' })
-        .order('started_at', { ascending: false })
-        .range(from, from + PAGE_SIZE - 1)
-      if (err) throw err
-      const items = (data ?? []) as unknown as Activity[]
-      if (reset) setActivities(items)
-      else setActivities(prev => [...prev, ...items])
-      if (count !== null) setTotalCount(count)
-      setHasMore(items.length === PAGE_SIZE)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e))
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const sb = createClient()
+          const from = pageNum * PAGE_SIZE
+          const { data, error: err, count } = await sb
+            .from('activities')
+            .select('*', { count: 'exact' })
+            .order('started_at', { ascending: false })
+            .range(from, from + PAGE_SIZE - 1)
+          if (err) throw err
+          const items = (data ?? []) as unknown as Activity[]
+          if (reset) setActivities(items)
+          else setActivities(prev => [...prev, ...items])
+          if (count !== null) setTotalCount(count)
+          setHasMore(items.length === PAGE_SIZE)
+          setError(null)
+          return
+        } catch (e) {
+          lastErr = e
+          await new Promise(r => setTimeout(r, 400 * (attempt + 1)))
+        }
+      }
+      const o = lastErr as { message?: unknown } | null
+      const msg = lastErr instanceof Error ? lastErr.message
+        : (o && typeof o.message === 'string') ? o.message
+        : 'Connexion interrompue — réessaie.'
+      if (reset) setError(msg)
     } finally {
       busyRef.current = false
       if (reset) setLoading(false)
@@ -6543,7 +6559,10 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   // Sheet plein écran type Strava : 3 positions (low/mid/full) exprimées en
   // translateY (px depuis le haut). La carte plein écran derrière se recadre
   // (fitBounds animé) selon la hauteur couverte par la sheet (= winH - translateY).
-  const [sheetPos, setSheetPos] = useState<'low' | 'mid' | 'full'>('mid')
+  // Sans trace GPS (muscu, natation piscine, hyrox, box, tapis…) : pas de carte
+  // → la sheet s'ouvre directement en plein écran (on n'affiche que les données).
+  const hasGpsInit = (a.streams?.latlng?.length ?? 0) > 0 || !!a.summary_polyline
+  const [sheetPos, setSheetPos] = useState<'low' | 'mid' | 'full'>(hasGpsInit ? 'mid' : 'full')
   const [winH,     setWinH]     = useState<number>(() =>
     typeof window !== 'undefined' ? window.innerHeight : 800,
   )
@@ -7323,13 +7342,9 @@ conseil pour la prochaine séance similaire.`
               bottomInset={mapBottomInset}
             />
           ) : (
-            <div style={{
-              width: '100%', height: '100%',
-              background: `linear-gradient(135deg, ${col}33 0%, ${col}11 100%)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <div style={{ width: 64, height: 64, borderRadius: 20, background: col, opacity: 0.25 }} />
-            </div>
+            // Pas de GPS → fond neutre (la sheet plein écran le recouvre). Plus
+            // de placeholder coloré (l'ancien fond orange muscu).
+            <div style={{ width: '100%', height: '100%', background: 'var(--bg)' }} />
           )}
         </div>
 
@@ -7361,7 +7376,7 @@ conseil pour la prochaine séance similaire.`
             WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
             paddingTop: sheetPos === 'full' ? 'env(safe-area-inset-top, 0px)' : 0,
             paddingBottom: 120,
-            transform: `translateY(${winH * 0.46}px)`,
+            transform: `translateY(${snapTy(sheetPos)}px)`,
           }}
         >
           {/* Handle (drag) — sticky en haut de la sheet */}

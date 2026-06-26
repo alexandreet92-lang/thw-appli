@@ -11,14 +11,26 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useActivityExtras, type Exo, type StrengthLog } from '@/lib/activity/extras'
+import { ExercisePicker } from '@/components/planning/mobile/ExercisePicker'
+import type { ExoDefinition } from '@/components/planning/exercises'
 
 const GYM = 'var(--sport-gym)'
 const EMPTY: StrengthLog = { circuits: '1', exos: [] }
+// Tokens --se-* (utilisés par ExercisePicker) mappés sur le thème de l'app.
+const seVars = {
+  ['--se-card']: 'var(--bg-card)', ['--se-card2']: 'var(--bg-card2)',
+  ['--se-text']: 'var(--text)', ['--se-dim']: 'var(--text-dim)',
+  ['--se-rule']: 'var(--border)', ['--se-r']: '12px',
+} as React.CSSProperties
 
 let seq = 0
 function newExo(): Exo {
   seq += 1
   return { id: `exo-${seq}`, name: '', sets: '', reps: '', load: '', rest: '' }
+}
+function exoFromDef(def: ExoDefinition): Exo {
+  seq += 1
+  return { id: `exo-${seq}`, name: def.name, sets: String(def.defaultSets), reps: String(def.defaultReps), load: '', rest: String(def.defaultRestSec) }
 }
 
 const inputStyle: React.CSSProperties = {
@@ -30,6 +42,7 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
   const { extras, save } = useActivityExtras(activityId)
   const log = extras.strength_log ?? EMPTY
   const [open, setOpen] = useState(false)
+  const [picking, setPicking] = useState(false)
   const [draft, setDraft] = useState<StrengthLog>(EMPTY)
 
   const nbExos = log.exos.filter(e => e.name.trim()).length
@@ -110,15 +123,31 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
               </div>
             ))}
 
-            <button onClick={() => setDraft(d => ({ ...d, exos: [...d.exos, newExo()] }))} style={{
+            <button onClick={() => setPicking(true)} style={{
               width: '100%', padding: '10px', borderRadius: 10, border: '1px dashed var(--border)',
-              background: 'transparent', color: 'var(--text-dim)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16,
-            }}>+ Ajouter un exercice</button>
+              background: 'transparent', color: GYM, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16,
+            }}>+ Ajouter un exercice (bibliothèque)</button>
 
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setOpen(false)} style={{ flex: 1, padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Annuler</button>
               <button onClick={commit} style={{ flex: 1, padding: '12px', borderRadius: 10, border: 'none', background: GYM, color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Enregistrer</button>
             </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {/* Sélecteur bibliothèque (mêmes exercices/variantes que Session & Planning) */}
+      {picking && typeof document !== 'undefined' && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg)', display: 'flex', flexDirection: 'column', ...seVars }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+            <button onClick={() => setPicking(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
+            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Ajouter un exercice</span>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px 24px' }}>
+            <ExercisePicker accent={GYM}
+              onPick={def => { setDraft(d => ({ ...d, exos: [...d.exos, exoFromDef(def)] })); setPicking(false) }}
+              onCustom={name => { if (name) { setDraft(d => ({ ...d, exos: [...d.exos, { ...newExo(), name }] })); setPicking(false) } }} />
           </div>
         </div>,
         document.body,

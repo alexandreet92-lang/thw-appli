@@ -31,7 +31,13 @@ interface Props {
   onSave: (data: SessionFormData) => Promise<void>
   isDark: boolean
   summary?: SaveSummary
-  hr?: { avg: number | null; max: number | null }
+  hr?: { avg: number | null; min: number | null; max: number | null }
+  circuitTypes?: string[]   // types de circuit utilisés dans la séance (pré-cochés)
+}
+
+// Libellés des types de circuit (pour les tags pré-cochés du formulaire).
+const CIRCUIT_TYPE_LABEL: Record<string, string> = {
+  series: 'Séries', circuit: 'Lap', superset: 'Superset', emom: 'EMOM', tabata: 'Tabata',
 }
 
 function fmtDur(s: number): string {
@@ -66,22 +72,27 @@ const LABEL_STYLE: React.CSSProperties = {
   textTransform: 'uppercase', marginBottom: 10,
 }
 
-export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDark, summary, hr }: Props) {
+export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDark, summary, hr, circuitTypes }: Props) {
   const t = getTheme(isDark)
   const autoTitle = getAutoTitle(sport, startedAt)
   const [title, setTitle]               = useState(autoTitle)
   const [trainingTypes, setTrainingTypes] = useState<string[]>([])
+  const [circuits, setCircuits]         = useState<string[]>(() => circuitTypes ?? [])
   const [rpe, setRpe]                   = useState(5)
   const [comment, setComment]           = useState('')
   const [photos, setPhotos]             = useState<File[]>([])
   const [saving, setSaving]             = useState(false)
+  const showCircuits = sport === 'gym' || sport === 'hyrox'
 
   const handleSave = async () => {
     if (saving) return
     setSaving(true)
-    await onSave({ title: title.trim() || autoTitle, trainingTypes, rpe, comment, photos })
+    // Les types de circuit cochés sont persistés avec les types d'entraînement.
+    const types = [...trainingTypes, ...circuits.map(c => `circuit:${c}`)]
+    await onSave({ title: title.trim() || autoTitle, trainingTypes: types, rpe, comment, photos })
     setSaving(false)
   }
+  const toggleCircuit = (id: string) => setCircuits(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id])
 
   const stat = (label: string, value: string) => (
     <div style={{ textAlign: 'center', flex: 1 }}>
@@ -142,9 +153,10 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
         )}
 
         {/* Fréquence cardiaque */}
-        {hr && (hr.avg != null || hr.max != null) && (
+        {hr && (hr.avg != null || hr.max != null || hr.min != null) && (
           <div style={{ display: 'flex', gap: 4, padding: '14px 12px', background: t.surface, border: `1px solid ${t.border}`, borderRadius: 16, marginBottom: 18 }}>
             {stat('FC moy', hr.avg != null ? `${hr.avg}` : '—')}
+            {stat('FC min', hr.min != null ? `${hr.min}` : '—')}
             {stat('FC max', hr.max != null ? `${hr.max}` : '—')}
           </div>
         )}
@@ -190,6 +202,25 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
           <p style={{ ...LABEL_STYLE, color: t.muted }}>Type d'entraînement</p>
           <TrainingTypeSelector selected={trainingTypes} onChange={setTrainingTypes} isDark={isDark} types={sport === 'running' ? RUNNING_TYPES : sport === 'trail' ? TRAIL_TYPES : sport === 'hiking' ? HIKING_TYPES : sport === 'mtb' ? MTB_TYPES : sport === 'rowing' ? ROWING_TYPES : sport === 'gym' ? STRENGTH_TYPES : sport === 'hyrox' ? HYROX_TYPES : sport === 'yoga' ? YOGA_TYPES : sport === 'padel' ? PADEL_TYPES : sport === 'openwater' ? OPEN_WATER_TYPES : sport === 'hometrainer' ? HT_TYPES : CYCLING_TYPES} />
         </div>
+
+        {/* Type de circuit (muscu/hyrox) — pré-coché avec ceux utilisés */}
+        {showCircuits && (
+          <div style={{ marginBottom: 28 }}>
+            <p style={{ ...LABEL_STYLE, color: t.muted }}>Type de circuit</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {['series', 'circuit', 'superset', 'emom', 'tabata'].map(id => {
+                const on = circuits.includes(id)
+                return (
+                  <button key={id} type="button" onClick={() => toggleCircuit(id)} style={{
+                    padding: '8px 14px', borderRadius: 999, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                    border: `1px solid ${on ? '#06B6D4' : t.border}`, background: on ? 'rgba(6,182,212,0.12)' : 'transparent',
+                    color: on ? '#06B6D4' : t.muted,
+                  }}>{CIRCUIT_TYPE_LABEL[id]}</button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* RPE */}
         <div style={{ marginBottom: 28 }}>

@@ -11,6 +11,7 @@ import TabataView from './workout/TabataView'
 import ExerciseSearch from './workout/ExerciseSearch'
 import RecordExercisePicker from './workout/RecordExercisePicker'
 import HeartRatePanel from './workout/HeartRatePanel'
+import RestTimer from './workout/RestTimer'
 import { useHeartRate } from '@/lib/record/useHeartRate'
 import WorkoutSettings from './WorkoutSettings'
 import SessionSaveForm from './SessionSaveForm'
@@ -66,7 +67,11 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
   const handleSetDone = useCallback((set: CompletedSet) => {
     setCompletedSets(prev => [...prev, set])
   }, [])
-  const goNext = () => setCurrentIdx(i => Math.min(i + 1, exercises.length - 1))
+  // Enchaînement des circuits : on insère une récup configurable (±15s) entre
+  // deux blocs. Démarre à 120s par défaut, ajustable dans le timer.
+  const [betweenRest, setBetweenRest] = useState<number | null>(null)
+  const goNext = () => { if (currentIdx < exercises.length - 1) setBetweenRest(120) }
+  const finishRest = () => { setBetweenRest(null); setCurrentIdx(i => Math.min(i + 1, exercises.length - 1)) }
 
   const current = exercises[currentIdx]
   const totalVolumeKg = completedSets.reduce((acc, s) => acc + s.reps * s.weightKg, 0)
@@ -140,7 +145,13 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
             </button>
           </div>
         )}
-        {current && (
+        {betweenRest != null && (
+          <div style={{ padding:'8px 0' }}>
+            <p style={{ textAlign:'center', fontSize:12, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--text-dim)', margin:'8px 0 0' }}>Récup entre circuits</p>
+            <RestTimer seconds={betweenRest} onDone={finishRest} isDark={isDark} accent={accent} />
+          </div>
+        )}
+        {betweenRest == null && current && (
           <>
             {current.mode === 'series' && <SeriesView key={current.id} exercise={current} onSetDone={handleSetDone} onComplete={goNext} hasNext={currentIdx < exercises.length - 1} isDark={isDark} accent={accent} />}
             {current.mode === 'circuit' && <LapView key={current.id} exercise={current} onSetDone={handleSetDone} isDark={isDark} accent={accent} />}
@@ -175,7 +186,8 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
       {showSettings && <WorkoutSettings open={showSettings} onClose={() => setShowSettings(false)} isDark={isDark} sport={sport} />}
       {showSave && <SessionSaveForm sport={sport} startedAt={startedAt} onBack={() => setShowSave(false)} onSave={handleSave} isDark={isDark}
         summary={{ exos: exercises.length, sets: completedSets.length, volumeKg: totalVolumeKg, durationSec: elapsed }}
-        hr={{ avg: hr.avg, max: hr.max }} />}
+        hr={{ avg: hr.avg, min: hr.min, max: hr.max }}
+        circuitTypes={Array.from(new Set(exercises.map(e => e.mode)))} />}
     </div>
   )
 

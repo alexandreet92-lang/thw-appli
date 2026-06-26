@@ -45,12 +45,10 @@ export interface WorkoutSummaryData {
 }
 
 export const STRENGTH_TYPES = [
-  { id: 'force',     label: 'Force',          desc: 'Charges lourdes, peu de reps' },
-  { id: 'hypertro',  label: 'Hypertrophie',   desc: 'Masse musculaire' },
-  { id: 'endurance', label: 'Endurance musc', desc: 'Séries longues' },
-  { id: 'circuit',   label: 'Circuit',        desc: 'Enchaînements sans repos' },
-  { id: 'mobilite',  label: 'Mobilité',       desc: 'Étirements et mobilité' },
-  { id: 'recup',     label: 'Récup',          desc: 'Séance légère' },
+  { id: 'strength',         label: 'Strength',          desc: 'Force, charges lourdes' },
+  { id: 'endurance-strength', label: 'Endurance Strength', desc: 'Séries longues' },
+  { id: 'hypertrophie',     label: 'Hypertrophie',      desc: 'Masse musculaire' },
+  { id: 'explosivite',      label: 'Explosivité',       desc: 'Puissance, vitesse' },
 ]
 
 export const HYROX_TYPES = [

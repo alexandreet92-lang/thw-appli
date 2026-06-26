@@ -148,7 +148,7 @@ export function blocksToWorkoutExercises(blocks: Block[], sport: 'gym' | 'hyrox'
       const [a, b] = exos
       out.push({ ...toWE(a, 'superset'), sets: c.rounds, supersetPartner: b ? toWE(b, 'series') : undefined })
     } else if (mode === 'emom') {
-      out.push({ ...toWE(exos[0], 'emom'), emomMinutes: c.rounds })
+      out.push({ ...toWE(exos[0], 'emom'), name: c.name || exos[0].name, emomMinutes: c.rounds, circuitExercises: exos.map(e => toWE(e, 'series')) })
     } else {
       out.push({ ...toWE(exos[0], 'tabata'), tabataRounds: c.rounds, tabataWorkSec: 20, tabataRestSec: 10 })
     }

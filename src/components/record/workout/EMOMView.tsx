@@ -11,6 +11,9 @@ interface Props {
 
 export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props) {
   const totalMinutes = exercise.emomMinutes ?? 10
+  // EMOM : 1 exercice par minute. S'il y a plusieurs exos dans le circuit, on
+  // tourne dessus (minute 1 → exo 1, minute 2 → exo 2, …, puis on reboucle).
+  const exos = exercise.circuitExercises && exercise.circuitExercises.length ? exercise.circuitExercises : [exercise]
   const [currentMinute, setCurrentMinute] = useState(0)
   const [secondsInMinute, setSecondsInMinute] = useState(0)
   const [running, setRunning] = useState(false)
@@ -38,10 +41,12 @@ export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props)
     return () => clearInterval(t)
   }, [running, done, currentMinute, totalMinutes])
 
+  const activeExo = exos[currentMinute % exos.length]
+
   const handleDone = () => {
     if (completedThisMinuteRef.current) return
     completedThisMinuteRef.current = true
-    onSetDone({ exerciseId: exercise.id, setIndex: currentMinute, reps: exercise.reps, weightKg: exercise.weightKg, completedAt: Date.now() })
+    onSetDone({ exerciseId: activeExo.id, setIndex: currentMinute, reps: activeExo.reps, weightKg: activeExo.weightKg, completedAt: Date.now() })
   }
 
   const timeLeft = 60 - secondsInMinute
@@ -70,9 +75,9 @@ export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props)
       </div>
 
       <div style={{ background: surface, borderRadius: 14, padding: '14px 16px', marginBottom: 20 }}>
-        <p style={{ fontSize: 13, color: dim, margin: '0 0 4px' }}>{exercise.name}</p>
+        <p style={{ fontSize: 13, color: dim, margin: '0 0 4px' }}>{activeExo.name}{exos.length > 1 ? ` · exo ${(currentMinute % exos.length) + 1}/${exos.length}` : ''}</p>
         <p style={{ fontSize: 22, fontWeight: 700, color: text, margin: 0 }}>
-          {exercise.reps} {exercise.weightKg > 0 ? `× ${exercise.weightKg}kg` : 'reps'}
+          {activeExo.reps} {activeExo.weightKg > 0 ? `× ${activeExo.weightKg}kg` : 'reps'}
         </p>
       </div>
 

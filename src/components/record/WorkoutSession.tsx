@@ -66,6 +66,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
   const handleSetDone = useCallback((set: CompletedSet) => {
     setCompletedSets(prev => [...prev, set])
   }, [])
+  const goNext = () => setCurrentIdx(i => Math.min(i + 1, exercises.length - 1))
 
   const current = exercises[currentIdx]
   const totalVolumeKg = completedSets.reduce((acc, s) => acc + s.reps * s.weightKg, 0)
@@ -141,7 +142,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
         )}
         {current && (
           <>
-            {current.mode === 'series' && <SeriesView key={current.id} exercise={current} onSetDone={handleSetDone} isDark={isDark} accent={accent} />}
+            {current.mode === 'series' && <SeriesView key={current.id} exercise={current} onSetDone={handleSetDone} onComplete={goNext} hasNext={currentIdx < exercises.length - 1} isDark={isDark} accent={accent} />}
             {current.mode === 'circuit' && <LapView key={current.id} exercise={current} onSetDone={handleSetDone} isDark={isDark} accent={accent} />}
             {current.mode === 'superset' && <SupersetView key={current.id} exercise={current} onSetDone={handleSetDone} isDark={isDark} accent={accent} />}
             {current.mode === 'emom' && <EMOMView key={current.id} exercise={current} onSetDone={handleSetDone} isDark={isDark} accent={accent} />}

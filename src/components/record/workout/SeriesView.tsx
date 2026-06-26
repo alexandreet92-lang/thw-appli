@@ -6,11 +6,13 @@ import RestTimer from './RestTimer'
 interface Props {
   exercise: WorkoutExercise
   onSetDone: (set: CompletedSet) => void
+  onComplete?: () => void
+  hasNext?: boolean
   isDark: boolean
   accent: string
 }
 
-export default function SeriesView({ exercise, onSetDone, isDark, accent }: Props) {
+export default function SeriesView({ exercise, onSetDone, onComplete, hasNext, isDark, accent }: Props) {
   const [currentSet, setCurrentSet] = useState(0)
   const [reps, setReps] = useState(exercise.reps)
   const [weight, setWeight] = useState(exercise.weightKg)
@@ -53,8 +55,13 @@ export default function SeriesView({ exercise, onSetDone, isDark, accent }: Prop
       </div>
 
       {done ? (
-        <div style={{ textAlign: 'center', padding: '24px 0', color: accent, fontSize: 15, fontWeight: 600 }}>
-          Exercice terminé ✓
+        <div style={{ textAlign: 'center', padding: '16px 0' }}>
+          <p style={{ color: accent, fontSize: 15, fontWeight: 600, margin: '0 0 16px' }}>Exercice terminé ✓</p>
+          {hasNext && onComplete && (
+            <button onClick={onComplete} style={{ width: '100%', height: 52, borderRadius: 16, background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
+              Bloc suivant →
+            </button>
+          )}
         </div>
       ) : (
         <>

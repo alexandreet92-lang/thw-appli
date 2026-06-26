@@ -18,6 +18,9 @@ export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props)
   const [secondsInMinute, setSecondsInMinute] = useState(0)
   const [running, setRunning] = useState(false)
   const [done, setDone] = useState(false)
+  const [vals, setVals] = useState<Record<string, { reps: number; weightKg: number }>>(
+    () => Object.fromEntries(exos.map(e => [e.id, { reps: e.reps, weightKg: e.weightKg }])),
+  )
   const completedThisMinuteRef = useRef(false)
   const text = 'var(--text)'
   const dim = 'var(--text-mid)'
@@ -42,11 +45,13 @@ export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props)
   }, [running, done, currentMinute, totalMinutes])
 
   const activeExo = exos[currentMinute % exos.length]
+  const av = vals[activeExo.id] ?? { reps: activeExo.reps, weightKg: activeExo.weightKg }
+  const setAv = (patch: Partial<{ reps: number; weightKg: number }>) => setVals(s => ({ ...s, [activeExo.id]: { ...av, ...patch } }))
 
   const handleDone = () => {
     if (completedThisMinuteRef.current) return
     completedThisMinuteRef.current = true
-    onSetDone({ exerciseId: activeExo.id, setIndex: currentMinute, reps: activeExo.reps, weightKg: activeExo.weightKg, completedAt: Date.now() })
+    onSetDone({ exerciseId: activeExo.id, setIndex: currentMinute, reps: av.reps, weightKg: av.weightKg, completedAt: Date.now() })
   }
 
   const timeLeft = 60 - secondsInMinute
@@ -75,10 +80,19 @@ export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props)
       </div>
 
       <div style={{ background: surface, borderRadius: 14, padding: '14px 16px', marginBottom: 20 }}>
-        <p style={{ fontSize: 13, color: dim, margin: '0 0 4px' }}>{activeExo.name}{exos.length > 1 ? ` · exo ${(currentMinute % exos.length) + 1}/${exos.length}` : ''}</p>
-        <p style={{ fontSize: 22, fontWeight: 700, color: text, margin: 0 }}>
-          {activeExo.reps} {activeExo.weightKg > 0 ? `× ${activeExo.weightKg}kg` : 'reps'}
-        </p>
+        <p style={{ fontSize: 13, color: dim, margin: '0 0 12px' }}>{activeExo.name}{exos.length > 1 ? ` · exo ${(currentMinute % exos.length) + 1}/${exos.length}` : ''}</p>
+        <div style={{ display: 'flex', gap: 12 }}>
+          {([['Reps', 'reps', 1], ['Charge kg', 'weightKg', 2.5]] as const).map(([label, key, step]) => (
+            <div key={key} style={{ flex: 1 }}>
+              <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px', textAlign: 'center' }}>{label}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button onClick={() => setAv({ [key]: Math.max(0, +(av[key] - step).toFixed(1)) })} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-card)', border: `1px solid ${separator}`, color: text, fontSize: 18, cursor: 'pointer' }}>−</button>
+                <span style={{ flex: 1, textAlign: 'center', fontSize: 22, fontWeight: 700, color: text }}>{av[key]}</span>
+                <button onClick={() => setAv({ [key]: +(av[key] + step).toFixed(1) })} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-card)', border: `1px solid ${separator}`, color: text, fontSize: 18, cursor: 'pointer' }}>+</button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {!done && !running && (

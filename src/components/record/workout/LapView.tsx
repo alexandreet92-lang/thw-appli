@@ -13,19 +13,26 @@ interface Props {
 export default function LapView({ exercise, onSetDone, isDark, accent }: Props) {
   const rounds = exercise.circuitRounds ?? 3
   const exercises = exercise.circuitExercises ?? []
+  const list = exercises.length > 0 ? exercises : [exercise]
   const [currentRound, setCurrentRound] = useState(0)
   const [currentEx, setCurrentEx] = useState(0)
   const [resting, setResting] = useState(false)
+  // Valeurs réellement faites (reps/charge), éditables — préremplies depuis le plan.
+  const [vals, setVals] = useState<Record<string, { reps: number; weightKg: number }>>(
+    () => Object.fromEntries(list.map(e => [e.id, { reps: e.reps, weightKg: e.weightKg }])),
+  )
   const text = 'var(--text)'
   const dim = 'var(--text-mid)'
   const surface = 'var(--bg-card2)'
   const separator = 'var(--border)'
 
   const done = currentRound >= rounds
+  const valOf = (id: string, e: WorkoutExercise) => vals[id] ?? { reps: e.reps, weightKg: e.weightKg }
 
   const handleNext = () => {
     const ex = exercises[currentEx] ?? exercise
-    onSetDone({ exerciseId: ex.id, setIndex: currentRound, reps: ex.reps, weightKg: ex.weightKg, completedAt: Date.now() })
+    const v = valOf(ex.id, ex)
+    onSetDone({ exerciseId: ex.id, setIndex: currentRound, reps: v.reps, weightKg: v.weightKg, completedAt: Date.now() })
     if (exercises.length > 0 && currentEx + 1 < exercises.length) {
       setCurrentEx(e => e + 1)
     } else {
@@ -62,21 +69,47 @@ export default function LapView({ exercise, onSetDone, isDark, accent }: Props) 
         <>
           {exercises.length > 1 && (
             <div style={{ marginBottom: 16 }}>
-              {exercises.map((ex, i) => (
-                <div key={ex.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: `1px solid ${separator}` }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: i === currentEx ? accent : i < currentEx ? `${accent}66` : dim, flexShrink: 0 }} />
-                  <span style={{ fontSize: 14, color: i === currentEx ? text : dim, fontWeight: i === currentEx ? 600 : 400 }}>{ex.name}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: 13, color: dim }}>{ex.reps} × {ex.weightKg > 0 ? `${ex.weightKg}kg` : 'pc'}</span>
-                </div>
-              ))}
+              {exercises.map((ex, i) => {
+                const v = valOf(ex.id, ex)
+                return (
+                  <div key={ex.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: `1px solid ${separator}` }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: i === currentEx ? accent : i < currentEx ? `${accent}66` : dim, flexShrink: 0 }} />
+                    <span style={{ fontSize: 14, color: i === currentEx ? text : dim, fontWeight: i === currentEx ? 600 : 400 }}>{ex.name}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 13, color: dim }}>{v.reps} × {v.weightKg > 0 ? `${v.weightKg}kg` : 'pc'}</span>
+                  </div>
+                )
+              })}
             </div>
           )}
 
-          <div style={{ background: surface, borderRadius: 16, padding: '16px', marginBottom: 20, textAlign: 'center' }}>
-            <p style={{ fontSize: 13, color: dim, margin: '0 0 4px' }}>{activeEx.name}</p>
-            <p style={{ fontSize: 28, fontWeight: 700, color: text, margin: 0 }}>
-              {activeEx.reps} {activeEx.weightKg > 0 ? `× ${activeEx.weightKg}kg` : 'reps'}
-            </p>
+          {/* Exercice en cours — reps / charge éditables (ce que tu as réellement fait) */}
+          <div style={{ background: surface, borderRadius: 16, padding: '16px', marginBottom: 20 }}>
+            <p style={{ fontSize: 13, color: dim, margin: '0 0 14px', textAlign: 'center', fontWeight: 600 }}>{activeEx.name}</p>
+            {(() => {
+              const v = valOf(activeEx.id, activeEx)
+              const setV = (patch: Partial<{ reps: number; weightKg: number }>) => setVals(s => ({ ...s, [activeEx.id]: { ...v, ...patch } }))
+              const stepBtn = { width: 40, height: 40, borderRadius: 11, background: 'var(--bg-card)', border: `1px solid ${separator}`, color: text, fontSize: 20, cursor: 'pointer' } as React.CSSProperties
+              return (
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px', textAlign: 'center' }}>Reps</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button onClick={() => setV({ reps: Math.max(0, v.reps - 1) })} style={stepBtn}>−</button>
+                      <span style={{ flex: 1, textAlign: 'center', fontSize: 26, fontWeight: 700, color: text }}>{v.reps}</span>
+                      <button onClick={() => setV({ reps: v.reps + 1 })} style={stepBtn}>+</button>
+                    </div>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px', textAlign: 'center' }}>Charge (kg)</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button onClick={() => setV({ weightKg: Math.max(0, +(v.weightKg - 2.5).toFixed(1)) })} style={stepBtn}>−</button>
+                      <span style={{ flex: 1, textAlign: 'center', fontSize: 26, fontWeight: 700, color: text }}>{v.weightKg}</span>
+                      <button onClick={() => setV({ weightKg: +(v.weightKg + 2.5).toFixed(1) })} style={stepBtn}>+</button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
 
           <button onClick={handleNext} style={{ width: '100%', height: 52, borderRadius: 16, background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>

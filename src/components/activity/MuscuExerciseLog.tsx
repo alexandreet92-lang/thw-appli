@@ -5,28 +5,20 @@
 // Couvre le cas « séance NON enregistrée depuis l'app » : l'athlète saisit
 // ses exercices (nom, séries, répétitions, charge, récup) et le nombre de
 // circuits ; le nombre d'exercices est calculé automatiquement et affiché.
-// Persistance localStorage par activité (aucune table dédiée — cf. CLAUDE.md
-// « ne jamais toucher au schéma sans migration SQL explicite »).
+// Persisté en base via activity_extras (RLS user-scoped, multi-appareils).
 // ══════════════════════════════════════════════════════════════════
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
-
-interface Exo { id: string; name: string; sets: string; reps: string; load: string; rest: string }
-interface Log { circuits: string; exos: Exo[] }
+import { useActivityExtras, type Exo, type StrengthLog } from '@/lib/activity/extras'
 
 const GYM = 'var(--sport-gym)'
-const EMPTY: Log = { circuits: '1', exos: [] }
+const EMPTY: StrengthLog = { circuits: '1', exos: [] }
 
-function lsGet(key: string): Log {
-  if (typeof window === 'undefined') return EMPTY
-  try { const v = window.localStorage.getItem(key); return v ? JSON.parse(v) as Log : EMPTY } catch { return EMPTY }
-}
-function lsSet(key: string, value: Log) {
-  if (typeof window !== 'undefined') try { window.localStorage.setItem(key, JSON.stringify(value)) } catch { /* ignore */ }
-}
-function newExo(n: number): Exo {
-  return { id: `exo-${n}-${Math.round(Math.random() * 1e6)}`, name: '', sets: '', reps: '', load: '', rest: '' }
+let seq = 0
+function newExo(): Exo {
+  seq += 1
+  return { id: `exo-${seq}`, name: '', sets: '', reps: '', load: '', rest: '' }
 }
 
 const inputStyle: React.CSSProperties = {
@@ -35,23 +27,21 @@ const inputStyle: React.CSSProperties = {
 }
 
 export function MuscuExerciseLog({ activityId }: { activityId: string }) {
-  const key = `muscu-log-${activityId}`
-  const [log, setLog] = useState<Log>(EMPTY)
+  const { extras, save } = useActivityExtras(activityId)
+  const log = extras.strength_log ?? EMPTY
   const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState<Log>(EMPTY)
-
-  useEffect(() => { setLog(lsGet(key)) }, [key])
+  const [draft, setDraft] = useState<StrengthLog>(EMPTY)
 
   const nbExos = log.exos.filter(e => e.name.trim()).length
   const nbCircuits = Math.max(1, Number(log.circuits) || 1)
 
   function openEditor() {
-    const base = log.exos.length ? log : { ...log, exos: [newExo(0)] }
-    setDraft(JSON.parse(JSON.stringify(base)) as Log); setOpen(true)
+    const base = log.exos.length ? log : { ...log, exos: [newExo()] }
+    setDraft(JSON.parse(JSON.stringify(base)) as StrengthLog); setOpen(true)
   }
-  function save() {
-    const cleaned: Log = { circuits: draft.circuits || '1', exos: draft.exos.filter(e => e.name.trim()) }
-    setLog(cleaned); lsSet(key, cleaned); setOpen(false)
+  function commit() {
+    const cleaned: StrengthLog = { circuits: draft.circuits || '1', exos: draft.exos.filter(e => e.name.trim()) }
+    void save({ strength_log: cleaned }); setOpen(false)
   }
   function patchExo(id: string, k: keyof Exo, v: string) {
     setDraft(d => ({ ...d, exos: d.exos.map(e => e.id === id ? { ...e, [k]: v } : e) }))
@@ -120,14 +110,14 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
               </div>
             ))}
 
-            <button onClick={() => setDraft(d => ({ ...d, exos: [...d.exos, newExo(d.exos.length)] }))} style={{
+            <button onClick={() => setDraft(d => ({ ...d, exos: [...d.exos, newExo()] }))} style={{
               width: '100%', padding: '10px', borderRadius: 10, border: '1px dashed var(--border)',
               background: 'transparent', color: 'var(--text-dim)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16,
             }}>+ Ajouter un exercice</button>
 
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setOpen(false)} style={{ flex: 1, padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Annuler</button>
-              <button onClick={save} style={{ flex: 1, padding: '12px', borderRadius: 10, border: 'none', background: GYM, color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Enregistrer</button>
+              <button onClick={commit} style={{ flex: 1, padding: '12px', borderRadius: 10, border: 'none', background: GYM, color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Enregistrer</button>
             </div>
           </div>
         </div>,

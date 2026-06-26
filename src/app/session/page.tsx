@@ -4,12 +4,15 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 // import { createClient } from '@/lib/supabase/client'
-import { SportTabs } from '@/components/ui/SportTabs'
 import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout'
 import { Dumbbell, Library } from 'lucide-react'
 import { EXERCISE_DATABASE, type ExoCategory } from '@/components/planning/exercises'
 import RouteIntervals, { type RouteData } from '@/components/session/RouteIntervals'
 import { BibliothequeTab } from '@/components/session/biblio/BibliothequeTab'
+import { SlideView } from '@/components/ui/SlideView'
+import { BuilderSportGrid } from '@/components/session/builder/BuilderSportGrid'
+import { BUILDER_THEME, type BuilderSportId } from '@/components/session/builder/builderTheme'
+import { IconArrowLeft, IconPlus } from '@tabler/icons-react'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { usePlanning } from '@/hooks/usePlanning'
 import { PageHelp } from '@/onboarding/system/PageHelp'
@@ -383,8 +386,8 @@ function Pill({ active, color, onClick, children }: { active:boolean; color:stri
     <button onClick={onClick} style={{ padding:'6px 14px', borderRadius:99,
       border:`1px solid ${active ? color : 'var(--border)'}`,
       background: active ? color : 'transparent',
-      color: active ? '#fff' : 'var(--text-dim)',
-      fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s' }}>
+      color: active ? 'var(--on-primary)' : 'var(--text-dim)',
+      fontFamily:'var(--font-body)', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s' }}>
       {children}
     </button>
   )
@@ -394,7 +397,7 @@ function ZoneBadge({ zone }: { zone: Zone }) {
   const c = ZONE_COLOR[zone]
   return (
     <span style={{ padding:'2px 8px', borderRadius:99, background:`${c}18`, border:`1px solid ${c}44`,
-      fontSize:10, fontWeight:700, color:c, fontFamily:'DM Sans,sans-serif', whiteSpace:'nowrap' }}>
+      fontSize:10, fontWeight:700, color:c, fontFamily:'var(--font-body)', whiteSpace:'nowrap' }}>
       {ZONE_LABEL[zone]}
     </span>
   )
@@ -403,11 +406,11 @@ function ZoneBadge({ zone }: { zone: Zone }) {
 function NumInput({ label, value, onChange, min=0, max=999 }: { label:string; value:number; onChange:(v:number)=>void; min?:number; max?:number }) {
   return (
     <div>
-      <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3, fontFamily:'DM Sans,sans-serif' }}>{label}</label>
+      <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3, fontFamily:'var(--font-body)' }}>{label}</label>
       <input type="number" value={value} min={min} max={max}
         onChange={e => onChange(Math.min(max, Math.max(min, +e.target.value)))}
         style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)',
-          color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:13,
+          color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:13,
           textAlign:'center', boxSizing:'border-box' as const }}/>
     </div>
   )
@@ -438,7 +441,7 @@ function MmSsInput({
         style={{
           width:64, borderRadius:8, border:'1px solid var(--border)',
           background:'var(--bg-card2)', color:'var(--text-main)',
-          padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:13,
+          padding:'6px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:13,
           textAlign:'center', boxSizing:'border-box' as const, ...extraStyle
         }}/>
     </div>
@@ -454,7 +457,7 @@ function PaceInput({ label, value, onChange }: { label:string; value:string; onC
           value={value.replace('/km','').replace('/100m','').trim()}
           onChange={e => onChange(formatPaceInput(e.target.value))}
           placeholder="4:30"
-          style={{ width:56, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 6px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center', boxSizing:'border-box' as const }}/>
+          style={{ width:56, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 6px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, textAlign:'center', boxSizing:'border-box' as const }}/>
         <span style={{ fontSize:10, color:'var(--text-dim)', whiteSpace:'nowrap' }}>/km</span>
       </div>
     </div>
@@ -465,7 +468,7 @@ function SectionHeader({ label, title, color }: { label:string; title:string; co
   return (
     <div style={{ marginBottom:16 }}>
       <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:'0 0 4px' }}>{label}</p>
-      <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:0, color }}>{title}</h3>
+      <h3 style={{ fontFamily:'var(--font-display)', fontSize:17, fontWeight:700, margin:0, color }}>{title}</h3>
     </div>
   )
 }
@@ -507,7 +510,7 @@ function IntensityProfile({
   const EFFORT_HEIGHTS: Record<Zone, number> = { 1:15, 2:30, 3:50, 4:70, 5:90 }
   const RECOVERY_HEIGHT = 12
 
-  const sportCol = sport ? sportColor(sport) : '#5b6fff'
+  const sportCol = sport ? sportColor(sport) : 'var(--primary)'
 
   if (bars.length === 0) return null
 
@@ -575,7 +578,7 @@ function MusculaireBuilder({ data, onChange }: {
     updExercises(list)
   }
 
-  const inp: React.CSSProperties = { flex:1, minWidth:0, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'7px 10px', fontFamily:'DM Sans,sans-serif', fontSize:13 }
+  const inp: React.CSSProperties = { flex:1, minWidth:0, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'7px 10px', fontFamily:'var(--font-body)', fontSize:13 }
 
   return (
     <div>
@@ -591,9 +594,9 @@ function MusculaireBuilder({ data, onChange }: {
           <div key={circuit.id} style={{ border:'1px solid var(--border)', borderRadius:16, marginBottom:14, overflow:'hidden' }}>
             {/* Circuit header */}
             <div style={{ background:'var(--bg-card2)', padding:'14px 16px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-              <div style={{ width:8, height:8, borderRadius:'50%', background:'#5b6fff', flexShrink:0 }}/>
+              <div style={{ width:8, height:8, borderRadius:'50%', background:'var(--primary)', flexShrink:0 }}/>
               <input value={circuit.name} onChange={e => updCircuit(circuit.id, { name:e.target.value })}
-                style={{ ...inp, flex:'none', width:200, fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14 }}/>
+                style={{ ...inp, flex:'none', width:200, fontFamily:'var(--font-display)', fontWeight:700, fontSize:14 }}/>
               <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap', flex:1 }}>
                 <NumInput label="Rounds" value={circuit.rounds} onChange={v => updCircuit(circuit.id, { rounds:v })} min={1} max={20}/>
                 <NumInput label="Repos entre rounds (s)" value={circuit.restBetweenRoundsSec} onChange={v => updCircuit(circuit.id, { restBetweenRoundsSec:v })} min={0} max={600}/>
@@ -618,7 +621,7 @@ function MusculaireBuilder({ data, onChange }: {
                       <button onClick={() => moveExercise(ex.id,1)} disabled={idx===exs.length-1}
                         style={{ background:'none', border:'none', color:idx===exs.length-1?'var(--border)':'var(--text-dim)', cursor:idx===exs.length-1?'default':'pointer', padding:0, lineHeight:1, fontSize:13 }}>&#8595;</button>
                     </div>
-                    <span style={{ fontSize:11, color:'var(--text-dim)', fontFamily:'DM Mono,monospace', width:16, textAlign:'center', flexShrink:0 }}>{idx+1}</span>
+                    <span style={{ fontSize:11, color:'var(--text-dim)', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', width:16, textAlign:'center', flexShrink:0 }}>{idx+1}</span>
                     <ExoPicker value={ex.name} onPick={name => updExercise(ex.id, { name })}/>
                     <button onClick={() => rmExercise(ex.id)}
                       style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:16, padding:'4px', lineHeight:1, flexShrink:0 }}>×</button>
@@ -634,17 +637,17 @@ function MusculaireBuilder({ data, onChange }: {
                         onChange={e => updExercise(ex.id, { weightKg: +e.target.value || undefined })}
                         placeholder="—"
                         style={{ width:60, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)',
-                          color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                          color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, textAlign:'center' as const }}/>
                     </div>
                   </div>
                   {/* Optional note */}
                   <input value={ex.note||''} onChange={e => updExercise(ex.id, { note:e.target.value })}
                     placeholder="Note / consigne (optionnel)"
-                    style={{ marginTop:6, width:'100%', borderRadius:7, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', padding:'5px 8px', fontFamily:'DM Sans,sans-serif', fontSize:11, boxSizing:'border-box' as const }}/>
+                    style={{ marginTop:6, width:'100%', borderRadius:7, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', padding:'5px 8px', fontFamily:'var(--font-body)', fontSize:11, boxSizing:'border-box' as const }}/>
                 </div>
               ))}
               <button onClick={() => addExercise(circuit.id)}
-                style={{ width:'100%', padding:'8px', borderRadius:10, border:'1px dashed var(--border)', background:'transparent', color:'var(--text-dim)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer', marginTop:2 }}>
+                style={{ width:'100%', padding:'8px', borderRadius:10, border:'1px dashed var(--border)', background:'transparent', color:'var(--text-dim)', fontFamily:'var(--font-body)', fontSize:12, cursor:'pointer', marginTop:2 }}>
                 + Ajouter un exercice
               </button>
             </div>
@@ -653,7 +656,7 @@ function MusculaireBuilder({ data, onChange }: {
       })}
 
       <button onClick={addCircuit}
-        style={{ width:'100%', padding:'11px', borderRadius:12, border:'1px dashed #5b6fff', background:'rgba(91,111,255,0.05)', color:'#5b6fff', fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+        style={{ width:'100%', padding:'11px', borderRadius:12, border:'1px dashed var(--primary)', background:'var(--primary-dim)', color:'var(--primary)', fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
         + Ajouter un circuit
       </button>
     </div>
@@ -695,7 +698,7 @@ function ExoPicker({ value, onPick }: { value: string; onPick: (name: string) =>
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open])
 
-  const fld: React.CSSProperties = { flex:1, minWidth:0, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color: value ? 'var(--text-main)' : 'var(--text-dim)', padding:'7px 10px', fontFamily:'DM Sans,sans-serif', fontSize:13, textAlign:'left' as const, cursor:'pointer', whiteSpace:'nowrap' as const, overflow:'hidden', textOverflow:'ellipsis' }
+  const fld: React.CSSProperties = { flex:1, minWidth:0, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color: value ? 'var(--text-main)' : 'var(--text-dim)', padding:'7px 10px', fontFamily:'var(--font-body)', fontSize:13, textAlign:'left' as const, cursor:'pointer', whiteSpace:'nowrap' as const, overflow:'hidden', textOverflow:'ellipsis' }
 
   function add(name: string) { const n = name.trim(); if (!n) return; onPick(n); setCustom(''); setOpen(false) }
 
@@ -713,7 +716,7 @@ function ExoPicker({ value, onPick }: { value: string; onPick: (name: string) =>
                 <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', margin:'4px 6px' }}>{label}</p>
                 {items.map(e => (
                   <button key={e.id} type="button" onClick={() => add(e.name)}
-                    style={{ display:'block', width:'100%', textAlign:'left', padding:'6px 8px', borderRadius:8, border:'none', background:'transparent', color:'var(--text-main)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}
+                    style={{ display:'block', width:'100%', textAlign:'left', padding:'6px 8px', borderRadius:8, border:'none', background:'transparent', color:'var(--text-main)', fontFamily:'var(--font-body)', fontSize:12, cursor:'pointer' }}
                     onMouseEnter={ev => (ev.currentTarget.style.background = 'var(--bg-card2)')}
                     onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}>
                     {e.name}
@@ -726,9 +729,9 @@ function ExoPicker({ value, onPick }: { value: string; onPick: (name: string) =>
           <div style={{ borderTop:'1px solid var(--border)', marginTop:4, paddingTop:8, display:'flex', gap:6 }}>
             <input value={custom} onChange={e => setCustom(e.target.value)} placeholder="Créer un exo…"
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(custom) } }}
-              style={{ flex:1, minWidth:0, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Sans,sans-serif', fontSize:12, boxSizing:'border-box' as const }}/>
+              style={{ flex:1, minWidth:0, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)', fontSize:12, boxSizing:'border-box' as const }}/>
             <button type="button" onClick={() => add(custom)}
-              style={{ padding:'6px 12px', borderRadius:8, border:'none', background:'#5b6fff', color:'#fff', fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+              style={{ padding:'6px 12px', borderRadius:8, border:'none', background:'var(--primary)', color:'var(--on-primary)', fontFamily:'var(--font-body)', fontSize:12, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
               Ajouter
             </button>
           </div>
@@ -797,8 +800,8 @@ function EnduranceBuilder({
           style={{
             width:24, height:24, borderRadius:6, border:'none', cursor:'pointer',
             background: selected === z ? ZONE_COLOR[z] : `${ZONE_COLOR[z]}22`,
-            color: selected === z ? '#fff' : ZONE_COLOR[z],
-            fontFamily:'DM Mono,monospace', fontSize:9, fontWeight:700,
+            color: selected === z ? 'var(--on-primary)' : ZONE_COLOR[z],
+            fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:9, fontWeight:700,
           }}>Z{z}</button>
       ))}
     </div>
@@ -826,11 +829,11 @@ function EnduranceBuilder({
 
       {/* Athlete zones banner */}
       {zones && (zones.ftp || zones.runThresholdPace || zones.runZ2 || zones.bikeZ4) && (
-        <div style={{ padding:'8px 12px', borderRadius:9, background:'rgba(91,111,255,0.07)', border:'1px solid rgba(91,111,255,0.15)', marginBottom:12, fontSize:11, color:'var(--text-mid)', display:'flex', gap:16, flexWrap:'wrap' }}>
-          {zones.ftp && <span>FTP : <strong style={{ fontFamily:'DM Mono,monospace', color:'var(--text-main)' }}>{zones.ftp}W</strong></span>}
-          {zones.runThresholdPace && <span>Seuil run : <strong style={{ fontFamily:'DM Mono,monospace', color:'var(--text-main)' }}>{zones.runThresholdPace}/km</strong></span>}
-          {zones.runZ2 && <span>Z2 run : <strong style={{ fontFamily:'DM Mono,monospace', color:'var(--text-main)' }}>{zones.runZ2}/km</strong></span>}
-          {zones.bikeZ4 && <span>Z4 vélo : <strong style={{ fontFamily:'DM Mono,monospace', color:'var(--text-main)' }}>{zones.bikeZ4}</strong></span>}
+        <div style={{ padding:'8px 12px', borderRadius:9, background:'var(--bg-card2)', border:'1px solid var(--border)', marginBottom:12, fontSize:11, color:'var(--text-mid)', display:'flex', gap:16, flexWrap:'wrap' }}>
+          {zones.ftp && <span>FTP : <strong style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-main)' }}>{zones.ftp}W</strong></span>}
+          {zones.runThresholdPace && <span>Seuil run : <strong style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-main)' }}>{zones.runThresholdPace}/km</strong></span>}
+          {zones.runZ2 && <span>Z2 run : <strong style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-main)' }}>{zones.runZ2}/km</strong></span>}
+          {zones.bikeZ4 && <span>Z4 vélo : <strong style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-main)' }}>{zones.bikeZ4}</strong></span>}
         </div>
       )}
 
@@ -859,7 +862,7 @@ function EnduranceBuilder({
                       border:`1px solid ${dragOverIdx === idx ? color : 'var(--border)'}`,
                       borderLeft:`3px solid ${ZONE_COLOR[b.zone]}`,
                     }}>
-                    <span style={{ fontSize:10, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{idx+1}</span>
+                    <span style={{ fontSize:10, color:'var(--text-dim)', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums' }}>{idx+1}</span>
                     <span style={{ fontSize:11, fontWeight:600, color:'var(--text-main)', maxWidth:130, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{b.name || 'Bloc'}</span>
                     <span style={{ width:7, height:7, borderRadius:'50%', background:ZONE_COLOR[b.zone], flexShrink:0 }}/>
                   </div>
@@ -909,7 +912,7 @@ function EnduranceBuilder({
                 </div>
                 <input value={b.name} onChange={e => updBlock(b.id, { name:e.target.value })}
                   placeholder="Nom du bloc"
-                  style={{ flex:1, minWidth:0, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'7px 10px', fontFamily:'DM Sans,sans-serif', fontSize:13 }}/>
+                  style={{ flex:1, minWidth:0, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'7px 10px', fontFamily:'var(--font-body)', fontSize:13 }}/>
                 <div>
                   <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>Zone effort</p>
                   {zonePills(b.zone, z => updBlock(b.id, { zone: z }))}
@@ -924,7 +927,7 @@ function EnduranceBuilder({
                   <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>Répétitions</p>
                   <input type="number" min={1} max={50} value={b.reps}
                     onChange={e => updBlock(b.id, { reps: Math.max(1, parseInt(e.target.value)||1) })}
-                    style={{ width:52, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:13, textAlign:'center' as const }}/>
+                    style={{ width:52, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:13, textAlign:'center' as const }}/>
                 </div>
                 {supportsDistance && (
                   <div style={{ display:'flex', gap:4 }}>
@@ -950,7 +953,7 @@ function EnduranceBuilder({
                     <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>Distance (m)</p>
                     <input type="number" min={25} max={100000} step={25} value={b.effortDistanceM ?? 400}
                       onChange={e => updBlock(b.id, { effortDistanceM: parseInt(e.target.value)||400 })}
-                      style={{ width:72, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                      style={{ width:72, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, textAlign:'center' as const }}/>
                   </div>
                 )}
 
@@ -962,7 +965,7 @@ function EnduranceBuilder({
                     <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>Watts</p>
                     <input type="number" min={0} max={2000} value={b.targetWatts ?? ''} placeholder="250"
                       onChange={e => updBlock(b.id, { targetWatts: parseInt(e.target.value)||undefined })}
-                      style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                      style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, textAlign:'center' as const }}/>
                   </div>
                 )}
 
@@ -970,13 +973,13 @@ function EnduranceBuilder({
                   <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>FC cible</p>
                   <input type="number" min={0} max={250} value={b.targetHrAvg ?? ''} placeholder="165"
                     onChange={e => updBlock(b.id, { targetHrAvg: parseInt(e.target.value)||undefined })}
-                    style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                    style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, textAlign:'center' as const }}/>
                 </div>
                 <div>
                   <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>FC max</p>
                   <input type="number" min={0} max={250} value={b.targetHrMax ?? ''} placeholder="178"
                     onChange={e => updBlock(b.id, { targetHrMax: parseInt(e.target.value)||undefined })}
-                    style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                    style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, textAlign:'center' as const }}/>
                 </div>
 
                 {supportsCadence && (
@@ -984,7 +987,7 @@ function EnduranceBuilder({
                     <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px' }}>Cadence ({cadenceLabel})</p>
                     <input type="number" min={0} max={250} value={b.cadenceRpm ?? ''} placeholder={isAviron ? '28' : '90'}
                       onChange={e => updBlock(b.id, { cadenceRpm: parseInt(e.target.value)||undefined })}
-                      style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12, textAlign:'center' as const }}/>
+                      style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, textAlign:'center' as const }}/>
                   </div>
                 )}
               </div>
@@ -1001,7 +1004,7 @@ function EnduranceBuilder({
 
               {/* Summary line */}
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
-                <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, fontWeight:700, color }}>
+                <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:11, fontWeight:700, color }}>
                   {b.reps > 1
                     ? `${b.reps} × (${b.effortMmSs} + ${b.recoveryMmSs} récup) = ${Math.round(totalBlock)}min`
                     : `${b.effortMmSs}${recoveryMin > 0 ? ` + ${b.recoveryMmSs} récup` : ''}`}
@@ -1011,20 +1014,20 @@ function EnduranceBuilder({
               {/* Note */}
               <input value={b.note ?? ''} onChange={e => updBlock(b.id, { note:e.target.value })}
                 placeholder="Consigne / note"
-                style={{ width:'100%', borderRadius:7, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', padding:'5px 8px', fontFamily:'DM Sans,sans-serif', fontSize:11, boxSizing:'border-box' as const }}/>
+                style={{ width:'100%', borderRadius:7, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', padding:'5px 8px', fontFamily:'var(--font-body)', fontSize:11, boxSizing:'border-box' as const }}/>
             </div>
           )
         })}
       </div>
 
       <button onClick={addBlock}
-        style={{ width:'100%', padding:'11px', borderRadius:12, border:`1px dashed ${color}`, background:`${color}08`, color, fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+        style={{ width:'100%', padding:'11px', borderRadius:12, border:`1px dashed ${color}`, background:`${color}08`, color, fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
         + Ajouter un bloc
       </button>
 
       {blocks.length > 0 && (
         <div style={{ display:'flex', gap:16, marginTop:12, fontSize:12, color:'var(--text-dim)', flexWrap:'wrap' }}>
-          <span>Durée totale : <strong style={{ color:'var(--text-main)', fontFamily:'DM Mono,monospace' }}>{totalMin}min</strong></span>
+          <span>Durée totale : <strong style={{ color:'var(--text-main)', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums' }}>{totalMin}min</strong></span>
           <span>Blocs : <strong style={{ color:'var(--text-main)' }}>{blocks.length}</strong></span>
           <span>Séquences : <strong style={{ color:'var(--text-main)' }}>{blocks.reduce((a,b)=>a+b.reps,0)}</strong></span>
         </div>
@@ -1043,14 +1046,14 @@ function NatationBuilder({ data, onChange }: { data: NatationSession; onChange:(
   function rmSet(id: string) { upd(sets.filter(s=>s.id!==id)) }
   function updSet(id: string, patch: Partial<SwimSet>) { upd(sets.map(s=>s.id===id?{...s,...patch}:s)) }
 
-  const sel: React.CSSProperties = { borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }
+  const sel: React.CSSProperties = { borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)', fontSize:12, cursor:'pointer' }
 
   return (
     <div>
       {sets.map((s, idx) => (
         <div key={s.id} style={{ border:'1px solid var(--border)', borderRadius:14, padding:'12px 14px', marginBottom:8, background:'var(--bg-card2)' }}>
           <div style={{ display:'flex', gap:10, alignItems:'flex-end', flexWrap:'wrap' }}>
-            <span style={{ fontFamily:'DM Mono,monospace', fontSize:12, color:'var(--text-dim)', width:18, flexShrink:0, paddingBottom:8 }}>{idx+1}</span>
+            <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, color:'var(--text-dim)', width:18, flexShrink:0, paddingBottom:8 }}>{idx+1}</span>
             <NumInput label="Reps" value={s.reps} onChange={v=>updSet(s.id,{reps:v})} min={1} max={50}/>
             <span style={{ fontSize:18, color:'var(--text-dim)', paddingBottom:6, fontWeight:300 }}>×</span>
             <div>
@@ -1076,34 +1079,34 @@ function NatationBuilder({ data, onChange }: { data: NatationSession; onChange:(
             <div>
               <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Allure /100m</label>
               <input value={s.targetPacePer100m||''} onChange={e=>updSet(s.id,{targetPacePer100m:e.target.value})}
-                placeholder="1:35" style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Mono,monospace', fontSize:12 }}/>
+                placeholder="1:35" style={{ width:64, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12 }}/>
             </div>
             <div style={{ flex:1, minWidth:100 }}>
               <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Note</label>
               <input value={s.note||''} onChange={e=>updSet(s.id,{note:e.target.value})} placeholder="Nage libre, technique..."
-                style={{ width:'100%', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Sans,sans-serif', fontSize:12, boxSizing:'border-box' as const }}/>
+                style={{ width:'100%', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)', fontSize:12, boxSizing:'border-box' as const }}/>
             </div>
             <button onClick={()=>rmSet(s.id)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:18, padding:4, lineHeight:1, paddingBottom:8 }}>×</button>
           </div>
           {/* Preview line */}
           <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-            <span style={{ fontFamily:'DM Mono,monospace', fontWeight:700, color:ZONE_COLOR[s.zone], fontSize:14 }}>{s.reps}×{s.distanceM}m</span>
+            <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontWeight:700, color:ZONE_COLOR[s.zone], fontSize:14 }}>{s.reps}×{s.distanceM}m</span>
             <ZoneBadge zone={s.zone}/>
             <span style={{ fontSize:11, color:'var(--text-dim)' }}>repos {s.restSec}s</span>
-            {s.targetPacePer100m && <span style={{ fontSize:11, color:ZONE_COLOR[s.zone], fontFamily:'DM Mono,monospace' }}>{s.targetPacePer100m}/100m</span>}
+            {s.targetPacePer100m && <span style={{ fontSize:11, color:ZONE_COLOR[s.zone], fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums' }}>{s.targetPacePer100m}/100m</span>}
             {s.note && <span style={{ fontSize:11, color:'var(--text-dim)', fontStyle:'italic' }}>{s.note}</span>}
           </div>
         </div>
       ))}
 
       <button onClick={addSet}
-        style={{ width:'100%', padding:'11px', borderRadius:12, border:'1px dashed #06B6D4', background:'rgba(6,182,212,0.05)', color:'#06B6D4', fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+        style={{ width:'100%', padding:'11px', borderRadius:12, border:'1px dashed #06B6D4', background:'rgba(6,182,212,0.05)', color:'#06B6D4', fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
         + Ajouter une serie
       </button>
 
       {sets.length > 0 && (
         <div style={{ display:'flex', gap:16, marginTop:14, fontSize:12, color:'var(--text-dim)' }}>
-          <span>Total : <strong style={{ color:'var(--text-main)', fontFamily:'DM Mono,monospace' }}>{totalSwimDistance(sets)}m</strong></span>
+          <span>Total : <strong style={{ color:'var(--text-main)', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums' }}>{totalSwimDistance(sets)}m</strong></span>
           <span>Series : <strong style={{ color:'var(--text-main)' }}>{sets.length}</strong></span>
         </div>
       )}
@@ -1129,11 +1132,11 @@ function HyroxBuilder({ data, onChange }: { data: HyroxSession; onChange:(d:Hyro
         const isRun = s.name.toLowerCase().includes('run')
         return (
           <div key={s.id} style={{ border:`1px solid ${isRun?'rgba(239,68,68,0.3)':'var(--border)'}`, borderRadius:14, padding:'11px 14px', marginBottom:7, background:isRun?'rgba(239,68,68,0.04)':'var(--bg-card2)', display:'flex', gap:8, alignItems:'flex-end', flexWrap:'wrap' }}>
-            <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'var(--text-dim)', width:18, flexShrink:0, paddingBottom:8 }}>{idx+1}</span>
+            <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:11, color:'var(--text-dim)', width:18, flexShrink:0, paddingBottom:8 }}>{idx+1}</span>
             <div>
               <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Atelier</label>
               <select value={s.name} onChange={e=>updStation(s.id,{name:e.target.value})}
-                style={{ borderRadius:8, border:`1px solid ${isRun?'rgba(239,68,68,0.4)':'var(--border)'}`, background:'var(--bg-card)', color:isRun?'#ef4444':'var(--text-main)', padding:'6px 8px', fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer', minWidth:160 }}>
+                style={{ borderRadius:8, border:`1px solid ${isRun?'rgba(239,68,68,0.4)':'var(--border)'}`, background:'var(--bg-card)', color:isRun?'#ef4444':'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, cursor:'pointer', minWidth:160 }}>
                 <option value="">— Choisir —</option>
                 {STATION_NAMES.map(n=><option key={n} value={n}>{n}</option>)}
               </select>
@@ -1148,7 +1151,7 @@ function HyroxBuilder({ data, onChange }: { data: HyroxSession; onChange:(d:Hyro
             <div style={{ flex:1, minWidth:100 }}>
               <label style={{ fontSize:10, color:'var(--text-dim)', display:'block', marginBottom:3 }}>Note</label>
               <input value={s.note||''} onChange={e=>updStation(s.id,{note:e.target.value})} placeholder="Consigne..."
-                style={{ width:'100%', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'DM Sans,sans-serif', fontSize:12, boxSizing:'border-box' as const }}/>
+                style={{ width:'100%', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text-main)', padding:'6px 8px', fontFamily:'var(--font-body)', fontSize:12, boxSizing:'border-box' as const }}/>
             </div>
             <button onClick={()=>rmStation(s.id)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:18, padding:4, lineHeight:1, paddingBottom:8 }}>×</button>
           </div>
@@ -1156,14 +1159,14 @@ function HyroxBuilder({ data, onChange }: { data: HyroxSession; onChange:(d:Hyro
       })}
 
       <button onClick={addStation}
-        style={{ width:'100%', padding:'11px', borderRadius:12, border:'1px dashed #ef4444', background:'rgba(239,68,68,0.05)', color:'#ef4444', fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+        style={{ width:'100%', padding:'11px', borderRadius:12, border:'1px dashed #ef4444', background:'rgba(239,68,68,0.05)', color:'#ef4444', fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
         + Ajouter un atelier
       </button>
 
       {stations.length > 0 && (
         <div style={{ display:'flex', gap:16, marginTop:14, fontSize:12, color:'var(--text-dim)' }}>
           <span>Ateliers : <strong style={{ color:'var(--text-main)' }}>{stations.length}</strong></span>
-          <span>Distance course : <strong style={{ color:'#ef4444', fontFamily:'DM Mono,monospace' }}>
+          <span>Distance course : <strong style={{ color:'#ef4444', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums' }}>
             {stations.filter(s=>s.name.toLowerCase().includes('run')).reduce((a,s)=>a+(s.distanceM||0),0)}m
           </strong></span>
         </div>
@@ -1226,12 +1229,12 @@ function ExecuteMuscu({ template, onExit }: { template: SessionTemplate; onExit:
     return (
       <div style={{ textAlign:'center', padding:'60px 20px' }}>
         <div style={{ fontSize:48, marginBottom:16 }}>&#10003;</div>
-        <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:24, margin:'0 0 10px' }}>Seance terminee</h2>
+        <h2 style={{ fontFamily:'var(--font-display)', fontSize:24, margin:'0 0 10px' }}>Seance terminee</h2>
         <p style={{ fontSize:14, color:'var(--text-dim)', marginBottom:28 }}>
           {allExercises.length} exercices · {circuits.length} circuits
         </p>
         <button onClick={onExit}
-          style={{ padding:'12px 32px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#06B6D4)', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+          style={{ padding:'12px 32px', borderRadius:12, border:'none', background:'var(--primary)', color:'var(--on-primary)', fontFamily:'var(--font-display)', fontSize:14, fontWeight:700, cursor:'pointer' }}>
           Terminer
         </button>
       </div>
@@ -1246,14 +1249,14 @@ function ExecuteMuscu({ template, onExit }: { template: SessionTemplate; onExit:
         <span>Exercice {state.exerciseIdx+1}/{exsInCircuit.length}</span>
       </div>
       <div style={{ height:4, borderRadius:99, background:'var(--border)', marginBottom:24 }}>
-        <div style={{ height:'100%', background:'#5b6fff', borderRadius:99, width:`${((state.exerciseIdx)/Math.max(1,exsInCircuit.length))*100}%`, transition:'width .3s' }}/>
+        <div style={{ height:'100%', background:'var(--primary)', borderRadius:99, width:`${((state.exerciseIdx)/Math.max(1,exsInCircuit.length))*100}%`, transition:'width .3s' }}/>
       </div>
 
       {/* Current exercise */}
       {exercise && (
         <SectionCard>
           <p style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', margin:'0 0 8px' }}>Exercice en cours</p>
-          <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:22, fontWeight:700, margin:'0 0 16px' }}>{exercise.name}</h2>
+          <h2 style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700, margin:'0 0 16px' }}>{exercise.name}</h2>
 
           {/* Sets counter */}
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:20 }}>
@@ -1262,17 +1265,17 @@ function ExecuteMuscu({ template, onExit }: { template: SessionTemplate; onExit:
               const done = completedSets[key]||0
               return (
                 <div key={i} style={{ width:40, height:40, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center',
-                  background: i<done ? '#5b6fff' : i===done&&state.phase==='work' ? 'rgba(91,111,255,0.15)' : 'var(--bg-card2)',
-                  border: `1px solid ${i<done?'#5b6fff':i===done?'#5b6fff':'var(--border)'}`,
-                  fontFamily:'DM Mono,monospace', fontWeight:700, fontSize:13,
-                  color: i<done?'#fff':i===done?'#5b6fff':'var(--text-dim)' }}>
+                  background: i<done ? 'var(--primary)' : i===done&&state.phase==='work' ? 'var(--primary-dim)' : 'var(--bg-card2)',
+                  border: `1px solid ${i<done?'var(--primary)':i===done?'var(--primary)':'var(--border)'}`,
+                  fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:13,
+                  color: i<done?'var(--on-primary)':i===done?'var(--primary)':'var(--text-dim)' }}>
                   {i+1}
                 </div>
               )
             })}
           </div>
 
-          <div style={{ fontSize:18, fontFamily:'DM Mono,monospace', fontWeight:700, color:'var(--text-main)', marginBottom:20 }}>
+          <div style={{ fontSize:18, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontWeight:700, color:'var(--text-main)', marginBottom:20 }}>
             {exercise.reps} reps{exercise.weightKg ? ` @ ${exercise.weightKg}kg` : ''}
           </div>
 
@@ -1289,12 +1292,12 @@ function ExecuteMuscu({ template, onExit }: { template: SessionTemplate; onExit:
                     style={{ transition:'stroke-dasharray .9s linear' }}/>
                 </svg>
                 <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
-                  <span style={{ fontFamily:'DM Mono,monospace', fontWeight:800, fontSize:28, color:'#f97316', lineHeight:1 }}>{fmtTime(timer.remaining)}</span>
+                  <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontWeight:800, fontSize:28, color:'#f97316', lineHeight:1 }}>{fmtTime(timer.remaining)}</span>
                   <span style={{ fontSize:9, color:'var(--text-dim)' }}>restant</span>
                 </div>
               </div>
               <button onClick={() => { timer.stop(); setState(s=>({...s,phase:'work'})) }}
-                style={{ marginTop:14, padding:'8px 20px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
+                style={{ marginTop:14, padding:'8px 20px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'var(--font-body)', fontSize:12, cursor:'pointer' }}>
                 Passer
               </button>
             </div>
@@ -1302,7 +1305,7 @@ function ExecuteMuscu({ template, onExit }: { template: SessionTemplate; onExit:
 
           {state.phase === 'work' && (
             <button onClick={validateSet}
-              style={{ width:'100%', padding:'14px 0', borderRadius:12, border:'none', background:'#5b6fff', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 20px rgba(91,111,255,0.35)' }}>
+              style={{ width:'100%', padding:'14px 0', borderRadius:12, border:'none', background:'var(--primary)', color:'var(--on-primary)', fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, cursor:'pointer' }}>
               Serie validee → {exercise.restSec}s repos
             </button>
           )}
@@ -1327,7 +1330,7 @@ function ExecuteMuscu({ template, onExit }: { template: SessionTemplate; onExit:
       )}
 
       <button onClick={onExit}
-        style={{ marginTop:20, width:'100%', padding:'10px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer' }}>
+        style={{ marginTop:20, width:'100%', padding:'10px', borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontFamily:'var(--font-body)', fontSize:13, cursor:'pointer' }}>
         Quitter la seance
       </button>
     </div>
@@ -1345,7 +1348,7 @@ function ExecuteEndurance({ template, onExit }: { template: SessionTemplate; onE
     <div>
       <SectionCard>
         <p style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', margin:'0 0 8px' }}>Seance en cours</p>
-        <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, margin:'0 0 20px', color }}>{template.name}</h2>
+        <h2 style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:700, margin:'0 0 20px', color }}>{template.name}</h2>
         <IntensityProfile blocks={endurance.blocks}/>
       </SectionCard>
 
@@ -1361,9 +1364,9 @@ function ExecuteEndurance({ template, onExit }: { template: SessionTemplate; onE
                   {b.reps > 1 && <span style={{ fontSize:11, color:'var(--text-dim)', marginLeft:6 }}>&times;{b.reps}</span>}
                 </div>
                 <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:700, color:'var(--text-main)' }}>{b.effortMmSs}</span>
+                  <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:13, fontWeight:700, color:'var(--text-main)' }}>{b.effortMmSs}</span>
                   {(b.targetPace || b.targetWatts) && (
-                    <span style={{ fontSize:11, color, fontFamily:'DM Mono,monospace' }}>
+                    <span style={{ fontSize:11, color, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums' }}>
                       {b.targetPace || `${b.targetWatts}W`}
                     </span>
                   )}
@@ -1378,7 +1381,7 @@ function ExecuteEndurance({ template, onExit }: { template: SessionTemplate; onE
               )}
               {recoveryMin > 0 && (
                 <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>
-                  Récup <strong style={{ fontFamily:'DM Mono,monospace' }}>{b.recoveryMmSs}</strong>
+                  Récup <strong style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums' }}>{b.recoveryMmSs}</strong>
                 </div>
               )}
               {b.note && <p style={{ fontSize:11, color:'var(--text-dim)', fontStyle:'italic', margin:'4px 0 0' }}>{b.note}</p>}
@@ -1388,7 +1391,7 @@ function ExecuteEndurance({ template, onExit }: { template: SessionTemplate; onE
       </SectionCard>
 
       <button onClick={onExit}
-        style={{ width:'100%', padding:'11px', borderRadius:12, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer' }}>
+        style={{ width:'100%', padding:'11px', borderRadius:12, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontFamily:'var(--font-body)', fontSize:13, cursor:'pointer' }}>
         Quitter
       </button>
     </div>
@@ -1417,7 +1420,7 @@ function TemplateCard({ t, onStart, onEdit, onPlan, onDelete }: {
       {/* Row 1 — nom + méta droite */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
         <div style={{ minWidth:0 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:'0 0 8px', lineHeight:1.3 }}>{t.name}</h3>
+          <h3 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, margin:'0 0 8px', lineHeight:1.3 }}>{t.name}</h3>
           {/* Sport badge + type badges */}
           <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
             <span style={{ padding:'2px 8px', borderRadius:99, background:`${color}20`, border:`1px solid ${color}55`,
@@ -1438,8 +1441,8 @@ function TemplateCard({ t, onStart, onEdit, onPlan, onDelete }: {
           <span style={{ padding:'3px 9px', borderRadius:99, background:`${ic}18`, color:ic, fontSize:10, fontWeight:700 }}>
             {intensityLabel(t.intensity)}
           </span>
-          <span style={{ fontSize:11, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{t.durationMin} min</span>
-          <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'#5b6fff', fontWeight:700 }}>~{tss} TSS</span>
+          <span style={{ fontSize:11, color:'var(--text-dim)', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums' }}>{t.durationMin} min</span>
+          <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:11, color:'var(--primary)', fontWeight:700 }}>~{tss} TSS</span>
           {t.rpe && <span style={{ fontSize:10, color:'var(--text-dim)' }}>RPE {t.rpe}/10</span>}
         </div>
       </div>
@@ -1461,7 +1464,7 @@ function TemplateCard({ t, onStart, onEdit, onPlan, onDelete }: {
         {t.natation && (
           <>
             <span>{t.natation.sets.length} series</span>
-            <span style={{ fontFamily:'DM Mono,monospace' }}>{totalSwimDistance(t.natation.sets)}m</span>
+            <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums' }}>{totalSwimDistance(t.natation.sets)}m</span>
           </>
         )}
         {t.hyrox && <span>{t.hyrox.stations.length} ateliers</span>}
@@ -1472,7 +1475,7 @@ function TemplateCard({ t, onStart, onEdit, onPlan, onDelete }: {
         <>
           <div style={{ fontSize:11, color:'var(--text-dim)', display:'flex', flexDirection:'column', gap:2 }}>
             {t.endurance.blocks.slice(0, 4).map(b => (
-              <span key={b.id} style={{ fontFamily:'DM Mono,monospace', fontSize:10 }}>
+              <span key={b.id} style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:10 }}>
                 {b.reps > 1 ? `${b.reps}×` : ''}{b.effortMmSs}
                 {b.targetPace ? ` @ ${b.targetPace}` : b.targetWatts ? ` @ ${b.targetWatts}W` : ''}
                 {parseMMSS(b.recoveryMmSs) > 0 ? ` / ${b.recoveryMmSs} récup` : ''}
@@ -1493,11 +1496,11 @@ function TemplateCard({ t, onStart, onEdit, onPlan, onDelete }: {
           <p style={{ margin:0, fontSize:11, color:'var(--text-dim)' }}>Cette action est irréversible.</p>
           <div style={{ display:'flex', gap:7 }}>
             <button onClick={() => setConfirmDel(false)}
-              style={{ flex:1, padding:'8px 0', borderRadius:9, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
+              style={{ flex:1, padding:'8px 0', borderRadius:9, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'var(--font-body)', fontSize:12, cursor:'pointer' }}>
               Annuler
             </button>
             <button onClick={onDelete}
-              style={{ flex:2, padding:'8px 0', borderRadius:9, border:'none', background:'#ef4444', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              style={{ flex:2, padding:'8px 0', borderRadius:9, border:'none', background:'#ef4444', color:'var(--on-primary)', fontFamily:'var(--font-display)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
               Oui, supprimer
             </button>
           </div>
@@ -1506,23 +1509,23 @@ function TemplateCard({ t, onStart, onEdit, onPlan, onDelete }: {
         <div style={{ display:'flex', gap:7, marginTop:2 }}>
           <button onClick={onStart}
             style={{ flex:2, padding:'9px 0', borderRadius:10, border:'none',
-              background:`linear-gradient(135deg,${color},${color}bb)`,
-              color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              background:'var(--primary)',
+              color:'var(--on-primary)', fontFamily:'var(--font-display)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
             Démarrer
           </button>
           <button onClick={onEdit}
             style={{ flex:1, padding:'9px 0', borderRadius:10, border:'1px solid var(--border)',
-              background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:12, cursor:'pointer' }}>
+              background:'transparent', color:'var(--text-mid)', fontFamily:'var(--font-body)', fontSize:12, cursor:'pointer' }}>
             Modifier
           </button>
           <button onClick={onPlan}
             style={{ flex:1, padding:'9px 0', borderRadius:10, border:'1px solid var(--border)',
-              background:'transparent', color:'var(--text-dim)', fontFamily:'DM Sans,sans-serif', fontSize:11, cursor:'pointer' }}>
+              background:'transparent', color:'var(--text-dim)', fontFamily:'var(--font-body)', fontSize:11, cursor:'pointer' }}>
             → Planifier
           </button>
           <button onClick={() => setConfirmDel(true)}
             style={{ padding:'9px 10px', borderRadius:10, border:'1px solid rgba(239,68,68,0.35)',
-              background:'transparent', color:'#ef4444', fontFamily:'DM Sans,sans-serif', fontSize:11, cursor:'pointer', flexShrink:0 }}>
+              background:'transparent', color:'#ef4444', fontFamily:'var(--font-body)', fontSize:11, cursor:'pointer', flexShrink:0 }}>
             🗑
           </button>
         </div>
@@ -1546,15 +1549,16 @@ const CYCLING_SUB: { id: CyclingSub; label: string }[] = [
 // ══════════════════════════════════════════════════════════════════
 // BUILD MODE — full session form + sport builder
 // ══════════════════════════════════════════════════════════════════
-function BuildMode({ initial, onSave, onCancel, onDelete }: {
+function BuildMode({ initial, defaultSport, onSave, onCancel, onDelete }: {
   initial?: SessionTemplate
+  defaultSport?: Sport
   onSave: (t: SessionTemplate) => void
   onCancel: () => void
   onDelete?: () => void
 }) {
   const { addSession } = usePlanning()
   const { zones: trainingZones } = useTrainingZones()
-  const [sport,       setSport]       = useState<Sport>(initial?.sport ?? 'muscu')
+  const [sport,       setSport]       = useState<Sport>(initial?.sport ?? defaultSport ?? 'muscu')
   const [cyclingSub,  setCyclingSub]  = useState<CyclingSub>('velo')
   const [name,        setName]        = useState(initial?.name ?? '')
   const [duration,    setDuration]    = useState(initial?.durationMin ?? 60)
@@ -1649,7 +1653,7 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
     } finally { setIaLoading(false) }
   }
 
-  const inp: React.CSSProperties = { width:'100%', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'9px 12px', fontFamily:'DM Sans,sans-serif', fontSize:13, boxSizing:'border-box' as const }
+  const inp: React.CSSProperties = { width:'100%', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-main)', padding:'9px 12px', fontFamily:'var(--font-body)', fontSize:13, boxSizing:'border-box' as const }
 
   return (
     <div>
@@ -1658,9 +1662,9 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
         <div style={{ display:'inline-flex', gap:4, background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:99, padding:3 }}>
           {(['manuel','ia'] as const).map(m => (
             <button key={m} onClick={() => setBuildMode(m)}
-              style={{ padding:'6px 18px', borderRadius:99, border:'none', cursor:'pointer', fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:600,
-                background: buildMode===m ? (m==='ia' ? '#5b6fff' : 'var(--bg-card)') : 'transparent',
-                color: buildMode===m ? (m==='ia' ? '#fff' : 'var(--text-main)') : 'var(--text-dim)' }}>
+              style={{ padding:'6px 18px', borderRadius:99, border:'none', cursor:'pointer', fontFamily:'var(--font-body)', fontSize:12, fontWeight:600,
+                background: buildMode===m ? (m==='ia' ? 'var(--primary)' : 'var(--bg-card)') : 'transparent',
+                color: buildMode===m ? (m==='ia' ? 'var(--on-primary)' : 'var(--text-main)') : 'var(--text-dim)' }}>
               {m==='manuel' ? 'Manuel' : '✨ IA'}
             </button>
           ))}
@@ -1670,13 +1674,13 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
       {/* Génération IA */}
       {buildMode === 'ia' && (
         <SectionCard>
-          <SectionHeader label="Assistant IA" title="Décris ta séance" color="#5b6fff"/>
+          <SectionHeader label="Assistant IA" title="Décris ta séance" color="var(--primary)"/>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
             {SPORTS.map(s => (
               <button key={s.id} onClick={()=>setSport(s.id)}
                 style={{ padding:'7px 14px', borderRadius:12, border:`1px solid ${sport===s.id?s.color:'var(--border)'}`,
                   background:sport===s.id?`${s.color}15`:'transparent', color:sport===s.id?s.color:'var(--text-dim)',
-                  fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  fontFamily:'var(--font-body)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
                 {s.label}
               </button>
             ))}
@@ -1687,9 +1691,9 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
           {iaError && <p style={{ color:'#ef4444', fontSize:12, margin:'8px 0 0' }}>{iaError}</p>}
           <button onClick={generateIA} disabled={iaLoading || !iaText.trim()}
             style={{ width:'100%', marginTop:12, padding:'12px 0', borderRadius:10, border:'none',
-              background: iaLoading || !iaText.trim() ? 'var(--bg-card2)' : 'linear-gradient(135deg,#5b6fff,#06B6D4)',
-              color: iaLoading || !iaText.trim() ? 'var(--text-dim)' : '#fff',
-              fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, cursor: iaLoading || !iaText.trim() ? 'not-allowed' : 'pointer' }}>
+              background: iaLoading || !iaText.trim() ? 'var(--bg-card2)' : 'var(--primary)',
+              color: iaLoading || !iaText.trim() ? 'var(--text-dim)' : 'var(--on-primary)',
+              fontFamily:'var(--font-display)', fontSize:14, fontWeight:700, cursor: iaLoading || !iaText.trim() ? 'not-allowed' : 'pointer' }}>
             {iaLoading ? 'Génération…' : 'Générer la séance'}
           </button>
         </SectionCard>
@@ -1703,13 +1707,13 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
             <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:0 }}>
               {initial ? 'Modifier la seance' : 'Nouvelle seance'}
             </p>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, margin:'4px 0 0' }}>
+            <h2 style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:700, margin:'4px 0 0' }}>
               {name || 'Seance sans titre'}
             </h2>
           </div>
           <div style={{ display:'flex', gap:8 }}>
             <button onClick={onCancel}
-              style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 12px', cursor:'pointer', color:'var(--text-dim)', fontSize:13, fontFamily:'DM Sans,sans-serif' }}>
+              style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 12px', cursor:'pointer', color:'var(--text-dim)', fontSize:13, fontFamily:'var(--font-body)' }}>
               Annuler
             </button>
           </div>
@@ -1730,7 +1734,7 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
                 style={{ padding:'8px 16px', borderRadius:12, border:`1px solid ${sport===s.id?s.color:'var(--border)'}`,
                   background:sport===s.id?`${s.color}15`:'transparent',
                   color:sport===s.id?s.color:'var(--text-dim)',
-                  fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                  fontFamily:'var(--font-body)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
                 {s.label}
               </button>
             ))}
@@ -1796,7 +1800,7 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
           <div>
             <label style={{ fontSize:11, color:'var(--text-dim)', display:'block', marginBottom:4 }}>Duree estimee (min)</label>
             <input type="number" value={duration} min={5} max={600} onChange={e=>setDuration(+e.target.value)}
-              style={{ ...inp, fontFamily:'DM Mono,monospace', textAlign:'center' as const }}/>
+              style={{ ...inp, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', textAlign:'center' as const }}/>
           </div>
           <div>
             <label style={{ fontSize:11, color:'var(--text-dim)', display:'block', marginBottom:6 }}>Intensite</label>
@@ -1806,7 +1810,7 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
                   style={{ flex:1, padding:'7px 0', borderRadius:8, border:`1px solid ${intensity===i?intensityColor(i):'var(--border)'}`,
                     background:intensity===i?`${intensityColor(i)}15`:'transparent',
                     color:intensity===i?intensityColor(i):'var(--text-dim)',
-                    fontFamily:'DM Sans,sans-serif', fontSize:10, fontWeight:600, cursor:'pointer' }}>
+                    fontFamily:'var(--font-body)', fontSize:10, fontWeight:600, cursor:'pointer' }}>
                   {intensityLabel(i)}
                 </button>
               ))}
@@ -1816,9 +1820,9 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
 
         {/* TSS estimate display */}
         <div style={{ marginBottom:14 }}>
-          <div style={{ padding:'6px 12px', borderRadius:8, background:'rgba(91,111,255,0.07)', border:'1px solid rgba(91,111,255,0.18)', display:'inline-flex', gap:8, alignItems:'center' }}>
+          <div style={{ padding:'6px 12px', borderRadius:8, background:'var(--primary-dim)', display:'inline-flex', gap:8, alignItems:'center' }}>
             <span style={{ fontSize:10, color:'var(--text-dim)' }}>TSS estimé</span>
-            <span style={{ fontFamily:'DM Mono,monospace', fontWeight:700, fontSize:13, color:'#5b6fff' }}>{estimatedTSS} pts</span>
+            <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontWeight:700, fontSize:13, color:'var(--primary)' }}>{estimatedTSS} pts</span>
             <span style={{ fontSize:9, color:'var(--text-dim)' }}>(estimation)</span>
           </div>
         </div>
@@ -1827,14 +1831,14 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
         <div style={{ marginBottom:14 }}>
           <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
             <label style={{ fontSize:11, color:'var(--text-dim)' }}>RPE cible</label>
-            <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:700,
+            <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:13, fontWeight:700,
               color: rpeTarget<=3?'#22c55e':rpeTarget<=6?'#f97316':'#ef4444' }}>
               {rpeTarget}/10
             </span>
           </div>
           <input type="range" min={1} max={10} step={0.5} value={rpeTarget}
             onChange={e=>setRpeTarget(parseFloat(e.target.value))}
-            style={{ width:'100%', accentColor:'#5b6fff', cursor:'pointer' }}/>
+            style={{ width:'100%', accentColor:'var(--primary)', cursor:'pointer' }}/>
           <div style={{ display:'flex', justifyContent:'space-between', marginTop:2 }}>
             <span style={{ fontSize:9, color:'#22c55e' }}>Récup</span>
             <span style={{ fontSize:9, color:'#f97316' }}>Modéré</span>
@@ -1876,12 +1880,12 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
           <div>
             <label style={{ fontSize:11, color:'var(--text-dim)', display:'block', marginBottom:4 }}>Date</label>
             <input type="date" value={planDate} onChange={e=>setPlanDate(e.target.value)}
-              style={{ ...inp, fontFamily:'DM Mono,monospace' }}/>
+              style={{ ...inp, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums' }}/>
           </div>
           <div>
             <label style={{ fontSize:11, color:'var(--text-dim)', display:'block', marginBottom:4 }}>Heure</label>
             <input type="time" value={planTime} onChange={e=>setPlanTime(e.target.value)}
-              style={{ ...inp, fontFamily:'DM Mono,monospace' }}/>
+              style={{ ...inp, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums' }}/>
           </div>
         </div>
         {planSuccess && (
@@ -1940,9 +1944,9 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
             setTimeout(() => setPlanSuccess(false), 3000)
           }}
           style={{ width:'100%', padding:'11px', borderRadius:12, border:'none',
-            background: planDate ? 'linear-gradient(135deg,#22c55e,#06B6D4)' : 'var(--bg-card2)',
-            color: planDate ? '#fff' : 'var(--text-dim)',
-            fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700,
+            background: planDate ? 'var(--primary)' : 'var(--bg-card2)',
+            color: planDate ? 'var(--on-primary)' : 'var(--text-dim)',
+            fontFamily:'var(--font-display)', fontSize:13, fontWeight:700,
             cursor: planDate ? 'pointer' : 'not-allowed',
             opacity: planDate ? 1 : 0.5 }}>
           Ajouter au planning
@@ -1953,29 +1957,29 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
       <div style={{ display:'flex', gap:10, alignItems:'center' }}>
         {onDelete && (confirmDelete ? (
           <div style={{ display:'flex', gap:8, alignItems:'center', flex:1, flexWrap:'wrap' }}>
-            <span style={{ fontSize:12, color:'#ef4444', fontFamily:'DM Sans,sans-serif', fontWeight:600 }}>Supprimer cette séance ?</span>
+            <span style={{ fontSize:12, color:'#ef4444', fontFamily:'var(--font-body)', fontWeight:600 }}>Supprimer cette séance ?</span>
             <button onClick={onDelete}
-              style={{ padding:'10px 16px', borderRadius:8, border:'none', background:'#ef4444', color:'#fff', fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              style={{ padding:'10px 16px', borderRadius:8, border:'none', background:'#ef4444', color:'var(--on-primary)', fontFamily:'var(--font-body)', fontSize:13, fontWeight:700, cursor:'pointer' }}>
               Confirmer la suppression
             </button>
             <button onClick={()=>setConfirmDelete(false)}
-              style={{ padding:'10px 14px', borderRadius:8, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer' }}>
+              style={{ padding:'10px 14px', borderRadius:8, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'var(--font-body)', fontSize:13, cursor:'pointer' }}>
               Annuler
             </button>
           </div>
         ) : (
           <button onClick={()=>setConfirmDelete(true)}
-            style={{ padding:'12px 16px', borderRadius:12, border:'1px solid #ef4444', background:'transparent', color:'#ef4444', fontFamily:'DM Sans,sans-serif', fontSize:14, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+            style={{ padding:'12px 16px', borderRadius:12, border:'1px solid #ef4444', background:'transparent', color:'#ef4444', fontFamily:'var(--font-body)', fontSize:14, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
             Supprimer
           </button>
         ))}
         {!confirmDelete && (<>
           <button onClick={onCancel}
-            style={{ flex:1, padding:'12px 0', borderRadius:12, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:14, cursor:'pointer' }}>
+            style={{ flex:1, padding:'12px 0', borderRadius:12, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontFamily:'var(--font-body)', fontSize:14, cursor:'pointer' }}>
             Fermer
           </button>
           <button onClick={save}
-            style={{ flex:3, padding:'12px 0', borderRadius:6, border:'none', background:'#1B6EF3', color:'#fff', fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 20px rgba(27,110,243,0.30)' }}>
+            style={{ flex:3, padding:'12px 0', borderRadius:'var(--r-sm)', border:'none', background:'var(--primary)', color:'var(--on-primary)', fontFamily:'var(--font-display)', fontSize:14, fontWeight:700, cursor:'pointer' }}>
             Enregistrer la seance
           </button>
         </>)}
@@ -1990,173 +1994,152 @@ function BuildMode({ initial, onSave, onCancel, onDelete }: {
 // ══════════════════════════════════════════════════════════════════
 function LibraryMode({ templates, onNew, onEdit, onStart, onDelete }: {
   templates: SessionTemplate[]
-  onNew:    () => void
+  onNew:    (sport?: Sport) => void
   onEdit:   (t: SessionTemplate) => void
   onStart:  (t: SessionTemplate) => void
   onDelete: (t: SessionTemplate) => void
 }) {
-  const [sportFilter, setSportFilter] = useState<Sport | 'all'>('all')
+  const FD = 'var(--font-display)', FB = 'var(--font-body)'
+  const [sport,       setSport]        = useState<Sport | null>(null)
+  const [dir,         setDir]          = useState(1)
   const [typeFilters, setTypeFilters]  = useState<string[]>([])
   const [toast,       setToast]        = useState('')
 
-  function selectSport(s: Sport | 'all') {
-    setSportFilter(s)
-    setTypeFilters([])
-  }
-
+  function openSport(s: Sport) { setDir(1); setTypeFilters([]); setSport(s) }
+  function backToGrid()        { setDir(-1); setTypeFilters([]); setSport(null) }
   function toggleType(tp: string) {
     setTypeFilters(prev => prev.includes(tp) ? prev.filter(x => x !== tp) : [...prev, tp])
   }
-
   function sendToPlanning(t: SessionTemplate) {
     setToast(`"${t.name}" envoyée au Planning`)
     setTimeout(() => setToast(''), 3000)
   }
 
-  // Types disponibles pour le sport sélectionné
-  const availableTypes: string[] = sportFilter !== 'all' ? (SESSION_TYPES[sportFilter] ?? []) : []
+  // Compteur de séances par sport.
+  const counts = SPORTS.reduce((acc, s) => {
+    acc[s.id] = templates.filter(t => t.sport === s.id).length
+    return acc
+  }, {} as Record<BuilderSportId, number>)
 
-  // Filtrage des séances
-  const displayed = templates.filter(t => {
-    if (sportFilter !== 'all' && t.sport !== sportFilter) return false
-    if (typeFilters.length > 0) {
-      const templateTypes = t.typeSeance ?? []
-      if (!typeFilters.some(f => templateTypes.includes(f))) return false
-    }
-    return true
+  // Détail d'un sport : séances filtrées par type.
+  const sportTemplates = sport ? templates.filter(t => t.sport === sport) : []
+  const availableTypes: string[] = sport ? (SESSION_TYPES[sport] ?? []) : []
+  const displayed = sportTemplates.filter(t => {
+    if (typeFilters.length === 0) return true
+    const tt = t.typeSeance ?? []
+    return typeFilters.some(f => tt.includes(f))
   })
+  const theme = sport ? BUILDER_THEME[sport] : null
 
-  // Style tab sport
-  function tabStyle(active: boolean, color: string): React.CSSProperties {
+  function typeStyle(active: boolean, accent: string): React.CSSProperties {
     return {
-      padding: '7px 16px',
-      borderRadius: 10,
-      border: `1px solid ${active ? color : 'var(--border)'}`,
-      background: active ? color : 'transparent',
-      color: active ? '#fff' : 'var(--text-dim)',
-      fontFamily: 'DM Sans,sans-serif',
-      fontSize: 12,
-      fontWeight: 600,
-      cursor: 'pointer',
-      whiteSpace: 'nowrap' as const,
-      transition: 'all .15s',
+      padding: '5px 13px', borderRadius: 99,
+      border: `1px solid ${active ? accent : 'var(--border)'}`,
+      background: active ? accent : 'transparent',
+      color: active ? 'var(--on-primary)' : 'var(--text-dim)',
+      fontFamily: FB, fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
+      whiteSpace: 'nowrap' as const, transition: 'all .12s',
     }
   }
-
-  // Style badge type filtre
-  function typeStyle(active: boolean, sportCol: string): React.CSSProperties {
-    return {
-      padding: '4px 12px',
-      borderRadius: 99,
-      border: `1px solid ${active ? sportCol : 'var(--border)'}`,
-      background: active ? `${sportCol}22` : 'transparent',
-      color: active ? sportCol : 'var(--text-dim)',
-      fontFamily: 'DM Sans,sans-serif',
-      fontSize: 11,
-      fontWeight: 600,
-      cursor: 'pointer',
-      whiteSpace: 'nowrap' as const,
-      transition: 'all .12s',
-    }
-  }
-
-  const sportCol = sportFilter !== 'all' ? sportColor(sportFilter) : '#5b6fff'
 
   return (
-    <div>
+    <div style={{ overflowX: 'hidden' }}>
       {/* Toast */}
       {toast && (
         <div style={{ position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)',
-          background:'#22c55e', color:'#fff', padding:'10px 22px', borderRadius:12,
-          fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, zIndex:200,
-          boxShadow:'0 4px 20px rgba(34,197,94,0.4)', pointerEvents:'none' }}>
+          background:'var(--bg-elev)', border:'1px solid var(--border-mid)', color:'var(--text)',
+          padding:'10px 20px', borderRadius:'var(--r-md)', fontFamily:FB, fontSize:13, fontWeight:600,
+          zIndex:200, boxShadow:'var(--shadow-card)', pointerEvents:'none' }}>
           {toast}
         </div>
       )}
 
-      <SectionCard>
-        {/* Header */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18, flexWrap:'wrap', gap:10 }}>
+      <SlideView screenKey={sport ? `sport-${sport}` : 'grid'} direction={dir}>
+        {sport && theme ? (
           <div>
-            <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:0 }}>Builder</p>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:700, margin:'4px 0 0' }}>Mes séances en réserve</h2>
-          </div>
-          <button onClick={onNew}
-            style={{ padding:'9px 20px', borderRadius:6, border:'none', background:'#1B6EF3',
-              color:'#fff', fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer',
-              boxShadow:'0 2px 12px rgba(27,110,243,0.30)' }}>
-            + Nouvelle séance
-          </button>
-        </div>
-
-        {/* Niveau 1 — Tabs sport (scrollable) */}
-        <SportTabs
-          tabs={[
-            { id: 'all', label: 'Toutes', color: '#5b6fff' },
-            ...SPORTS.map(s => ({ id: s.id, label: s.label, color: s.color })),
-          ]}
-          value={sportFilter}
-          onChange={(id) => selectSport(id as Sport | 'all')}
-        />
-
-        {/* Niveau 2 — Filtres par type (badges multi-select) */}
-        {availableTypes.length > 0 && (
-          <div style={{ marginTop:14, overflowX:'auto', paddingBottom:2 }}>
-            <div style={{ display:'flex', gap:6, minWidth:'max-content', alignItems:'center' }}>
-              <span style={{ fontSize:10, color:'var(--text-dim)', fontWeight:700, textTransform:'uppercase',
-                letterSpacing:'0.08em', marginRight:4, whiteSpace:'nowrap' }}>Type</span>
-              {availableTypes.map(tp => (
-                <button key={tp} style={typeStyle(typeFilters.includes(tp), sportCol)} onClick={()=>toggleType(tp)}>
-                  {tp}
-                </button>
-              ))}
-              {typeFilters.length > 0 && (
-                <button onClick={()=>setTypeFilters([])}
-                  style={{ padding:'4px 10px', borderRadius:99, border:'none', background:'transparent',
-                    color:'var(--text-dim)', fontFamily:'DM Sans,sans-serif', fontSize:10, cursor:'pointer',
-                    textDecoration:'underline', marginLeft:4 }}>
-                  Effacer
-                </button>
-              )}
+            {/* Header détail : retour + pastille + titre serif + action */}
+            <button onClick={backToGrid} style={{ display:'flex', alignItems:'center', gap:6, background:'none',
+              border:'none', cursor:'pointer', color:'var(--text-mid)', fontFamily:FB, fontSize:13,
+              padding:'4px 0', marginBottom:'var(--space-4)' }}>
+              <IconArrowLeft size={16} /> Sports
+            </button>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'var(--space-4)',
+              flexWrap:'wrap', marginBottom:'var(--space-5)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'var(--space-3)' }}>
+                <span style={{ width:10, height:10, borderRadius:'50%', background:theme.accent, flexShrink:0 }} />
+                <h2 style={{ fontFamily:FD, fontSize:24, fontWeight:600, color:'var(--text)', margin:0 }}>{theme.label}</h2>
+              </div>
+              <button onClick={() => onNew(sport)}
+                style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'10px 18px', borderRadius:'var(--r-sm)',
+                  border:'none', background:'var(--primary)', color:'var(--on-primary)', fontFamily:FB, fontSize:13,
+                  fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+                <IconPlus size={16} /> Nouvelle séance
+              </button>
             </div>
-          </div>
-        )}
-      </SectionCard>
 
-      {/* Grille */}
-      {displayed.length === 0 ? (
-        <div style={{ textAlign:'center', padding:'48px 20px', color:'var(--text-dim)' }}>
-          <p style={{ fontSize:14, marginBottom:16 }}>
-            {typeFilters.length > 0 ? 'Aucune séance pour ces types.' : 'Aucune séance dans cette catégorie.'}
-          </p>
-          {typeFilters.length > 0 ? (
-            <button onClick={()=>setTypeFilters([])}
-              style={{ padding:'10px 24px', borderRadius:12, border:'1px solid var(--border)', background:'transparent',
-                color:'var(--text-mid)', fontFamily:'DM Sans,sans-serif', fontSize:13, cursor:'pointer' }}>
-              Effacer les filtres
-            </button>
-          ) : (
-            <button onClick={onNew}
-              style={{ padding:'11px 28px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#5b6fff,#06B6D4)',
-                color:'#fff', fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-              Créer une séance
-            </button>
-          )}
-        </div>
-      ) : (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:14 }} id="session-grid">
-          {displayed.map(t => (
-            <TemplateCard
-              key={t.id}
-              t={t}
-              onStart={() => onStart(t)}
-              onEdit={()  => onEdit(t)}
-              onPlan={() => sendToPlanning(t)}
-              onDelete={() => onDelete(t)}
-            />
-          ))}
-        </div>
-      )}
+            {/* Filtres par type */}
+            {availableTypes.length > 0 && sportTemplates.length > 0 && (
+              <div style={{ overflowX:'auto', paddingBottom:2, marginBottom:'var(--space-5)' }}>
+                <div style={{ display:'flex', gap:6, minWidth:'max-content', alignItems:'center' }}>
+                  <span style={{ fontFamily:FB, fontSize:10, color:'var(--text-dim)', fontWeight:700,
+                    textTransform:'uppercase', letterSpacing:'0.08em', marginRight:4, whiteSpace:'nowrap' }}>Type</span>
+                  {availableTypes.map(tp => (
+                    <button key={tp} style={typeStyle(typeFilters.includes(tp), theme.accent)} onClick={()=>toggleType(tp)}>
+                      {tp}
+                    </button>
+                  ))}
+                  {typeFilters.length > 0 && (
+                    <button onClick={()=>setTypeFilters([])}
+                      style={{ padding:'4px 10px', borderRadius:99, border:'none', background:'transparent',
+                        color:'var(--text-dim)', fontFamily:FB, fontSize:10, cursor:'pointer',
+                        textDecoration:'underline', marginLeft:4 }}>
+                      Effacer
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Grille de séances du sport */}
+            {displayed.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'48px 20px', color:'var(--text-dim)' }}>
+                <p style={{ fontFamily:FB, fontSize:14, marginBottom:16 }}>
+                  {typeFilters.length > 0 ? 'Aucune séance pour ces types.' : `Aucune séance ${theme.label.toLowerCase()} en réserve.`}
+                </p>
+                {typeFilters.length > 0 ? (
+                  <button onClick={()=>setTypeFilters([])}
+                    style={{ padding:'10px 22px', borderRadius:'var(--r-md)', border:'1px solid var(--border)',
+                      background:'transparent', color:'var(--text-mid)', fontFamily:FB, fontSize:13, cursor:'pointer' }}>
+                    Effacer les filtres
+                  </button>
+                ) : (
+                  <button onClick={() => onNew(sport)}
+                    style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'11px 24px', borderRadius:'var(--r-md)',
+                      border:'none', background:'var(--primary)', color:'var(--on-primary)', fontFamily:FB, fontSize:13,
+                      fontWeight:600, cursor:'pointer' }}>
+                    <IconPlus size={16} /> Créer une séance
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:14 }} id="session-grid">
+                {displayed.map(t => (
+                  <TemplateCard
+                    key={t.id}
+                    t={t}
+                    onStart={() => onStart(t)}
+                    onEdit={()  => onEdit(t)}
+                    onPlan={() => sendToPlanning(t)}
+                    onDelete={() => onDelete(t)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <BuilderSportGrid counts={counts} onSelect={openSport} onNew={() => onNew()} />
+        )}
+      </SlideView>
 
       <style>{`
         @media (max-width:600px) { #session-grid { grid-template-columns: 1fr !important; } }
@@ -2271,6 +2254,7 @@ export default function SessionPage() {
   const [topTab,        setTopTab]        = useState<TopTab>('builder')
   const [mode,          setMode]          = useState<PageMode>('library')
   const [editTarget,    setEditTarget]    = useState<SessionTemplate|undefined>()
+  const [newSport,      setNewSport]      = useState<Sport|undefined>()
   const [execTarget,    setExecTarget]    = useState<SessionTemplate|undefined>()
   const { zones }                         = useTrainingZones()
   const { races }                         = usePlanning()
@@ -2302,7 +2286,7 @@ export default function SessionPage() {
     void loadLibrary()
   }, [])
 
-  function handleNew() { setEditTarget(undefined); setMode('build') }
+  function handleNew(sport?: Sport) { setEditTarget(undefined); setNewSport(sport); setMode('build') }
   function handleEdit(t: SessionTemplate) { setEditTarget(t); setMode('build') }
   function handleStart(t: SessionTemplate) { setExecTarget(t); setMode('execute') }
 
@@ -2360,6 +2344,7 @@ export default function SessionPage() {
             {mode === 'build' && (
               <BuildMode
                 initial={editTarget}
+                defaultSport={newSport}
                 onSave={handleSave}
                 onCancel={()=>setMode('library')}
                 onDelete={editTarget ? () => { void handleDelete(editTarget); setMode('library') } : undefined}

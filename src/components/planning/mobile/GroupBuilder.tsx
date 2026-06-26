@@ -3,15 +3,16 @@
 // Moteur de builder par GROUPES (circuits) → exercices, partagé Muscu/
 // Hyrox. État contrôlé par le parent (sync refs → exercisesToBlocks).
 // ══════════════════════════════════════════════════════════════════
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import type { ReactNode } from 'react'
-import { IconPlus, IconRefresh, IconDotsVertical, IconTrash, IconSearch } from '@tabler/icons-react'
+import { IconPlus, IconRefresh, IconDotsVertical, IconTrash, IconSearch, IconArrowNarrowDown } from '@tabler/icons-react'
 import { searchExercises } from '../exercises'
 import {
   type ExerciseItem, type ExoCircuit, itemFromDef, customItem, genCircuitId, fmtSec,
 } from './strength'
 import { ExerciseCard } from './ExerciseCard'
 import { ExercisePicker } from './ExercisePicker'
+import { Stepper } from './ui'
 import { CIRCUIT_TYPES, type CircuitType } from '@/app/planning/page'
 
 // Réglages par défaut selon le type de circuit (mêmes valeurs que le desktop).
@@ -106,11 +107,39 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
             <CircuitTypeChips current={c.type} accent={accent} onPick={t => changeCircuitType(c.id, t)} />
           )}
 
-          {/* Exercices du groupe */}
+          {/* Tours / minutes du circuit (sauf Séries : chaque exo porte ses séries) */}
+          {variant !== 'hyrox' && (c.type ?? 'series') !== 'series' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--se-text)', flexShrink: 0 }}>
+                {c.type === 'emom' ? 'Durée' : 'Tours'}
+              </span>
+              <div style={{ width: 132 }}>
+                <Stepper value={String(c.rounds)} unit={c.type === 'emom' ? 'min' : '×'}
+                  onChange={v => updateCircuit(c.id, { rounds: Math.max(1, parseInt(v) || 1) })}
+                  onDec={() => updateCircuit(c.id, { rounds: Math.max(1, c.rounds - 1) })}
+                  onInc={() => updateCircuit(c.id, { rounds: c.rounds + 1 })} />
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--se-dim)' }}>
+                {c.type === 'emom' ? '1 exo / minute' : c.type === 'tabata' ? '20s / 10s' : c.type === 'superset' ? '2 exos enchaînés' : 'on enchaîne puis on répète'}
+              </span>
+            </div>
+          )}
+
+          {/* Exercices du groupe — flèche d'enchaînement si repos court (≤30s) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {exosOf(c.id).map((e, i) => (
-              <ExerciseCard key={e.id} variant={variant} item={e} index={i} accent={accent} onChange={updateExo} onRemove={() => removeExo(e.id)} />
-            ))}
+            {exosOf(c.id).map((e, i, arr) => {
+              const chained = i < arr.length - 1 && (c.type === 'superset' || (c.type === 'circuit' && (e.restSec ?? 0) <= 30))
+              return (
+                <Fragment key={e.id}>
+                  <ExerciseCard variant={variant} item={e} index={i} accent={accent} circuitType={c.type} onChange={updateExo} onRemove={() => removeExo(e.id)} />
+                  {chained && (
+                    <div style={{ display: 'flex', justifyContent: 'center', margin: '-6px 0', color: accent }}>
+                      <IconArrowNarrowDown size={22} />
+                    </div>
+                  )}
+                </Fragment>
+              )
+            })}
           </div>
 
           {/* Panneau d'ajout */}

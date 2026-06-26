@@ -20,11 +20,18 @@ function NumField({ label, value, unit, step = 1, min = 0, onChange }: {
   )
 }
 
-export function ExerciseCard({ variant, item, index, accent, onChange, onRemove }: {
+export function ExerciseCard({ variant, item, index, accent, circuitType, onChange, onRemove }: {
   variant: 'muscu' | 'hyrox'; item: ExerciseItem; index: number; accent: string
+  circuitType?: string
   onChange: (e: ExerciseItem) => void; onRemove: () => void
 }) {
   const set = (patch: Partial<ExerciseItem>) => onChange({ ...item, ...patch })
+  // Principe de chaque type : en Séries on règle les séries par exo ; en Lap/
+  // Superset c'est le circuit qui porte les tours (l'exo n'a que ses reps) ;
+  // en EMOM/Tabata la cadence est imposée (pas de repos par exo).
+  const ct = circuitType ?? 'series'
+  const showSets = ct === 'series'
+  const showRest = ct !== 'emom' && ct !== 'tabata'
   const rule = variant === 'muscu' ? PATTERN_VAR[item.category] : 'var(--pat-hyrox)'
   const isStation = variant === 'hyrox' && item.exoId !== 'custom'
   const isRun = /run|course|cours/i.test(item.name)
@@ -46,10 +53,10 @@ export function ExerciseCard({ variant, item, index, accent, onChange, onRemove 
       {variant === 'muscu' ? (
         <>
           <div className="se-fgrid">
-            <NumField label="Séries" value={item.sets} min={1} onChange={n => set({ sets: n })} />
-            <NumField label="Reps" value={item.reps} min={0} onChange={n => set({ reps: n })} />
+            {showSets && <NumField label="Séries" value={item.sets} min={1} onChange={n => set({ sets: n })} />}
+            <NumField label={ct === 'emom' || ct === 'tabata' ? 'Reps / tour' : 'Reps'} value={item.reps} min={0} onChange={n => set({ reps: n })} />
             <NumField label="Charge" unit="kg" value={item.weightKg ?? 0} step={2} onChange={n => set({ weightKg: n })} />
-            <NumField label="Repos" unit="s" value={item.restSec} step={15} onChange={n => set({ restSec: n })} />
+            {showRest && <NumField label={ct === 'series' ? 'Repos' : 'Repos après'} unit="s" value={item.restSec} step={15} onChange={n => set({ restSec: n })} />}
           </div>
           {/* Sélecteur de pattern */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

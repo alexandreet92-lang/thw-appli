@@ -12,6 +12,13 @@ import {
 } from './strength'
 import { ExerciseCard } from './ExerciseCard'
 import { ExercisePicker } from './ExercisePicker'
+import { CIRCUIT_TYPES, type CircuitType } from '@/app/planning/page'
+
+// Réglages par défaut selon le type de circuit (mêmes valeurs que le desktop).
+const circuitDefaults = (type: string) => ({
+  rounds: type === 'tabata' ? 8 : type === 'emom' ? 12 : 3,
+  rest:   type === 'tabata' ? 10 : type === 'emom' ? 0 : 90,
+})
 
 export function GroupBuilder({ variant, accent, exercises, setExercises, circuits, setCircuits, map, setMap, banner, presets }: {
   variant: 'muscu' | 'hyrox'; accent: string
@@ -23,17 +30,30 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
   const [adding, setAdding] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [menu, setMenu] = useState<string | null>(null)
+  // Sélecteur de type de circuit : 'new' = ajout, ou un id de circuit = changement.
+  const [typeMenu, setTypeMenu] = useState<string | null>(null)
   const sport = variant === 'hyrox' ? 'hyrox' : 'gym'
 
   const exosOf = (cid: string) => exercises.filter(e => (map[e.id] ?? 'default') === cid)
   const addItem = (item: ExerciseItem, cid: string) => { setExercises([...exercises, item]); setMap({ ...map, [item.id]: cid }); setAdding(null); setQuery('') }
   const updateExo = (it: ExerciseItem) => setExercises(exercises.map(e => e.id === it.id ? it : e))
   const removeExo = (id: string) => { setExercises(exercises.filter(e => e.id !== id)); const m = { ...map }; delete m[id]; setMap(m) }
-  function addCircuit() {
+  function addCircuit(typeId?: CircuitType) {
     const n = circuits.length + 1
-    setCircuits([...circuits, variant === 'hyrox'
-      ? { id: genCircuitId(), name: `Circuit ${n}`, type: 'circuit', rounds: 1, restBetweenRoundsSec: 0, targetTimeSec: 0 }
-      : { id: genCircuitId(), name: `Séries ${n}`, type: 'series', rounds: 3, restBetweenRoundsSec: 90 }])
+    if (variant === 'hyrox') {
+      setCircuits([...circuits, { id: genCircuitId(), name: `Circuit ${n}`, type: 'circuit', rounds: 1, restBetweenRoundsSec: 0, targetTimeSec: 0 }])
+      return
+    }
+    const t = typeId ?? 'series'
+    const ct = CIRCUIT_TYPES.find(c => c.id === t)
+    const d = circuitDefaults(t)
+    setCircuits([...circuits, { id: genCircuitId(), name: `${ct?.label ?? 'Séries'} ${n}`, type: t, rounds: d.rounds, restBetweenRoundsSec: d.rest }])
+    setTypeMenu(null)
+  }
+  function changeCircuitType(cid: string, typeId: CircuitType) {
+    const d = circuitDefaults(typeId)
+    updateCircuit(cid, { type: typeId, rounds: d.rounds, restBetweenRoundsSec: d.rest })
+    setTypeMenu(null)
   }
   function removeCircuit(cid: string) {
     const ids = exosOf(cid).map(e => e.id)
@@ -64,6 +84,13 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
                   className="se-fr se-tnum" style={{ width: 52, textAlign: 'center', background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 8, padding: '4px 4px', fontSize: 12, color: 'var(--se-text)', outline: 'none' }} />
               </div>
             )}
+            {variant !== 'hyrox' && (
+              <button type="button" onClick={() => setTypeMenu(typeMenu === c.id ? null : c.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 999, border: `1px solid ${accent}`, background: `${accent}14`, color: accent, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span>{CIRCUIT_TYPES.find(t => t.id === (c.type ?? 'series'))?.icon ?? '▤'}</span>
+                {CIRCUIT_TYPES.find(t => t.id === (c.type ?? 'series'))?.label ?? 'Séries'}
+              </button>
+            )}
             <div style={{ position: 'relative' }}>
               <button type="button" onClick={() => setMenu(menu === c.id ? null : c.id)} style={{ border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconDotsVertical size={17} /></button>
               {menu === c.id && (
@@ -73,6 +100,11 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
               )}
             </div>
           </div>
+
+          {/* Sélecteur de type de circuit (muscu) */}
+          {typeMenu === c.id && variant !== 'hyrox' && (
+            <CircuitTypeChips current={c.type} accent={accent} onPick={t => changeCircuitType(c.id, t)} />
+          )}
 
           {/* Exercices du groupe */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -114,9 +146,46 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
         </div>
       ))}
 
-      <button type="button" onClick={addCircuit} style={{ ...addBtn(accent), border: '1px dashed var(--se-rule)', width: '100%', justifyContent: 'center' }}>
-        <IconRefresh size={15} /> Ajouter un circuit
-      </button>
+      {/* Ajouter un circuit — muscu : choix du type ; hyrox : direct */}
+      {variant === 'hyrox' ? (
+        <button type="button" onClick={() => addCircuit()} style={{ ...addBtn(accent), border: '1px dashed var(--se-rule)', width: '100%', justifyContent: 'center' }}>
+          <IconRefresh size={15} /> Ajouter un circuit
+        </button>
+      ) : typeMenu === 'new' ? (
+        <div style={{ border: '1px dashed var(--se-rule)', borderRadius: 'var(--se-r)', padding: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)', marginBottom: 8 }}>Type de circuit</div>
+          <CircuitTypeChips current={null} accent={accent} onPick={t => addCircuit(t)} />
+          <button type="button" onClick={() => setTypeMenu(null)} style={{ ...addBtn(accent), color: 'var(--se-dim)', marginTop: 4 }}>Annuler</button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setTypeMenu('new')} style={{ ...addBtn(accent), border: '1px dashed var(--se-rule)', width: '100%', justifyContent: 'center' }}>
+          <IconRefresh size={15} /> Ajouter un circuit
+        </button>
+      )}
+    </div>
+  )
+}
+
+// Chips de sélection du type de circuit (Séries / Lap / Superset / EMOM / Tabata).
+function CircuitTypeChips({ current, accent, onPick }: {
+  current: string | null; accent: string; onPick: (t: CircuitType) => void
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '4px 0 10px' }}>
+      {CIRCUIT_TYPES.map(ct => {
+        const on = (current ?? 'series') === ct.id
+        return (
+          <button key={ct.id} type="button" onClick={() => onPick(ct.id)}
+            style={{ display: 'flex', alignItems: 'center', gap: 9, textAlign: 'left', padding: '8px 10px', borderRadius: 10, cursor: 'pointer',
+              border: on ? `2px solid ${accent}` : '1px solid var(--se-rule)', background: on ? `${accent}14` : 'var(--se-card)' }}>
+            <span style={{ fontSize: 16, width: 20, textAlign: 'center', flexShrink: 0 }}>{ct.icon}</span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: on ? accent : 'var(--se-text)' }}>{ct.label}</span>
+              <span style={{ display: 'block', fontSize: 11, color: 'var(--se-dim)' }}>{ct.desc}</span>
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }

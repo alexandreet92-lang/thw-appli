@@ -14,9 +14,10 @@ export interface StrengthLog { circuits: string; exos: Exo[] }
 export interface ActivityExtras {
   strength_log: StrengthLog | null
   pool_length_m: number | null
+  workout_types: string[] | null
 }
 
-const BLANK: ActivityExtras = { strength_log: null, pool_length_m: null }
+const BLANK: ActivityExtras = { strength_log: null, pool_length_m: null, workout_types: null }
 
 export function useActivityExtras(activityId: string) {
   const [extras, setExtras] = useState<ActivityExtras>(BLANK)
@@ -29,10 +30,10 @@ export function useActivityExtras(activityId: string) {
         const sb = createClient()
         const { data } = await sb
           .from('activity_extras')
-          .select('strength_log, pool_length_m')
+          .select('strength_log, pool_length_m, workout_types')
           .eq('activity_id', activityId)
           .maybeSingle()
-        if (alive) setExtras(data ? { strength_log: data.strength_log ?? null, pool_length_m: data.pool_length_m ?? null } : BLANK)
+        if (alive) setExtras(data ? { strength_log: data.strength_log ?? null, pool_length_m: data.pool_length_m ?? null, workout_types: data.workout_types ?? null } : BLANK)
       } catch { /* hors-ligne / non connecté : on garde le blanc */ }
       finally { if (alive) setLoaded(true) }
     })()
@@ -52,6 +53,7 @@ export function useActivityExtras(activityId: string) {
         user_id: user.id,
         strength_log: next.strength_log,
         pool_length_m: next.pool_length_m,
+        workout_types: next.workout_types,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'activity_id' })
     } catch { /* best-effort */ }

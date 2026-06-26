@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { formatRecordDuration, durationRank } from '@/lib/records/format'
 import { SmSnStat } from '@/components/metrics/SmSnStat'
+import { workoutTypeDefs } from '@/components/activity/WorkoutTypeBadges'
 
 // ── Couleurs sémantiques fixes ─────────────────────────────────────────
 const GOLD = '#eab308'
@@ -34,6 +35,9 @@ export interface ActivityCardData {
     allTime: { label: string; watts: number }[]
     year:    { label: string; watts: number; year: string }[]
   }
+  trainingTypes?: string[]        // ids de type d'entraînement (Force, PMA…)
+  nbExercises?:   number | null   // muscu : nb d'exercices
+  nbCircuits?:    number | null   // muscu : nb de circuits
 }
 
 interface Props {
@@ -175,16 +179,38 @@ export function ActivityCard({ data, onClick }: Props) {
         </picture>
       )}
 
-      {/* ── Stats grid ── */}
+      {/* ── Type d'entraînement (Force, PMA, EF…) ── */}
+      {(data.trainingTypes?.length ?? 0) > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0 16px 2px' }}>
+          {workoutTypeDefs(data.sportType, data.trainingTypes ?? []).map(t => (
+            <span key={t.id} style={{
+              fontSize: 9.5, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+              color: t.color, background: `${t.color}1a`, border: `1px solid ${t.color}55`,
+            }}>{t.label}</span>
+          ))}
+        </div>
+      )}
+
+      {/* ── Stats grid (sport-aware : muscu/hyrox → exos/circuits, pas de distance/D+) ── */}
       <div style={{
         padding: '12px 16px 8px',
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
         gap:     8,
       }}>
-        <Stat label="Distance" value={fmtDistKm(data.distance_m)} />
-        <Stat label="Durée"    value={fmtDurCompact(data.moving_time_s)} />
-        <Stat label="D+"       value={fmtElev(data.elevation_gain_m)} />
+        {(data.sportType === 'gym' || data.sportType === 'hyrox') ? (
+          <>
+            <Stat label="Exercices" value={data.nbExercises != null ? String(data.nbExercises) : '—'} />
+            <Stat label="Durée"     value={fmtDurCompact(data.moving_time_s)} />
+            <Stat label="Circuits"  value={data.nbCircuits != null ? String(data.nbCircuits) : '—'} />
+          </>
+        ) : (
+          <>
+            <Stat label="Distance" value={fmtDistKm(data.distance_m)} />
+            <Stat label="Durée"    value={fmtDurCompact(data.moving_time_s)} />
+            <Stat label="D+"       value={fmtElev(data.elevation_gain_m)} />
+          </>
+        )}
       </div>
       {/* Charge — SM (métabolique) · SN (neuromusculaire), chiffres neutres */}
       <div style={{ padding: '0 16px 12px' }}>

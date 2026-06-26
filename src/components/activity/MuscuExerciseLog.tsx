@@ -49,8 +49,9 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
   const nbCircuits = Math.max(1, Number(log.circuits) || 1)
 
   function openEditor() {
-    const base = log.exos.length ? log : { ...log, exos: [newExo()] }
-    setDraft(JSON.parse(JSON.stringify(base)) as StrengthLog); setOpen(true)
+    // On part des exos existants (vide si aucun) → l'ajout se fait via la
+    // bibliothèque ; plus de ligne « Exercice 1 » vide parasite.
+    setDraft(JSON.parse(JSON.stringify(log)) as StrengthLog); setOpen(true)
   }
   function commit() {
     const cleaned: StrengthLog = { circuits: draft.circuits || '1', exos: draft.exos.filter(e => e.name.trim()) }
@@ -114,7 +115,7 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
                   <input value={e.name} onChange={ev => patchExo(e.id, 'name', ev.target.value)} placeholder={`Exercice ${i + 1}`} style={{ ...inputStyle, flex: 1 }} />
                   <button onClick={() => setDraft(d => ({ ...d, exos: d.exos.filter(x => x.id !== e.id) }))} aria-label="Supprimer" style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-dim)', cursor: 'pointer', padding: '0 10px', fontSize: 16 }}>−</button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   <input value={e.sets} onChange={ev => patchExo(e.id, 'sets', ev.target.value)} placeholder="Séries" style={inputStyle} />
                   <input value={e.reps} onChange={ev => patchExo(e.id, 'reps', ev.target.value)} placeholder="Reps" style={inputStyle} />
                   <input value={e.load} onChange={ev => patchExo(e.id, 'load', ev.target.value)} placeholder="Charge" style={inputStyle} />

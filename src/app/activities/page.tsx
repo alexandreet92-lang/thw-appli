@@ -9138,6 +9138,8 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
 }) {
   const [recordsByActivity, setRecordsByActivity] = useState<Map<string, AutoRecRow[]>>(new Map())
   const [bestPerLabel,      setBestPerLabel]      = useState<Map<string, number>>(new Map())
+  // Méta par activité : types d'entraînement + nb exos/circuits (muscu) — pour les cartes.
+  const [metaByActivity,    setMetaByActivity]    = useState<Map<string, { types: string[]; nbExos: number | null; nbCircuits: number | null }>>(new Map())
 
   const visibleIds = useMemo(
     () => activities.map(a => a.id).filter(Boolean),
@@ -9195,6 +9197,39 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
     return () => { cancelled = true }
   }, [visibleIds.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Types d'entraînement + nb exos/circuits (activity_extras + séances liées).
+  useEffect(() => {
+    if (visibleIds.length === 0) { setMetaByActivity(new Map()); return }
+    let cancelled = false
+    void (async () => {
+      try {
+        const sb = createClient()
+        const { data: extras } = await sb.from('activity_extras').select('activity_id, workout_types, strength_log').in('activity_id', visibleIds)
+        const providerIds = activities.map(a => (a as { provider_id?: unknown }).provider_id).filter((x): x is string => typeof x === 'string')
+        const wsByStrava = new Map<string, { nbExos: number; nbCircuits: number }>()
+        if (providerIds.length) {
+          const { data: ws } = await sb.from('workout_sessions').select('strava_activity_id, exercises_detail').not('strava_activity_id', 'is', null).in('strava_activity_id', providerIds)
+          for (const w of (ws ?? []) as { strava_activity_id: string; exercises_detail: unknown }[]) {
+            const exs = Array.isArray(w.exercises_detail) ? w.exercises_detail as { mode?: string }[] : []
+            wsByStrava.set(w.strava_activity_id, { nbExos: exs.length, nbCircuits: Math.max(1, exs.filter(e => e.mode && e.mode !== 'series').length || 1) })
+          }
+        }
+        const m = new Map<string, { types: string[]; nbExos: number | null; nbCircuits: number | null }>()
+        for (const a of activities) {
+          const ex = (extras ?? []).find(e => e.activity_id === a.id) as { workout_types?: string[]; strength_log?: { circuits?: string; exos?: { name?: string }[] } } | undefined
+          const sl = ex?.strength_log
+          let nbExos: number | null = null, nbCircuits: number | null = null
+          if (sl && Array.isArray(sl.exos)) { nbExos = sl.exos.filter(x => x.name?.trim()).length; nbCircuits = Math.max(1, Number(sl.circuits) || 1) }
+          const wm = wsByStrava.get((a as { provider_id?: string }).provider_id ?? '')
+          if (wm && nbExos == null) { nbExos = wm.nbExos; nbCircuits = wm.nbCircuits }
+          m.set(a.id, { types: ex?.workout_types ?? [], nbExos, nbCircuits })
+        }
+        if (!cancelled) setMetaByActivity(m)
+      } catch { /* best-effort */ }
+    })()
+    return () => { cancelled = true }
+  }, [visibleIds.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Benchmarks athlète pour le calcul SM/SN déterministe
   const { benchmarks: smSnBench } = useSmSn()
 
@@ -9223,6 +9258,7 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
         }
       }
 
+      const meta = metaByActivity.get(a.id)
       return {
         id:               a.id,
         title:            a.title ?? null,
@@ -9237,9 +9273,12 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
         sn:               smsn.sn,
         encodedPolyline:  encoded,
         records:          { allTime, year },
+        trainingTypes:    meta?.types ?? [],
+        nbExercises:      meta?.nbExos ?? null,
+        nbCircuits:       meta?.nbCircuits ?? null,
       } satisfies ActivityCardData
     })
-  }, [activities, recordsByActivity, bestPerLabel, smSnBench])
+  }, [activities, recordsByActivity, bestPerLabel, smSnBench, metaByActivity])
 
   if (cards.length === 0) {
     return (

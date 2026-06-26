@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useActivityExtras } from '@/lib/activity/extras'
 
 interface TypeDef { id: string; label: string; color: string }
 
@@ -90,28 +91,26 @@ function lsSet(key: string, value: unknown) {
 
 export function WorkoutTypeBadges({ activityId, sport }: { activityId: string; sport: string }) {
   const base = TYPES_BY_SPORT[sport] ?? MUSCU_TYPES
-  const selKey = `workout-types-${activityId}`
   const customKey = `workout-custom-types-${sport}`
 
-  const [selected, setSelected] = useState<string[]>([])
+  // Sélection persistée en base (activity_extras.workout_types) → multi-appareils
+  // + lisible sur les cartes. Les types custom restent en localStorage (défs locales).
+  const { extras, save } = useActivityExtras(activityId)
+  const selected = extras.workout_types ?? []
   const [customTypes, setCustomTypes] = useState<TypeDef[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [draftName, setDraftName] = useState('')
   const [draftColor, setDraftColor] = useState(CUSTOM_COLORS[0])
 
   useEffect(() => {
-    setSelected(lsGet<string[]>(selKey, []))
     setCustomTypes(lsGet<TypeDef[]>(customKey, []))
-  }, [selKey, customKey])
+  }, [customKey])
 
   const all = [...base, ...customTypes]
 
   function toggle(id: string) {
-    setSelected(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-      lsSet(selKey, next)
-      return next
-    })
+    const next = selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]
+    void save({ workout_types: next })
   }
   function createCustom() {
     const name = draftName.trim()
@@ -173,4 +172,10 @@ export function WorkoutTypeBadges({ activityId, sport }: { activityId: string; s
       )}
     </div>
   )
+}
+
+// Résout des ids de type d'entraînement → libellés + couleur (pour les cartes).
+export function workoutTypeDefs(sport: string, ids: string[]): { id: string; label: string; color: string }[] {
+  const base = TYPES_BY_SPORT[sport] ?? MUSCU_TYPES
+  return ids.map(id => base.find(t => t.id === id) ?? { id, label: id, color: '#8a8a82' })
 }

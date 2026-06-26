@@ -93,7 +93,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <div style={{ flex:1, textAlign:'center' }}>
-          <p style={{ fontSize:14, fontWeight:600, color:'var(--text)', margin:0 }}>{sport === 'gym' ? 'Muscu' : 'Hyrox'}</p>
+          <p style={{ fontSize:14, fontWeight:600, color:'var(--text)', margin:0, maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{planTitle || (sport === 'gym' ? 'Muscu' : 'Hyrox')}</p>
           <p style={{ fontSize:12, color:accent, margin:0, fontWeight:600 }}>{formatDuration(elapsed)}</p>
         </div>
         <button onClick={() => setShowSettings(true)} style={{ width:36, height:36, borderRadius:'50%', background:'var(--bg-card2)', border:'none', color:'var(--text-mid)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>

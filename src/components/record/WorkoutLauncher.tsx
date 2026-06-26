@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { WorkoutExercise } from '@/types/workout'
 import { DEFAULT_GYM_EXERCISES, DEFAULT_HYROX_EXERCISES } from '@/types/workout'
+import type { Block } from '@/app/planning/page'
+import { blocksToWorkoutExercises } from '@/components/planning/mobile/strength'
 
 const DAY = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
@@ -52,7 +54,7 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
       .eq('sport', sport)
       .order('day_index', { ascending: true })
       .then(({ data }) => {
-        const all = (data ?? []).map(d => ({ ...d, blocks: (d.blocks ?? []) as WorkoutExercise[] }))
+        const all = (data ?? []).map(d => ({ ...d, blocks: blocksToWorkoutExercises((d.blocks ?? []) as Block[], sport) }))
         setAllSessions(all)
         setThisWeek(all.filter(s => s.week_start === monday))
       })

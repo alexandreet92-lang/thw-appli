@@ -5,6 +5,7 @@
 // blocs JSONB (exercisesToBlocks, inchangé côté SessionEditor).
 // ══════════════════════════════════════════════════════════════════
 import type { Block } from '@/app/planning/page'
+import type { WorkoutExercise, WorkoutMode } from '@/types/workout'
 import {
   type ExoCategory, type ExoDefinition, type ExerciseItem, type ExoCircuit,
   EXERCISE_DATABASE,
@@ -109,6 +110,50 @@ export function blocksToExercises(blocks: Block[], sport: 'gym' | 'hyrox'): { ex
   }
   if (circuits.length === 0) circuits.push({ id: 'default', name: sport === 'hyrox' ? 'Circuit 1' : 'Séries 1', type: 'series', rounds: 3, restBetweenRoundsSec: 90 })
   return { exercises, circuits, map }
+}
+
+// ── Planning blocs → exercices de l'enregistreur live (WorkoutSession) ──
+// Reproduit fidèlement la séance créée dans le Planning : chaque type de circuit
+// est traduit dans le bon format WorkoutExercise (série plate, circuit imbriqué,
+// superset apparié, EMOM/Tabata) avec nom / charge / reps / repos / tours.
+function toWE(e: ExerciseItem, mode: WorkoutMode): WorkoutExercise {
+  return {
+    id: e.id, name: e.name || 'Exercice', mode,
+    sets: e.sets || 1, reps: e.reps || 0, weightKg: e.weightKg ?? 0,
+    restSec: e.restSec || 60, durationSec: e.targetTimeSec,
+  }
+}
+export function blocksToWorkoutExercises(blocks: Block[], sport: 'gym' | 'hyrox'): WorkoutExercise[] {
+  // Déjà au format enregistreur ? (créé hors Planning) → passe-plat.
+  const first = blocks[0] as unknown as Record<string, unknown> | undefined
+  if (first && first.name && !first.label && !first.type) {
+    return blocks as unknown as WorkoutExercise[]
+  }
+  const { exercises, circuits, map } = blocksToExercises(blocks, sport)
+  const out: WorkoutExercise[] = []
+  for (const c of circuits) {
+    const exos = exercises.filter(e => (map[e.id] ?? circuits[0]?.id) === c.id)
+    if (exos.length === 0) continue
+    const mode = (['series', 'circuit', 'superset', 'emom', 'tabata'].includes(c.type) ? c.type : 'series') as WorkoutMode
+    if (mode === 'series') {
+      exos.forEach(e => out.push(toWE(e, 'series')))
+    } else if (mode === 'circuit') {
+      out.push({
+        id: c.id, name: c.name || 'Circuit', mode: 'circuit',
+        sets: 1, reps: 0, weightKg: 0, restSec: c.restBetweenRoundsSec,
+        circuitRounds: c.rounds, circuitRestSec: c.restBetweenRoundsSec,
+        circuitExercises: exos.map(e => toWE(e, 'series')),
+      })
+    } else if (mode === 'superset') {
+      const [a, b] = exos
+      out.push({ ...toWE(a, 'superset'), sets: c.rounds, supersetPartner: b ? toWE(b, 'series') : undefined })
+    } else if (mode === 'emom') {
+      out.push({ ...toWE(exos[0], 'emom'), emomMinutes: c.rounds })
+    } else {
+      out.push({ ...toWE(exos[0], 'tabata'), tabataRounds: c.rounds, tabataWorkSec: 20, tabataRestSec: 10 })
+    }
+  }
+  return out
 }
 
 export function defaultCircuit(sport: 'gym' | 'hyrox'): ExoCircuit {

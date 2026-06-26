@@ -39,6 +39,8 @@ import { computeVapKmh, avgAdjustedPaceMinKm } from '@/lib/utils/vap'
 import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
 import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
 import { WeeklyGoals } from '@/components/activity/WeeklyGoals'
+import { MonthlySummary } from '@/components/activity/MonthlySummary'
+import { shareCard } from '@/lib/share/shareCard'
 import { useSmSn } from '@/hooks/useSmSn'
 import { smSnFromRow } from '@/lib/metrics/smSn'
 import { PowerDistribution } from '@/components/activity/PowerDistribution'
@@ -5586,6 +5588,9 @@ function SectionDonnees({ activities, zones, profile }: {
       {dataTab === 'general' && (
         <>
 
+          {/* ── Récap mensuel (3 premiers jours du mois) ── */}
+          <MonthlySummary activities={activities} />
+
           {/* ── Objectifs hebdomadaires + série ── */}
           <WeeklyGoals activities={activities} />
 
@@ -6540,6 +6545,26 @@ function ActivityDetail({ a, onClose, zones, profile }: {
   const { compute: computeSmSn } = useSmSn()
   const smsn = computeSmSn(a as Parameters<typeof computeSmSn>[0])
 
+  // Partage (image récap, style Strava) de l'activité.
+  function shareThisActivity() {
+    const isG = a.sport_type === 'gym' || a.sport_type === 'hyrox'
+    const terrain = ['run', 'trail_run', 'bike', 'virtual_bike'].includes(a.sport_type)
+    const km = a.distance_m ? `${(Number(a.distance_m) / 1000).toFixed(1)} km` : null
+    const stats: { label: string; value: string }[] = [
+      { label: 'Durée', value: fmtDur(a.moving_time_s) },
+      ...(km && !isG ? [{ label: 'Distance', value: km }] : []),
+      ...(terrain && (a.elevation_gain_m ?? 0) > 5 ? [{ label: 'D+', value: `+${Math.round(Number(a.elevation_gain_m))} m` }] : []),
+      { label: 'SM', value: String(smsn.sm) },
+      { label: 'SN', value: String(smsn.sn) },
+    ]
+    void shareCard({
+      title: a.title ?? SPORT_LABEL[a.sport_type],
+      subtitle: `${SPORT_LABEL[a.sport_type]} · ${fmtDate(a.started_at)}`,
+      accent: col.startsWith('#') ? col : '#06B6D4',
+      stats, filename: 'hybrid-activite.png',
+    })
+  }
+
   const [showDeleteConfirm,    setShowDeleteConfirm]    = useState(false)
   const [isDeleting,           setIsDeleting]           = useState(false)
   const [deleteError,          setDeleteError]          = useState<string | null>(null)
@@ -7404,16 +7429,24 @@ conseil pour la prochaine séance similaire.`
           </div>
 
           {/* Nom + sport + date */}
-          <div style={{ padding: '0 16px 16px' }}>
-            <div data-activity-title="">
-              <ActivityTitle activityId={a.id} initialName={a.title} />
+          <div style={{ padding: '0 16px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div data-activity-title="">
+                <ActivityTitle activityId={a.id} initialName={a.title} />
+              </div>
+              <p data-activity-subtitle="" style={{ fontSize: 13, color: T.textMuted, margin: '4px 0 0', lineHeight: 1.4 }}>
+                {SPORT_LABEL[a.sport_type]}
+                {' · '}
+                {fmtDate(a.started_at)}
+                {a.is_race ? ' · Compétition' : ''}
+              </p>
             </div>
-            <p data-activity-subtitle="" style={{ fontSize: 13, color: T.textMuted, margin: '4px 0 0', lineHeight: 1.4 }}>
-              {SPORT_LABEL[a.sport_type]}
-              {' · '}
-              {fmtDate(a.started_at)}
-              {a.is_race ? ' · Compétition' : ''}
-            </p>
+            <button onClick={() => shareThisActivity()} aria-label="Partager" style={{
+              flexShrink: 0, width: 38, height: 38, borderRadius: '50%', border: '1px solid var(--border)',
+              background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+            </button>
           </div>
 
           {/* Type d'entraînement (mobile, tous sports) — sélection manuelle */}

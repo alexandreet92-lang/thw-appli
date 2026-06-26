@@ -39,7 +39,7 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
   const [thisWeek, setThisWeek] = useState<PlannedSession[]>([])
   const [allSessions, setAllSessions] = useState<PlannedSession[]>([])
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const accent = sport === 'gym' ? '#8B5CF6' : '#EF4444'
+  const accent = sport === 'gym' ? '#06B6D4' : '#EF4444'
   const label = sport === 'gym' ? 'Muscu' : 'Hyrox'
 
   useEffect(() => { setMounted(true) }, [])

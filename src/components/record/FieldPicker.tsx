@@ -204,7 +204,7 @@ function FieldRow({ field, theme, onClick, categoryLabel }: {
                            borderRadius: 4, padding: '1px 5px' }}>GRAPHIQUE</span>
           )}
           {field.type === 'climb_profile' && (
-            <span style={{ fontSize: 10, color: '#8B5CF6',
+            <span style={{ fontSize: 10, color: '#06B6D4',
                            border: '1px solid rgba(139,92,246,0.4)',
                            borderRadius: 4, padding: '1px 5px' }}>VISUEL</span>
           )}

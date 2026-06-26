@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import SportSelector, { type SportId, getSportIcon, getSportLabel } from '@/components/record/SportSelector'
@@ -59,7 +59,16 @@ export default function RecordPage() {
   const [yogaSessionOpen, setYogaSessionOpen] = useState(false)
   const [yogaExercises, setYogaExercises] = useState<import('@/types/yoga').YogaSessionExercise[]>([])
   const [yogaTitle, setYogaTitle] = useState('')
-  const isDark = true
+  // Suit le thème réel de l'app (classe html.dark) au lieu d'être figé en noir.
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    const el = document.documentElement
+    const sync = () => setIsDark(el.classList.contains('dark'))
+    sync()
+    const obs = new MutationObserver(sync)
+    obs.observe(el, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
 
   const handleSelectSport = (s: SportId) => {
     setSport(s)

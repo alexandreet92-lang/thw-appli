@@ -11,6 +11,11 @@ interface Props {
 export default function RestTimer({ seconds, onDone, isDark, accent = '#06B6D4' }: Props) {
   const [remaining, setRemaining] = useState(seconds)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // onDone via ref : sinon chaque re-render du parent (timer global qui tique
+  // chaque seconde) recréait la closure → l'effet se relançait et remettait
+  // `remaining` à `seconds` → le décompte restait figé sur 90s.
+  const onDoneRef = useRef(onDone)
+  onDoneRef.current = onDone
 
   useEffect(() => {
     setRemaining(seconds)
@@ -18,14 +23,14 @@ export default function RestTimer({ seconds, onDone, isDark, accent = '#06B6D4' 
       setRemaining(r => {
         if (r <= 1) {
           clearInterval(intervalRef.current!)
-          onDone()
+          onDoneRef.current()
           return 0
         }
         return r - 1
       })
     }, 1000)
     return () => clearInterval(intervalRef.current!)
-  }, [seconds, onDone])
+  }, [seconds])
 
   const progress = remaining / seconds
   const circumference = 2 * Math.PI * 44

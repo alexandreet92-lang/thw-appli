@@ -9,6 +9,7 @@ import SupersetView from './workout/SupersetView'
 import EMOMView from './workout/EMOMView'
 import TabataView from './workout/TabataView'
 import ExerciseSearch from './workout/ExerciseSearch'
+import RecordExercisePicker from './workout/RecordExercisePicker'
 import WorkoutSettings from './WorkoutSettings'
 import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
@@ -36,21 +37,28 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
   const [showSearch, setShowSearch] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showSave, setShowSave] = useState(false)
-  const [startedAt] = useState(new Date().toISOString())
+  // La séance ne démarre PAS automatiquement : on montre d'abord un récap + un
+  // bouton « Commencer ». Le chrono et le wake-lock ne tournent qu'une fois lancé.
+  const [started, setStarted] = useState(false)
+  const [startedAt, setStartedAt] = useState<string>(new Date().toISOString())
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
-  const accent = sport === 'gym' ? '#8B5CF6' : '#EF4444'
+  const accent = sport === 'gym' ? '#06B6D4' : '#EF4444'
 
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
+    if (!started) return
     navigator.wakeLock?.request('screen').then(lock => { wakeLockRef.current = lock }).catch(() => {})
     return () => { wakeLockRef.current?.release() }
-  }, [])
+  }, [started])
 
   useEffect(() => {
+    if (!started) return
     const t = setInterval(() => setElapsed(e => e + 1), 1000)
     return () => clearInterval(t)
-  }, [])
+  }, [started])
+
+  function beginSession() { setStartedAt(new Date().toISOString()); setElapsed(0); setStarted(true) }
 
   const handleSetDone = useCallback((set: CompletedSet) => {
     setCompletedSets(prev => [...prev, set])
@@ -148,11 +156,52 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
         </button>
       </div>
 
-      {showSearch && <ExerciseSearch sport={sport} onAdd={ex => setExercises(prev => [...prev, ex])} onClose={() => setShowSearch(false)} isDark={isDark} />}
+      {showSearch && (sport === 'gym'
+        ? <RecordExercisePicker accent={accent} onAdd={ex => setExercises(prev => [...prev, ex])} onClose={() => setShowSearch(false)} />
+        : <ExerciseSearch sport={sport} onAdd={ex => setExercises(prev => [...prev, ex])} onClose={() => setShowSearch(false)} isDark={isDark} />)}
       {showSettings && <WorkoutSettings open={showSettings} onClose={() => setShowSettings(false)} isDark={isDark} sport={sport} />}
       {showSave && <SessionSaveForm sport={sport} startedAt={startedAt} onBack={() => setShowSave(false)} onSave={handleSave} isDark={isDark} />}
     </div>
   )
 
-  return mounted ? createPortal(content, document.body) : null
+  // ── Récap avant lancement ──────────────────────────────────────
+  function exoLine(ex: WorkoutExercise): string {
+    if (ex.mode === 'circuit') return `${ex.circuitRounds ?? 1} tours · ${(ex.circuitExercises ?? []).length} exos`
+    if (ex.mode === 'emom') return `EMOM ${ex.emomMinutes ?? 0} min`
+    if (ex.mode === 'tabata') return `Tabata ${ex.tabataRounds ?? 8}×`
+    if (ex.mode === 'superset') return `Superset · ${ex.sets} tours`
+    return `${ex.sets} × ${ex.reps}${ex.weightKg ? ` · ${ex.weightKg} kg` : ''}`
+  }
+  const recap = (
+    <div style={{ position:'fixed', inset:0, zIndex:10002, background:'var(--bg-card)', display:'flex', flexDirection:'column', fontFamily:'DM Sans, sans-serif', paddingTop:'env(safe-area-inset-top)' }}>
+      <div style={{ height:52, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', borderBottom:'1px solid var(--border)', gap:10 }}>
+        <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:'var(--bg-card2)', border:'none', color:'var(--text)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+        <span style={{ flex:1, textAlign:'center', fontSize:14, fontWeight:600, color:'var(--text)' }}>{planTitle || (sport === 'gym' ? 'Muscu' : 'Hyrox')}</span>
+        <div style={{ width:36 }} />
+      </div>
+      <div style={{ flex:1, overflowY:'auto', padding:'20px 16px' }}>
+        <p style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--text-dim)', margin:'0 0 14px' }}>Récapitulatif · {exercises.length} bloc{exercises.length > 1 ? 's' : ''}</p>
+        {exercises.length === 0 && <p style={{ fontSize:14, color:'var(--text-mid)' }}>Séance vide — tu pourras ajouter des exercices avec le bouton +.</p>}
+        {exercises.map((ex, i) => (
+          <div key={ex.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, marginBottom:8 }}>
+            <span style={{ fontSize:12, fontWeight:700, color:accent, width:18, flexShrink:0 }}>{i + 1}</span>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:14, fontWeight:600, color:'var(--text)', margin:0 }}>{ex.name}</p>
+              <p style={{ fontSize:12, color:'var(--text-mid)', margin:'2px 0 0' }}>{exoLine(ex)}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ flexShrink:0, padding:'12px 16px', borderTop:'1px solid var(--border)', paddingBottom:'max(env(safe-area-inset-bottom), 12px)' }}>
+        <button onClick={beginSession} style={{ width:'100%', padding:'15px', borderRadius:14, background:`linear-gradient(135deg, ${accent}, #5b6fff)`, border:'none', color:'#fff', fontSize:16, fontWeight:700, cursor:'pointer' }}>
+          Commencer l&apos;entraînement
+        </button>
+      </div>
+    </div>
+  )
+
+  if (!mounted) return null
+  return createPortal(started ? content : recap, document.body)
 }

@@ -73,6 +73,20 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
   const goNext = () => { if (currentIdx < exercises.length - 1) setBetweenRest(120) }
   const finishRest = () => { setBetweenRest(null); setCurrentIdx(i => Math.min(i + 1, exercises.length - 1)) }
 
+  // Édition de l'ordre / suppression de blocs pendant la séance.
+  const [showManage, setShowManage] = useState(false)
+  function moveBlock(i: number, dir: -1 | 1) {
+    const j = i + dir
+    if (j < 0 || j >= exercises.length) return
+    const arr = [...exercises];[arr[i], arr[j]] = [arr[j], arr[i]]
+    setExercises(arr)
+    setCurrentIdx(c => (c === i ? j : c === j ? i : c))
+  }
+  function removeBlock(i: number) {
+    setExercises(prev => prev.filter((_, k) => k !== i))
+    setCurrentIdx(c => Math.max(0, c >= i ? c - 1 : c))
+  }
+
   const current = exercises[currentIdx]
   const totalVolumeKg = completedSets.reduce((acc, s) => acc + s.reps * s.weightKg, 0)
 
@@ -133,6 +147,11 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
           </button>
         ))}
         <button onClick={() => setShowSearch(true)} style={{ flexShrink:0, padding:'10px 14px', background:'none', border:'none', cursor:'pointer', color:'var(--text-mid)', fontSize:20, lineHeight:1 }}>+</button>
+        {exercises.length > 0 && (
+          <button onClick={() => setShowManage(true)} aria-label="Réorganiser" style={{ flexShrink:0, padding:'10px 12px', background:'none', border:'none', cursor:'pointer', color:'var(--text-mid)', display:'flex', alignItems:'center' }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+          </button>
+        )}
       </div>
 
       {/* Current view */}
@@ -183,6 +202,25 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
       {showSearch && (sport === 'gym'
         ? <RecordExercisePicker accent={accent} onAdd={ex => setExercises(prev => [...prev, ex])} onClose={() => setShowSearch(false)} />
         : <ExerciseSearch sport={sport} onAdd={ex => setExercises(prev => [...prev, ex])} onClose={() => setShowSearch(false)} isDark={isDark} />)}
+      {showManage && (
+        <div onClick={() => setShowManage(false)} style={{ position:'fixed', inset:0, zIndex:10006, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width:'100%', maxWidth:520, maxHeight:'80vh', overflowY:'auto', background:'var(--bg)', borderRadius:'18px 18px 0 0', padding:20, paddingBottom:'max(env(safe-area-inset-bottom), 20px)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+              <h3 style={{ fontSize:17, fontWeight:700, color:'var(--text)', margin:0 }}>Organiser la séance</h3>
+              <button onClick={() => setShowManage(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:20, padding:4 }}>✕</button>
+            </div>
+            {exercises.map((ex, i) => (
+              <div key={ex.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, marginBottom:8 }}>
+                <span style={{ flex:1, minWidth:0, fontSize:14, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{i + 1}. {ex.name}</span>
+                <button onClick={() => moveBlock(i, -1)} disabled={i === 0} aria-label="Monter" style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, color:'var(--text-mid)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.4 : 1, padding:'4px 9px', fontSize:14 }}>↑</button>
+                <button onClick={() => moveBlock(i, 1)} disabled={i === exercises.length - 1} aria-label="Descendre" style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, color:'var(--text-mid)', cursor: i === exercises.length - 1 ? 'default' : 'pointer', opacity: i === exercises.length - 1 ? 0.4 : 1, padding:'4px 9px', fontSize:14 }}>↓</button>
+                <button onClick={() => removeBlock(i)} aria-label="Supprimer" style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, color:'#ef4444', cursor:'pointer', padding:'4px 9px', fontSize:14 }}>×</button>
+              </div>
+            ))}
+            <button onClick={() => { setShowManage(false); setShowSearch(true) }} style={{ width:'100%', padding:'11px', borderRadius:10, border:'1px dashed var(--border)', background:'transparent', color:accent, fontWeight:600, fontSize:14, cursor:'pointer', marginTop:4 }}>+ Ajouter un exercice</button>
+          </div>
+        </div>
+      )}
       {showSettings && <WorkoutSettings open={showSettings} onClose={() => setShowSettings(false)} isDark={isDark} sport={sport} />}
       {showSave && <SessionSaveForm sport={sport} startedAt={startedAt} onBack={() => setShowSave(false)} onSave={handleSave} isDark={isDark}
         summary={{ exos: exercises.length, sets: completedSets.length, volumeKg: totalVolumeKg, durationSec: elapsed }}

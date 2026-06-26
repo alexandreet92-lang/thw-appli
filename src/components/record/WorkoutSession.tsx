@@ -71,6 +71,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
     }
     await supabase.from('workout_sessions').insert({
       user_id: user.id, sport, status: 'done',
+      started_at: startedAt, ended_at: new Date().toISOString(),
       duration_seconds: elapsed,
       title: formData.title,
       training_types: formData.trainingTypes,

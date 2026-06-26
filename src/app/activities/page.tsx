@@ -27,7 +27,7 @@ import { LapsBikeChart } from '@/components/activity/LapsBikeChart'
 import { LapsDetailView } from '@/components/activity/LapsDetailView'
 import { ClimbDescentSection, detectSegments } from '@/components/activity/ClimbDescentSection'
 import { WorkoutTypeBadges } from '@/components/activity/WorkoutTypeBadges'
-import { MuscuExerciseLog } from '@/components/activity/MuscuExerciseLog'
+import { MuscuSessionPanel } from '@/components/activity/MuscuSessionPanel'
 import { SwimLengths } from '@/components/activity/SwimLengths'
 import { MuscuActivityView } from '@/components/activity/MuscuActivityView'
 import ProgressionHub from '@/app/progression/page'
@@ -7394,10 +7394,10 @@ conseil pour la prochaine séance similaire.`
             <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />
           </div>
 
-          {/* Muscu : journal d'exercices (calcul auto nb exos / circuits) */}
+          {/* Muscu : séance enregistrée (fusion in-app) ou saisie manuelle */}
           {isGym && (
             <div style={{ padding: '0 16px' }}>
-              <MuscuExerciseLog activityId={a.id} />
+              <MuscuSessionPanel activity={a} />
             </div>
           )}
 
@@ -7769,8 +7769,8 @@ conseil pour la prochaine séance similaire.`
         {/* ── Badges de type d'entraînement (tous sports) — sélection manuelle ── */}
         <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />
 
-        {/* ── MUSCU : journal d'exercices (calcul auto nb exos / circuits) ── */}
-        {isGym && <MuscuExerciseLog activityId={a.id} />}
+        {/* ── MUSCU : séance enregistrée (fusion in-app) ou saisie manuelle ── */}
+        {isGym && <MuscuSessionPanel activity={a} />}
 
         {/* ── MUSCU : layout dédié (remplace entièrement le générique cardio) ── */}
         {isGym && (

@@ -3,6 +3,7 @@
 // et le builder mobile. Extrait de SessionEditor.tsx (zéro changement de
 // schéma : ces types alimentent déjà les blocs JSONB sauvegardés).
 // ══════════════════════════════════════════════════════════════════
+import { BIBLIO_EXO_DEFS } from './biblioExercises'
 
 export type ExoCategory = 'push' | 'pull' | 'legs' | 'mixte' | 'abdos' | 'hyrox'
 export interface ExoDefinition {
@@ -128,10 +129,20 @@ export const EXERCISE_DATABASE: ExoDefinition[] = [
   { id:'hyrox_assault_bike', name:'Assault Bike', aliases:['assault air bike'], category:'hyrox', hasWeight:false, hasDistance:false, hasKcal:true, hasTime:true, defaultReps:1, defaultSets:1, defaultRestSec:60 },
 ]
 
+// Base complète = exos « tunés » du builder + toute la bibliothèque Session
+// (familles/variantes). Dédup par nom normalisé : l'entrée tunée l'emporte
+// (elle porte des défauts séries/reps/repos affinés + des alias de recherche).
+const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '')
+const TUNED_NAMES = new Set(EXERCISE_DATABASE.map(e => norm(e.name)))
+export const ALL_MUSCU_EXERCISES: ExoDefinition[] = [
+  ...EXERCISE_DATABASE,
+  ...BIBLIO_EXO_DEFS.filter(d => !TUNED_NAMES.has(norm(d.name))),
+]
+
 export function searchExercises(query: string, category?: ExoCategory): ExoDefinition[] {
   const q = query.toLowerCase().trim()
-  if (!q && !category) return EXERCISE_DATABASE
-  return EXERCISE_DATABASE.filter(exo => {
+  if (!q && !category) return ALL_MUSCU_EXERCISES
+  return ALL_MUSCU_EXERCISES.filter(exo => {
     if (category && exo.category !== category) return false
     if (!q) return true
     return exo.name.toLowerCase().includes(q) || exo.aliases.some(a => a.toLowerCase().includes(q))

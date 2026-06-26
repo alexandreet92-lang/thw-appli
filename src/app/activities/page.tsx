@@ -4817,8 +4817,9 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
       const dayTime = dayActs.reduce((s, a) => s + (a.moving_time_s ?? 0), 0)
       const stMap = new Map<string, number>()
       dayActs.forEach(a => { const sp = normalizeSport(a.sport_type); stMap.set(sp, (stMap.get(sp) ?? 0) + (a.moving_time_s ?? 0)) })
-      const dominantSport = dayActs.length > 0 ? [...stMap.entries()].sort((a,b) => b[1]-a[1])[0][0] : null
-      return { short: SHORT[i], long: LONG[i], iso, time: dayTime, sport: dominantSport }
+      const bySport = [...stMap.entries()].sort((a,b) => b[1]-a[1])
+      const dominantSport = bySport.length > 0 ? bySport[0][0] : null
+      return { short: SHORT[i], long: LONG[i], iso, time: dayTime, sport: dominantSport, bySport }
     })
   }, [weekActs, weekStart])
 
@@ -4952,16 +4953,20 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
       <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 80 }}>
         {daysOfWeek.map((day, i) => {
           const barH = day.time > 0 ? Math.max(5, (day.time / maxDayTime) * 60) : 2
-          const col  = day.sport ? (SPORT_COLOR[day.sport as SportType] ?? '#888') : T.border
           return (
             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
               <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', width: '100%', paddingBottom: 0 }}>
+                {/* Barre empilée : un segment coloré par sport pratiqué ce jour-là. */}
                 <div style={{
-                  width: '100%', height: barH,
-                  background: day.time === 0 ? T.bgAlt : col,
-                  borderRadius: 3,
+                  width: '100%', height: barH, borderRadius: 3, overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column',
+                  background: day.time === 0 ? T.bgAlt : 'transparent',
                   border: day.time === 0 ? `1px solid ${T.border}` : 'none',
-                }} />
+                }}>
+                  {day.time > 0 && day.bySport.map(([sp, t]) => (
+                    <div key={sp} style={{ width: '100%', height: `${(t / day.time) * 100}%`, background: SPORT_COLOR[sp as SportType] ?? '#888' }} />
+                  ))}
+                </div>
               </div>
               <span style={{ fontSize: isMobile ? 9 : 10, color: T.textMuted, fontWeight: 600 }}>
                 {isMobile ? day.short : day.long}
@@ -5201,7 +5206,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
 function computePMCSeries(
   acts: { started_at: string; tss: number | null }[],
   displayDays: number
-): Array<{ date: string; ctl: number; atl: number; tsb: number }> {
+): Array<{ date: string; ctl: number; atl: number; tsb: number; tss: number }> {
   const tssMap = new Map<string, number>()
   for (const a of acts) {
     if (!a.tss) continue
@@ -5209,7 +5214,7 @@ function computePMCSeries(
     tssMap.set(d, (tssMap.get(d) ?? 0) + Number(a.tss))
   }
   const today = new Date()
-  const result: Array<{ date: string; ctl: number; atl: number; tsb: number }> = []
+  const result: Array<{ date: string; ctl: number; atl: number; tsb: number; tss: number }> = []
   let ctl = 0, atl = 0
   const ctlK = 1 / 42, atlK = 1 / 7
   const WARMUP = 90
@@ -5226,6 +5231,7 @@ function computePMCSeries(
         ctl:  Math.round(ctl * 10) / 10,
         atl:  Math.round(atl * 10) / 10,
         tsb:  Math.round((prevCtl - prevAtl) * 10) / 10,
+        tss:  Math.round(tss),
       })
     }
   }
@@ -5737,20 +5743,22 @@ function SectionDonnees({ activities, zones, profile }: {
                         <circle cx={x} cy={pmcYOf(pt.ctl)} r="4" fill="#06B6D4" />
                         <circle cx={x} cy={pmcYOf(pt.atl)} r="3.5" fill="#F97316" />
                         <circle cx={x} cy={pmcYOf(pt.tsb)} r="3" fill="#EF4444" />
-                        {/* Tooltip box */}
+                        {/* Tooltip box — agrandi pour lisibilité (TSS + CTL/ATL/TSB) */}
                         {(() => {
-                          const tipX = pmcHoverIdx > pmcSeries.length * 0.7 ? x - 128 : x + 10
+                          const TW = 168, TH = 132
+                          const tipX = pmcHoverIdx > pmcSeries.length * 0.6 ? x - (TW + 12) : x + 12
                           const tipY = PMC_PT
                           return (
                             <g>
-                              <rect x={tipX} y={tipY} width="120" height="76" rx="6"
-                                fill="var(--bg)" stroke="var(--border)" strokeWidth="1" />
-                              <text x={tipX + 8} y={tipY + 14} fontSize="10" fill="var(--text-dim)">
+                              <rect x={tipX} y={tipY} width={TW} height={TH} rx="10"
+                                fill="var(--bg)" stroke="var(--border)" strokeWidth="1.5" />
+                              <text x={tipX + 12} y={tipY + 22} fontSize="13" fontWeight="700" fill="var(--text)">
                                 {new Date(pt.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
                               </text>
-                              <text x={tipX + 8} y={tipY + 32} fontSize="11" fill="#06B6D4" fontWeight="600">CTL {pt.ctl}</text>
-                              <text x={tipX + 8} y={tipY + 48} fontSize="11" fill="#F97316" fontWeight="600">ATL {pt.atl}</text>
-                              <text x={tipX + 8} y={tipY + 64} fontSize="11" fill="#EF4444" fontWeight="600">TSB {pt.tsb > 0 ? '+' : ''}{pt.tsb}</text>
+                              <text x={tipX + 12} y={tipY + 46} fontSize="13" fill="var(--text-dim)" fontWeight="600">SM séance <tspan fill="var(--text)" fontWeight="700">{pt.tss}</tspan></text>
+                              <text x={tipX + 12} y={tipY + 72} fontSize="15" fill="#06B6D4" fontWeight="700">CTL {pt.ctl}</text>
+                              <text x={tipX + 12} y={tipY + 96} fontSize="15" fill="#F97316" fontWeight="700">ATL {pt.atl}</text>
+                              <text x={tipX + 12} y={tipY + 120} fontSize="15" fill="#EF4444" fontWeight="700">TSB {pt.tsb > 0 ? '+' : ''}{pt.tsb}</text>
                             </g>
                           )
                         })()}

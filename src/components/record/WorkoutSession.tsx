@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
-import type { WorkoutExercise, CompletedSet, WorkoutSummaryData } from '@/types/workout'
+import type { WorkoutExercise, CompletedSet } from '@/types/workout'
 import SeriesView from './workout/SeriesView'
 import LapView from './workout/LapView'
 import SupersetView from './workout/SupersetView'
@@ -10,6 +10,8 @@ import EMOMView from './workout/EMOMView'
 import TabataView from './workout/TabataView'
 import ExerciseSearch from './workout/ExerciseSearch'
 import RecordExercisePicker from './workout/RecordExercisePicker'
+import HeartRatePanel from './workout/HeartRatePanel'
+import { useHeartRate } from '@/lib/record/useHeartRate'
 import WorkoutSettings from './WorkoutSettings'
 import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
@@ -43,6 +45,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
   const [startedAt, setStartedAt] = useState<string>(new Date().toISOString())
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   const accent = sport === 'gym' ? '#06B6D4' : '#EF4444'
+  const hr = useHeartRate()
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -71,24 +74,30 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const summaryData: WorkoutSummaryData = {
-      id: null, sport, durationSec: elapsed,
-      exercises, completedSets, totalVolumeKg,
-      calories: Math.round(elapsed / 60 * 7),
-      rpe: formData.rpe, title: formData.title,
+    const sessionId = crypto.randomUUID()
+    // Upload des photos (best-effort) → bucket workout-photos, URLs publiques.
+    const photoUrls: string[] = []
+    for (let i = 0; i < (formData.photos ?? []).length; i++) {
+      const f = formData.photos![i]
+      const ext = (f.name.split('.').pop() || 'jpg').toLowerCase()
+      const path = `${user.id}/${sessionId}/${i}.${ext}`
+      const { error } = await supabase.storage.from('workout-photos').upload(path, f, { upsert: true })
+      if (!error) photoUrls.push(supabase.storage.from('workout-photos').getPublicUrl(path).data.publicUrl)
     }
     await supabase.from('workout_sessions').insert({
-      user_id: user.id, sport, status: 'done',
+      id: sessionId, user_id: user.id, sport, status: 'done',
       started_at: startedAt, ended_at: new Date().toISOString(),
       duration_seconds: elapsed,
       title: formData.title,
       training_types: formData.trainingTypes,
       rpe: formData.rpe,
       comment: formData.comment,
-      calories: summaryData.calories,
+      calories: Math.round(elapsed / 60 * 7),
       exercises_detail: exercises,
       total_volume_kg: totalVolumeKg,
       sets_completed: completedSets.length,
+      avg_hr: hr.avg, max_hr: hr.max, min_hr: hr.min,
+      photos: photoUrls.length ? photoUrls : null,
     })
     onClose()
   }
@@ -141,6 +150,9 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
         )}
       </div>
 
+      {/* Fréquence cardiaque (capteur BLE) */}
+      <div style={{ flexShrink:0 }}><HeartRatePanel hr={hr} accent={accent} /></div>
+
       {/* Bottom stats */}
       <div style={{ flexShrink:0, padding:'12px 20px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'space-around', paddingBottom:'max(env(safe-area-inset-bottom), 12px)' }}>
         <div style={{ textAlign:'center' }}>
@@ -160,7 +172,9 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
         ? <RecordExercisePicker accent={accent} onAdd={ex => setExercises(prev => [...prev, ex])} onClose={() => setShowSearch(false)} />
         : <ExerciseSearch sport={sport} onAdd={ex => setExercises(prev => [...prev, ex])} onClose={() => setShowSearch(false)} isDark={isDark} />)}
       {showSettings && <WorkoutSettings open={showSettings} onClose={() => setShowSettings(false)} isDark={isDark} sport={sport} />}
-      {showSave && <SessionSaveForm sport={sport} startedAt={startedAt} onBack={() => setShowSave(false)} onSave={handleSave} isDark={isDark} />}
+      {showSave && <SessionSaveForm sport={sport} startedAt={startedAt} onBack={() => setShowSave(false)} onSave={handleSave} isDark={isDark}
+        summary={{ exos: exercises.length, sets: completedSets.length, volumeKg: totalVolumeKg, durationSec: elapsed }}
+        hr={{ avg: hr.avg, max: hr.max }} />}
     </div>
   )
 

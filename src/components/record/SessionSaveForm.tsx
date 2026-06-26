@@ -19,7 +19,10 @@ export interface SessionFormData {
   trainingTypes: string[]
   rpe: number
   comment: string
+  photos?: File[]
 }
+
+export interface SaveSummary { exos: number; sets: number; volumeKg: number; durationSec: number }
 
 interface Props {
   sport: string
@@ -27,6 +30,13 @@ interface Props {
   onBack: () => void
   onSave: (data: SessionFormData) => Promise<void>
   isDark: boolean
+  summary?: SaveSummary
+  hr?: { avg: number | null; max: number | null }
+}
+
+function fmtDur(s: number): string {
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60)
+  return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`
 }
 
 function getAutoTitle(sport: string, startedAt: string): string {
@@ -56,21 +66,29 @@ const LABEL_STYLE: React.CSSProperties = {
   textTransform: 'uppercase', marginBottom: 10,
 }
 
-export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDark }: Props) {
+export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDark, summary, hr }: Props) {
   const t = getTheme(isDark)
   const autoTitle = getAutoTitle(sport, startedAt)
   const [title, setTitle]               = useState(autoTitle)
   const [trainingTypes, setTrainingTypes] = useState<string[]>([])
   const [rpe, setRpe]                   = useState(5)
   const [comment, setComment]           = useState('')
+  const [photos, setPhotos]             = useState<File[]>([])
   const [saving, setSaving]             = useState(false)
 
   const handleSave = async () => {
     if (saving) return
     setSaving(true)
-    await onSave({ title: title.trim() || autoTitle, trainingTypes, rpe, comment })
+    await onSave({ title: title.trim() || autoTitle, trainingTypes, rpe, comment, photos })
     setSaving(false)
   }
+
+  const stat = (label: string, value: string) => (
+    <div style={{ textAlign: 'center', flex: 1 }}>
+      <p style={{ fontSize: 18, fontWeight: 800, color: t.text, margin: 0, fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+      <p style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: t.muted, margin: '2px 0 0' }}>{label}</p>
+    </div>
+  )
 
   return (
     <div style={{
@@ -112,6 +130,43 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
 
       {/* Scrollable content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', paddingBottom: 120 }}>
+
+        {/* Résumé de séance */}
+        {summary && (
+          <div style={{ display: 'flex', gap: 4, padding: '14px 12px', background: t.surface, border: `1px solid ${t.border}`, borderRadius: 16, marginBottom: 18 }}>
+            {stat('Exercices', String(summary.exos))}
+            {stat('Séries', String(summary.sets))}
+            {stat('Volume', summary.volumeKg ? `${Math.round(summary.volumeKg)} kg` : '—')}
+            {stat('Durée', fmtDur(summary.durationSec))}
+          </div>
+        )}
+
+        {/* Fréquence cardiaque */}
+        {hr && (hr.avg != null || hr.max != null) && (
+          <div style={{ display: 'flex', gap: 4, padding: '14px 12px', background: t.surface, border: `1px solid ${t.border}`, borderRadius: 16, marginBottom: 18 }}>
+            {stat('FC moy', hr.avg != null ? `${hr.avg}` : '—')}
+            {stat('FC max', hr.max != null ? `${hr.max}` : '—')}
+          </div>
+        )}
+
+        {/* Photos de séance */}
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ ...LABEL_STYLE, color: t.muted }}>Photos</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {photos.map((f, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <div key={i} style={{ position: 'relative' }}>
+                <img src={URL.createObjectURL(f)} alt="" style={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 10 }} />
+                <button onClick={() => setPhotos(p => p.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 13, cursor: 'pointer', lineHeight: 1 }}>×</button>
+              </div>
+            ))}
+            <label style={{ width: 70, height: 70, borderRadius: 10, border: `1px dashed ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: t.muted, fontSize: 26 }}>
+              +
+              <input type="file" accept="image/*" multiple style={{ display: 'none' }}
+                onChange={e => { const fs = Array.from(e.target.files ?? []); setPhotos(p => [...p, ...fs].slice(0, 6)) }} />
+            </label>
+          </div>
+        </div>
 
         {/* Titre */}
         <div style={{ marginBottom: 28 }}>

@@ -110,7 +110,6 @@ export function VoiceOverlay({
         const source = ctx.createMediaStreamSource(stream)
         const an: AnalyserNode = ctx.createAnalyser()
         an.fftSize = 256
-        source.connect(an)
         analyser = an
         data = new Uint8Array(an.fftSize)
 
@@ -126,7 +125,13 @@ export function VoiceOverlay({
             pcmRef.current.push(new Float32Array(ch))
           }
         }
-        source.connect(processor); processor.connect(gain); gain.connect(ctx.destination)
+        // CHAÎNE COMPLÈTE jusqu'à la sortie : l'analyser doit être « tiré »
+        // par le graphe pour traiter le son (sinon getByteTimeDomainData
+        // renvoie du silence → waveform figée). Le gain à 0 coupe le retour son.
+        source.connect(an)
+        an.connect(processor)
+        processor.connect(gain)
+        gain.connect(ctx.destination)
         nodesRef.current = { source, processor, gain, analyser: analyser ?? undefined }
         setDebug(`Micro OK · enregistrement (${Math.round(ctx.sampleRate / 1000)} kHz, ${ctx.state})`)
       } catch (e) {

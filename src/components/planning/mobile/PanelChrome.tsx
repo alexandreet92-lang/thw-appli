@@ -41,11 +41,11 @@ export function PanelFooter({ p, floating }: { p: SessionEditorPanelProps; float
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, ...wrap }}>
       <button type="button" onClick={p.onClose} style={footBtn}><IconChevronLeft size={15} /> Fermer</button>
       <button type="button" onClick={p.onExportPDF} style={footIcon} aria-label="Exporter en PDF"><IconFileText size={17} /></button>
-      <button type="button" onClick={p.onFavorite} style={footIcon} aria-label="Enregistrer en favori"><IconStar size={17} /></button>
+      {!p.reserveMode && <button type="button" onClick={p.onFavorite} style={footIcon} aria-label="Enregistrer en favori"><IconStar size={17} /></button>}
       {p.onDelete && <button type="button" onClick={() => setConfirmDelete(true)} style={footDanger} aria-label="Supprimer la séance"><IconTrash size={17} /></button>}
       <div style={{ flex: 1 }} />
       <button type="button" onClick={p.onSave} disabled={p.saving} style={{ pointerEvents: 'auto', padding: '12px 24px', borderRadius: 999, border: 'none', background: p.accent, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: p.saving ? 0.6 : 1, boxShadow: '0 4px 16px rgba(0,0,0,0.18)' }}>
-        {p.saved ? 'Enregistré ✓' : p.mode === 'create' ? 'Ajouter' : 'Enregistrer'} →
+        {p.saved ? 'Enregistré ✓' : (p.reserveMode || p.mode === 'edit') ? 'Enregistrer' : 'Ajouter'} →
       </button>
     </div>
   )

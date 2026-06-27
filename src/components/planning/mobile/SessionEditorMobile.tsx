@@ -33,6 +33,7 @@ export function SessionEditorMobile(p: SessionEditorPanelProps) {
         {/* Corps scrollable — padding bas pour dégager les boutons flottants */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 16px 96px', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
           <MainFields
+            reserveMode={p.reserveMode}
             sport={p.sport} accent={p.accent} onSportChange={p.onSportChange}
             cyclingSub={p.cyclingSub} setCyclingSub={p.setCyclingSub}
             brickRun={p.brickRun} setBrickRun={p.setBrickRun}

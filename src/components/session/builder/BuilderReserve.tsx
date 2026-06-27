@@ -5,15 +5,16 @@
 //  • La réserve EST la table session_favorites : les séances créées ici
 //    apparaissent aussi dans le Planning (« Charger un favori »).
 //  • Création / édition via le VRAI éditeur du Planning (SessionEditor),
-//    donc strictement la même expérience que sur la page Planning.
+//    en mode « réserve » (sans Sport/Date/Heure — séance non planifiée).
+//  • Filtre par type de séance + étoile « préférée » par sport.
 // ══════════════════════════════════════════════════════════════════
-import { useEffect, useState, useCallback } from 'react'
-import { IconArrowLeft, IconPlus, IconPencil, IconTrash } from '@tabler/icons-react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import { IconArrowLeft, IconPlus, IconPencil, IconTrash, IconStar, IconStarFilled } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
 import { SlideView } from '@/components/ui/SlideView'
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import type { NutritionItem } from '@/components/planning/SessionEditor'
-import { SPORT_LABEL, type Block, type Session, type SportType } from '@/app/planning/page'
+import { type Block, type Session, type SportType } from '@/app/planning/page'
 import { BuilderSportGrid } from './BuilderSportGrid'
 import { BUILDER_THEME, BUILDER_ORDER, builderIdFromPlanning, type BuilderSportId } from './builderTheme'
 
@@ -29,12 +30,15 @@ interface Fav {
   duration_min: number | null
   rpe: number | null
   notes: string | null
+  starred: boolean
 }
 
 type EditorState =
   | { mode: 'create'; sport: SportType }
   | { mode: 'edit'; fav: Fav }
   | null
+
+const favTypes = (fav: Fav) => (fav.training_type ?? '').split('+').filter(Boolean)
 
 function fmtDur(min: number): string {
   if (min < 60) return `${min} min`
@@ -54,16 +58,17 @@ function favToSession(fav: Fav): Session {
     blocks: fav.blocks_data ?? [],
     rpe: fav.rpe ?? 5,
     dayIndex: 0,
+    trainingTypes: favTypes(fav),
     nutritionItems: fav.nutrition_data ?? undefined,
   }
 }
 
 // ── Carte d'une séance en réserve ─────────────────────────────────
-function ReserveCard({ fav, accent, onEdit, onDelete }: {
-  fav: Fav; accent: string; onEdit: () => void; onDelete: () => void
+function ReserveCard({ fav, accent, onEdit, onDelete, onToggleStar }: {
+  fav: Fav; accent: string; onEdit: () => void; onDelete: () => void; onToggleStar: () => void
 }) {
   const [confirm, setConfirm] = useState(false)
-  const types = (fav.training_type ?? '').split('+').filter(Boolean)
+  const types = favTypes(fav)
   const nBlocks = fav.blocks_data?.length ?? 0
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)',
@@ -79,6 +84,11 @@ function ReserveCard({ fav, accent, onEdit, onDelete }: {
             ))}
           </div>
         </div>
+        <button onClick={onToggleStar} aria-label={fav.starred ? 'Retirer des favoris' : 'Marquer comme favori'}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0,
+            color: fav.starred ? 'var(--lib-triathlon)' : 'var(--text-dim)', display: 'flex' }}>
+          {fav.starred ? <IconStarFilled size={18} /> : <IconStar size={18} />}
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
@@ -120,6 +130,8 @@ export function BuilderReserve() {
   const [sport, setSport] = useState<BuilderSportId | null>(null)
   const [dir, setDir] = useState(1)
   const [editor, setEditor] = useState<EditorState>(null)
+  const [typeFilters, setTypeFilters] = useState<string[]>([])
+  const [starredOnly, setStarredOnly] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -128,7 +140,7 @@ export function BuilderReserve() {
       const { data: { user } } = await sb.auth.getUser()
       if (!user) { setFavs([]); return }
       const { data } = await sb.from('session_favorites')
-        .select('id,name,sport,training_type,blocks_data,nutrition_data,duration_min,rpe,notes')
+        .select('id,name,sport,training_type,blocks_data,nutrition_data,duration_min,rpe,notes,starred')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
       setFavs((data as Fav[]) ?? [])
@@ -144,6 +156,7 @@ export function BuilderReserve() {
       if (!user) return
       const row = {
         user_id: user.id, name: s.title, sport: s.sport,
+        training_type: s.trainingTypes && s.trainingTypes.length > 0 ? s.trainingTypes.join('+') : null,
         blocks_data: s.blocks, nutrition_data: s.nutritionItems ?? null,
         duration_min: s.durationMin, rpe: s.rpe ?? null, notes: s.notes ?? null,
       }
@@ -162,16 +175,55 @@ export function BuilderReserve() {
     await load()
   }
 
-  function openSport(id: BuilderSportId) { setDir(1); setSport(id) }
-  function backToGrid() { setDir(-1); setSport(null) }
+  async function toggleStar(fav: Fav) {
+    // Optimiste : on bascule localement, puis on persiste.
+    setFavs(prev => prev.map(f => f.id === fav.id ? { ...f, starred: !f.starred } : f))
+    try {
+      const sb = createClient()
+      await sb.from('session_favorites').update({ starred: !fav.starred }).eq('id', fav.id)
+    } catch { void load() }
+  }
 
-  const counts = BUILDER_ORDER.reduce((acc, id) => {
+  function openSport(id: BuilderSportId) { setDir(1); setTypeFilters([]); setStarredOnly(false); setSport(id) }
+  function backToGrid() { setDir(-1); setTypeFilters([]); setStarredOnly(false); setSport(null) }
+  function toggleType(tp: string) {
+    setTypeFilters(prev => prev.includes(tp) ? prev.filter(x => x !== tp) : [...prev, tp])
+  }
+
+  const counts = useMemo(() => BUILDER_ORDER.reduce((acc, id) => {
     acc[id] = favs.filter(f => builderIdFromPlanning(f.sport) === id).length
     return acc
-  }, {} as Record<BuilderSportId, number>)
+  }, {} as Record<BuilderSportId, number>), [favs])
 
   const theme = sport ? BUILDER_THEME[sport] : null
-  const sportFavs = sport ? favs.filter(f => builderIdFromPlanning(f.sport) === sport) : []
+  const sportFavs = useMemo(
+    () => sport ? favs.filter(f => builderIdFromPlanning(f.sport) === sport) : [],
+    [favs, sport],
+  )
+
+  // Types présents dans ce sport (pour la barre de filtres).
+  const availableTypes = useMemo(() => {
+    const set = new Set<string>()
+    sportFavs.forEach(f => favTypes(f).forEach(t => set.add(t)))
+    return Array.from(set).sort()
+  }, [sportFavs])
+
+  // Filtrage + tri (préférées d'abord).
+  const displayed = useMemo(() => sportFavs
+    .filter(f => !starredOnly || f.starred)
+    .filter(f => typeFilters.length === 0 || favTypes(f).some(t => typeFilters.includes(t)))
+    .slice()
+    .sort((a, b) => Number(b.starred) - Number(a.starred)),
+    [sportFavs, starredOnly, typeFilters],
+  )
+
+  const chip = (active: boolean, accent: string): React.CSSProperties => ({
+    padding: '5px 13px', borderRadius: 99,
+    border: `1px solid ${active ? accent : 'var(--border)'}`,
+    background: active ? accent : 'transparent',
+    color: active ? 'var(--on-primary)' : 'var(--text-dim)',
+    fontFamily: FB, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+  })
 
   return (
     <div style={{ overflowX: 'hidden' }}>
@@ -197,24 +249,55 @@ export function BuilderReserve() {
               </button>
             </div>
 
-            {sportFavs.length === 0 ? (
+            {/* Barre de filtres : ⭐ Favoris + types de séance */}
+            {sportFavs.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 'var(--space-5)' }}>
+                <button onClick={() => setStarredOnly(v => !v)}
+                  style={{ ...chip(starredOnly, 'var(--lib-triathlon)'), display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  {starredOnly ? <IconStarFilled size={13} /> : <IconStar size={13} />} Favoris
+                </button>
+                {availableTypes.map(tp => (
+                  <button key={tp} style={chip(typeFilters.includes(tp), theme.accent)} onClick={() => toggleType(tp)}>{tp}</button>
+                ))}
+                {(typeFilters.length > 0 || starredOnly) && (
+                  <button onClick={() => { setTypeFilters([]); setStarredOnly(false) }}
+                    style={{ padding: '4px 10px', borderRadius: 99, border: 'none', background: 'transparent',
+                      color: 'var(--text-dim)', fontFamily: FB, fontSize: 10, cursor: 'pointer', textDecoration: 'underline' }}>
+                    Effacer
+                  </button>
+                )}
+              </div>
+            )}
+
+            {displayed.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '48px 20px' }}>
                 <p style={{ fontFamily: FB, fontSize: 14, color: 'var(--text-dim)', marginBottom: 16 }}>
-                  Aucune séance {theme.label.toLowerCase()} en réserve.
+                  {sportFavs.length === 0
+                    ? `Aucune séance ${theme.label.toLowerCase()} en réserve.`
+                    : 'Aucune séance pour ces filtres.'}
                 </p>
-                <button onClick={() => setEditor({ mode: 'create', sport: theme.planning })}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '11px 24px', borderRadius: 'var(--r-md)',
-                    border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13,
-                    fontWeight: 600, cursor: 'pointer' }}>
-                  <IconPlus size={16} /> Créer une séance
-                </button>
+                {sportFavs.length === 0 ? (
+                  <button onClick={() => setEditor({ mode: 'create', sport: theme.planning })}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '11px 24px', borderRadius: 'var(--r-md)',
+                      border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13,
+                      fontWeight: 600, cursor: 'pointer' }}>
+                    <IconPlus size={16} /> Créer une séance
+                  </button>
+                ) : (
+                  <button onClick={() => { setTypeFilters([]); setStarredOnly(false) }}
+                    style={{ padding: '10px 22px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
+                      background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, cursor: 'pointer' }}>
+                    Effacer les filtres
+                  </button>
+                )}
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 'var(--space-4)' }} id="reserve-grid">
-                {sportFavs.map(f => (
+                {displayed.map(f => (
                   <ReserveCard key={f.id} fav={f} accent={theme.accent}
                     onEdit={() => setEditor({ mode: 'edit', fav: f })}
-                    onDelete={() => void handleDelete(f.id)} />
+                    onDelete={() => void handleDelete(f.id)}
+                    onToggleStar={() => void toggleStar(f)} />
                 ))}
               </div>
             )}
@@ -223,15 +306,16 @@ export function BuilderReserve() {
           loading ? (
             <div style={{ padding: '60px 0', textAlign: 'center', fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</div>
           ) : (
-            <BuilderSportGrid counts={counts} onSelect={openSport} onNew={() => setEditor({ mode: 'create', sport: 'run' })} />
+            <BuilderSportGrid counts={counts} onSelect={openSport} />
           )
         )}
       </SlideView>
 
-      {/* Éditeur Planning — exactement le même que sur la page Planning */}
+      {/* Éditeur Planning en mode réserve (sans Sport / Date / Heure) */}
       {editor && (
         <SessionEditor
           mode={editor.mode}
+          reserveMode
           session={editor.mode === 'edit' ? favToSession(editor.fav) : undefined}
           initialSport={editor.mode === 'create' ? editor.sport : undefined}
           onClose={() => setEditor(null)}

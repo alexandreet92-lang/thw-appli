@@ -131,6 +131,7 @@ export interface Session {
   id:string; sport:SportType; title:string; time:string; durationMin:number
   tss?:number; main?:boolean; status:SessionStatus; notes?:string; blocks:Block[]
   rpe?:number; dayIndex:number; planVariant?:PlanVariant; intensity?:string|null
+  trainingTypes?:string[]   // types de séance (Strength, Mixte…) — utilisé par la réserve
   // Phase 5 — snapshot immuable de la version IA (pour badge "modifié" + reset)
   originalContent?: Record<string, unknown>
   vDuration?:string; vDistance?:string; vElevation?:string; vSpeed?:string

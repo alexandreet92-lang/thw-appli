@@ -16,6 +16,7 @@ const SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'e
 const RPE_DESC = ['Très facile', 'Très facile', 'Facile', 'Facile', 'Modéré', 'Modéré', 'Soutenu', 'Difficile', 'Très difficile', 'Maximal']
 
 export function MainFields(p: {
+  reserveMode?: boolean
   sport: SportType; accent: string; onSportChange: (s: SportType) => void
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
   brickRun: boolean; setBrickRun: (b: boolean) => void
@@ -42,22 +43,24 @@ export function MainFields(p: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {/* §3 — Sélecteur de sport */}
-      <div>
-        <h3 className="se-fr" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 600 }}>Sport</h3>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          {SPORTS.map(s => {
-            const on = s === p.sport
-            return (
-              <button key={s} type="button" onClick={() => p.onSportChange(s)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: 0, flex: 1 }}>
-                <span style={{ opacity: on ? 1 : 0.4, display: 'flex' }}><SportIcon sport={s} size={23} circle={false} /></span>
-                <span style={{ fontSize: 9, fontWeight: on ? 700 : 500, color: on ? sportColor(s) : 'var(--se-dim)' }}>{SPORT_SHORT[s]}</span>
-                <span style={{ width: 16, height: 2, borderRadius: 2, background: on ? sportColor(s) : 'transparent' }} />
-              </button>
-            )
-          })}
+      {/* §3 — Sélecteur de sport (masqué en réserve : le sport est déjà choisi) */}
+      {!p.reserveMode && (
+        <div>
+          <h3 className="se-fr" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 600 }}>Sport</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            {SPORTS.map(s => {
+              const on = s === p.sport
+              return (
+                <button key={s} type="button" onClick={() => p.onSportChange(s)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: 0, flex: 1 }}>
+                  <span style={{ opacity: on ? 1 : 0.4, display: 'flex' }}><SportIcon sport={s} size={23} circle={false} /></span>
+                  <span style={{ fontSize: 9, fontWeight: on ? 700 : 500, color: on ? sportColor(s) : 'var(--se-dim)' }}>{SPORT_SHORT[s]}</span>
+                  <span style={{ width: 16, height: 2, borderRadius: 2, background: on ? sportColor(s) : 'transparent' }} />
+                </button>
+              )
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Sous-discipline (vélo) */}
       {p.sport === 'bike' && (
@@ -70,7 +73,7 @@ export function MainFields(p: {
       )}
 
       {/* Brick Run : enchaînement vélo → course à pied (crée une course liée) */}
-      {p.sport === 'bike' && (
+      {p.sport === 'bike' && !p.reserveMode && (
         <button type="button" onClick={() => p.setBrickRun(!p.brickRun)} title="Enchaînement vélo → running"
           style={{ alignSelf: 'flex-start', padding: '10px 16px', borderRadius: 999, cursor: 'pointer', fontSize: 13, fontWeight: 700,
             border: `1px solid ${p.brickRun ? sportColor('run') : 'var(--se-rule)'}`,
@@ -94,17 +97,19 @@ export function MainFields(p: {
         </div>
       )}
 
-      {/* Date / Heure */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
-        <Card style={{ padding: '12px 16px' }}>
-          <FieldLabel>Date</FieldLabel>
-          <input type="date" value={p.date} onChange={e => p.setDate(e.target.value)} className="se-fr" style={inp} />
-        </Card>
-        <Card style={{ padding: '12px 16px' }}>
-          <FieldLabel>Heure</FieldLabel>
-          <input type="time" value={p.time} onChange={e => p.setTime(e.target.value)} className="se-fr" style={inp} />
-        </Card>
-      </div>
+      {/* Date / Heure (masqué en réserve : séance non planifiée) */}
+      {!p.reserveMode && (
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+          <Card style={{ padding: '12px 16px' }}>
+            <FieldLabel>Date</FieldLabel>
+            <input type="date" value={p.date} onChange={e => p.setDate(e.target.value)} className="se-fr" style={inp} />
+          </Card>
+          <Card style={{ padding: '12px 16px' }}>
+            <FieldLabel>Heure</FieldLabel>
+            <input type="time" value={p.time} onChange={e => p.setTime(e.target.value)} className="se-fr" style={inp} />
+          </Card>
+        </div>
+      )}
 
       {/* Effort perçu */}
       <Card>

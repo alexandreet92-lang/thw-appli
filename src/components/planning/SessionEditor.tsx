@@ -3495,7 +3495,7 @@ function addMinutesToTime(hhmm: string, addMin: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, openWithFavorites, initialSport }: {
+export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, openWithFavorites, initialSport, reserveMode }: {
   mode: 'create' | 'edit'
   session?: Session
   dayIndex?: number
@@ -3509,12 +3509,13 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   onCreateBrick?: (run: Session) => void
   openWithFavorites?: boolean
   initialSport?: SportType
+  reserveMode?: boolean   // Builder « réserve » : masque Sport / Date / Heure (non planifié)
 }) {
   const isEdit = mode === 'edit'
   const [sport, setSport] = useState<SportType>(session?.sport ?? initialSport ?? 'run')
   const [cyclingSub, setCyclingSub] = useState<CyclingSub>('velo')
   const [brickRun, setBrickRun] = useState<boolean>(!!session?.brickId)
-  const [trainingTypes, setTrainingTypes] = useState<string[]>([])
+  const [trainingTypes, setTrainingTypes] = useState<string[]>(session?.trainingTypes ?? [])
   const [title, setTitle] = useState(session?.title ?? '')
   const [date, setDate] = useState('')
   const [time, setTime] = useState(session?.time ?? '09:00')
@@ -4145,6 +4146,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       durationMin: finalDur, tss: finalTss,
       status: session?.status ?? 'planned', notes: desc || undefined,
       blocks: finalBlocks, rpe, planVariant: selPlan,
+      trainingTypes: trainingTypes.length > 0 ? trainingTypes : undefined,
       parcoursData: parcoursDataWithConfig() ?? undefined,
       parcoursId: parcoursData?.parcoursId ?? undefined,
       nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
@@ -4661,7 +4663,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       } catch (e) { console.error('[Fav]', e) }
     }
     const panelProps: SessionEditorPanelProps = {
-      mode,
+      mode, reserveMode,
       sport, accent: mobileSportColor(sport), onSportChange: handleSportChange,
       cyclingSub, setCyclingSub, brickRun, setBrickRun, trainingTypes, setTrainingTypes,
       title, setTitle, date, setDate, time, setTime,

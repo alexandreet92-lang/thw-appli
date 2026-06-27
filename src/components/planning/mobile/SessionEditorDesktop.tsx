@@ -35,6 +35,7 @@ export function SessionEditorDesktop(p: SessionEditorPanelProps) {
           {/* Gauche — Paramètres */}
           <div style={{ overflowY: 'auto', padding: '22px 22px 32px', borderRight: '1px solid var(--se-rule)' }}>
             <MainFields
+              reserveMode={p.reserveMode}
               sport={p.sport} accent={p.accent} onSportChange={p.onSportChange}
               cyclingSub={p.cyclingSub} setCyclingSub={p.setCyclingSub}
               brickRun={p.brickRun} setBrickRun={p.setBrickRun}

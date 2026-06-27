@@ -18823,16 +18823,9 @@ export default function AIPanel({
 
   // ── Voice recording (B3) ─────────────────────────────────────
   const [recording,    setRecording]    = useState(false)
-  const [recSecs,      setRecSecs]      = useState(0)
-  const [liveTranscript, setLiveTranscript] = useState('')
-  const [liveInterim,    setLiveInterim]    = useState('')
-  const finalTranscriptRef = useRef('')
-  const interimRef         = useRef('')
-  const recIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const recRef         = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const speechRef      = useRef<any>(null)
-  const [speechSupported, setSpeechSupported] = useState(false)
+  // Dictée = getUserMedia + MediaRecorder + /api/stt (géré par VoiceOverlay).
+  const [speechSupported, setSpeechSupported] = useState(false)        // discussion vocale (SpeechRecognition)
+  const [dictationSupported, setDictationSupported] = useState(false)  // dictée (getUserMedia + MediaRecorder)
 
   // (B4 thinking animation now uses pure CSS 3-dot bounce — no state needed)
 
@@ -18988,17 +18981,13 @@ export default function AIPanel({
   useEffect(() => { if (open) setTimeout(() => areaRef.current?.focus(), 260) }, [open])
   useEffect(() => { if (open && prefillMessage) setInput(prefillMessage) }, [open, prefillMessage])
 
-  // ── Speech API support detection (B3) ────────────────────────
+  // ── Détection support voix ───────────────────────────────────
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    setSpeechSupported(!!SR)
-  }, [])
-
-  // ── Voice recording timer cleanup ────────────────────────────
-  useEffect(() => () => {
-    if (recIntervalRef.current) clearInterval(recIntervalRef.current)
-    if (recRef.current) clearTimeout(recRef.current)
+    setSpeechSupported(!!SR && typeof window.speechSynthesis !== 'undefined')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setDictationSupported(!!navigator.mediaDevices?.getUserMedia && typeof (window as any).MediaRecorder !== 'undefined')
   }, [])
 
   // ── Keyboard shortcuts (F2) ───────────────────────────────────
@@ -19704,77 +19693,21 @@ export default function AIPanel({
     }
   }, [])
 
-  // ── Voice recording (B3) ─────────────────────────────────────
-  const stopVoice = useCallback((transcript = '') => {
-    if (recIntervalRef.current) { clearInterval(recIntervalRef.current); recIntervalRef.current = null }
-    try { speechRef.current?.stop() } catch { /* ignore */ }
-    speechRef.current = null
+  // ── Dictée vocale (Whisper) ──────────────────────────────────
+  // L'enregistrement + la transcription sont gérés par VoiceOverlay
+  // (getUserMedia + MediaRecorder + /api/stt). Ici : état + insertion du
+  // texte transcrit dans le champ de saisie.
+  const stopVoice = useCallback((text = '') => {
     setRecording(false)
-    setRecSecs(0)
-    setLiveTranscript('')
-    setLiveInterim('')
-    finalTranscriptRef.current = ''
-    interimRef.current = ''
-    if (transcript) {
-      setInput(prev => (prev ? prev + ' ' : '') + transcript.trim())
+    if (text) {
+      setInput(prev => (prev ? prev + ' ' : '') + text.trim())
       setTimeout(() => areaRef.current?.focus(), 80)
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   const cancelVoice = useCallback(() => stopVoice(''), [stopVoice])
-
-  // Valider la dictée : transfère le texte transcrit dans le champ
-  const confirmVoice = useCallback(() => {
-    const text = (finalTranscriptRef.current + interimRef.current).trim()
-    stopVoice(text)
-  }, [stopVoice])
-
-  const startVoice = useCallback(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR) return
-    setRecording(true)
-    setRecSecs(0)
-    setLiveTranscript('')
-    setLiveInterim('')
-    finalTranscriptRef.current = ''
-    interimRef.current = ''
-    recIntervalRef.current = setInterval(() => setRecSecs(s => s + 1), 1000)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rec: any = new SR()
-    rec.lang = 'fr-FR'
-    rec.continuous = true
-    rec.interimResults = true
-    rec.maxAlternatives = 1
-    speechRef.current = rec
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onresult = (e: any) => {
-      let interim = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript
-        if (e.results[i].isFinal) finalTranscriptRef.current += t + ' '
-        else interim += t
-      }
-      interimRef.current = interim
-      setLiveTranscript(finalTranscriptRef.current)
-      setLiveInterim(interim)
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onerror = (e: any) => {
-      // iOS coupe régulièrement la reconnaissance (aborted / no-speech).
-      // On ne ferme le mode vocal que sur un refus d'autorisation ;
-      // sinon onend se charge de relancer.
-      if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed') stopVoice('')
-    }
-    rec.onend = () => {
-      // Reconnaissance terminée (pause sur iOS) : relancer tant qu'on enregistre.
-      // Léger délai pour éviter l'erreur « already started » sur certains navigateurs.
-      if (speechRef.current === rec) {
-        setTimeout(() => { if (speechRef.current === rec) { try { rec.start() } catch { /* déjà démarrée */ } } }, 120)
-      }
-    }
-    try { rec.start() } catch { /* déjà démarrée */ }
-  }, [stopVoice])
+  const confirmVoice = useCallback((text: string) => stopVoice(text), [stopVoice])
+  const startVoice = useCallback(() => { setRecording(true) }, [])
 
   // ── Création de plan : génération de l'aperçu (avant validation) ──
   const generatePlanProposal = useCallback(async (cid: string, msgId: string, req: PlanRequirements) => {
@@ -21696,8 +21629,6 @@ export default function AIPanel({
               {/* Dictée vocale — overlay plein écran (style image 4) */}
               {recording && (
                 <VoiceOverlay
-                  transcript={liveTranscript}
-                  interim={liveInterim}
                   onCancel={cancelVoice}
                   onConfirm={confirmVoice}
                   isDesktop={isDesktop}
@@ -21769,8 +21700,8 @@ export default function AIPanel({
                 {/* Jauge tokens — à gauche du micro */}
                 <TokenUsageBubble onBuyTokens={() => setTopupOpen(true)} currentModel={model} isMobile={!isDesktop} />
 
-                {/* Mic button — B3 (hidden if not supported) */}
-                {speechSupported && !loading && (
+                {/* Mic button — dictée Whisper (caché si non supporté) */}
+                {dictationSupported && !loading && (
                   <button
                     onClick={recording ? cancelVoice : startVoice}
                     title={recording ? 'Annuler' : 'Dictée vocale'}

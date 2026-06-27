@@ -1,17 +1,16 @@
 'use client'
 
 // ══════════════════════════════════════════════════════════════
-// VoiceOverlay — mode dictée vocale (style Claude).
+// VoiceOverlay — dictée vocale façon Claude (Whisper).
 //
-// · Transcription fine et discrète, fondu en haut.
-// · Mobile : barre ancrée en bas, léger flou. Desktop : barre centrée
-//   au milieu de l'écran sur un fond adouci.
-// · Waveform qui DÉFILE vraiment : un buffer d'amplitudes scrolle vers
-//   la gauche à chaque frame (nouvelle valeur à droite). Haut quand on
-//   parle, petits traits qui glissent au silence.
-//
-// On n'ouvre PAS getUserMedia : tenir le micro via Web Audio en parallèle
-// de SpeechRecognition fait échouer la reco sur Safari/iOS.
+// · Le micro est capté UNE SEULE FOIS (getUserMedia) → on l'enregistre
+//   (MediaRecorder) ET on l'analyse (Web Audio) pour la waveform qui
+//   réagit VRAIMENT à la voix. Pas de reconnaissance navigateur en
+//   parallèle → plus de conflit micro sur iPhone.
+// · ✓ → on stoppe l'enregistrement et on transcrit via /api/stt (OpenAI
+//   Whisper) ; le texte est renvoyé via onConfirm(text).
+// · ✕ → on annule, rien n'est transcrit.
+// · Mobile : barre en bas + léger flou. Desktop : barre centrée.
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState } from 'react'
@@ -20,103 +19,150 @@ import { createPortal } from 'react-dom'
 const SHURIKEN = '#3C90D5'
 const NBARS = 32
 
+function pickMime(): string {
+  const MR = typeof window !== 'undefined' ? (window as unknown as { MediaRecorder?: typeof MediaRecorder }).MediaRecorder : undefined
+  if (!MR || !MR.isTypeSupported) return ''
+  for (const m of ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg']) {
+    if (MR.isTypeSupported(m)) return m
+  }
+  return ''
+}
+
 export function VoiceOverlay({
-  transcript,
-  interim,
-  onCancel,
   onConfirm,
+  onCancel,
   isDesktop = false,
+  language = 'fr',
 }: {
-  transcript: string
-  interim: string
+  onConfirm: (text: string) => void
   onCancel: () => void
-  onConfirm: () => void
   isDesktop?: boolean
+  language?: string
 }) {
   const [mounted, setMounted] = useState(false)
+  const [phase, setPhase] = useState<'rec' | 'transcribing' | 'error'>('rec')
+
   const bufRef = useRef<number[]>(new Array(NBARS).fill(0.06))
   const barsRef = useRef<(HTMLSpanElement | null)[]>([])
-  const energyRef = useRef(0)
-  const lastLiveRef = useRef('')
-  const interimRef = useRef(interim)
-  const transcriptRef = useRef(transcript)
-  interimRef.current = interim
-  transcriptRef.current = transcript
-
-  const hasText = (transcript + interim).trim().length > 0
+  const streamRef = useRef<MediaStream | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ctxRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recorderRef = useRef<any>(null)
+  const chunksRef = useRef<BlobPart[]>([])
+  const confirmedRef = useRef(false)
+  const closedRef = useRef(false)
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Buffer défilant piloté par le VRAI volume du micro (Web Audio) → les barres
-  // réagissent réellement à la voix, comme Claude. L'analyse N'EST PAS reliée à
-  // la sortie (aucun retour audio). Repli sur l'activité de reconnaissance si le
-  // micro est indisponible.
+  // ── Démarre l'enregistrement + l'analyse de la waveform ──────
   useEffect(() => {
-    let cancelled = false
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let ctx: any = null
     let analyser: AnalyserNode | null = null
     let data: Uint8Array | null = null
-    let stream: MediaStream | null = null
 
     ;(async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        })
+        if (closedRef.current) { stream.getTracks().forEach(t => t.stop()); return }
+        streamRef.current = stream
+
+        // Analyse pour la waveform (NON reliée à la sortie)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Ctx = window.AudioContext || (window as any).webkitAudioContext
-        ctx = new Ctx()
-        const src = ctx.createMediaStreamSource(stream)
+        const ctx = new Ctx()
         const a: AnalyserNode = ctx.createAnalyser()
         a.fftSize = 256
-        src.connect(a)                   // PAS de connexion à destination (pas de larsen)
+        ctx.createMediaStreamSource(stream).connect(a)
         await ctx.resume?.()
+        ctxRef.current = ctx
         analyser = a
         data = new Uint8Array(a.fftSize)
-      } catch { /* pas de micro → repli reconnaissance */ }
+
+        // Enregistrement
+        const mime = pickMime()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const MR = (window as any).MediaRecorder
+        const recorder = mime ? new MR(stream, { mimeType: mime }) : new MR(stream)
+        chunksRef.current = []
+        recorder.ondataavailable = (e: BlobEvent) => { if (e.data && e.data.size > 0) chunksRef.current.push(e.data) }
+        recorder.onstop = () => { void onRecorderStop(recorder.mimeType || mime || 'audio/webm') }
+        recorder.start()
+        recorderRef.current = recorder
+      } catch {
+        // micro refusé / indisponible → on ferme proprement
+        if (!closedRef.current) onCancel()
+      }
     })()
 
     const id = window.setInterval(() => {
       let v = 0
-      const an = analyser
-      const dt = data
-      if (an && dt) {
-        if (ctx?.state === 'suspended') ctx.resume?.()
-        an.getByteTimeDomainData(dt)
+      if (analyser && data) {
+        analyser.getByteTimeDomainData(data)
         let sum = 0
-        for (let i = 0; i < dt.length; i++) { const d = (dt[i] - 128) / 128; sum += d * d }
-        v = Math.min(1, Math.sqrt(sum / dt.length) * 7.5)   // RMS + gain
-        if (v < 0.04) v = 0                                  // noise gate
-      } else {
-        // Repli : enveloppe pilotée par l'arrivée des mots reconnus
-        const live = transcriptRef.current + interimRef.current
-        if (live !== lastLiveRef.current) { energyRef.current = 1; lastLiveRef.current = live }
-        else energyRef.current *= 0.9
-        const e = energyRef.current
-        v = e > 0.12 ? (0.35 + Math.random() * 0.65) * (0.5 + e * 0.5) : 0
+        for (let i = 0; i < data.length; i++) { const d = (data[i] - 128) / 128; sum += d * d }
+        v = Math.min(1, Math.sqrt(sum / data.length) * 7.5)
+        if (v < 0.04) v = 0
       }
       const buf = bufRef.current
       buf.push(v); buf.shift()
       for (let i = 0; i < NBARS; i++) {
         const el = barsRef.current[i]
         if (!el) continue
-        const h = 0.14 + buf[i] * 0.86            // plancher visible → on voit toujours défiler
+        const h = 0.14 + buf[i] * 0.86
         el.style.transform = `scaleY(${h.toFixed(3)})`
         el.style.opacity = String(0.5 + buf[i] * 0.5)
       }
     }, 55)
 
     return () => {
-      cancelled = true
+      closedRef.current = true
       window.clearInterval(id)
-      try { stream?.getTracks().forEach(t => t.stop()) } catch { /* ignore */ }
-      try { ctx?.close?.() } catch { /* ignore */ }
+      try { recorderRef.current?.state !== 'inactive' && recorderRef.current?.stop() } catch { /* ignore */ }
+      try { streamRef.current?.getTracks().forEach(t => t.stop()) } catch { /* ignore */ }
+      try { ctxRef.current?.close?.() } catch { /* ignore */ }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function onRecorderStop(mime: string) {
+    // Annulé → on ne transcrit pas
+    if (!confirmedRef.current) return
+    try { streamRef.current?.getTracks().forEach(t => t.stop()) } catch { /* ignore */ }
+    const blob = new Blob(chunksRef.current, { type: mime })
+    if (blob.size < 1200) { onConfirm(''); return }   // quasi rien capté
+    try {
+      const form = new FormData()
+      form.append('file', blob, 'audio')
+      form.append('language', language)
+      const res = await fetch('/api/stt', { method: 'POST', body: form })
+      if (!res.ok) { setPhase('error'); window.setTimeout(() => onCancel(), 1600); return }
+      const { text } = await res.json() as { text?: string }
+      onConfirm((text ?? '').trim())
+    } catch {
+      setPhase('error')
+      window.setTimeout(() => onCancel(), 1600)
+    }
+  }
+
+  const confirm = () => {
+    if (phase !== 'rec') return
+    confirmedRef.current = true
+    setPhase('transcribing')
+    try {
+      if (recorderRef.current && recorderRef.current.state !== 'inactive') recorderRef.current.stop()
+      else onConfirm('')
+    } catch { onConfirm('') }
+  }
+  const cancel = () => { confirmedRef.current = false; onCancel() }
 
   if (!mounted) return null
 
-  // Mobile : ancré en bas + flou. Desktop : centré au milieu de l'écran.
+  const status = phase === 'transcribing' ? 'Transcription…'
+    : phase === 'error' ? 'Transcription impossible, réessaie'
+    : 'Je t’écoute…'
+
   const block = (
     <div style={{
       width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -130,27 +176,13 @@ export function VoiceOverlay({
             maskImage: 'linear-gradient(to bottom, transparent 0, #000 56px)',
           }),
     }}>
-      {/* Transcription — fine, fondu en haut */}
-      {hasText && (
-        <div style={{
-          maxWidth: 520, width: '100%', textAlign: 'center',
-          margin: '0 0 16px', maxHeight: '24vh', overflow: 'hidden',
-          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 34px)',
-          maskImage: 'linear-gradient(to bottom, transparent 0, #000 34px)',
-        }}>
-          <p style={{
-            margin: 0, fontFamily: 'var(--font-display, Fraunces), Georgia, serif',
-            fontSize: 'clamp(15px, 3.7vw, 19px)', lineHeight: 1.4, fontWeight: 400, fontStyle: 'italic',
-            letterSpacing: '0.01em',
-          }}>
-            <span style={{ color: 'var(--ai-text)' }}>{transcript}</span>
-            <span style={{ color: 'var(--ai-dim)' }}>{interim}</span>
-          </p>
-        </div>
-      )}
+      {/* Statut */}
+      <div style={{ margin: '0 0 16px', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: phase === 'error' ? '#ef4444' : SHURIKEN, animation: phase === 'transcribing' ? 'vo_dot 1.1s ease-in-out infinite' : 'none' }} />
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif' }}>{status}</span>
+      </div>
 
-      {/* Barre de contrôle — ✕ · waveform · ✓ */}
+      {/* Barre — ✕ · waveform · ✓ */}
       <div style={{
         pointerEvents: 'auto',
         width: '100%', maxWidth: 440, display: 'flex', alignItems: 'center', gap: 10,
@@ -159,7 +191,7 @@ export function VoiceOverlay({
         animation: 'vo_pill 0.26s cubic-bezier(0.32,0.72,0,1)',
       }}>
         <button
-          onClick={onCancel}
+          onClick={cancel}
           aria-label="Annuler"
           style={{
             width: 42, height: 42, borderRadius: '50%', border: 'none', flexShrink: 0,
@@ -170,8 +202,8 @@ export function VoiceOverlay({
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>
 
-        {/* Waveform défilante */}
-        <div style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, overflow: 'hidden' }}>
+        {/* Waveform défilante (vrai volume micro) */}
+        <div style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, overflow: 'hidden', opacity: phase === 'rec' ? 1 : 0.4 }}>
           {Array.from({ length: NBARS }, (_, i) => (
             <span
               key={i}
@@ -187,16 +219,20 @@ export function VoiceOverlay({
         </div>
 
         <button
-          onClick={onConfirm}
+          onClick={confirm}
           aria-label="Valider"
+          disabled={phase !== 'rec'}
           style={{
             width: 42, height: 42, borderRadius: '50%', border: 'none', flexShrink: 0,
-            background: SHURIKEN, color: '#fff', cursor: 'pointer',
+            background: SHURIKEN, color: '#fff', cursor: phase === 'rec' ? 'pointer' : 'default',
+            opacity: phase === 'rec' ? 1 : 0.55,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 14px rgba(60,144,213,0.42)',
           }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+          {phase === 'transcribing'
+            ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" style={{ animation: 'vo_spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.2-8.5" /></svg>
+            : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
         </button>
       </div>
     </div>
@@ -207,6 +243,8 @@ export function VoiceOverlay({
       <style>{`
         @keyframes vo_in   { from { opacity: 0 } to { opacity: 1 } }
         @keyframes vo_pill { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes vo_dot  { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
+        @keyframes vo_spin { to { transform: rotate(360deg) } }
       `}</style>
       <div
         role="dialog"

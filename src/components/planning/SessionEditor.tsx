@@ -3495,7 +3495,7 @@ function addMinutesToTime(hhmm: string, addMin: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, openWithFavorites }: {
+export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, openWithFavorites, initialSport }: {
   mode: 'create' | 'edit'
   session?: Session
   dayIndex?: number
@@ -3508,9 +3508,10 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   onDuplicate?: (dayIndex: number, session: Session) => void
   onCreateBrick?: (run: Session) => void
   openWithFavorites?: boolean
+  initialSport?: SportType
 }) {
   const isEdit = mode === 'edit'
-  const [sport, setSport] = useState<SportType>(session?.sport ?? 'run')
+  const [sport, setSport] = useState<SportType>(session?.sport ?? initialSport ?? 'run')
   const [cyclingSub, setCyclingSub] = useState<CyclingSub>('velo')
   const [brickRun, setBrickRun] = useState<boolean>(!!session?.brickId)
   const [trainingTypes, setTrainingTypes] = useState<string[]>([])

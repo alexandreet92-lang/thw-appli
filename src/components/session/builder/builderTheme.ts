@@ -1,34 +1,48 @@
 // ══════════════════════════════════════════════════════════════════
 // Thème par sport du Builder « Mes séances en réserve ».
 // Mêmes teintes que la Bibliothèque (tokens --lib-<sport>), jamais de hex
-// dans les composants. Clés = type Sport de la page Session.
+// dans les composants. Chaque sport pointe vers le sport correspondant de
+// l'éditeur Planning (table session_favorites) — source unique de la réserve.
 // ══════════════════════════════════════════════════════════════════
 import {
-  IconBarbell, IconRun, IconBike, IconSwimming, IconKayak, IconFlame, IconTrophy, type Icon,
+  IconBarbell, IconRun, IconBike, IconSwimming, IconKayak, IconFlame, type Icon,
 } from '@tabler/icons-react'
 
-export type BuilderSportId = 'muscu' | 'running' | 'velo' | 'natation' | 'hyrox' | 'aviron' | 'triathlon'
+// Clé sport de l'éditeur Planning (Session.sport / session_favorites.sport).
+export type PlanningSport = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym' | 'elliptique'
+
+export type BuilderSportId = 'muscu' | 'running' | 'velo' | 'natation' | 'aviron' | 'hyrox'
 
 export interface BuilderSportTheme {
   id: BuilderSportId
   label: string
   tagline: string
   icon: Icon
-  accent: string   // var(--lib-<sport>)
-  soft: string     // var(--lib-<sport>-soft)
+  accent: string          // var(--lib-<sport>)
+  soft: string            // var(--lib-<sport>-soft)
+  planning: PlanningSport  // sport correspondant côté éditeur Planning
+  // Sports Planning regroupés sous cette carte (ex. elliptique → vélo).
+  also?: PlanningSport[]
 }
 
 export const BUILDER_THEME: Record<BuilderSportId, BuilderSportTheme> = {
-  muscu:     { id: 'muscu',     label: 'Muscu / Renfo', tagline: 'Circuits, séries, reps',        icon: IconBarbell,  accent: 'var(--lib-muscu)',     soft: 'var(--lib-muscu-soft)' },
-  running:   { id: 'running',   label: 'Running',       tagline: 'Blocs, intervalles, allure',    icon: IconRun,      accent: 'var(--lib-running)',   soft: 'var(--lib-running-soft)' },
-  velo:      { id: 'velo',      label: 'Vélo',          tagline: 'Watts, zones, blocs',           icon: IconBike,     accent: 'var(--lib-velo)',      soft: 'var(--lib-velo-soft)' },
-  natation:  { id: 'natation',  label: 'Natation',      tagline: 'Séries, distances, zones',      icon: IconSwimming, accent: 'var(--lib-natation)',  soft: 'var(--lib-natation-soft)' },
-  hyrox:     { id: 'hyrox',     label: 'Hyrox',         tagline: 'Ateliers, circuits, runs',      icon: IconFlame,    accent: 'var(--lib-hyrox)',     soft: 'var(--lib-hyrox-soft)' },
-  aviron:    { id: 'aviron',    label: 'Aviron',        tagline: 'Blocs, seuil, distance',        icon: IconKayak,    accent: 'var(--lib-aviron)',    soft: 'var(--lib-aviron-soft)' },
-  triathlon: { id: 'triathlon', label: 'Triathlon',     tagline: 'Brick, simulation',             icon: IconTrophy,   accent: 'var(--lib-triathlon)', soft: 'var(--lib-triathlon-soft)' },
+  muscu:    { id: 'muscu',    label: 'Muscu / Renfo', tagline: 'Circuits, séries, reps',     icon: IconBarbell,  accent: 'var(--lib-muscu)',    soft: 'var(--lib-muscu-soft)',    planning: 'gym' },
+  running:  { id: 'running',  label: 'Running',       tagline: 'Blocs, intervalles, allure', icon: IconRun,      accent: 'var(--lib-running)',  soft: 'var(--lib-running-soft)',  planning: 'run' },
+  velo:     { id: 'velo',     label: 'Vélo',          tagline: 'Watts, zones, blocs',        icon: IconBike,     accent: 'var(--lib-velo)',     soft: 'var(--lib-velo-soft)',     planning: 'bike', also: ['elliptique'] },
+  natation: { id: 'natation', label: 'Natation',      tagline: 'Séries, distances, zones',   icon: IconSwimming, accent: 'var(--lib-natation)', soft: 'var(--lib-natation-soft)', planning: 'swim' },
+  aviron:   { id: 'aviron',   label: 'Aviron',        tagline: 'Blocs, seuil, distance',     icon: IconKayak,    accent: 'var(--lib-aviron)',   soft: 'var(--lib-aviron-soft)',   planning: 'rowing' },
+  hyrox:    { id: 'hyrox',    label: 'Hyrox',         tagline: 'Ateliers, circuits, runs',   icon: IconFlame,    accent: 'var(--lib-hyrox)',    soft: 'var(--lib-hyrox-soft)',    planning: 'hyrox' },
 }
 
-// Ordre d'affichage de la grille.
 export const BUILDER_ORDER: BuilderSportId[] = [
-  'muscu', 'running', 'velo', 'natation', 'hyrox', 'aviron', 'triathlon',
+  'muscu', 'running', 'velo', 'natation', 'aviron', 'hyrox',
 ]
+
+// Sport Planning → carte Builder (pour regrouper les favoris par sport).
+export function builderIdFromPlanning(sport: string): BuilderSportId {
+  for (const id of BUILDER_ORDER) {
+    const t = BUILDER_THEME[id]
+    if (t.planning === sport || t.also?.includes(sport as PlanningSport)) return id
+  }
+  return 'muscu'
+}

@@ -18823,9 +18823,13 @@ export default function AIPanel({
 
   // ── Voice recording (B3) ─────────────────────────────────────
   const [recording,    setRecording]    = useState(false)
-  // Dictée = getUserMedia + MediaRecorder + /api/stt (géré par VoiceOverlay).
+  // Dictée = getUserMedia + capture PCM (AudioContext) + /api/stt (VoiceOverlay).
   const [speechSupported, setSpeechSupported] = useState(false)        // discussion vocale (SpeechRecognition)
-  const [dictationSupported, setDictationSupported] = useState(false)  // dictée (getUserMedia + MediaRecorder)
+  const [dictationSupported, setDictationSupported] = useState(false)  // dictée (getUserMedia + AudioContext)
+  // AudioContext créé/démarré DANS le geste du tap micro (sinon iOS le laisse
+  // suspendu → la waveform ne bouge pas). Réutilisé entre dictées.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dictationCtxRef = useRef<any>(null)
 
   // (B4 thinking animation now uses pure CSS 3-dot bounce — no state needed)
 
@@ -19707,7 +19711,19 @@ export default function AIPanel({
 
   const cancelVoice = useCallback(() => stopVoice(''), [stopVoice])
   const confirmVoice = useCallback((text: string) => stopVoice(text), [stopVoice])
-  const startVoice = useCallback(() => { setRecording(true) }, [])
+  const startVoice = useCallback(() => {
+    // DANS le geste : crée/réveille l'AudioContext (sinon iOS le laisse suspendu
+    // → waveform figée). VoiceOverlay réutilisera ce contexte déjà « running ».
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext
+      if (Ctx) {
+        if (!dictationCtxRef.current || dictationCtxRef.current.state === 'closed') dictationCtxRef.current = new Ctx()
+        dictationCtxRef.current.resume?.()
+      }
+    } catch { /* ignore */ }
+    setRecording(true)
+  }, [])
 
   // ── Création de plan : génération de l'aperçu (avant validation) ──
   const generatePlanProposal = useCallback(async (cid: string, msgId: string, req: PlanRequirements) => {
@@ -21632,6 +21648,7 @@ export default function AIPanel({
                   onCancel={cancelVoice}
                   onConfirm={confirmVoice}
                   isDesktop={isDesktop}
+                  getAudioCtx={() => dictationCtxRef.current}
                 />
               )}
 

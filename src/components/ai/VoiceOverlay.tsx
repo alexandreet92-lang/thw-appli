@@ -1,16 +1,16 @@
 'use client'
 
 // ══════════════════════════════════════════════════════════════
-// VoiceOverlay — dictée vocale façon Claude (Whisper).
+// VoiceOverlay — dictée vocale façon Claude (Whisper), fiable iOS.
 //
-// · Le micro est capté UNE SEULE FOIS (getUserMedia) → on l'enregistre
-//   (MediaRecorder) ET on l'analyse (Web Audio) pour la waveform qui
-//   réagit VRAIMENT à la voix. Pas de reconnaissance navigateur en
-//   parallèle → plus de conflit micro sur iPhone.
-// · ✓ → on stoppe l'enregistrement et on transcrit via /api/stt (OpenAI
-//   Whisper) ; le texte est renvoyé via onConfirm(text).
-// · ✕ → on annule, rien n'est transcrit.
-// · Mobile : barre en bas + léger flou. Desktop : barre centrée.
+// · Le micro est capté UNE SEULE FOIS (getUserMedia). On capture le son
+//   en PCM brut via l'AudioContext (ScriptProcessor) → pas de MediaRecorder
+//   (souvent défaillant sur iOS Safari : audio vide). Le même flux nourrit
+//   la WAVEFORM qui réagit au vrai volume.
+// · L'AudioContext est créé/réveillé DANS le geste du tap (côté AIPanel)
+//   puis réutilisé ici → il est « running », donc la waveform bouge.
+// · ✓ → on encode le PCM en WAV et on transcrit via /api/stt (Whisper).
+// · Diagnostic visible : on voit exactement où ça casse.
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState } from 'react'
@@ -19,13 +19,24 @@ import { createPortal } from 'react-dom'
 const SHURIKEN = '#3C90D5'
 const NBARS = 32
 
-function pickMime(): string {
-  const MR = typeof window !== 'undefined' ? (window as unknown as { MediaRecorder?: typeof MediaRecorder }).MediaRecorder : undefined
-  if (!MR || !MR.isTypeSupported) return ''
-  for (const m of ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg']) {
-    if (MR.isTypeSupported(m)) return m
+function encodeWAV(chunks: Float32Array[], sampleRate: number): Blob {
+  const length = chunks.reduce((a, c) => a + c.length, 0)
+  const buffer = new ArrayBuffer(44 + length * 2)
+  const view = new DataView(buffer)
+  const writeStr = (off: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)) }
+  writeStr(0, 'RIFF'); view.setUint32(4, 36 + length * 2, true); writeStr(8, 'WAVE')
+  writeStr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true)
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true)
+  writeStr(36, 'data'); view.setUint32(40, length * 2, true)
+  let off = 44
+  for (const ch of chunks) {
+    for (let i = 0; i < ch.length; i++) {
+      const s = Math.max(-1, Math.min(1, ch[i]))
+      view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true)
+      off += 2
+    }
   }
-  return ''
+  return new Blob([view], { type: 'audio/wav' })
 }
 
 export function VoiceOverlay({
@@ -33,11 +44,14 @@ export function VoiceOverlay({
   onCancel,
   isDesktop = false,
   language = 'fr',
+  getAudioCtx,
 }: {
   onConfirm: (text: string) => void
   onCancel: () => void
   isDesktop?: boolean
   language?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getAudioCtx?: () => any
 }) {
   const [mounted, setMounted] = useState(false)
   const [phase, setPhase] = useState<'rec' | 'transcribing' | 'error'>('rec')
@@ -48,15 +62,18 @@ export function VoiceOverlay({
   const streamRef = useRef<MediaStream | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ctxRef = useRef<any>(null)
+  const ownsCtxRef = useRef(false)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recorderRef = useRef<any>(null)
-  const chunksRef = useRef<BlobPart[]>([])
+  const nodesRef = useRef<{ source?: any; processor?: any; gain?: any; analyser?: AnalyserNode }>({})
+  const pcmRef = useRef<Float32Array[]>([])
+  const sampleRateRef = useRef(44100)
   const confirmedRef = useRef(false)
   const closedRef = useRef(false)
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
 
   useEffect(() => { setMounted(true) }, [])
 
-  // ── Démarre l'enregistrement + l'analyse de la waveform ──────
   useEffect(() => {
     let analyser: AnalyserNode | null = null
     let data: Uint8Array | null = null
@@ -69,55 +86,67 @@ export function VoiceOverlay({
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         })
       } catch (e) {
-        // micro refusé / indisponible → on AFFICHE l'erreur (plus de fermeture muette)
         const err = e as { name?: string; message?: string }
         setPhase('error')
-        setDebug(`Micro refusé (${err?.name || err?.message || 'inconnu'}). Autorise le micro dans Réglages Safari.`)
+        setDebug(`Micro refusé (${err?.name || err?.message || 'inconnu'}). Autorise le micro pour ce site.`)
         return
       }
       if (closedRef.current) { stream.getTracks().forEach(t => t.stop()); return }
       streamRef.current = stream
 
-      // Analyse pour la waveform (NON reliée à la sortie) — non bloquant
       try {
+        // Contexte fourni par AIPanel (déjà « running » car réveillé dans le geste).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const Ctx = window.AudioContext || (window as any).webkitAudioContext
-        const ctx = new Ctx()
-        const a: AnalyserNode = ctx.createAnalyser()
-        a.fftSize = 256
-        ctx.createMediaStreamSource(stream).connect(a)
+        let ctx = getAudioCtx?.()
+        if (!ctx || ctx.state === 'closed') {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const Ctx = window.AudioContext || (window as any).webkitAudioContext
+          ctx = new Ctx(); ownsCtxRef.current = true
+        }
         await ctx.resume?.()
         ctxRef.current = ctx
-        analyser = a
-        data = new Uint8Array(a.fftSize)
-      } catch { /* waveform indisponible, on continue l'enregistrement */ }
+        sampleRateRef.current = ctx.sampleRate
 
-      // Enregistrement
-      try {
-        const mime = pickMime()
+        const source = ctx.createMediaStreamSource(stream)
+        const an: AnalyserNode = ctx.createAnalyser()
+        an.fftSize = 256
+        source.connect(an)
+        analyser = an
+        data = new Uint8Array(an.fftSize)
+
+        // Capture PCM (ScriptProcessor → fiable iOS). Sortie vers un gain à 0
+        // (obligatoire pour que onaudioprocess se déclenche, sans écho).
+        const processor = ctx.createScriptProcessor(4096, 1, 1)
+        const gain = ctx.createGain(); gain.gain.value = 0
+        pcmRef.current = []
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const MR = (window as any).MediaRecorder
-        const recorder = mime ? new MR(stream, { mimeType: mime }) : new MR(stream)
-        chunksRef.current = []
-        recorder.ondataavailable = (e: BlobEvent) => { if (e.data && e.data.size > 0) chunksRef.current.push(e.data) }
-        recorder.onstop = () => { void onRecorderStop(recorder.mimeType || mime || 'audio/webm') }
-        recorder.start()
-        recorderRef.current = recorder
-        setDebug(`Micro OK · enregistrement (${mime || 'format auto'})`)
+        processor.onaudioprocess = (e: any) => {
+          if (!confirmedRef.current && phaseRef.current === 'rec') {
+            const ch = e.inputBuffer.getChannelData(0)
+            pcmRef.current.push(new Float32Array(ch))
+          }
+        }
+        source.connect(processor); processor.connect(gain); gain.connect(ctx.destination)
+        nodesRef.current = { source, processor, gain, analyser: analyser ?? undefined }
+        setDebug(`Micro OK · enregistrement (${Math.round(ctx.sampleRate / 1000)} kHz, ${ctx.state})`)
       } catch (e) {
         const err = e as { name?: string; message?: string }
         setPhase('error')
-        setDebug(`Enregistrement impossible (${err?.name || err?.message || 'MediaRecorder'})`)
+        setDebug(`Audio impossible (${err?.name || err?.message || 'AudioContext'})`)
       }
     })()
 
     const id = window.setInterval(() => {
+      const ctx = ctxRef.current
+      if (ctx?.state === 'suspended') ctx.resume?.()
       let v = 0
-      if (analyser && data) {
-        analyser.getByteTimeDomainData(data)
+      const an = analyser
+      const dt = data
+      if (an && dt) {
+        an.getByteTimeDomainData(dt)
         let sum = 0
-        for (let i = 0; i < data.length; i++) { const d = (data[i] - 128) / 128; sum += d * d }
-        v = Math.min(1, Math.sqrt(sum / data.length) * 7.5)
+        for (let i = 0; i < dt.length; i++) { const d = (dt[i] - 128) / 128; sum += d * d }
+        v = Math.min(1, Math.sqrt(sum / dt.length) * 7.5)
         if (v < 0.04) v = 0
       }
       const buf = bufRef.current
@@ -134,35 +163,39 @@ export function VoiceOverlay({
     return () => {
       closedRef.current = true
       window.clearInterval(id)
-      try { recorderRef.current?.state !== 'inactive' && recorderRef.current?.stop() } catch { /* ignore */ }
+      const n = nodesRef.current
+      try { n.processor && (n.processor.onaudioprocess = null) } catch { /* ignore */ }
+      try { n.source?.disconnect() } catch { /* ignore */ }
+      try { n.processor?.disconnect() } catch { /* ignore */ }
+      try { n.gain?.disconnect() } catch { /* ignore */ }
       try { streamRef.current?.getTracks().forEach(t => t.stop()) } catch { /* ignore */ }
-      try { ctxRef.current?.close?.() } catch { /* ignore */ }
+      if (ownsCtxRef.current) { try { ctxRef.current?.close?.() } catch { /* ignore */ } }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function onRecorderStop(mime: string) {
-    // Annulé → on ne transcrit pas
-    if (!confirmedRef.current) return
+  async function transcribe() {
+    const n = nodesRef.current
+    try { n.processor?.disconnect() } catch { /* ignore */ }
     try { streamRef.current?.getTracks().forEach(t => t.stop()) } catch { /* ignore */ }
-    const blob = new Blob(chunksRef.current, { type: mime })
-    const ko = Math.round(blob.size / 1024)
-    setDebug(`Audio ${ko} Ko · transcription…`)
-    if (blob.size < 1200) {
-      setPhase('error')
-      setDebug(`Audio trop court/vide (${blob.size} octets). L'enregistrement iOS n'a rien capté.`)
+
+    const total = pcmRef.current.reduce((a, c) => a + c.length, 0)
+    const secs = total / sampleRateRef.current
+    if (total < sampleRateRef.current * 0.25) {   // < 0,25 s
+      setPhase('error'); setDebug(`Rien capté (${secs.toFixed(2)} s). Parle un peu plus longtemps.`)
       return
     }
+    const wav = encodeWAV(pcmRef.current, sampleRateRef.current)
+    setDebug(`Audio ${Math.round(wav.size / 1024)} Ko · ${secs.toFixed(1)} s · transcription…`)
     try {
       const form = new FormData()
-      form.append('file', blob, 'audio')
+      form.append('file', wav, 'audio.wav')
       form.append('language', language)
       const res = await fetch('/api/stt', { method: 'POST', body: form })
       if (!res.ok) {
         let detail = ''
         try { detail = ((await res.json()) as { error?: string }).error ?? '' } catch { /* ignore */ }
-        setPhase('error')
-        setDebug(`Transcription : erreur ${res.status}${detail ? ' — ' + detail : ''}`)
+        setPhase('error'); setDebug(`Transcription : erreur ${res.status}${detail ? ' — ' + detail : ''}`)
         return
       }
       const { text } = await res.json() as { text?: string }
@@ -171,8 +204,7 @@ export function VoiceOverlay({
       onConfirm(clean)
     } catch (e) {
       const err = e as { message?: string }
-      setPhase('error')
-      setDebug(`Transcription : échec réseau (${err?.message || 'fetch'})`)
+      setPhase('error'); setDebug(`Transcription : échec réseau (${err?.message || 'fetch'})`)
     }
   }
 
@@ -180,18 +212,14 @@ export function VoiceOverlay({
     if (phase !== 'rec') return
     confirmedRef.current = true
     setPhase('transcribing')
-    try {
-      if (recorderRef.current && recorderRef.current.state !== 'inactive') recorderRef.current.stop()
-      else onConfirm('')
-    } catch { onConfirm('') }
+    void transcribe()
   }
   const cancel = () => { confirmedRef.current = false; onCancel() }
 
   if (!mounted) return null
 
   const status = phase === 'transcribing' ? 'Transcription…'
-    : phase === 'error' ? 'Transcription impossible, réessaie'
-    : 'Je t’écoute…'
+    : phase === 'error' ? 'Problème' : 'Je t’écoute…'
 
   const block = (
     <div style={{
@@ -206,17 +234,14 @@ export function VoiceOverlay({
             maskImage: 'linear-gradient(to bottom, transparent 0, #000 56px)',
           }),
     }}>
-      {/* Statut */}
       <div style={{ margin: '0 0 8px', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: phase === 'error' ? '#ef4444' : SHURIKEN, animation: phase === 'transcribing' ? 'vo_dot 1.1s ease-in-out infinite' : 'none' }} />
         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif' }}>{status}</span>
       </div>
-      {/* Diagnostic — temporaire, pour comprendre où ça casse */}
       <div style={{ margin: '0 0 14px', maxWidth: 360, textAlign: 'center', fontSize: 11.5, lineHeight: 1.4, color: phase === 'error' ? '#ef4444' : 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif', padding: '0 8px' }}>
         {debug}
       </div>
 
-      {/* Barre — ✕ · waveform · ✓ */}
       <div style={{
         pointerEvents: 'auto',
         width: '100%', maxWidth: 440, display: 'flex', alignItems: 'center', gap: 10,
@@ -236,7 +261,6 @@ export function VoiceOverlay({
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>
 
-        {/* Waveform défilante (vrai volume micro) */}
         <div style={{ flex: 1, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, overflow: 'hidden', opacity: phase === 'rec' ? 1 : 0.4 }}>
           {Array.from({ length: NBARS }, (_, i) => (
             <span

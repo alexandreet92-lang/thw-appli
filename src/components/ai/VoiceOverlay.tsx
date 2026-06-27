@@ -41,6 +41,7 @@ export function VoiceOverlay({
 }) {
   const [mounted, setMounted] = useState(false)
   const [phase, setPhase] = useState<'rec' | 'transcribing' | 'error'>('rec')
+  const [debug, setDebug] = useState('Démarrage…')
 
   const bufRef = useRef<number[]>(new Array(NBARS).fill(0.06))
   const barsRef = useRef<(HTMLSpanElement | null)[]>([])
@@ -61,14 +62,24 @@ export function VoiceOverlay({
     let data: Uint8Array | null = null
 
     ;(async () => {
+      let stream: MediaStream
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        setDebug('Demande micro…')
+        stream = await navigator.mediaDevices.getUserMedia({
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         })
-        if (closedRef.current) { stream.getTracks().forEach(t => t.stop()); return }
-        streamRef.current = stream
+      } catch (e) {
+        // micro refusé / indisponible → on AFFICHE l'erreur (plus de fermeture muette)
+        const err = e as { name?: string; message?: string }
+        setPhase('error')
+        setDebug(`Micro refusé (${err?.name || err?.message || 'inconnu'}). Autorise le micro dans Réglages Safari.`)
+        return
+      }
+      if (closedRef.current) { stream.getTracks().forEach(t => t.stop()); return }
+      streamRef.current = stream
 
-        // Analyse pour la waveform (NON reliée à la sortie)
+      // Analyse pour la waveform (NON reliée à la sortie) — non bloquant
+      try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const Ctx = window.AudioContext || (window as any).webkitAudioContext
         const ctx = new Ctx()
@@ -79,8 +90,10 @@ export function VoiceOverlay({
         ctxRef.current = ctx
         analyser = a
         data = new Uint8Array(a.fftSize)
+      } catch { /* waveform indisponible, on continue l'enregistrement */ }
 
-        // Enregistrement
+      // Enregistrement
+      try {
         const mime = pickMime()
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const MR = (window as any).MediaRecorder
@@ -90,9 +103,11 @@ export function VoiceOverlay({
         recorder.onstop = () => { void onRecorderStop(recorder.mimeType || mime || 'audio/webm') }
         recorder.start()
         recorderRef.current = recorder
-      } catch {
-        // micro refusé / indisponible → on ferme proprement
-        if (!closedRef.current) onCancel()
+        setDebug(`Micro OK · enregistrement (${mime || 'format auto'})`)
+      } catch (e) {
+        const err = e as { name?: string; message?: string }
+        setPhase('error')
+        setDebug(`Enregistrement impossible (${err?.name || err?.message || 'MediaRecorder'})`)
       }
     })()
 
@@ -131,18 +146,33 @@ export function VoiceOverlay({
     if (!confirmedRef.current) return
     try { streamRef.current?.getTracks().forEach(t => t.stop()) } catch { /* ignore */ }
     const blob = new Blob(chunksRef.current, { type: mime })
-    if (blob.size < 1200) { onConfirm(''); return }   // quasi rien capté
+    const ko = Math.round(blob.size / 1024)
+    setDebug(`Audio ${ko} Ko · transcription…`)
+    if (blob.size < 1200) {
+      setPhase('error')
+      setDebug(`Audio trop court/vide (${blob.size} octets). L'enregistrement iOS n'a rien capté.`)
+      return
+    }
     try {
       const form = new FormData()
       form.append('file', blob, 'audio')
       form.append('language', language)
       const res = await fetch('/api/stt', { method: 'POST', body: form })
-      if (!res.ok) { setPhase('error'); window.setTimeout(() => onCancel(), 1600); return }
+      if (!res.ok) {
+        let detail = ''
+        try { detail = ((await res.json()) as { error?: string }).error ?? '' } catch { /* ignore */ }
+        setPhase('error')
+        setDebug(`Transcription : erreur ${res.status}${detail ? ' — ' + detail : ''}`)
+        return
+      }
       const { text } = await res.json() as { text?: string }
-      onConfirm((text ?? '').trim())
-    } catch {
+      const clean = (text ?? '').trim()
+      if (!clean) { setPhase('error'); setDebug('Transcription vide (rien compris).'); return }
+      onConfirm(clean)
+    } catch (e) {
+      const err = e as { message?: string }
       setPhase('error')
-      window.setTimeout(() => onCancel(), 1600)
+      setDebug(`Transcription : échec réseau (${err?.message || 'fetch'})`)
     }
   }
 
@@ -177,9 +207,13 @@ export function VoiceOverlay({
           }),
     }}>
       {/* Statut */}
-      <div style={{ margin: '0 0 16px', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ margin: '0 0 8px', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: phase === 'error' ? '#ef4444' : SHURIKEN, animation: phase === 'transcribing' ? 'vo_dot 1.1s ease-in-out infinite' : 'none' }} />
         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif' }}>{status}</span>
+      </div>
+      {/* Diagnostic — temporaire, pour comprendre où ça casse */}
+      <div style={{ margin: '0 0 14px', maxWidth: 360, textAlign: 'center', fontSize: 11.5, lineHeight: 1.4, color: phase === 'error' ? '#ef4444' : 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif', padding: '0 8px' }}>
+        {debug}
       </div>
 
       {/* Barre — ✕ · waveform · ✓ */}

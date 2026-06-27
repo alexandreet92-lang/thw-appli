@@ -423,14 +423,15 @@ export function VoiceConversation({ onTurn, onClose }: {
             <div
               style={{
                 width: '70%', height: '70%', borderRadius: '50%',
-                background: `radial-gradient(circle at 32% 28%, color-mix(in srgb, ${ACCENT} 26%, var(--ai-bg)) 0%, var(--ai-bg) 74%)`,
-                border: `1px solid color-mix(in srgb, ${ACCENT} 45%, transparent)`,
-                boxShadow: '0 0 30px rgba(60,144,213,0.30)',
+                // Orbe nettement plus lumineuse pour bien se détacher du fond sombre
+                background: `radial-gradient(circle at 35% 30%, color-mix(in srgb, ${ACCENT} 78%, #ffffff) 0%, ${ACCENT} 42%, color-mix(in srgb, ${ACCENT} 55%, #000000) 100%)`,
+                border: `1.5px solid color-mix(in srgb, ${ACCENT} 85%, #ffffff)`,
+                boxShadow: `0 0 46px color-mix(in srgb, ${ACCENT} 60%, transparent), inset 0 2px 14px rgba(255,255,255,0.25)`,
                 animation: speaking ? 'vc_speak 0.9s ease-in-out infinite' : 'vc_breathe_orb 3.6s ease-in-out infinite',
                 display: 'grid', placeItems: 'center',
               }}
             >
-              <svg width={speaking ? 26 : 32} height={speaking ? 26 : 32} viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.92 }}>
+              <svg width={speaking ? 26 : 32} height={speaking ? 26 : 32} viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.95 }}>
                 {speaking
                   ? <path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4" />
                   : <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>}

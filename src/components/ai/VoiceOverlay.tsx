@@ -56,6 +56,10 @@ export function VoiceOverlay({
   const [mounted, setMounted] = useState(false)
   const [phase, setPhase] = useState<'rec' | 'transcribing' | 'error'>('rec')
   const [debug, setDebug] = useState('Démarrage…')
+  const [liveText, setLiveText] = useState('')   // transcription en direct (chunked Whisper)
+  const chunkBusyRef = useRef(false)
+  const liveTextRef = useRef('')
+  liveTextRef.current = liveText
 
   const bufRef = useRef<number[]>(new Array(NBARS).fill(0.06))
   const barsRef = useRef<(HTMLSpanElement | null)[]>([])
@@ -141,6 +145,7 @@ export function VoiceOverlay({
       }
     })()
 
+    let tick = 0
     const id = window.setInterval(() => {
       const ctx = ctxRef.current
       if (ctx?.state === 'suspended') ctx.resume?.()
@@ -151,23 +156,33 @@ export function VoiceOverlay({
         an.getByteTimeDomainData(dt)
         let sum = 0
         for (let i = 0; i < dt.length; i++) { const d = (dt[i] - 128) / 128; sum += d * d }
-        v = Math.min(1, Math.sqrt(sum / dt.length) * 7.5)
-        if (v < 0.04) v = 0
+        v = Math.min(1, Math.sqrt(sum / dt.length) * 9)
+        if (v < 0.035) v = 0
       }
       const buf = bufRef.current
       buf.push(v); buf.shift()
       for (let i = 0; i < NBARS; i++) {
         const el = barsRef.current[i]
         if (!el) continue
-        const h = 0.14 + buf[i] * 0.86
+        const h = 0.16 + buf[i] * 0.84
         el.style.transform = `scaleY(${h.toFixed(3)})`
-        el.style.opacity = String(0.5 + buf[i] * 0.5)
+        el.style.opacity = String(0.55 + buf[i] * 0.45)
+      }
+      // Indicateur de volume (preuve que le micro est bien capté) si pas de live text
+      tick++
+      if (phaseRef.current === 'rec' && (tick % 8) === 0 && !liveTextRef.current) {
+        setDebug(`Je t'écoute · volume ${v.toFixed(2)}`)
       }
     }, 55)
+
+    // Transcription EN DIRECT (chunked Whisper) : toutes les ~2,2 s on transcrit
+    // l'audio capté jusque-là pour afficher le texte au fur et à mesure.
+    const chunkId = window.setInterval(() => { void liveTranscribe() }, 2200)
 
     return () => {
       closedRef.current = true
       window.clearInterval(id)
+      window.clearInterval(chunkId)
       const n = nodesRef.current
       try { n.processor && (n.processor.onaudioprocess = null) } catch { /* ignore */ }
       try { n.source?.disconnect() } catch { /* ignore */ }
@@ -178,6 +193,29 @@ export function VoiceOverlay({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Transcription partielle pour l'affichage en direct (ne bloque pas le ✓)
+  async function liveTranscribe() {
+    if (chunkBusyRef.current || confirmedRef.current || closedRef.current) return
+    const chunks = pcmRef.current
+    const total = chunks.reduce((a, c) => a + c.length, 0)
+    if (total < sampleRateRef.current * 0.7) return   // < 0,7 s → trop court
+    chunkBusyRef.current = true
+    try {
+      const wav = encodeWAV(chunks.slice(), sampleRateRef.current)
+      const form = new FormData()
+      form.append('file', wav, 'audio.wav')
+      form.append('language', language)
+      const res = await fetch('/api/stt', { method: 'POST', body: form })
+      if (res.ok && !confirmedRef.current && !closedRef.current) {
+        const { text } = await res.json() as { text?: string }
+        const t = (text ?? '').trim()
+        if (t) setLiveText(t)
+      }
+    } catch { /* ignore — la transcription finale fera foi */ } finally {
+      chunkBusyRef.current = false
+    }
+  }
 
   async function transcribe() {
     const n = nodesRef.current
@@ -198,16 +236,19 @@ export function VoiceOverlay({
       form.append('language', language)
       const res = await fetch('/api/stt', { method: 'POST', body: form })
       if (!res.ok) {
+        // Repli sur le texte déjà transcrit en direct
+        if (liveTextRef.current) { onConfirm(liveTextRef.current); return }
         let detail = ''
         try { detail = ((await res.json()) as { error?: string }).error ?? '' } catch { /* ignore */ }
         setPhase('error'); setDebug(`Transcription : erreur ${res.status}${detail ? ' — ' + detail : ''}`)
         return
       }
       const { text } = await res.json() as { text?: string }
-      const clean = (text ?? '').trim()
+      const clean = (text ?? '').trim() || liveTextRef.current
       if (!clean) { setPhase('error'); setDebug('Transcription vide (rien compris).'); return }
       onConfirm(clean)
     } catch (e) {
+      if (liveTextRef.current) { onConfirm(liveTextRef.current); return }
       const err = e as { message?: string }
       setPhase('error'); setDebug(`Transcription : échec réseau (${err?.message || 'fetch'})`)
     }
@@ -239,13 +280,33 @@ export function VoiceOverlay({
             maskImage: 'linear-gradient(to bottom, transparent 0, #000 56px)',
           }),
     }}>
-      <div style={{ margin: '0 0 8px', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      {/* Texte en direct (façon Claude) : ~3 lignes, défile vers le haut, fondu */}
+      {liveText && (
+        <div style={{
+          maxWidth: 520, width: '100%', textAlign: 'center', margin: '0 0 14px',
+          maxHeight: '4.6em', overflow: 'hidden',
+          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 30px)',
+          maskImage: 'linear-gradient(to bottom, transparent 0, #000 30px)',
+        }}>
+          <p style={{
+            margin: 0, fontFamily: 'var(--font-display, Fraunces), Georgia, serif',
+            fontSize: 'clamp(15px, 3.7vw, 19px)', lineHeight: 1.45, fontWeight: 400, fontStyle: 'italic',
+            color: 'var(--ai-text)',
+          }}>{liveText}</p>
+        </div>
+      )}
+
+      <div style={{ margin: '0 0 6px', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: phase === 'error' ? '#ef4444' : SHURIKEN, animation: phase === 'transcribing' ? 'vo_dot 1.1s ease-in-out infinite' : 'none' }} />
         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif' }}>{status}</span>
       </div>
-      <div style={{ margin: '0 0 14px', maxWidth: 360, textAlign: 'center', fontSize: 11.5, lineHeight: 1.4, color: phase === 'error' ? '#ef4444' : 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif', padding: '0 8px' }}>
-        {debug}
-      </div>
+      {/* Diagnostic (volume / erreurs) — uniquement si pas de texte en direct */}
+      {(!liveText || phase === 'error') && (
+        <div style={{ margin: '0 0 14px', maxWidth: 360, textAlign: 'center', fontSize: 11.5, lineHeight: 1.4, color: phase === 'error' ? '#ef4444' : 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif', padding: '0 8px' }}>
+          {debug}
+        </div>
+      )}
 
       <div style={{
         pointerEvents: 'auto',

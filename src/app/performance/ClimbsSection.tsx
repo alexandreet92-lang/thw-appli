@@ -218,37 +218,42 @@ const BAREM_BP_IDX  = [ 1,  2,  3,  4,  5,  6]
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = {
   width: '100%', padding: '10px 12px', borderRadius: 10,
-  border: `1px solid ${BIKE_COLOR}44`, background: 'var(--input-bg)',
-  color: 'var(--text)', fontFamily: 'DM Mono,monospace', fontSize: 13,
+  border: '1px solid var(--border-mid)', background: 'var(--input-bg)',
+  color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13,
+  fontVariantNumeric: 'tabular-nums',
   outline: 'none', boxSizing: 'border-box',
 }
 const inpGrey: React.CSSProperties = { ...inp, border: '1px solid var(--border)' }
-const secBox = (bg: string, border: string): React.CSSProperties => ({
-  background: bg, border: `1px solid ${border}`,
+// Sections : surfaces neutres uniformes (DS — séparation par l'espace/le fond,
+// pas par des cadres colorés). Les anciens args de couleur sont ignorés.
+const secBox = (_bg?: string, _border?: string): React.CSSProperties => ({
+  background: 'var(--bg-card2)', border: '1px solid var(--border)',
   borderRadius: 12, padding: '14px 16px', marginBottom: 10,
 })
 const secHdr: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }
-const secLbl = (color: string): React.CSSProperties => ({
-  fontFamily: 'Syne,sans-serif', fontSize: 11, fontWeight: 700,
-  textTransform: 'uppercase', letterSpacing: '0.07em', color,
+const secLbl = (_color?: string): React.CSSProperties => ({
+  fontFamily: 'var(--font-body)', fontSize: 10.5, fontWeight: 700,
+  textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)',
 })
 const lbl10: React.CSSProperties = {
   fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
   letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 5, marginTop: 0,
 }
-const tog = (active: boolean, color = BIKE_COLOR): React.CSSProperties => ({
-  padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-  fontSize: 11, fontWeight: active ? 700 : 400,
-  background: active ? color : 'var(--bg-card2)',
-  color: active ? '#fff' : 'var(--text-dim)',
+const tog = (active: boolean, _color?: string): React.CSSProperties => ({
+  padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+  border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+  fontSize: 11, fontWeight: active ? 700 : 500,
+  background: active ? 'var(--primary-dim)' : 'transparent',
+  color: active ? 'var(--primary)' : 'var(--text-dim)',
   transition: 'all 0.15s', whiteSpace: 'nowrap' as const,
 })
-const calcBadge = (txt: string, color = BIKE_COLOR) => (
+const calcBadge = (txt: string, _color?: string) => (
   <div style={{
     display: 'inline-flex', alignItems: 'center', gap: 5,
     padding: '4px 10px', borderRadius: 6,
-    background: `${color}18`, border: `1px solid ${color}30`,
-    fontFamily: 'DM Mono,monospace', fontSize: 12, fontWeight: 700, color,
+    background: 'var(--bg-card2)', border: '1px solid var(--border)',
+    fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--text)',
+    fontVariantNumeric: 'tabular-nums',
     marginTop: 6, marginRight: 6,
   }}>⟶ {txt}</div>
 )
@@ -502,7 +507,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
       <div style={{
         width:'100%', maxWidth:540, margin:'0 auto',
         maxHeight:'92vh', background:'var(--bg-card)',
-        borderRadius:'20px 20px 0 0', border:`1px solid ${BIKE_COLOR}30`,
+        borderRadius:'20px 20px 0 0', border:'1px solid var(--border)',
         display:'flex', flexDirection:'column', overflow:'hidden',
         transform:`translateY(${shown ? '0%' : '100%'})`,
         transition:'transform 300ms ease-out',
@@ -511,11 +516,13 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
         <div style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
           padding:'16px 20px', flexShrink:0, flexWrap:'wrap', gap:8,
-          background:`${BIKE_COLOR}10`, borderBottom:`1px solid ${BIKE_COLOR}25`,
+          background:'var(--bg-card)', borderBottom:'1px solid var(--border)',
         }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ padding:'4px 10px', borderRadius:8, background:`${BIKE_COLOR}20`, border:`1px solid ${BIKE_COLOR}40`, fontSize:11, fontWeight:700, color:BIKE_COLOR }}>Cyclisme</span>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>
+            <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:8, background:'var(--bg-card2)', fontSize:11, fontWeight:600, color:'var(--text-mid)' }}>
+              <span style={{ width:7, height:7, borderRadius:'50%', background:BIKE_COLOR }}/>Cyclisme
+            </span>
+            <h2 style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:600, margin:0, color:'var(--text)' }}>
               {isEdit ? 'Modifier cette ascension' : 'Nouvelle ascension'}
             </h2>
           </div>
@@ -536,18 +543,18 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
           {/* IDENTIFICATION */}
           <div style={secBox(`${BIKE_COLOR}0e`, `${BIKE_COLOR}25`)}>
             <div style={secHdr}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BIKE_COLOR} strokeWidth={2.5}><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 1 8 8c0 5-8 12-8 12S4 15 4 10a8 8 0 0 1 8-8z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 1 8 8c0 5-8 12-8 12S4 15 4 10a8 8 0 0 1 8-8z"/></svg>
               <span style={secLbl(BIKE_COLOR)}>Identification</span>
             </div>
             <p style={lbl10}>Nom de l'ascension</p>
             <input style={inp} value={name} onChange={e => setName(e.target.value)} placeholder="ex : Alpe d'Huez, Col du Tourmalet…" autoFocus={!isEdit}/>
             {existing?.race_id && (
               <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:6,
-                            background:'rgba(249,115,22,0.07)', border:'1px solid rgba(249,115,22,0.25)',
+                            background:'var(--bg-card2)', border:'1px solid var(--border)',
                             borderRadius:8, padding:'6px 10px' }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth={2}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                 <span style={{ fontSize:11, color:'var(--text-dim)' }}>Course associée :</span>
-                <span style={{ fontSize:11, fontWeight:600, color:'#f97316' }}>{raceName ?? '…'}</span>
+                <span style={{ fontSize:11, fontWeight:600, color:'var(--text)' }}>{raceName ?? '…'}</span>
               </div>
             )}
           </div>
@@ -555,7 +562,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
           {/* PERFORMANCE */}
           <div style={secBox(`${BIKE_COLOR}12`, `${BIKE_COLOR}30`)}>
             <div style={secHdr}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={BIKE_COLOR} strokeWidth={2.5}><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               <span style={secLbl(BIKE_COLOR)}>Performance</span>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
@@ -629,11 +636,11 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               <button type="button" onClick={()=>setWithNutrition(v=>!v)} style={{
                 width:36, height:20, borderRadius:10, flexShrink:0,
-                background: withNutrition ? BIKE_COLOR : 'var(--bg-card2)',
-                border:`1px solid ${withNutrition ? BIKE_COLOR : 'var(--border)'}`,
+                background: withNutrition ? 'var(--primary)' : 'var(--bg-card2)',
+                border:`1px solid ${withNutrition ? 'var(--primary)' : 'var(--border)'}`,
                 cursor:'pointer', position:'relative', transition:'background 0.2s',
               }}>
-                <span style={{ position:'absolute', top:2, borderRadius:'50%', width:14, height:14, background:'#fff', left: withNutrition ? 19 : 2, transition:'left 0.2s' }}/>
+                <span style={{ position:'absolute', top:2, borderRadius:'50%', width:14, height:14, background:'var(--on-primary)', left: withNutrition ? 19 : 2, transition:'left 0.2s' }}/>
               </button>
               <span style={{ fontSize:12, color:'var(--text-dim)' }}>{withNutrition ? 'Avec ravitaillement' : 'Sans ravitaillement'}</span>
             </div>
@@ -641,25 +648,25 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
 
           {/* RÉSUMÉ avec score */}
           {canSave && previewScore != null && (
-            <div style={{ background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:12, padding:'14px 16px' }}>
+            <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
               <div style={secHdr}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2.5}><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                <span style={secLbl('#22c55e')}>Résumé</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span style={secLbl()}>Résumé</span>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
                 <div>
                   <p style={{ ...lbl10, marginBottom:2 }}>W/kg</p>
-                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:20, fontWeight:800, margin:0, color:'#22c55e' }}>{wkg.toFixed(2)}</p>
+                  <p style={{ fontFamily:'var(--font-body)', fontVariantNumeric:'tabular-nums', fontSize:20, fontWeight:700, margin:0, color:'var(--text)' }}>{wkg.toFixed(2)}</p>
                 </div>
                 <div>
                   <p style={{ ...lbl10, marginBottom:2 }}>Durée</p>
-                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:20, fontWeight:800, margin:0, color:'var(--text)' }}>
+                  <p style={{ fontFamily:'var(--font-body)', fontVariantNumeric:'tabular-nums', fontSize:20, fontWeight:700, margin:0, color:'var(--text)' }}>
                     {durMin} <span style={{ fontSize:11, fontWeight:500, color:'var(--text-dim)' }}>min</span>
                   </p>
                 </div>
                 <div>
                   <p style={{ ...lbl10, marginBottom:2 }}>Score</p>
-                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:20, fontWeight:800, margin:0, color: scoreColor(previewScore) }}>
+                  <p style={{ fontFamily:'var(--font-body)', fontVariantNumeric:'tabular-nums', fontSize:20, fontWeight:700, margin:0, color:'var(--text)' }}>
                     {previewScore.toFixed(0)}<span style={{ fontSize:11, fontWeight:500, color:'var(--text-dim)' }}>/100</span>
                   </p>
                   <p style={{ fontSize:10, color: scoreColor(previewScore), margin:'2px 0 0', fontWeight:600 }}>{levelOf(previewScore).label}</p>
@@ -670,14 +677,14 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
         </div>
 
         {/* Fixed save */}
-        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:`1px solid ${BIKE_COLOR}20` }}>
+        <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'12px 20px 20px', background:'var(--bg-card)', borderTop:'1px solid var(--border)' }}>
           {error && <div style={{ fontSize:11, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius:8, padding:'6px 10px', marginBottom:8 }}>{error}</div>}
           <button onClick={()=>void handleSave()} disabled={!canSave||saving} style={{
             width:'100%', padding:'14px', borderRadius:12, border:'none',
             cursor: canSave&&!saving ? 'pointer' : 'not-allowed',
-            background: canSave&&!saving ? `linear-gradient(135deg,${BIKE_COLOR},${BIKE_COLOR}cc)` : 'var(--bg-card2)',
-            color: canSave&&!saving ? '#fff' : 'var(--text-dim)',
-            fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, transition:'all 0.15s',
+            background: canSave&&!saving ? 'var(--primary)' : 'var(--bg-card2)',
+            color: canSave&&!saving ? 'var(--on-primary)' : 'var(--text-dim)',
+            fontFamily:'var(--font-display)', fontSize:14, fontWeight:600, transition:'all 0.15s',
             marginBottom: isEdit ? 8 : 0,
           }}>
             {saving ? 'Enregistrement…' : isEdit ? 'Enregistrer les modifications' : 'Enregistrer cette ascension'}
@@ -687,7 +694,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
               width:'100%', padding:'10px', borderRadius:12,
               border:'1px solid rgba(239,68,68,0.4)', cursor:'pointer',
               background:'rgba(239,68,68,0.08)', color:'#f87171',
-              fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, transition:'all 0.15s',
+              fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, transition:'all 0.15s',
             }}>
               {deleting ? 'Suppression…' : 'Supprimer cette ascension'}
             </button>

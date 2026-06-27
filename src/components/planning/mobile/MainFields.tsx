@@ -9,7 +9,7 @@ import {
   type SportType, type CyclingSub,
   SPORT_SHORT, CYCLING_SUB_LABEL, TRAINING_TYPES,
 } from '@/app/planning/page'
-import { sportColor, zColor, fmtDur, parseDurInput } from './editorial'
+import { sportColor, fmtDur, parseDurInput } from './editorial'
 import { Card, FieldLabel, Gauge } from './ui'
 
 const SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique']
@@ -29,7 +29,6 @@ export function MainFields(p: {
 }) {
   const trainTypes = TRAINING_TYPES[p.sport] ?? []
   const rpeIdx = Math.max(0, Math.min(9, Math.round(p.rpe) - 1))
-  const rpeCol = p.rpe <= 4 ? zColor(2) : p.rpe <= 6 ? zColor(4) : p.rpe <= 8 ? zColor(5) : zColor(6)
 
   // Mini-stats par sport (réfs manquantes masquées)
   const stats: { label: string; value: string }[] = []
@@ -116,13 +115,12 @@ export function MainFields(p: {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>Effort perçu</p>
-            <p className="se-fr" style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600, color: rpeCol }}>{RPE_DESC[rpeIdx]}</p>
+            <p className="se-fr" style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600, color: 'var(--se-text)' }}>{RPE_DESC[rpeIdx]}</p>
           </div>
-          <p className="se-fr se-tnum" style={{ margin: 0, fontSize: 34, fontWeight: 600, color: rpeCol, lineHeight: 1 }}>{p.rpe}<span style={{ fontSize: 13, color: 'var(--se-dim)' }}>/10</span></p>
+          <p className="se-fr se-tnum" style={{ margin: 0, fontSize: 34, fontWeight: 600, color: 'var(--se-text)', lineHeight: 1 }}>{p.rpe}<span style={{ fontSize: 13, color: 'var(--se-dim)' }}>/10</span></p>
         </div>
         <div style={{ marginTop: 12 }}>
-          <Gauge value={p.rpe} min={0.5} max={10} step={0.5} onChange={p.setRpe} color={rpeCol}
-            gradient={`linear-gradient(90deg, ${zColor(2)}, ${zColor(4)}, ${zColor(6)})`} />
+          <Gauge value={p.rpe} min={0.5} max={10} step={0.5} onChange={p.setRpe} color="var(--primary)" />
         </div>
       </Card>
 

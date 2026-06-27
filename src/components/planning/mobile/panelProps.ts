@@ -17,7 +17,7 @@ export interface PanelParcours {
 export interface SessionEditorPanelProps {
   mode: 'create' | 'edit'
   reserveMode?: boolean   // réserve Builder : masque Sport / Date / Heure
-  sport: SportType; accent: string; onSportChange: (s: SportType) => void
+  sport: SportType; accent: string; sportAccent: string; onSportChange: (s: SportType) => void
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
   brickRun: boolean; setBrickRun: (b: boolean) => void
   trainingTypes: string[]; setTrainingTypes: (t: string[]) => void

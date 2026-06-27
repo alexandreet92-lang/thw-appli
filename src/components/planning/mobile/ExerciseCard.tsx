@@ -43,7 +43,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, onChan
         <span className="se-tnum" style={{ fontSize: 11, fontWeight: 700, color: 'var(--se-dim)', flexShrink: 0 }}>#{index + 1}</span>
         <input value={item.name} onChange={e => set({ name: e.target.value })} placeholder="Nom de l'exercice"
           className="se-fr" style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--se-text)', fontSize: 15, fontWeight: 600, padding: 0 }} />
-        <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: rule, border: `1px solid ${rule}`, borderRadius: 6, padding: '2px 7px' }}>
+        <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--se-dim)', border: '1px solid var(--se-rule)', borderRadius: 6, padding: '2px 7px' }}>
           {variant === 'muscu' ? PATTERN_LABEL[item.category] : isStation ? 'Station' : 'Libre'}
         </span>
         <button type="button" onClick={onRemove} aria-label="Retirer" style={{ flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={16} /></button>
@@ -63,7 +63,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, onChan
             {MUSCU_PATTERNS.map(p => {
               const on = item.category === p
               return <button key={p} type="button" onClick={() => set({ category: p })}
-                style={{ border: `1px solid ${on ? PATTERN_VAR[p] : 'var(--se-rule)'}`, background: on ? PATTERN_VAR[p] : 'transparent', color: on ? '#fff' : 'var(--se-dim)', borderRadius: 999, padding: '4px 11px', fontSize: 10.5, fontWeight: 600, cursor: 'pointer' }}>{PATTERN_LABEL[p]}</button>
+                style={{ border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: on ? accent : 'transparent', color: on ? '#fff' : 'var(--se-dim)', borderRadius: 999, padding: '4px 11px', fontSize: 10.5, fontWeight: 600, cursor: 'pointer' }}>{PATTERN_LABEL[p]}</button>
             })}
           </div>
         </>

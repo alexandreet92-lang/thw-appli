@@ -14,7 +14,7 @@ export function StrengthBuilder(p: {
 }) {
   const tonnage = tonnageKg(p.exercises)
   const cells = [
-    { label: 'SN neuro', value: String(p.sn), color: 'var(--pat-core)' },
+    { label: 'SN neuro', value: String(p.sn) },
     { label: 'Volume', value: tonnage ? `${(tonnage / 1000).toFixed(1)} t` : '—' },
     { label: 'Durée est.', value: p.exercises.length ? fmtDur(estDurationMin(p.exercises, p.circuits)) : '—' },
     { label: 'Exercices', value: String(p.exercises.length) },

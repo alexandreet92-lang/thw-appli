@@ -4664,7 +4664,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     }
     const panelProps: SessionEditorPanelProps = {
       mode, reserveMode,
-      sport, accent: mobileSportColor(sport), onSportChange: handleSportChange,
+      sport, accent: 'var(--primary)', sportAccent: mobileSportColor(sport), onSportChange: handleSportChange,
       cyclingSub, setCyclingSub, brickRun, setBrickRun, trainingTypes, setTrainingTypes,
       title, setTitle, date, setDate, time, setTime,
       dur, setDur, rpe, setRpe, desc, setDesc, selPlan,

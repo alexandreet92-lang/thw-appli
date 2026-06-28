@@ -4,10 +4,10 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target } from 'lucide-react'
+import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
-import { SectionLayout } from '@/components/navigation/SectionLayout'
+import { SlideView } from '@/components/ui/SlideView'
 import { useI18n } from '@/lib/i18n'
 import { LanguageSelector } from '@/components/i18n/LanguageSelector'
 
@@ -475,39 +475,22 @@ function GearBloc() {
 }
 
 // ══════════════════════════════════════════════════
-// PROFIL BLOC — Onglet 1
+// PROFIL — Identité (bulle « Profil »)
 // ══════════════════════════════════════════════════
 
-function ProfilBloc() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const { connections, connect, disconnect, sync, reload: reloadConn } = useConnections()
+function ProfilIdentityBloc() {
   const { data: profileData, setData: setProfileData, saving: savingProfile, save: saveProfile, uploadAvatar } = useProfile()
-  const { sports, add: addSport, remove: removeSport } = useAthleteSports()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [photo, setPhoto]       = useState<string|null>(null)
   const [uploading, setUploading] = useState(false)
   const [editing, setEditing]   = useState(false)
-  const [newSport, setNewSport] = useState('run')
-  const [newSince, setNewSince] = useState('')
   const [toast, setToast]       = useState<{msg:string;ok:boolean}|null>(null)
 
   // Init photo from persisted avatar_url once profile loads
   useEffect(() => {
     if (profileData.avatar_url && !photo) setPhoto(profileData.avatar_url)
   }, [profileData.avatar_url])
-
-  useEffect(() => {
-    const status = searchParams.get('oauth'); const provider = searchParams.get('provider') ?? ''
-    if (!status) return
-    const MSGS: Record<string,{msg:string;ok:boolean}> = {
-      connected: { msg:`${provider} connecté !`, ok:true }, denied: { msg:'Connexion annulée.', ok:false },
-      error: { msg:'Erreur de connexion.', ok:false }, token_error: { msg:"Erreur d'authentification.", ok:false },
-      invalid_state: { msg:'Erreur sécurité.', ok:false }, no_session: { msg:'Session expirée.', ok:false },
-    }
-    if (MSGS[status]) { setToast(MSGS[status]); setTimeout(()=>setToast(null),4000); reloadConn(); router.replace('/profile') }
-  }, [searchParams, router, reloadConn])
 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return
@@ -531,8 +514,6 @@ function ProfilBloc() {
 
   const imc = profileData.height_cm && profileData.weight_kg
     ? (parseFloat(profileData.weight_kg)/((parseFloat(profileData.height_cm)/100)**2)).toFixed(1) : '—'
-
-  const availableConns = connections.filter(c=>c.available)
 
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
@@ -558,8 +539,8 @@ function ProfilBloc() {
           {/* Name / email */}
           <div style={{ flex:1, minWidth:0 }}>
             {editing
-              ? <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder="Nom / Prénom" style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:800, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:10, padding:'6px 10px', color:'var(--text)', outline:'none', width:'100%', marginBottom:7 }}/>
-              : <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.02em', color:'var(--text)' }}>{profileData.full_name||'—'}</p>
+              ? <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder="Nom / Prénom" style={{ fontFamily:'var(--font-display)', fontSize:18, fontWeight:800, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:10, padding:'6px 10px', color:'var(--text)', outline:'none', width:'100%', marginBottom:7 }}/>
+              : <p style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.02em', color:'var(--text)' }}>{profileData.full_name||'—'}</p>
             }
             <p style={{ fontSize:12, color:'var(--text-dim)', margin:0 }}>{profileData.email||'—'}</p>
           </div>
@@ -567,7 +548,7 @@ function ProfilBloc() {
           {/* Edit/Save */}
           {editing
             ? <SaveBtn saving={savingProfile} onClick={handleSave}/>
-            : <button onClick={()=>setEditing(true)} style={{ padding:'7px 16px', borderRadius:10, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:6 }}>
+            : <button onClick={()=>setEditing(true)} style={{ padding:'7px 16px', borderRadius:10, background:'var(--primary)', border:'none', color:'var(--on-primary)', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Modifier
               </button>
@@ -585,8 +566,8 @@ function ProfilBloc() {
             <div key={f.label} style={{ padding:'13px 14px', borderRadius:14, background:'var(--bg-card2)', border:'1px solid var(--border)', textAlign:'center' as const }}>
               <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.09em', color:'var(--text-dim)', margin:'0 0 7px' }}>{f.label}</p>
               {editing && !f.readonly
-                ? <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:800, background:'transparent', border:'none', color:'#06B6D4', outline:'none', width:'100%', textAlign:'center' as const }}/>
-                : <p style={{ fontFamily:'Syne,sans-serif', fontSize:20, fontWeight:800, color:'#06B6D4', margin:0 }}>{f.val||'—'}</p>
+                ? <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:800, background:'transparent', border:'none', color:'var(--primary)', outline:'none', width:'100%', textAlign:'center' as const }}/>
+                : <p style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:800, color:'var(--primary)', margin:0 }}>{f.val||'—'}</p>
               }
               {f.unit && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'3px 0 0' }}>{f.unit}</p>}
             </div>
@@ -601,11 +582,24 @@ function ProfilBloc() {
           disabled={!editing}
           placeholder="Décris ton profil, tes objectifs, ta pratique..."
           rows={3}
-          style={{ width:'100%', padding:'11px 13px', borderRadius:12, border:'1px solid var(--border)', background:editing?'var(--input-bg)':'var(--bg-card2)', color:'var(--text)', fontSize:12.5, outline:'none', resize:'none' as const, fontFamily:'DM Sans,sans-serif', lineHeight:1.65, opacity:editing?1:0.75, boxSizing:'border-box' as const }}
+          style={{ width:'100%', padding:'11px 13px', borderRadius:12, border:'1px solid var(--border)', background:editing?'var(--input-bg)':'var(--bg-card2)', color:'var(--text)', fontSize:12.5, outline:'none', resize:'none' as const, fontFamily:'var(--font-body)', lineHeight:1.65, opacity:editing?1:0.75, boxSizing:'border-box' as const }}
         />
       </Card>
+    </div>
+  )
+}
 
-      {/* ── Sports pratiqués ─────────────────────────── */}
+// ══════════════════════════════════════════════════
+// SPORTS PRATIQUÉS (bulle « Sports »)
+// ══════════════════════════════════════════════════
+
+function SportsBloc() {
+  const { sports, add: addSport, remove: removeSport } = useAthleteSports()
+  const [newSport, setNewSport] = useState('run')
+  const [newSince, setNewSince] = useState('')
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column' }}>
       <Card>
         <CardTitle icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}>Sports pratiqués</CardTitle>
 
@@ -616,7 +610,7 @@ function ProfilBloc() {
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:14 }}>
           {sports.map(s=>(
             <div key={s.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <div style={{ width:10, height:10, borderRadius:'50%', background:SPORT_COLOR[s.sport]||'#888', flexShrink:0, boxShadow:`0 0 6px ${SPORT_COLOR[s.sport]||'#888'}66` }}/>
+              <div style={{ width:10, height:10, borderRadius:'50%', background:SPORT_COLOR[s.sport]||'var(--text-dim)', flexShrink:0, boxShadow:`0 0 6px ${SPORT_COLOR[s.sport]||'#888'}66` }}/>
               <div style={{ flex:1 }}>
                 <p style={{ fontSize:13, fontWeight:600, margin:0 }}>{SPORT_LABEL[s.sport]||s.sport}</p>
                 {s.since_date && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>Depuis {sinceDate(s.since_date)}</p>}
@@ -631,14 +625,39 @@ function ProfilBloc() {
             {Object.entries(SPORT_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}
           </select>
           <input type="date" value={newSince} onChange={e=>setNewSince(e.target.value)} style={{ padding:'9px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none' }}/>
-          <button onClick={()=>{ if(newSport) addSport(newSport, newSince) }} style={{ padding:'9px 16px', borderRadius:10, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>+ Ajouter</button>
+          <button onClick={()=>{ if(newSport) addSport(newSport, newSince) }} style={{ padding:'9px 16px', borderRadius:10, background:'var(--primary)', border:'none', color:'var(--on-primary)', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>+ Ajouter</button>
         </div>
       </Card>
+    </div>
+  )
+}
 
-      {/* ── Matériel ─────────────────────────────────── */}
-      <GearBloc/>
+// ══════════════════════════════════════════════════
+// CONNEXIONS (bulle « Connexions »)
+// ══════════════════════════════════════════════════
 
-      {/* ── Connexions ───────────────────────────────── */}
+function ConnexionsBloc() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const { connections, connect, disconnect, sync, reload: reloadConn } = useConnections()
+  const [toast, setToast] = useState<{msg:string;ok:boolean}|null>(null)
+
+  useEffect(() => {
+    const status = searchParams.get('oauth'); const provider = searchParams.get('provider') ?? ''
+    if (!status) return
+    const MSGS: Record<string,{msg:string;ok:boolean}> = {
+      connected: { msg:`${provider} connecté !`, ok:true }, denied: { msg:'Connexion annulée.', ok:false },
+      error: { msg:'Erreur de connexion.', ok:false }, token_error: { msg:"Erreur d'authentification.", ok:false },
+      invalid_state: { msg:'Erreur sécurité.', ok:false }, no_session: { msg:'Session expirée.', ok:false },
+    }
+    if (MSGS[status]) { setToast(MSGS[status]); setTimeout(()=>setToast(null),4000); reloadConn(); router.replace('/profile') }
+  }, [searchParams, router, reloadConn])
+
+  const availableConns = connections.filter(c=>c.available)
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column' }}>
+      {toast && <Toast msg={toast.msg} ok={toast.ok}/>}
       <Card>
         <CardTitle icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>}>Connexions</CardTitle>
 
@@ -656,8 +675,8 @@ function ProfilBloc() {
                 {c.connected && c.lastSync && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>Dernière sync : {c.lastSync}</p>}
               </div>
               <div style={{ display:'flex', gap:5, flexShrink:0 }}>
-                {c.connected && <button onClick={()=>sync(c)} disabled={c.loading} style={{ padding:'5px 10px', borderRadius:8, background:'rgba(6,182,212,0.08)', border:'1px solid rgba(6,182,212,0.2)', color:'#06B6D4', fontSize:11, fontWeight:600, cursor:'pointer' }}>↻</button>}
-                <button onClick={()=>c.connected?disconnect(c):connect(c)} disabled={c.loading} style={{ padding:'5px 12px', borderRadius:8, background:c.connected?'rgba(239,68,68,0.07)':'rgba(6,182,212,0.08)', border:`1px solid ${c.connected?'rgba(239,68,68,0.2)':'rgba(6,182,212,0.2)'}`, color:c.connected?'#ef4444':'#06B6D4', fontSize:11, fontWeight:600, cursor:'pointer', opacity:c.loading?0.5:1 }}>
+                {c.connected && <button onClick={()=>sync(c)} disabled={c.loading} style={{ padding:'5px 10px', borderRadius:8, background:'var(--primary-dim)', border:'1px solid var(--primary-dim)', color:'var(--primary)', fontSize:11, fontWeight:600, cursor:'pointer' }}>↻</button>}
+                <button onClick={()=>c.connected?disconnect(c):connect(c)} disabled={c.loading} style={{ padding:'5px 12px', borderRadius:8, background:c.connected?'rgba(239,68,68,0.07)':'var(--primary-dim)', border:`1px solid ${c.connected?'rgba(239,68,68,0.2)':'var(--primary-dim)'}`, color:c.connected?'#ef4444':'var(--primary)', fontSize:11, fontWeight:600, cursor:'pointer', opacity:c.loading?0.5:1 }}>
                   {c.loading?'...' : c.connected?'Déconnecter':'Connecter'}
                 </button>
               </div>
@@ -832,70 +851,389 @@ function NotificationsBloc() {
 // APPARENCE BLOC — thème jour/nuit + localisation précise
 // ══════════════════════════════════════════════════
 
+// ── Bulle Apparence : thème Clair / Sombre / Système ──────────────
+type ThemePref = 'light' | 'dark' | 'system'
+
 function ApparenceBloc() {
-  const { t } = useI18n()
-  const [precise, setPrecise] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState<string | null>(null)
+  const [pref, setPref] = useState<ThemePref>('system')
 
   useEffect(() => {
-    try { setPrecise(!!localStorage.getItem('thw-geo')) } catch { /* ignore */ }
+    try {
+      const manual = localStorage.getItem('thw-theme')
+      if (manual === 'light' || manual === 'dark') setPref(manual)
+      else setPref('system')
+    } catch { /* ignore */ }
   }, [])
 
-  async function enable() {
-    if (!('geolocation' in navigator)) { setMsg("La géolocalisation n'est pas disponible sur cet appareil."); return }
-    setBusy(true); setMsg(null)
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        try { localStorage.setItem('thw-geo', JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude })) } catch { /* ignore */ }
-        void import('@/hooks/useTheme').then(m => m.refreshAutoTheme())
-        setPrecise(true); setBusy(false); setMsg('Localisation activée — basculement jour/nuit précis.')
-      },
-      () => { setBusy(false); setMsg("Accès refusé. Le thème reste basé sur ton fuseau horaire.") },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 6 * 3600_000 },
-    )
+  function applyManual(mode: 'light' | 'dark') {
+    const root = document.documentElement
+    root.classList.remove('light', 'dark'); root.classList.add(mode)
   }
 
-  function disable() {
-    try { localStorage.removeItem('thw-geo') } catch { /* ignore */ }
-    void import('@/hooks/useTheme').then(m => m.refreshAutoTheme())
-    setPrecise(false); setMsg('Localisation désactivée — thème basé sur ton fuseau horaire.')
+  function choose(next: ThemePref) {
+    setPref(next)
+    try {
+      if (next === 'system') {
+        localStorage.removeItem('thw-theme')
+        void import('@/hooks/useTheme').then(m => m.refreshAutoTheme())
+      } else {
+        localStorage.setItem('thw-theme', next)
+        applyManual(next)
+      }
+    } catch { /* ignore */ }
   }
+
+  const OPTIONS: { id: ThemePref; label: string; sub: string; Icon: typeof Sun }[] = [
+    { id: 'light',  label: 'Claire',  sub: 'Fond clair en permanence', Icon: Sun },
+    { id: 'dark',   label: 'Sombre',  sub: 'Fond sombre en permanence', Icon: Moon },
+    { id: 'system', label: 'Système', sub: 'Jour / nuit automatique selon l’heure', Icon: Monitor },
+  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <Card>
-        <div style={{ marginBottom: 14 }}>
-          <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 3px' }}>{t('profile.langTitle')}</p>
-          <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: 0, lineHeight: 1.6 }}>{t('profile.langDesc')}</p>
+        <CardTitle icon={<Palette size={15} />}>Apparence</CardTitle>
+        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 14px', lineHeight: 1.6 }}>
+          Choisis l’apparence de l’application. En mode Système, le fond s’adapte au lever et au coucher du soleil à ta position.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {OPTIONS.map(o => {
+            const active = pref === o.id
+            return (
+              <button key={o.id} onClick={() => choose(o.id)} style={{
+                display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left' as const,
+                padding: '13px 15px', borderRadius: 14, cursor: 'pointer', transition: 'all 0.15s',
+                border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                background: active ? 'var(--primary-dim)' : 'var(--bg-card2)',
+              }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: active ? 'var(--primary)' : 'var(--bg-elev)', color: active ? 'var(--on-primary)' : 'var(--text-mid)' }}>
+                  <o.Icon size={17} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13.5, fontWeight: 600, color: active ? 'var(--primary)' : 'var(--text)', margin: 0 }}>{o.label}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>{o.sub}</p>
+                </div>
+                {active && (
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--on-primary)" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  </div>
+                )}
+              </button>
+            )
+          })}
         </div>
-        <LanguageSelector size="sm" />
       </Card>
+    </div>
+  )
+}
 
+// ── Bulle Langue : traduit toute l'application (FR / EN / ES) ──────
+function LangueBloc() {
+  const { t } = useI18n()
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       <Card>
-        <div>
-          <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 3px' }}>Thème jour / nuit automatique</p>
-          <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: 0, lineHeight: 1.6 }}>
-            Le fond s&apos;adapte à la lumière du jour : clair quand il fait jour, sombre la nuit, selon le lever et le coucher du soleil à ta position. Par défaut, ta position est estimée via ton fuseau horaire (sans rien partager).
-          </p>
+        <CardTitle icon={<Globe size={15} />}>{t('profile.langTitle')}</CardTitle>
+        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>{t('profile.langDesc')}</p>
+        <LanguageSelector size="md" />
+      </Card>
+    </div>
+  )
+}
+
+// ── Bulle Localisation : 3 choix d'autorisation (comme iOS/Android) ─
+type GeoPref = '1h' | 'always' | 'while_using' | 'off'
+
+const GEO_PREF_KEY = 'thw-geo-pref'      // choix d'autorisation utilisateur
+const GEO_GRANTED_AT_KEY = 'thw-geo-at'  // horodatage de l'octroi (pour le mode 1h)
+
+function LocalisationBloc() {
+  const [pref, setPref] = useState<GeoPref>('off')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    try {
+      const p = localStorage.getItem(GEO_PREF_KEY) as GeoPref | null
+      if (p === '1h' || p === 'always' || p === 'while_using') setPref(p)
+      else setPref('off')
+    } catch { /* ignore */ }
+  }, [])
+
+  // Récupère la position et met en cache (utilisé pour le thème jour/nuit précis).
+  function capturePosition(): Promise<boolean> {
+    return new Promise(resolve => {
+      if (!('geolocation' in navigator)) { setMsg("La géolocalisation n'est pas disponible sur cet appareil."); resolve(false); return }
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          try {
+            localStorage.setItem('thw-geo', JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude }))
+            localStorage.setItem(GEO_GRANTED_AT_KEY, String(Date.now()))
+          } catch { /* ignore */ }
+          void import('@/hooks/useTheme').then(m => m.refreshAutoTheme())
+          resolve(true)
+        },
+        () => resolve(false),
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 6 * 3600_000 },
+      )
+    })
+  }
+
+  async function choose(next: GeoPref) {
+    setMsg(null)
+    if (next === 'off') {
+      try { localStorage.removeItem('thw-geo'); localStorage.removeItem(GEO_PREF_KEY); localStorage.removeItem(GEO_GRANTED_AT_KEY) } catch { /* ignore */ }
+      void import('@/hooks/useTheme').then(m => m.refreshAutoTheme())
+      setPref('off'); setMsg('Localisation désactivée — basée sur ton fuseau horaire.')
+      return
+    }
+    setBusy(true)
+    const ok = await capturePosition()
+    setBusy(false)
+    if (!ok) { setMsg("Accès refusé par le navigateur. Autorise la localisation dans les réglages du système.") ; return }
+    try { localStorage.setItem(GEO_PREF_KEY, next) } catch { /* ignore */ }
+    setPref(next)
+    setMsg(next === '1h'
+      ? 'Localisation autorisée pour 1 heure — elle sera redemandée ensuite.'
+      : next === 'always'
+        ? 'Localisation autorisée en permanence.'
+        : 'Localisation autorisée lorsque l’application est active.')
+  }
+
+  const OPTIONS: { id: GeoPref; label: string; sub: string; Icon: typeof MapPin }[] = [
+    { id: 'while_using', label: "Lorsque l'application est active", sub: 'Position utilisée uniquement quand tu utilises l’app', Icon: MapPin },
+    { id: '1h',          label: 'Autoriser pendant 1 heure',        sub: 'Accès temporaire, redemandé après 1 h', Icon: MapPin },
+    { id: 'always',      label: 'Autoriser en permanence',          sub: 'Position toujours disponible pour un thème précis', Icon: MapPin },
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <Card>
+        <CardTitle icon={<MapPin size={15} />}>Localisation</CardTitle>
+        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 14px', lineHeight: 1.6 }}>
+          THW Coach utilise ta position pour ajuster le thème jour / nuit à la minute exacte et contextualiser tes parcours. Choisis comment tu veux la partager.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {OPTIONS.map(o => {
+            const active = pref === o.id
+            return (
+              <button key={o.id} onClick={() => void choose(o.id)} disabled={busy} style={{
+                display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left' as const,
+                padding: '13px 15px', borderRadius: 14, cursor: busy ? 'wait' : 'pointer', transition: 'all 0.15s',
+                border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                background: active ? 'var(--primary-dim)' : 'var(--bg-card2)', opacity: busy ? 0.7 : 1,
+              }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: active ? 'var(--primary)' : 'var(--bg-elev)', color: active ? 'var(--on-primary)' : 'var(--text-mid)' }}>
+                  <o.Icon size={17} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13.5, fontWeight: 600, color: active ? 'var(--primary)' : 'var(--text)', margin: 0 }}>{o.label}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0', lineHeight: 1.45 }}>{o.sub}</p>
+                </div>
+                {active && (
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--on-primary)" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        {pref !== 'off' && (
+          <button onClick={() => void choose('off')} style={{ marginTop: 12, width: '100%', padding: '11px', borderRadius: 12, border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            Désactiver la localisation
+          </button>
+        )}
+        {msg && <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '12px 0 0', lineHeight: 1.5 }}>{msg}</p>}
+      </Card>
+    </div>
+  )
+}
+
+// ── Bulle Confidentialité : données & vie privée ──────────────────
+function ConfidentialiteBloc() {
+  const PRIVACY_LINKS: { label: string; sub: string; href: string }[] = [
+    { label: 'Politique de confidentialité', sub: 'Comment tes données sont traitées', href: '/decouvrir/theme.html#confidentialite' },
+    { label: "Conditions d'utilisation",     sub: 'Les règles d’usage de l’application', href: '/decouvrir/theme.html#cgu' },
+  ]
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <Card>
+        <CardTitle icon={<Shield size={15} />}>Confidentialité</CardTitle>
+        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 14px', lineHeight: 1.6 }}>
+          Tes données t’appartiennent. Consulte nos politiques, exporte ou supprime tes données à tout moment.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {PRIVACY_LINKS.map(l => (
+            <a key={l.label} href={l.href} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', textDecoration: 'none' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{l.label}</p>
+                <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0' }}>{l.sub}</p>
+              </div>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+          ))}
         </div>
       </Card>
-
       <Card>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 3px' }}>Localisation précise</p>
-            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
-              Active la géolocalisation pour un basculement à la minute exacte, où que tu sois. {precise ? 'Activée.' : 'Désactivée.'}
-            </p>
+        <SectionLabel>Mes données</SectionLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <a href="/api/export/data" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', textDecoration: 'none', color: 'var(--text)' }}>
+            <BarChart3 size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Exporter mes données</p>
+              <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0' }}>Télécharge une copie de tes données</p>
+            </div>
+          </a>
+          <a href="mailto:contact@thehybridway.app?subject=Suppression%20de%20compte" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', textDecoration: 'none', color: '#ef4444' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Supprimer mon compte</p>
+              <p style={{ fontSize: 10, color: 'rgba(239,68,68,0.7)', margin: '2px 0 0' }}>Suppression définitive de toutes tes données</p>
+            </div>
+          </a>
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+// ── Bulle Autorisations : états des permissions du navigateur ─────
+type PermState = 'granted' | 'denied' | 'prompt' | 'unsupported'
+
+function AutorisationsBloc() {
+  const [geo, setGeo] = useState<PermState>('prompt')
+  const [notif, setNotif] = useState<PermState>('prompt')
+
+  useEffect(() => {
+    // Notifications (API synchrone)
+    try {
+      if (typeof Notification === 'undefined') setNotif('unsupported')
+      else setNotif(Notification.permission === 'granted' ? 'granted' : Notification.permission === 'denied' ? 'denied' : 'prompt')
+    } catch { setNotif('unsupported') }
+    // Géolocalisation (Permissions API)
+    try {
+      if (navigator.permissions) {
+        navigator.permissions.query({ name: 'geolocation' as PermissionName })
+          .then(r => setGeo(r.state as PermState))
+          .catch(() => setGeo('unsupported'))
+      } else setGeo('unsupported')
+    } catch { setGeo('unsupported') }
+  }, [])
+
+  async function askNotif() {
+    try {
+      if (typeof Notification === 'undefined') return
+      const r = await Notification.requestPermission()
+      setNotif(r === 'granted' ? 'granted' : r === 'denied' ? 'denied' : 'prompt')
+    } catch { /* ignore */ }
+  }
+
+  function askGeo() {
+    if (!('geolocation' in navigator)) return
+    navigator.geolocation.getCurrentPosition(() => setGeo('granted'), () => setGeo('denied'))
+  }
+
+  const STATE_META: Record<PermState, { label: string; color: string }> = {
+    granted:     { label: 'Autorisé',     color: '#22c55e' },
+    denied:      { label: 'Refusé',       color: '#ef4444' },
+    prompt:      { label: 'À autoriser',  color: 'var(--text-dim)' },
+    unsupported: { label: 'Indisponible', color: 'var(--text-dim)' },
+  }
+
+  const rows: { label: string; sub: string; Icon: typeof MapPin; state: PermState; ask?: () => void }[] = [
+    { label: 'Localisation', sub: 'Thème jour / nuit et parcours', Icon: MapPin, state: geo, ask: geo === 'prompt' ? askGeo : undefined },
+    { label: 'Notifications', sub: 'Rappels de séance, alertes', Icon: Bell, state: notif, ask: notif === 'prompt' ? () => void askNotif() : undefined },
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <Card>
+        <CardTitle icon={<Lock size={15} />}>Autorisations</CardTitle>
+        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 14px', lineHeight: 1.6 }}>
+          Les accès accordés à THW Coach sur cet appareil. Tu peux les modifier à tout moment dans les réglages de ton navigateur ou système.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {rows.map(r => {
+            const meta = STATE_META[r.state]
+            return (
+              <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                <div style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elev)', color: 'var(--text-mid)' }}>
+                  <r.Icon size={16} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{r.label}</p>
+                  <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0' }}>{r.sub}</p>
+                </div>
+                {r.ask ? (
+                  <button onClick={r.ask} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--primary)', background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Autoriser</button>
+                ) : (
+                  <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, color: meta.color }}>{meta.label}</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+// ── Bulle Utilisation : consommation IA (tokens) ──────────────────
+function UtilisationBloc() {
+  const [details, setDetails] = useState<SubDetails | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/subscription/details')
+      .then(r => r.json())
+      .then((d: SubDetails) => setDetails(d))
+      .catch(() => setDetails(null))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const gauges = ([
+    details?.monthly    && { label: 'Hebdomadaire',            gauge: details.monthly,   color: 'var(--primary)' },
+    details?.rolling_6h && { label: 'Sur 6 heures glissantes', gauge: details.rolling_6h, color: 'var(--primary)' },
+  ].filter(Boolean) as { label: string; gauge: { used: number; limit: number; resets_at: string }; color: string }[])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <Card>
+        <CardTitle icon={<BarChart3 size={15} />}>Utilisation des tokens</CardTitle>
+        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>
+          Suis ta consommation IA. Chaque échange avec ton coach consomme des tokens selon le modèle utilisé.
+        </p>
+        {loading ? (
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0', margin: 0 }}>Chargement…</p>
+        ) : gauges.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0', margin: 0 }}>Aucune donnée d’utilisation disponible.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {gauges.map(g => {
+              const pct = Math.min(100, Math.round((g.gauge.used / g.gauge.limit) * 100))
+              const remaining = g.gauge.limit - g.gauge.used
+              return (
+                <div key={g.label} style={{ padding: '14px 16px', borderRadius: 13, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{g.label}</p>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums', fontSize: 16, fontWeight: 700, color: g.color }}>{fmtTokens(g.gauge.used)}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>/ {fmtTokens(g.gauge.limit)}</span>
+                    </div>
+                  </div>
+                  <div style={{ height: 8, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', marginBottom: 8 }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: 'var(--primary)', borderRadius: 999, transition: 'width 0.4s' }}/>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{pct}% utilisé</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-mid)', fontWeight: 600 }}>{fmtTokens(remaining)} restant{remaining > 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-          {precise ? (
-            <button onClick={disable} style={{ flexShrink: 0, height: 36, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Désactiver</button>
-          ) : (
-            <button onClick={() => void enable()} disabled={busy} style={{ flexShrink: 0, height: 36, padding: '0 16px', borderRadius: 10, border: 'none', background: busy ? 'var(--bg-card2)' : 'var(--primary-gradient)', color: busy ? 'var(--text-dim)' : '#fff', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>{busy ? 'Activation…' : 'Activer'}</button>
-          )}
-        </div>
-        {msg && <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '10px 0 0', lineHeight: 1.5 }}>{msg}</p>}
+        )}
       </Card>
     </div>
   )
@@ -2018,34 +2356,140 @@ function IASettingsBloc() {
 // PAGE PRINCIPALE — Navigation entre onglets
 // ══════════════════════════════════════════════════
 
-function ProfileContent() {
-  const header = (
-    <div>
-      <p style={{ fontFamily:'var(--font-display)', fontSize:24, fontWeight:600, margin:'0 0 4px', color:'var(--text)' }}>Mon Profil</p>
-      <p style={{ fontSize:13, color:'var(--text-dim)', margin:0 }}>Paramètres · Coaching · Connexions</p>
-    </div>
+// ── Ligne « bulle » de la liste (icône + libellé + valeur + chevron) ──
+function ListRow({ Icon, label, value, danger, last, onClick }: {
+  Icon: typeof User; label: string; value?: string; danger?: boolean; last?: boolean; onClick: () => void
+}) {
+  return (
+    <button onClick={onClick} style={{
+      display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left' as const,
+      padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
+      borderBottom: last ? 'none' : '1px solid var(--border)', transition: 'background 0.14s',
+    }}
+      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)'}
+      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+    >
+      <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: danger ? 'rgba(239,68,68,0.1)' : 'var(--primary-dim)', color: danger ? '#ef4444' : 'var(--primary)' }}>
+        <Icon size={17} />
+      </div>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 500, color: danger ? '#ef4444' : 'var(--text)' }}>{label}</span>
+      {value && <span style={{ fontSize: 12.5, color: 'var(--text-dim)', flexShrink: 0 }}>{value}</span>}
+      {!danger && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>}
+    </button>
   )
+}
+
+function ProfileContent() {
+  const router = useRouter()
+  const { data: profile } = useProfile()
+  const [active, setActive] = useState<string | null>(null)
+  const [dir, setDir] = useState(1)
+  const [signingOut, setSigningOut] = useState(false)
+
+  function open(id: string) { setDir(1); setActive(id); window.scrollTo({ top: 0 }) }
+  function back() { setDir(-1); setActive(null); window.scrollTo({ top: 0 }) }
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    try { await createClient().auth.signOut() } catch { /* ignore */ }
+    router.push('/login')
+  }
+
+  // Registre des bulles : libellé affiché dans le drill-down + contenu rapatrié.
+  const CONTENT: Record<string, { label: string; node: React.ReactNode }> = {
+    profil:          { label: 'Profil',          node: <ProfilIdentityBloc /> },
+    abonnement:      { label: 'Abonnement',      node: <AbonnementContent /> },
+    utilisation:     { label: 'Utilisation',     node: <UtilisationBloc /> },
+    notifications:   { label: 'Notifications',   node: <NotificationsBloc /> },
+    confidentialite: { label: 'Confidentialité', node: <ConfidentialiteBloc /> },
+    autorisations:   { label: 'Autorisations',   node: <AutorisationsBloc /> },
+    sports:          { label: 'Sports',          node: <SportsBloc /> },
+    materiel:        { label: 'Matériel',        node: <GearBloc /> },
+    connexions:      { label: 'Connexions',      node: <ConnexionsBloc /> },
+    ia:              { label: 'Réglages IA',     node: <IASettingsBloc /> },
+    langue:          { label: 'Langue',          node: <LangueBloc /> },
+    localisation:    { label: 'Localisation',    node: <LocalisationBloc /> },
+    apparence:       { label: 'Apparence',       node: <ApparenceBloc /> },
+  }
+
+  const GROUPS: { title: string; rows: { id: string; label: string; Icon: typeof User; value?: string }[] }[] = [
+    { title: 'Compte', rows: [
+      { id: 'profil',          label: 'Profil',          Icon: User },
+      { id: 'abonnement',      label: 'Abonnement',      Icon: CreditCard, value: 'Forfait Max' },
+      { id: 'utilisation',     label: 'Utilisation',     Icon: BarChart3 },
+      { id: 'notifications',   label: 'Notifications',   Icon: Bell },
+      { id: 'confidentialite', label: 'Confidentialité', Icon: Shield },
+      { id: 'autorisations',   label: 'Autorisations',   Icon: Lock },
+    ]},
+    { title: 'Sport', rows: [
+      { id: 'sports',    label: 'Sports',    Icon: Dumbbell },
+      { id: 'materiel',  label: 'Matériel',  Icon: Package },
+      { id: 'connexions',label: 'Connexions',Icon: Plug },
+    ]},
+    { title: 'Application', rows: [
+      { id: 'ia',          label: 'Réglages IA', Icon: Sparkles },
+      { id: 'langue',      label: 'Langue',      Icon: Globe },
+      { id: 'localisation',label: 'Localisation',Icon: MapPin },
+      { id: 'apparence',   label: 'Apparence',   Icon: Palette },
+    ]},
+  ]
+
+  const initial = (profile.full_name || profile.email || '?').trim().charAt(0).toUpperCase()
 
   return (
-    <>
+    <div style={{ width: '100%', maxWidth: 620, margin: '0 auto', padding: '20px 16px 80px', boxSizing: 'border-box' }}>
       <style>{`
         .profile-notif-grid { display: flex; flex-direction: column; }
-        @media (min-width: 768px) {
-          .profile-notif-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; align-items: start; }
-        }
       `}</style>
-      <SectionLayout
-        urlParam="tab"
-        contentMaxWidth={900}
-        header={header}
-        sections={[
-          { id:'profil',        label:'Profil',        short:'Profil',        subtitle:'Identité et matériel',   icon:User, content:<ProfilBloc/> },
-          { id:'apparence',     label:'Apparence',     short:'Apparence',     subtitle:'Thème jour / nuit',      icon:Moon, content:<ApparenceBloc/> },
-          { id:'notifications', label:'Notifications', short:'Notifications', subtitle:'Alertes et rappels',     icon:Bell, content:<NotificationsBloc/> },
-          { id:'ia',            label:'Réglages IA',   short:'Réglages',      subtitle:'Modèles et préférences', icon:Zap,  content:<IASettingsBloc/> },
-        ]}
-      />
-    </>
+
+      <SlideView screenKey={active ?? '__list__'} direction={dir}>
+        {active ? (
+          // ── Drill-down : flèche retour + contenu rapatrié ──────────
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+              <button onClick={back} aria-label="Retour" style={{ width: 38, height: 38, borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <ChevronLeft size={20} />
+              </button>
+              <p style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{CONTENT[active]?.label}</p>
+            </div>
+            {CONTENT[active]?.node}
+          </div>
+        ) : (
+          // ── Liste façon Claude ─────────────────────────────────────
+          <div>
+            {/* En-tête : avatar + nom + email */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '8px 4px 22px' }}>
+              <div style={{ width: 58, height: 58, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: 'var(--primary-dim)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {profile.avatar_url
+                  ? <img src={profile.avatar_url} alt="profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, color: 'var(--primary)' }}>{initial}</span>}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.full_name || 'Mon Profil'}</p>
+                <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.email || '—'}</p>
+              </div>
+            </div>
+
+            {/* Groupes de bulles */}
+            {GROUPS.map(g => (
+              <div key={g.title} style={{ marginBottom: 22 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 8px 4px' }}>{g.title}</p>
+                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
+                  {g.rows.map((r, i) => (
+                    <ListRow key={r.id} Icon={r.Icon} label={r.label} value={r.value} last={i === g.rows.length - 1} onClick={() => open(r.id)} />
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {/* Se déconnecter */}
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
+              <ListRow Icon={LogOut} label={signingOut ? 'Déconnexion…' : 'Se déconnecter'} danger last onClick={() => { if (!signingOut) void handleSignOut() }} />
+            </div>
+          </div>
+        )}
+      </SlideView>
+    </div>
   )
 }
 

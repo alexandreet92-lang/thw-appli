@@ -1558,7 +1558,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 // ════════════════════════════════════════════════
 export default function CalendarPage() {
   const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, patchStageDayLocal, deleteStageDayLocal, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
-  const { show, dismiss, reopen } = usePageOnboarding(CALENDAR_ONBOARDING.pageId, CALENDAR_ONBOARDING.version)
+  const { show, dismiss } = usePageOnboarding(CALENDAR_ONBOARDING.pageId, CALENDAR_ONBOARDING.version)
 
   const aiContext = {
     page: 'strategy',
@@ -1582,7 +1582,6 @@ export default function CalendarPage() {
         <h1 style={{ fontFamily:'var(--font-display)',fontSize:24,fontWeight:600,margin:0 }}>Calendar</h1>
         <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Course · Pro · Perso · Tout</p>
       </div>
-      <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
     </div>
   )
 

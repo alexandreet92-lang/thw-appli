@@ -63,7 +63,7 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave, on
       <style>{RACE_EDITOR_CSS}</style>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'raceScrimIn .2s ease' }} />
       <div className="race-ed" onClick={e => e.stopPropagation()} style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 401, height: '94vh',
+        position: 'fixed', left: 0, right: 0, bottom: 0, top: 'max(64px, calc(env(safe-area-inset-top, 0px) + 48px))', zIndex: 401,
         background: 'var(--bg-card2)', borderRadius: '26px 26px 0 0', boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'raceSheetUp .34s cubic-bezier(.2,.8,.2,1) forwards',
       }}>
@@ -76,7 +76,7 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave, on
 
         {/* Corps scrollable — contenu centré (largeur de lecture max) */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 28px' }}>
-          <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
             {/* Sport */}
             <div>
               <p style={LBL}>Sport</p>
@@ -100,31 +100,33 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave, on
               <div><p style={LBL}>Nom</p><input style={INP} value={name} onChange={e => setName(e.target.value)} placeholder="Ex : Ironman Nice" /></div>
               <div><p style={LBL}>Date</p><input type="date" style={INP} value={date} onChange={e => setDate(e.target.value)} /></div>
             </div>
-            {/* Segments adaptatifs */}
+            {/* Segments adaptatifs — pour le triathlon, le dépôt du parcours
+                vélo est sous la section Vélo, et le parcours course sous la
+                section Course (et non en bas de la page). */}
             {sport === 'triathlon'
-              ? <TriSegments pd={pd} setPd={setPd} />
+              ? <TriSegments pd={pd} setPd={setPd}
+                  bikeParcours={(
+                    <div style={{ marginTop: 4 }}>
+                      <RaceDropZone label="Parcours vélo" list={filesBike} setter={setFilesBike} />
+                      {findGpx(filesBike) && <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(filesBike)} /></div>}
+                    </div>
+                  )}
+                  runParcours={(
+                    <div style={{ marginTop: 4 }}>
+                      <RaceDropZone label="Parcours course" list={filesRun} setter={setFilesRun} />
+                      {findGpx(filesRun) && <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(filesRun)} /></div>}
+                    </div>
+                  )}
+                />
               : <SegmentCard color={SPORT_COLOR[sport]} label={SPORT_LABEL[sport]}><SportFields sport={sport} pd={pd} setPd={setPd} /></SegmentCard>}
-            {/* Parcours */}
-            <div>
-              <p style={LBL}>Parcours</p>
-              {sport === 'triathlon' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div>
-                    <RaceDropZone label="Parcours vélo" list={filesBike} setter={setFilesBike} />
-                    {findGpx(filesBike) && <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(filesBike)} /></div>}
-                  </div>
-                  <div>
-                    <RaceDropZone label="Parcours course" list={filesRun} setter={setFilesRun} />
-                    {findGpx(filesRun) && <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(filesRun)} /></div>}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <RaceDropZone list={files} setter={setFiles} />
-                  {findGpx(files) && <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(files)} /></div>}
-                </>
-              )}
-            </div>
+            {/* Parcours (sports hors triathlon) */}
+            {sport !== 'triathlon' && (
+              <div>
+                <p style={LBL}>Parcours</p>
+                <RaceDropZone list={files} setter={setFiles} />
+                {findGpx(files) && <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(files)} /></div>}
+              </div>
+            )}
             {/* Notes */}
             <div><p style={LBL}>Notes</p>
               <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Stratégie de course, préparation…" style={{ ...INP, resize: 'vertical' }} /></div>

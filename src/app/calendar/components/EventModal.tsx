@@ -175,7 +175,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
       <style>{RACE_EDITOR_CSS}</style>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'raceScrimIn .2s ease' }} />
       <div className="race-ed" onClick={e => e.stopPropagation()} style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 401, height: '94vh',
+        position: 'fixed', left: 0, right: 0, bottom: 0, top: 'max(64px, calc(env(safe-area-inset-top, 0px) + 48px))', zIndex: 401,
         background: 'var(--bg-card2)', borderRadius: '26px 26px 0 0', boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'raceSheetUp .34s cubic-bezier(.2,.8,.2,1) forwards',
       }}>
@@ -189,7 +189,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
 
         {/* Corps scrollable — contenu centré */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 28px' }}>
-          <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
             {/* Sports */}
             <div>

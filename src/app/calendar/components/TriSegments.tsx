@@ -2,6 +2,7 @@
 // Triathlon : sélecteur de format (S / M / 70.3 / Ironman, auto-remplit les
 // distances) + 5 segments (Natation · T1 · Vélo · T2 · Course) avec calculs
 // live. Réutilise les clés performanceData existantes.
+import type { ReactNode } from 'react'
 import { SPORT_COLOR } from './types'
 import { paceKm, pace100, speedKmh, numOr0 } from '@/lib/race/computePace'
 import { SegmentCard, TransitionCard, SegInput, CalcField, ROW2 } from './RaceSegmentCard'
@@ -14,7 +15,10 @@ const TRI_FORMATS: { label: string; swim: number; bike: number; run: number }[] 
 ]
 const TRI = SPORT_COLOR.triathlon
 
-export default function TriSegments({ pd, setPd }: { pd: Record<string, unknown>; setPd: (v: Record<string, unknown>) => void }) {
+export default function TriSegments({ pd, setPd, bikeParcours, runParcours }: {
+  pd: Record<string, unknown>; setPd: (v: Record<string, unknown>) => void
+  bikeParcours?: ReactNode; runParcours?: ReactNode
+}) {
   const g = (k: string) => (pd[k] as string) ?? ''
   const s = (k: string, v: string) => setPd({ ...pd, [k]: v })
   const bikeKm = numOr0(pd.triBikeDist)
@@ -52,6 +56,7 @@ export default function TriSegments({ pd, setPd }: { pd: Record<string, unknown>
           <SegInput label="Watts cible" value={g('bikeWatts')} onChange={v => s('bikeWatts', v)} placeholder="180" type="number" />
           <CalcField label="Vitesse" value={speedKmh(g('triBikeTime'), bikeKm)} />
         </div>
+        {bikeParcours}
       </SegmentCard>
 
       <TransitionCard label="T2 · Transition" from="Vélo" to="Course" value={g('t2')} onChange={v => s('t2', v)} />
@@ -62,6 +67,7 @@ export default function TriSegments({ pd, setPd }: { pd: Record<string, unknown>
           <SegInput label="Distance (km)" value={g('triRunDist')} onChange={v => s('triRunDist', v)} placeholder="21.1" type="number" />
           <CalcField label="Allure /km" value={paceKm(g('triRunTime'), runKm)} />
         </div>
+        {runParcours}
       </SegmentCard>
     </div>
   )

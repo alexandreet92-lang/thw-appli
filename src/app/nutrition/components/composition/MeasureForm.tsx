@@ -6,7 +6,7 @@
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border-mid)',
+  width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', background: 'var(--input-bg)', border: '1px solid var(--border-mid)',
   borderRadius: 'var(--r-sm)', padding: '8px 10px', fontFamily: FB, fontSize: 13, color: 'var(--text)', outline: 'none',
 }
 const labelStyle: React.CSSProperties = {
@@ -37,7 +37,8 @@ export function MeasureForm(p: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       <div>
         <h2 style={title}>Ajouter une mesure</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 'var(--space-4) var(--space-3)', marginBottom: 'var(--space-4)' }}>
+        <style>{`.measure-fields{grid-template-columns:1fr}@media(min-width:380px){.measure-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}`}</style>
+        <div className="measure-fields" style={{ display: 'grid', gap: 'var(--space-4) var(--space-3)', marginBottom: 'var(--space-4)', maxWidth: '100%' }}>
           {field('Date', p.date, p.onDate, 'date')}
           {field('Poids (kg)', p.weight, p.onWeight, 'number')}
           {field('Masse grasse (%)', p.mg, p.onMg, 'number')}

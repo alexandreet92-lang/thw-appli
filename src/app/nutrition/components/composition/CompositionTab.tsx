@@ -68,7 +68,7 @@ export function CompositionTab(p: Props) {
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', padding: 'var(--space-2) 0 var(--space-6)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', padding: 'var(--space-2) 0 var(--space-6)', maxWidth: '100%', overflowX: 'hidden' }}>
       {/* Pas de titre redondant : la nav indique déjà l'onglet. On démarre sur la
           bannière balance + les bascules de métrique. */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
@@ -76,8 +76,8 @@ export function CompositionTab(p: Props) {
         <a href="/connections" style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Connecter une balance →</a>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6" style={{ maxWidth: '100%', minWidth: 0 }}>
+        <div className="xl:col-span-2" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', minWidth: 0 }}>
           {/* Période = zoom + métriques */}
           <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
             {PERIODS.map(([lbl, d]) => (

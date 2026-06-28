@@ -22,7 +22,7 @@ interface Props {
   today:     string
 }
 
-const PERIODS = [7, 14, 30] as const
+const PERIODS = [1, 7, 14, 30] as const
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
 
 function StatNu({ label, value, note }: { label: string; value: string; note: string }) {
@@ -97,7 +97,7 @@ export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
             borderRadius: 999, padding: '5px 14px',
             fontFamily: FB, fontSize: 13, fontWeight: days === p ? 600 : 500,
             color: days === p ? 'var(--text)' : 'var(--text-dim)',
-          }}>{p} jours</button>
+          }}>{p === 1 ? "Aujourd'hui" : `${p} jours`}</button>
         ))}
       </div>
 

@@ -21736,31 +21736,8 @@ export default function AIPanel({
                   </button>
                 )}
 
-                {/* Conversation vocale (mode discussion) */}
-                {speechSupported && !loading && !recording && (
-                  <button
-                    onClick={() => {
-                      // Débloque la synthèse vocale dans le geste utilisateur (sinon iOS bloque la voix différée)
-                      try {
-                        const s = window.speechSynthesis
-                        if (s) { s.cancel(); s.speak(new SpeechSynthesisUtterance(' ')) }
-                      } catch { /* ignore */ }
-                      setVoiceConvOpen(true)
-                    }}
-                    title="Discussion vocale"
-                    className="aip-icon-btn"
-                    style={{
-                      width: 28, height: 28, borderRadius: 6, flexShrink: 0,
-                      color: 'var(--ai-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4" />
-                    </svg>
-                  </button>
-                )}
-
-                {/* Envoyer / Stop */}
+                {/* Envoyer / Stop / Discussion vocale (fusionnés façon ChatGPT/Claude :
+                    champ vide → bouton « parler » ; dès qu'on écrit → bouton « envoyer ») */}
                 {loading ? (
                   <button
                     onClick={stopGeneration}
@@ -21780,6 +21757,32 @@ export default function AIPanel({
                   </button>
                 ) : (() => {
                     const canSend = !!(input.trim() || attachment || activeQA || quotedText)
+                    // Champ vide + vocal dispo → le bouton lance la discussion vocale.
+                    if (!canSend && speechSupported && !recording) {
+                      return (
+                        <button
+                          onClick={() => {
+                            // Débloque la synthèse vocale dans le geste utilisateur (sinon iOS bloque la voix différée)
+                            try {
+                              const s = window.speechSynthesis
+                              if (s) { s.cancel(); s.speak(new SpeechSynthesisUtterance(' ')) }
+                            } catch { /* ignore */ }
+                            setVoiceConvOpen(true)
+                          }}
+                          title="Discussion vocale"
+                          aria-label="Démarrer une discussion vocale"
+                          style={{
+                            width: 32, height: 32, borderRadius: '50%', flexShrink: 0, border: 'none',
+                            background: 'var(--ai-text)', color: 'var(--ai-bg)', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s',
+                          }}
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4" />
+                          </svg>
+                        </button>
+                      )
+                    }
                     return (
                   <button
                     onClick={() => void send()}

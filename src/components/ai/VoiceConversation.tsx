@@ -104,7 +104,8 @@ export function VoiceConversation({ onTurn, onClose }: {
 
   // Conversation affichée (dernier tour)
   const [userMsg, setUserMsg] = useState('')
-  const [displayText, setDisplayText] = useState('')   // réponse du coach (texte)
+  const [liveUser, setLiveUser] = useState('')          // ce que je dis EN DIRECT (interim)
+  const [displayText, setDisplayText] = useState('')    // réponse du coach (texte)
   const [spokenChars, setSpokenChars] = useState(0)     // karaoké : nb de caractères « lus »
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null)
 
@@ -119,8 +120,11 @@ export function VoiceConversation({ onTurn, onClose }: {
   const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const endedRef = useRef(false)
 
-  // Audio serveur (lecture directe)
+  // Audio serveur (lecture directe) + chaîne Web Audio (amplification + haut-parleur iOS)
   const audioElRef = useRef<HTMLAudioElement | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const audioCtxRef = useRef<any>(null)
+  const mediaWiredRef = useRef(false)
   // Streaming TTS : file de phrases à dire, lues au fur et à mesure
   const ttsQueueRef = useRef<string[]>([])
   const spokenIdxRef = useRef(0)        // position déjà mise en file dans l'oral
@@ -162,6 +166,7 @@ export function VoiceConversation({ onTurn, onClose }: {
 
     audioElRef.current = new Audio()
     audioElRef.current.crossOrigin = 'anonymous'
+    audioElRef.current.volume = 1
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rec: any = new SR()
@@ -183,9 +188,13 @@ export function VoiceConversation({ onTurn, onClose }: {
     rec.onresult = (e: any) => {
       if (endedRef.current || mutedRef.current) return
       if (phaseRef.current !== 'listening') return
+      let interim = ''
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) finalRef.current += e.results[i][0].transcript + ' '
+        else interim += e.results[i][0].transcript
       }
+      // Texte EN DIRECT : ce qui est déjà figé + ce qui est en cours.
+      setLiveUser((finalRef.current + interim).trim())
       armSilence()
     }
     rec.onend = () => {
@@ -208,6 +217,7 @@ export function VoiceConversation({ onTurn, onClose }: {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
       try { rec.stop() } catch { /* ignore */ }
       try { audioElRef.current?.pause() } catch { /* ignore */ }
+      try { audioCtxRef.current?.close?.() } catch { /* ignore */ }
       try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -218,8 +228,9 @@ export function VoiceConversation({ onTurn, onClose }: {
   async function finalizeTurn() {
     const userText = finalRef.current.trim()
     finalRef.current = ''
-    if (!userText) { setPhaseBoth('listening'); return }
+    if (!userText) { setPhaseBoth('listening'); setLiveUser(''); return }
     setUserMsg(userText)
+    setLiveUser('')
     setFeedback(null)
     setDisplayBoth('')
     setSpokenBoth(0)
@@ -250,12 +261,34 @@ export function VoiceConversation({ onTurn, onClose }: {
     void runQueue()
   }
 
-  // Déverrouille la lecture audio (iOS/Safari) au 1er geste.
+  // Déverrouille la lecture audio (iOS/Safari) au 1er geste + branche la chaîne
+  // Web Audio : amplifie (gain > 1) ET force la sortie haut-parleur. Sur iOS,
+  // quand le micro est actif, le son part sinon dans l'écouteur (très faible).
   function unlockAudio() {
-    if (unlockedRef.current || !audioElRef.current) return
+    const el = audioElRef.current
+    if (!el) return
+    try {
+      if (!audioCtxRef.current) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Ctx = window.AudioContext || (window as any).webkitAudioContext
+        if (Ctx) audioCtxRef.current = new Ctx()
+      }
+      const ctx = audioCtxRef.current
+      if (ctx) {
+        ctx.resume?.()
+        if (!mediaWiredRef.current) {
+          const src = ctx.createMediaElementSource(el)
+          const gain = ctx.createGain()
+          gain.gain.value = 2.0   // +6 dB ≈ deux fois plus fort
+          src.connect(gain)
+          gain.connect(ctx.destination)
+          mediaWiredRef.current = true
+        }
+      }
+    } catch { /* lecture normale si Web Audio indisponible */ }
+    if (unlockedRef.current) return
     unlockedRef.current = true
     try {
-      const el = audioElRef.current
       el.src = SILENT_WAV
       const p = el.play()
       if (p && typeof p.catch === 'function') p.catch(() => {})
@@ -405,7 +438,7 @@ export function VoiceConversation({ onTurn, onClose }: {
     if (settingsRef.current.mode !== 'hands') return
     const next = !mutedRef.current
     setMutedBoth(next)
-    if (next) { try { recRef.current?.stop() } catch { /* ignore */ } stopSpeaking() }
+    if (next) { setLiveUser(''); try { recRef.current?.stop() } catch { /* ignore */ } stopSpeaking() }
     else { setPhaseBoth('listening'); try { recRef.current?.start() } catch { /* ignore */ } }
   }
   const pushStart = () => {
@@ -430,7 +463,7 @@ export function VoiceConversation({ onTurn, onClose }: {
     : AMBIENT_COOL
 
   const micActive = settings.mode === 'push' ? pressing : !muted
-  const hasConvo = !!userMsg || !!displayText
+  const hasConvo = !!userMsg || !!displayText || !!liveUser
   const spokenN = Math.floor(spokenChars)
   const spokenPart = displayText.slice(0, spokenN)
   const restPart = displayText.slice(spokenN)
@@ -474,31 +507,43 @@ export function VoiceConversation({ onTurn, onClose }: {
           </p>
         ) : (
           <div style={{ width: '100%', maxWidth: 640, margin: '0 auto', animation: 'vc_in 0.25s ease' }}>
-            {/* Message utilisateur (bulle grise en haut à droite) */}
+            {/* Message utilisateur figé (bulle grise en haut à droite) */}
             {userMsg && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '6px 0 22px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '6px 0 18px' }}>
                 <span style={{
-                  maxWidth: '85%', padding: '11px 16px', borderRadius: 20,
+                  maxWidth: '80%', padding: '8px 13px', borderRadius: 16,
                   background: 'var(--bg-card2)', color: 'var(--text)',
-                  fontSize: 17, fontWeight: 600, fontFamily: 'var(--font-body)', lineHeight: 1.35,
+                  fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-body)', lineHeight: 1.35,
                 }}>
                   {userMsg}
                 </span>
               </div>
             )}
-            {/* Réponse du coach — grande typo serif + karaoké */}
+            {/* Réponse du coach — typo serif + karaoké */}
             {displayText && (
               <p style={{
                 margin: 0, fontFamily: 'var(--font-display)',
-                fontSize: 'clamp(22px, 5.6vw, 29px)', lineHeight: 1.42, fontWeight: 500,
+                fontSize: 'clamp(19px, 4.8vw, 24px)', lineHeight: 1.45, fontWeight: 500,
                 letterSpacing: '-0.01em', whiteSpace: 'pre-wrap',
               }}>
                 <span style={{ color: 'var(--text)' }}>{spokenPart}</span>
                 <span style={{ color: 'var(--text-dim)' }}>{restPart}</span>
               </p>
             )}
+            {/* Ce que je dis EN DIRECT (bulle live pendant que je parle) */}
+            {liveUser && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '14px 0 0', animation: 'vc_in 0.2s ease' }}>
+                <span style={{
+                  maxWidth: '80%', padding: '8px 13px', borderRadius: 16,
+                  background: 'var(--bg-card2)', color: 'var(--text-mid)',
+                  fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-body)', lineHeight: 1.35,
+                }}>
+                  {liveUser}
+                </span>
+              </div>
+            )}
             {/* Retours (pouce haut / bas) — comme Claude */}
-            {displayText && phase === 'listening' && (
+            {displayText && !liveUser && phase === 'listening' && (
               <div style={{ display: 'flex', gap: 14, marginTop: 18 }}>
                 <button onClick={() => setFeedback(feedback === 'up' ? null : 'up')} aria-label="Bonne réponse" style={fbBtn(feedback === 'up')}>
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v11M2 13v6a2 2 0 0 0 2 2h13.3a2 2 0 0 0 2-1.7l1.4-9A2 2 0 0 0 19.7 8H14V4a2 2 0 0 0-2-2l-3 8" /></svg>

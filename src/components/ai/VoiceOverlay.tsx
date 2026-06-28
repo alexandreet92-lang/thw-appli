@@ -56,6 +56,10 @@ export function VoiceOverlay({
   const [mounted, setMounted] = useState(false)
   const [phase, setPhase] = useState<'rec' | 'transcribing' | 'error'>('rec')
   const [errorMsg, setErrorMsg] = useState('')
+  const [liveText, setLiveText] = useState('')   // transcription navigateur EN DIRECT
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const srRef = useRef<any>(null)
+  const srFinalRef = useRef('')                  // texte figé par la reco navigateur
 
   const bufRef = useRef<number[]>(new Array(NBARS).fill(0))
   const barsRef = useRef<(HTMLSpanElement | null)[]>([])
@@ -73,6 +77,46 @@ export function VoiceOverlay({
   phaseRef.current = phase
 
   useEffect(() => { setMounted(true) }, [])
+
+  // ── Transcription navigateur EN DIRECT (instantanée, sans serveur) ──
+  // Tourne en parallèle de la capture audio : affiche les mots au fur et à
+  // mesure. Whisper reste la transcription finale (plus précise) à la ✓ ;
+  // si Whisper échoue, on retombe sur ce texte. Best-effort : si le navigateur
+  // ne supporte pas la reco (ou la refuse pendant getUserMedia), pas grave.
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SR) return
+    const lang = language.includes('-') ? language
+      : language === 'fr' ? 'fr-FR' : language === 'en' ? 'en-US' : language === 'es' ? 'es-ES'
+      : `${language}-${language.toUpperCase()}`
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let rec: any
+    try {
+      rec = new SR()
+      rec.lang = lang
+      rec.continuous = true
+      rec.interimResults = true
+      rec.maxAlternatives = 1
+      srRef.current = rec
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rec.onresult = (e: any) => {
+        if (confirmedRef.current || closedRef.current) return
+        let interim = ''
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) srFinalRef.current += e.results[i][0].transcript + ' '
+          else interim += e.results[i][0].transcript
+        }
+        setLiveText((srFinalRef.current + interim).trim())
+      }
+      rec.onend = () => {
+        if (!confirmedRef.current && !closedRef.current) { try { rec.start() } catch { /* déjà démarrée */ } }
+      }
+      rec.onerror = () => { /* no-speech / not-allowed… on garde Whisper */ }
+      rec.start()
+    } catch { /* ignore */ }
+    return () => { try { rec?.stop() } catch { /* ignore */ } }
+  }, [language])
 
   useEffect(() => {
     let analyser: AnalyserNode | null = null
@@ -181,10 +225,12 @@ export function VoiceOverlay({
     const n = nodesRef.current
     try { n.processor?.disconnect() } catch { /* ignore */ }
     try { streamRef.current?.getTracks().forEach(t => t.stop()) } catch { /* ignore */ }
+    const srFallback = (srFinalRef.current || liveText).trim()
 
     const total = pcmRef.current.reduce((a, c) => a + c.length, 0)
     const secs = total / sampleRateRef.current
-    if (total < sampleRateRef.current * 0.25) {   // < 0,25 s
+    if (total < sampleRateRef.current * 0.25) {   // < 0,25 s d'audio capté
+      if (srFallback) { onConfirm(srFallback); return }
       setPhase('error'); setErrorMsg(`Rien capté (${secs.toFixed(2)} s). Parle un peu plus longtemps.`)
       return
     }
@@ -195,16 +241,18 @@ export function VoiceOverlay({
       form.append('language', language)
       const res = await fetch('/api/stt', { method: 'POST', body: form })
       if (!res.ok) {
+        if (srFallback) { onConfirm(srFallback); return }   // repli sur la reco navigateur
         let detail = ''
         try { detail = ((await res.json()) as { error?: string }).error ?? '' } catch { /* ignore */ }
         setPhase('error'); setErrorMsg(`Transcription : erreur ${res.status}${detail ? ' — ' + detail : ''}`)
         return
       }
       const { text } = await res.json() as { text?: string }
-      const clean = (text ?? '').trim()
+      const clean = (text ?? '').trim() || srFallback
       if (!clean) { setPhase('error'); setErrorMsg('Transcription vide (rien compris).'); return }
       onConfirm(clean)
     } catch (e) {
+      if (srFallback) { onConfirm(srFallback); return }
       const err = e as { message?: string }
       setPhase('error'); setErrorMsg(`Transcription : échec réseau (${err?.message || 'fetch'})`)
     }
@@ -213,10 +261,11 @@ export function VoiceOverlay({
   const confirm = () => {
     if (phase !== 'rec') return
     confirmedRef.current = true
+    try { srRef.current?.stop() } catch { /* ignore */ }
     setPhase('transcribing')
     void transcribe()
   }
-  const cancel = () => { confirmedRef.current = false; onCancel() }
+  const cancel = () => { confirmedRef.current = false; try { srRef.current?.stop() } catch { /* ignore */ } onCancel() }
 
   if (!mounted) return null
 
@@ -233,7 +282,24 @@ export function VoiceOverlay({
             maskImage: 'linear-gradient(to bottom, transparent 0, #000 56px)',
           }),
     }}>
-      {/* Message d'erreur uniquement (sinon : rien que la waveform, comme Claude) */}
+      {/* Texte EN DIRECT (ce que je dis, au fur et à mesure) */}
+      {phase !== 'error' && liveText && (
+        <div style={{
+          maxWidth: 520, width: '100%', textAlign: 'center', margin: '0 0 14px',
+          maxHeight: '4.6em', overflow: 'hidden',
+          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 30px)',
+          maskImage: 'linear-gradient(to bottom, transparent 0, #000 30px)',
+        }}>
+          <p style={{
+            margin: 0, fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(16px, 4vw, 20px)', lineHeight: 1.45, fontWeight: 500,
+            color: 'var(--text)',
+          }}>{liveText}</p>
+        </div>
+      )}
+
+      {/* Message d'erreur */}
       {phase === 'error' && (
         <div style={{ margin: '0 0 14px', maxWidth: 360, textAlign: 'center', fontSize: 13, lineHeight: 1.4, color: 'var(--text-mid)', fontFamily: 'var(--font-body)', padding: '0 8px' }}>
           {errorMsg}

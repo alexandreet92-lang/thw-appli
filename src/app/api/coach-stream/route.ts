@@ -580,15 +580,19 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
     ? [...cachedCustom, { type: 'web_search_20260209', name: 'web_search', max_uses: 5 }]
     : cachedCustom) as unknown as Anthropic.ToolUnion[]
 
-  // ── Raisonnement étendu (extended thinking) — DÉSACTIVÉ ──
-  // Mis en pause : il ajoutait trop de latence (le coach « réfléchissait » trop
-  // longtemps, même pour une question simple) et déclenchait des erreurs sur le
-  // chat. On privilégie des réponses rapides. Pour le réactiver plus tard
-  // (feuille « Processus de réflexion »), repasser thinkingEnabled à la condition
-  // agentId === 'central' && (athena|zeus) et streamer l'event « thinking ».
-  const thinkingEnabled = false
-  const thinkingParam = thinkingEnabled
-    ? { thinking: { type: 'enabled' as const, budget_tokens: 2048 } }
+  // ── Raisonnement adaptatif (extended thinking) ──
+  // Réactivé avec la BONNE syntaxe pour Opus 4.8 / Sonnet 4.6 : `adaptive`.
+  // L'ancienne syntaxe `{ type: 'enabled', budget_tokens }` renvoie un 400 sur
+  // Opus 4.8 (Zeus) → c'était la cause des erreurs « Une erreur est survenue ».
+  // En adaptatif, le modèle décide LUI-MÊME quand et combien réfléchir :
+  // profondeur réelle sur une analyse, réponse directe sur une simple discussion
+  // (donc pas de latence inutile). `display: 'summarized'` alimente la feuille
+  // « Processus de réflexion ». Réservé à Athéna/Zeus — Hermès (voix) reste
+  // rapide, sans réflexion.
+  const reqAgentId = (chatBody as { agentId?: string }).agentId
+  const thinkingEnabled = reqAgentId === 'central' && (cappedKey === 'zeus' || cappedKey === 'athena')
+  const thinkingParam: Record<string, unknown> = thinkingEnabled
+    ? { thinking: { type: 'adaptive', display: 'summarized' } }
     : {}
 
   // Client Supabase dédié aux outils de lecture (réutilisé sur toute la boucle)

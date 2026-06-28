@@ -201,29 +201,30 @@ function matchDurFilter(sec: number, id: DurFilterId | null): boolean {
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = {
   width:'100%', padding:'10px 12px', borderRadius:10,
-  border:`1px solid ${RACE_COLOR}44`, background:'var(--input-bg)',
-  color:'var(--text)', fontFamily:'DM Mono,monospace', fontSize:13,
+  border:'1px solid var(--border-mid)', background:'var(--input-bg)',
+  color:'var(--text)', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:13,
   outline:'none', boxSizing:'border-box',
 }
 const inpGrey: React.CSSProperties = { ...inp, border:'1px solid var(--border)' }
-const secBox = (bg: string, border: string): React.CSSProperties => ({
-  background: bg, border:`1px solid ${border}`,
+const secBox = (_bg?: string, _border?: string): React.CSSProperties => ({
+  background:'var(--bg-card2)', border:'1px solid var(--border)',
   borderRadius:12, padding:'14px 16px', marginBottom:10,
 })
 const secHdr: React.CSSProperties = { display:'flex', alignItems:'center', gap:8, marginBottom:10 }
-const secLbl = (color: string): React.CSSProperties => ({
-  fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700,
-  textTransform:'uppercase', letterSpacing:'0.07em', color,
+const secLbl = (_color?: string): React.CSSProperties => ({
+  fontFamily:'var(--font-body)', fontSize:10.5, fontWeight:700,
+  textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)',
 })
 const lbl10: React.CSSProperties = {
   fontSize:10, fontWeight:600, textTransform:'uppercase',
   letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:4, marginTop:0,
 }
-const tog = (active: boolean, color = RACE_COLOR): React.CSSProperties => ({
-  padding:'6px 12px', borderRadius:8, border:'none', cursor:'pointer',
-  fontSize:11, fontWeight: active ? 700 : 400,
-  background: active ? color : 'var(--bg-card2)',
-  color: active ? '#fff' : 'var(--text-dim)',
+const tog = (active: boolean, _color?: string): React.CSSProperties => ({
+  padding:'6px 12px', borderRadius:8, cursor:'pointer',
+  border:`1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+  fontSize:11, fontWeight: active ? 700 : 500,
+  background: active ? 'var(--primary-dim)' : 'transparent',
+  color: active ? 'var(--primary)' : 'var(--text-dim)',
   transition:'all 0.15s', whiteSpace:'nowrap' as const,
 })
 
@@ -235,7 +236,7 @@ function Accordion({ title, children }: { title: string; children: React.ReactNo
       <button onClick={() => setOpen(o => !o)} style={{
         width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between',
         padding:'12px 16px', background:'var(--bg-card2)', border:'none',
-        cursor:'pointer', color:'var(--text)', fontFamily:'Syne,sans-serif',
+        cursor:'pointer', color:'var(--text)', fontFamily:'var(--font-display)',
         fontSize:12, fontWeight:700, textAlign:'left',
       }}>
         {title}
@@ -280,9 +281,9 @@ function BaremeAccordion() {
           <tbody>
             {BAREM_DURS.map((dur, ri) => (
               <tr key={dur} style={{ background: ri % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                <td style={{ padding:'5px 6px', fontFamily:'DM Mono,monospace', color:'var(--text-dim)', fontWeight:600 }}>{dur} min</td>
+                <td style={{ padding:'5px 6px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-dim)', fontWeight:600 }}>{dur} min</td>
                 {shownLevels.map((l, li) => (
-                  <td key={l.label} style={{ padding:'5px 6px', fontFamily:'DM Mono,monospace', color:'var(--text-mid)', textAlign:'right' }}>
+                  <td key={l.label} style={{ padding:'5px 6px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-mid)', textAlign:'right' }}>
                     ≥ {REF_TABLES_ALL[tab][li][BAREM_BP_IDX[ri]].toFixed(1)}
                   </td>
                 ))}
@@ -499,10 +500,10 @@ function ScatterRaceSVG({ races, allYears, onPointClick, highlightIds }: {
             borderRadius:10, padding:'10px 12px', pointerEvents:'none',
             minWidth:160, boxShadow:'0 4px 20px rgba(0,0,0,0.3)',
           }}>
-            <p style={{ fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px' }}>{r.name}</p>
+            <p style={{ fontFamily:'var(--font-display)', fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px' }}>{r.name}</p>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 4px' }}>{new Date(r.date).toLocaleDateString('fr-FR',{ day:'2-digit', month:'short', year:'numeric' })}</p>
-            {r.wpkg_np && <p style={{ fontFamily:'DM Mono,monospace', fontSize:12, color:RACE_COLOR, margin:'0 0 3px', fontWeight:700 }}>{r.wpkg_np.toFixed(2)} W/kg NP</p>}
-            {r.watts_np && <p style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'var(--text-mid)', margin:'0 0 3px' }}>{r.watts_np} W NP</p>}
+            {r.wpkg_np && <p style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, color:RACE_COLOR, margin:'0 0 3px', fontWeight:700 }}>{r.wpkg_np.toFixed(2)} W/kg NP</p>}
+            {r.watts_np && <p style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:11, color:'var(--text-mid)', margin:'0 0 3px' }}>{r.watts_np} W NP</p>}
             {r.distance_km && <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 3px' }}>{r.distance_km.toFixed(1)} km</p>}
             {r.elevation_gain_m && <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 3px' }}>D+ {r.elevation_gain_m} m</p>}
             {r.tss && <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>TSS {r.tss.toFixed(0)}</p>}
@@ -644,7 +645,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
       <div style={{
         width:'100%', maxWidth:540, margin:'0 auto',
         maxHeight:'calc(100dvh - 72px)', background:'var(--bg-card)',
-        borderRadius:'20px 20px 0 0', border:`1px solid ${RACE_COLOR}30`,
+        borderRadius:'20px 20px 0 0', border:'1px solid var(--border)',
         display:'flex', flexDirection:'column', overflow:'hidden',
         transform:`translateY(${shown ? '0%' : '100%'})`,
         transition:'transform 300ms ease-out',
@@ -652,10 +653,10 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
         <div style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
           padding:'16px 20px', flexShrink:0,
-          background:`${RACE_COLOR}10`, borderBottom:`1px solid ${RACE_COLOR}25`,
+          background:'var(--bg-card)', borderBottom:'1px solid var(--border)',
         }}>
           <div>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>Importer depuis Strava</h2>
+            <h2 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>Importer depuis Strava</h2>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>
               {racesOnly ? 'Courses uniquement' : 'Toutes les sorties vélo'} — {activities.length} activité{activities.length !== 1 ? 's' : ''}
             </p>
@@ -705,7 +706,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
                 display:'flex', alignItems:'center', gap:12,
               }}>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'var(--text)', margin:'0 0 4px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.title}</p>
+                  <p style={{ fontFamily:'var(--font-display)', fontSize:13, fontWeight:700, color:'var(--text)', margin:'0 0 4px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.title}</p>
                   <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
                     <span style={{ fontSize:11, color:'var(--text-dim)' }}>{dateStr}</span>
                     <span style={{ fontSize:11, color:'var(--text-mid)' }}>{distKm} km</span>
@@ -885,8 +886,8 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
     }} onClick={e => { if (e.target === e.currentTarget) handleClose() }}>
       <div style={{
         width:'100%', maxWidth:560, margin:'0 auto',
-        maxHeight:'94vh', background:'var(--bg-card)',
-        borderRadius:'20px 20px 0 0', border:`1px solid ${RACE_COLOR}30`,
+        maxHeight:'calc(100dvh - 72px)', background:'var(--bg-card)',
+        borderRadius:'20px 20px 0 0', border:'1px solid var(--border)',
         display:'flex', flexDirection:'column', overflow:'hidden',
         transform:`translateY(${shown ? '0%' : '100%'})`,
         transition:'transform 300ms ease-out',
@@ -895,10 +896,10 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
         <div style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
           padding:'14px 20px', flexShrink:0,
-          background:`${RACE_COLOR}10`, borderBottom:`1px solid ${RACE_COLOR}25`,
+          background:'var(--bg-card)', borderBottom:'1px solid var(--border)',
         }}>
           <div>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>
+            <h2 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>
               {activity ? 'Données extraites — vérifiez et confirmez' : 'Upload fichier .gpx / .fit'}
             </h2>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>
@@ -1005,19 +1006,19 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
               {(activity?.distance_km || activity?.elevation_gain_m || activity?.altitude_max_m || activity?.speed_avg_kmh) && (
                 <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:10 }}>
                   {activity?.distance_km && (
-                    <span style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text)' }}>{activity.distance_km.toFixed(1)} km</span>
+                    <span style={{ fontSize:12, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text)' }}>{activity.distance_km.toFixed(1)} km</span>
                   )}
                   {activity?.elevation_gain_m && (
-                    <span style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text)' }}>D+ {activity.elevation_gain_m} m</span>
+                    <span style={{ fontSize:12, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text)' }}>D+ {activity.elevation_gain_m} m</span>
                   )}
                   {activity?.altitude_max_m && (
-                    <span style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>Alt max {activity.altitude_max_m} m</span>
+                    <span style={{ fontSize:12, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-dim)' }}>Alt max {activity.altitude_max_m} m</span>
                   )}
                   {activity?.speed_avg_kmh && (
-                    <span style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>{activity.speed_avg_kmh} km/h moy</span>
+                    <span style={{ fontSize:12, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-dim)' }}>{activity.speed_avg_kmh} km/h moy</span>
                   )}
                   {activity?.calories && (
-                    <span style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text-dim)' }}>{activity.calories} kcal</span>
+                    <span style={{ fontSize:12, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-dim)' }}>{activity.calories} kcal</span>
                   )}
                 </div>
               )}
@@ -1029,7 +1030,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
                   <input type="number" value={wattsNpStr} onChange={e => setWattsNpStr(e.target.value)}
                     placeholder="Ex: 220" style={inpGrey}/>
                   {wpkgNpPreview && (
-                    <p style={{ fontSize:11, color:RACE_COLOR, margin:'3px 0 0', fontFamily:'DM Mono,monospace' }}>{wpkgNpPreview} W/kg</p>
+                    <p style={{ fontSize:11, color:RACE_COLOR, margin:'3px 0 0', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums' }}>{wpkgNpPreview} W/kg</p>
                   )}
                 </div>
                 <div>
@@ -1115,7 +1116,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
             <div style={{ marginTop:10 }}>
               <p style={lbl10}>Notes (optionnel)</p>
               <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observations…"
-                rows={2} style={{ ...inpGrey, resize:'vertical', fontFamily:'DM Sans,sans-serif' }}/>
+                rows={2} style={{ ...inpGrey, resize:'vertical', fontFamily:'var(--font-body)' }}/>
             </div>
           </div>
 
@@ -1123,9 +1124,9 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
           {sd && (
             <div style={{ background:'rgba(139,92,246,0.08)', border:'1px solid rgba(139,92,246,0.25)', borderRadius:12, padding:'12px 14px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                <div style={{ fontFamily:'DM Mono,monospace', fontSize:36, fontWeight:900, color: levelOf(sd.total).color }}>{sd.total.toFixed(0)}</div>
+                <div style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:36, fontWeight:900, color: levelOf(sd.total).color }}>{sd.total.toFixed(0)}</div>
                 <div>
-                  <div style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color: levelOf(sd.total).color }}>{levelOf(sd.total).label}</div>
+                  <div style={{ fontFamily:'var(--font-display)', fontSize:13, fontWeight:700, color: levelOf(sd.total).color }}>{levelOf(sd.total).label}</div>
                   <div style={{ height:5, width:100, borderRadius:3, background:'var(--bg-card)', marginTop:6 }}>
                     <div style={{ height:'100%', width:`${Math.min(100, sd.total)}%`, background: levelOf(sd.total).color, borderRadius:3 }}/>
                   </div>
@@ -1142,9 +1143,9 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
           <button onClick={() => void handleSave()} disabled={!name || saving} style={{
             width:'100%', padding:'14px', borderRadius:12, border:'none',
             cursor: name && !saving ? 'pointer' : 'not-allowed',
-            background: name && !saving ? `linear-gradient(135deg,${RACE_COLOR},${RACE_COLOR}cc)` : 'var(--bg-card2)',
+            background: name && !saving ? 'var(--primary)' : 'var(--bg-card2)',
             color: name && !saving ? '#fff' : 'var(--text-dim)',
-            fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700,
+            fontFamily:'var(--font-display)', fontSize:14, fontWeight:700,
           }}>
             {saving ? 'Enregistrement…' : 'Confirmer et enregistrer'}
           </button>
@@ -1253,25 +1254,30 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
     }} onClick={e => { if (e.target === e.currentTarget) handleClose() }}>
       <div style={{
         width:'100%', maxWidth:540, margin:'0 auto',
-        maxHeight:'94vh', background:'var(--bg-card)',
-        borderRadius:'20px 20px 0 0', border:`1px solid ${RACE_COLOR}30`,
+        maxHeight:'calc(100dvh - 72px)', background:'var(--bg-card)',
+        borderRadius:'20px 20px 0 0', border:'1px solid var(--border)',
         display:'flex', flexDirection:'column', overflow:'hidden',
         transform:`translateY(${shown ? '0%' : '100%'})`,
         transition:'transform 300ms ease-out',
       }}>
+        {/* Poignée de glissement */}
+        <div style={{ display:'flex', justifyContent:'center', padding:'8px 0 2px', flexShrink:0 }}>
+          <div style={{ width:36, height:4, borderRadius:2, background:'var(--border-mid)' }}/>
+        </div>
         {/* ── HEADER */}
         <div style={{
-          padding:'16px 20px', flexShrink:0,
-          background:`${RACE_COLOR}10`, borderBottom:`1px solid ${RACE_COLOR}25`,
+          padding:'8px 20px 16px', flexShrink:0,
+          background:'var(--bg-card)', borderBottom:'1px solid var(--border)',
         }}>
           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10 }}>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, flexWrap:'wrap' }}>
-                <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:800, margin:0, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{race.name}</h2>
+                <h2 style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:600, margin:0, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{race.name}</h2>
                 <span style={{
-                  fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:5,
-                  background:`${RACE_COLOR}20`, border:`1px solid ${RACE_COLOR}40`, color:RACE_COLOR,
-                }}>{RACE_TYPES.find(t => t.value === raceType)?.label ?? raceType}</span>
+                  display:'inline-flex', alignItems:'center', gap:6,
+                  fontSize:10, fontWeight:600, padding:'3px 8px', borderRadius:5,
+                  background:'var(--bg-card2)', color:'var(--text-mid)',
+                }}><span style={{ width:6, height:6, borderRadius:'50%', background:RACE_COLOR }}/>{RACE_TYPES.find(t => t.value === raceType)?.label ?? raceType}</span>
               </div>
               <p style={{ fontSize:12, color:'var(--text-dim)', margin:'0 0 8px' }}>
                 {new Date(race.date).toLocaleDateString('fr-FR',{ weekday:'long', day:'2-digit', month:'long', year:'numeric' })}
@@ -1279,7 +1285,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
               <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
                 {distKm && <span style={{ fontSize:12, color:'var(--text-mid)' }}>{distKm.toFixed(1)} km</span>}
                 {elevGain && <span style={{ fontSize:12, color:'var(--text-mid)' }}>D+ {elevGain} m</span>}
-                {durSec && <span style={{ fontSize:12, fontFamily:'DM Mono,monospace', color:'var(--text-mid)' }}>{secToHMS(durSec)}</span>}
+                {durSec && <span style={{ fontSize:12, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-mid)' }}>{secToHMS(durSec)}</span>}
               </div>
               {race.strava_activity_id && (
                 <a href={`https://www.strava.com/activities/${race.strava_activity_id}`}
@@ -1321,7 +1327,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
               ].map(({ lbl, val }) => (
                 <div key={lbl}>
                   <p style={lbl10}>{lbl}</p>
-                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:15, fontWeight:800, margin:0, color:'var(--text)' }}>{val}</p>
+                  <p style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:15, fontWeight:800, margin:0, color:'var(--text)' }}>{val}</p>
                 </div>
               ))}
             </div>
@@ -1360,9 +1366,9 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
                   <tbody>
                     {Object.entries(race.power_curve).map(([dur, v], i) => (
                       <tr key={dur} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                        <td style={{ padding:'5px 8px', fontFamily:'DM Mono,monospace', color:'var(--text-dim)', fontWeight:600 }}>{dur}'</td>
-                        <td style={{ padding:'5px 8px', fontFamily:'DM Mono,monospace', color:'var(--text)' }}>{v.w} W</td>
-                        <td style={{ padding:'5px 8px', fontFamily:'DM Mono,monospace', color:'#0ea5e9', fontWeight:700 }}>{v.wkg.toFixed(2)}</td>
+                        <td style={{ padding:'5px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-dim)', fontWeight:600 }}>{dur}'</td>
+                        <td style={{ padding:'5px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text)' }}>{v.w} W</td>
+                        <td style={{ padding:'5px 8px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'#0ea5e9', fontWeight:700 }}>{v.wkg.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1385,7 +1391,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
               ].map(({ lbl, val }) => (
                 <div key={lbl}>
                   <p style={lbl10}>{lbl}</p>
-                  <p style={{ fontFamily:'DM Mono,monospace', fontSize:15, fontWeight:800, margin:0, color:'var(--text)' }}>{val}</p>
+                  <p style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:15, fontWeight:800, margin:0, color:'var(--text)' }}>{val}</p>
                 </div>
               ))}
             </div>
@@ -1438,7 +1444,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
             {/* Notes */}
             <div>
               <p style={lbl10}>Notes</p>
-              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observations…" rows={3} style={{ ...inpGrey, resize:'vertical', fontFamily:'DM Sans,sans-serif' }}/>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observations…" rows={3} style={{ ...inpGrey, resize:'vertical', fontFamily:'var(--font-body)' }}/>
             </div>
           </div>
 
@@ -1450,11 +1456,11 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:12 }}>
               <div style={{ textAlign:'center' }}>
-                <div style={{ fontFamily:'DM Mono,monospace', fontSize:48, fontWeight:900, color: lvl.color, lineHeight:1 }}>{sd.total.toFixed(0)}</div>
+                <div style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:48, fontWeight:900, color: lvl.color, lineHeight:1 }}>{sd.total.toFixed(0)}</div>
                 <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>/100</div>
               </div>
               <div>
-                <div style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, color: lvl.color }}>{lvl.label}</div>
+                <div style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:700, color: lvl.color }}>{lvl.label}</div>
                 <div style={{ height:6, width:120, borderRadius:3, background:'var(--bg-card)', marginTop:8 }}>
                   <div style={{ height:'100%', width:`${Math.min(100, sd.total)}%`, background: lvl.color, borderRadius:3, transition:'width 0.4s' }}/>
                 </div>
@@ -1473,7 +1479,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
                   background:'rgba(139,92,246,0.1)', border:'1px solid rgba(139,92,246,0.2)',
                 }}>
                   <span style={{ fontSize:10, color:'var(--text-dim)' }}>{lbl} </span>
-                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700, color:col }}>{val}</span>
+                  <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, fontWeight:700, color:col }}>{val}</span>
                 </div>
               ))}
             </div>
@@ -1487,9 +1493,9 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
           <button onClick={() => void handleSave()} disabled={saving} style={{
             width:'100%', padding:'14px', borderRadius:12, border:'none',
             cursor: saving ? 'not-allowed' : 'pointer',
-            background: saving ? 'var(--bg-card2)' : `linear-gradient(135deg,${RACE_COLOR},${RACE_COLOR}cc)`,
+            background: saving ? 'var(--bg-card2)' : 'var(--primary)',
             color: saving ? 'var(--text-dim)' : '#fff',
-            fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, marginBottom:8,
+            fontFamily:'var(--font-display)', fontSize:14, fontWeight:700, marginBottom:8,
           }}>
             {saving ? 'Enregistrement…' : 'Enregistrer'}
           </button>
@@ -1497,7 +1503,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
             width:'100%', padding:'10px', borderRadius:12,
             border:'1px solid rgba(239,68,68,0.4)', cursor:'pointer',
             background:'rgba(239,68,68,0.08)', color:'#f87171',
-            fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600,
+            fontFamily:'var(--font-body)', fontSize:13, fontWeight:600,
           }}>
             {deleting ? 'Suppression…' : 'Supprimer cette course'}
           </button>
@@ -1561,7 +1567,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
       <div style={{
         width:'100%', maxWidth:540, margin:'0 auto',
         maxHeight:'calc(100dvh - 72px)', background:'var(--bg-card)',
-        borderRadius:'20px 20px 0 0', border:`1px solid ${RACE_COLOR}30`,
+        borderRadius:'20px 20px 0 0', border:'1px solid var(--border)',
         display:'flex', flexDirection:'column', overflow:'hidden',
         transform:`translateY(${shown ? '0%' : '100%'})`,
         transition:'transform 300ms ease-out',
@@ -1570,10 +1576,10 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
         <div style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
           padding:'16px 20px', flexShrink:0,
-          background:`${RACE_COLOR}10`, borderBottom:`1px solid ${RACE_COLOR}25`,
+          background:'var(--bg-card)', borderBottom:'1px solid var(--border)',
         }}>
           <div>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>Classement des courses</h2>
+            <h2 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>Classement des courses</h2>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>Score normalisé /100 — conditions incluses</p>
           </div>
           <button onClick={handleClose} style={{
@@ -1627,11 +1633,11 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
                 <div style={{ display:'grid', gridTemplateColumns:`repeat(${bestBands.length},1fr)`, gap:6 }}>
                   {bestBands.map(({ label, best }) => best && (
                     <div key={label} style={{
-                      background:'var(--bg-card2)', border:`1px solid ${RACE_COLOR}30`,
+                      background:'var(--bg-card2)', border:'1px solid var(--border)',
                       borderRadius:10, padding:'10px 12px', textAlign:'center', cursor:'pointer',
                     }} onClick={() => { onRaceClick(best!); }}>
                       <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:4 }}>{label}</div>
-                      <div style={{ fontFamily:'DM Mono,monospace', fontSize:18, fontWeight:900,
+                      <div style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:18, fontWeight:900,
                                     color:RACE_COLOR }}>{best.wpkg_np!.toFixed(2)}</div>
                       <div style={{ fontSize:9, color:'var(--text-dim)', marginTop:2 }}>W/kg NP</div>
                       <div style={{ fontSize:10, color:'var(--text-mid)', marginTop:3,
@@ -1661,22 +1667,22 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
                     background: rank === 1 ? 'rgba(251,191,36,0.15)' : 'var(--bg-card)',
                     border:`1px solid ${rank === 1 ? 'rgba(251,191,36,0.4)' : 'var(--border)'}`,
                     display:'flex', alignItems:'center', justifyContent:'center',
-                    fontFamily:'DM Mono,monospace', fontSize:12, fontWeight:700,
+                    fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, fontWeight:700,
                     color: rank === 1 ? '#fbbf24' : 'var(--text-dim)',
                   }}>{rank}</div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-                      <span style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.name}</span>
+                      <span style={{ fontFamily:'var(--font-display)', fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.name}</span>
                       {rank === 1 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>⭐ Meilleure perf</span>}
                     </div>
                     <div style={{ display:'flex', gap:8, marginTop:2, flexWrap:'wrap' }}>
                       <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(r.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</span>
-                      {r.wpkg_np && <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:RACE_COLOR }}>{r.wpkg_np.toFixed(2)} W/kg NP</span>}
+                      {r.wpkg_np && <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:11, color:RACE_COLOR }}>{r.wpkg_np.toFixed(2)} W/kg NP</span>}
                       {r.duration_seconds && <span style={{ fontSize:11, color:'var(--text-dim)' }}>{secToHMS(r.duration_seconds)}</span>}
                     </div>
                   </div>
                   <div style={{ textAlign:'right', flexShrink:0, minWidth:70 }}>
-                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:18, fontWeight:800, color:col }}>{sd.total.toFixed(0)}</div>
+                    <div style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:18, fontWeight:800, color:col }}>{sd.total.toFixed(0)}</div>
                     <div style={{ height:4, borderRadius:2, background:'var(--bg-card)', marginTop:4, width:70 }}>
                       <div style={{ height:'100%', width:`${Math.min(100,sd.total)}%`, background:col, borderRadius:2 }}/>
                     </div>
@@ -1695,7 +1701,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
                         <div key={lbl} style={{
                           padding:'4px 8px', borderRadius:5,
                           background:`${RACE_COLOR}12`, border:`1px solid ${RACE_COLOR}25`,
-                          fontFamily:'DM Mono,monospace', fontSize:11,
+                          fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:11,
                         }}>
                           <span style={{ color:'var(--text-dim)' }}>{lbl} </span>
                           <span style={{ color:RACE_COLOR, fontWeight:700 }}>{val}</span>
@@ -1715,10 +1721,10 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
 
           <BaremeAccordion/>
           <Accordion title="Méthode de calcul">
-            <div style={{ background:'var(--bg-card2)', border:`1px solid ${RACE_COLOR}30`, borderRadius:8, padding:'10px 14px', marginBottom:8, fontFamily:'DM Mono,monospace', fontSize:12, color:RACE_COLOR }}>
+            <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 14px', marginBottom:8, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, color:RACE_COLOR }}>
               score_brut = (NP W/kg ÷ Réf. Alien) × 100
             </div>
-            <div style={{ background:'var(--bg-card2)', border:`1px solid ${RACE_COLOR}30`, borderRadius:8, padding:'10px 14px', fontFamily:'DM Mono,monospace', fontSize:12, color:RACE_COLOR }}>
+            <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 14px', fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, color:RACE_COLOR }}>
               score = min(100, score_brut × cTemp × cD+ × cRessenti)
             </div>
             <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'10px 0 0' }}>
@@ -1776,7 +1782,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:8 }}>
         <div>
-          <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0, color:'var(--text)' }}>
+          <h2 style={{ fontFamily:'var(--font-display)', fontSize:14, fontWeight:700, margin:0, color:'var(--text)' }}>
             Courses &amp; Compétitions — NP W/kg par durée
           </h2>
           {loaded && races.length > 0 && (

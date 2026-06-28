@@ -424,17 +424,16 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
           </div>
         </div>
         {editing ? (
+          // Mêmes 8 données que la grille d'affichage (sans Poids ni Âge).
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
             <NInput label="FTP" unit="W" value={p.ftp} onChange={v => setP({ ...p, ftp: v })} />
-            <NInput label="Poids" unit="kg" value={p.weight} onChange={v => setP({ ...p, weight: v })} step={0.5} />
-            <NInput label="Age" value={p.age} onChange={v => setP({ ...p, age: v })} />
+            <TInput label="Allure seuil" value={p.thresholdPace} onChange={v => setP({ ...p, thresholdPace: v })} placeholder="4:08" />
+            <NInput label="VMA" unit="km/h" value={p.vma} onChange={v => setP({ ...p, vma: v })} step={0.5} />
+            <TInput label="CSS" value={p.css} onChange={v => setP({ ...p, css: v })} placeholder="1:28" />
             <NInput label="FC max" unit="bpm" value={p.hrMax} onChange={v => setP({ ...p, hrMax: v })} />
             <NInput label="FC repos" unit="bpm" value={p.hrRest} onChange={v => setP({ ...p, hrRest: v })} />
             <NInput label="LTHR" unit="bpm" value={p.lthr} onChange={v => setP({ ...p, lthr: v })} />
-            <NInput label="VMA" unit="km/h" value={p.vma} onChange={v => setP({ ...p, vma: v })} step={0.5} />
             <NInput label="VO2max" value={p.vo2max} onChange={v => setP({ ...p, vo2max: v })} />
-            <TInput label="Allure seuil" value={p.thresholdPace} onChange={v => setP({ ...p, thresholdPace: v })} placeholder="4:08" />
-            <TInput label="CSS" value={p.css} onChange={v => setP({ ...p, css: v })} placeholder="1:28" />
           </div>
         ) : (
           <ProfilGlobalGrid isMobile={isMobile} metrics={[

@@ -29,11 +29,11 @@ interface AiRule {
 }
 
 const CHAT_FONTS: { id: ChatFontId; label: string; family: string; preview: string }[] = [
-  { id: 'dm_sans', label: 'DM Sans',  family: 'DM Sans, sans-serif',                                        preview: 'Analyse ta semaine et optimise ta charge.' },
+  { id: 'dm_sans', label: 'DM Sans',  family: 'var(--font-body)',                                        preview: 'Analyse ta semaine et optimise ta charge.' },
   { id: 'inter',   label: 'Inter',    family: 'Inter, sans-serif',                                           preview: 'Analyse ta semaine et optimise ta charge.' },
   { id: 'system',  label: 'Système',  family: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',     preview: 'Analyse ta semaine et optimise ta charge.' },
   { id: 'serif',   label: 'Serif',    family: 'Georgia, Times New Roman, serif',                             preview: 'Analyse ta semaine et optimise ta charge.' },
-  { id: 'mono',    label: 'Mono',     family: 'DM Mono, monospace',                                          preview: 'Analyse ta semaine et optimise ta charge.' },
+  { id: 'mono',    label: 'Mono',     family: 'ui-monospace, SFMono-Regular, Menlo, monospace',              preview: 'Analyse ta semaine et optimise ta charge.' },
 ]
 
 const RULE_CATEGORIES = [
@@ -116,9 +116,9 @@ function Card({ children, style }: { children:React.ReactNode; style?:React.CSSP
 }
 function CardTitle({ children, icon }: { children:React.ReactNode; icon?:React.ReactNode }) {
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:18 }}>
-      {icon && <div style={{ width:30, height:30, borderRadius:9, background:'rgba(91,111,255,0.1)', border:'1px solid rgba(91,111,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', color:'#5b6fff', flexShrink:0 }}>{icon}</div>}
-      <p style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, color:'var(--text)', margin:0 }}>{children}</p>
+    <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+      {icon && <span style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-mid)', flexShrink:0 }}>{icon}</span>}
+      <p style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:600, color:'var(--text)', margin:0 }}>{children}</p>
     </div>
   )
 }
@@ -126,10 +126,10 @@ function SectionLabel({ children }: { children:React.ReactNode }) {
   return <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.08em', margin:'0 0 10px' }}>{children}</p>
 }
 function Toggle({ value, onChange }: { value:boolean; onChange:(v:boolean)=>void }) {
-  return <button onClick={()=>onChange(!value)} style={{ width:38, height:21, borderRadius:11, background:value?'#06B6D4':'rgba(120,120,140,0.3)', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}><div style={{ width:15, height:15, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:value?20:3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }}/></button>
+  return <button onClick={()=>onChange(!value)} style={{ width:40, height:23, borderRadius:12, background:value?'var(--primary)':'var(--border-mid)', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}><div style={{ width:17, height:17, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:value?20:3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }}/></button>
 }
 function InfoModal({ title, content, onClose }: { title:string; content:React.ReactNode; onClose:()=>void }) {
-  return <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}><div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:24, maxWidth:420, width:'100%' }}><div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}><h3 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0 }}>{title}</h3><button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button></div><div style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.7 }}>{content}</div></div></div>
+  return <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}><div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:24, maxWidth:420, width:'100%' }}><div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}><h3 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, margin:0 }}>{title}</h3><button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button></div><div style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.7 }}>{content}</div></div></div>
 }
 function HelpBtn({ title, content }: { title:string; content:React.ReactNode }) {
   const [open, setOpen] = useState(false)
@@ -139,7 +139,7 @@ function Toast({ msg, ok }: { msg:string; ok:boolean }) {
   return <div style={{ position:'fixed', top:20, right:20, zIndex:999, padding:'12px 18px', borderRadius:12, background:ok?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.15)', border:`1px solid ${ok?'rgba(34,197,94,0.4)':'rgba(239,68,68,0.4)'}`, color:ok?'#22c55e':'#ef4444', fontSize:13, fontWeight:600, backdropFilter:'blur(8px)' }}>{msg}</div>
 }
 function SaveBtn({ saving, onClick }: { saving:boolean; onClick:()=>void }) {
-  return <button onClick={onClick} disabled={saving} style={{ padding:'7px 16px', borderRadius:10, background:saving?'var(--border)':'linear-gradient(135deg,#06B6D4,#5b6fff)', border:'none', color:'#fff', fontSize:12, cursor:saving?'not-allowed':'pointer', fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>{saving?'Sauvegarde...':'Sauvegarder ✓'}</button>
+  return <button onClick={onClick} disabled={saving} style={{ padding:'8px 16px', borderRadius:10, background:saving?'var(--border)':'var(--primary)', border:'none', color:saving?'var(--text-dim)':'var(--on-primary)', fontSize:12.5, cursor:saving?'not-allowed':'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:6 }}>{saving?'Enregistrement…':'Enregistrer'}</button>
 }
 
 // Bottom-sheet overlay
@@ -150,7 +150,7 @@ function Sheet({ open, onClose, title, subtitle, children }: { open:boolean; onC
       <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:'24px 24px 0 0', border:'1px solid var(--border-mid)', borderBottom:'none', width:'100%', maxWidth:600, maxHeight:'92vh', overflowY:'auto', paddingBottom:40 }}>
         <div style={{ position:'sticky', top:0, background:'var(--bg-card)', borderBottom:'1px solid var(--border)', padding:'16px 20px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', zIndex:10 }}>
           <div>
-            <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:800, margin:0, color:'var(--text)' }}>{title}</p>
+            <p style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:800, margin:0, color:'var(--text)' }}>{title}</p>
             {subtitle && <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>{subtitle}</p>}
           </div>
           <button onClick={onClose} style={{ width:32, height:32, borderRadius:10, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', color:'var(--text-dim)', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
@@ -168,10 +168,10 @@ function NavRow({ label, sub, icon, onClick }: { label:string; sub:string; icon:
       onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='var(--bg-card)'}
       onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='var(--bg-card2)'}
     >
-      <div style={{ width:34, height:34, borderRadius:9, background:'rgba(91,111,255,0.1)', border:'1px solid rgba(91,111,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', color:'#5b6fff', flexShrink:0 }}>{icon}</div>
+      <span style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-mid)', flexShrink:0, width:22 }}>{icon}</span>
       <div style={{ flex:1, minWidth:0 }}>
-        <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', margin:0 }}>{label}</p>
-        <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>{sub}</p>
+        <p style={{ fontSize:13.5, fontWeight:600, color:'var(--text)', margin:0 }}>{label}</p>
+        <p style={{ fontSize:10.5, color:'var(--text-dim)', margin:'2px 0 0' }}>{sub}</p>
       </div>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
     </button>
@@ -394,13 +394,13 @@ function GearBloc() {
 
   const addBtn = (label: string, onClick: () => void) => (
     <button onClick={onClick}
-      style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px dashed var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', transition: 'color 0.14s, border-color 0.14s' }}
+      style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px dashed var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'color 0.14s, border-color 0.14s' }}
       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#06B6D4'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#06B6D4' }}
       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-mid)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-mid)' }}
     >{label}</button>
   )
 
-  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'DM Sans,sans-serif', marginBottom: 10 }
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-body)', marginBottom: 10 }
 
   return (
     <Card>
@@ -438,7 +438,7 @@ function GearBloc() {
       {modal && (
         <div onClick={() => setModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 14, border: '1px solid var(--border-mid)', padding: 24 }}>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: 'var(--text)' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: 'var(--text)' }}>
               {modal === 'bike' ? 'Ajouter un vélo' : 'Ajouter des chaussures'}
             </h3>
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nom *" style={inputStyle} />
@@ -448,8 +448,8 @@ function GearBloc() {
               <input value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} placeholder="Poids (kg)" inputMode="decimal" style={inputStyle} />
             </>}
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              <button onClick={() => setModal(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Annuler</button>
-              <button onClick={() => void submit()} disabled={!form.name.trim() || saving} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: form.name.trim() && !saving ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--border)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: form.name.trim() && !saving ? 'pointer' : 'not-allowed', fontFamily: 'Syne,sans-serif', opacity: saving ? 0.7 : 1 }}>
+              <button onClick={() => setModal(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
+              <button onClick={() => void submit()} disabled={!form.name.trim() || saving} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: form.name.trim() && !saving ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--border)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: form.name.trim() && !saving ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-display)', opacity: saving ? 0.7 : 1 }}>
                 {saving ? '…' : 'Ajouter'}
               </button>
             </div>
@@ -464,8 +464,8 @@ function GearBloc() {
             <p style={{ fontSize: 14, color: 'var(--text)', margin: '0 0 6px', fontWeight: 600 }}>Supprimer « {confirmDel.label} » ?</p>
             <p style={{ fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.5 }}>Cet équipement sera retiré de ton profil.</p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setConfirmDel(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Annuler</button>
-              <button onClick={() => void doDelete()} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Supprimer</button>
+              <button onClick={() => setConfirmDel(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
+              <button onClick={() => void doDelete()} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Supprimer</button>
             </div>
           </div>
         </div>
@@ -566,8 +566,8 @@ function ProfilIdentityBloc() {
             <div key={f.label} style={{ padding:'13px 14px', borderRadius:14, background:'var(--bg-card2)', border:'1px solid var(--border)', textAlign:'center' as const }}>
               <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.09em', color:'var(--text-dim)', margin:'0 0 7px' }}>{f.label}</p>
               {editing && !f.readonly
-                ? <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:800, background:'transparent', border:'none', color:'var(--primary)', outline:'none', width:'100%', textAlign:'center' as const }}/>
-                : <p style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:800, color:'var(--primary)', margin:0 }}>{f.val||'—'}</p>
+                ? <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ fontFamily:'var(--font-display)', fontSize:19, fontWeight:700, background:'transparent', border:'none', color:'var(--text)', outline:'none', width:'100%', textAlign:'center' as const }}/>
+                : <p style={{ fontFamily:'var(--font-display)', fontSize:19, fontWeight:700, color:'var(--text)', margin:0 }}>{f.val||'—'}</p>
               }
               {f.unit && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'3px 0 0' }}>{f.unit}</p>}
             </div>
@@ -809,7 +809,7 @@ function NotificationsBloc() {
       <Card>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div>
-            <p style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, color:'var(--text)', margin:'0 0 3px' }}>Notifications</p>
+            <p style={{ fontFamily:'var(--font-display)', fontSize:14, fontWeight:700, color:'var(--text)', margin:'0 0 3px' }}>Notifications</p>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>Activer ou désactiver toutes les notifications</p>
           </div>
           <Toggle value={globalOn} onChange={toggleGlobal}/>
@@ -825,7 +825,7 @@ function NotificationsBloc() {
               <div style={{ width:28, height:28, borderRadius:8, background:`${sec.color}15`, border:`1px solid ${sec.color}33`, display:'flex', alignItems:'center', justifyContent:'center', color:sec.color, flexShrink:0 }}>
                 <sec.Icon size={14} />
               </div>
-              <p style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'var(--text)', margin:0 }}>{sec.label}</p>
+              <p style={{ fontFamily:'var(--font-display)', fontSize:13, fontWeight:700, color:'var(--text)', margin:0 }}>{sec.label}</p>
             </div>
 
             {/* Items */}
@@ -1387,7 +1387,7 @@ function RuleCreator({ addRule, onClose }: {
       >
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-          <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, color:'var(--text)', margin:0 }}>Nouvelle règle</p>
+          <p style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:700, color:'var(--text)', margin:0 }}>Nouvelle règle</p>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:18, lineHeight:1, padding:'2px 4px' }}>✕</button>
         </div>
 
@@ -1398,7 +1398,7 @@ function RuleCreator({ addRule, onClose }: {
             <select
               value={category}
               onChange={e => setCategory(e.target.value)}
-              style={{ width:'100%', padding:'10px 14px', borderRadius:10, marginBottom:14, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13, fontFamily:'DM Sans,sans-serif', outline:'none' }}
+              style={{ width:'100%', padding:'10px 14px', borderRadius:10, marginBottom:14, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-body)', outline:'none' }}
             >
               {RULE_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
@@ -1410,14 +1410,14 @@ function RuleCreator({ addRule, onClose }: {
               onChange={e => setUserInput(e.target.value)}
               placeholder={currentMeta.placeholder}
               rows={4}
-              style={{ width:'100%', padding:'12px 14px', borderRadius:10, marginBottom:14, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13, outline:'none', resize:'none' as const, fontFamily:'DM Sans,sans-serif', lineHeight:1.6, boxSizing:'border-box' as const }}
+              style={{ width:'100%', padding:'12px 14px', borderRadius:10, marginBottom:14, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13, outline:'none', resize:'none' as const, fontFamily:'var(--font-body)', lineHeight:1.6, boxSizing:'border-box' as const }}
             />
 
             {/* Send to AI */}
             <button
               onClick={() => void callRuleHelper(userInput)}
               disabled={!ready || loading}
-              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:10, background: ready ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--bg-card2)', color: ready ? '#fff' : 'var(--text-dim)', fontWeight:700, fontSize:13, fontFamily:'Syne,sans-serif', cursor: ready && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}
+              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:10, background: ready ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--bg-card2)', color: ready ? '#fff' : 'var(--text-dim)', fontWeight:700, fontSize:13, fontFamily:'var(--font-display)', cursor: ready && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}
             >{loading ? 'L\'IA réfléchit…' : 'Envoyer à l\'IA →'}</button>
 
             {/* Direct save */}
@@ -1457,7 +1457,7 @@ function RuleCreator({ addRule, onClose }: {
             <button
               onClick={() => void handleValidate()}
               disabled={saving}
-              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:8, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', color:'#fff', fontWeight:700, fontSize:13, fontFamily:'Syne,sans-serif', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}
+              style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:8, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', color:'#fff', fontWeight:700, fontSize:13, fontFamily:'var(--font-display)', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}
             >{saving ? 'Enregistrement…' : '✓ Valider cette règle'}</button>
 
             {/* Modify */}
@@ -1469,18 +1469,18 @@ function RuleCreator({ addRule, onClose }: {
                   onChange={e => setModifyText(e.target.value)}
                   placeholder="Décris ta modification..."
                   rows={2}
-                  style={{ width:'100%', padding:'10px 12px', borderRadius:10, marginBottom:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none', resize:'none' as const, fontFamily:'DM Sans,sans-serif', lineHeight:1.5, boxSizing:'border-box' as const }}
+                  style={{ width:'100%', padding:'10px 12px', borderRadius:10, marginBottom:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none', resize:'none' as const, fontFamily:'var(--font-body)', lineHeight:1.5, boxSizing:'border-box' as const }}
                 />
                 <button
                   onClick={() => void callRuleHelper(userInput, aiResult?.rule, modifyText)}
                   disabled={modifyText.trim().length < 3 || loading}
-                  style={{ width:'100%', padding:10, borderRadius:10, border:'1px solid rgba(91,111,255,0.3)', background:'rgba(91,111,255,0.08)', color:'#5b6fff', fontSize:12, fontWeight:600, fontFamily:'DM Sans,sans-serif', cursor: modifyText.trim().length >= 3 && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.6 : 1 }}
+                  style={{ width:'100%', padding:10, borderRadius:10, border:'1px solid rgba(91,111,255,0.3)', background:'rgba(91,111,255,0.08)', color:'#5b6fff', fontSize:12, fontWeight:600, fontFamily:'var(--font-body)', cursor: modifyText.trim().length >= 3 && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.6 : 1 }}
                 >{loading ? 'Reformulation…' : 'Renvoyer →'}</button>
               </div>
             ) : (
               <button
                 onClick={() => setShowModify(true)}
-                style={{ width:'100%', padding:11, borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'DM Sans,sans-serif' }}
+                style={{ width:'100%', padding:11, borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font-body)' }}
               >Modifier</button>
             )}
           </>
@@ -1707,7 +1707,7 @@ function AbonnementContent() {
                 <span style={{ padding: '3px 10px', borderRadius: 20, background: `${meta.color}22`, border: `1px solid ${meta.color}55`, color: meta.color, fontSize: 11, fontWeight: 700 }}>
                   {meta.label}
                 </span>
-                <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 17, fontWeight: 700, margin: '8px 0 2px', color: 'var(--text)' }}>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, margin: '8px 0 2px', color: 'var(--text)' }}>
                   THW Coach {meta.label}
                 </p>
                 {isCancelling ? (
@@ -1792,7 +1792,7 @@ function AbonnementContent() {
                       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
                         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{g.label}</p>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                          <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 16, fontWeight: 700, color: g.color }}>{fmtTokens(g.gauge.used)}</span>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, color: g.color }}>{fmtTokens(g.gauge.used)}</span>
                           <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>/ {fmtTokens(g.gauge.limit)}</span>
                         </div>
                       </div>
@@ -1826,7 +1826,7 @@ function AbonnementContent() {
                       </span>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <p style={{ fontFamily: 'DM Mono,monospace', fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 2px' }}>{fmtAmount(inv.amount, inv.currency)}</p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 2px' }}>{fmtAmount(inv.amount, inv.currency)}</p>
                       {inv.url && (
                         <a href={inv.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#5b6fff', textDecoration: 'none' }}>
                           Voir la facture →
@@ -1916,7 +1916,7 @@ function AbonnementContent() {
             <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
             </div>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 700, textAlign: 'center', margin: '0 0 8px', color: 'var(--text)' }}>Résilier l&apos;abonnement ?</h3>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, textAlign: 'center', margin: '0 0 8px', color: 'var(--text)' }}>Résilier l&apos;abonnement ?</h3>
             <p style={{ fontSize: 12.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 20px' }}>
               Ton accès restera actif jusqu&apos;à la fin de la période en cours. Aucun remboursement ne sera effectué.
             </p>
@@ -2168,13 +2168,6 @@ function IASettingsBloc() {
     }
   }
 
-  // Data connection status (static indicators for now)
-  const DATA_CONNECTIONS = [
-    { label:'Planning', connected:true,  sub:'Séances et calendrier disponibles' },
-    { label:'Nutrition',connected:false, sub:'Aucun repas enregistré aujourd\'hui' },
-    { label:'Récupération',connected:true, sub:'HRV et métriques disponibles' },
-  ]
-
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
 
@@ -2201,23 +2194,23 @@ function IASettingsBloc() {
         <div onClick={()=>setUpgradeOpen(false)} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
           <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:20, border:'1px solid var(--border-mid)', padding:24, maxWidth:560, width:'100%', maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-              <h3 style={{ fontFamily:'Syne,sans-serif', fontSize:17, fontWeight:700, margin:0 }}>Choisir un abonnement</h3>
+              <h3 style={{ fontFamily:'var(--font-display)', fontSize:17, fontWeight:700, margin:0 }}>Choisir un abonnement</h3>
               <button onClick={()=>setUpgradeOpen(false)} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
               {PLANS.map(p=>(
                 <div key={p.id} style={{ padding:'16px', borderRadius:14, background:'var(--bg-card2)', border:`1px solid ${p.color}44` }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-                    <span style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, color:p.color }}>{p.label}</span>
+                    <span style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:700, color:p.color }}>{p.label}</span>
                     <div style={{ textAlign:'right' as const }}>
-                      <p style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:'var(--text)', margin:0 }}>{p.annual}</p>
+                      <p style={{ fontFamily:'var(--font-body)', fontSize:14, fontWeight:700, color:'var(--text)', margin:0 }}>{p.annual}</p>
                       <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>{p.monthly} · <span style={{ color:'#22c55e', fontWeight:600 }}>-{p.save}</span></p>
                     </div>
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:12 }}>
                     {p.features.map((f,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:7 }}><span style={{ color:p.color, fontSize:11 }}>✓</span><span style={{ fontSize:12, color:'var(--text-mid)' }}>{f}</span></div>)}
                   </div>
-                  <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, cursor:'pointer' }}>Choisir {p.label}</button>
+                  <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'var(--font-display)', fontWeight:700, fontSize:13, cursor:'pointer' }}>Choisir {p.label}</button>
                   <p style={{ fontSize:10, color:'var(--text-dim)', textAlign:'center' as const, margin:'6px 0 0' }}>Paiement sécurisé via Stripe</p>
                 </div>
               ))}
@@ -2321,33 +2314,6 @@ function IASettingsBloc() {
       {/* ── Mes règles IA ─────────────────────────────── */}
       <RulesCard />
 
-      {/* ── Connexion aux données ─────────────────────── */}
-      <Card>
-        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>}>Connexion aux données</CardTitle>
-        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 12px', lineHeight:1.55 }}>L'IA accède à ces données pour personnaliser ses réponses.</p>
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {DATA_CONNECTIONS.map((d,idx)=>(
-            <div key={idx} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 13px', borderRadius:12, background:'var(--bg-card2)', border:`1px solid ${d.connected?'rgba(34,197,94,0.18)':'var(--border)'}` }}>
-              <div style={{ width:8, height:8, borderRadius:'50%', background:d.connected?'#22c55e':'rgba(120,120,140,0.4)', flexShrink:0, boxShadow:d.connected?'0 0 6px rgba(34,197,94,0.5)':'none' }}/>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', margin:'0 0 1px' }}>{d.label}</p>
-                <p style={{ fontSize:10, color:d.connected?'var(--text-dim)':'var(--text-dim)', margin:0 }}>{d.sub}</p>
-              </div>
-              <span style={{ fontSize:10, fontWeight:600, color:d.connected?'#22c55e':'#9ca3af', flexShrink:0 }}>
-                {d.connected ? '✓ Connecté' : '✗ Absent'}
-              </span>
-            </div>
-          ))}
-        </div>
-        {DATA_CONNECTIONS.some(d=>!d.connected) && (
-          <div style={{ marginTop:10, padding:'10px 13px', borderRadius:11, background:'rgba(91,111,255,0.07)', border:'1px solid rgba(91,111,255,0.18)' }}>
-            <p style={{ fontSize:11, color:'var(--text-mid)', margin:0, lineHeight:1.55 }}>
-              Des données manquent — complète les sections concernées dans l'app pour améliorer la qualité des réponses.
-            </p>
-          </div>
-        )}
-      </Card>
-
     </div>
   )
 }
@@ -2357,29 +2323,32 @@ function IASettingsBloc() {
 // ══════════════════════════════════════════════════
 
 // ── Ligne « bulle » de la liste (icône + libellé + valeur + chevron) ──
+// Ligne de réglage façon Claude : icône fine monochrome (sans tuile),
+// libellé sobre, séparateur encarté (commence après l'icône).
 function ListRow({ Icon, label, value, danger, last, onClick }: {
   Icon: typeof User; label: string; value?: string; danger?: boolean; last?: boolean; onClick: () => void
 }) {
   return (
     <button onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left' as const,
-      padding: '14px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
-      borderBottom: last ? 'none' : '1px solid var(--border)', transition: 'background 0.14s',
+      padding: '0 16px', background: 'transparent', border: 'none', cursor: 'pointer', transition: 'background 0.14s',
     }}
       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--bg-card2)'}
       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
     >
-      <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: danger ? 'rgba(239,68,68,0.1)' : 'var(--primary-dim)', color: danger ? '#ef4444' : 'var(--primary)' }}>
-        <Icon size={17} />
-      </div>
-      <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 500, color: danger ? '#ef4444' : 'var(--text)' }}>{label}</span>
-      {value && <span style={{ fontSize: 12.5, color: 'var(--text-dim)', flexShrink: 0 }}>{value}</span>}
-      {!danger && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>}
+      <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: danger ? '#ef4444' : 'var(--text-mid)' }}>
+        <Icon size={19} strokeWidth={1.8} />
+      </span>
+      <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '13px 0', borderBottom: last ? 'none' : '1px solid var(--border)' }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 500, color: danger ? '#ef4444' : 'var(--text)' }}>{label}</span>
+        {value && <span style={{ fontSize: 13, color: 'var(--text-dim)', flexShrink: 0 }}>{value}</span>}
+        {!danger && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>}
+      </span>
     </button>
   )
 }
 
-function ProfileContent() {
+export function ProfileContent() {
   const router = useRouter()
   const { data: profile } = useProfile()
   const [active, setActive] = useState<string | null>(null)

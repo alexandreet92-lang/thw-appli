@@ -54,6 +54,15 @@ const SUBS: Record<Exclude<Mode, 'main'>, Sub[]> = {
 // ── Sub-item component ─────────────────────────────────────────
 
 function SubItem({ href, label, Icon, active }: Sub & { active: boolean }) {
+  // « Mon Profil » s'ouvre en sur-page (par-dessus la page courante), pas en route.
+  if (href === '/profile') {
+    return (
+      <button onClick={() => window.dispatchEvent(new Event('thw:open-profile'))} style={{ ...BTN, background: 'none', border: 'none', cursor: 'pointer' }}>
+        <Icon size={20} color={active ? ACCENT : DIM} />
+        <span style={lbl(active)}>{label}</span>
+      </button>
+    )
+  }
   return (
     <Link href={href} style={{ ...BTN, textDecoration: 'none' }}>
       <Icon size={20} color={active ? ACCENT : DIM} />

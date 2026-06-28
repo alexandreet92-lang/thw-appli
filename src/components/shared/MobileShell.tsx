@@ -4,7 +4,6 @@
 // shuriken IA). Gestes au doigt (drag + snap) pilotés en refs (transform, 60 fps).
 // MOBILE UNIQUEMENT — le desktop n'est pas concerné (rendu via layout, branche md:hidden).
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useProfile } from '@/hooks/useProfile'
@@ -13,6 +12,7 @@ import { PageTransition } from '@/components/ui/PageTransition'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
+import { ProfileSheet } from '@/components/profile/ProfileSheet'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
@@ -26,6 +26,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
   const unreadNotifs = useUnreadNotifCount(notifOpen)
   useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
@@ -44,6 +45,14 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     window.addEventListener('thw:open-coach', open)
     return () => window.removeEventListener('thw:open-coach', open)
   }, [])
+  // « Mon Profil » ouvert en sur-page (par-dessus la page courante).
+  useEffect(() => {
+    const open = () => { setOpen(false); setProfileOpen(true) }
+    window.addEventListener('thw:open-profile', open)
+    return () => window.removeEventListener('thw:open-profile', open)
+  }, [])
+  // On replie la sur-page profil à chaque navigation.
+  useEffect(() => { setProfileOpen(false) }, [pathname])
   useEffect(() => {
     document.body.classList.toggle('drawer-open', open)
     return () => document.body.classList.remove('drawer-open')
@@ -106,9 +115,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const hybridHeader = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 14px', flexShrink: 0 }}>
       <span style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>Hybrid</span>
-      <Link href="/profile" onClick={() => setOpen(false)} style={{ display: 'flex', textDecoration: 'none' }}>
+      <button onClick={() => { setOpen(false); setProfileOpen(true) }} aria-label="Mon profil" style={{ display: 'flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
         <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={38} />
-      </Link>
+      </button>
     </div>
   )
 
@@ -174,6 +183,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />
       <NotificationsOverlay open={notifOpen} onClose={() => setNotifOpen(false)} />
+      <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
     </div>
   )
 }

@@ -335,106 +335,114 @@ const CHART_DISTS: Record<string, string[]> = {
   rowing: ['500m', '2000m', '5000m'],
 }
 
+// ── Couleur d'une jauge selon le temps réalisé (barème par distance) ──
+// Seuils descendants : 1re tranche où temps ≥ seuil. Plus rapide que tout →
+// var(--text) (noir en jour / blanc en nuit). Tokens sanctionnés :
+// gris=zone-1 · vert=zone-2 · bleu=sport-bike · jaune=zone-3 · rouge=zone-5 · violet=zone-6
+const RUN_GAUGE_SCALE: Record<string, [number, string][]> = {
+  '5km':      [[1800, 'var(--zone-1)'], [1500, 'var(--zone-2)'], [1200, 'var(--sport-bike)'], [1080, 'var(--zone-3)'], [900, 'var(--zone-5)']],
+  '10km':     [[3600, 'var(--zone-1)'], [3000, 'var(--zone-2)'], [2700, 'var(--sport-bike)'], [2400, 'var(--zone-3)'], [2100, 'var(--zone-5)'], [1800, 'var(--zone-6)']],
+  'Semi':     [[7200, 'var(--zone-1)'], [6300, 'var(--zone-2)'], [5400, 'var(--sport-bike)'], [4800, 'var(--zone-3)'], [4200, 'var(--zone-5)'], [3600, 'var(--zone-6)']],
+  'Marathon': [[14400, 'var(--zone-1)'], [12600, 'var(--zone-2)'], [11700, 'var(--sport-bike)'], [10800, 'var(--zone-3)'], [9000, 'var(--zone-5)'], [8100, 'var(--zone-6)']],
+}
+function gaugeTimeColor(dist: string, sec: number): string {
+  const scale = RUN_GAUGE_SCALE[dist]
+  if (!scale || sec <= 0) return 'var(--text)'
+  for (const [t, c] of scale) if (sec >= t) return c
+  return 'var(--text)' // plus rapide que le meilleur palier
+}
+
 
 // ── TimeBarChart ─────────────────────────────────────────────────
 // Taller bar = slower = worse. Supabase data only.
-function TimeBarChart({ records, chartDists, color }: {
+// Chaque jauge = une performance (un jour). Couleur = temps réalisé (barème
+// par distance). Tri par année / meilleur→moins bon / chronologique. Mobile :
+// 5 jauges visibles, défilement latéral pour les autres. Clic → détail du jour.
+function TimeBarChart({ records, chartDists, onBarClick }: {
   records: SpRecord[]
   chartDists: string[]
-  color: string
+  onBarClick: (r: SpRecord) => void
 }) {
   const [selDist, setSelDist] = useState(chartDists[0] ?? '')
-  const [hovIdx, setHovIdx]   = useState<number | null>(null)
+  const [sortMode, setSortMode] = useState<'chrono' | 'best'>('chrono')
+  const [yearFilter, setYearFilter] = useState<string>('all')
+
+  const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 
   const distRecs = records.filter(r => r.distance_label === selDist && r.performance !== '—')
+  const years = Array.from(new Set(distRecs.map(r => r.achieved_at.slice(0, 4)))).sort((a, b) => b.localeCompare(a))
+  const filtered = yearFilter === 'all' ? distRecs : distRecs.filter(r => r.achieved_at.slice(0, 4) === yearFilter)
+  const shown = [...filtered].sort((a, b) =>
+    sortMode === 'best' ? toSec(a.performance) - toSec(b.performance) : a.achieved_at.localeCompare(b.achieved_at))
+  const secsList = shown.map(r => toSec(r.performance))
+  const topSec = (secsList.length ? Math.max(...secsList) : 60) * 1.12
+  const bestSec = secsList.length ? Math.min(...secsList) : 0
+  const BAR_H = 104
 
-  const byYear: Record<string, { perf: string; date: string }> = {}
-  for (const rec of distRecs) {
-    const yr = rec.achieved_at.slice(0, 4)
-    if (!byYear[yr] || toSec(rec.performance) < toSec(byYear[yr].perf)) {
-      byYear[yr] = { perf: rec.performance, date: rec.achieved_at }
-    }
-  }
-  const sortedYears = Object.keys(byYear).sort((a, b) => b.localeCompare(a))
-
-  const W = 360, H = 160, padL = 48, padR = 16, padT = 20, padB = 36
-  const plotW = W - padL - padR
-  const plotH = H - padT - padB
-
-  function fmtSec(s: number): string {
-    if (s >= 3600) {
-      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sc = s % 60
-      return `${h}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`
-    }
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2,'0')}`
-  }
+  const distTabBtn = (active: boolean): React.CSSProperties => ({
+    padding: '4px 11px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 11.5,
+    fontWeight: active ? 600 : 500,
+    border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+    background: active ? 'var(--primary-dim)' : 'transparent',
+    color: active ? 'var(--primary)' : 'var(--text-dim)',
+  })
+  const sortBtn = (active: boolean): React.CSSProperties => ({
+    padding: '5px 12px', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 11.5,
+    fontWeight: active ? 600 : 500, borderRadius: 999,
+    background: active ? 'var(--bg-card)' : 'transparent', color: active ? 'var(--text)' : 'var(--text-dim)',
+  })
 
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+      {/* Distances */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
         {chartDists.map(d => (
-          <button key={d} onClick={() => setSelDist(d)} style={{
-            padding: '4px 10px', borderRadius: 6,
-            background: selDist === d ? `${color}22` : 'var(--bg-card2)',
-            border: `1px solid ${selDist === d ? color : 'var(--border)'}`,
-            color: selDist === d ? color : 'var(--text-dim)',
-            fontSize: 11, fontWeight: selDist === d ? 600 : 400, cursor: 'pointer',
-          }}>{d}</button>
+          <button key={d} onClick={() => { setSelDist(d); setYearFilter('all') }} style={distTabBtn(selDist === d)}>{d}</button>
         ))}
       </div>
-      {sortedYears.length === 0 ? (
-        <p style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', padding: '12px 0' }}>
-          Ajoute un record {selDist} pour voir l'évolution annuelle.
+
+      {/* Tri : année + chronologique / meilleur */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+        <select value={yearFilter} onChange={e => setYearFilter(e.target.value)}
+          style={{ padding: '6px 10px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 11.5, outline: 'none', cursor: 'pointer' }}>
+          <option value="all">Toutes années</option>
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <div style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+          <button onClick={() => setSortMode('chrono')} style={sortBtn(sortMode === 'chrono')}>Chronologique</button>
+          <button onClick={() => setSortMode('best')} style={sortBtn(sortMode === 'best')}>Meilleur</button>
+        </div>
+      </div>
+
+      {/* Strip de jauges — 5 visibles en mobile, défilement latéral */}
+      {shown.length === 0 ? (
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', padding: '16px 0', fontFamily: 'var(--font-body)' }}>
+          Ajoute un temps {selDist} pour le voir ici.
         </p>
-      ) : (() => {
-        const maxSec = Math.max(...sortedYears.map(y => toSec(byYear[y].perf)))
-        const minSec = Math.min(...sortedYears.map(y => toSec(byYear[y].perf)))
-        const range   = maxSec - minSec || maxSec * 0.1 || 60
-        const topSec  = maxSec + range * 0.2
-        const barW    = Math.min(40, plotW / sortedYears.length * 0.65)
-        const gap     = plotW / sortedYears.length
-        const bh  = (s: number) => (s / topSec) * plotH
-        const bx  = (i: number) => padL + gap * i + gap / 2 - barW / 2
-        const by  = (s: number) => padT + plotH - bh(s)
-        return (
-          <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
-            {[0, 0.5, 1].map(f => {
-              const y = padT + plotH * (1 - f)
-              return (
-                <g key={f}>
-                  <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--border)" strokeWidth={0.5} strokeDasharray="3,3" />
-                  <text x={padL - 4} y={y + 4} textAnchor="end" fontSize={8} fill="var(--text-dim)">{fmtSec(Math.round(topSec * f))}</text>
-                </g>
-              )
-            })}
-            {sortedYears.map((yr, i) => {
-              const secs  = toSec(byYear[yr].perf)
-              const x     = bx(i), y = by(secs), h = bh(secs)
-              const col   = getPCColor(yr, sortedYears)
-              const isHov = hovIdx === i
-              const isBest = secs === minSec
-              return (
-                <g key={yr} onMouseEnter={() => setHovIdx(i)} onMouseLeave={() => setHovIdx(null)}>
-                  <rect x={x} y={y} width={barW} height={h}
-                    fill={col} fillOpacity={isHov ? 0.95 : 0.6} stroke={col}
-                    strokeWidth={isBest ? 2 : 1} rx={3}
-                    style={{ transformBox: 'fill-box', transformOrigin: 'bottom', animation: 'chartBarEnter 0.9s cubic-bezier(0.25,1,0.5,1) both' }} />
-                  {isBest && <text x={x + barW / 2} y={y - 6} textAnchor="middle" fontSize={7} fill={col} fontWeight="bold">★</text>}
-                  {(isHov || isBest) && (
-                    <text x={x + barW / 2} y={y - (isBest ? 15 : 6)} textAnchor="middle" fontSize={8} fill={col} fontWeight="600">
-                      {byYear[yr].perf}
-                    </text>
-                  )}
-                  <text x={x + barW / 2} y={H - padB + 14} textAnchor="middle" fontSize={9}
-                    fill={isHov ? col : 'var(--text-dim)'}>{yr}</text>
-                </g>
-              )
-            })}
-            <line x1={padL} y1={padT + plotH} x2={W - padR} y2={padT + plotH} stroke="var(--border)" strokeWidth={0.5} />
-            <line x1={padL} y1={padT} x2={padL} y2={padT + plotH} stroke="var(--border)" strokeWidth={0.5} />
-          </svg>
-        )
-      })()}
+      ) : (
+        <div className="rec-gauge-strip" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6 }}>
+          {shown.map(r => {
+            const sec = toSec(r.performance)
+            const col = gaugeTimeColor(selDist, sec)
+            const hPct = Math.max(8, (sec / topSec) * 100)
+            const isBest = sec === bestSec
+            return (
+              <button key={r.id} onClick={() => onBarClick(r)}
+                style={{ flex: '0 0 64px', width: 64, border: 'none', background: 'transparent', cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 0 }}>
+                <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{r.performance}</span>
+                <div style={{ height: BAR_H, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                  <div style={{ width: 14, height: `${hPct}%`, background: col, borderRadius: 7,
+                    boxShadow: isBest ? `0 0 0 2px var(--bg-card), 0 0 0 3px ${col}` : 'none',
+                    animation: 'chartBarEnter 0.9s cubic-bezier(0.25,1,0.5,1) both', transformBox: 'fill-box', transformOrigin: 'bottom' }} />
+                </div>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 9.5, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{fmtDay(r.achieved_at)}</span>
+                {isBest && <span style={{ fontSize: 8, fontWeight: 700, color: col }}>★ PR</span>}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -2845,7 +2853,7 @@ function RecordsSubTab({ onSelect, selectedDatum, profile, onNavigateToTests }: 
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
               <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0 }}>Records running</h2>
             </div>
-            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'run')} chartDists={CHART_DISTS.run} color="#22c55e" />
+            <TimeBarChart records={allSpRecords.filter(r => r.sport === 'run')} chartDists={CHART_DISTS.run} onBarClick={r => openDrawer('run', r.distance_label, r.id, r.performance)} />
             {RUN_DISTS.map(d => {
               const spBest  = getSpBest('run', d, recordYear)
               const prevRec = getSpPrev('run', d)

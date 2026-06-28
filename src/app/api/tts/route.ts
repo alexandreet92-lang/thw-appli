@@ -59,9 +59,14 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ error: 'TTS serveur non configuré' }), { status: 503 })
     }
 
-    const body = await req.json() as { text?: string; style?: string; language?: string }
+    const body = await req.json() as { text?: string; style?: string; language?: string; speed?: number }
     const text = (body.text ?? '').trim()
     if (!text) return new Response(JSON.stringify({ error: 'Texte vide' }), { status: 400 })
+
+    // Vitesse de lecture (0.25–4.0 côté OpenAI). On borne raisonnablement.
+    const speed = typeof body.speed === 'number' && isFinite(body.speed)
+      ? Math.max(0.7, Math.min(1.4, body.speed))
+      : 1.0
 
     // Borne de sécurité (coût/latence)
     const input = text.length > 4000 ? text.slice(0, 4000) : text
@@ -86,13 +91,14 @@ export async function POST(req: Request) {
       voice,
       instructions: `${instructions} Parle en ${langLabel}.`,
       response_format: 'mp3',
+      speed,
     })
 
     // 2) Repli sur tts-1 si le compte n'a pas accès au modèle premium.
     if (!res.ok) {
       const detail = await res.text().catch(() => '')
       console.error('[api/tts] gpt-4o-mini-tts error', res.status, detail.slice(0, 200))
-      res = await callOpenAI({ model: 'tts-1', input, voice, response_format: 'mp3' })
+      res = await callOpenAI({ model: 'tts-1', input, voice, response_format: 'mp3', speed })
     }
 
     if (!res.ok) {

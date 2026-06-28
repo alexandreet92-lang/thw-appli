@@ -125,6 +125,31 @@ function CardTitle({ children, icon }: { children:React.ReactNode; icon?:React.R
 function SectionLabel({ children }: { children:React.ReactNode }) {
   return <p style={{ fontSize:10, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.08em', margin:'0 0 10px' }}>{children}</p>
 }
+
+// ── Primitives « façon Claude » pour le contenu des bulles ───────────
+// Un seul niveau de carte (pas de carte-dans-carte), posée sur le fond de la
+// sur-page, avec séparateurs fins entre les lignes.
+function Section({ label, children, style }: { label?:string; children:React.ReactNode; style?:React.CSSProperties }) {
+  return (
+    <div style={{ marginBottom:22, ...style }}>
+      {label && <p style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.08em', margin:'0 0 8px 4px' }}>{label}</p>}
+      {children}
+    </div>
+  )
+}
+function Group({ children, style }: { children:React.ReactNode; style?:React.CSSProperties }) {
+  return <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, overflow:'hidden', ...style }}>{children}</div>
+}
+// Ligne dans une Group. `first` retire le séparateur du haut.
+function Line({ first, onClick, align='center', children }: { first?:boolean; onClick?:()=>void; align?:'center'|'flex-start'; children:React.ReactNode }) {
+  const base: React.CSSProperties = { display:'flex', alignItems:align, gap:12, padding:'13px 16px', borderTop:first?'none':'1px solid var(--border)', width:'100%', boxSizing:'border-box', textAlign:'left' as const }
+  if (onClick) return <button onClick={onClick} style={{ ...base, background:'transparent', cursor:'pointer' }}>{children}</button>
+  return <div style={base}>{children}</div>
+}
+// Intro descriptive sous le titre d'une bulle.
+function Intro({ children }: { children:React.ReactNode }) {
+  return <p style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.6, margin:'0 0 18px 2px' }}>{children}</p>
+}
 function Toggle({ value, onChange }: { value:boolean; onChange:(v:boolean)=>void }) {
   return <button onClick={()=>onChange(!value)} style={{ width:40, height:23, borderRadius:12, background:value?'var(--primary)':'var(--border-mid)', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}><div style={{ width:17, height:17, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:value?20:3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }}/></button>
 }
@@ -161,19 +186,16 @@ function Sheet({ open, onClose, title, subtitle, children }: { open:boolean; onC
   )
 }
 
-// Nav row (clickable list item with chevron)
-function NavRow({ label, sub, icon, onClick }: { label:string; sub:string; icon:React.ReactNode; onClick:()=>void }) {
+// Nav row (clickable list item with chevron) — pensé pour vivre dans une Group.
+function NavRow({ label, sub, icon, onClick, first }: { label:string; sub:string; icon:React.ReactNode; onClick:()=>void; first?:boolean }) {
   return (
-    <button onClick={onClick} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', textAlign:'left' as const, width:'100%', transition:'background 0.14s' }}
-      onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='var(--bg-card)'}
-      onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='var(--bg-card2)'}
-    >
-      <span style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-mid)', flexShrink:0, width:22 }}>{icon}</span>
+    <button onClick={onClick} style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 16px', borderTop:first?'none':'1px solid var(--border)', background:'transparent', cursor:'pointer', textAlign:'left' as const, width:'100%', boxSizing:'border-box' as const }}>
+      <span style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-mid)', flexShrink:0 }}>{icon}</span>
       <div style={{ flex:1, minWidth:0 }}>
-        <p style={{ fontSize:13.5, fontWeight:600, color:'var(--text)', margin:0 }}>{label}</p>
-        <p style={{ fontSize:10.5, color:'var(--text-dim)', margin:'2px 0 0' }}>{sub}</p>
+        <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:0 }}>{label}</p>
+        <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:'2px 0 0' }}>{sub}</p>
       </div>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
     </button>
   )
 }
@@ -377,62 +399,58 @@ function GearBloc() {
     await load()
   }
 
-  const gearCard = (icon: React.ReactNode, title: string, sub: string, onDel: () => void) => (
-    <div style={{ position: 'relative', background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 10, padding: '14px 16px', marginBottom: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, paddingRight: 28 }}>
-        <span style={{ color: 'var(--text-mid)', display: 'flex', flexShrink: 0 }}>{icon}</span>
-        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</span>
+  const gearRow = (icon: React.ReactNode, title: string, sub: string, onDel: () => void, first: boolean) => (
+    <Line first={first} align="flex-start">
+      <span style={{ color: 'var(--text-mid)', display: 'flex', flexShrink: 0, marginTop: 1 }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', margin: 0 }}>{title}</p>
+        <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '3px 0 0' }}>{sub}</p>
       </div>
-      <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '6px 0 0', paddingLeft: 27 }}>{sub}</p>
-      <button onClick={onDel} aria-label="Supprimer" title="Supprimer"
-        style={{ position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-      >✕</button>
-    </div>
+      <button onClick={onDel} aria-label="Supprimer" style={{ width: 24, height: 24, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0, fontSize: 14 }}>✕</button>
+    </Line>
   )
 
   const addBtn = (label: string, onClick: () => void) => (
     <button onClick={onClick}
-      style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px dashed var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'color 0.14s, border-color 0.14s' }}
-      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#06B6D4'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#06B6D4' }}
-      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-mid)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-mid)' }}
+      style={{ marginTop: 10, width: '100%', padding: '12px', borderRadius: 12, border: '1px dashed var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
     >{label}</button>
   )
 
   const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font-body)', marginBottom: 10 }
 
   return (
-    <Card>
-      <CardTitle icon={<Package size={15} />}>Matériel</CardTitle>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <Intro>Tes vélos et chaussures, avec leurs statistiques d’usage.</Intro>
 
-      {/* Vélos */}
-      <SectionLabel>Vélos</SectionLabel>
-      <div style={{ marginBottom: 8 }}>
-        {bikes.length === 0 && <p style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', margin: '0 0 10px' }}>Aucun vélo enregistré.</p>}
-        {bikes.map(b => gearCard(
-          <Bike size={16} />,
-          `${b.name}${b.weight_kg ? `  ·  ${String(b.weight_kg).replace('.', ',')} kg` : ''}`,
-          statsLine(b.stats ?? ZERO_STATS),
-          () => setConfirmDel({ type: 'bike', id: b.id, label: b.name }),
-        ))}
-      </div>
-      {addBtn('+ Ajouter un vélo', () => openAdd('bike'))}
+      <Section label="Vélos">
+        <Group>
+          {bikes.length === 0
+            ? <Line first><span style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>Aucun vélo enregistré.</span></Line>
+            : bikes.map((b, i) => gearRow(
+                <Bike size={18} />,
+                `${b.name}${b.weight_kg ? `  ·  ${String(b.weight_kg).replace('.', ',')} kg` : ''}`,
+                statsLine(b.stats ?? ZERO_STATS),
+                () => setConfirmDel({ type: 'bike', id: b.id, label: b.name }),
+                i === 0,
+              ))}
+        </Group>
+        {addBtn('+ Ajouter un vélo', () => openAdd('bike'))}
+      </Section>
 
-      {/* Chaussures */}
-      <div style={{ marginTop: 18 }}>
-        <SectionLabel>Chaussures running</SectionLabel>
-        <div style={{ marginBottom: 8 }}>
-          {shoes.length === 0 && <p style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', margin: '0 0 10px' }}>Aucune paire enregistrée.</p>}
-          {shoes.map(s => gearCard(
-            <Footprints size={16} />,
-            `${s.name}${s.brand ? `  ·  ${s.brand}` : ''}`,
-            statsLine(s.stats ?? ZERO_STATS),
-            () => setConfirmDel({ type: 'shoes', id: s.id, label: s.name }),
-          ))}
-        </div>
+      <Section label="Chaussures running">
+        <Group>
+          {shoes.length === 0
+            ? <Line first><span style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>Aucune paire enregistrée.</span></Line>
+            : shoes.map((s, i) => gearRow(
+                <Footprints size={18} />,
+                `${s.name}${s.brand ? `  ·  ${s.brand}` : ''}`,
+                statsLine(s.stats ?? ZERO_STATS),
+                () => setConfirmDel({ type: 'shoes', id: s.id, label: s.name }),
+                i === 0,
+              ))}
+        </Group>
         {addBtn('+ Ajouter des chaussures', () => openAdd('shoes'))}
-      </div>
+      </Section>
 
       {/* Modal d'ajout */}
       {modal && (
@@ -449,7 +467,7 @@ function GearBloc() {
             </>}
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
               <button onClick={() => setModal(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
-              <button onClick={() => void submit()} disabled={!form.name.trim() || saving} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: form.name.trim() && !saving ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--border)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: form.name.trim() && !saving ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-display)', opacity: saving ? 0.7 : 1 }}>
+              <button onClick={() => void submit()} disabled={!form.name.trim() || saving} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: form.name.trim() && !saving ? 'var(--primary)' : 'var(--border)', color: form.name.trim() && !saving ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 13, fontWeight: 600, cursor: form.name.trim() && !saving ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-body)', opacity: saving ? 0.7 : 1 }}>
                 {saving ? '…' : 'Ajouter'}
               </button>
             </div>
@@ -470,7 +488,7 @@ function GearBloc() {
           </div>
         </div>
       )}
-    </Card>
+    </div>
   )
 }
 
@@ -515,76 +533,76 @@ function ProfilIdentityBloc() {
   const imc = profileData.height_cm && profileData.weight_kg
     ? (parseFloat(profileData.weight_kg)/((parseFloat(profileData.height_cm)/100)**2)).toFixed(1) : '—'
 
+  const STATS: { label:string; val:string; key:string; unit:string; ph:string; readonly?:boolean }[] = [
+    { label:'Taille',         val:profileData.height_cm,      key:'height_cm',      unit:'cm', ph:'178' },
+    { label:'Poids',          val:profileData.weight_kg,      key:'weight_kg',      unit:'kg', ph:'72' },
+    { label:'Poids du vélo',  val:profileData.bike_weight_kg, key:'bike_weight_kg', unit:'kg', ph:'8' },
+    { label:'IMC',            val:imc,                        key:'',               unit:'',   ph:'', readonly:true },
+  ]
+
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
       {toast && <Toast msg={toast.msg} ok={toast.ok}/>}
 
       {/* ── Identité ──────────────────────────────────── */}
-      <Card>
-        <div style={{ display:'flex', alignItems:'flex-start', gap:16, marginBottom:22 }}>
-          {/* Avatar */}
-          <div onClick={()=>fileRef.current?.click()} style={{ width:76, height:76, borderRadius:22, background:'var(--bg-card2)', border:'2px dashed var(--border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, overflow:'hidden', flexDirection:'column' as const, position:'relative' }}>
-            {photo
-              ? <img src={photo} alt="profil" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-              : <><div style={{ fontSize:24 }}>📷</div><p style={{ fontSize:8, color:'var(--text-dim)', margin:'3px 0 0' }}>Photo</p></>
-            }
-            {uploading && (
-              <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <div style={{ width:20, height:20, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'#fff', animation:'spin 0.7s linear infinite' }}/>
-              </div>
-            )}
-            <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto}/>
-          </div>
-
-          {/* Name / email */}
-          <div style={{ flex:1, minWidth:0 }}>
-            {editing
-              ? <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder="Nom / Prénom" style={{ fontFamily:'var(--font-display)', fontSize:18, fontWeight:800, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:10, padding:'6px 10px', color:'var(--text)', outline:'none', width:'100%', marginBottom:7 }}/>
-              : <p style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:800, margin:'0 0 4px', letterSpacing:'-0.02em', color:'var(--text)' }}>{profileData.full_name||'—'}</p>
-            }
-            <p style={{ fontSize:12, color:'var(--text-dim)', margin:0 }}>{profileData.email||'—'}</p>
-          </div>
-
-          {/* Edit/Save */}
-          {editing
-            ? <SaveBtn saving={savingProfile} onClick={handleSave}/>
-            : <button onClick={()=>setEditing(true)} style={{ padding:'7px 16px', borderRadius:10, background:'var(--primary)', border:'none', color:'var(--on-primary)', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:6 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Modifier
-              </button>
-          }
-        </div>
-
-        {/* Stats */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginBottom:20 }}>
-          {[
-            { label:'Taille',     val:profileData.height_cm,      key:'height_cm',      unit:'cm', ph:'178' },
-            { label:'Poids',      val:profileData.weight_kg,      key:'weight_kg',      unit:'kg', ph:'72' },
-            { label:'Vélo (kg)',  val:profileData.bike_weight_kg, key:'bike_weight_kg', unit:'kg', ph:'8' },
-            { label:'IMC',        val:imc, key:'', unit:'', ph:'', readonly:true },
-          ].map(f=>(
-            <div key={f.label} style={{ padding:'13px 14px', borderRadius:14, background:'var(--bg-card2)', border:'1px solid var(--border)', textAlign:'center' as const }}>
-              <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.09em', color:'var(--text-dim)', margin:'0 0 7px' }}>{f.label}</p>
-              {editing && !f.readonly
-                ? <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ fontFamily:'var(--font-display)', fontSize:19, fontWeight:700, background:'transparent', border:'none', color:'var(--text)', outline:'none', width:'100%', textAlign:'center' as const }}/>
-                : <p style={{ fontFamily:'var(--font-display)', fontSize:19, fontWeight:700, color:'var(--text)', margin:0 }}>{f.val||'—'}</p>
+      <Section>
+        <Group>
+          <div style={{ display:'flex', alignItems:'center', gap:14, padding:'16px' }}>
+            <div onClick={()=>fileRef.current?.click()} style={{ width:60, height:60, borderRadius:'50%', background:'var(--bg-card2)', border:'1px dashed var(--border-mid)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, overflow:'hidden', position:'relative' }}>
+              {photo
+                ? <img src={photo} alt="profil" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                : <span style={{ fontSize:20 }}>📷</span>
               }
-              {f.unit && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'3px 0 0' }}>{f.unit}</p>}
+              {uploading && (
+                <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <div style={{ width:18, height:18, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'#fff', animation:'spin 0.7s linear infinite' }}/>
+                </div>
+              )}
+              <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto}/>
             </div>
-          ))}
-        </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              {editing
+                ? <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder="Nom / Prénom" style={{ fontFamily:'var(--font-display)', fontSize:17, fontWeight:700, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:9, padding:'6px 10px', color:'var(--text)', outline:'none', width:'100%', marginBottom:6, boxSizing:'border-box' as const }}/>
+                : <p style={{ fontFamily:'var(--font-display)', fontSize:19, fontWeight:700, margin:'0 0 3px', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profileData.full_name||'—'}</p>
+              }
+              <p style={{ fontSize:12.5, color:'var(--text-dim)', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profileData.email||'—'}</p>
+            </div>
+            {editing
+              ? <SaveBtn saving={savingProfile} onClick={handleSave}/>
+              : <button onClick={()=>setEditing(true)} style={{ padding:'8px 14px', borderRadius:10, background:'var(--primary-dim)', border:'1px solid var(--primary)', color:'var(--primary)', fontSize:12.5, fontWeight:600, cursor:'pointer', flexShrink:0 }}>Modifier</button>
+            }
+          </div>
+        </Group>
+      </Section>
 
-        {/* Bio */}
-        <SectionLabel>Bio</SectionLabel>
-        <textarea
-          value={profileData.bio}
-          onChange={e=>setProfileData(p=>({...p,bio:e.target.value}))}
-          disabled={!editing}
-          placeholder="Décris ton profil, tes objectifs, ta pratique..."
-          rows={3}
-          style={{ width:'100%', padding:'11px 13px', borderRadius:12, border:'1px solid var(--border)', background:editing?'var(--input-bg)':'var(--bg-card2)', color:'var(--text)', fontSize:12.5, outline:'none', resize:'none' as const, fontFamily:'var(--font-body)', lineHeight:1.65, opacity:editing?1:0.75, boxSizing:'border-box' as const }}
-        />
-      </Card>
+      {/* ── Mensurations ─────────────────────────────── */}
+      <Section label="Mensurations">
+        <Group>
+          {STATS.map((f, i) => (
+            <Line key={f.label} first={i===0}>
+              <span style={{ flex:1, fontSize:15, color:'var(--text)' }}>{f.label}</span>
+              {editing && !f.readonly
+                ? <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ width:90, fontFamily:'var(--font-display)', fontSize:15, fontWeight:600, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:8, padding:'5px 9px', color:'var(--text)', outline:'none', textAlign:'right' as const }}/>
+                : <span style={{ fontSize:15, fontWeight:600, color:'var(--text)', fontVariantNumeric:'tabular-nums' }}>{f.val ? `${f.val}${f.unit?` ${f.unit}`:''}` : '—'}</span>
+              }
+            </Line>
+          ))}
+        </Group>
+      </Section>
+
+      {/* ── Bio ──────────────────────────────────────── */}
+      <Section label="Bio">
+        <Group>
+          <textarea
+            value={profileData.bio}
+            onChange={e=>setProfileData(p=>({...p,bio:e.target.value}))}
+            disabled={!editing}
+            placeholder="Décris ton profil, tes objectifs, ta pratique…"
+            rows={3}
+            style={{ width:'100%', padding:'14px 16px', border:'none', background:'transparent', color:'var(--text)', fontSize:14, outline:'none', resize:'none' as const, fontFamily:'var(--font-body)', lineHeight:1.6, opacity:editing?1:0.85, boxSizing:'border-box' as const, display:'block' }}
+          />
+        </Group>
+      </Section>
     </div>
   )
 }
@@ -600,34 +618,41 @@ function SportsBloc() {
 
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
-      <Card>
-        <CardTitle icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>}>Sports pratiqués</CardTitle>
+      <Intro>Tes disciplines et depuis quand tu les pratiques.</Intro>
 
-        {sports.length === 0 && (
-          <p style={{ fontSize:12, color:'var(--text-dim)', fontStyle:'italic', margin:'0 0 14px', textAlign:'center' as const }}>Aucun sport — ajoute tes disciplines</p>
-        )}
-
-        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:14 }}>
-          {sports.map(s=>(
-            <div key={s.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <div style={{ width:10, height:10, borderRadius:'50%', background:SPORT_COLOR[s.sport]||'var(--text-dim)', flexShrink:0, boxShadow:`0 0 6px ${SPORT_COLOR[s.sport]||'#888'}66` }}/>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:13, fontWeight:600, margin:0 }}>{SPORT_LABEL[s.sport]||s.sport}</p>
-                {s.since_date && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'1px 0 0' }}>Depuis {sinceDate(s.since_date)}</p>}
+      <Section label="Mes sports">
+        <Group>
+          {sports.length === 0 && (
+            <Line first><span style={{ fontSize:13.5, color:'var(--text-dim)' }}>Aucun sport — ajoute tes disciplines ci-dessous.</span></Line>
+          )}
+          {sports.map((s,i)=>(
+            <Line key={s.id} first={i===0}>
+              <span style={{ width:9, height:9, borderRadius:'50%', background:SPORT_COLOR[s.sport]||'var(--text-dim)', flexShrink:0 }}/>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:0 }}>{SPORT_LABEL[s.sport]||s.sport}</p>
+                {s.since_date && <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>Depuis {sinceDate(s.since_date)}</p>}
               </div>
-              <button onClick={()=>removeSport(s.id)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:14, opacity:0.7, padding:'2px 6px' }}>✕</button>
-            </div>
+              <button onClick={()=>removeSport(s.id)} aria-label="Retirer" style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:15, padding:'2px 6px', flexShrink:0 }}>✕</button>
+            </Line>
           ))}
-        </div>
+        </Group>
+      </Section>
 
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap' as const }}>
-          <select value={newSport} onChange={e=>setNewSport(e.target.value)} style={{ flex:1, minWidth:110, padding:'9px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none' }}>
-            {Object.entries(SPORT_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-          </select>
-          <input type="date" value={newSince} onChange={e=>setNewSince(e.target.value)} style={{ padding:'9px 12px', borderRadius:10, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none' }}/>
-          <button onClick={()=>{ if(newSport) addSport(newSport, newSince) }} style={{ padding:'9px 16px', borderRadius:10, background:'var(--primary)', border:'none', color:'var(--on-primary)', fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' as const }}>+ Ajouter</button>
-        </div>
-      </Card>
+      <Section label="Ajouter un sport">
+        <Group>
+          <Line first>
+            <span style={{ flex:1, fontSize:15, color:'var(--text)' }}>Discipline</span>
+            <select value={newSport} onChange={e=>setNewSport(e.target.value)} style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13.5, outline:'none' }}>
+              {Object.entries(SPORT_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+          </Line>
+          <Line>
+            <span style={{ flex:1, fontSize:15, color:'var(--text)' }}>Depuis</span>
+            <input type="date" value={newSince} onChange={e=>setNewSince(e.target.value)} style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13.5, outline:'none' }}/>
+          </Line>
+        </Group>
+        <button onClick={()=>{ if(newSport) addSport(newSport, newSince) }} style={{ marginTop:12, width:'100%', padding:'12px', borderRadius:12, background:'var(--primary)', border:'none', color:'var(--on-primary)', fontSize:14, fontWeight:600, cursor:'pointer' }}>Ajouter ce sport</button>
+      </Section>
     </div>
   )
 }
@@ -658,32 +683,29 @@ function ConnexionsBloc() {
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
       {toast && <Toast msg={toast.msg} ok={toast.ok}/>}
-      <Card>
-        <CardTitle icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>}>Connexions</CardTitle>
+      <Intro>Relie tes apps et montres connectées pour importer tes activités automatiquement.</Intro>
 
-        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
-          {availableConns.map(c=>(
-            <div key={c.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <div style={{ flexShrink:0 }}><AppLogo id={c.id} size={28}/></div>
-              <div style={{ flex:1 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-                  <p style={{ fontSize:13, fontWeight:600, margin:0 }}>{c.label}</p>
-                  <span style={{ fontSize:9, padding:'1px 7px', borderRadius:20, background:c.connected?'rgba(34,197,94,0.1)':'rgba(120,120,140,0.1)', color:c.connected?'#22c55e':'#9ca3af', fontWeight:600 }}>
-                    {c.loading?'...' : c.connected?'Connecté':'Non connecté'}
-                  </span>
-                </div>
-                {c.connected && c.lastSync && <p style={{ fontSize:10, color:'var(--text-dim)', margin:'2px 0 0' }}>Dernière sync : {c.lastSync}</p>}
+      <Section label="Applications">
+        <Group>
+          {availableConns.map((c,i)=>(
+            <Line key={c.id} first={i===0}>
+              <span style={{ flexShrink:0, display:'flex' }}><AppLogo id={c.id} size={28}/></span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:0 }}>{c.label}</p>
+                <p style={{ fontSize:11, color:c.connected?'#22c55e':'var(--text-dim)', margin:'2px 0 0' }}>
+                  {c.loading?'…' : c.connected?(c.lastSync?`Connecté · sync ${c.lastSync}`:'Connecté'):'Non connecté'}
+                </p>
               </div>
-              <div style={{ display:'flex', gap:5, flexShrink:0 }}>
-                {c.connected && <button onClick={()=>sync(c)} disabled={c.loading} style={{ padding:'5px 10px', borderRadius:8, background:'var(--primary-dim)', border:'1px solid var(--primary-dim)', color:'var(--primary)', fontSize:11, fontWeight:600, cursor:'pointer' }}>↻</button>}
-                <button onClick={()=>c.connected?disconnect(c):connect(c)} disabled={c.loading} style={{ padding:'5px 12px', borderRadius:8, background:c.connected?'rgba(239,68,68,0.07)':'var(--primary-dim)', border:`1px solid ${c.connected?'rgba(239,68,68,0.2)':'var(--primary-dim)'}`, color:c.connected?'#ef4444':'var(--primary)', fontSize:11, fontWeight:600, cursor:'pointer', opacity:c.loading?0.5:1 }}>
-                  {c.loading?'...' : c.connected?'Déconnecter':'Connecter'}
+              <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+                {c.connected && <button onClick={()=>sync(c)} disabled={c.loading} style={{ padding:'6px 10px', borderRadius:8, background:'var(--primary-dim)', border:'1px solid var(--primary)', color:'var(--primary)', fontSize:12, fontWeight:600, cursor:'pointer' }}>↻</button>}
+                <button onClick={()=>c.connected?disconnect(c):connect(c)} disabled={c.loading} style={{ padding:'6px 12px', borderRadius:8, background:'transparent', border:`1px solid ${c.connected?'rgba(239,68,68,0.4)':'var(--primary)'}`, color:c.connected?'#ef4444':'var(--primary)', fontSize:12, fontWeight:600, cursor:'pointer', opacity:c.loading?0.5:1 }}>
+                  {c.loading?'…' : c.connected?'Déconnecter':'Connecter'}
                 </button>
               </div>
-            </div>
+            </Line>
           ))}
-        </div>
-      </Card>
+        </Group>
+      </Section>
     </div>
   )
 }
@@ -806,41 +828,34 @@ function NotificationsBloc() {
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
       {/* Toggle global */}
-      <Card>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div>
-            <p style={{ fontFamily:'var(--font-display)', fontSize:14, fontWeight:700, color:'var(--text)', margin:'0 0 3px' }}>Notifications</p>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>Activer ou désactiver toutes les notifications</p>
-          </div>
-          <Toggle value={globalOn} onChange={toggleGlobal}/>
-        </div>
-      </Card>
-
-      {/* Sections */}
-      <div className="profile-notif-grid" style={{ opacity:globalOn?1:0.4, pointerEvents:globalOn?'auto':'none', transition:'opacity 0.2s' }}>
-        {NOTIF_CATEGORIES.map(sec=>(
-          <Card key={sec.id}>
-            {/* Section header */}
-            <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:14 }}>
-              <div style={{ width:28, height:28, borderRadius:8, background:`${sec.color}15`, border:`1px solid ${sec.color}33`, display:'flex', alignItems:'center', justifyContent:'center', color:sec.color, flexShrink:0 }}>
-                <sec.Icon size={14} />
-              </div>
-              <p style={{ fontFamily:'var(--font-display)', fontSize:13, fontWeight:700, color:'var(--text)', margin:0 }}>{sec.label}</p>
+      <Section>
+        <Group>
+          <Line first>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:0 }}>Toutes les notifications</p>
+              <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:'2px 0 0' }}>Activer ou couper l’ensemble des alertes</p>
             </div>
+            <Toggle value={globalOn} onChange={toggleGlobal}/>
+          </Line>
+        </Group>
+      </Section>
 
-            {/* Items */}
-            <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+      {/* Sections par catégorie */}
+      <div style={{ opacity:globalOn?1:0.4, pointerEvents:globalOn?'auto':'none', transition:'opacity 0.2s' }}>
+        {NOTIF_CATEGORIES.map(sec=>(
+          <Section key={sec.id} label={sec.label}>
+            <Group>
               {sec.items.map((item, idx)=>(
-                <div key={item.key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'11px 0', borderTop:idx>0?'1px solid var(--border)':'none' }}>
-                  <div style={{ flex:1, paddingRight:12 }}>
-                    <p style={{ fontSize:13, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{item.label}</p>
-                    <p style={{ fontSize:10, color:'var(--text-dim)', margin:0, lineHeight:1.5 }}>{item.sub}</p>
+                <Line key={item.key} first={idx===0}>
+                  <div style={{ flex:1, minWidth:0, paddingRight:4 }}>
+                    <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{item.label}</p>
+                    <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:0, lineHeight:1.5 }}>{item.sub}</p>
                   </div>
                   <Toggle value={prefs[item.key] ?? NOTIF_DEFAULTS[item.key]} onChange={()=>toggleItem(item.key)}/>
-                </div>
+                </Line>
               ))}
-            </div>
-          </Card>
+            </Group>
+          </Section>
         ))}
       </div>
     </div>
@@ -891,38 +906,31 @@ function ApparenceBloc() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Card>
-        <CardTitle icon={<Palette size={15} />}>Apparence</CardTitle>
-        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 14px', lineHeight: 1.6 }}>
-          Choisis l’apparence de l’application. En mode Système, le fond s’adapte au lever et au coucher du soleil à ta position.
-        </p>
+      <Intro>Choisis l’apparence de l’application. En mode Système, le fond s’adapte au lever et au coucher du soleil à ta position.</Intro>
+      <Section label="Thème">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {OPTIONS.map(o => {
             const active = pref === o.id
             return (
               <button key={o.id} onClick={() => choose(o.id)} style={{
                 display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left' as const,
-                padding: '13px 15px', borderRadius: 14, cursor: 'pointer', transition: 'all 0.15s',
-                border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
-                background: active ? 'var(--primary-dim)' : 'var(--bg-card2)',
+                padding: '14px 16px', borderRadius: 14, cursor: 'pointer', transition: 'all 0.15s',
+                border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                background: active ? 'var(--primary-dim)' : 'var(--bg-card)',
               }}>
-                <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: active ? 'var(--primary)' : 'var(--bg-elev)', color: active ? 'var(--on-primary)' : 'var(--text-mid)' }}>
-                  <o.Icon size={17} />
-                </div>
+                <o.Icon size={19} strokeWidth={1.8} style={{ flexShrink: 0, color: active ? 'var(--primary)' : 'var(--text-mid)' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13.5, fontWeight: 600, color: active ? 'var(--primary)' : 'var(--text)', margin: 0 }}>{o.label}</p>
-                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0' }}>{o.sub}</p>
+                  <p style={{ fontSize: 15, fontWeight: 500, color: active ? 'var(--primary)' : 'var(--text)', margin: 0 }}>{o.label}</p>
+                  <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{o.sub}</p>
                 </div>
                 {active && (
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--on-primary)" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-                  </div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.6" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5"/></svg>
                 )}
               </button>
             )
           })}
         </div>
-      </Card>
+      </Section>
     </div>
   )
 }
@@ -932,11 +940,10 @@ function LangueBloc() {
   const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Card>
-        <CardTitle icon={<Globe size={15} />}>{t('profile.langTitle')}</CardTitle>
-        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>{t('profile.langDesc')}</p>
+      <Intro>{t('profile.langDesc')}</Intro>
+      <Section label={t('profile.langTitle')}>
         <LanguageSelector size="md" />
-      </Card>
+      </Section>
     </div>
   )
 }
@@ -1008,44 +1015,37 @@ function LocalisationBloc() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Card>
-        <CardTitle icon={<MapPin size={15} />}>Localisation</CardTitle>
-        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 14px', lineHeight: 1.6 }}>
-          THW Coach utilise ta position pour ajuster le thème jour / nuit à la minute exacte et contextualiser tes parcours. Choisis comment tu veux la partager.
-        </p>
+      <Intro>THW Coach utilise ta position pour ajuster le thème jour / nuit à la minute exacte et contextualiser tes parcours. Choisis comment tu veux la partager.</Intro>
+      <Section label="Autorisation">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {OPTIONS.map(o => {
             const active = pref === o.id
             return (
               <button key={o.id} onClick={() => void choose(o.id)} disabled={busy} style={{
                 display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left' as const,
-                padding: '13px 15px', borderRadius: 14, cursor: busy ? 'wait' : 'pointer', transition: 'all 0.15s',
-                border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
-                background: active ? 'var(--primary-dim)' : 'var(--bg-card2)', opacity: busy ? 0.7 : 1,
+                padding: '14px 16px', borderRadius: 14, cursor: busy ? 'wait' : 'pointer', transition: 'all 0.15s',
+                border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                background: active ? 'var(--primary-dim)' : 'var(--bg-card)', opacity: busy ? 0.7 : 1,
               }}>
-                <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: active ? 'var(--primary)' : 'var(--bg-elev)', color: active ? 'var(--on-primary)' : 'var(--text-mid)' }}>
-                  <o.Icon size={17} />
-                </div>
+                <o.Icon size={19} strokeWidth={1.8} style={{ flexShrink: 0, color: active ? 'var(--primary)' : 'var(--text-mid)' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13.5, fontWeight: 600, color: active ? 'var(--primary)' : 'var(--text)', margin: 0 }}>{o.label}</p>
-                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '2px 0 0', lineHeight: 1.45 }}>{o.sub}</p>
+                  <p style={{ fontSize: 15, fontWeight: 500, color: active ? 'var(--primary)' : 'var(--text)', margin: 0 }}>{o.label}</p>
+                  <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0', lineHeight: 1.45 }}>{o.sub}</p>
                 </div>
                 {active && (
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--on-primary)" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-                  </div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.6" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5"/></svg>
                 )}
               </button>
             )
           })}
         </div>
         {pref !== 'off' && (
-          <button onClick={() => void choose('off')} style={{ marginTop: 12, width: '100%', padding: '11px', borderRadius: 12, border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={() => void choose('off')} style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 12, border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
             Désactiver la localisation
           </button>
         )}
-        {msg && <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '12px 0 0', lineHeight: 1.5 }}>{msg}</p>}
-      </Card>
+        {msg && <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '12px 2px 0', lineHeight: 1.5 }}>{msg}</p>}
+      </Section>
     </div>
   )
 }
@@ -1058,42 +1058,48 @@ function ConfidentialiteBloc() {
   ]
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Card>
-        <CardTitle icon={<Shield size={15} />}>Confidentialité</CardTitle>
-        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 14px', lineHeight: 1.6 }}>
-          Tes données t’appartiennent. Consulte nos politiques, exporte ou supprime tes données à tout moment.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {PRIVACY_LINKS.map(l => (
-            <a key={l.label} href={l.href} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', textDecoration: 'none' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{l.label}</p>
-                <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0' }}>{l.sub}</p>
-              </div>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      <Intro>Tes données t’appartiennent. Consulte nos politiques, exporte ou supprime tes données à tout moment.</Intro>
+
+      <Section label="Documents">
+        <Group>
+          {PRIVACY_LINKS.map((l, i) => (
+            <a key={l.label} href={l.href} style={{ textDecoration: 'none', display: 'block' }}>
+              <Line first={i===0}>
+                <Shield size={19} strokeWidth={1.8} style={{ flexShrink: 0, color: 'var(--text-mid)' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', margin: 0 }}>{l.label}</p>
+                  <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{l.sub}</p>
+                </div>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+              </Line>
             </a>
           ))}
-        </div>
-      </Card>
-      <Card>
-        <SectionLabel>Mes données</SectionLabel>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <a href="/api/export/data" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', textDecoration: 'none', color: 'var(--text)' }}>
-            <BarChart3 size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Exporter mes données</p>
-              <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0' }}>Télécharge une copie de tes données</p>
-            </div>
+        </Group>
+      </Section>
+
+      <Section label="Mes données">
+        <Group>
+          <a href="/api/export/data" style={{ textDecoration: 'none', display: 'block', color: 'var(--text)' }}>
+            <Line first>
+              <BarChart3 size={19} strokeWidth={1.8} style={{ flexShrink: 0, color: 'var(--text-mid)' }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>Exporter mes données</p>
+                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>Télécharge une copie de tes données</p>
+              </div>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+            </Line>
           </a>
-          <a href="mailto:contact@thehybridway.app?subject=Suppression%20de%20compte" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', textDecoration: 'none', color: '#ef4444' }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Supprimer mon compte</p>
-              <p style={{ fontSize: 10, color: 'rgba(239,68,68,0.7)', margin: '2px 0 0' }}>Suppression définitive de toutes tes données</p>
-            </div>
+          <a href="mailto:contact@thehybridway.app?subject=Suppression%20de%20compte" style={{ textDecoration: 'none', display: 'block', color: '#ef4444' }}>
+            <Line>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>Supprimer mon compte</p>
+                <p style={{ fontSize: 11.5, color: 'rgba(239,68,68,0.7)', margin: '2px 0 0' }}>Suppression définitive de toutes tes données</p>
+              </div>
+            </Line>
           </a>
-        </div>
-      </Card>
+        </Group>
+      </Section>
     </div>
   )
 }
@@ -1148,33 +1154,28 @@ function AutorisationsBloc() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Card>
-        <CardTitle icon={<Lock size={15} />}>Autorisations</CardTitle>
-        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 14px', lineHeight: 1.6 }}>
-          Les accès accordés à THW Coach sur cet appareil. Tu peux les modifier à tout moment dans les réglages de ton navigateur ou système.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {rows.map(r => {
+      <Intro>Les accès accordés à THW Coach sur cet appareil. Tu peux les modifier à tout moment dans les réglages de ton navigateur ou système.</Intro>
+      <Section label="Accès">
+        <Group>
+          {rows.map((r, i) => {
             const meta = STATE_META[r.state]
             return (
-              <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                <div style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elev)', color: 'var(--text-mid)' }}>
-                  <r.Icon size={16} />
-                </div>
+              <Line key={r.label} first={i===0}>
+                <r.Icon size={19} strokeWidth={1.8} style={{ flexShrink: 0, color: 'var(--text-mid)' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{r.label}</p>
-                  <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '2px 0 0' }}>{r.sub}</p>
+                  <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', margin: 0 }}>{r.label}</p>
+                  <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{r.sub}</p>
                 </div>
                 {r.ask ? (
-                  <button onClick={r.ask} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--primary)', background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Autoriser</button>
+                  <button onClick={r.ask} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--primary)', background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Autoriser</button>
                 ) : (
-                  <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, color: meta.color }}>{meta.label}</span>
+                  <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: meta.color }}>{meta.label}</span>
                 )}
-              </div>
+              </Line>
             )
           })}
-        </div>
-      </Card>
+        </Group>
+      </Section>
     </div>
   )
 }
@@ -1199,42 +1200,39 @@ function UtilisationBloc() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Card>
-        <CardTitle icon={<BarChart3 size={15} />}>Utilisation des tokens</CardTitle>
-        <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>
-          Suis ta consommation IA. Chaque échange avec ton coach consomme des tokens selon le modèle utilisé.
-        </p>
-        {loading ? (
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0', margin: 0 }}>Chargement…</p>
-        ) : gauges.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0', margin: 0 }}>Aucune donnée d’utilisation disponible.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <Intro>Suis ta consommation IA. Chaque échange avec ton coach consomme des tokens selon le modèle utilisé.</Intro>
+      {loading ? (
+        <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0', margin: 0 }}>Chargement…</p>
+      ) : gauges.length === 0 ? (
+        <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0', margin: 0 }}>Aucune donnée d’utilisation disponible.</p>
+      ) : (
+        <Section label="Limites">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {gauges.map(g => {
               const pct = Math.min(100, Math.round((g.gauge.used / g.gauge.limit) * 100))
               const remaining = g.gauge.limit - g.gauge.used
               return (
-                <div key={g.label} style={{ padding: '14px 16px', borderRadius: 13, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{g.label}</p>
+                <div key={g.label} style={{ padding: '16px', borderRadius: 16, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{g.label}</p>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                      <span style={{ fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums', fontSize: 16, fontWeight: 700, color: g.color }}>{fmtTokens(g.gauge.used)}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>/ {fmtTokens(g.gauge.limit)}</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 16, fontWeight: 700, color: g.color }}>{fmtTokens(g.gauge.used)}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>/ {fmtTokens(g.gauge.limit)}</span>
                     </div>
                   </div>
-                  <div style={{ height: 8, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', marginBottom: 8 }}>
+                  <div style={{ height: 8, borderRadius: 999, background: 'var(--bg-card2)', overflow: 'hidden', marginBottom: 8 }}>
                     <div style={{ height: '100%', width: `${pct}%`, background: 'var(--primary)', borderRadius: 999, transition: 'width 0.4s' }}/>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{pct}% utilisé</span>
-                    <span style={{ fontSize: 10, color: 'var(--text-mid)', fontWeight: 600 }}>{fmtTokens(remaining)} restant{remaining > 1 ? 's' : ''}</span>
+                    <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{pct}% utilisé</span>
+                    <span style={{ fontSize: 11.5, color: 'var(--text-mid)', fontWeight: 600 }}>{fmtTokens(remaining)} restant{remaining > 1 ? 's' : ''}</span>
                   </div>
                 </div>
               )
             })}
           </div>
-        )}
-      </Card>
+        </Section>
+      )}
     </div>
   )
 }
@@ -2220,48 +2218,45 @@ function IASettingsBloc() {
       )}
 
       {/* ── Nav : Modèles + Abonnement ────────────────── */}
-      <Card>
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          <NavRow label="Modèles" sub="Hermès · Athéna · Zeus — crédits et usages"
-            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.75"/></svg>}
+      <Section label="Coaching IA">
+        <Group>
+          <NavRow first label="Modèles" sub="Hermès · Athéna · Zeus — crédits et usages"
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.75"/></svg>}
             onClick={()=>setModelsPageOpen(true)}
           />
           <NavRow label="Abonnement" sub="Plan actuel · crédits et facturation"
-            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4M14 15h2"/></svg>}
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4M14 15h2"/></svg>}
             onClick={()=>setSubPageOpen(true)}
           />
           <NavRow label="Mes compétences"
             sub={`${activeComp ?? 0} active${(activeComp ?? 0) > 1 ? 's' : ''} sur 70`}
-            icon={<Target size={14} />}
+            icon={<Target size={18} />}
             onClick={()=>router.push('/competences')}
           />
-        </div>
-      </Card>
+        </Group>
+      </Section>
 
       {/* ── Comportement ──────────────────────────────── */}
-      <Card>
-        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>}>Comportement</CardTitle>
-
-        <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+      <Section label="Comportement">
+        <Group>
           {[
             { label:'Mode économie de crédits', sub:"L'IA sélectionne automatiquement le modèle le plus adapté pour économiser des crédits", val:creditSaving, onChange:(v:boolean)=>{ setCreditSaving(v); save('thw_ai_credit_saving',String(v)) } },
             { label:'Autoriser les suggestions', sub:"THW Coach peut proposer des actions ou analyses proactives en dehors du chat", val:allowSuggestions, onChange:(v:boolean)=>{ setAllowSuggestions(v); save('thw_ai_allow_suggestions',String(v)) } },
             { label:'Recherche web par défaut', sub:"Active la recherche web au démarrage de chaque conversation", val:webSearchDefault, onChange:(v:boolean)=>{ void handleWebSearchToggle(v) } },
           ].map((item, idx)=>(
-            <div key={item.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'13px 0', borderTop:idx>0?'1px solid var(--border)':'none' }}>
-              <div style={{ flex:1, paddingRight:14 }}>
-                <p style={{ fontSize:13, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{item.label}</p>
-                <p style={{ fontSize:10, color:'var(--text-dim)', margin:0, lineHeight:1.5 }}>{item.sub}</p>
+            <Line key={item.label} first={idx===0}>
+              <div style={{ flex:1, minWidth:0, paddingRight:4 }}>
+                <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{item.label}</p>
+                <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:0, lineHeight:1.5 }}>{item.sub}</p>
               </div>
               <Toggle value={item.val} onChange={item.onChange}/>
-            </div>
+            </Line>
           ))}
-        </div>
-      </Card>
+        </Group>
+      </Section>
 
       {/* ── Modèle par défaut ─────────────────────────── */}
-      <Card>
-        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.6"/></svg>}>Modèle par défaut</CardTitle>
+      <Section label="Modèle par défaut">
         <div style={{ display:'flex', gap:8 }}>
           {([['hermes','Hermès','#d4a017'],['athena','Athéna','#5b6fff'],['zeus','Zeus','#8b5cf6']] as const).map(([id,label,color])=>{
             const active = defaultModel===id
@@ -2276,12 +2271,11 @@ function IASettingsBloc() {
             )
           })}
         </div>
-      </Card>
+      </Section>
 
       {/* ── Police du chat ────────────────────────────── */}
-      <Card>
-        <CardTitle icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>}>Police du chat</CardTitle>
-        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 12px', lineHeight:1.5 }}>
+      <Section label="Police du chat">
+        <p style={{ fontSize:12.5, color:'var(--text-mid)', margin:'-2px 2px 12px', lineHeight:1.5 }}>
           Change la police de lecture des réponses du Coach IA.
         </p>
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -2292,24 +2286,22 @@ function IASettingsBloc() {
                 style={{
                   display:'flex', alignItems:'center', justifyContent:'space-between',
                   padding:'12px 16px', borderRadius:12,
-                  border:`1.5px solid ${active ? 'rgba(91,111,255,0.5)' : 'var(--border)'}`,
-                  background: active ? 'rgba(91,111,255,0.06)' : 'transparent',
+                  border:`1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                  background: active ? 'var(--primary-dim)' : 'var(--bg-card)',
                   cursor:'pointer', transition:'all 0.15s', width:'100%', textAlign:'left' as const,
                 }}>
                 <div>
-                  <p style={{ fontFamily:f.family, fontSize:14, fontWeight:500, color: active ? '#5b6fff' : 'var(--text)', margin:'0 0 2px' }}>{f.label}</p>
+                  <p style={{ fontFamily:f.family, fontSize:14.5, fontWeight:500, color: active ? 'var(--primary)' : 'var(--text)', margin:'0 0 2px' }}>{f.label}</p>
                   <p style={{ fontFamily:f.family, fontSize:12, color:'var(--text-dim)', margin:0 }}>{f.preview}</p>
                 </div>
                 {active && (
-                  <div style={{ width:20, height:20, borderRadius:'50%', background:'#5b6fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-                  </div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.6" strokeLinecap="round" style={{ flexShrink:0 }}><path d="M20 6L9 17l-5-5"/></svg>
                 )}
               </button>
             )
           })}
         </div>
-      </Card>
+      </Section>
 
       {/* ── Mes règles IA ─────────────────────────────── */}
       <RulesCard />

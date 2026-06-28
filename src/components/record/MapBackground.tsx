@@ -93,10 +93,11 @@ function LayerSelector({ layer, onChange }: {
             onClick={() => onChange(it.id)}
             style={{
               width: 42, height: 42,
-              borderRadius: '50%', border: 'none', cursor: 'pointer',
-              background: active ? '#ffffff' : 'rgba(0,0,0,0.50)',
-              color: active ? '#0A0A0A' : '#ffffff',
-              backdropFilter: 'blur(8px)',
+              borderRadius: '50%', cursor: 'pointer',
+              // Repos : blanc le jour / noir la nuit (token --bg). Actif : accent.
+              background: active ? 'var(--primary)' : 'var(--bg)',
+              color: active ? 'var(--on-primary)' : 'var(--text)',
+              border: active ? 'none' : '1px solid var(--border)',
               fontFamily: 'DM Sans, sans-serif',
               fontSize: 11, fontWeight: 700, letterSpacing: '0.04em',
               boxShadow: '0 2px 8px rgba(0,0,0,0.25)',

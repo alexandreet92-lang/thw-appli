@@ -98,6 +98,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     return <div className="md:hidden" style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg)' }}>{children}</div>
   }
   const hideHeader = pathname?.startsWith('/competences')
+  // Page « lancer une activité » : carte plein écran (pas de gap haut), pas de
+  // bouton IA ni notifications — seulement le hamburger. Boutons flottants
+  // pleins (blanc le jour / noir la nuit) via les tokens --bg / --text.
+  const isRecord = pathname === '/record'
 
   const hybridHeader = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 14px', flexShrink: 0 }}>
@@ -130,11 +134,14 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           boxShadow: open ? '-12px 0 40px rgba(0,0,0,0.30)' : 'none',
           transition: reduce ? 'none' : MOTION }}>
         {!hideHeader && <>
-          {/* Scrim léger en haut pour la lisibilité des boutons flottants */}
-          <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-top) + 60px)', zIndex: 4, pointerEvents: 'none', background: 'linear-gradient(var(--bg), transparent)' }} />
-          <button aria-label="Menu" onClick={() => settle(!open)} style={{ ...fab, left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
+          {/* Scrim léger en haut pour la lisibilité des boutons flottants —
+              retiré sur /record pour que la carte monte proprement jusqu'en haut */}
+          {!isRecord && <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-top) + 60px)', zIndex: 4, pointerEvents: 'none', background: 'linear-gradient(var(--bg), transparent)' }} />}
+          <button aria-label="Menu" onClick={() => settle(!open)} style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
             {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
           </button>
+          {/* IA + notifications masqués sur /record (immersion carte). */}
+          {!isRecord && <>
           {/* Cloche notifications — ouvre une surpage centrée (sans quitter la page) */}
           <button aria-label="Notifications" onClick={() => { setOpen(false); setNotifOpen(true) }}
             style={{ ...fab, right: 58, borderRadius: 12 }}>
@@ -154,9 +161,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logos/logo_4bras.png" alt="Coach IA" style={{ width: 24, height: 24, objectFit: 'contain' }} />
           </button>
+          </>}
         </>}
 
-        <main style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)', paddingTop: hideHeader ? 0 : 'calc(env(safe-area-inset-top) + 58px)', paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
+        <main style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)', paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 58px)', paddingBottom: isRecord ? 0 : 'calc(80px + env(safe-area-inset-bottom))' }}>
           <PageTransition>{children}</PageTransition>
         </main>
 

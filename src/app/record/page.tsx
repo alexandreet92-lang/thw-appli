@@ -1,6 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import SportSelector, { type SportId, getSportIcon, getSportLabel } from '@/components/record/SportSelector'
 import Toast from '@/components/record/Toast'
@@ -34,7 +33,6 @@ interface ActiveRoute {
 }
 
 export default function RecordPage() {
-  const router = useRouter()
   const [view, setView] = useState<View>('home')
   const [sport, setSport] = useState<SportId>('cycling')
   const [sportSheetOpen, setSportSheetOpen] = useState(false)
@@ -59,6 +57,24 @@ export default function RecordPage() {
   const [yogaSessionOpen, setYogaSessionOpen] = useState(false)
   const [yogaExercises, setYogaExercises] = useState<import('@/types/yoga').YogaSessionExercise[]>([])
   const [yogaTitle, setYogaTitle] = useState('')
+
+  // Sheet du bas (façon Strava) : replié = 3 boutons ; déplié = paramètres.
+  const [sheetExpanded, setSheetExpanded] = useState(false)
+  const sheetTouchStartY = useRef(0)
+  const sheetDragged = useRef(false)
+  // Réglages de session — togglés en local, mémorisés (logique détaillée plus tard).
+  const [liveShare, setLiveShare]   = useState(false)
+  const [audioAlerts, setAudioAlerts] = useState(false)
+  const [autoPause, setAutoPause]   = useState(false)
+  useEffect(() => {
+    try {
+      setLiveShare(localStorage.getItem('thw-rec-liveshare') === 'true')
+      setAudioAlerts(localStorage.getItem('thw-rec-audio') === 'true')
+      setAutoPause(localStorage.getItem('thw-rec-autopause') === 'true')
+    } catch { /* ignore */ }
+  }, [])
+  const persist = (key: string, v: boolean) => { try { localStorage.setItem(key, String(v)) } catch { /* ignore */ } }
+
   // Suit le thème réel de l'app (classe html.dark) au lieu d'être figé en noir.
   const [isDark, setIsDark] = useState(false)
   useEffect(() => {
@@ -221,32 +237,17 @@ export default function RecordPage() {
         <MapBackground activeRoute={activeRoute} />
       </div>
 
-      {/* Bouton retour — top-left, par-dessus la carte */}
-      <button
-        onClick={() => router.push('/')}
-        aria-label="Retour"
-        style={{
-          position: 'absolute',
-          top: 'calc(16px + env(safe-area-inset-top))',
-          left: 16,
-          zIndex: 1000,
-          width: 40, height: 40, borderRadius: '50%',
-          background: 'rgba(0,0,0,0.60)',
-          backdropFilter: 'blur(8px)',
-          border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M11 4L6 9l5 5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </button>
+      {/* Pas de bouton retour ici : la navigation passe par le hamburger
+          (sidebar) du shell. Le retour réapparaît dans l'écran « créer un
+          itinéraire » (RouteCreator), qui remplace le hamburger. */}
 
-      {/* Panel bas — fixed, collé en bas de l'écran */}
+      {/* Panel bas — sheet glissable (replié : 3 boutons · déplié : paramètres) */}
       <div
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 999,
-          height: activeRoute && activeRoute.elevation_profile.length > 1 ? 238 : 132,
+          height: sheetExpanded
+            ? 'min(82dvh, 560px)'
+            : (activeRoute && activeRoute.elevation_profile.length > 1 ? 238 : 132),
           background: 'var(--bg-card)',
           borderTop: '1px solid var(--border)',
           backdropFilter: 'blur(12px)',
@@ -254,23 +255,36 @@ export default function RecordPage() {
           paddingBottom: 'env(safe-area-inset-bottom)',
           boxShadow: '0 -8px 24px rgba(0,0,0,0.10)',
           transition: 'height 350ms cubic-bezier(0.16, 1, 0.3, 1)',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
       >
-        {/* Drag indicator */}
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
+        {/* Zone de préhension : glisser vers le haut déplie, vers le bas replie ;
+            un tap bascule. (Le « slider vers le haut » demandé.) */}
+        <div
+          onClick={() => { if (!sheetDragged.current) setSheetExpanded(e => !e) }}
+          onTouchStart={e => { sheetTouchStartY.current = e.touches[0].clientY; sheetDragged.current = false }}
+          onTouchMove={e => { if (Math.abs(e.touches[0].clientY - sheetTouchStartY.current) > 8) sheetDragged.current = true }}
+          onTouchEnd={e => {
+            const dy = e.changedTouches[0].clientY - sheetTouchStartY.current
+            if (dy < -40) setSheetExpanded(true)
+            else if (dy > 40) setSheetExpanded(false)
+            else setSheetExpanded(prev => !prev)
+          }}
+          style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4, cursor: 'pointer', flexShrink: 0 }}
+        >
           <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
         </div>
 
         {/* Profil altimétrique si parcours chargé */}
         {activeRoute && activeRoute.elevation_profile.length > 1 && (
-          <div style={{ padding: '8px 16px 0' }}>
+          <div style={{ padding: '4px 16px 0', flexShrink: 0 }}>
             <ElevationChart data={activeRoute.elevation_profile} height={90} isDark={isDark} />
           </div>
         )}
 
-        {/* 3 boutons */}
+        {/* 3 boutons — toujours visibles */}
         <div style={{
-          height: 100,
+          height: 100, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'space-around',
           padding: '0 24px',
         }}>
@@ -339,6 +353,52 @@ export default function RecordPage() {
             </span>
             <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>Parcours</span>
           </button>
+        </div>
+
+        {/* Paramètres de la séance — révélés en dépliant le sheet */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 16px 16px', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 4px 10px' }}>Paramètres de la séance</p>
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+            {([
+              { key: 'liveshare', label: 'Partager ma position en direct', sub: 'Tes proches suivent ta sortie en temps réel', on: liveShare,   set: (v: boolean) => { setLiveShare(v); persist('thw-rec-liveshare', v) },
+                icon: <><circle cx="12" cy="12" r="2.5"/><path d="M7.5 7.5a6 6 0 0 0 0 9M16.5 7.5a6 6 0 0 1 0 9M4.5 4.5a10 10 0 0 0 0 15M19.5 4.5a10 10 0 0 1 0 15"/></> },
+              { key: 'audio',     label: 'Alertes audio',        sub: 'Annonces vocales (km, allure, temps)',        on: audioAlerts, set: (v: boolean) => { setAudioAlerts(v); persist('thw-rec-audio', v) },
+                icon: <><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></> },
+              { key: 'autopause', label: 'Pause automatique',     sub: 'Met en pause à l’arrêt, reprend au départ', on: autoPause,  set: (v: boolean) => { setAutoPause(v); persist('thw-rec-autopause', v) },
+                icon: <><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></> },
+            ] as const).map((row, i) => (
+              <div key={row.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', borderTop: i > 0 ? '1px solid var(--border)' : 'none' }}>
+                <span style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)', color: 'var(--text-mid)' }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{row.icon}</svg>
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{row.label}</p>
+                  <p style={{ fontSize: 10.5, color: 'var(--text-dim)', margin: '2px 0 0', lineHeight: 1.4 }}>{row.sub}</p>
+                </div>
+                <button onClick={() => row.set(!row.on)} aria-label={row.label} style={{ width: 40, height: 23, borderRadius: 12, background: row.on ? 'var(--primary)' : 'var(--border-mid)', border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0, transition: 'background 0.2s' }}>
+                  <span style={{ width: 17, height: 17, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: row.on ? 20 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', marginTop: 12 }}>
+            {([
+              { key: 'sensor', label: 'Ajouter un capteur', sub: 'Cardio, cadence, puissance (Bluetooth)', icon: <><path d="M4 12h3l2-7 4 14 2-7h5"/></> },
+              { key: 'gps',    label: 'Paramètres GPS & écran', sub: 'Précision, maintien de l’écran allumé', icon: <><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></> },
+            ] as const).map((row, i) => (
+              <button key={row.key} onClick={() => setToast('Bientôt disponible')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', background: 'transparent', border: 'none', borderTop: i > 0 ? '1px solid var(--border)' : 'none', cursor: 'pointer', textAlign: 'left' }}>
+                <span style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)', color: 'var(--text-mid)' }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{row.icon}</svg>
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{row.label}</p>
+                  <p style={{ fontSize: 10.5, color: 'var(--text-dim)', margin: '2px 0 0', lineHeight: 1.4 }}>{row.sub}</p>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

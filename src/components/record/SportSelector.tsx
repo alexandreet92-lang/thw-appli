@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { IconBike, IconRun, IconMountain, IconWalk, IconBarbell, IconStretching2, IconKayak, IconSwimming, IconSnowboarding, IconYoga, IconBallTennis } from '@tabler/icons-react'
+import { IconBike, IconRun, IconMountain, IconWalk, IconBarbell, IconStretching2, IconKayak, IconSwimming, IconSnowboarding, IconYoga, IconBallTennis, IconKarate } from '@tabler/icons-react'
 
 export type SportId =
   | 'cycling' | 'mtb'
@@ -12,6 +12,7 @@ export type SportId =
   | 'padel'
   | 'openwater'
   | 'hometrainer'
+  | 'boxe'
 
 // ── Icons — mêmes pictogrammes Tabler que le Planning (SportIcon) ────
 function BikeIcon()        { return <IconBike size={24} stroke={1.6} /> }
@@ -28,6 +29,7 @@ function YogaIcon()        { return <IconYoga size={24} stroke={1.6} /> }
 function PadelIcon()       { return <IconBallTennis size={24} stroke={1.6} /> }
 function OpenWaterIcon()   { return <IconSwimming size={24} stroke={1.6} /> }
 function HomeTrainerIcon() { return <IconBike size={24} stroke={1.6} /> }
+function BoxeIcon()        { return <IconKarate size={24} stroke={1.6} /> }
 
 // ── Data ──────────────────────────────────────────────────────
 interface Sport {
@@ -57,6 +59,12 @@ const SPORT_CATEGORIES: { name: string; sports: Sport[] }[] = [
     sports: [
       { id: 'strength', label: 'Musculation', icon: <StrengthIcon /> },
       { id: 'hyrox',    label: 'Hyrox',       icon: <HyroxIcon /> },
+    ],
+  },
+  {
+    name: 'Sports de combat',
+    sports: [
+      { id: 'boxe', label: 'Boxe', icon: <BoxeIcon /> },
     ],
   },
   {

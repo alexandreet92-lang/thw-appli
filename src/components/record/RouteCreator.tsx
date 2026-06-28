@@ -209,7 +209,8 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
 
       {/* Header */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000, padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button onClick={onClose} style={fb}><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1 1l14 14M15 1L1 15" stroke="white" strokeWidth="1.8" strokeLinecap="round"/></svg></button>
+        {/* Retour vers l'accueil de la page activité (remplace le hamburger) */}
+        <button onClick={onClose} aria-label="Retour" style={fb}><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 4L6 9l5 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
         <div style={{ flex: 1, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           {/* Mode toggle */}
           <div style={{ display: 'flex', background: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: 2, gap: 2 }}>

@@ -33,7 +33,7 @@ export function LinkActivitySheet({ segment, onClose, onLink }: {
     <div onClick={close}
       style={{ position: 'fixed', inset: 0, zIndex: 3200, background: SCRIM, display: 'flex', alignItems: 'flex-end' }}>
       <div onClick={e => e.stopPropagation()} className={closing ? 'sheet-close' : 'sheet-open'}
-        style={{ width: '100%', maxHeight: '88vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', willChange: 'transform' }}>
+        style={{ width: '100%', maxHeight: 'calc(100dvh - 72px)', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', willChange: 'transform' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', gap: 8 }}>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>

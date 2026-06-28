@@ -62,7 +62,7 @@ export function BottomSheet({
         style={{
           position: 'relative', width: '100%',
           borderRadius: '20px 20px 0 0',
-          maxHeight: '88vh',
+          maxHeight: 'calc(100dvh - 72px)',
           display: 'flex', flexDirection: 'column',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.15)',
           paddingBottom: 'env(safe-area-inset-bottom, 20px)',

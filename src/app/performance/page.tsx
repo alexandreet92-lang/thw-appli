@@ -454,7 +454,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
       <div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Profil Spécifique</h2>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-1) 0 var(--space-4)' }}>Benchmarks personnels par discipline</p>
-        <ProfilSpecific p={p} wkg={wkg} specSport={specSport} onSport={setSpecSport} params={specParams[specSport]} onEditBenchmarks={() => setBenchOpen(true)} />
+        <ProfilSpecific p={p} wkg={wkg} specSport={specSport} onSport={setSpecSport} params={specParams[specSport]} fields={SPORT_SPEC_FIELDS[specSport]} onEditBenchmarks={() => setBenchOpen(true)} />
       </div>
 
       {/* Niveau estimé */}
@@ -1459,7 +1459,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
   return createPortal(
     <>
       <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:1050, background:'rgba(0,0,0,0.60)', backdropFilter:'blur(4px)', animation:'cardEnter 0.2s ease both' }}/>
-      <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:1051, background:'var(--bg-card)', borderRadius:'22px 22px 0 0', border:'1px solid var(--border)', borderBottom:'none', padding:'20px 22px 44px', boxShadow:'0 -10px 50px rgba(0,0,0,0.35)', animation:'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both', maxHeight:'90vh', overflowY:'auto' as const }}>
+      <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:1051, background:'var(--bg-card)', borderRadius:'22px 22px 0 0', border:'1px solid var(--border)', borderBottom:'none', padding:'20px 22px 44px', boxShadow:'0 -10px 50px rgba(0,0,0,0.35)', animation:'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both', maxHeight:'calc(100dvh - 72px)', overflowY:'auto' as const }}>
 
         {/* Handle */}
         <div style={{ width:36, height:4, borderRadius:2, background:'var(--border)', margin:'0 auto 18px' }}/>
@@ -1794,7 +1794,7 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
   return createPortal(
     <>
       <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:1050, background:'rgba(0,0,0,0.60)', backdropFilter:'blur(4px)', animation:'cardEnter 0.2s ease both' }}/>
-      <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:1051, background:'var(--bg-card)', borderRadius:'22px 22px 0 0', border:'1px solid var(--border)', borderBottom:'none', padding:'20px 22px 44px', boxShadow:'0 -10px 50px rgba(0,0,0,0.35)', animation:'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both', maxHeight:'90vh', overflowY:'auto' as const }}>
+      <div style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:1051, background:'var(--bg-card)', borderRadius:'22px 22px 0 0', border:'1px solid var(--border)', borderBottom:'none', padding:'20px 22px 44px', boxShadow:'0 -10px 50px rgba(0,0,0,0.35)', animation:'slideUp 0.28s cubic-bezier(0.4,0,0.2,1) both', maxHeight:'calc(100dvh - 72px)', overflowY:'auto' as const }}>
 
         {/* Handle */}
         <div style={{ width:36, height:4, borderRadius:2, background:'var(--border)', margin:'0 auto 18px' }}/>

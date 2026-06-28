@@ -506,16 +506,20 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
     }} onClick={e => { if (e.target === e.currentTarget) handleClose() }}>
       <div style={{
         width:'100%', maxWidth:540, margin:'0 auto',
-        maxHeight:'92vh', background:'var(--bg-card)',
+        maxHeight:'calc(100dvh - 72px)', background:'var(--bg-card)',
         borderRadius:'20px 20px 0 0', border:'1px solid var(--border)',
         display:'flex', flexDirection:'column', overflow:'hidden',
         transform:`translateY(${shown ? '0%' : '100%'})`,
         transition:'transform 300ms ease-out',
       }}>
+        {/* Poignée de glissement — laisse voir la page derrière en haut */}
+        <div style={{ display:'flex', justifyContent:'center', padding:'8px 0 2px', flexShrink:0 }}>
+          <div style={{ width:36, height:4, borderRadius:2, background:'var(--border-mid)' }}/>
+        </div>
         {/* Header */}
         <div style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
-          padding:'16px 20px', flexShrink:0, flexWrap:'wrap', gap:8,
+          padding:'10px 20px 16px', flexShrink:0, flexWrap:'wrap', gap:8,
           background:'var(--bg-card)', borderBottom:'1px solid var(--border)',
         }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -885,20 +889,24 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
     }} onClick={e => { if (e.target === e.currentTarget) handleClose() }}>
       <div style={{
         width:'100%', maxWidth:540, margin:'0 auto',
-        maxHeight:'92vh', background:'var(--bg-card)',
-        borderRadius:'20px 20px 0 0', border:`1px solid ${BIKE_COLOR}30`,
+        maxHeight:'calc(100dvh - 72px)', background:'var(--bg-card)',
+        borderRadius:'20px 20px 0 0', border:'1px solid var(--border)',
         display:'flex', flexDirection:'column', overflow:'hidden',
         transform:`translateY(${shown ? '0%' : '100%'})`,
         transition:'transform 300ms ease-out',
       }}>
+        {/* Poignée de glissement */}
+        <div style={{ display:'flex', justifyContent:'center', padding:'8px 0 2px', flexShrink:0 }}>
+          <div style={{ width:36, height:4, borderRadius:2, background:'var(--border-mid)' }}/>
+        </div>
         {/* Header */}
         <div style={{
           display:'flex', alignItems:'center', justifyContent:'space-between',
-          padding:'16px 20px', flexShrink:0,
-          background:`${BIKE_COLOR}10`, borderBottom:`1px solid ${BIKE_COLOR}25`,
+          padding:'10px 20px 16px', flexShrink:0,
+          background:'var(--bg-card)', borderBottom:'1px solid var(--border)',
         }}>
           <div>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>Classement des ascensions</h2>
+            <h2 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:600, margin:0, color:'var(--text)' }}>Classement des ascensions</h2>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>Score normalisé /100 — conditions incluses</p>
           </div>
           <button onClick={handleClose} style={{

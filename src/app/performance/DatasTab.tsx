@@ -1061,7 +1061,7 @@ function RecordDrawer({ sport, distLabel, draft, setDraft, date, setDate, saving
         onClick={e => e.stopPropagation()}
         className="rec-drawer"
         style={{
-          width:'100%', maxHeight:'92vh',
+          width:'100%', maxHeight:'calc(100dvh - 72px)',
           background:'var(--bg-card)', borderRadius:'20px 20px 0 0',
           border:'1px solid var(--border)',
           display:'flex', flexDirection:'column', overflow:'hidden',

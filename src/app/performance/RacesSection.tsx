@@ -643,7 +643,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
     }} onClick={e => { if (e.target === e.currentTarget) handleClose() }}>
       <div style={{
         width:'100%', maxWidth:540, margin:'0 auto',
-        maxHeight:'88vh', background:'var(--bg-card)',
+        maxHeight:'calc(100dvh - 72px)', background:'var(--bg-card)',
         borderRadius:'20px 20px 0 0', border:`1px solid ${RACE_COLOR}30`,
         display:'flex', flexDirection:'column', overflow:'hidden',
         transform:`translateY(${shown ? '0%' : '100%'})`,
@@ -1560,7 +1560,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
     }} onClick={e => { if (e.target === e.currentTarget) handleClose() }}>
       <div style={{
         width:'100%', maxWidth:540, margin:'0 auto',
-        maxHeight:'92vh', background:'var(--bg-card)',
+        maxHeight:'calc(100dvh - 72px)', background:'var(--bg-card)',
         borderRadius:'20px 20px 0 0', border:`1px solid ${RACE_COLOR}30`,
         display:'flex', flexDirection:'column', overflow:'hidden',
         transform:`translateY(${shown ? '0%' : '100%'})`,

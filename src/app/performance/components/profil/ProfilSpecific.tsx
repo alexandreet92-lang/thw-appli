@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { ZoneBars } from './ZoneBars'
 import { Radar } from './Radar'
 import { fcZones, paceZones, powerZones } from './zones'
+import type { BenchField } from './BenchmarkSheet'
 
 const FB = 'var(--font-body)'
 type Sport = 'running' | 'cycling' | 'swimming' | 'hyrox'
@@ -26,8 +27,8 @@ const ZTABS: Record<Sport, { id: ZType; label: string }[]> = {
 }
 const clamp = (x: number) => Math.max(0, Math.min(100, x))
 
-export function ProfilSpecific({ p, wkg, specSport, onSport, params, onEditBenchmarks }: {
-  p: Prof; wkg: string; specSport: Sport; onSport: (id: Sport) => void; params: Record<string, string>; onEditBenchmarks: () => void
+export function ProfilSpecific({ p, wkg, specSport, onSport, params, fields, onEditBenchmarks }: {
+  p: Prof; wkg: string; specSport: Sport; onSport: (id: Sport) => void; params: Record<string, string>; fields: BenchField[]; onEditBenchmarks: () => void
 }) {
   const [ztype, setZtype] = useState<ZType>('fc')
   useEffect(() => { setZtype('fc') }, [specSport])
@@ -77,6 +78,24 @@ export function ProfilSpecific({ p, wkg, specSport, onSport, params, onEditBench
           </div>
         </div>
       </div>
+
+      {/* Benchmarks renseignés — parité avec la feuille de saisie : tout ce qui
+          est rentré s'affiche ici. */}
+      {fields.some(f => (params[f.key] ?? '').trim() !== '') && (
+        <div>
+          <p style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 var(--space-3)' }}>Benchmarks renseignés</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 'var(--space-4)' }}>
+            {fields.filter(f => (params[f.key] ?? '').trim() !== '').map(f => (
+              <div key={f.key}>
+                <p style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: 0 }}>{f.label}</p>
+                <p className="tnum" style={{ fontFamily: FB, fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 'var(--space-1) 0 0' }}>
+                  {params[f.key]}{f.unit ? <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 3 }}>{f.unit}</span> : null}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

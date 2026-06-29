@@ -138,7 +138,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       {/* Page qui glisse PAR-DESSUS — transform piloté par l'état (cohérent au re-render) */}
       <div ref={panelRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
         style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'var(--bg)', overflow: 'hidden',
-          transform: open ? 'translateX(min(64vw, 340px))' : 'translateX(0)',
+          // Au repos : pas de transform → réactive backdrop-filter (flou) sur iOS.
+          transform: open ? 'translateX(min(64vw, 340px))' : 'none',
           borderRadius: open ? 22 : 0,
           boxShadow: open ? '-12px 0 40px rgba(0,0,0,0.30)' : 'none',
           transition: reduce ? 'none' : MOTION }}>
@@ -181,7 +182,13 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           </>}
         </>}
 
-        <main style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)', paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 54px)', paddingBottom: isRecord ? 0 : 'calc(80px + env(safe-area-inset-bottom))' }}>
+        <main style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)', paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 54px)', paddingBottom: isRecord ? 0 : 'calc(80px + env(safe-area-inset-bottom))',
+          // Fondu du contenu vers le haut (façon Claude) : ce qui défile sous les
+          // boutons s'estompe progressivement. Désactivé sur /record (carte).
+          ...(isRecord ? null : {
+            maskImage: 'linear-gradient(to bottom, transparent 0, transparent calc(env(safe-area-inset-top) + 8px), #000 calc(env(safe-area-inset-top) + 46px))',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, transparent calc(env(safe-area-inset-top) + 8px), #000 calc(env(safe-area-inset-top) + 46px))',
+          }) }}>
           <PageTransition>{children}</PageTransition>
         </main>
 

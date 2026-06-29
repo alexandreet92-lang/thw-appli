@@ -143,9 +143,17 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           boxShadow: open ? '-12px 0 40px rgba(0,0,0,0.30)' : 'none',
           transition: reduce ? 'none' : MOTION }}>
         {!hideHeader && <>
-          {/* Scrim léger en haut pour la lisibilité des boutons flottants —
-              retiré sur /record pour que la carte monte proprement jusqu'en haut */}
-          {!isRecord && <div aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 'calc(env(safe-area-inset-top) + 60px)', zIndex: 4, pointerEvents: 'none', background: 'linear-gradient(var(--bg), transparent)' }} />}
+          {/* Flou progressif en haut (façon Claude) : le contenu monte jusqu'en haut
+              et se floute de plus en plus vers la barre de statut, sous les boutons
+              flottants. Pas de bande blanche. Masque dégradé → flou max en haut,
+              nul plus bas. Retiré sur /record (carte immersive). */}
+          {!isRecord && <div aria-hidden style={{
+            position: 'absolute', top: 0, left: 0, right: 0,
+            height: 'calc(env(safe-area-inset-top) + 56px)', zIndex: 4, pointerEvents: 'none',
+            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+            maskImage: 'linear-gradient(to bottom, #000 45%, transparent)',
+            WebkitMaskImage: 'linear-gradient(to bottom, #000 45%, transparent)',
+          }} />}
           <button aria-label="Menu" onClick={() => settle(!open)} style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
             {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
           </button>
@@ -173,7 +181,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           </>}
         </>}
 
-        <main style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)', paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 58px)', paddingBottom: isRecord ? 0 : 'calc(80px + env(safe-area-inset-bottom))' }}>
+        <main style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)', paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 54px)', paddingBottom: isRecord ? 0 : 'calc(80px + env(safe-area-inset-bottom))' }}>
           <PageTransition>{children}</PageTransition>
         </main>
 

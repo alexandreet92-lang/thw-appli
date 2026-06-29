@@ -27,13 +27,45 @@ interface Props {
 }
 
 const SPORT_LABELS: Record<string, string> = { cycling: 'Vélo', mtb: 'VTT', trail: 'Trail', hiking: 'Randonnée' }
-const KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY ?? ''
 
-function staticMapUrl(route: Route): string {
-  const pts = route.snapped_points ?? route.waypoints
-  if (!pts.length) return ''
-  const mid = pts[Math.floor(pts.length / 2)]
-  return `https://api.maptiler.com/maps/outdoor-v2/static/${mid.lng.toFixed(4)},${mid.lat.toFixed(4)},12/100x70.png?key=${KEY}`
+// Vignette du parcours en SVG raw (aucune clé/API externe) : tracé normalisé
+// dans une box 100×70, ratio géographique respecté (longitude corrigée par
+// cos(lat)), nord en haut. Façon Strava — chaque carte montre son tracé.
+function RouteThumbnail({ route, accent, fallbackBg, fallbackStroke }: {
+  route: Route; accent: string; fallbackBg: string; fallbackStroke: string
+}) {
+  const W = 100, H = 70, PAD = 9
+  const pts = route.snapped_points ?? route.waypoints ?? []
+
+  if (pts.length < 2) {
+    return (
+      <div style={{ width: W, height: H, borderRadius: 10, background: fallbackBg, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 20l5-12 5 8 3-4 5 8H3z" stroke={fallbackStroke} strokeWidth="1.5" strokeLinejoin="round"/></svg>
+      </div>
+    )
+  }
+
+  const lats = pts.map(p => p.lat), lngs = pts.map(p => p.lng)
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats)
+  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs)
+  const midLat = (minLat + maxLat) / 2
+  const kx = Math.cos(midLat * Math.PI / 180) || 1
+  const geoW = (maxLng - minLng) * kx || 1e-6
+  const geoH = (maxLat - minLat) || 1e-6
+  const scale = Math.min((W - 2 * PAD) / geoW, (H - 2 * PAD) / geoH)
+  const drawW = geoW * scale, drawH = geoH * scale
+  const offX = (W - drawW) / 2, offY = (H - drawH) / 2
+  const path = pts.map(p => {
+    const x = offX + (p.lng - minLng) * kx * scale
+    const y = offY + (maxLat - p.lat) * scale
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ borderRadius: 10, flexShrink: 0, background: fallbackBg, display: 'block' }}>
+      <polyline points={path} fill="none" stroke={accent} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
 }
 
 export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: Props) {
@@ -102,14 +134,7 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: 
         {filtered.map(route => (
           <div key={route.id} style={{ background: surface, border: `1px solid ${border}`, borderRadius: 16, marginBottom: 12, overflow: 'hidden' }}>
             <div style={{ display: 'flex', gap: 12, padding: 12 }}>
-              {staticMapUrl(route) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={staticMapUrl(route)} alt="" width={100} height={70} style={{ borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
-              ) : (
-                <div style={{ width: 100, height: 70, borderRadius: 10, background: separator, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 20l5-12 5 8 3-4 5 8H3z" stroke={dim} strokeWidth="1.5" strokeLinejoin="round"/></svg>
-                </div>
-              )}
+              <RouteThumbnail route={route} accent="#06B6D4" fallbackBg={separator} fallbackStroke={dim} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 15, fontWeight: 600, color: text, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{route.name}</p>
                 <p style={{ fontSize: 12, color: dim, margin: '0 0 6px' }}>{SPORT_LABELS[route.sport] ?? route.sport} · {new Date(route.created_at).toLocaleDateString('fr-FR')}</p>

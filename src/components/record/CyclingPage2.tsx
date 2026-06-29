@@ -8,6 +8,7 @@ interface Props {
   distanceM: number
   trackPoints: { lat: number; lng: number }[]
   currentPosition?: [number, number] | null
+  onExpand?: () => void
 }
 
 function getTheme(isDark: boolean) {
@@ -44,7 +45,7 @@ function BigCell({ label, value, unit, t }: {
   )
 }
 
-export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPosition }: Props) {
+export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPosition, onExpand }: Props) {
   const t = getTheme(isDark)
   const distanceKm = (distanceM / 1000).toFixed(2)
 
@@ -59,11 +60,31 @@ export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPo
         minHeight: 0,
       }}>
         <div style={{
+          position: 'relative',
           width: '100%', height: '100%',
           borderRadius: 16, overflow: 'hidden',
           border: `1px solid ${t.separator}`,
         }}>
           <MapBackground trackPoints={trackPoints} currentPosition={currentPosition} />
+          {onExpand && (
+            <button
+              onClick={onExpand}
+              aria-label="Carte plein écran"
+              style={{
+                position: 'absolute', top: 10, right: 10, zIndex: 1000,
+                width: 40, height: 40, borderRadius: '50%',
+                background: 'var(--bg)', color: 'var(--text)',
+                border: '1px solid var(--border)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.25)', // design-allow-color
+                cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 3h6v6M21 3l-7 7M9 21H3v-6M3 21l7-7"/>
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 

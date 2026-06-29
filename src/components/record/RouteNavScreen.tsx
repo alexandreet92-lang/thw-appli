@@ -5,7 +5,9 @@
 // que l'on tire VERS LE BAS pour dérouler toute la liste des changements de
 // direction. En bas : restant (gros) + réalisé (petit) pour temps / km / D+ ;
 // on tire VERS LE HAUT pour ouvrir le profil altimétrique avec la progression.
-// Guidage virage par virage (ORS) + bip + vibration. Mobile — overlay (portal).
+// Disponible même sans parcours (carte plein écran + vitesse) ; guidage virage
+// par virage (ORS) + bip + vibration uniquement si un parcours est chargé.
+// Mobile — overlay (portal).
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -25,7 +27,7 @@ export interface NavRouteInput {
 }
 
 interface Props {
-  route: NavRouteInput
+  route?: NavRouteInput | null
   sport: string
   showWatts: boolean
   isDark: boolean
@@ -91,26 +93,27 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
 
   const txt = isDark ? '#fff' : '#0A0A0A'
   const txtShadow = isDark ? '0 1px 4px rgba(0,0,0,0.55)' : '0 1px 4px rgba(255,255,255,0.65)'
-  const line = route.snapped_points
+  const line = route?.snapped_points ?? []
+  const hasRoute = line.length > 1
 
   const cum = useMemo(() => {
     const a = [0]; for (let i = 1; i < line.length; i++) a.push(a[i - 1] + haversine(line[i - 1], line[i])); return a
   }, [line])
   const totalM = cum[cum.length - 1] ?? 0
   const totalGain = useMemo(() => {
-    const ep = route.elevation_profile ?? []; let g = 0
+    const ep = route?.elevation_profile ?? []; let g = 0
     for (let i = 1; i < ep.length; i++) { const d = ep[i].altitudeM - ep[i - 1].altitudeM; if (d > 0) g += d }
     return g
-  }, [route.elevation_profile])
+  }, [route?.elevation_profile])
 
   // Étapes (manœuvres) — best effort.
   useEffect(() => {
     let alive = true
-    const wps = route.waypoints
+    const wps = route?.waypoints
     if (!wps || wps.length < 2) return
-    navigationRoute(wps, route.sport ?? sport).then(r => { if (alive) setSteps(r.steps) }).catch(() => {})
+    navigationRoute(wps, route?.sport ?? sport).then(r => { if (alive) setSteps(r.steps) }).catch(() => {})
     return () => { alive = false }
-  }, [route.waypoints, route.sport, sport])
+  }, [route?.waypoints, route?.sport, sport])
 
   // Position live + vitesse.
   useEffect(() => {
@@ -138,10 +141,10 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
   const traveledM = cum[nearestIdx] ?? 0
   const remainingM = Math.max(0, totalM - traveledM)
   const remainingGain = useMemo(() => {
-    const ep = route.elevation_profile ?? []; let g = 0
+    const ep = route?.elevation_profile ?? []; let g = 0
     for (let i = 1; i < ep.length; i++) { if (ep[i].distanceM < traveledM) continue; const d = ep[i].altitudeM - ep[i - 1].altitudeM; if (d > 0) g += d }
     return g || totalGain
-  }, [route.elevation_profile, traveledM, totalGain])
+  }, [route?.elevation_profile, traveledM, totalGain])
   const avgKmh = speedKmh > 3 ? speedKmh : (DEFAULT_SPEED[sport] ?? 10)
   const remainMin = (remainingM / 1000) / avgKmh * 60
 
@@ -168,7 +171,7 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
   const center: [number, number] = pos ? [pos.lat, pos.lng] : (line[0] ? [line[0].lat, line[0].lng] : [48.8566, 2.3522])
 
   // Profil altimétrique (SVG) — partie réalisée colorée, reste estompé.
-  const ep = route.elevation_profile ?? []
+  const ep = route?.elevation_profile ?? []
   const W = 320, H = 90
   const alts = ep.map(e => e.altitudeM)
   const aMin = alts.length ? Math.min(...alts) : 0, aMax = alts.length ? Math.max(...alts) : 1
@@ -192,7 +195,7 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
     <div style={{ position: 'fixed', inset: 0, zIndex: 10010, background: 'var(--bg)' }}>
       <MapContainer center={center} zoom={15} zoomControl={false} attributionControl={false} style={{ position: 'absolute', inset: 0 }}>
         <TileLayer url={tileUrl(isDark)} tileSize={512} zoomOffset={-1} detectRetina maxZoom={20} attribution={ATTR} />
-        {line.length > 1 && <Polyline positions={line.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: '#2563EB', weight: 5, opacity: 0.92, lineCap: 'round', lineJoin: 'round' }} />}
+        {hasRoute && <Polyline positions={line.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: '#2563EB', weight: 5, opacity: 0.92, lineCap: 'round', lineJoin: 'round' }} />}
         {pos && <>
           <CircleMarker center={[pos.lat, pos.lng]} radius={15} pathOptions={{ fillColor: '#06B6D4', fillOpacity: 0.18, color: 'transparent', weight: 0 }} />
           <CircleMarker center={[pos.lat, pos.lng]} radius={8} pathOptions={{ fillColor: '#06B6D4', fillOpacity: 1, color: '#fff', weight: 3 }} />
@@ -205,7 +208,8 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
         <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>
       </button>
 
-      {/* Bannière manœuvre — tirer VERS LE BAS pour dérouler toute la liste */}
+      {/* Bannière manœuvre — tirer VERS LE BAS pour dérouler toute la liste (si parcours) */}
+      {hasRoute && (
       <div
         onTouchStart={e => { bStartY.current = e.touches[0].clientY }}
         onTouchEnd={e => { const dy = e.changedTouches[0].clientY - bStartY.current; if (dy > 30) setBannerOpen(true); else if (dy < -30) setBannerOpen(false) }}
@@ -223,7 +227,7 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
                     <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextStep.instruction}</p>
                     <p style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600, margin: '2px 0 0' }}>{distToTurn != null ? (distToTurn >= 1000 ? `dans ${(distToTurn / 1000).toFixed(1)} km` : `dans ${Math.round(distToTurn / 10) * 10} m`) : ''}</p>
                   </>
-                : <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: 0 }}>{steps.length ? 'Suivez l’itinéraire' : (route.waypoints ? 'Guidage indisponible' : 'Pas de guidage (parcours sans points)')}</p>}
+                : <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: 0 }}>{steps.length ? 'Suivez l’itinéraire' : (route?.waypoints ? 'Guidage indisponible' : 'Pas de guidage (parcours sans points)')}</p>}
             </div>
           </div>
           {/* Liste complète des manœuvres (dépliée) */}
@@ -245,15 +249,17 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
         {/* Poignée : tirer vers le bas = dérouler */}
         <div onClick={() => setBannerOpen(o => !o)} style={{ width: 44, height: 5, borderRadius: 5, background: 'var(--border-mid)', margin: '6px auto 0', cursor: 'pointer' }} />
       </div>
+      )}
 
       {/* Surimpression : vitesse / FC / watts (par-dessus la carte, sans bulle) */}
-      <div style={{ position: 'absolute', right: 14, bottom: 'calc(150px + env(safe-area-inset-bottom))', zIndex: 1100, textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6, textShadow: txtShadow }}>
+      <div style={{ position: 'absolute', right: 14, bottom: `calc(${hasRoute ? 150 : 28}px + env(safe-area-inset-bottom))`, zIndex: 1100, textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6, textShadow: txtShadow }}>
         <div><span style={{ fontSize: 26, fontWeight: 800, color: txt, fontVariantNumeric: 'tabular-nums' }}>{speedKmh.toFixed(1)}</span><span style={{ fontSize: 12, color: txt, opacity: 0.8, marginLeft: 3 }}>km/h</span></div>
         {hr != null && <div><span style={{ fontSize: 20, fontWeight: 700, color: txt }}>{Math.round(hr)}</span><span style={{ fontSize: 11, color: txt, opacity: 0.8, marginLeft: 3 }}>bpm</span></div>}
         {showWatts && watts != null && <div><span style={{ fontSize: 20, fontWeight: 700, color: txt }}>{Math.round(watts)}</span><span style={{ fontSize: 11, color: txt, opacity: 0.8, marginLeft: 3 }}>W</span></div>}
       </div>
 
-      {/* Bas : restant (gros) + réalisé (petit) ; tirer vers le HAUT = profil */}
+      {/* Bas : restant (gros) + réalisé (petit) ; tirer vers le HAUT = profil (si parcours) */}
+      {hasRoute && (
       <div
         onTouchStart={e => { pStartY.current = e.touches[0].clientY }}
         onTouchEnd={e => { const dy = e.changedTouches[0].clientY - pStartY.current; if (dy < -30) setProfileOpen(true); else if (dy > 30) setProfileOpen(false) }}
@@ -287,6 +293,7 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
           <Metric label="Temps est." big={fmtTime(remainMin * 60)} small={`écoulé ${fmtTime(elapsedSec)}`} />
         </div>
       </div>
+      )}
     </div>
   )
 

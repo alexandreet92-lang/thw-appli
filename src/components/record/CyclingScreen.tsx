@@ -396,7 +396,7 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
         </button>
       )}
       {navOpen && route && (
-        <RouteNavScreen route={route} sport="cycling" showWatts hr={null} watts={null} onClose={() => setNavOpen(false)} />
+        <RouteNavScreen route={route} sport="cycling" showWatts isDark={isDark} hr={null} watts={null} elapsedSec={stopwatch.seconds} distanceDoneM={gps.distance} gainDoneM={gps.elevationGain} onClose={() => setNavOpen(false)} />
       )}
 
       <CyclingControls

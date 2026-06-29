@@ -223,7 +223,7 @@ export default function RunningScreen({ onExit, onFinished, route }: Props) {
         </button>
       )}
       {navOpen && route && (
-        <RouteNavScreen route={route} sport="running" showWatts={false} hr={null} onClose={() => setNavOpen(false)} />
+        <RouteNavScreen route={route} sport="running" showWatts={false} isDark={isDark} hr={null} elapsedSec={stopwatch.seconds} distanceDoneM={gps.distance} gainDoneM={gps.elevationGain} onClose={() => setNavOpen(false)} />
       )}
       <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={handleLap} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
       <RunningSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />

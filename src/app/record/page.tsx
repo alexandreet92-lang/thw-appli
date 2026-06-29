@@ -30,6 +30,8 @@ type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimm
 interface ActiveRoute {
   snapped_points: { lat: number; lng: number }[]
   elevation_profile: { distanceM: number; altitudeM: number }[]
+  waypoints?: { lat: number; lng: number }[]
+  sport?: string
 }
 
 export default function RecordPage() {
@@ -138,6 +140,7 @@ export default function RecordPage() {
     return (
       <>
         <CyclingScreen
+          route={activeRoute}
           onExit={() => setView('home')}
           onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
         />
@@ -150,6 +153,7 @@ export default function RecordPage() {
     return (
       <>
         <RunningScreen
+          route={activeRoute}
           onExit={() => setView('home')}
           onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
         />
@@ -162,6 +166,7 @@ export default function RecordPage() {
     return (
       <>
         <TrailScreen
+          route={activeRoute}
           onExit={() => setView('home')}
           onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
         />

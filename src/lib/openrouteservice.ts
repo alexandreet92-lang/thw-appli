@@ -83,3 +83,52 @@ export async function snapRoute(waypoints: Waypoint[], sport: string): Promise<S
 
   return { snappedPoints, distanceM, elevGain, surfaces, elevationProfile }
 }
+
+// ── Guidage virage par virage ────────────────────────────────────
+// Type de manœuvre ORS → libellé court FR.
+const MANEUVER_FR: Record<number, string> = {
+  0: 'Tournez à gauche', 1: 'Tournez à droite',
+  2: 'Tournez fortement à gauche', 3: 'Tournez fortement à droite',
+  4: 'Tournez légèrement à gauche', 5: 'Tournez légèrement à droite',
+  6: 'Continuez tout droit', 7: 'Au rond-point', 8: 'Au rond-point',
+  9: 'Demi-tour', 10: 'Arrivée', 11: 'Départ', 12: 'Restez à gauche', 13: 'Restez à droite',
+}
+
+export interface NavStep { lat: number; lng: number; instruction: string; type: number; distanceM: number }
+export interface NavRoute { coords: SnappedPoint[]; steps: NavStep[]; distanceM: number; elevGain: number }
+
+// Récupère la géométrie + les étapes de navigation (manœuvres) pour un parcours.
+export async function navigationRoute(waypoints: Waypoint[], sport: string): Promise<NavRoute> {
+  if (!ORS_KEY) throw new Error('NEXT_PUBLIC_ORS_KEY not configured')
+  const profile = ORS_PROFILES[sport] ?? 'foot-hiking'
+  const res = await fetch(
+    `https://api.openrouteservice.org/v2/directions/${profile}/geojson`,
+    {
+      method: 'POST',
+      headers: { 'Authorization': ORS_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coordinates: waypoints.map(w => [w.lng, w.lat]), elevation: true, instructions: true, language: 'fr' }),
+    },
+  )
+  if (!res.ok) throw new Error(`ORS ${res.status}`)
+  const data = await res.json() as {
+    features: { geometry: { coordinates: number[][] }; properties: { segments: { steps: { distance: number; type: number; instruction: string; way_points: number[] }[] }[] } }[]
+  }
+  const feature = data.features[0]
+  const coords: SnappedPoint[] = feature.geometry.coordinates.map(([lng, lat, alt]) => ({ lat, lng, altitude: alt ?? 0 }))
+  let distanceM = 0, elevGain = 0
+  for (let i = 1; i < coords.length; i++) {
+    distanceM += haversine(coords[i - 1], coords[i])
+    const d = coords[i].altitude - coords[i - 1].altitude
+    if (d > 0) elevGain += d
+  }
+  const steps: NavStep[] = []
+  for (const seg of feature.properties.segments ?? []) {
+    for (const st of seg.steps ?? []) {
+      const idx = st.way_points?.[0] ?? 0
+      const c = coords[idx]
+      if (!c) continue
+      steps.push({ lat: c.lat, lng: c.lng, instruction: st.instruction || MANEUVER_FR[st.type] || 'Continuez', type: st.type, distanceM: st.distance })
+    }
+  }
+  return { coords, steps, distanceM, elevGain }
+}

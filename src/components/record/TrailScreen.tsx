@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import dynamic from 'next/dynamic'
 import { useGPSTracking, GPSStatus } from '@/hooks/useGPSTracking'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useStopwatch } from '@/hooks/useStopwatch'
@@ -21,8 +22,10 @@ import { FONT_OPTIONS } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
 import type { FinishedSession, SessionLap } from '@/types/session'
 import type { GPSPoint } from '@/hooks/useGPSTracking'
+import type { NavRouteInput } from './RouteNavScreen'
+const RouteNavScreen = dynamic(() => import('./RouteNavScreen'), { ssr: false })
 
-interface Props { onExit: () => void; onFinished: () => void }
+interface Props { onExit: () => void; onFinished: () => void; route?: NavRouteInput | null }
 
 interface SessionSnap {
   startedAtISO: string; endedAtISO: string; durationSec: number
@@ -33,7 +36,8 @@ interface SessionSnap {
 
 const PAGE_COUNT = 4
 
-export default function TrailScreen({ onExit, onFinished }: Props) {
+export default function TrailScreen({ onExit, onFinished, route }: Props) {
+  const [navOpen, setNavOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [gpsEnabled, setGpsEnabled] = useState(false)
   const [showPrePermission, setShowPrePermission] = useState(false)
@@ -190,6 +194,17 @@ export default function TrailScreen({ onExit, onFinished }: Props) {
           {Array.from({ length: dotCount }).map((_, i) => <span key={i} style={{ width:6, height:6, borderRadius:'50%', background: i === pageIndex ? '#F59E0B' : labelColor, transition:'background 0.2s' }} />)}
         </div>
       </div>
+
+      {/* Navigation plein écran du parcours (si un parcours est chargé) */}
+      {route && (
+        <button onClick={() => setNavOpen(true)} aria-label="Navigation plein écran"
+          style={{ position: 'absolute', bottom: 'calc(130px + env(safe-area-inset-bottom))', right: 16, zIndex: 100, width: 48, height: 48, borderRadius: '50%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', boxShadow: '0 2px 12px rgba(0,0,0,0.22)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+        </button>
+      )}
+      {navOpen && route && (
+        <RouteNavScreen route={route} sport="trail" showWatts={false} hr={null} onClose={() => setNavOpen(false)} />
+      )}
 
       <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={handleLap} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
       <TrailSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />

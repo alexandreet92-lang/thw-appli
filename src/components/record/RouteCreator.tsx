@@ -54,6 +54,8 @@ function GeolocateOnMount({ onPosition }: { onPosition: (pos: [number, number]) 
 interface ActiveRoute {
   snapped_points: { lat: number; lng: number }[]
   elevation_profile: { distanceM: number; altitudeM: number }[]
+  waypoints?: { lat: number; lng: number }[]
+  sport?: string
 }
 
 interface Props { onClose: () => void; onLoadRoute: (route: ActiveRoute) => void; isDark: boolean; initialView?: 'creating' | 'library' }

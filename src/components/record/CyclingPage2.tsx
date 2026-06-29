@@ -9,6 +9,7 @@ interface Props {
   trackPoints: { lat: number; lng: number }[]
   currentPosition?: [number, number] | null
   onExpand?: () => void
+  paused?: boolean
 }
 
 function getTheme(isDark: boolean) {
@@ -45,7 +46,7 @@ function BigCell({ label, value, unit, t }: {
   )
 }
 
-export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPosition, onExpand }: Props) {
+export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPosition, onExpand, paused }: Props) {
   const t = getTheme(isDark)
   const distanceKm = (distanceM / 1000).toFixed(2)
 
@@ -66,6 +67,20 @@ export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPo
           border: `1px solid ${t.separator}`,
         }}>
           <MapBackground trackPoints={trackPoints} currentPosition={currentPosition} />
+          {paused && (
+            <div style={{
+              position: 'absolute', top: 10, left: 10, zIndex: 1000,
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '5px 10px 5px 8px', borderRadius: 999,
+              background: 'var(--bg)', border: '1px solid var(--border)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.25)', // design-allow-color
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="var(--primary)" aria-hidden>
+                <rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>
+              </svg>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>En pause</span>
+            </div>
+          )}
           {onExpand && (
             <button
               onClick={onExpand}

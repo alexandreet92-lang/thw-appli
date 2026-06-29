@@ -7,9 +7,10 @@ interface Props {
   trackPoints: { lat: number; lng: number }[]
   currentPosition: [number, number] | null
   onExpand?: () => void
+  paused?: boolean
 }
 
-export default function TrailPage2({ isDark, distanceM, trackPoints, currentPosition, onExpand }: Props) {
+export default function TrailPage2({ isDark, distanceM, trackPoints, currentPosition, onExpand, paused }: Props) {
   return (
     <CyclingPage2
       isDark={isDark}
@@ -17,6 +18,7 @@ export default function TrailPage2({ isDark, distanceM, trackPoints, currentPosi
       trackPoints={trackPoints}
       currentPosition={currentPosition}
       onExpand={onExpand}
+      paused={paused}
     />
   )
 }

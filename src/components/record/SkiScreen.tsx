@@ -122,8 +122,7 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
   }
 
   if (!mounted) return null
-  const hour = new Date().getHours()
-  const isDark = hour < 7 || hour > 20
+  const isDark = document.documentElement.classList.contains('dark')
   const bg = isDark ? '#0A0A0A' : '#FFFFFF', text = isDark ? '#FFFFFF' : '#0A0A0A'
   const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
   const btnBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'

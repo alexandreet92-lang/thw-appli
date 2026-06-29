@@ -80,7 +80,16 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
 
   const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
   useWakeLock(phase !== 'ready')
-  const stopwatch = useStopwatch(phase === 'running')
+  // Auto-pause : sous le seuil (km/h, défaut 5) la séance se met en pause
+  // automatiquement et reprend dès que la vitesse repasse au-dessus.
+  const autoPauseOn = settings.recording.autoPause
+  const autoPauseTh = settings.recording.autoPauseThreshold
+  const [autoPaused, setAutoPaused] = useState(false)
+  useEffect(() => {
+    if (phase !== 'running' || !autoPauseOn) { setAutoPaused(false); return }
+    setAutoPaused((gps.currentSpeed ?? 0) < autoPauseTh)
+  }, [gps.currentSpeed, phase, autoPauseOn, autoPauseTh])
+  const stopwatch = useStopwatch(phase === 'running' && !autoPaused)
   const { activeEffort, completedEfforts } = useSegmentDetection(
     gps.currentLat ?? null, gps.currentLng ?? null, 'cycling', phase === 'running'
   )
@@ -90,10 +99,10 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
   }, [pages.length, pageIndex])
 
   useEffect(() => {
-    if (phase !== 'running') return
+    if (phase !== 'running' || autoPaused) return
     const i = setInterval(() => setCurrentLapSec(s => s + 1), 1000)
     return () => clearInterval(i)
-  }, [phase])
+  }, [phase, autoPaused])
 
   useEffect(() => {
     setCurrentLapDistance(gps.distance - lapStartDistance)
@@ -254,8 +263,7 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
 
   if (!mounted) return null
 
-  const hour = new Date().getHours()
-  const isDark = hour < 7 || hour > 20
+  const isDark = document.documentElement.classList.contains('dark')
   const bg         = isDark ? '#0A0A0A' : '#FFFFFF'
   const text       = isDark ? '#FFFFFF' : '#0A0A0A'
   const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
@@ -332,6 +340,7 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
                   trackPoints={trackPoints}
                   currentPosition={currentPosition}
                   onExpand={() => setNavOpen(true)}
+                  paused={autoPaused}
                 />
               )
             }

@@ -70,9 +70,16 @@ export default function TrailScreen({ onExit, onFinished, route }: Props) {
 
   const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
   useWakeLock(phase !== 'ready')
-  const stopwatch = useStopwatch(phase === 'running')
+  const autoPauseOn = settings.recording.autoPause
+  const autoPauseTh = settings.recording.autoPauseThreshold
+  const [autoPaused, setAutoPaused] = useState(false)
+  useEffect(() => {
+    if (phase !== 'running' || !autoPauseOn) { setAutoPaused(false); return }
+    setAutoPaused((gps.currentSpeed ?? 0) < autoPauseTh)
+  }, [gps.currentSpeed, phase, autoPauseOn, autoPauseTh])
+  const stopwatch = useStopwatch(phase === 'running' && !autoPaused)
 
-  useEffect(() => { if (phase !== 'running') return; const i = setInterval(() => setCurrentLapSec(s => s + 1), 1000); return () => clearInterval(i) }, [phase])
+  useEffect(() => { if (phase !== 'running' || autoPaused) return; const i = setInterval(() => setCurrentLapSec(s => s + 1), 1000); return () => clearInterval(i) }, [phase, autoPaused])
   useEffect(() => { setCurrentLapDistance(gps.distance - lapStartDistance) }, [gps.distance, lapStartDistance])
 
   useEffect(() => {
@@ -161,8 +168,7 @@ export default function TrailScreen({ onExit, onFinished, route }: Props) {
   }
 
   if (!mounted) return null
-  const hour = new Date().getHours()
-  const isDark = hour < 7 || hour > 20
+  const isDark = document.documentElement.classList.contains('dark')
   const bg = isDark ? '#0A0A0A' : '#FFFFFF', text = isDark ? '#FFFFFF' : '#0A0A0A'
   const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
   const btnBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
@@ -186,7 +192,7 @@ export default function TrailScreen({ onExit, onFinished, route }: Props) {
       <div style={{ flex:1, display:'flex', flexDirection:'column', position:'relative', overflow:'hidden', paddingBottom:'calc(120px + env(safe-area-inset-bottom))' }} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div key={pageIndex} style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0, overflowY:'auto' }}>
           {pageIndex === 0 && <TrailPage1 isDark={isDark} durationSec={stopwatch.seconds} distanceM={gps.distance} speedKmh={gps.currentSpeed} elevationGainM={gps.elevationGain} elevationLossM={elevationLossM} dataFontFamily={dataFontFamily} />}
-          {pageIndex === 1 && <TrailPage2 isDark={isDark} distanceM={gps.distance} trackPoints={trackPoints} currentPosition={currentPosition} onExpand={() => setNavOpen(true)} />}
+          {pageIndex === 1 && <TrailPage2 isDark={isDark} distanceM={gps.distance} trackPoints={trackPoints} currentPosition={currentPosition} onExpand={() => setNavOpen(true)} paused={autoPaused} />}
           {pageIndex === 2 && <TrailPage3 isDark={isDark} gradientPercent={gps.gradient ?? 0} elevationGainM={gps.elevationGain} elevationLossM={elevationLossM} altitudeM={gps.currentAltitude ?? 0} lapElevGainM={lapElevGain} lapElevLossM={lapElevLoss} dataFontFamily={dataFontFamily} />}
           {pageIndex === 3 && <TrailPage4 isDark={isDark} currentLapSec={currentLapSec} currentLapDistanceM={currentLapDistance} gradientPercent={gps.gradient ?? 0} lapElevGainM={lapElevGain} lapElevLossM={lapElevLoss} dataFontFamily={dataFontFamily} />}
         </div>

@@ -331,6 +331,7 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
                   distanceM={gps.distance}
                   trackPoints={trackPoints}
                   currentPosition={currentPosition}
+                  onExpand={() => setNavOpen(true)}
                 />
               )
             }
@@ -388,15 +389,9 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
       )}
       {previewUrl && <PhotoPreviewToast url={previewUrl} onDismiss={() => setPreviewUrl(null)} />}
 
-      {/* Navigation plein écran du parcours (si un parcours est chargé) */}
-      {route && (
-        <button onClick={() => setNavOpen(true)} aria-label="Navigation plein écran"
-          style={{ position: 'absolute', bottom: 'calc(130px + env(safe-area-inset-bottom))', right: 16, zIndex: 100, width: 48, height: 48, borderRadius: '50%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', boxShadow: '0 2px 12px rgba(0,0,0,0.22)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
-        </button>
-      )}
-      {navOpen && route && (
-        <RouteNavScreen route={route} sport="cycling" showWatts hr={null} watts={null} onClose={() => setNavOpen(false)} />
+      {/* Navigation plein écran (dispo même sans parcours ; guidage si parcours) */}
+      {navOpen && (
+        <RouteNavScreen route={route ?? null} sport="cycling" showWatts hr={null} watts={null} onClose={() => setNavOpen(false)} />
       )}
 
       <CyclingControls

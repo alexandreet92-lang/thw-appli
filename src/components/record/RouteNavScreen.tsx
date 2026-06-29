@@ -25,7 +25,7 @@ export interface NavRouteInput {
 }
 
 interface Props {
-  route: NavRouteInput
+  route?: NavRouteInput | null
   sport: string
   showWatts: boolean
   hr?: number | null
@@ -73,7 +73,8 @@ export default function RouteNavScreen({ route, sport, showWatts, hr, watts, onC
   const announcedRef = useRef<Record<number, number>>({})   // stepIdx → dernier palier annoncé
   const bannerStartY = useRef(0)
 
-  const line = route.snapped_points
+  const line = route?.snapped_points ?? []
+  const hasRoute = line.length > 1
   const totalM = useMemo(() => {
     let d = 0; for (let i = 1; i < line.length; i++) d += haversine(line[i - 1], line[i]); return d
   }, [line])
@@ -81,21 +82,21 @@ export default function RouteNavScreen({ route, sport, showWatts, hr, watts, onC
     const a = [0]; for (let i = 1; i < line.length; i++) a.push(a[i - 1] + haversine(line[i - 1], line[i])); return a
   }, [line])
   const totalGain = useMemo(() => {
-    const ep = route.elevation_profile ?? []; let g = 0
+    const ep = route?.elevation_profile ?? []; let g = 0
     for (let i = 1; i < ep.length; i++) { const d = ep[i].altitudeM - ep[i - 1].altitudeM; if (d > 0) g += d }
     return g
-  }, [route.elevation_profile])
+  }, [route?.elevation_profile])
 
   // Étapes de navigation (manœuvres) — best effort.
   useEffect(() => {
     let alive = true
-    const wps = route.waypoints
+    const wps = route?.waypoints
     if (!wps || wps.length < 2) return
-    navigationRoute(wps, route.sport ?? sport)
+    navigationRoute(wps, route?.sport ?? sport)
       .then(r => { if (alive) setSteps(r.steps) })
       .catch(() => { /* pas de guidage si ORS indisponible */ })
     return () => { alive = false }
-  }, [route.waypoints, route.sport, sport])
+  }, [route?.waypoints, route?.sport, sport])
 
   // Position live (watchPosition) + vitesse.
   useEffect(() => {
@@ -128,10 +129,10 @@ export default function RouteNavScreen({ route, sport, showWatts, hr, watts, onC
   const traveledM = cum[nearestIdx] ?? 0
   const remainingM = Math.max(0, totalM - traveledM)
   const remainingGain = useMemo(() => {
-    const ep = route.elevation_profile ?? []; let g = 0
+    const ep = route?.elevation_profile ?? []; let g = 0
     for (let i = 1; i < ep.length; i++) { if (ep[i].distanceM < traveledM) continue; const d = ep[i].altitudeM - ep[i - 1].altitudeM; if (d > 0) g += d }
     return g || totalGain
-  }, [route.elevation_profile, traveledM, totalGain])
+  }, [route?.elevation_profile, traveledM, totalGain])
   const avgKmh = speedKmh > 3 ? speedKmh : (DEFAULT_SPEED[sport] ?? 10)
   const remainMin = (remainingM / 1000) / avgKmh * 60
 
@@ -187,16 +188,17 @@ export default function RouteNavScreen({ route, sport, showWatts, hr, watts, onC
         <Follow pos={pos} />
       </MapContainer>
 
-      {/* Fermer */}
-      <button onClick={onClose} aria-label="Fermer" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', left: 12, zIndex: 3, width: 44, height: 44, borderRadius: '50%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.18)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* Fermer — au-dessus des panes Leaflet (z-index interne jusqu'à 700) */}
+      <button onClick={onClose} aria-label="Fermer" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', left: 12, zIndex: 1200, width: 44, height: 44, borderRadius: '50%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.18)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>
       </button>
 
-      {/* Bannière prochaine manœuvre — coulissante (haut → bas) */}
+      {/* Bannière prochaine manœuvre — coulissante (haut → bas). Guidage seulement si parcours. */}
+      {hasRoute && (
       <div
         onTouchStart={e => { bannerStartY.current = e.touches[0].clientY }}
         onTouchEnd={e => { const dy = e.changedTouches[0].clientY - bannerStartY.current; if (dy > 30) setBannerUp(false); else if (dy < -30) setBannerUp(true) }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2, paddingTop: 'env(safe-area-inset-top)', transform: bannerUp ? 'translateY(0)' : 'translateY(-78%)', transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1)' }}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1100, paddingTop: 'env(safe-area-inset-top)', transform: bannerUp ? 'translateY(0)' : 'translateY(-78%)', transition: 'transform 0.3s cubic-bezier(0.2,0.8,0.2,1)' }}
       >
         <div style={{ margin: '8px 64px 0', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 6px 24px rgba(0,0,0,0.18)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: 'var(--primary-dim)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -214,27 +216,30 @@ export default function RouteNavScreen({ route, sport, showWatts, hr, watts, onC
                   <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextStep.instruction}</p>
                   <p style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600, margin: '2px 0 0' }}>{distToTurn != null ? (distToTurn >= 1000 ? `dans ${(distToTurn / 1000).toFixed(1)} km` : `dans ${Math.round(distToTurn / 10) * 10} m`) : ''}</p>
                 </>
-              : <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: 0 }}>{steps.length ? 'Suivez l’itinéraire' : (route.waypoints ? 'Guidage indisponible' : 'Pas de guidage (parcours sans points)')}</p>}
+              : <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: 0 }}>{steps.length ? 'Suivez l’itinéraire' : (route?.waypoints ? 'Guidage indisponible' : 'Pas de guidage (parcours sans points)')}</p>}
           </div>
         </div>
         <div onClick={() => setBannerUp(u => !u)} style={{ width: 44, height: 5, borderRadius: 5, background: 'var(--border-mid)', margin: '6px auto 0', cursor: 'pointer' }} />
       </div>
+      )}
 
       {/* Surimpression : vitesse / FC / watts (sans bulle, par-dessus la carte) */}
-      <div style={{ position: 'absolute', right: 14, bottom: 'calc(116px + env(safe-area-inset-bottom))', zIndex: 2, textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6, textShadow: '0 1px 4px rgba(0,0,0,0.45)' }}>
+      <div style={{ position: 'absolute', right: 14, bottom: `calc(${hasRoute ? 116 : 28}px + env(safe-area-inset-bottom))`, zIndex: 1100, textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6, textShadow: '0 1px 4px rgba(0,0,0,0.45)' }}>
         <div><span style={{ fontSize: 26, fontWeight: 800, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>{speedKmh.toFixed(1)}</span><span style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', marginLeft: 3 }}>km/h</span></div>
         {hr != null && <div><span style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{Math.round(hr)}</span><span style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', marginLeft: 3 }}>bpm</span></div>}
         {showWatts && watts != null && <div><span style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{Math.round(watts)}</span><span style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', marginLeft: 3 }}>W</span></div>}
       </div>
 
-      {/* Bas : km restants / temps estimé / D+ restant */}
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 2, background: 'var(--bg)', borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -6px 26px rgba(0,0,0,0.18)', padding: '16px 16px calc(16px + env(safe-area-inset-bottom))', display: 'flex', alignItems: 'center' }}>
+      {/* Bas : km restants / temps estimé / D+ restant — seulement avec un parcours */}
+      {hasRoute && (
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 1100, background: 'var(--bg)', borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -6px 26px rgba(0,0,0,0.18)', padding: '16px 16px calc(16px + env(safe-area-inset-bottom))', display: 'flex', alignItems: 'center' }}>
         {metric('D+ restant', `${Math.round(remainingGain)} m`)}
         <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)' }} />
         {metric('Restant', `${fmtKm(remainingM)} km`)}
         <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)' }} />
         {metric('Temps est.', fmtTime(remainMin))}
       </div>
+      )}
     </div>
   )
 

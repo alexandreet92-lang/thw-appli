@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor } from 'lucide-react'
+import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SlideView } from '@/components/ui/SlideView'
@@ -151,7 +151,7 @@ function Intro({ children }: { children:React.ReactNode }) {
   return <p style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.6, margin:'0 0 18px 2px' }}>{children}</p>
 }
 function Toggle({ value, onChange }: { value:boolean; onChange:(v:boolean)=>void }) {
-  return <button onClick={()=>onChange(!value)} style={{ width:40, height:23, borderRadius:12, background:value?'var(--primary)':'var(--border-mid)', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}><div style={{ width:17, height:17, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:value?20:3, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }}/></button>
+  return <button onClick={()=>onChange(!value)} style={{ width:50, height:30, borderRadius:15, background:value?'var(--primary)':'var(--border-mid)', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}><div style={{ width:26, height:26, borderRadius:'50%', background:'#fff', position:'absolute', top:2, left:value?22:2, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.35)' }}/></button>
 }
 function InfoModal({ title, content, onClose }: { title:string; content:React.ReactNode; onClose:()=>void }) {
   return <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}><div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:18, border:'1px solid var(--border-mid)', padding:24, maxWidth:420, width:'100%' }}><div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}><h3 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, margin:0 }}>{title}</h3><button onClick={onClose} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button></div><div style={{ fontSize:13, color:'var(--text-mid)', lineHeight:1.7 }}>{content}</div></div></div>
@@ -497,18 +497,25 @@ function GearBloc() {
 // ══════════════════════════════════════════════════
 
 function ProfilIdentityBloc() {
-  const { data: profileData, setData: setProfileData, saving: savingProfile, save: saveProfile, uploadAvatar } = useProfile()
+  const { data: profileData, setData: setProfileData, save: saveProfile, uploadAvatar } = useProfile()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [photo, setPhoto]       = useState<string|null>(null)
   const [uploading, setUploading] = useState(false)
-  const [editing, setEditing]   = useState(false)
   const [toast, setToast]       = useState<{msg:string;ok:boolean}|null>(null)
 
   // Init photo from persisted avatar_url once profile loads
   useEffect(() => {
     if (profileData.avatar_url && !photo) setPhoto(profileData.avatar_url)
   }, [profileData.avatar_url])
+
+  // Le bouton ✓ flottant de l'en-tête déclenche l'enregistrement.
+  useEffect(() => {
+    const onSave = () => { void handleSave() }
+    window.addEventListener('thw:profile-save', onSave)
+    return () => window.removeEventListener('thw:profile-save', onSave)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return
@@ -526,8 +533,8 @@ function ProfilIdentityBloc() {
   }
 
   async function handleSave() {
-    await saveProfile(); setEditing(false)
-    setToast({ msg:'Profil sauvegardé !', ok:true }); setTimeout(()=>setToast(null), 3000)
+    await saveProfile()
+    setToast({ msg:'Profil enregistré ✓', ok:true }); setTimeout(()=>setToast(null), 2500)
   }
 
   const imc = profileData.height_cm && profileData.weight_kg
@@ -561,18 +568,12 @@ function ProfilIdentityBloc() {
               <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto}/>
             </div>
             <div style={{ flex:1, minWidth:0 }}>
-              {editing
-                ? <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder="Nom / Prénom" style={{ fontFamily:'var(--font-display)', fontSize:17, fontWeight:700, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:9, padding:'6px 10px', color:'var(--text)', outline:'none', width:'100%', marginBottom:6, boxSizing:'border-box' as const }}/>
-                : <p style={{ fontFamily:'var(--font-display)', fontSize:19, fontWeight:700, margin:'0 0 3px', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profileData.full_name||'—'}</p>
-              }
+              <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder="Nom / Prénom" style={{ fontFamily:'var(--font-display)', fontSize:18, fontWeight:700, background:'transparent', border:'none', padding:0, color:'var(--text)', outline:'none', width:'100%', marginBottom:3, boxSizing:'border-box' as const }}/>
               <p style={{ fontSize:12.5, color:'var(--text-dim)', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profileData.email||'—'}</p>
             </div>
-            {editing
-              ? <SaveBtn saving={savingProfile} onClick={handleSave}/>
-              : <button onClick={()=>setEditing(true)} style={{ padding:'8px 14px', borderRadius:10, background:'var(--primary-dim)', border:'1px solid var(--primary)', color:'var(--primary)', fontSize:12.5, fontWeight:600, cursor:'pointer', flexShrink:0 }}>Modifier</button>
-            }
           </div>
         </Group>
+        <p style={{ fontSize:12, color:'var(--text-dim)', margin:'8px 2px 0', lineHeight:1.5 }}>Touche la photo pour la changer. Le ✓ en haut à droite enregistre.</p>
       </Section>
 
       {/* ── Mensurations ─────────────────────────────── */}
@@ -581,9 +582,12 @@ function ProfilIdentityBloc() {
           {STATS.map((f, i) => (
             <Line key={f.label} first={i===0}>
               <span style={{ flex:1, fontSize:15, color:'var(--text)' }}>{f.label}</span>
-              {editing && !f.readonly
-                ? <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ width:90, fontFamily:'var(--font-display)', fontSize:15, fontWeight:600, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:8, padding:'5px 9px', color:'var(--text)', outline:'none', textAlign:'right' as const }}/>
-                : <span style={{ fontSize:15, fontWeight:600, color:'var(--text)', fontVariantNumeric:'tabular-nums' }}>{f.val ? `${f.val}${f.unit?` ${f.unit}`:''}` : '—'}</span>
+              {f.readonly
+                ? <span style={{ fontSize:15, fontWeight:600, color:'var(--text)', fontVariantNumeric:'tabular-nums' }}>{f.val || '—'}</span>
+                : <span style={{ display:'flex', alignItems:'baseline', gap:6 }}>
+                    <input type="number" value={f.val} onChange={e=>setProfileData(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph} style={{ width:64, fontFamily:'var(--font-display)', fontSize:15, fontWeight:600, background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:8, padding:'5px 9px', color:'var(--text)', outline:'none', textAlign:'right' as const }}/>
+                    {f.unit && <span style={{ fontSize:12.5, color:'var(--text-dim)', width:18 }}>{f.unit}</span>}
+                  </span>
               }
             </Line>
           ))}
@@ -596,10 +600,9 @@ function ProfilIdentityBloc() {
           <textarea
             value={profileData.bio}
             onChange={e=>setProfileData(p=>({...p,bio:e.target.value}))}
-            disabled={!editing}
             placeholder="Décris ton profil, tes objectifs, ta pratique…"
             rows={3}
-            style={{ width:'100%', padding:'14px 16px', border:'none', background:'transparent', color:'var(--text)', fontSize:14, outline:'none', resize:'none' as const, fontFamily:'var(--font-body)', lineHeight:1.6, opacity:editing?1:0.85, boxSizing:'border-box' as const, display:'block' }}
+            style={{ width:'100%', padding:'14px 16px', border:'none', background:'transparent', color:'var(--text)', fontSize:14, outline:'none', resize:'none' as const, fontFamily:'var(--font-body)', lineHeight:1.6, boxSizing:'border-box' as const, display:'block' }}
           />
         </Group>
       </Section>
@@ -2405,13 +2408,18 @@ export function ProfileContent() {
 
       <SlideView screenKey={active ?? '__list__'} direction={dir}>
         {active ? (
-          // ── Drill-down : flèche retour + contenu rapatrié ──────────
+          // ── Drill-down : titre centré + boutons ronds flottants (façon Claude) ──
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-              <button onClick={back} aria-label="Retour" style={{ width: 38, height: 38, borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 40, margin: '0 -16px 16px', padding: '2px 16px 12px' }}>
+              <button onClick={back} aria-label="Retour" style={{ position: 'absolute', left: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
                 <ChevronLeft size={20} />
               </button>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{CONTENT[active]?.label}</p>
+              <p style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{CONTENT[active]?.label}</p>
+              {active === 'profil' && (
+                <button onClick={() => window.dispatchEvent(new Event('thw:profile-save'))} aria-label="Enregistrer" style={{ position: 'absolute', right: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
+                  <Check size={20} />
+                </button>
+              )}
             </div>
             {CONTENT[active]?.node}
           </div>

@@ -59,9 +59,35 @@ export default function RecordPage() {
   const [yogaTitle, setYogaTitle] = useState('')
 
   // Sheet du bas (façon Strava) : replié = 3 boutons ; déplié = paramètres.
+  // Drag qui suit le doigt en temps réel (hauteur pilotée en DOM, 0 re-render).
   const [sheetExpanded, setSheetExpanded] = useState(false)
+  const sheetRef = useRef<HTMLDivElement>(null)
   const sheetTouchStartY = useRef(0)
+  const sheetBaseH = useRef(0)
   const sheetDragged = useRef(false)
+  const collapsedH = () => (activeRoute && activeRoute.elevation_profile.length > 1 ? 238 : 132)
+  const expandedH = () => Math.min(typeof window !== 'undefined' ? window.innerHeight * 0.82 : 560, 560)
+  function sheetDragStart(e: React.TouchEvent) {
+    const el = sheetRef.current; if (!el) return
+    sheetTouchStartY.current = e.touches[0].clientY
+    sheetBaseH.current = el.offsetHeight
+    sheetDragged.current = false
+    el.style.transition = 'none'
+  }
+  function sheetDragMove(e: React.TouchEvent) {
+    const el = sheetRef.current; if (!el) return
+    const dy = sheetTouchStartY.current - e.touches[0].clientY  // vers le haut = positif
+    if (Math.abs(dy) > 5) sheetDragged.current = true
+    const h = Math.max(collapsedH(), Math.min(expandedH(), sheetBaseH.current + dy))
+    el.style.height = `${h}px`
+  }
+  function sheetDragEnd() {
+    const el = sheetRef.current; if (!el) return
+    el.style.transition = 'height 350ms cubic-bezier(0.16, 1, 0.3, 1)'
+    const next = el.offsetHeight > (collapsedH() + expandedH()) / 2
+    el.style.height = next ? 'min(82dvh, 560px)' : `${collapsedH()}px`
+    setSheetExpanded(next)
+  }
   // Réglages de session — togglés en local, mémorisés (logique détaillée plus tard).
   const [liveShare, setLiveShare]   = useState(false)
   const [audioAlerts, setAudioAlerts] = useState(false)
@@ -243,6 +269,7 @@ export default function RecordPage() {
 
       {/* Panel bas — sheet glissable (replié : 3 boutons · déplié : paramètres) */}
       <div
+        ref={sheetRef}
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 999,
           height: sheetExpanded
@@ -258,39 +285,36 @@ export default function RecordPage() {
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
       >
-        {/* Zone de préhension : glisser vers le haut déplie, vers le bas replie ;
-            un tap bascule. (Le « slider vers le haut » demandé.) */}
+        {/* Zone de préhension : un swipe vers le haut (n'importe où sur cette zone)
+            déplie ; on attrape le haut et on tire vers le bas pour replier. Drag
+            qui suit le doigt. Tap sur la poignée = bascule. */}
         <div
-          onClick={() => { if (!sheetDragged.current) setSheetExpanded(e => !e) }}
-          onTouchStart={e => { sheetTouchStartY.current = e.touches[0].clientY; sheetDragged.current = false }}
-          onTouchMove={e => { if (Math.abs(e.touches[0].clientY - sheetTouchStartY.current) > 8) sheetDragged.current = true }}
-          onTouchEnd={e => {
-            const dy = e.changedTouches[0].clientY - sheetTouchStartY.current
-            if (dy < -40) setSheetExpanded(true)
-            else if (dy > 40) setSheetExpanded(false)
-            else setSheetExpanded(prev => !prev)
-          }}
-          style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4, cursor: 'pointer', flexShrink: 0 }}
+          onTouchStart={sheetDragStart}
+          onTouchMove={sheetDragMove}
+          onTouchEnd={sheetDragEnd}
+          style={{ flexShrink: 0, touchAction: 'none' }}
         >
-          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
-        </div>
-
-        {/* Profil altimétrique si parcours chargé */}
-        {activeRoute && activeRoute.elevation_profile.length > 1 && (
-          <div style={{ padding: '4px 16px 0', flexShrink: 0 }}>
-            <ElevationChart data={activeRoute.elevation_profile} height={90} isDark={isDark} />
+          <div onClick={() => { if (!sheetDragged.current) setSheetExpanded(e => !e) }}
+            style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4, cursor: 'pointer' }}>
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
           </div>
-        )}
 
-        {/* 3 boutons — toujours visibles */}
-        <div style={{
-          height: 100, flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-          padding: '0 24px',
-        }}>
+          {/* Profil altimétrique si parcours chargé */}
+          {activeRoute && activeRoute.elevation_profile.length > 1 && (
+            <div style={{ padding: '4px 16px 0' }}>
+              <ElevationChart data={activeRoute.elevation_profile} height={90} isDark={isDark} />
+            </div>
+          )}
+
+          {/* 3 boutons — toujours visibles */}
+          <div style={{
+            height: 100,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-around',
+            padding: '0 24px',
+          }}>
           {/* GAUCHE — Sport */}
           <button
-            onClick={() => setSportSheetOpen(true)}
+            onClick={() => { if (sheetDragged.current) return; setSportSheetOpen(true) }}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               background: 'transparent', border: 'none', cursor: 'pointer',
@@ -312,7 +336,7 @@ export default function RecordPage() {
 
           {/* CENTRE — Démarrer */}
           <button
-            onClick={handleStart}
+            onClick={() => { if (sheetDragged.current) return; handleStart() }}
             aria-label="Démarrer"
             style={{
               width: 64, height: 64, borderRadius: '50%',
@@ -330,9 +354,9 @@ export default function RecordPage() {
             </svg>
           </button>
 
-          {/* DROITE — Parcours */}
+          {/* DROITE — Parcours (ouvre la liste des parcours enregistrés) */}
           <button
-            onClick={() => setRouteCreatorOpen(true)}
+            onClick={() => { if (sheetDragged.current) return; setRouteCreatorOpen(true) }}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               background: 'transparent', border: 'none', cursor: 'pointer',
@@ -353,6 +377,7 @@ export default function RecordPage() {
             </span>
             <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>Parcours</span>
           </button>
+          </div>
         </div>
 
         {/* Paramètres de la séance — révélés en dépliant le sheet */}
@@ -412,6 +437,7 @@ export default function RecordPage() {
       {routeCreatorOpen && (
         <RouteCreator
           isDark={isDark}
+          initialView="library"
           onClose={() => setRouteCreatorOpen(false)}
           onLoadRoute={route => { setActiveRoute(route); setRouteCreatorOpen(false) }}
         />

@@ -186,8 +186,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           // Fondu du contenu vers le haut (façon Claude) : ce qui défile sous les
           // boutons s'estompe progressivement. Désactivé sur /record (carte).
           ...(isRecord ? null : {
-            maskImage: 'linear-gradient(to bottom, transparent 0, transparent calc(env(safe-area-inset-top) + 8px), #000 calc(env(safe-area-inset-top) + 46px))',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, transparent calc(env(safe-area-inset-top) + 8px), #000 calc(env(safe-area-inset-top) + 46px))',
+            maskImage: 'linear-gradient(to bottom, transparent 0, transparent 50px, #000 100px)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, transparent 50px, #000 100px)',
           }) }}>
           <PageTransition>{children}</PageTransition>
         </main>

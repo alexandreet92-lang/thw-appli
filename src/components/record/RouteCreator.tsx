@@ -10,7 +10,6 @@ import { parseGPX } from '@/lib/gpxParser'
 import ElevationChart from './ElevationChart'
 import RouteSaveForm from './RouteSaveForm'
 import RouteLibrary from './RouteLibrary'
-import SegmentSaveForm from '../segments/SegmentSaveForm'
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 const ATTR = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -57,17 +56,11 @@ interface ActiveRoute {
   elevation_profile: { distanceM: number; altitudeM: number }[]
 }
 
-interface Props { onClose: () => void; onLoadRoute: (route: ActiveRoute) => void; isDark: boolean }
+interface Props { onClose: () => void; onLoadRoute: (route: ActiveRoute) => void; isDark: boolean; initialView?: 'creating' | 'library' }
 
-function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLng = (lng2 - lng1) * Math.PI / 180
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
+const LAYER_LABEL: Record<Layer, string> = { std: 'Plan', sat: 'Satellite', hyb: 'Hybride' }
 
-export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
+export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView = 'creating' }: Props) {
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
   const [snappedPoints, setSnappedPoints] = useState<SnappedPoint[]>([])
   const [distanceM, setDistanceM] = useState(0)
@@ -75,32 +68,30 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
   const [surfaces, setSurfaces] = useState<Surface[]>([])
   const [elevationProfile, setElevationProfile] = useState<ElevPoint[]>([])
   const [redoStack, setRedoStack] = useState<Waypoint[]>([])
-  const [view, setView] = useState<'creating' | 'library'>('creating')
-  const [mode, setMode] = useState<'route' | 'segment'>('route')
+  const [view, setView] = useState<'creating' | 'library'>(initialView)
   const [sport, setSport] = useState('cycling')
   const [routeName, setRouteName] = useState('')
   const [layer, setLayer] = useState<Layer>('std')
+  const [layersOpen, setLayersOpen] = useState(false)
   const [showSave, setShowSave] = useState(false)
   const [snapping, setSnapping] = useState(false)
-  const [panelExpanded, setPanelExpanded] = useState(true)
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null)
   const [scrubPosition, setScrubPosition] = useState<{ lat: number; lng: number } | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQ, setSearchQ] = useState('')
+  const [searchResults, setSearchResults] = useState<{ name: string; lat: number; lng: number }[]>([])
+  const [searching, setSearching] = useState(false)
   const mapRef = useRef<L.Map | null>(null)
-  const touchStartY = useRef(0)
-  const panelH = panelExpanded ? '45vh' : '72px'
 
   const doSnap = useCallback(async (pts: Waypoint[], sp: string) => {
     if (pts.length < 2) return
-    console.log('Snapping with waypoints:', pts, 'sport:', sp, 'ORS key present:', !!process.env.NEXT_PUBLIC_ORS_KEY)
     setSnapping(true)
     try {
       const r = await snapRoute(pts, sp)
-      console.log('ORS response: snappedPoints', r.snappedPoints.length, 'distanceM', r.distanceM)
       setSnappedPoints(r.snappedPoints); setDistanceM(r.distanceM)
       setElevGain(r.elevGain); setSurfaces(r.surfaces); setElevationProfile(r.elevationProfile)
-    } catch (err) {
-      console.log('ORS error:', err, '— falling back to straight-line segments')
-      // Fallback: draw straight lines between waypoints when ORS is unavailable
+    } catch {
+      // Fallback : segments en ligne droite quand ORS est indisponible
       setSnappedPoints(pts.map(p => ({ ...p, altitude: 0 })))
     }
     setSnapping(false)
@@ -108,16 +99,8 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
 
   const addWaypoint = useCallback(async (p: Waypoint) => {
     const next = [...waypoints, p]; setWaypoints(next); setRedoStack([])
-    if (mode === 'segment') {
-      // Skip ORS — compute straight-line distance between waypoints
-      let d = 0
-      for (let i = 1; i < next.length; i++) d += haversineM(next[i-1].lat, next[i-1].lng, next[i].lat, next[i].lng)
-      setDistanceM(d)
-      setSnappedPoints(next.map(pt => ({ ...pt, altitude: 0 })))
-    } else {
-      await doSnap(next, sport)
-    }
-  }, [waypoints, sport, mode, doSnap])
+    await doSnap(next, sport)
+  }, [waypoints, sport, doSnap])
 
   const undo = useCallback(() => {
     if (!waypoints.length) return
@@ -142,41 +125,59 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
     await doSnap(parsed.waypoints, sport)
   }
 
+  // Recherche d'un lieu (ville / rue) pour démarrer l'itinéraire — géocodage Mapbox.
+  const geocode = useCallback(async () => {
+    const q = searchQ.trim(); if (!q) return
+    setSearching(true)
+    try {
+      const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${TOKEN}&limit=6&language=fr`)
+      const j = await r.json() as { features?: { place_name: string; center: [number, number] }[] }
+      setSearchResults((j.features ?? []).map(f => ({ name: f.place_name, lat: f.center[1], lng: f.center[0] })))
+    } catch { setSearchResults([]) } finally { setSearching(false) }
+  }, [searchQ])
+
+  function recenter() {
+    if (userPosition) { mapRef.current?.setView(userPosition, 15); return }
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(p => {
+        const pos: [number, number] = [p.coords.latitude, p.coords.longitude]
+        mapRef.current?.setView(pos, 15); setUserPosition(pos)
+      })
+    }
+  }
+
   const handleSave = async (name: string, isPublic: boolean) => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser(); if (!user) return
-    if (mode === 'segment') {
-      await supabase.from('segments').insert({
-        user_id: user.id, name, sport, is_public: isPublic,
-        distance_m: distanceM, elevation_gain_m: elevGain,
-        points: waypoints,
-      })
-    } else {
-      await supabase.from('routes').insert({
-        user_id: user.id, name, sport, is_public: isPublic,
-        distance_m: distanceM, elevation_gain_m: elevGain,
-        waypoints, snapped_points: snappedPoints, elevation_profile: elevationProfile, surfaces,
-      })
-    }
+    await supabase.from('routes').insert({
+      user_id: user.id, name, sport, is_public: isPublic,
+      distance_m: distanceM, elevation_gain_m: elevGain,
+      waypoints, snapped_points: snappedPoints, elevation_profile: elevationProfile, surfaces,
+    })
     setShowSave(false); onClose()
   }
 
-  const fb: React.CSSProperties = { width: 42, height: 42, borderRadius: '50%', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-  // Use snapped route if available, otherwise draw straight lines between waypoints as fallback
+  // Bouton flottant : plein, blanc le jour / noir la nuit (tokens), rond.
+  const fb: React.CSSProperties = { width: 44, height: 44, borderRadius: '50%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.18)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+  const editBtn: React.CSSProperties = { width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', color: 'var(--text)', border: '1px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
+
   const displayPts: [number, number][] = snappedPoints.length >= 2
     ? snappedPoints.map(p => [p.lat, p.lng])
     : waypoints.length >= 2
     ? waypoints.map(p => [p.lat, p.lng])
     : []
 
+  // Sortir de la création : retour à la liste si on y est entré par là, sinon fermer.
+  const exitCreate = initialView === 'library' ? () => setView('library') : onClose
+
   if (view === 'library') return createPortal(
-    <RouteLibrary isDark={isDark} onClose={() => setView('creating')}
+    <RouteLibrary isDark={isDark} onClose={onClose} onCreate={() => setView('creating')}
       onUseRoute={route => { onLoadRoute(route); onClose() }} />,
     document.body
   )
 
   const ui = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, fontFamily: 'DM Sans, sans-serif', animation: 'slideUp 300ms cubic-bezier(0.16,1,0.3,1)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, fontFamily: 'var(--font-body)', animation: 'slideUp 300ms cubic-bezier(0.16,1,0.3,1)' }}>
       <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
       <MapContainer center={[48.8566, 2.3522]} zoom={13} zoomControl={false} attributionControl={false} style={{ position: 'absolute', inset: 0 }}>
         <TileLayer url={TILES[layer]} tileSize={512} zoomOffset={-1} detectRetina={true} maxZoom={20} attribution={ATTR} />
@@ -199,99 +200,123 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark }: Props) {
             pathOptions={{ fillColor: i === 0 ? '#10B981' : i === waypoints.length - 1 ? '#EF4444' : '#2563EB', fillOpacity: 1, color: 'white', weight: 2 }} />
         ))}
         {scrubPosition && (
-          <CircleMarker
-            center={[scrubPosition.lat, scrubPosition.lng]}
-            radius={8}
-            pathOptions={{ fillColor: '#EF4444', fillOpacity: 1, color: '#fff', weight: 2.5 }}
-          />
+          <CircleMarker center={[scrubPosition.lat, scrubPosition.lng]} radius={8}
+            pathOptions={{ fillColor: '#EF4444', fillOpacity: 1, color: '#fff', weight: 2.5 }} />
         )}
       </MapContainer>
 
-      {/* Header */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000, padding: '12px 16px', paddingTop: 'calc(12px + env(safe-area-inset-top))', display: 'flex', alignItems: 'center', gap: 10 }}>
-        {/* Retour vers l'accueil de la page activité (remplace le hamburger) */}
-        <button onClick={onClose} aria-label="Retour" style={fb}><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 4L6 9l5 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-        <div style={{ flex: 1, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          {/* Mode toggle */}
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: 2, gap: 2 }}>
-            {(['route', 'segment'] as const).map(m => (
-              <button key={m} onClick={() => { setMode(m); setWaypoints([]); setSnappedPoints([]); setDistanceM(0); setElevGain(0) }}
-                style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: mode === m ? 'white' : 'transparent', color: mode === m ? '#0A0A0A' : 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: 600, cursor: 'pointer', transition: 'all 150ms' }}>
-                {m === 'route' ? 'Parcours' : 'Segment'}
+      {/* Croix — sortir (haut gauche) */}
+      <button onClick={exitCreate} aria-label="Fermer" style={{ ...fb, position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', left: 12, zIndex: 1000 }}>
+        <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>
+      </button>
+
+      {/* Pile latérale droite : recherche · styles de carte · boussole */}
+      <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', right: 12, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <button onClick={() => setSearchOpen(true)} aria-label="Rechercher" style={fb}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        </button>
+        <button onClick={() => setLayersOpen(o => !o)} aria-label="Styles de carte" style={fb}>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 12l10 5 10-5"/><path d="M2 17l10 5 10-5"/></svg>
+        </button>
+        <button onClick={recenter} aria-label="Boussole" style={fb}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6"/><path d="M12 5l2.4 6.6L21 14l-6.6-1.4z" fill="#EF4444"/><path d="M12 19l-2.4-6.6L3 10l6.6 1.4z" fill="currentColor" opacity="0.55"/></svg>
+        </button>
+      </div>
+
+      {/* Popover styles de carte */}
+      {layersOpen && (
+        <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 62px)', right: 64, zIndex: 1001, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 6px 24px rgba(0,0,0,0.22)', padding: 6, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 130 }}>
+          {(['std', 'sat', 'hyb'] as Layer[]).map(l => {
+            const on = layer === l
+            return (
+              <button key={l} onClick={() => { setLayer(l); setLayersOpen(false) }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 12px', borderRadius: 10, border: 'none', background: on ? 'var(--primary-dim)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text)', fontSize: 13.5, fontWeight: on ? 600 : 500, cursor: 'pointer', textAlign: 'left' }}>
+                {LAYER_LABEL[l]}
+                {on && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.6" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>}
               </button>
-            ))}
+            )
+          })}
+        </div>
+      )}
+
+      {/* Recherche d'un lieu */}
+      {searchOpen && (
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1002, background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: 'calc(env(safe-area-inset-top) + 10px) 12px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: '9px 12px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input autoFocus value={searchQ} onChange={e => setSearchQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void geocode() }}
+                placeholder="Chercher une ville, une rue…" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', color: 'var(--text)', fontSize: 15, fontFamily: 'var(--font-body)' }} />
+            </div>
+            <button onClick={() => { setSearchOpen(false); setSearchResults([]); setSearchQ('') }} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '4px 6px' }}>Annuler</button>
           </div>
-          <select value={sport} onChange={e => setSport(e.target.value)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 12, cursor: 'pointer', outline: 'none' }}>
+          {(searching || searchResults.length > 0) && (
+            <div style={{ marginTop: 8, maxHeight: 260, overflowY: 'auto' }}>
+              {searching && <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: '8px 4px', margin: 0 }}>Recherche…</p>}
+              {searchResults.map((res, i) => (
+                <button key={i} onClick={() => { mapRef.current?.setView([res.lat, res.lng], 14); setSearchOpen(false); setSearchResults([]); setSearchQ('') }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '11px 8px', background: 'none', border: 'none', borderTop: i > 0 ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span style={{ fontSize: 14, color: 'var(--text)' }}>{res.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Panneau bas — hauteur ajustée au contenu (pas de trou blanc) */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'var(--bg-card)', borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -6px 26px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '10px auto 2px' }} />
+
+        {/* Sport + édition (annuler / refaire / import GPX) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px 6px' }}>
+          <select value={sport} onChange={e => setSport(e.target.value)} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 999, color: 'var(--text)', fontSize: 13, fontWeight: 600, padding: '7px 12px', cursor: 'pointer', outline: 'none', fontFamily: 'var(--font-body)' }}>
             <option value="cycling">Vélo</option><option value="mtb">VTT</option>
             <option value="trail">Trail</option><option value="hiking">Randonnée</option>
           </select>
-        </div>
-        <button onClick={() => setView('library')} style={fb}><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 4h14M2 9h14M2 14h14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
-      </div>
-
-      {/* Floating buttons */}
-      <div style={{ position: 'absolute', bottom: `calc(${panelH} + 16px)`, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, display: 'flex', gap: 10 }}>
-        <button onClick={undo} disabled={!waypoints.length} style={{ ...fb, opacity: waypoints.length ? 1 : 0.4 }}><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9a6 6 0 1 1 1.5 4" stroke="white" strokeWidth="1.6" strokeLinecap="round"/><path d="M3 5v4h4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-        <label style={fb}><input type="file" accept=".gpx" onChange={handleGPX} style={{ display: 'none' }} /><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2v10M5 8l4-4 4 4M3 14h12" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></label>
-        <button onClick={() => navigator.geolocation.getCurrentPosition(p => { const pos: [number, number] = [p.coords.latitude, p.coords.longitude]; mapRef.current?.setView(pos, 15); setUserPosition(pos) })} style={fb}><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="3" fill="white"/><path d="M9 1v3M9 14v3M1 9h3M14 9h3" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg></button>
-        <button onClick={redo} disabled={!redoStack.length} style={{ ...fb, opacity: redoStack.length ? 1 : 0.4 }}><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M15 9a6 6 0 1 0-1.5 4" stroke="white" strokeWidth="1.6" strokeLinecap="round"/><path d="M15 5v4h-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-      </div>
-
-      {/* Layer selector */}
-      <div style={{ position: 'absolute', right: 12, bottom: `calc(${panelH} + 60px)`, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {(['std', 'sat', 'hyb'] as Layer[]).map(l => (
-          <button key={l} onClick={() => setLayer(l)} style={{ width: 42, height: 42, borderRadius: '50%', border: 'none', cursor: 'pointer', background: layer === l ? '#fff' : 'rgba(0,0,0,0.55)', color: layer === l ? '#0A0A0A' : '#fff', backdropFilter: 'blur(8px)', fontSize: 11, fontWeight: 700 }}>
-            {l === 'std' ? 'Std' : l === 'sat' ? 'Sat' : 'Hyb'}
-          </button>
-        ))}
-      </div>
-
-      {/* Bottom panel — draggable */}
-      <div
-        onTouchStart={(e) => { touchStartY.current = e.touches[0].clientY }}
-        onTouchEnd={(e) => {
-          const delta = e.changedTouches[0].clientY - touchStartY.current
-          if (delta > 50) setPanelExpanded(false)
-          if (delta < -50) setPanelExpanded(true)
-        }}
-        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, height: panelH, background: isDark ? '#0A0A0A' : '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, boxShadow: '0 -4px 24px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)', transition: 'height 350ms cubic-bezier(0.16, 1, 0.3, 1)', overflow: 'hidden' }}
-      >
-        {/* Drag indicator — click to toggle */}
-        <div onClick={() => setPanelExpanded(p => !p)}
-          style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(150,150,150,0.4)', margin: '8px auto', cursor: 'pointer', flexShrink: 0 }} />
-
-        {/* Stats bar — always visible */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '6px 16px', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'}`, flexShrink: 0 }}>
-          <span style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.4)' : '#9CA3AF' }}>{snapping ? 'Calcul…' : `${waypoints.length} point${waypoints.length !== 1 ? 's' : ''}`}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{snapping ? 'Calcul…' : `${waypoints.length} point${waypoints.length !== 1 ? 's' : ''}`}</span>
           <div style={{ flex: 1 }} />
-          {[{ label: 'Distance', value: distanceM >= 1000 ? `${(distanceM / 1000).toFixed(2)}` : `${Math.round(distanceM)}`, unit: distanceM >= 1000 ? 'km' : 'm' }, { label: 'D+', value: `${Math.round(elevGain)}`, unit: 'm' }, { label: 'Pente', value: distanceM > 0 ? (elevGain / distanceM * 100).toFixed(1) : '--', unit: '%' }].map((s, i) => (
-            <div key={i} style={{ textAlign: 'center', padding: '0 10px', borderLeft: i > 0 ? `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'}` : 'none' }}>
-              <p style={{ fontSize: 9, color: '#8C8C8C', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</p>
-              <p style={{ fontSize: 16, fontWeight: 700, color: isDark ? '#fff' : '#0A0A0A', margin: '1px 0 0', lineHeight: 1 }}>{s.value}<span style={{ fontSize: 9, color: '#8C8C8C' }}> {s.unit}</span></p>
+          <button onClick={undo} disabled={!waypoints.length} aria-label="Annuler" style={{ ...editBtn, opacity: waypoints.length ? 1 : 0.4 }}>
+            <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M3 9a6 6 0 1 1 1.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M3 5v4h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <button onClick={redo} disabled={!redoStack.length} aria-label="Refaire" style={{ ...editBtn, opacity: redoStack.length ? 1 : 0.4 }}>
+            <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M15 9a6 6 0 1 0-1.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M15 5v4h-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <label style={editBtn} aria-label="Importer un GPX">
+            <input type="file" accept=".gpx" onChange={handleGPX} style={{ display: 'none' }} />
+            <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M9 2v10M5 8l4-4 4 4M3 15h12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </label>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '4px 16px 6px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+          {[
+            { label: 'Distance', value: distanceM >= 1000 ? `${(distanceM / 1000).toFixed(2)}` : `${Math.round(distanceM)}`, unit: distanceM >= 1000 ? 'km' : 'm' },
+            { label: 'D+', value: `${Math.round(elevGain)}`, unit: 'm' },
+            { label: 'Pente', value: distanceM > 0 ? (elevGain / distanceM * 100).toFixed(1) : '--', unit: '%' },
+          ].map((s, i) => (
+            <div key={i} style={{ textAlign: 'center', padding: '8px 10px', flex: 1, borderLeft: i > 0 ? '1px solid var(--border)' : 'none' }}>
+              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</p>
+              <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '2px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{s.value}<span style={{ fontSize: 9, color: 'var(--text-dim)' }}> {s.unit}</span></p>
             </div>
           ))}
         </div>
 
-        {/* Elevation + save — masqués si collapsed */}
-        {panelExpanded && (
-          <>
-            <div style={{ flex: 1, padding: '4px 16px 0', overflow: 'hidden' }}>
-              <div style={{ opacity: 1, transition: 'opacity 200ms' }}>
-                <ElevationChart data={elevationProfile} surfaces={surfaces} height={110} isDark={isDark} snappedPoints={snappedPoints} onPositionChange={setScrubPosition} />
-              </div>
-            </div>
-            <div style={{ padding: '6px 16px 8px', flexShrink: 0 }}>
-              <button onClick={() => setShowSave(true)} disabled={waypoints.length < 2}
-                style={{ width: '100%', height: 44, borderRadius: 14, background: waypoints.length < 2 ? (isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6') : 'linear-gradient(135deg, #06B6D4, #2563EB)', border: 'none', color: waypoints.length < 2 ? '#8C8C8C' : '#fff', fontSize: 14, fontWeight: 600, cursor: waypoints.length < 2 ? 'default' : 'pointer' }}>
-                {mode === 'segment' ? 'Créer le segment' : 'Enregistrer'}
-              </button>
-            </div>
-          </>
-        )}
+        {/* Profil altimétrique — collé en bas du panneau (pas de trou blanc) */}
+        <div style={{ padding: '6px 12px 0' }}>
+          <ElevationChart data={elevationProfile} surfaces={surfaces} height={120} isDark={isDark} snappedPoints={snappedPoints} onPositionChange={setScrubPosition} />
+        </div>
+
+        <div style={{ padding: '8px 16px 10px' }}>
+          <button onClick={() => setShowSave(true)} disabled={waypoints.length < 2}
+            style={{ width: '100%', height: 48, borderRadius: 14, background: waypoints.length < 2 ? 'var(--bg-card2)' : 'var(--primary)', border: 'none', color: waypoints.length < 2 ? 'var(--text-dim)' : 'var(--on-primary)', fontSize: 15, fontWeight: 600, cursor: waypoints.length < 2 ? 'default' : 'pointer', fontFamily: 'var(--font-body)' }}>
+            Enregistrer
+          </button>
+        </div>
       </div>
 
-      {showSave && mode === 'route' && <RouteSaveForm routeName={routeName} onChangeName={setRouteName} onSave={handleSave} onClose={() => setShowSave(false)} isDark={isDark} />}
-      {showSave && mode === 'segment' && <SegmentSaveForm sport={sport} onSave={handleSave} onClose={() => setShowSave(false)} isDark={isDark} />}
+      {showSave && <RouteSaveForm routeName={routeName} onChangeName={setRouteName} onSave={handleSave} onClose={() => setShowSave(false)} isDark={isDark} />}
     </div>
   )
 

@@ -20,6 +20,7 @@ interface ActiveRoute {
 interface Props {
   onClose: () => void
   onUseRoute: (route: ActiveRoute) => void
+  onCreate: () => void
   isDark: boolean
 }
 
@@ -33,9 +34,10 @@ function staticMapUrl(route: Route): string {
   return `https://api.maptiler.com/maps/outdoor-v2/static/${mid.lng.toFixed(4)},${mid.lat.toFixed(4)},12/100x70.png?key=${KEY}`
 }
 
-export default function RouteLibrary({ onClose, onUseRoute, isDark }: Props) {
+export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: Props) {
   const [routes, setRoutes] = useState<Route[]>([])
   const [showPublic, setShowPublic] = useState(false)
+  const [search, setSearch] = useState('')
   const bg = isDark ? '#0A0A0A' : '#FFFFFF'
   const text = isDark ? '#FFFFFF' : '#0A0A0A'
   const dim = isDark ? 'rgba(255,255,255,0.4)' : '#9CA3AF'
@@ -60,29 +62,42 @@ export default function RouteLibrary({ onClose, onUseRoute, isDark }: Props) {
     setRoutes(r => r.filter(x => x.id !== id))
   }
 
+  const filtered = routes.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 10005, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${separator}`, gap: 12 }}>
-        <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: surface, border: 'none', color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      {/* En-tête : Annuler · titre centré · crayon (créer) */}
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: `1px solid ${separator}` }}>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#06B6D4', fontSize: 16, fontWeight: 500, cursor: 'pointer', padding: 0, zIndex: 1 }}>Annuler</button>
+        <p style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 17, fontWeight: 700, color: text, margin: 0, fontFamily: 'var(--font-display)', pointerEvents: 'none' }}>Itinéraires</p>
+        <button onClick={onCreate} aria-label="Créer un parcours" style={{ background: 'none', border: 'none', color: text, cursor: 'pointer', padding: 0, zIndex: 1, display: 'flex' }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
         </button>
-        <p style={{ flex: 1, fontSize: 17, fontWeight: 700, color: text, margin: 0, fontFamily: 'Syne, sans-serif' }}>Parcours</p>
-        <div style={{ display: 'flex', background: surface, borderRadius: 10, padding: 3, gap: 2 }}>
+      </div>
+
+      {/* Recherche + bascule Mes / Publics */}
+      <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 12px' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dim} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Chercher par mot-clé" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', color: text, fontSize: 15, fontFamily: 'DM Sans, sans-serif' }} />
+        </div>
+        <div style={{ display: 'flex', background: surface, borderRadius: 10, padding: 3, gap: 2, alignSelf: 'flex-start' }}>
           {['Mes parcours', 'Publics'].map((label, i) => (
             <button key={i} onClick={() => setShowPublic(i === 1)}
-              style={{ padding: '5px 12px', borderRadius: 8, background: showPublic === (i === 1) ? '#06B6D4' : 'transparent', border: 'none', color: showPublic === (i === 1) ? '#fff' : dim, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+              style={{ padding: '6px 14px', borderRadius: 8, background: showPublic === (i === 1) ? '#06B6D4' : 'transparent', border: 'none', color: showPublic === (i === 1) ? '#fff' : dim, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
               {label}
             </button>
           ))}
         </div>
       </div>
+
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-        {routes.length === 0 && (
+        {filtered.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: dim }}>
-            <p style={{ fontSize: 14 }}>Aucun parcours{showPublic ? ' public' : ''}</p>
+            <p style={{ fontSize: 14 }}>Aucun parcours{showPublic ? ' public' : ''}{search ? ' trouvé' : ''}</p>
           </div>
         )}
-        {routes.map(route => (
+        {filtered.map(route => (
           <div key={route.id} style={{ background: surface, border: `1px solid ${border}`, borderRadius: 16, marginBottom: 12, overflow: 'hidden' }}>
             <div style={{ display: 'flex', gap: 12, padding: 12 }}>
               {staticMapUrl(route) ? (

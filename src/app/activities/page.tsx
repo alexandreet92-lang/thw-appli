@@ -333,6 +333,11 @@ function computeFitness(activities: Activity[]): { ctl: number; atl: number; tsb
 // HOOK: useActivities — pagination par lots de 50
 // ─────────────────────────────────────────────────────────────
 const PAGE_SIZE = 50
+// Colonnes de la LISTE — on exclut les gros JSONB (streams, raw_data,
+// power_curve, pace_curve) qui ne servent qu'au détail : un `select('*')` les
+// tirait pour chaque ligne → payload énorme → timeout (500). On garde tout le
+// reste (dont summary_polyline pour la mini-carte et laps).
+const LIST_COLUMNS = 'id,user_id,provider,provider_id,external_url,sport_type,is_race,race_name,title,description,notes,started_at,ended_at,timezone,moving_time_s,elapsed_time_s,distance_m,elevation_gain_m,elevation_loss_m,max_elevation_m,avg_speed_ms,max_speed_ms,avg_pace_s_km,avg_watts,max_watts,normalized_watts,kilojoules,ftp_at_time,intensity_factor,tss,avg_hr,max_hr,min_hr,avg_cadence,max_cadence,calories,suffer_score,perceived_effort,rpe,avg_temp_c,weather,gear_name,trainer,commute,flagged,laps,created_at,updated_at,total_descent_m,trimp,aerobic_decoupling,average_heartrate,max_heartrate,average_speed,cardiac_drift_pct,summary_polyline,strava_gear_id,records_processed,records_beaten,feeling,difficulty,ef_value,power_hr_ratio,decoupling_pct,ef_calculation_method,sm_score,sn_score'
 
 function useActivities() {
   const [activities, setActivities]   = useState<Activity[]>([])
@@ -360,7 +365,7 @@ function useActivities() {
           const from = pageNum * PAGE_SIZE
           const { data, error: err, count } = await sb
             .from('activities')
-            .select('*', { count: 'exact' })
+            .select(LIST_COLUMNS, { count: 'exact' })
             .order('started_at', { ascending: false })
             .range(from, from + PAGE_SIZE - 1)
           if (err) throw err

@@ -79,7 +79,7 @@ function Segmented({ value, onChange, labels }: { value: number; onChange: (i: n
     <div role="tablist" style={{ position: 'relative', display: 'flex', padding: 5, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', marginBottom: 24 }}>
       <div aria-hidden style={{
         position: 'absolute', top: 5, bottom: 5, left: 5, width: 'calc(50% - 5px)', borderRadius: 'var(--r-sm)',
-        background: 'var(--primary-dim)', boxShadow: 'inset 0 0 0 1px var(--primary)',
+        background: 'var(--bg-elev)', boxShadow: 'var(--shadow-card)',
         transform: value === 1 ? 'translateX(100%)' : 'translateX(0)',
         transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1)',
       }} />
@@ -87,7 +87,7 @@ function Segmented({ value, onChange, labels }: { value: number; onChange: (i: n
         <button key={i} role="tab" aria-selected={value === i} onClick={() => onChange(i)} style={{
           position: 'relative', flex: 1, zIndex: 1, height: 40, border: 'none', background: 'transparent', cursor: 'pointer',
           fontFamily: FB, fontSize: 14, fontWeight: value === i ? 700 : 500, letterSpacing: '0.01em',
-          color: value === i ? 'var(--primary)' : 'var(--text-mid)', transition: 'color 0.2s',
+          color: value === i ? 'var(--text)' : 'var(--text-mid)', transition: 'color 0.2s',
         }}>{l}</button>
       ))}
     </div>

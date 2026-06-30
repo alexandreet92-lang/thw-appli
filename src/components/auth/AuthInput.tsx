@@ -38,10 +38,10 @@ export function AuthInput({ label, type, placeholder, value, onChange, showToggl
           onFocus={() => setFocus(true)}
           onBlur={() => setFocus(false)}
           style={{
-            width: '100%', height: 48,
+            width: '100%', height: 52,
             background: 'var(--input-bg)',
             border: `1px solid ${borderColor}`,
-            borderRadius: 'var(--r-sm)', padding: showToggle ? '0 44px 0 14px' : '0 14px',
+            borderRadius: 'var(--r-md)', padding: showToggle ? '0 46px 0 16px' : '0 16px',
             color: 'var(--text)', fontSize: 15, outline: 'none',
             boxSizing: 'border-box',
             fontFamily: 'var(--font-body)',

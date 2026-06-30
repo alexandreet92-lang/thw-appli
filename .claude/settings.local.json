@@ -45,7 +45,8 @@
       "Bash(curl -s \"https://api.github.com/repos/alexandreet92-lang/thw-appli/commits/4699e53/status\")",
       "Bash(curl -s \"https://api.github.com/repos/alexandreet92-lang/thw-appli/commits/5d5cd6a/status\")",
       "Bash(awk 'NR>=5000 && NR<=5200 && /useEffect/{print NR\": \"$0}' src/components/ai/AIPanel.tsx)",
-      "Bash(awk '/^function SessionDetailModal/{start=NR} /^function \\(WeekTab|PlanHeaderAndGraphics\\)/{if\\(start\\){print \"start:\", start, \"end:\", NR-1; exit}}' src/app/planning/page.tsx)"
+      "Bash(awk '/^function SessionDetailModal/{start=NR} /^function \\(WeekTab|PlanHeaderAndGraphics\\)/{if\\(start\\){print \"start:\", start, \"end:\", NR-1; exit}}' src/app/planning/page.tsx)",
+      "Bash(cd /home/user/thw-appli *)"
     ]
   }
 }

@@ -53,10 +53,8 @@ function Hero() {
 
       <div className="hbl-hero-inner">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ width: 46, height: 46, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logos/logo_4bras.png" alt="Hybrid" style={{ width: 30, height: 30, objectFit: 'contain' }} />
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logos/logo_app.png" alt="Hybrid" style={{ width: 48, height: 48, borderRadius: 13, objectFit: 'cover', flexShrink: 0, boxShadow: '0 4px 14px rgba(6,182,212,0.25)' }} />
           <div>
             <div style={{ fontFamily: FD, fontSize: 26, fontWeight: 600, letterSpacing: '-0.5px', color: 'var(--text)', lineHeight: 1 }}>Hybrid</div>
             <div style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-dim)', marginTop: 4 }}>{t('auth.heroTagline')}</div>
@@ -78,18 +76,18 @@ function Hero() {
 // ── Segmented control (thumb glissant) ────────────────────────────
 function Segmented({ value, onChange, labels }: { value: number; onChange: (i: number) => void; labels: [string, string] }) {
   return (
-    <div role="tablist" style={{ position: 'relative', display: 'flex', padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', marginBottom: 24 }}>
+    <div role="tablist" style={{ position: 'relative', display: 'flex', padding: 5, borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', border: '1px solid var(--border)', marginBottom: 24 }}>
       <div aria-hidden style={{
-        position: 'absolute', top: 4, bottom: 4, left: 4, width: 'calc(50% - 4px)', borderRadius: 'var(--r-sm)',
-        background: 'var(--bg-elev)', boxShadow: 'var(--shadow-card)', border: '1px solid var(--border)',
-        transform: value === 1 ? 'translateX(calc(100% + 0px))' : 'translateX(0)',
-        transition: 'transform 0.26s cubic-bezier(0.32,0.72,0,1)',
+        position: 'absolute', top: 5, bottom: 5, left: 5, width: 'calc(50% - 5px)', borderRadius: 'var(--r-sm)',
+        background: 'var(--primary-dim)', boxShadow: 'inset 0 0 0 1px var(--primary)',
+        transform: value === 1 ? 'translateX(100%)' : 'translateX(0)',
+        transition: 'transform 0.28s cubic-bezier(0.32,0.72,0,1)',
       }} />
       {labels.map((l, i) => (
         <button key={i} role="tab" aria-selected={value === i} onClick={() => onChange(i)} style={{
-          position: 'relative', flex: 1, zIndex: 1, height: 38, border: 'none', background: 'transparent', cursor: 'pointer',
-          fontFamily: FB, fontSize: 13.5, fontWeight: value === i ? 700 : 500,
-          color: value === i ? 'var(--text)' : 'var(--text-mid)', transition: 'color 0.2s',
+          position: 'relative', flex: 1, zIndex: 1, height: 40, border: 'none', background: 'transparent', cursor: 'pointer',
+          fontFamily: FB, fontSize: 14, fontWeight: value === i ? 700 : 500, letterSpacing: '0.01em',
+          color: value === i ? 'var(--primary)' : 'var(--text-mid)', transition: 'color 0.2s',
         }}>{l}</button>
       ))}
     </div>

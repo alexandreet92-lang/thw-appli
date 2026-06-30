@@ -415,6 +415,22 @@ body {
   .skeleton-shimmer { animation: none; background: var(--bg-card2); }
 }
 
+/* ── Remplissage auto navigateur : neutralise le jaune horrible de Safari/Chrome.
+      On masque le fond jaune par le fond d'input du thème + texte lisible. ── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--input-bg) inset;
+  box-shadow: 0 0 0 1000px var(--input-bg) inset;
+  caret-color: var(--text);
+  border-radius: inherit;
+  transition: background-color 9999s ease-out 0s;
+}
+
 /* ── Button tap feedback (Framer Motion applies scale; this is the
       CSS fallback for reduced-motion users) ─────────────────────── */
 button:active { transform: scale(0.97); }

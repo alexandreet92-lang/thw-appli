@@ -21,14 +21,18 @@ export function LanguageDropdown() {
   return (
     <div ref={ref} style={{ position: 'fixed', top: 'calc(env(safe-area-inset-top) + 12px)', right: 16, zIndex: 60 }}>
       <button onClick={() => setOpen(o => !o)} aria-haspopup="listbox" aria-expanded={open} style={{
-        display: 'inline-flex', alignItems: 'center', gap: 8, height: 38, padding: '0 12px', borderRadius: 999,
-        border: '1px solid var(--border-mid)', background: 'var(--bg-card2)', color: 'var(--text)',
+        display: 'inline-flex', alignItems: 'center', gap: 9, height: 40, padding: '0 8px 0 12px', borderRadius: 999,
+        border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
+        backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.12)', color: 'var(--text)',
         fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
       }}>
-        <span style={{ fontSize: 16 }}>{current.flag}</span>
-        <span>{current.label}</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', opacity: 0.6 }}><path d="M6 9l6 6 6-6" /></svg>
+        <span style={{ fontSize: 17, lineHeight: 1, display: 'flex' }}>{current.flag}</span>
+        <span style={{ letterSpacing: '0.01em' }}>{current.label}</span>
+        <span style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', opacity: 0.7 }}><path d="M6 9l6 6 6-6" /></svg>
+        </span>
       </button>
 
       <div role="listbox" style={{

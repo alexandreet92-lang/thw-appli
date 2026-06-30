@@ -3322,8 +3322,6 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       {aiPlan && (
         <PlanHeaderAndGraphics plan={aiPlan} sessions={aiPlanSessions} currentWeekStart={currentWeekStart} nextRace={nextRace} onReload={() => setAiPlanReloadTick(t => t + 1)} />
       )}
-      {/* ── BULLE FLOTTANTE COACH IA (visible si plan actif) ── */}
-      {aiPlan && <AiPlanBubble plan={aiPlan} />}
       {/* ── BANNIÈRE PLAN À VENIR — visible quand le plan démarre dans une semaine future ── */}
       {upcomingPlan && !aiPlan && (
         <div style={{ padding:'14px 18px',borderRadius:14,background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.30)',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap' as const }}>

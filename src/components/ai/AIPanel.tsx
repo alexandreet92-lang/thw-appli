@@ -17,6 +17,7 @@ import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
+import { haptic } from '@/lib/ui/haptic'
 import { VoiceOverlay } from './VoiceOverlay'
 import { VoiceConversation } from './VoiceConversation'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
@@ -12191,13 +12192,14 @@ function HistoryDrawer({
         <span style={{ fontSize: 24, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>
           Hybrid
         </span>
-        <a
-          href="/profile"
+        <button
+          type="button"
+          onClick={() => { haptic(); try { window.dispatchEvent(new Event('thw:open-profile')) } catch { /* ignore */ } }}
           aria-label="Profil"
           style={{
             width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            overflow: 'hidden', textDecoration: 'none',
+            overflow: 'hidden', cursor: 'pointer', padding: 0,
             border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
             color: 'var(--text)', fontSize: 13, fontWeight: 600,
             fontFamily: 'DM Sans,sans-serif',
@@ -12207,7 +12209,7 @@ function HistoryDrawer({
             ? /* eslint-disable-next-line @next/next/no-img-element */
               <img src={avatarUrl} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             : (initials || '?')}
-        </a>
+        </button>
       </div>
 
       {/* Nouvelle conversation (desktop) + Projets */}
@@ -19143,6 +19145,7 @@ export default function AIPanel({
   }
 
   const newConv = () => {
+    haptic()
     setActiveId(null)
     setActiveFlow(null)
     setHistOpen(false)
@@ -19150,6 +19153,7 @@ export default function AIPanel({
   }
 
   const selectConv = (c: AIConv) => {
+    haptic()
     // Support rename via HistoryDrawer passing modified conv
     setConvs(prev => prev.map(x => x.id === c.id ? { ...x, title: c.title } : x))
     setActiveId(c.id)

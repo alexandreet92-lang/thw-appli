@@ -47,7 +47,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
   if (!mounted) return null
 
   return (
-    <div className="md:hidden" style={{ position: 'fixed', inset: 0, zIndex: 1200 }}>
+    <div className="md:hidden" style={{ position: 'fixed', inset: 0, zIndex: 12000 }}>
       <style>{`
         @keyframes profSheetIn { from { transform: translateY(100%) } to { transform: translateY(0) } }
         @keyframes profSheetOut { from { transform: translateY(0) } to { transform: translateY(100%) } }

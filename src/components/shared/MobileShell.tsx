@@ -13,6 +13,7 @@ import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
 import { ProfileSheet } from '@/components/profile/ProfileSheet'
+import { haptic } from '@/lib/ui/haptic'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
@@ -40,6 +41,12 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     return () => m.removeEventListener('change', f)
   }, [])
   useEffect(() => { setOpen(false) }, [pathname])
+  // Petite vibration à chaque changement de page (façon Claude). Saute le 1er rendu.
+  const firstNav = useRef(true)
+  useEffect(() => {
+    if (firstNav.current) { firstNav.current = false; return }
+    haptic()
+  }, [pathname])
   // Le Dashboard ouvre le chat IA via cet event (réutilise AIPanel).
   useEffect(() => {
     const open = () => setAiOpen(true)

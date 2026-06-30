@@ -286,14 +286,15 @@ export function VoiceOverlay({
       {phase !== 'error' && liveText && (
         <div style={{
           maxWidth: 520, width: '100%', textAlign: 'center', margin: '0 0 14px',
-          maxHeight: '4.6em', overflow: 'hidden',
+          maxHeight: '5em', overflow: 'hidden', padding: '4px 0 0',
           display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 30px)',
-          maskImage: 'linear-gradient(to bottom, transparent 0, #000 30px)',
+          // Fondu très léger en haut (les lettres de la 1re ligne restent lisibles).
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 10px)',
+          maskImage: 'linear-gradient(to bottom, transparent 0, #000 10px)',
         }}>
           <p style={{
             margin: 0, fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(16px, 4vw, 20px)', lineHeight: 1.45, fontWeight: 500,
+            fontSize: 'clamp(16px, 4vw, 20px)', lineHeight: 1.5, fontWeight: 500,
             color: 'var(--text)',
           }}>{liveText}</p>
         </div>

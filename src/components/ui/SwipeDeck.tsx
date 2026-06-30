@@ -63,12 +63,15 @@ export function SwipeDeck({ index, count, onIndexChange, renderPanel }: Props) {
       onScroll={onScroll}
       className="swipe-deck"
       style={{
+        // Pas de hauteur fixe ni de clip vertical : le panneau actif (non plafonné)
+        // donne sa hauteur naturelle au deck → la PAGE défile normalement (le scroll
+        // infini des listes fonctionne). Seuls les voisins sont plafonnés pour ne pas
+        // gonfler le deck quand l'onglet actif est court.
         display: 'flex',
-        overflowX: 'auto', overflowY: 'hidden',
+        overflowX: 'auto',
         scrollSnapType: 'x mandatory',
         WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
         overscrollBehaviorX: 'contain',
-        height: activeH,
       }}
     >
       <style>{`.swipe-deck{scrollbar-width:none}.swipe-deck::-webkit-scrollbar{display:none}`}</style>

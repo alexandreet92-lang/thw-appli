@@ -20672,18 +20672,15 @@ export default function AIPanel({
                 willChange: 'transform', touchAction: 'pan-y',
                 borderTopLeftRadius: 26, borderBottomLeftRadius: 26,
                 boxShadow: '-6px 0 48px rgba(0,0,0,0.12)',
-                // Tiroir ouvert : très léger fondu (façon Claude) — quasi pas de flou.
-                filter: histOpen ? 'blur(0.5px)' : 'none',
               }),
             }}
           >
 
-          {/* Voile doux quand le tiroir d'historique est ouvert (mobile) : assombrit
-              la conversation et permet de refermer d'un tap (façon Claude). */}
+          {/* Tap sur la conversation (tiroir ouvert) → referme. Transparent : aucun grisé. */}
           {!isDesktop && histOpen && (
             <div
               onClick={() => setHistOpen(false)}
-              style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.10)', borderTopLeftRadius: 26, borderBottomLeftRadius: 26 }}
+              style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'transparent', borderTopLeftRadius: 26, borderBottomLeftRadius: 26 }}
             />
           )}
 

@@ -191,8 +191,6 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         </>}
 
         <main style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)',
-          // Drawer ouvert : très léger fondu (façon Claude) — quasi pas de flou.
-          filter: open ? 'blur(0.5px)' : 'none', transition: reduce ? 'none' : 'filter 0.32s ease',
           paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 44px)', paddingBottom: isRecord ? 0 : 'calc(80px + env(safe-area-inset-bottom))',
           // Fondu du contenu vers le haut (façon Claude) : le contenu monte presque
           // jusqu'en haut ; seule une fine bande sous la barre de statut s'estompe
@@ -204,8 +202,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           <PageTransition>{children}</PageTransition>
         </main>
 
-        {/* Zone visible de la page → tap pour fermer + voile léger (façon Claude) */}
-        {open && <div onClick={() => settle(false)} style={{ position: 'absolute', inset: 0, zIndex: 8, background: 'rgba(0,0,0,0.10)' }} />}
+        {/* Zone visible de la page → tap pour fermer (transparent : aucun grisé) */}
+        {open && <div onClick={() => settle(false)} style={{ position: 'absolute', inset: 0, zIndex: 8, background: 'transparent' }} />}
       </div>
 
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />

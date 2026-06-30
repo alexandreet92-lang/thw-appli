@@ -65,7 +65,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     el.style.transform = `translateX(${x}px)`
     const on = x > 4
     el.style.borderRadius = on ? '22px' : '0px'
-    el.style.boxShadow = on ? '-12px 0 40px rgba(0,0,0,0.30)' : 'none'
+    el.style.boxShadow = on ? '-12px 0 36px rgba(0,0,0,0.16)' : 'none'
   }
   // Fin de geste / tap : on rétablit la transition + on peint la cible (anime depuis la
   // position courante), puis l'état React reprend la main (style cohérent avec `open`).
@@ -130,8 +130,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="md:hidden" style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: 'var(--bg)' }}>
-      {/* Sidebar fixe EN DESSOUS — fond identique à la page */}
-      <aside style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${OPEN_RATIO * 100}%`, maxWidth: 340, zIndex: 1, background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+      {/* Sidebar fixe EN DESSOUS — surface douce (bg-card) légèrement relevée du
+          fond de page pour adoucir le contraste (moins « noir agressif »). */}
+      <aside style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${OPEN_RATIO * 100}%`, maxWidth: 340, zIndex: 1, background: 'var(--bg-card)', display: 'flex', flexDirection: 'column' }}>
         <SidebarContent headerSlot={hybridHeader} onClose={() => setOpen(false)} onOpenAI={() => { setAiOpen(true); setOpen(false) }} />
       </aside>
 
@@ -141,7 +142,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           // Au repos : pas de transform → réactive backdrop-filter (flou) sur iOS.
           transform: open ? 'translateX(min(64vw, 340px))' : 'none',
           borderRadius: open ? 22 : 0,
-          boxShadow: open ? '-12px 0 40px rgba(0,0,0,0.30)' : 'none',
+          boxShadow: open ? '-12px 0 36px rgba(0,0,0,0.16)' : 'none',
           transition: reduce ? 'none' : MOTION }}>
         {!hideHeader && <>
           {/* Flou progressif en haut (façon Claude) : le contenu monte jusqu'en haut

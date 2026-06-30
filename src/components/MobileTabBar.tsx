@@ -115,7 +115,10 @@ export default function MobileTabBar() {
     setTimeout(() => { setMode(next); setExiting(false) }, 180)
   }
 
-  if (hidden) return null
+  // NB : `hidden` (clavier logiciel) ne doit PAS court-circuiter le rendu ici,
+  // sinon l'AIPanel (enfant) se démonte quand le clavier s'ouvre → il se referme,
+  // le clavier disparaît, il se remonte/rouvre… boucle infinie. On masque
+  // uniquement la barre <nav> plus bas, en gardant l'AIPanel monté.
   // Page /record : compteur immersif, on cache la navbar
   if (pathname === '/record') return null
   // Page /competences : header + champ dédiés, on masque la tabbar
@@ -132,6 +135,7 @@ export default function MobileTabBar() {
 
   return (
     <>
+      {!hidden && (
       <nav className="mobile-tab-bar md:hidden" style={BAR}>
         <div style={{
           display: 'flex', width: '100%', height: 64, alignItems: 'center',
@@ -196,6 +200,7 @@ export default function MobileTabBar() {
 
         </div>
       </nav>
+      )}
 
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />
     </>

@@ -20672,8 +20672,8 @@ export default function AIPanel({
                 willChange: 'transform', touchAction: 'pan-y',
                 borderTopLeftRadius: 26, borderBottomLeftRadius: 26,
                 boxShadow: '-6px 0 48px rgba(0,0,0,0.12)',
-                // Tiroir ouvert : on floute légèrement la conversation (façon Claude).
-                filter: histOpen ? 'blur(3px)' : 'none',
+                // Tiroir ouvert : très léger fondu (façon Claude) — quasi pas de flou.
+                filter: histOpen ? 'blur(0.5px)' : 'none',
               }),
             }}
           >
@@ -20683,7 +20683,7 @@ export default function AIPanel({
           {!isDesktop && histOpen && (
             <div
               onClick={() => setHistOpen(false)}
-              style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.16)', borderTopLeftRadius: 26, borderBottomLeftRadius: 26 }}
+              style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.10)', borderTopLeftRadius: 26, borderBottomLeftRadius: 26 }}
             />
           )}
 

@@ -42,6 +42,18 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
   const dir = activeIdx >= prevIdx.current ? 1 : -1
   useEffect(() => { prevIdx.current = activeIdx }, [activeIdx])
 
+  // Swipe horizontal au doigt → onglet précédent / suivant (mobile, façon Strava).
+  const swipeRef = useRef<{ x: number; y: number; t: number } | null>(null)
+  const onSwipeStart = (e: React.TouchEvent) => { const t = e.touches[0]; swipeRef.current = { x: t.clientX, y: t.clientY, t: Date.now() } }
+  const onSwipeEnd = (e: React.TouchEvent) => {
+    const s = swipeRef.current; swipeRef.current = null; if (!s) return
+    const c = e.changedTouches[0]; const dx = c.clientX - s.x; const dy = c.clientY - s.y
+    if (Date.now() - s.t > 600) return
+    if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.4) return
+    const ni = activeIdx + (dx < 0 ? 1 : -1)
+    if (ni >= 0 && ni < tabs.length) onChange(tabs[ni].id)
+  }
+
   const header = (title || headerExtra) ? (
     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
       {title && <h1 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{title}</h1>}
@@ -129,7 +141,9 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
           })}
         </div>
       </div>
-      {content}
+      <div onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd} style={{ touchAction: 'pan-y' }}>
+        {content}
+      </div>
     </div>
   )
 }

@@ -6,7 +6,7 @@
 // Calendar. Style de référence : ancienne nav de Mon Profil.
 // ══════════════════════════════════════════════════════════════
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
@@ -77,6 +77,18 @@ export function SectionLayout({
         router.replace(url.pathname + url.search, { scroll: false })
       } catch { /* ignore */ }
     }
+  }
+
+  // Swipe horizontal au doigt → section précédente / suivante (mobile, façon Strava).
+  const swipeRef = useRef<{ x: number; y: number; t: number } | null>(null)
+  const onSwipeStart = (e: React.TouchEvent) => { const t = e.touches[0]; swipeRef.current = { x: t.clientX, y: t.clientY, t: Date.now() } }
+  const onSwipeEnd = (e: React.TouchEvent) => {
+    const s = swipeRef.current; swipeRef.current = null; if (!s) return
+    const c = e.changedTouches[0]; const dx = c.clientX - s.x; const dy = c.clientY - s.y
+    if (Date.now() - s.t > 600) return
+    if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.4) return
+    const i = ids.indexOf(activeId); const ni = i + (dx < 0 ? 1 : -1)
+    if (ni >= 0 && ni < ids.length) go(ids[ni])
   }
 
   const activeContent = sections.find(s => s.id === activeId)?.content ?? null
@@ -184,7 +196,7 @@ export function SectionLayout({
           })}
         </div>
       </div>
-      <div style={{ padding: '14px 12px 0' }}>
+      <div onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd} style={{ padding: '14px 12px 0', touchAction: 'pan-y' }}>
         <div style={containerStyle}>{content}</div>
       </div>
     </div>

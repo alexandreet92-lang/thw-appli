@@ -125,11 +125,13 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     </div>
   )
 
+  // Boutons flottants façon verre dépoli : translucides (on voit le contenu défiler
+  // dessous), flou marqué, ombre très douce.
   const fab: React.CSSProperties = {
     position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', width: 38, height: 38,
     display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--glass-border)',
-    background: 'var(--glass-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-    boxShadow: '0 4px 16px rgba(0,0,0,0.12)', cursor: 'pointer', zIndex: 5, padding: 0,
+    background: 'var(--glass-bg)', backdropFilter: 'blur(20px) saturate(1.4)', WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.07)', cursor: 'pointer', zIndex: 5, padding: 0,
   }
 
   return (
@@ -189,8 +191,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         </>}
 
         <main style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)',
-          // Drawer ouvert : la page se floute légèrement (façon Claude).
-          filter: open ? 'blur(3px)' : 'none', transition: reduce ? 'none' : 'filter 0.32s ease',
+          // Drawer ouvert : très léger fondu (façon Claude) — quasi pas de flou.
+          filter: open ? 'blur(0.5px)' : 'none', transition: reduce ? 'none' : 'filter 0.32s ease',
           paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 44px)', paddingBottom: isRecord ? 0 : 'calc(80px + env(safe-area-inset-bottom))',
           // Fondu du contenu vers le haut (façon Claude) : le contenu monte presque
           // jusqu'en haut ; seule une fine bande sous la barre de statut s'estompe
@@ -202,8 +204,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           <PageTransition>{children}</PageTransition>
         </main>
 
-        {/* Zone visible de la page → tap pour fermer + voile doux (façon Claude) */}
-        {open && <div onClick={() => settle(false)} style={{ position: 'absolute', inset: 0, zIndex: 8, background: 'rgba(0,0,0,0.16)' }} />}
+        {/* Zone visible de la page → tap pour fermer + voile léger (façon Claude) */}
+        {open && <div onClick={() => settle(false)} style={{ position: 'absolute', inset: 0, zIndex: 8, background: 'rgba(0,0,0,0.10)' }} />}
       </div>
 
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />

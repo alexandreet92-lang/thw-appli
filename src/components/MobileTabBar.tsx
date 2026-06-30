@@ -169,15 +169,14 @@ export default function MobileTabBar() {
                 <span style={lbl(activeTab === 'stats')}>Stats</span>
               </button>
 
-              {/* Record — centre, protrudes above bar */}
-              <div style={{ flex: 1, position: 'relative', height: 64 }}>
-                <Link href="/record" style={RECORD_BTN}>
-                  <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-                    <circle cx="13" cy="13" r="11" stroke="white" strokeWidth="1.5" />
-                    <circle cx="13" cy="13" r="6"  fill="white" />
-                  </svg>
-                </Link>
-              </div>
+              {/* Record — centre, plat et aligné avec les autres (façon Strava) */}
+              <Link href="/record" style={{ ...BTN, textDecoration: 'none' }} aria-label="Démarrer une activité">
+                <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
+                  <circle cx="13" cy="13" r="10" stroke={ACCENT} strokeWidth="1.7" />
+                  <circle cx="13" cy="13" r="5"  fill={ACCENT} />
+                </svg>
+                <span style={lbl(false)}>Démarrer</span>
+              </Link>
 
               {/* Plus */}
               <button onClick={() => switchTo('plus')} style={BTN}>
@@ -211,8 +210,10 @@ export default function MobileTabBar() {
 
 const BAR: React.CSSProperties = {
   position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
-  background: 'var(--nav-bg)',
-  borderTop: '0.5px solid var(--nav-border)',
+  // Barre translucide (verre dépoli) — boutons transparents façon Strava.
+  background: 'var(--glass-bg)',
+  backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+  borderTop: '0.5px solid var(--glass-border)',
   paddingBottom: 'env(safe-area-inset-bottom)',
 }
 
@@ -231,16 +232,3 @@ const lbl = (on: boolean): React.CSSProperties => ({
   color: on ? ACCENT : DIM,
 })
 
-// Protrudes 16px above bar: bottom=24 → top=24+56=80 → bar=64 → protrusion=16
-const RECORD_BTN: React.CSSProperties = {
-  position: 'absolute',
-  bottom: 24,
-  left: '50%',
-  transform: 'translateX(-50%)',
-  width: 56, height: 56,
-  borderRadius: '50%',
-  background: 'linear-gradient(135deg, #06B6D4, #5b6fff)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-  textDecoration: 'none',
-}

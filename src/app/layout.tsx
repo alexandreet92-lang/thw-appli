@@ -22,7 +22,13 @@ export function generateViewport(): Viewport {
     initialScale: 1,
     maximumScale: 1,
     userScalable: false,
+    // Bord à bord : le contenu remplit les zones sûres (encoche / home indicator),
+    // pas de bande blanche distincte. La couleur de la barre système suit le thème.
     viewportFit: 'cover',
+    themeColor: [
+      { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+      { media: '(prefers-color-scheme: dark)', color: '#080A0F' },
+    ],
   }
 }
 

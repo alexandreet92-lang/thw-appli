@@ -857,7 +857,7 @@ export default function NutritionPage() {
   const [today, setSelDay] = useState(realToday)
   const [dayDir, setDayDir] = useState<'right' | 'left'>('right')
   const selectDay = useCallback((d: string) => { setDayDir(d >= today ? 'right' : 'left'); setSelDay(d) }, [today])
-  const { show, dismiss, reopen } = usePageOnboarding(NUTRITION_ONBOARDING.pageId, NUTRITION_ONBOARDING.version)
+  const { show, dismiss } = usePageOnboarding(NUTRITION_ONBOARDING.pageId, NUTRITION_ONBOARDING.version)
 
   const { activePlan, dailyLogs, weightLogs, loading: nutLoading, saveDailyLog, saveWeightLog, deactivatePlan } = useNutrition()
   const { profile } = useProfile()
@@ -1130,7 +1130,6 @@ export default function NutritionPage() {
               <path d="M7 3v18M11 3v18M15 3v18M3 11h18"/>
             </svg>
           </button>
-          <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
         </div>
       </div>
 

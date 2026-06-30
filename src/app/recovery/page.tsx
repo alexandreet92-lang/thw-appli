@@ -15,7 +15,6 @@ import CheckinTab from '@/components/recovery/CheckinTab'
 import SleepHrvTab from '@/components/recovery/SleepHrvTab'
 import ChargeTab from '@/components/recovery/ChargeTab'
 import SourcesTab from '@/components/recovery/SourcesTab'
-import AIAssistantButton from '@/components/ai/AIAssistantButton'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { RECOVERY_ONBOARDING } from '@/onboarding/configs/recovery.config'
@@ -41,7 +40,7 @@ function OverviewTab({ weeks, readiness }: { weeks: WeekData[]; readiness: Readi
 // PAGE RÉCUPÉRATION — coquille à onglets (sidebar verticale)
 // ══════════════════════════════════════════════════════════════
 export default function RecoveryPage() {
-  const { show, dismiss, reopen } = usePageOnboarding(RECOVERY_ONBOARDING.pageId, RECOVERY_ONBOARDING.version)
+  const { show, dismiss } = usePageOnboarding(RECOVERY_ONBOARDING.pageId, RECOVERY_ONBOARDING.version)
   const [reload, setReload] = useState(0)
   const data = useRecoveryData(reload)
   const tl = useTrainingLoad()
@@ -73,10 +72,6 @@ export default function RecoveryPage() {
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '5px 0 0' }}>
           {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button onClick={reopen} aria-label="Aide" style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--primary-dim)', border: '1px solid var(--border)', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
-        <AIAssistantButton agent="readiness" context={{ page: 'recovery' }} />
       </div>
     </div>
   )

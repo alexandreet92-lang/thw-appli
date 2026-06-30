@@ -1967,7 +1967,7 @@ const HYROX_TEST_URL_MAP: Record<string, string> = {
 export default function PerformancePage() {
   const [tab, setTab]                   = useState<PerfTab>('profil')
   const [profile, setProfile]           = useState({ ...INIT_PROFILE })
-  const { show, dismiss, reopen }       = usePageOnboarding(PERFORMANCE_ONBOARDING.pageId, PERFORMANCE_ONBOARDING.version)
+  const { show, dismiss }               = usePageOnboarding(PERFORMANCE_ONBOARDING.pageId, PERFORMANCE_ONBOARDING.version)
   const [selectedDatum, setSelectedDatum] = useState<SelectedDatum | null>(null)
   const [aiOpen, setAiOpen]             = useState(false)
   const [aiPrefill, setAiPrefill]       = useState('')
@@ -2063,7 +2063,6 @@ export default function PerformancePage() {
       {/* ── Sous-navigation de page (composant réutilisable) ── */}
       <TabbedPageLayout
         title="Performance"
-        headerExtra={<button onClick={reopen} aria-label="Aide" style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--primary-dim)', border: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>}
         tabs={[{ id: 'profil', label: 'Profil', subtitle: 'Zones & benchmarks', icon: User }, { id: 'datas', label: 'Datas', subtitle: 'Records & volume', icon: Database }, { id: 'tests', label: 'Tests', subtitle: 'Protocoles', icon: FlaskConical }]}
         active={tab}
         onChange={setTab}

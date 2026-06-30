@@ -224,7 +224,7 @@ function getGreeting() {
 }
 
 // Largeur de la sidebar coulissante (mobile) — doit matcher l'underlay
-const AI_SIDEBAR_W = 300
+const AI_SIDEBAR_W = 326
 function fmtDate(ts: number) {
   const d = Date.now() - ts
   if (d < 60_000) return 'instant'
@@ -18990,8 +18990,12 @@ export default function AIPanel({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     setSpeechSupported(!!SR && typeof window.speechSynthesis !== 'undefined')
+    // La dictée capture le PCM via getUserMedia + AudioContext (ScriptProcessor),
+    // PAS via MediaRecorder. On ne doit donc PAS exiger MediaRecorder (absent de
+    // certains WKWebView iOS) sinon le bouton micro disparaît à tort.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setDictationSupported(!!navigator.mediaDevices?.getUserMedia && typeof (window as any).MediaRecorder !== 'undefined')
+    const hasAudioCtx = typeof window.AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined'
+    setDictationSupported(!!navigator.mediaDevices?.getUserMedia && hasAudioCtx)
   }, [])
 
   // ── Keyboard shortcuts (F2) ───────────────────────────────────
@@ -20664,13 +20668,24 @@ export default function AIPanel({
               ...(isDesktop ? {} : {
                 position: 'relative', zIndex: 2, background: 'var(--ai-bg)',
                 transform: `translateX(${histOpen ? AI_SIDEBAR_W : 0}px)`,
-                transition: 'transform 0.34s cubic-bezier(0.32,0.72,0,1)',
+                transition: 'transform 0.34s cubic-bezier(0.32,0.72,0,1), filter 0.3s ease',
                 willChange: 'transform', touchAction: 'pan-y',
-                borderTopLeftRadius: 22, borderBottomLeftRadius: 22,
-                boxShadow: '-5px 0 22px rgba(0,0,0,0.12)',
+                borderTopLeftRadius: 26, borderBottomLeftRadius: 26,
+                boxShadow: '-6px 0 48px rgba(0,0,0,0.12)',
+                // Tiroir ouvert : on floute légèrement la conversation (façon Claude).
+                filter: histOpen ? 'blur(3px)' : 'none',
               }),
             }}
           >
+
+          {/* Voile doux quand le tiroir d'historique est ouvert (mobile) : assombrit
+              la conversation et permet de refermer d'un tap (façon Claude). */}
+          {!isDesktop && histOpen && (
+            <div
+              onClick={() => setHistOpen(false)}
+              style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.16)', borderTopLeftRadius: 26, borderBottomLeftRadius: 26 }}
+            />
+          )}
 
           {/* ══ HEADER (desktop) — uniquement au-dessus de la colonne chat ══════ */}
           {isDesktop && <div style={{

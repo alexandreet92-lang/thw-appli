@@ -17,7 +17,8 @@ import { ProfileSheet } from '@/components/profile/ProfileSheet'
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
 const MOTION = 'transform 0.32s cubic-bezier(0.32,0.72,0,1), border-radius 0.32s, box-shadow 0.32s'
-const OPEN_RATIO = 0.64
+const OPEN_RATIO = 0.80
+const OPEN_MAX = 360
 const EDGE = 28 // px depuis le bord gauche pour amorcer l'ouverture
 
 export function MobileShell({ children }: { children: React.ReactNode }) {
@@ -58,14 +59,17 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     return () => document.body.classList.remove('drawer-open')
   }, [open])
 
-  function offsetPx() { return Math.min(window.innerWidth * OPEN_RATIO, 340) }
+  function offsetPx() { return Math.min(window.innerWidth * OPEN_RATIO, OPEN_MAX) }
   // Pendant le drag : on peint via ref (transform direct, 60 fps, pas de setState/frame).
+  // La page se recule légèrement (scale) → effet « carte » façon Claude (révèle un
+  // liseré de sidebar en haut et en bas), coins arrondis, ombre douce et diffuse.
   function paint(x: number) {
     const el = panelRef.current; if (!el) return
-    el.style.transform = `translateX(${x}px)`
+    const r = Math.max(0, Math.min(1, x / offsetPx()))
+    el.style.transform = `translateX(${x}px) scale(${(1 - 0.035 * r).toFixed(4)})`
     const on = x > 4
-    el.style.borderRadius = on ? '22px' : '0px'
-    el.style.boxShadow = on ? '-12px 0 36px rgba(0,0,0,0.16)' : 'none'
+    el.style.borderRadius = on ? '26px' : '0px'
+    el.style.boxShadow = on ? '-8px 0 48px rgba(0,0,0,0.12)' : 'none'
   }
   // Fin de geste / tap : on rétablit la transition + on peint la cible (anime depuis la
   // position courante), puis l'état React reprend la main (style cohérent avec `open`).
@@ -139,10 +143,11 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       {/* Page qui glisse PAR-DESSUS — transform piloté par l'état (cohérent au re-render) */}
       <div ref={panelRef} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
         style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'var(--bg)', overflow: 'hidden',
+          transformOrigin: 'center',
           // Au repos : pas de transform → réactive backdrop-filter (flou) sur iOS.
-          transform: open ? 'translateX(min(64vw, 340px))' : 'none',
-          borderRadius: open ? 22 : 0,
-          boxShadow: open ? '-12px 0 36px rgba(0,0,0,0.16)' : 'none',
+          transform: open ? `translateX(min(${OPEN_RATIO * 100}vw, ${OPEN_MAX}px)) scale(0.965)` : 'none',
+          borderRadius: open ? 26 : 0,
+          boxShadow: open ? '-8px 0 48px rgba(0,0,0,0.12)' : 'none',
           transition: reduce ? 'none' : MOTION }}>
         {!hideHeader && <>
           {/* Flou progressif en haut (façon Claude) : le contenu monte jusqu'en haut
@@ -151,10 +156,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
               nul plus bas. Retiré sur /record (carte immersive). */}
           {!isRecord && <div aria-hidden style={{
             position: 'absolute', top: 0, left: 0, right: 0,
-            height: 'calc(env(safe-area-inset-top) + 56px)', zIndex: 4, pointerEvents: 'none',
+            height: 'calc(env(safe-area-inset-top) + 44px)', zIndex: 4, pointerEvents: 'none',
             backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            maskImage: 'linear-gradient(to bottom, #000 45%, transparent)',
-            WebkitMaskImage: 'linear-gradient(to bottom, #000 45%, transparent)',
+            maskImage: 'linear-gradient(to bottom, #000 50%, transparent)',
+            WebkitMaskImage: 'linear-gradient(to bottom, #000 50%, transparent)',
           }} />}
           <button aria-label="Menu" onClick={() => settle(!open)} style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
             {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
@@ -183,18 +188,22 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           </>}
         </>}
 
-        <main style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)', paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 54px)', paddingBottom: isRecord ? 0 : 'calc(80px + env(safe-area-inset-bottom))',
-          // Fondu du contenu vers le haut (façon Claude) : ce qui défile sous les
-          // boutons s'estompe progressivement. Désactivé sur /record (carte).
+        <main style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], background: 'var(--bg)',
+          // Drawer ouvert : la page se floute légèrement (façon Claude).
+          filter: open ? 'blur(3px)' : 'none', transition: reduce ? 'none' : 'filter 0.32s ease',
+          paddingTop: (hideHeader || isRecord) ? 0 : 'calc(env(safe-area-inset-top) + 44px)', paddingBottom: isRecord ? 0 : 'calc(80px + env(safe-area-inset-bottom))',
+          // Fondu du contenu vers le haut (façon Claude) : le contenu monte presque
+          // jusqu'en haut ; seule une fine bande sous la barre de statut s'estompe
+          // quand ça défile. Désactivé sur /record (carte).
           ...(isRecord ? null : {
-            maskImage: 'linear-gradient(to bottom, transparent 0, transparent 50px, #000 100px)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, transparent 50px, #000 100px)',
+            maskImage: 'linear-gradient(to bottom, transparent 0, transparent 22px, #000 64px)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, transparent 22px, #000 64px)',
           }) }}>
           <PageTransition>{children}</PageTransition>
         </main>
 
-        {/* Zone visible de la page → tap pour fermer (n'apparaît qu'ouvert) */}
-        {open && <div onClick={() => settle(false)} style={{ position: 'absolute', inset: 0, zIndex: 8, background: 'transparent' }} />}
+        {/* Zone visible de la page → tap pour fermer + voile doux (façon Claude) */}
+        {open && <div onClick={() => settle(false)} style={{ position: 'absolute', inset: 0, zIndex: 8, background: 'rgba(0,0,0,0.16)' }} />}
       </div>
 
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />

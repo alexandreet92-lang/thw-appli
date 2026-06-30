@@ -4893,7 +4893,7 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
 export default function PlanningPage() {
   const { sessions, races, intensities, weekStart } = usePlanning()
   const { zones } = useTrainingZones()
-  const { show, dismiss, reopen } = usePageOnboarding(PLANNING_ONBOARDING.pageId, PLANNING_ONBOARDING.version)
+  const { show, dismiss } = usePageOnboarding(PLANNING_ONBOARDING.pageId, PLANNING_ONBOARDING.version)
 
   const aiContext = {
     page: 'planning',
@@ -4932,7 +4932,6 @@ export default function PlanningPage() {
         <h1 style={{ fontFamily:'var(--font-display)',fontSize:24,fontWeight:600,margin:0 }}>Planning</h1>
         <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Entraînement · Semaine</p>
       </div>
-      <button onClick={reopen} style={{ width:28,height:28,borderRadius:'50%',background:'rgba(6,182,212,0.1)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>?</button>
     </div>
   )
 

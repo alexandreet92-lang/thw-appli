@@ -14,7 +14,7 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { TRAINING_ONBOARDING } from '@/onboarding/configs/training.config'
-import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, BookOpen, Menu, AlignJustify, LayoutGrid, Square, type LucideIcon } from 'lucide-react'
+import { HelpCircle, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles, BarChart2, Search, Menu, AlignJustify, LayoutGrid, Square, type LucideIcon } from 'lucide-react'
 import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout'
 import { ActivityTitle } from '@/components/activity/ActivityTitle'
 import { Spinner } from '@/components/ui/Spinner'
@@ -9557,7 +9557,7 @@ function TrainingPageInner() {
   useTheme() // branche sur le thème global (force re-render quand dark/light change)
   const { activities, totalCount, loading, loadingMore, hasMore, error, reload, loadMore, removeActivity } = useActivities()
   const { showToast } = useToast()
-  const { show: showHelp, dismiss: dismissHelp, reopen: reopenHelp } = usePageOnboarding(TRAINING_ONBOARDING.pageId, TRAINING_ONBOARDING.version)
+  const { show: showHelp, dismiss: dismissHelp } = usePageOnboarding(TRAINING_ONBOARDING.pageId, TRAINING_ONBOARDING.version)
   const zones   = useTrainingZones()
   const profile = useProfile()
   const [section, setSection]       = useState<Section>('donnees')
@@ -9802,21 +9802,6 @@ function TrainingPageInner() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 28 }}
             >
               {loading ? <Spinner size={13} color={T.textSub} /> : '↻'}
-            </button>
-            <button
-              onClick={reopenHelp}
-              style={{
-                width: 32, height: 32, borderRadius: 8,
-                background: 'var(--bg-card2)',
-                border: '1px solid var(--border)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', flexShrink: 0,
-                transition: 'background 200ms',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--border)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card2)' }}
-            >
-              <BookOpen size={15} color="var(--text)" strokeWidth={1.75} />
             </button>
           </div>
   )

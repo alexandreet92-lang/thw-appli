@@ -9807,33 +9807,31 @@ function TrainingPageInner() {
   )
   return (
     <>
-      <TabbedPageLayout title="Training" headerExtra={topControls} tabs={tabs} active={section} onChange={setSection}>
-
-          {/* Error */}
-          {error && (
-            <div style={{ background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: T.radius, padding: '16px 18px', marginBottom: 20 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#dc2626', marginBottom: 5 }}>Erreur de chargement</div>
-              <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 12, fontFamily: 'monospace' }}>{error}</div>
-              <button onClick={reload} style={{ background: T.accent, color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>
-                Réessayer
-              </button>
-            </div>
-          )}
-
-          {/* Loading */}
-          {loading && !error && <PageLoader />}
-
-          {/* Sections */}
-          {!loading && !error && section === 'donnees'     && <div className="fade-up"><ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal></div>}
-          {!loading && !error && section === 'analyse'     && <div className="fade-up"><ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal></div>}
-          {section === 'progression' && (
-            <div className="fade-up">
-              {progSport
-                ? <ProgressionSportView sport={progSport} onBack={() => setProgSport(null)} />
-                : <ProgressionHub onSelectSport={setProgSport} />}
-            </div>
-          )}
-      </TabbedPageLayout>
+      <TabbedPageLayout title="Training" headerExtra={topControls} tabs={tabs} active={section} onChange={setSection}
+        renderPanel={id => (
+          <>
+            {error && (
+              <div style={{ background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: T.radius, padding: '16px 18px', marginBottom: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#dc2626', marginBottom: 5 }}>Erreur de chargement</div>
+                <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 12, fontFamily: 'monospace' }}>{error}</div>
+                <button onClick={reload} style={{ background: T.accent, color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>
+                  Réessayer
+                </button>
+              </div>
+            )}
+            {loading && !error && <PageLoader />}
+            {!loading && !error && id === 'donnees'     && <div className="fade-up"><ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal></div>}
+            {!loading && !error && id === 'analyse'     && <div className="fade-up"><ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal></div>}
+            {id === 'progression' && (
+              <div className="fade-up">
+                {progSport
+                  ? <ProgressionSportView sport={progSport} onBack={() => setProgSport(null)} />
+                  : <ProgressionHub onSelectSport={setProgSport} />}
+              </div>
+            )}
+          </>
+        )}
+      />
 
       <PageHelp config={TRAINING_ONBOARDING} show={showHelp} onDismiss={dismissHelp} />
 

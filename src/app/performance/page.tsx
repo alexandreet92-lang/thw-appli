@@ -2066,15 +2066,14 @@ export default function PerformancePage() {
         tabs={[{ id: 'profil', label: 'Profil', subtitle: 'Zones & benchmarks', icon: User }, { id: 'datas', label: 'Datas', subtitle: 'Records & volume', icon: Database }, { id: 'tests', label: 'Tests', subtitle: 'Protocoles', icon: FlaskConical }]}
         active={tab}
         onChange={setTab}
-      >
-        {tab === 'profil' ? (
+        renderPanel={id => id === 'profil' ? (
           <ProfilTab onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} setProfile={setProfile} onAnalyzeProfile={handleAnalyzeProfile} />
-        ) : tab === 'datas' ? (
+        ) : id === 'datas' ? (
           <DatasTab onSelect={onSelectDatum} selectedDatum={selectedDatum} profile={profile} onOpenAI={prompt => { setAiPrefill(prompt); setAiOpen(true) }} onNavigateToTests={() => setTab('tests')} />
         ) : (
           <TestsTab profile={profile} onAnalyzeTest={handleAnalyzeTest} initialSport={initialTest?.sport} initialTestId={initialTest?.testId} onFtpUpdate={ftp => setProfile(prev => ({ ...prev, ftp }))} />
         )}
-      </TabbedPageLayout>
+      />
 
       {/* ── Bulle flottante de sélection ── */}
       {selectedDatum && (

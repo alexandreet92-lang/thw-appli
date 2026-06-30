@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
+import { SwipeDeck } from '@/components/ui/SwipeDeck'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
@@ -28,10 +29,12 @@ interface Props<T extends string> {
   tabs: PageTab<T>[]
   active: T
   onChange: (id: T) => void
-  children: React.ReactNode
+  children?: React.ReactNode
+  /** Si fourni (mobile) : vrai pager au doigt façon Strava — rend chaque onglet. */
+  renderPanel?: (id: T) => React.ReactNode
 }
 
-export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, active, onChange, children }: Props<T>) {
+export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, active, onChange, children, renderPanel }: Props<T>) {
   const reduce = useReducedMotion()
   const isDesktop = useWidth() >= 1024
   const [railOpen, setRailOpen] = useState(false)
@@ -71,7 +74,7 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
         }}
         initial="enter" animate="center" exit="exit"
         transition={{ duration: reduce ? 0 : 0.28, ease: [0.32, 0.72, 0, 1] }}>
-        {children}
+        {renderPanel ? renderPanel(active) : children}
       </motion.div>
     </AnimatePresence>
   )
@@ -119,28 +122,47 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
   }
 
   // ── Mobile : onglets « pilule » (segmented control, identique à Nutrition) ──
+  const tabsBar = (
+    <div className="tpl-tabscroll" style={{ marginBottom: 'var(--space-5)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
+      <style>{`.tpl-tabscroll{scrollbar-width:none}.tpl-tabscroll::-webkit-scrollbar{display:none}`}</style>
+      <div role="tablist" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
+        {tabs.map(t => {
+          const on = t.id === active
+          return (
+            <button key={t.id} role="tab" aria-selected={on} onClick={() => onChange(t.id)}
+              style={{ border: 'none', cursor: 'pointer', borderRadius: 999, padding: '7px 16px', fontFamily: FB, whiteSpace: 'nowrap',
+                fontSize: 13, fontWeight: on ? 700 : 600,
+                background: on ? 'var(--bg-elev)' : 'transparent',
+                color: on ? 'var(--text)' : 'var(--text-mid)',
+                boxShadow: on ? 'var(--shadow-card)' : 'none',
+                transition: 'background 0.18s, color 0.18s' }}>
+              {t.short ?? t.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+
+  // Avec renderPanel → vrai pager au doigt (façon Strava), plein cadre.
+  if (renderPanel) {
+    return (
+      <div style={{ width: '100%', paddingBottom: 80, overflowX: 'hidden' }}>
+        <div style={{ padding: '20px 16px 0' }}>{header}{tabsBar}</div>
+        <SwipeDeck
+          index={Math.max(0, activeIdx)}
+          count={tabs.length}
+          onIndexChange={i => onChange(tabs[i].id)}
+          renderPanel={i => <div style={{ padding: '0 16px' }}>{renderPanel(tabs[i].id)}</div>}
+        />
+      </div>
+    )
+  }
+
   return (
     <div style={{ width: '100%', padding: '20px 16px 80px', overflowX: 'hidden' }}>
       {header}
-      <div className="tpl-tabscroll" style={{ marginBottom: 'var(--space-5)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
-        <style>{`.tpl-tabscroll{scrollbar-width:none}.tpl-tabscroll::-webkit-scrollbar{display:none}`}</style>
-        <div role="tablist" style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
-          {tabs.map(t => {
-            const on = t.id === active
-            return (
-              <button key={t.id} role="tab" aria-selected={on} onClick={() => onChange(t.id)}
-                style={{ border: 'none', cursor: 'pointer', borderRadius: 999, padding: '7px 16px', fontFamily: FB, whiteSpace: 'nowrap',
-                  fontSize: 13, fontWeight: on ? 700 : 600,
-                  background: on ? 'var(--bg-elev)' : 'transparent',
-                  color: on ? 'var(--text)' : 'var(--text-mid)',
-                  boxShadow: on ? 'var(--shadow-card)' : 'none',
-                  transition: 'background 0.18s, color 0.18s' }}>
-                {t.short ?? t.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+      {tabsBar}
       <div onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd} style={{ touchAction: 'pan-y' }}>
         {content}
       </div>

@@ -8956,6 +8956,46 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
     setDetailClosing(true)
     setTimeout(() => { setSelected(null); setDetailClosing(false) }, 260)
   }, [])
+
+  // HYDRATATION DÉTAIL — la LISTE exclut les gros JSONB (streams, raw_data,
+  // power_curve, pace_curve) pour éviter le timeout 500. Résultat : l'objet
+  // sélectionné n'a PAS ces colonnes → toutes les courbes (FC, puissance,
+  // vitesse, température, altitude…) et les blocs qui en dépendent
+  // disparaissaient. Ici, dès qu'un détail s'ouvre, on recharge ces colonnes
+  // pour l'activité concernée puis on les fusionne dans `selected`.
+  // Détection « non hydraté » : `streams === undefined` (colonne absente du
+  // select liste). Après fusion, streams vaut soit un objet soit `null`
+  // (explicite) → l'effet ne recharge plus.
+  useEffect(() => {
+    if (!selected?.id) return
+    if (selected.streams !== undefined || selected.raw_data !== undefined) return
+    const id = selected.id
+    let cancelled = false
+    ;(async () => {
+      try {
+        const sb = createClient()
+        const { data, error: err } = await sb
+          .from('activities')
+          .select('id,streams,raw_data,power_curve,pace_curve')
+          .eq('id', id)
+          .single()
+        if (err || cancelled || !data) return
+        const heavy = data as unknown as Partial<Activity>
+        setSelected(prev => (prev && prev.id === id
+          ? {
+              ...prev,
+              streams:     heavy.streams     ?? null,
+              raw_data:    heavy.raw_data    ?? null,
+              power_curve: heavy.power_curve ?? null,
+              pace_curve:  heavy.pace_curve  ?? null,
+            }
+          : prev))
+      } catch {
+        /* réseau : on laisse le détail sans courbes plutôt que de bloquer */
+      }
+    })()
+    return () => { cancelled = true }
+  }, [selected?.id])
   const [search, setSearch]     = useState('')
   const [sport, setSport]       = useState<'all' | SportType>('all')
   const [raceFilter, setRaceFilter] = useState<'all'|'race'|'training'>('all')

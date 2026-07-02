@@ -13,6 +13,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { computeSportMetrics, type ActivityWithStreams } from '@/lib/analysis/sportMetrics'
+import { queryCatalog, type LibrarySession } from '@/lib/coach/session-library'
 
 const ACT_COLS =
   'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,is_race,avg_watts'
@@ -23,6 +24,40 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 function ymd(d: Date): string { return d.toISOString().slice(0, 10) }
+
+// ── Séances perso (session_favorites) : forme permissive + résumé ──
+interface PersoFav {
+  id: string
+  name: string
+  sport: string | null
+  training_type: string | null
+  blocks_data: unknown
+  duration_min: number | null
+  rpe: number | null
+  notes: string | null
+  starred: boolean | null
+}
+
+/** Résumé textuel court des blocs d'une séance perso (builder Block[]). */
+function summarizeFavBlocks(raw: unknown): string | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined
+  const parts = raw.slice(0, 12).map(b => {
+    const blk = (b ?? {}) as {
+      label?: string; type?: string; durationMin?: number; zone?: number
+      reps?: number; effortMin?: number; recoveryMin?: number
+    }
+    const name = blk.label || blk.type || 'bloc'
+    const zone = typeof blk.zone === 'number' ? ` Z${blk.zone}` : ''
+    if (blk.reps && blk.reps > 1) {
+      const eff = blk.effortMin ? `${blk.effortMin}min` : (blk.durationMin ? `${blk.durationMin}min` : '')
+      const rec = blk.recoveryMin ? ` / ${blk.recoveryMin}min récup` : ''
+      return `${blk.reps}×(${eff}${zone}${rec})`.trim()
+    }
+    const dur = blk.durationMin ? `${blk.durationMin}min` : ''
+    return `${dur}${zone} ${name}`.trim()
+  })
+  return parts.filter(Boolean).join(' · ') || undefined
+}
 
 // ── Définitions (schemas Anthropic) ───────────────────────────
 
@@ -78,6 +113,26 @@ export const readTools: Anthropic.Tool[] = [
       properties: {
         from_date: { type: 'string', description: "YYYY-MM-DD — début de fenêtre (défaut : aujourd'hui)." },
         to_date:   { type: 'string', description: 'YYYY-MM-DD — fin de fenêtre (défaut : +28 jours).' },
+      },
+    },
+  },
+  {
+    name: 'get_session_library',
+    description:
+      "Pioche dans la BIBLIOTHÈQUE DE SÉANCES pour t'INSPIRER avant de prescrire ou de bâtir un plan : " +
+      "structure, dosage, intention physiologique de séances de référence. Deux sources : le CATALOGUE curé " +
+      "(running, vélo, trail, natation, aviron) et les séances PERSO enregistrées par l'athlète. " +
+      "Utilise-le pour t'aligner sur la façon de construire une séance propre à cet athlète et proposer des " +
+      "séances cohérentes avec ce qu'il aime — ne recopie pas à l'aveugle, adapte au profil et aux zones. " +
+      "Renvoie par séance : nom, objectif, intention (filière/famille), intensité, RPE, durée, structure des blocs, tags.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        sport:     { type: 'string',  description: "Sport ciblé : run/running, bike/vélo, trail, swim/natation, rowing/aviron. Vide = tous." },
+        intention: { type: 'string',  description: "Filtre qualitatif libre (famille/objectif) : ex 'seuil', 'vo2max', 'pma', 'sweetspot', 'sortie longue', 'force', 'fractionné', 'endurance', 'côtes'." },
+        zone:      { type: 'string',  description: "Zone d'intensité ciblée (ex 'Z4', 'Z5') : ne renvoie que les séances qui contiennent un bloc dans cette zone." },
+        source:    { type: 'string',  enum: ['all', 'catalogue', 'perso'], description: "Source à interroger (défaut 'all')." },
+        limit:     { type: 'integer', description: 'Nombre max de séances (défaut 12, max 40).' },
       },
     },
   },
@@ -206,6 +261,62 @@ export async function resolveReadTool(
           .order('day_index', { ascending: true })
         if (error) return JSON.stringify({ error: error.message })
         return JSON.stringify({ from, to, count: (data ?? []).length, sessions: data ?? [] })
+      }
+
+      // ── get_session_library ─────────────────────────────────
+      case 'get_session_library': {
+        const sport     = typeof input.sport === 'string' ? input.sport : ''
+        const intention = typeof input.intention === 'string' ? input.intention : ''
+        const zone      = typeof input.zone === 'string' ? input.zone : ''
+        const source    = input.source === 'catalogue' || input.source === 'perso' ? input.source : 'all'
+        const limit     = clamp(Number(input.limit) || 12, 1, 40)
+
+        // 1) Catalogue curé (données statiques, pas de DB)
+        const catalogue: LibrarySession[] = source === 'perso'
+          ? []
+          : queryCatalog({ sport, intention, zone, limit })
+
+        // 2) Séances PERSO de l'athlète (session_favorites)
+        let perso: Record<string, unknown>[] = []
+        if (source !== 'catalogue') {
+          const { data } = await sb.from('session_favorites')
+            .select('id,name,sport,training_type,blocks_data,duration_min,rpe,notes,starred')
+            .eq('user_id', userId)
+            .order('starred', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(60)
+          const sq = sport.trim().toLowerCase()
+          const iq = intention.trim().toLowerCase()
+          perso = ((data ?? []) as PersoFav[])
+            .filter(f => {
+              if (sq && !(f.sport ?? '').toLowerCase().includes(sq)) return false
+              if (iq) {
+                const hay = [f.name, f.training_type, f.notes].filter(Boolean).join(' ').toLowerCase()
+                if (!hay.includes(iq)) return false
+              }
+              return true
+            })
+            .slice(0, limit)
+            .map(f => ({
+              source: 'perso',
+              sport: f.sport,
+              id: f.id,
+              nom: f.name,
+              intention: f.training_type ?? undefined,
+              rpe: f.rpe ?? undefined,
+              duree: typeof f.duration_min === 'number' ? `${f.duration_min}min` : undefined,
+              structure: summarizeFavBlocks(f.blocks_data),
+              conseil: f.notes ?? undefined,
+              favori: !!f.starred,
+            }))
+        }
+
+        return JSON.stringify({
+          hint: "Séances de référence — inspire-t'en (structure, intention, dosage) puis ADAPTE au profil et aux zones réelles de l'athlète. Ne recopie pas tel quel.",
+          catalogue_count: catalogue.length,
+          perso_count: perso.length,
+          sessions: [...catalogue, ...perso],
+        })
       }
 
       default:

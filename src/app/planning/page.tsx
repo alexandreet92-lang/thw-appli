@@ -747,14 +747,16 @@ function usePlanning(weekStartParam?:string) {
   }
 
   async function updateSession(id:string, upd:Partial<Session>) {
-    await supabase.from('planned_sessions').update(buildSessionPatch(upd)).eq('id',id)
+    const { error } = await supabase.from('planned_sessions').update(buildSessionPatch(upd)).eq('id',id)
+    if (error) { console.error('[planning] updateSession a échoué', error); void load(); return }
     setSessions(p=>p.map(s=>s.id===id?{...s,...upd}:s))
     window.dispatchEvent(new Event('thw:sessions-changed'))
   }
 
   // Silent variant — persiste sans déclencher load() ni fermer les modales
   async function updateSessionSilent(id:string, upd:Partial<Session>) {
-    await supabase.from('planned_sessions').update(buildSessionPatch(upd)).eq('id',id)
+    const { error } = await supabase.from('planned_sessions').update(buildSessionPatch(upd)).eq('id',id)
+    if (error) { console.error('[planning] updateSessionSilent a échoué', error); return }
     setSessions(p=>p.map(s=>s.id===id?{...s,...upd}:s))
     // Pas de thw:sessions-changed → load() ne se déclenche pas → les modales restent ouvertes
   }

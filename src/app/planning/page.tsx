@@ -2685,10 +2685,15 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       const grouped:Record<string,Session[]>={}; starts.forEach(ws=>{grouped[ws]=[]})
       ;(data??[]).forEach((r:any)=>{
         if(!grouped[r.week_start])grouped[r.week_start]=[]
-        grouped[r.week_start].push({id:r.id,dayIndex:r.day_index,sport:r.sport,title:r.title,
+        grouped[r.week_start].push({id:r.id,dayIndex:r.day_index,sport:normalizeSportType(r.sport),title:r.title,
           time:r.time??'09:00',durationMin:r.duration_min,tss:r.tss,status:r.status,
           notes:r.notes,rpe:r.rpe,blocks:normalizeBlocks(r.blocks),main:false,planVariant:r.plan_variant??'A',
-          intensity:r.intensity??null,...(r.validation_data??{})})
+          intensity:r.intensity??null,
+          originalContent:r.original_content??undefined,
+          parcoursData:r.parcours_data??undefined,
+          parcoursId:r.parcours_id??undefined,
+          nutritionItems:r.nutrition_data??undefined,
+          ...(r.validation_data??{})})
       })
       setExtraSessions(grouped)
     })()

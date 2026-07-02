@@ -81,6 +81,11 @@ function keywordDocs(text: string): string[] {
   if (/\b(charge|ctl|atl|tsb|deload|aff[ûu]tage|taper|monotonie|p[ée]riodisation)\b/.test(t)) push('B5-charge.md')
   if (/\b(course|comp[ée]tition|objectif|marathon|ironman|semi|trail|cyclosportive|clm|distance|70\.3)\b/.test(t)) push('B6-competitions.md')
 
+  // Sélection de MÉTHODE endurance (quel modèle pour quel athlète) → B12.
+  // Vocabulaire spécifique aux modèles, distinct du calibrage des zones (B4).
+  const selectionMethode = /\b(polaris\w*|pyramidal\w*|norv[ée]gien\w*|double seuil|sweet.?spot|80\/20|seiler|choix de m[ée]thode|quelle m[ée]thode|quel mod[èe]le|distribution d.intensit\w*|m[ée]thode d.entra[îi]n\w*|mod[èe]le d.entra[îi]n\w*)\b/.test(t)
+  if (selectionMethode && isReady('B12-selection-methode.md')) push('B12-selection-methode.md')
+
   // Principes d'entraînement & individualisation → B10 (sinon fallback B3).
   const individualisation = /\b(individualis\w*|adapt\w*|inadapt\w*|surcharge progressive|sp[ée]cificit[ée]|principes? d.entra[îi]n\w*|r[ée]versibilit[ée]|supercompensation|progressi\w*|d[ée]butant\w*|interm[ée]diaire\w*|confirm[ée]s?|niveau\w*|âge d.entra[îi]n\w*)\b/.test(t)
   const profil = /\b(profil|force|faiblesse|diesel|puncheur|durabilit)\b/.test(t)

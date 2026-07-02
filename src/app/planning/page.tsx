@@ -667,6 +667,7 @@ function usePlanning(weekStartParam?:string) {
       planVariant:r.plan_variant??'A', intensity:r.intensity??null,
       originalContent: r.original_content ?? undefined,
       parcoursData: r.parcours_data ?? undefined,
+      parcoursId: r.parcours_id ?? undefined,
       nutritionItems: r.nutrition_data ?? undefined,
       ...(r.validation_data??{}),
     })))

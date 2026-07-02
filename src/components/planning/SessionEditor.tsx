@@ -3625,9 +3625,23 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
     return Math.round(lthrVal * 1.10)
   }
 
-  // Réinitialise le flow IA quand un nouveau parcours est chargé
+  // Réinitialise le flow IA quand un nouveau parcours est chargé.
+  // NB : à la réouverture d'une séance, les `segments` ne sont pas persistés en
+  // base — on les recalcule depuis le profil altimétrique, sinon la config des
+  // côtes/blocs (planningConfig) ne pouvait jamais être restaurée (le parcours
+  // « disparaissait »).
   useEffect(() => {
-    if (parcoursData?.segments?.length) {
+    if (!parcoursData) {
+      setTotalDuration(''); setSpecificBlocks([]); setClimbConfigs([]); setAiFlowStep('free')
+      return
+    }
+    let segs = parcoursData.segments
+    if ((!segs || segs.length === 0) && (parcoursData.elevationProfile?.length ?? 0) >= 4) {
+      try { segs = segmentElevationProfile(parcoursData.elevationProfile as Array<{ distKm: number; ele: number }>) }
+      catch { segs = [] }
+      if (segs && segs.length) setParcoursData(pd => pd ? { ...pd, segments: segs } : pd)
+    }
+    if (segs?.length) {
       if (parcoursData.planningConfig) {
         // Restore saved planning state
         setClimbConfigs(parcoursData.planningConfig.climbConfigs)
@@ -3640,17 +3654,14 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
       } else {
         setTotalDuration('')
         setSpecificBlocks([])
-        initClimbConfigs()
+        initClimbConfigs(segs)
       }
-      // On NE force PAS le flow parcours : l'IA reste sur le champ d'écriture
-      // (l'utilisateur peut basculer via « Intégrer le parcours »).
-      setAiFlowStep('free')
     } else {
       setTotalDuration('')
       setSpecificBlocks([])
       setClimbConfigs([])
-      setAiFlowStep('free')
     }
+    setAiFlowStep('free')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parcoursData?.name])
 
@@ -4220,14 +4231,16 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   // ── Parcours AI flow helpers ──────────────────────────────────
   function parcoursDataWithConfig(): ParcoursData | null {
     if (!parcoursData) return null
-    if (aiFlowStep !== 'parcours') return parcoursData
+    // Toujours persister la config d'intensité liée au parcours (côtes, blocs,
+    // watts, durée) — pas seulement dans le flow IA — sinon elle est perdue à la
+    // réouverture de la séance.
     return { ...parcoursData, planningConfig: { climbConfigs, specificBlocks, efWatts, efHr, totalDuration } }
   }
 
-  function initClimbConfigs() {
+  function initClimbConfigs(segsArg?: import('@/lib/gpx/parser').ParsedSegment[]) {
     const ftp = trainingZones.bike.ftp_watts ?? athleteData?.ftp ?? 200
     const lthrVal = athleteData?.lthrBike ?? athleteData?.lthrRun ?? 170
-    const segs = parcoursData?.segments ?? []
+    const segs = segsArg ?? parcoursData?.segments ?? []
     const configs = segs
       .map((seg, idx) => ({ seg, idx }))
       .filter(({ seg }) => seg.type === 'climb')

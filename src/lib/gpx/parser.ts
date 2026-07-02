@@ -34,12 +34,18 @@ export interface SignificantClimb {
 }
 
 // ── Seuils ────────────────────────────────────────────────────
-const CLIMB_THRESHOLD   =  2.0   // % → montée au-dessus
-const DESCENT_THRESHOLD = -2.0   // % → descente en dessous
-const SMOOTH_WINDOW_KM  =  0.10  // 100 m — fenêtre lissage altimétrique
-const MIN_LENGTH_KM     =  0.50  // 500 m — longueur minimale d'un segment
-const MIN_ELEV_GAIN_M   =  15    // 15 m D+ minimum pour qualifier une montée
-const GAP_TOLERANCE_KM  =  0.50  // 500 m — transition tolérée entre deux montées
+// Une « vraie côte » = ≥ 40 m D+ ET ≥ 3 % de pente moyenne, longueur ≥ 600 m.
+// La classification point-à-point reste à 2 % pour bien regrouper les rampes
+// à pente variable ; la qualification finale (filterSegs) applique les seuils stricts.
+const CLIMB_THRESHOLD    =  2.0   // % → point en montée au-dessus (classification)
+const DESCENT_THRESHOLD  = -2.0   // % → point en descente en dessous
+const SMOOTH_WINDOW_KM   =  0.12  // 120 m — fenêtre lissage altimétrique
+const MIN_LENGTH_KM      =  0.50  // 500 m — longueur minimale d'un segment plat/descente
+const MIN_CLIMB_LENGTH_KM = 0.60  // 600 m — longueur minimale d'une côte
+const MIN_ELEV_GAIN_M    =  40    // 40 m D+ minimum pour qualifier une côte
+const MIN_CLIMB_GRADIENT =  3.0   // 3 % de pente moyenne minimum pour une côte
+const GAP_TOLERANCE_KM   =  0.60  // 600 m — replat/descente toléré entre deux bosses (fusion)
+const GAP_MAX_DROP_RATIO =  0.5   // creux max entre 2 bosses = 50 % du D+ combiné (évite les fausses méga-côtes)
 
 // ─────────────────────────────────────────────────────────────
 /** Lisse un profil altimétrique avec une fenêtre distance (km). */
@@ -166,12 +172,18 @@ export function segmentElevationProfile(
         const prev   = next[next.length - 1]
         const curr   = cur[i]
         const nxt    = cur[i + 1]
-        // Si prev=montée, curr=plat/descente <300m, nxt=montée → fusionner
+        // Si prev=montée, curr=replat/légère descente court, nxt=montée → fusionner.
+        // Garde-fou : le creux ne doit pas effacer plus de la moitié du D+ combiné,
+        // sinon on fabriquerait une fausse côte géante par-dessus une vraie descente.
+        const combinedGain = (prev?.elevationDeltaM ?? 0) + (nxt?.elevationDeltaM ?? 0)
+        const dropOk = curr.type !== 'descent'
+          || Math.abs(curr.elevationDeltaM) <= GAP_MAX_DROP_RATIO * combinedGain
         if (
           prev?.type === 'climb' &&
           nxt?.type  === 'climb' &&
           curr.type  !== 'climb' &&
-          curr.distanceKm < GAP_TOLERANCE_KM
+          curr.distanceKm < GAP_TOLERANCE_KM &&
+          dropOk
         ) {
           const distKm      = nxt.endKm - prev.startKm
           const dEle        = nxt.endEle - prev.startEle

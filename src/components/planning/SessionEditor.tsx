@@ -2018,15 +2018,12 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
 
   if (profile.length < 2) return null
 
-  // DEBUG — retirer après diagnostic
-  console.log('[ElevationChart] powerGauges=', powerGauges ? `${powerGauges.length} jauges` : 'undefined', powerGauges)
-
   const minEle = Math.min(...profile.map(p => p.ele))
   const maxEle = Math.max(...profile.map(p => p.ele))
   const eleRange = maxEle - minEle || 1
 
-  const W = 800, H = 200
-  const PL = 44, PR = 12, PT = 14, PB = 28
+  const W = 800, H = 210
+  const PL = 54, PR = 14, PT = 16, PB = 34
   const pW = W - PL - PR, pH = H - PT - PB
 
   const svgPoints = profile.map(p => ({
@@ -2153,8 +2150,8 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           const y = PT + pH - ((ele - minEle) / eleRange) * pH
           return (
             <g key={`y${ele}`}>
-              <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="var(--border)" strokeWidth={0.5} opacity={0.3} />
-              <text x={PL - 5} y={y + 3} textAnchor="end" fontSize={7} fill="var(--text-dim)" fontFamily='"DM Mono",monospace'>{ele}m</text>
+              <line x1={PL} y1={y} x2={W - PR} y2={y} stroke="var(--border)" strokeWidth={0.6} opacity={0.5} />
+              <text x={PL - 7} y={y + 3.5} textAnchor="end" fontSize={10.5} fill="var(--text-mid)" fontWeight={600} fontFamily='"DM Mono",monospace'>{ele}</text>
             </g>
           )
         })}
@@ -2163,14 +2160,17 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           const x = PL + (km / totalKm) * pW
           return (
             <g key={`x${km}`}>
-              <line x1={x} y1={PT} x2={x} y2={PT + pH} stroke="var(--border)" strokeWidth={0.5} opacity={0.2} />
-              <text x={x} y={H - 6} textAnchor="middle" fontSize={7} fill="var(--text-dim)" fontFamily='"DM Mono",monospace'>{km}km</text>
+              <line x1={x} y1={PT} x2={x} y2={PT + pH} stroke="var(--border)" strokeWidth={0.6} opacity={0.35} />
+              <text x={x} y={H - 8} textAnchor="middle" fontSize={10.5} fill="var(--text-mid)" fontWeight={600} fontFamily='"DM Mono",monospace'>{km}</text>
             </g>
           )
         })}
+        {/* Axis unit labels */}
+        <text x={PL - 7} y={PT - 5} textAnchor="end" fontSize={9.5} fill="var(--text-dim)" fontWeight={700} fontFamily='"DM Mono",monospace'>m</text>
+        <text x={W - PR} y={H - 8} textAnchor="end" fontSize={9.5} fill="var(--text-dim)" fontWeight={700} fontFamily='"DM Mono",monospace'>km</text>
         {/* Axes */}
-        <line x1={PL} y1={PT} x2={PL} y2={PT + pH} stroke="var(--border)" strokeWidth={0.6} />
-        <line x1={PL} y1={PT + pH} x2={W - PR} y2={PT + pH} stroke="var(--border)" strokeWidth={0.6} />
+        <line x1={PL} y1={PT} x2={PL} y2={PT + pH} stroke="var(--border)" strokeWidth={0.9} />
+        <line x1={PL} y1={PT + pH} x2={W - PR} y2={PT + pH} stroke="var(--border)" strokeWidth={0.9} />
         {/* Fill */}
         <path d={fillD} fill={accent} opacity={0.05} />
         {/* Profile line */}
@@ -3643,8 +3643,17 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
     }
     if (segs?.length) {
       if (parcoursData.planningConfig) {
-        // Restore saved planning state
-        setClimbConfigs(parcoursData.planningConfig.climbConfigs)
+        // Restore saved planning state. Les `segments` sont recalculés (seuils
+        // susceptibles d'avoir changé) → on ne garde que les côtes dont le segIdx
+        // pointe toujours sur une vraie montée ; si plus aucune n'est valide on
+        // ré-initialise proprement à partir des segments frais.
+        const savedClimbs = parcoursData.planningConfig.climbConfigs ?? []
+        const validClimbs = savedClimbs.filter(c => segs![c.segIdx]?.type === 'climb')
+        if (validClimbs.length > 0 || savedClimbs.length === 0) {
+          setClimbConfigs(validClimbs)
+        } else {
+          initClimbConfigs(segs)
+        }
         setSpecificBlocks(parcoursData.planningConfig.specificBlocks)
         setEfWatts(parcoursData.planningConfig.efWatts)
         if (parcoursData.planningConfig.efHr) setEfHr(parcoursData.planningConfig.efHr)
@@ -5992,6 +6001,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               />
                               <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 600 }}>W</span>
                             </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'DM Mono, monospace', fontSize: 9, fontWeight: 700 }}>
+                              <span style={{ color: zoneColor(bulkWatts), background: `${zoneColor(bulkWatts)}18`, borderRadius: 4, padding: '1px 5px' }}>{zoneLabel(bulkWatts)}</span>
+                              <span style={{ color: 'var(--text-dim)' }}>{bFtp > 0 ? Math.round((bulkWatts / bFtp) * 100) : 0}% FTP</span>
+                            </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <LocalInput
                                 value={displayHr}
@@ -6092,6 +6105,16 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                     />
                                     <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
                                   </div>
+                                  {(() => {
+                                    const wNow = overrideBlock ? overrideBlock.watts : cfg.watts
+                                    const pct = curFtp > 0 ? Math.round((wNow / curFtp) * 100) : 0
+                                    return (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'DM Mono, monospace', fontSize: 9, fontWeight: 700 }}>
+                                        <span style={{ color: zc, background: `${zc}18`, borderRadius: 4, padding: '1px 5px' }}>{zoneLabel(wNow)}</span>
+                                        <span style={{ color: 'var(--text-dim)' }}>{pct}% FTP</span>
+                                      </div>
+                                    )
+                                  })()}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <LocalInput
                                       value={cfg.hrAvg ?? wattToFc(cfg.watts, curFtp, curLthr)}

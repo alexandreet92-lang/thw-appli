@@ -935,8 +935,12 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
   // ── Hauteur de jauge CONTINUE selon l'intensité réelle (pas seulement la zone) ──
   // 200 W et 210 W sont dans la même zone (même couleur) mais 210 W est un peu plus
   // haut : la position dans la bande de zone reflète où tombe l'intensité.
-  const runThrSec = athleteData?.runThresholdPaceSec ?? null   // s/km
-  const cssSec    = athleteData?.cssSecPer100m ?? null          // s/100m
+  // Références de seuil. Fallback aligné sur le modèle de zones du planning
+  // (getZone → ATHLETE : ftp 301, allure seuil 248 s/km, CSS 88 s/100m) pour que
+  // la hauteur reste cohérente avec la bande de zone même sans données athlète.
+  const refFtp    = athleteData?.ftp ?? 301                     // W
+  const runThrSec = athleteData?.runThresholdPaceSec ?? 248     // s/km
+  const cssSec    = athleteData?.cssSecPer100m ?? 88            // s/100m
   // Bornes hautes de chaque zone, exprimées en ratio intensité / seuil.
   const ZONE_TOPS = (sport === 'bike' || sport === 'elliptique')
     ? [0.55, 0.75, 0.87, 1.05, 1.20, 1.50, 1.85]   // % FTP (7 zones)
@@ -945,15 +949,15 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
   function intensityRatio(b: Block): number | null {
     if (sport === 'bike' || sport === 'elliptique') {
       const w = parseInt(b.value ?? '') || 0
-      return ftp && w > 0 ? w / ftp : null
+      return w > 0 ? w / refFtp : null
     }
     if (sport === 'run') {
       const p = mmssToMin(b.value ?? '') * 60
-      return runThrSec && p > 0 ? runThrSec / p : null   // allure + rapide → ratio + grand
+      return p > 0 ? runThrSec / p : null   // allure + rapide → ratio + grand
     }
     if (sport === 'swim') {
       const p = mmssToMin(b.value ?? '') * 60
-      return cssSec && p > 0 ? cssSec / p : null
+      return p > 0 ? cssSec / p : null
     }
     return null
   }
@@ -981,11 +985,11 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
     const hi = ZONE_TOPS[bandIdx]
     const frac = Math.max(0, Math.min(1, posF - bandIdx))
     const r = lo + frac * (hi - lo)
-    if ((sport === 'bike' || sport === 'elliptique') && ftp && r > 0)
-      return { zone, value: String(Math.round(ftp * r)) }
-    if (sport === 'run' && runThrSec && r > 0)
+    if ((sport === 'bike' || sport === 'elliptique') && r > 0)
+      return { zone, value: String(Math.round(refFtp * r)) }
+    if (sport === 'run' && r > 0)
       return { zone, value: durMMSS((runThrSec / r) / 60) }
-    if (sport === 'swim' && cssSec && r > 0)
+    if (sport === 'swim' && r > 0)
       return { zone, value: durMMSS((cssSec / r) / 60) }
     return { zone }
   }

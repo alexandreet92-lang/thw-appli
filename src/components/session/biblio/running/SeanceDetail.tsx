@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { IconArrowLeft } from '@tabler/icons-react'
 import type { Seance, Bloc, PhaseBloc, Niveau } from '@/data/seances/running'
-import { FILIERE_LABEL, BUCKET_SHORT, NIVEAUX, hasNiveaux, scaleSeance, repsRangeFor, fmtRange, volumeSignature } from '@/data/seances/running'
+import { FILIERE_LABEL, BUCKET_SHORT, NIVEAUX, hasNiveaux, scaleSeance, volumePrefixe, volumeSignature } from '@/data/seances/running'
 import { RunProfil, ResumeBandeau, ZONE_TOKEN, ZONE_LABEL } from './RunProfil'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -36,9 +36,8 @@ function Tag({ children }: { children: React.ReactNode }) {
 }
 
 function BlocRow({ b, niveau }: { b: Bloc; niveau: Niveau }) {
-  const range = repsRangeFor(b, niveau)
-  const reps = b.reps ?? 1
-  const prefix = range ? `${fmtRange(range)} × ` : reps > 1 ? `${reps} × ` : ''
+  const { prefix, mesure } = volumePrefixe(b, niveau)
+  const allure = b.segments && b.segments.length ? '' : (b.allure ? ` ${b.allure}` : '')
   return (
     <div style={{ padding: 'var(--space-4)', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)',
       borderLeft: `3px solid ${ZONE_TOKEN[b.zone]}` }}>
@@ -51,7 +50,7 @@ function BlocRow({ b, niveau }: { b: Bloc; niveau: Niveau }) {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginTop: 5, flexWrap: 'wrap' }}>
         <span style={{ fontFamily: FD, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{b.label}</span>
         <span style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
-          {prefix}{blocMesure(b.zone, b.allure, b.distanceM, b.dureeSec)}
+          {prefix}{mesure}{allure}
         </span>
       </div>
       {b.recup && (

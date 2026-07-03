@@ -23,6 +23,16 @@ export interface BlocRecup {
   label?: string
 }
 
+// Segment d'un bloc COMPOSITE (set entrelacé à intensité variable),
+// ex. reps × (500 @105% + 1000 @10k + 500 @105%).
+export interface BlocSegment {
+  zone: Zone
+  label?: string
+  allure?: string
+  distanceM?: number
+  dureeSec?: number
+}
+
 export interface Bloc {
   phase: PhaseBloc
   zone: Zone                    // pilote couleur + hauteur de barre
@@ -31,9 +41,13 @@ export interface Bloc {
   distanceM?: number            // soit distance…
   dureeSec?: number             // …soit durée
   reps?: number                 // défaut 1 (= volume niveau intermédiaire)
-  // Volume par NIVEAU, en fourchette [min,max]. Si présent, remplace `reps`
-  // selon le niveau sélectionné dans l'UI. Absent → `reps` pour tous.
+  // Volume par NIVEAU en fourchette [min,max]. Une seule des trois dimensions
+  // varie selon le bloc : nb de répétitions, distance, ou durée. Absent → fixe.
   repsParNiveau?: Partial<Record<Niveau, RepsRange>>
+  distanceMParNiveau?: Partial<Record<Niveau, RepsRange>>   // mètres
+  dureeSecParNiveau?: Partial<Record<Niveau, RepsRange>>    // secondes
+  // Set COMPOSITE : le bloc devient reps × (segments…), intensités entrelacées.
+  segments?: BlocSegment[]
   recup?: BlocRecup
 }
 

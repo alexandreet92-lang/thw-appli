@@ -25,10 +25,18 @@ function blocDureeSec(zone: Zone, dureeSec?: number, distanceM?: number): number
 }
 function blocBars(b: Bloc): Bar[] {
   const reps = b.reps ?? 1
-  const eff = blocDureeSec(b.zone, b.dureeSec, b.distanceM)
   const out: Bar[] = []
   for (let i = 0; i < reps; i++) {
-    if (eff > 0) out.push({ zone: b.zone, durationSec: eff, effort: true })
+    if (b.segments && b.segments.length) {
+      // Set composite : une barre par segment (intensités entrelacées).
+      for (const s of b.segments) {
+        const d = blocDureeSec(s.zone, s.dureeSec, s.distanceM)
+        if (d > 0) out.push({ zone: s.zone, durationSec: d, effort: true })
+      }
+    } else {
+      const eff = blocDureeSec(b.zone, b.dureeSec, b.distanceM)
+      if (eff > 0) out.push({ zone: b.zone, durationSec: eff, effort: true })
+    }
     if (b.recup) {
       const r = blocDureeSec(b.recup.zone, b.recup.dureeSec, b.recup.distanceM)
       if (r > 0) out.push({ zone: b.recup.zone, durationSec: r, effort: false })

@@ -1,8 +1,10 @@
 'use client'
 // Détail d'une séance Running : profil complet + résumé + structure en blocs.
+// Adapte le VOLUME selon le niveau (4 bulles) et propose des variantes.
+import { useState } from 'react'
 import { IconArrowLeft } from '@tabler/icons-react'
-import type { Seance, Bloc, PhaseBloc } from '@/data/seances/running'
-import { FILIERE_LABEL, BUCKET_SHORT } from '@/data/seances/running'
+import type { Seance, Bloc, PhaseBloc, Niveau } from '@/data/seances/running'
+import { FILIERE_LABEL, BUCKET_SHORT, NIVEAUX, hasNiveaux, scaleSeance, repsRangeFor, fmtRange, volumeSignature } from '@/data/seances/running'
 import { RunProfil, ResumeBandeau, ZONE_TOKEN, ZONE_LABEL } from './RunProfil'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -33,8 +35,10 @@ function Tag({ children }: { children: React.ReactNode }) {
   )
 }
 
-function BlocRow({ b }: { b: Bloc }) {
+function BlocRow({ b, niveau }: { b: Bloc; niveau: Niveau }) {
+  const range = repsRangeFor(b, niveau)
   const reps = b.reps ?? 1
+  const prefix = range ? `${fmtRange(range)} × ` : reps > 1 ? `${reps} × ` : ''
   return (
     <div style={{ padding: 'var(--space-4)', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)',
       borderLeft: `3px solid ${ZONE_TOKEN[b.zone]}` }}>
@@ -47,7 +51,7 @@ function BlocRow({ b }: { b: Bloc }) {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginTop: 5, flexWrap: 'wrap' }}>
         <span style={{ fontFamily: FD, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{b.label}</span>
         <span style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>
-          {reps > 1 ? `${reps} × ` : ''}{blocMesure(b.zone, b.allure, b.distanceM, b.dureeSec)}
+          {prefix}{blocMesure(b.zone, b.allure, b.distanceM, b.dureeSec)}
         </span>
       </div>
       {b.recup && (
@@ -60,7 +64,44 @@ function BlocRow({ b }: { b: Bloc }) {
   )
 }
 
+// Pilule sélectionnable (niveau / variante).
+function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '6px 12px', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontFamily: FB, fontSize: 12.5, fontWeight: 600,
+      border: `1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+      background: active ? 'var(--primary-dim)' : 'var(--bg-card2)',
+      color: active ? 'var(--primary)' : 'var(--text-mid)', transition: 'all 0.15s' }}>
+      {children}
+    </button>
+  )
+}
+
+// Ligne de conseil approfondi (titre + texte), rendue si le texte existe.
+function ConseilLigne({ titre, texte }: { titre: string; texte?: string }) {
+  if (!texte) return null
+  return (
+    <div style={{ marginTop: 'var(--space-3)' }}>
+      <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{titre}</span>
+      <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55, margin: '3px 0 0' }}>{texte}</p>
+    </div>
+  )
+}
+
 export function SeanceDetail({ seance, onBack }: { seance: Seance; onBack: () => void }) {
+  const [niveau, setNiveau] = useState<Niveau>('intermediaire')
+  const [varianteId, setVarianteId] = useState<string | null>(null)
+
+  const variante = seance.variantes?.find(v => v.id === varianteId) ?? null
+  // Séance active = base ou variante (même intention, blocs différents).
+  const base: Seance = variante
+    ? { ...seance, blocs: variante.blocs, conseil: variante.conseil ?? seance.conseil }
+    : seance
+  const showNiveaux = hasNiveaux(base)
+  const view = showNiveaux ? scaleSeance(base, niveau) : base
+  const signature = showNiveaux ? volumeSignature(base, niveau) : null
+  const niveauLabel = NIVEAUX.find(n => n.id === niveau)?.label ?? ''
+
   return (
     <div>
       <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
@@ -77,19 +118,51 @@ export function SeanceDetail({ seance, onBack }: { seance: Seance; onBack: () =>
         {(seance.distanceCible ?? [seance.bucket]).map(d => <Tag key={d}>{BUCKET_SHORT[d]}</Tag>)}
       </div>
 
-      {/* Profil complet */}
+      {/* Switcher de variantes (même intention, structure différente) */}
+      {seance.variantes && seance.variantes.length > 0 && (
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+            <Pill active={!variante} onClick={() => setVarianteId(null)}>Base</Pill>
+            {seance.variantes.map(v => (
+              <Pill key={v.id} active={variante?.id === v.id} onClick={() => setVarianteId(v.id)}>{v.nom}</Pill>
+            ))}
+          </div>
+          {variante && (
+            <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.5, margin: 'var(--space-2) 0 0' }}>{variante.pourquoi}</p>
+          )}
+        </div>
+      )}
+
+      {/* Bulles de niveau — pilotent le volume (fourchette) + le profil */}
+      {showNiveaux && (
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)' }}>Niveau</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
+            {NIVEAUX.map(n => (
+              <Pill key={n.id} active={niveau === n.id} onClick={() => setNiveau(n.id)}>{n.label}</Pill>
+            ))}
+          </div>
+          {signature && (
+            <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', margin: 'var(--space-2) 0 0' }}>
+              Volume {niveauLabel.toLowerCase()} : <strong style={{ color: 'var(--text)' }}>{signature}</strong>
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Profil complet (adapté au niveau) */}
       <div style={{ padding: 'var(--space-4)', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)', marginBottom: 'var(--space-4)' }}>
-        <RunProfil seance={seance} full />
+        <RunProfil seance={view} full />
       </div>
 
       <div style={{ marginBottom: 'var(--space-5)' }}>
-        <ResumeBandeau seance={seance} />
+        <ResumeBandeau seance={view} />
       </div>
 
-      {/* Structure en blocs */}
+      {/* Structure en blocs (adaptée au niveau) */}
       <h4 style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-3)' }}>Déroulé</h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        {seance.blocs.map((b, i) => <BlocRow key={i} b={b} />)}
+        {view.blocs.map((b, i) => <BlocRow key={i} b={b} niveau={niveau} />)}
       </div>
 
       {/* Pour qui / quand */}
@@ -98,11 +171,21 @@ export function SeanceDetail({ seance, onBack }: { seance: Seance; onBack: () =>
         <p style={{ fontFamily: FB, fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.5, margin: 0 }}>{seance.pourQui}</p>
       </div>
 
-      {seance.conseil && (
+      {/* Conseils approfondis */}
+      {(seance.conseils || base.conseil) && (
         <div style={{ marginTop: 'var(--space-4)', padding: 'var(--space-4)', borderRadius: 'var(--r-md)', background: 'var(--primary-dim)' }}>
-          <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, margin: 0 }}>
-            <strong style={{ color: 'var(--primary)' }}>Conseil</strong> · {seance.conseil}
-          </p>
+          <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--primary)' }}>Conseils</span>
+          {base.conseil && (
+            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55, margin: 'var(--space-2) 0 0' }}>{base.conseil}</p>
+          )}
+          {seance.conseils && (
+            <>
+              <ConseilLigne titre="Exécution" texte={seance.conseils.execution} />
+              <ConseilLigne titre="Erreurs à éviter" texte={seance.conseils.erreurs} />
+              <ConseilLigne titre="Progression" texte={seance.conseils.progression} />
+              <ConseilLigne titre="Quand la placer" texte={seance.conseils.quand} />
+            </>
+          )}
         </div>
       )}
 

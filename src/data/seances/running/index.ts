@@ -49,3 +49,4 @@ export const INTENSITE_LABEL = {
 } as const
 
 export * from './types'
+export * from './niveaux'

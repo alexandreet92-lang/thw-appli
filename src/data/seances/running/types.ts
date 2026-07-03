@@ -10,6 +10,11 @@ export type Zone = 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5' | 'Z6' | 'Z7'
 export type PhaseBloc = 'echauffement' | 'corps' | 'recup' | 'retour-calme'
 export type Intensite = 'faible' | 'modere' | 'eleve' | 'maximum'
 
+// Niveau de l'athlète — pilote le VOLUME (répétitions) d'un bloc.
+export type Niveau = 'debutant' | 'intermediaire' | 'avance' | 'elite'
+// Fourchette de répétitions [min, max] pour un niveau (ex. [3, 4] × 1000m).
+export type RepsRange = readonly [number, number]
+
 export interface BlocRecup {
   zone: Zone
   dureeSec?: number
@@ -25,8 +30,29 @@ export interface Bloc {
   allure?: string               // "@5k", "@seuil", "EF"…
   distanceM?: number            // soit distance…
   dureeSec?: number             // …soit durée
-  reps?: number                 // défaut 1
+  reps?: number                 // défaut 1 (= volume niveau intermédiaire)
+  // Volume par NIVEAU, en fourchette [min,max]. Si présent, remplace `reps`
+  // selon le niveau sélectionné dans l'UI. Absent → `reps` pour tous.
+  repsParNiveau?: Partial<Record<Niveau, RepsRange>>
   recup?: BlocRecup
+}
+
+// Conseils approfondis par type de séance (affichés dans le détail).
+export interface ConseilsDetail {
+  execution?: string            // comment bien exécuter
+  erreurs?: string              // erreurs fréquentes à éviter
+  progression?: string          // comment faire évoluer la séance dans le temps
+  quand?: string                // quand la placer dans la semaine / le cycle
+}
+
+// Variante d'une séance — MÊME intention, structure différente
+// (ex. seuil : 5×1000 vs 3×2000). Réutilise la méta de la séance de base.
+export interface Variante {
+  id: string
+  nom: string                   // ex. "Format long 3×2000"
+  pourquoi: string              // en quoi elle diffère / quand la préférer
+  blocs: Bloc[]                 // scalables par niveau comme la base
+  conseil?: string
 }
 
 export interface Seance {
@@ -44,5 +70,7 @@ export interface Seance {
   phase: string                 // Base | Général | Spé | Affûtage
   tags: string[]
   blocs: Bloc[]
-  conseil?: string
+  conseil?: string              // conseil court (vignette + fallback)
+  conseils?: ConseilsDetail     // conseils approfondis (détail)
+  variantes?: Variante[]        // 1-2 variantes (même intention)
 }

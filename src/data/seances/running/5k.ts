@@ -6,9 +6,30 @@ export const SEANCES_5K: Seance[] = [
     pourQui:'5k · séance clé', phase:'Spé', tags:['vma','5k','intervalle'],
     blocs:[
       { phase:'echauffement', zone:'Z2', label:'Échauffement', allure:'EF', dureeSec:1200 },
-      { phase:'corps', zone:'Z5', label:'1000 @5k', allure:'@5k', distanceM:1000, reps:7, recup:{ zone:'Z1', label:'marche', dureeSec:120, actif:false } },
+      { phase:'corps', zone:'Z5', label:'1000 @5k', allure:'@5k', distanceM:1000, reps:6,
+        repsParNiveau:{ debutant:[3,4], intermediaire:[5,6], avance:[8,10], elite:[10,12] },
+        recup:{ zone:'Z1', label:'marche', dureeSec:120, actif:false } },
       { phase:'retour-calme', zone:'Z2', label:'Retour au calme', allure:'EF', dureeSec:600 },
-    ], conseil:'Régulier, négatif sur les dernières si sensations.' },
+    ],
+    conseil:'Régulier, négatif sur les dernières si sensations.',
+    conseils:{
+      execution:"Cale-toi sur ton allure 5k réelle (pas plus vite) et tiens-la du 1er au dernier 1000. Les 200 premiers mètres de chaque répétition doivent sembler faciles.",
+      erreurs:"Partir trop vite sur les 2 premières répétitions et exploser à la fin ; raccourcir la récupération pour « aller plus vite ».",
+      progression:"Monte d'abord le nombre de répétitions dans ta fourchette de niveau, puis réduis la récup (120s → 90s) avant de viser le niveau au-dessus.",
+      quand:"Séance clé en phase spécifique 5k, 8 à 12 jours avant l'objectif. Jamais à moins de 48h d'une autre séance intense.",
+    },
+    variantes:[
+      { id:'5k-classique-1000-long', nom:'Format long 1500',
+        pourquoi:"Moins de répétitions mais plus longues : plus proche de l'effort continu du 5k. À préférer quand tu supportes bien l'allure et veux travailler la résistance à la durée.",
+        blocs:[
+          { phase:'echauffement', zone:'Z2', label:'Échauffement', allure:'EF', dureeSec:1200 },
+          { phase:'corps', zone:'Z5', label:'1500 @5k', allure:'@5k', distanceM:1500, reps:4,
+            repsParNiveau:{ debutant:[2,3], intermediaire:[3,4], avance:[4,5], elite:[5,6] },
+            recup:{ zone:'Z1', label:'marche', dureeSec:150, actif:false } },
+          { phase:'retour-calme', zone:'Z2', label:'Retour au calme', allure:'EF', dureeSec:600 },
+        ],
+        conseil:'Même allure du 1er au dernier 1500 : la difficulté vient de la durée, pas de la vitesse.' },
+    ] },
 
   { id:'5k-echelle-multi-allures', nom:'Échelle multi-allures', sport:'running', bucket:'5k', filiere:'mixte',
     objectif:'Travailler tout le spectre VMA→3000', dureeEstimeeMin:58, intensite:'eleve', rpe:8,

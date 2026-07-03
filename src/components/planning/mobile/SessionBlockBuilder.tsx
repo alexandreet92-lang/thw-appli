@@ -34,6 +34,45 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
   const dist = totalDistance(blocks)
   const isSwim = sport === 'swim'
 
+  // ── Hauteur de barre CONTINUE selon l'intensité réelle (pas seulement la zone) ──
+  // 200 W et 210 W sont dans la même zone (même couleur) mais 210 W doit être un peu
+  // plus haut : la position dans la bande de zone reflète où tombe l'intensité.
+  const nZones = sport === 'bike' || sport === 'elliptique' ? 7 : 5
+  // Références de seuil, repli aligné sur le modèle de zones du planning
+  // (ATHLETE : FTP 301, allure seuil 248 s/km, CSS 88 s/100m).
+  const refFtp = refs.ftp ?? 301
+  const refRun = refs.runThresholdPaceSec ?? 248
+  const refCss = refs.cssSecPer100m ?? 88
+  const ZONE_TOPS = sport === 'bike' || sport === 'elliptique'
+    ? [0.55, 0.75, 0.87, 1.05, 1.20, 1.50, 1.85]   // % FTP (7 zones)
+    : [0.78, 0.87, 0.94, 1.02, 1.15]               // % allure seuil (5 zones)
+  function barHeightPct(bar: { zone: number; value?: string }): number {
+    // ratio intensité / seuil
+    let ratio: number | null = null
+    if (sport === 'bike' || sport === 'elliptique') {
+      const w = parseInt(bar.value ?? '') || 0
+      if (w > 0) ratio = w / refFtp
+    } else {
+      const p = paceToSec(bar.value ?? '')
+      if (!isNaN(p) && p > 0) ratio = (isSwim ? refCss : refRun) / p
+    }
+    const zoneInt = Math.max(1, Math.min(nZones, bar.zone))
+    let posF = zoneInt   // repli : ancrage sur la zone entière
+    if (ratio != null) {
+      let lo = 0
+      for (let i = 0; i < ZONE_TOPS.length; i++) {
+        const hi = ZONE_TOPS[i]
+        if (ratio <= hi || i === ZONE_TOPS.length - 1) {
+          const frac = Math.max(0, Math.min(1, (ratio - lo) / (hi - lo || 1)))
+          posF = Math.max(0.35, Math.min(nZones, i + frac))
+          break
+        }
+        lo = hi
+      }
+    }
+    return (posF / nZones) * 100
+  }
+
   // 4ᵉ métrique : moyenne pondérée par la durée d'effort
   const fourth = (() => {
     let sumWM = 0, sumM = 0
@@ -180,15 +219,15 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: 150, paddingBottom: 2 }}>
-            {[7, 6, 5, 4, 3, 2, 1].map(z => <span key={z} style={{ fontSize: 8.5, color: 'var(--se-dim)', lineHeight: 1 }}>Z{z}</span>)}
+            {Array.from({ length: nZones }, (_, k) => nZones - k).map(z => <span key={z} style={{ fontSize: 8.5, color: 'var(--se-dim)', lineHeight: 1 }}>Z{z}</span>)}
           </div>
           <div style={{ flex: 1, height: 150, display: 'flex', alignItems: 'flex-end', gap: 2, borderLeft: '1px solid var(--se-rule)', borderBottom: '1px solid var(--se-rule)', paddingLeft: 4 }}>
             {bars.length === 0
               ? <span style={{ fontSize: 11, color: 'var(--se-dim)', alignSelf: 'center', margin: '0 auto' }}>Ajoute un bloc pour voir le profil</span>
               : bars.map(bar => (
-                <div key={bar.id} title={`Z${bar.zone} · ${Math.round(bar.min)}min`} style={{
+                <div key={bar.id} title={`Z${bar.zone}${bar.value ? ` · ${bar.value}` : ''} · ${Math.round(bar.min)}min`} style={{
                   flexGrow: Math.max(1, bar.min), flexBasis: 0, minWidth: 3,
-                  height: `${(Math.max(1, Math.min(7, bar.zone)) / 7) * 100}%`,
+                  height: `${barHeightPct(bar)}%`,
                   background: zColor(bar.zone), opacity: bar.recovery ? 0.5 : 1,
                   borderRadius: '3px 3px 0 0',
                 }} />

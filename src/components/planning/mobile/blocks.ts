@@ -75,18 +75,18 @@ export function newInterval(sport: SportType): MBlock {
   return recalc(sport, base)
 }
 
-export interface Bar { id: string; min: number; zone: number; recovery: boolean }
+export interface Bar { id: string; min: number; zone: number; recovery: boolean; value?: string }
 /** Aplatit les blocs en barres (1 par effort + 1 par récup d'intervalle). */
 export function toBars(blocks: MBlock[]): Bar[] {
   const out: Bar[] = []
   for (const b of blocks) {
     if (b.mode === 'interval' && b.reps && b.effortMin) {
       for (let r = 0; r < b.reps; r++) {
-        out.push({ id: `${b.id}_e${r}`, min: b.effortMin, zone: b.zone, recovery: false })
-        if (b.recoveryMin && b.recoveryMin > 0) out.push({ id: `${b.id}_r${r}`, min: b.recoveryMin, zone: b.recoveryZone ?? 1, recovery: true })
+        out.push({ id: `${b.id}_e${r}`, min: b.effortMin, zone: b.zone, recovery: false, value: b.value })
+        if (b.recoveryMin && b.recoveryMin > 0) out.push({ id: `${b.id}_r${r}`, min: b.recoveryMin, zone: b.recoveryZone ?? 1, recovery: true, value: b.recoveryValue })
       }
     } else {
-      out.push({ id: b.id, min: b.durationMin, zone: b.zone, recovery: false })
+      out.push({ id: b.id, min: b.durationMin, zone: b.zone, recovery: false, value: b.value })
     }
   }
   return out

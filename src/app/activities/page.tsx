@@ -40,6 +40,7 @@ import { RecordsBeaten } from '@/components/activity/RecordsBeaten'
 import { ActivityCard, type ActivityCardData } from '@/components/activity/ActivityCard'
 import { WeeklyGoals } from '@/components/activity/WeeklyGoals'
 import { MonthlySummary } from '@/components/activity/MonthlySummary'
+import { WeeklySummary } from '@/components/activity/WeeklySummary'
 import { shareCard } from '@/lib/share/shareCard'
 import { useSmSn } from '@/hooks/useSmSn'
 import { smSnFromRow } from '@/lib/metrics/smSn'
@@ -5593,7 +5594,8 @@ function SectionDonnees({ activities, zones, profile }: {
       {dataTab === 'general' && (
         <>
 
-          {/* ── Récap mensuel (3 premiers jours du mois) ── */}
+          {/* ── Récap hebdo (lundi + mardi) puis mensuel (3 premiers jours du mois) ── */}
+          <WeeklySummary activities={activities} />
           <MonthlySummary activities={activities} />
 
           {/* ── Objectifs hebdomadaires + série ── */}

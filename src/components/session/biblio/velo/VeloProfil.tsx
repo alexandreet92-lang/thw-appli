@@ -1,6 +1,7 @@
 'use client'
 // Profil d'intensité Vélo — lecture seule, time-based (largeur = dureeSec).
 // Même langage visuel que le SessionEditor (barres par zone Z1-Z7, tokens).
+import { useI18n } from '@/lib/i18n'
 import type { Seance, Bloc, Zone } from '@/data/seances/velo'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -75,10 +76,11 @@ export function VeloProfil({ seance, full = false }: { seance: Seance; full?: bo
 }
 
 export function ResumeBandeau({ seance }: { seance: Seance }) {
+  const { t } = useI18n()
   const zd = zoneDominante(seance)
   const stats: { k: string; v: string }[] = [
-    { k: 'Durée', v: `${seance.dureeMinMin}–${seance.dureeMaxMin} min` },
-    { k: 'Intensité', v: `${zd} · ${ZONE_LABEL[zd]}` },
+    { k: t('session.duree'), v: `${seance.dureeMinMin}–${seance.dureeMaxMin} min` },
+    { k: t('session.intensite'), v: `${zd} · ${ZONE_LABEL[zd]}` },
     { k: 'RPE', v: `${seance.rpe}/10` },
   ]
   return (

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 
 interface StepsData {
   date: string
@@ -21,6 +22,7 @@ function fmtTime(s: number | null): string {
 }
 
 export default function DailyStepsCard() {
+  const { t } = useI18n()
   const [data, setData] = useState<StepsData | null>(null)
   const [history, setHistory] = useState<StepsData[]>([])
   const [animated, setAnimated] = useState(false)
@@ -70,10 +72,10 @@ export default function DailyStepsCard() {
       borderRadius: 20, padding: 24, boxShadow: 'var(--shadow-card)',
     }}>
       <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 4px' }}>
-        Activité quotidienne
+        {t('recovery.steps.eyebrow')}
       </p>
       <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: '0 0 16px' }}>
-        Pas du jour
+        {t('recovery.steps.title')}
       </h2>
 
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -85,7 +87,7 @@ export default function DailyStepsCard() {
               {steps.toLocaleString('fr-FR')}
             </span>
             <span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 500 }}>
-              / {GOAL.toLocaleString('fr-FR')} pas
+              / {GOAL.toLocaleString('fr-FR')} {t('recovery.steps.stepsUnit')}
             </span>
           </div>
 
@@ -106,7 +108,7 @@ export default function DailyStepsCard() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 10, color: reached ? '#10B981' : 'var(--text-dim)', fontWeight: reached ? 700 : 400 }}>
-              {reached ? '✓ Objectif atteint' : `${Math.round(pct * 100)}% de l'objectif`}
+              {reached ? t('recovery.steps.goalReached') : t('recovery.steps.goalPct', { n: Math.round(pct * 100) })}
             </span>
             <span style={{ fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
               {data.date}
@@ -117,7 +119,7 @@ export default function DailyStepsCard() {
           <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
             {data.active_calories != null && (
               <div style={{ padding: '5px 10px', borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 1px' }}>Cal. actives</p>
+                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 1px' }}>{t('recovery.steps.activeCal')}</p>
                 <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'DM Mono,monospace' }}>
                   {data.active_calories} kcal
                 </p>
@@ -125,7 +127,7 @@ export default function DailyStepsCard() {
             )}
             {data.active_time_s != null && (
               <div style={{ padding: '5px 10px', borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 1px' }}>Temps actif</p>
+                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 1px' }}>{t('recovery.steps.activeTime')}</p>
                 <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'DM Mono,monospace' }}>
                   {fmtTime(data.active_time_s)}
                 </p>
@@ -137,7 +139,7 @@ export default function DailyStepsCard() {
         {/* Sparkline 7j */}
         {spark.length >= 3 && (
           <div style={{ flexShrink: 0 }}>
-            <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 4px', textAlign: 'center' }}>7 derniers jours</p>
+            <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 4px', textAlign: 'center' }}>{t('recovery.last7days')}</p>
             <svg viewBox={`0 0 ${W} ${H + 14}`} style={{ width: W, height: H + 14, display: 'block' }}>
               {/* Ligne objectif */}
               <line

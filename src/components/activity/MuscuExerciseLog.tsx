@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom'
 import { useActivityExtras, type Exo, type StrengthLog } from '@/lib/activity/extras'
 import { ExercisePicker } from '@/components/planning/mobile/ExercisePicker'
 import type { ExoDefinition } from '@/components/planning/exercises'
+import { useI18n } from '@/lib/i18n'
 
 const GYM = 'var(--sport-gym)'
 const EMPTY: StrengthLog = { circuits: '1', exos: [] }
@@ -39,6 +40,7 @@ const inputStyle: React.CSSProperties = {
 }
 
 export function MuscuExerciseLog({ activityId }: { activityId: string }) {
+  const { t } = useI18n()
   const { extras, save } = useActivityExtras(activityId)
   const log = extras.strength_log ?? EMPTY
   const [open, setOpen] = useState(false)
@@ -66,18 +68,18 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: nbExos ? 12 : 0 }}>
         <div style={{ display: 'flex', gap: 22 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>Exercices</div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>{t('activities.exercises')}</div>
             <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, marginTop: 4 }}>{nbExos || '—'}</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>Circuits</div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>{t('activities.circuits')}</div>
             <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, marginTop: 4 }}>{nbExos ? nbCircuits : '—'}</div>
           </div>
         </div>
         <button onClick={openEditor} style={{
           fontSize: 12, color: GYM, background: 'none', border: '1px solid var(--border)',
           borderRadius: 999, padding: '6px 14px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
-        }}>{nbExos ? 'Modifier' : 'Saisir'}</button>
+        }}>{nbExos ? t('activities.edit') : t('activities.enter')}</button>
       </div>
 
       {nbExos > 0 && (
@@ -86,7 +88,7 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
             <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--border)', fontSize: 13 }}>
               <span style={{ color: 'var(--text)', fontWeight: 600 }}>{e.name}</span>
               <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                {[e.sets && e.reps ? `${e.sets}×${e.reps}` : (e.sets || e.reps), e.load, e.rest && `récup ${e.rest}`].filter(Boolean).join(' · ')}
+                {[e.sets && e.reps ? `${e.sets}×${e.reps}` : (e.sets || e.reps), e.load, e.rest && `${t('activities.restLabel')} ${e.rest}`].filter(Boolean).join(' · ')}
               </span>
             </div>
           ))}
@@ -100,26 +102,26 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
             borderRadius: '18px 18px 0 0', padding: 20, boxShadow: '0 -8px 40px rgba(0,0,0,0.3)' /* design-allow-color */,
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Exercices réalisés</h3>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('activities.exercisesDone')}</h3>
               <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 20, padding: 4 }}>✕</button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nombre de circuits</span>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('activities.circuitCount')}</span>
               <input type="number" min={1} value={draft.circuits} onChange={e => setDraft(d => ({ ...d, circuits: e.target.value }))} style={{ ...inputStyle, width: 70 }} />
             </div>
 
             {draft.exos.map((e, i) => (
               <div key={e.id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 12, marginBottom: 10 }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                  <input value={e.name} onChange={ev => patchExo(e.id, 'name', ev.target.value)} placeholder={`Exercice ${i + 1}`} style={{ ...inputStyle, flex: 1 }} />
-                  <button onClick={() => setDraft(d => ({ ...d, exos: d.exos.filter(x => x.id !== e.id) }))} aria-label="Supprimer" style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-dim)', cursor: 'pointer', padding: '0 10px', fontSize: 16 }}>−</button>
+                  <input value={e.name} onChange={ev => patchExo(e.id, 'name', ev.target.value)} placeholder={t('activities.exerciseN', { n: i + 1 })} style={{ ...inputStyle, flex: 1 }} />
+                  <button onClick={() => setDraft(d => ({ ...d, exos: d.exos.filter(x => x.id !== e.id) }))} aria-label={t('activities.delete')} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-dim)', cursor: 'pointer', padding: '0 10px', fontSize: 16 }}>−</button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                  <input value={e.sets} onChange={ev => patchExo(e.id, 'sets', ev.target.value)} placeholder="Séries" style={inputStyle} />
-                  <input value={e.reps} onChange={ev => patchExo(e.id, 'reps', ev.target.value)} placeholder="Reps" style={inputStyle} />
-                  <input value={e.load} onChange={ev => patchExo(e.id, 'load', ev.target.value)} placeholder="Charge" style={inputStyle} />
-                  <input value={e.rest} onChange={ev => patchExo(e.id, 'rest', ev.target.value)} placeholder="Récup" style={inputStyle} />
+                  <input value={e.sets} onChange={ev => patchExo(e.id, 'sets', ev.target.value)} placeholder={t('activities.sets')} style={inputStyle} />
+                  <input value={e.reps} onChange={ev => patchExo(e.id, 'reps', ev.target.value)} placeholder={t('activities.reps')} style={inputStyle} />
+                  <input value={e.load} onChange={ev => patchExo(e.id, 'load', ev.target.value)} placeholder={t('activities.load')} style={inputStyle} />
+                  <input value={e.rest} onChange={ev => patchExo(e.id, 'rest', ev.target.value)} placeholder={t('activities.rest')} style={inputStyle} />
                 </div>
               </div>
             ))}
@@ -127,11 +129,11 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
             <button onClick={() => setPicking(true)} style={{
               width: '100%', padding: '10px', borderRadius: 10, border: '1px dashed var(--border)',
               background: 'transparent', color: GYM, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 16,
-            }}>+ Ajouter un exercice (bibliothèque)</button>
+            }}>{t('activities.addExerciseLibrary')}</button>
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setOpen(false)} style={{ flex: 1, padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Annuler</button>
-              <button onClick={commit} style={{ flex: 1, padding: '12px', borderRadius: 10, border: 'none', background: GYM, color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Enregistrer</button>
+              <button onClick={() => setOpen(false)} style={{ flex: 1, padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('activities.cancel')}</button>
+              <button onClick={commit} style={{ flex: 1, padding: '12px', borderRadius: 10, border: 'none', background: GYM, color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>{t('activities.save')}</button>
             </div>
           </div>
         </div>,
@@ -143,7 +145,7 @@ export function MuscuExerciseLog({ activityId }: { activityId: string }) {
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg)', display: 'flex', flexDirection: 'column', ...seVars }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
             <button onClick={() => setPicking(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
-            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Ajouter un exercice</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{t('activities.addExercise')}</span>
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px 24px' }}>
             <ExercisePicker accent={GYM}

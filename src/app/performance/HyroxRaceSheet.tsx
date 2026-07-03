@@ -3,6 +3,7 @@
 // 8 stations, 8 runs → run compromised auto, roxzone, total auto. Bouton var(--primary).
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { Segmented } from '@/components/ui/Segmented'
 import { HYROX_STATIONS, HYROX_FORMAT_LABELS, toSec, mmss, hmsTotal, insertRace, type HyroxFormat, type HyroxRace } from './hyroxShared'
 
@@ -15,6 +16,7 @@ const sec: React.CSSProperties = { background: 'var(--bg-card2)', borderRadius: 
 const secLbl: React.CSSProperties = { fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 12px' }
 
 export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSaved: (r: HyroxRace) => void }) {
+  const { t } = useI18n()
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [format, setFormat] = useState<HyroxFormat>('solo_open')
   const [partenaire, setPartenaire] = useState('')
@@ -51,7 +53,7 @@ export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSa
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--text-mid)' }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: HYROX_DOT }} />Hyrox
             </span>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Ajouter une course</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.addRace')}</h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="rec-drawer" style={{ padding: '5px 9px', borderRadius: 8, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
@@ -67,13 +69,13 @@ export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSa
             <Segmented size="sm" ariaLabel="Format" value={format} onChange={setFormat}
               options={(Object.keys(HYROX_FORMAT_LABELS) as HyroxFormat[]).map(f => ({ id: f, label: HYROX_FORMAT_LABELS[f] }))} />
             {(format === 'duo_open' || format === 'duo_pro') && (
-              <div style={{ marginTop: 12 }}><p style={fieldLbl}>Partenaire</p><input className="rec-drawer" value={partenaire} onChange={e => setPartenaire(e.target.value)} placeholder="Prénom Nom" style={inp} /></div>
+              <div style={{ marginTop: 12 }}><p style={fieldLbl}>{t('performance.partner')}</p><input className="rec-drawer" value={partenaire} onChange={e => setPartenaire(e.target.value)} placeholder={t('performance.firstLastName')} style={inp} /></div>
             )}
           </div>
 
           {/* Stations */}
           <div style={sec}>
-            <p style={secLbl}>Stations (temps)</p>
+            <p style={secLbl}>{t('performance.stationsTime')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {HYROX_STATIONS.map((s, i) => (
                 <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -87,7 +89,7 @@ export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSa
 
           {/* Runs */}
           <div style={sec}>
-            <p style={secLbl}>Runs — 8 × 1 km (compromised)</p>
+            <p style={secLbl}>{t('performance.runs8km')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i}>
@@ -97,7 +99,7 @@ export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSa
               ))}
             </div>
             <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--bg-elev)' }}>
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)' }}>Run compromised (auto) </span>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)' }}>{t('performance.runCompromisedAuto')} </span>
               <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{runSec > 0 ? mmss(runSec) : '—'}</span>
             </div>
           </div>
@@ -110,7 +112,7 @@ export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSa
 
           {/* Total auto */}
           <div style={{ ...sec, marginBottom: 0 }}>
-            <p style={secLbl}>Temps total (auto)</p>
+            <p style={secLbl}>{t('performance.totalTimeAuto')}</p>
             <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 22, fontWeight: 600, color: totalSec > 0 ? 'var(--text)' : 'var(--text-dim)' }}>{totalStr || '—'}</span>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', marginLeft: 8 }}>stations + runs + roxzone</span>
           </div>
@@ -120,7 +122,7 @@ export function HyroxRaceSheet({ onClose, onSaved }: { onClose: () => void; onSa
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '12px 20px 20px', background: 'var(--bg-card)', borderTop: '1px solid var(--border)' }}>
           <button onClick={() => void save()} disabled={!canSave || saving}
             style={{ width: '100%', padding: '14px', borderRadius: 'var(--r-sm)', border: 'none', cursor: canSave && !saving ? 'pointer' : 'not-allowed', background: canSave && !saving ? 'var(--primary)' : 'var(--bg-card2)', color: canSave && !saving ? 'var(--on-primary)' : 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600 }}>
-            {saving ? 'Enregistrement…' : 'Enregistrer la course'}
+            {saving ? t('performance.saving') : t('performance.saveRace')}
           </button>
         </div>
       </div>

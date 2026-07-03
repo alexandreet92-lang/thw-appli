@@ -12,6 +12,7 @@ import { weekStartOptions, formatWeekStart, formatWeekEnd, currentWeekInBloc, bl
 import { useWindowWidth } from '@/hooks/useWindowWidth'
 import { FocusPicker } from './FocusPicker'
 import { BlocStartWeekPicker } from './BlocStartWeekPicker'
+import { useI18n } from '@/lib/i18n'
 
 const CY = '#22d3ee', ON = '#04141a' // cyan/on-cyan = couleurs fonctionnelles assumées
 const lbl: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-dim)', marginBottom: 8 }
@@ -22,6 +23,7 @@ const stepBox: React.CSSProperties = { display: 'inline-flex', alignItems: 'cent
 export function BlocDetailOverlay({ open, blocId, onClose, onChanged }: {
   open: boolean; blocId: string | null; onClose: () => void; onChanged: () => void
 }) {
+  const { t: tr } = useI18n()
   const isMobile = useWindowWidth() < 768
   const [shown, setShown] = useState(false)
   const [blocs, setBlocs] = useState<TrainingBlocData[]>(() => loadBlocs())
@@ -66,7 +68,7 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged }: {
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 200, opacity: shown ? 1 : 0, transition: 'opacity .25s', padding: isMobile ? 0 : 16 }}>
       <div style={panel}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 19, color: 'var(--text)' }}>Training Bloc</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 19, color: 'var(--text)' }}>{tr('planning.trainingBloc')}</span>
           <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--text-mid)' }}>✕</button>
         </div>
 
@@ -80,32 +82,32 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged }: {
         </div>
 
         {/* Blocs du sport */}
-        <div style={lbl}>Blocs</div>
+        <div style={lbl}>{tr('planning.blocs')}</div>
         <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
           {forSport.map(b => (
             <button key={b.id} onClick={() => setActiveId(b.id)} style={{ padding: '5px 11px', fontSize: 11.5, fontWeight: 600, borderRadius: 8, border: '1px solid', borderColor: activeId === b.id ? 'rgba(34,211,238,.25)' : 'var(--border)', background: activeId === b.id ? 'rgba(34,211,238,.12)' : 'transparent', color: activeId === b.id ? CY : 'var(--text-dim)', cursor: 'pointer' }}>{b.name}</button>
           ))}
-          <button onClick={create} style={{ padding: '5px 11px', fontSize: 11.5, fontWeight: 600, borderRadius: 8, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}>+ Nouveau</button>
-          {pastAll.length > 10 && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', padding: '5px 8px' }}>+{pastAll.length - 10} blocs archivés</span>}
-          {bloc && <button onClick={remove} style={{ padding: '5px 9px', fontSize: 11, borderRadius: 8, border: 'none', background: 'rgba(239,68,68,.1)', color: '#ef4444', cursor: 'pointer', marginLeft: 'auto' }}>Supprimer</button>}
+          <button onClick={create} style={{ padding: '5px 11px', fontSize: 11.5, fontWeight: 600, borderRadius: 8, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}>{tr('planning.newPlus')}</button>
+          {pastAll.length > 10 && <span style={{ fontSize: 10.5, color: 'var(--text-dim)', padding: '5px 8px' }}>{tr('planning.archivedBlocs', { n: pastAll.length - 10 })}</span>}
+          {bloc && <button onClick={remove} style={{ padding: '5px 9px', fontSize: 11, borderRadius: 8, border: 'none', background: 'rgba(239,68,68,.1)', color: '#ef4444', cursor: 'pointer', marginLeft: 'auto' }}>{tr('planning.delete')}</button>}
         </div>
 
         {!bloc ? (
-          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', padding: '8px 0 4px' }}>Aucun bloc pour ce sport — clique sur <strong style={{ color: CY }}>+ Nouveau</strong>.</p>
+          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', padding: '8px 0 4px' }}>{tr('planning.noBlocForSportPrefix')} <strong style={{ color: CY }}>{tr('planning.newPlus')}</strong>.</p>
         ) : (<>
-          <div style={lbl}>Nom du bloc</div>
-          <input value={bloc.name} onChange={e => patch({ name: e.target.value })} placeholder="Nom du bloc…"
+          <div style={lbl}>{tr('planning.blocName')}</div>
+          <input value={bloc.name} onChange={e => patch({ name: e.target.value })} placeholder={tr('planning.blocNamePlaceholder')}
             style={{ width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 9, padding: '10px 13px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', outline: 'none', marginBottom: 16, boxSizing: 'border-box' }} />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
             <div style={card}>
-              <div style={lbl}>Début du bloc</div>
+              <div style={lbl}>{tr('planning.blocStart')}</div>
               <BlocStartWeekPicker options={options} startKey={`${bloc.startYear}-${bloc.startWeek}`} durationWeeks={bloc.durationWeeks} onSelect={(o: WeekOption) => patch({ startYear: o.year, startWeek: o.week })} />
             </div>
             <div style={card}>
-              <div style={lbl}>Durée</div>
+              <div style={lbl}>{tr('planning.duration')}</div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{bloc.durationWeeks} semaines</span>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{tr('planning.weeksCount', { n: bloc.durationWeeks })}</span>
                 <div style={stepBox}>
                   <button onClick={() => patch({ durationWeeks: Math.max(1, bloc.durationWeeks - 1) })} style={stepBtn}>−</button>
                   <span style={{ minWidth: 24, textAlign: 'center', fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{bloc.durationWeeks}</span>
@@ -116,7 +118,7 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged }: {
                 {Array.from({ length: bloc.durationWeeks }).map((_, i) => (
                   <span key={i} style={{ width: 20, height: 6, borderRadius: 6, background: i < cwb ? CY : 'var(--border-mid)' }} />
                 ))}
-                <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 6 }}>sem. <strong style={{ color: 'var(--text)' }}>{cwb}</strong>/{bloc.durationWeeks}</span>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 6 }}>{tr('planning.weekShort')} <strong style={{ color: 'var(--text)' }}>{cwb}</strong>/{bloc.durationWeeks}</span>
               </div>
               <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
                 <span style={{ color: 'var(--text)', fontWeight: 600 }}>{formatWeekStart(bloc.startYear, bloc.startWeek)}</span>
@@ -126,18 +128,18 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged }: {
             </div>
           </div>
 
-          <div style={lbl}>Focus du bloc</div>
+          <div style={lbl}>{tr('planning.blocFocus')}</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
             {bloc.focus.map(q => (
               <span key={q} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, borderRadius: 999, padding: '6px 12px', background: 'rgba(34,211,238,.12)', color: CY }}>
                 {q}<span onClick={() => patch({ focus: bloc.focus.filter(x => x !== q) })} style={{ opacity: .6, cursor: 'pointer', fontSize: 10 }}>✕</span>
               </span>
             ))}
-            <span onClick={() => setFocusOpen(true)} style={{ fontSize: 12.5, fontWeight: 600, borderRadius: 999, padding: '6px 12px', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer' }}>+ type</span>
+            <span onClick={() => setFocusOpen(true)} style={{ fontSize: 12.5, fontWeight: 600, borderRadius: 999, padding: '6px 12px', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer' }}>{tr('planning.addTypePlus')}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={lbl}>Entraînements prévus</span>
+            <span style={lbl}>{tr('planning.plannedSessions')}</span>
             <div style={stepBox}>
               <button onClick={() => patch({ sessions: bloc.sessions.slice(0, Math.max(1, bloc.sessions.length - 1)) })} style={stepBtn}>−</button>
               <span style={{ minWidth: 24, textAlign: 'center', fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{bloc.sessions.length}</span>
@@ -148,13 +150,13 @@ export function BlocDetailOverlay({ open, blocId, onClose, onChanged }: {
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
               <span style={{ width: 20, height: 20, borderRadius: 5, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', flexShrink: 0 }}>{i + 1}</span>
               <div onClick={() => setSessIdx(i)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-card2)', borderRadius: 8, padding: '9px 12px', cursor: 'pointer' }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: s.type ? 'var(--text)' : 'var(--text-dim)' }}>{s.type ?? 'Choisir un type'}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: s.type ? 'var(--text)' : 'var(--text-dim)' }}>{s.type ?? tr('planning.chooseType')}</span>
                 <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>▾</span>
               </div>
             </div>
           ))}
 
-          <button onClick={onClose} style={{ marginTop: 18, width: '100%', background: CY, color: ON, border: 'none', borderRadius: 12, padding: 13, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Enregistrer</button>
+          <button onClick={onClose} style={{ marginTop: 18, width: '100%', background: CY, color: ON, border: 'none', borderRadius: 12, padding: 13, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('planning.save')}</button>
         </>)}
       </div>
 

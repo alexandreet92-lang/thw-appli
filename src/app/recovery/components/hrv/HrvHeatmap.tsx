@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface HrvRow { date: string; hrv: number }
 interface Props { rows: HrvRow[] }
@@ -17,9 +18,10 @@ function isoDateOf(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
 
-const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+const DAY_LABEL_KEYS = ['recovery.dayLetter.mon', 'recovery.dayLetter.tue', 'recovery.dayLetter.wed', 'recovery.dayLetter.thu', 'recovery.dayLetter.fri', 'recovery.dayLetter.sat', 'recovery.dayLetter.sun']
 
 export default function HrvHeatmap({ rows }: Props) {
+  const { t } = useI18n()
   const [step, setStep] = useState(0)
 
   useEffect(() => {
@@ -58,8 +60,8 @@ export default function HrvHeatmap({ rows }: Props) {
     <div>
       {/* Day headers */}
       <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
-        {DAY_LABELS.map((d, i) => (
-          <div key={i} style={{ width: 20, fontSize: 8, color: 'var(--text-dim)', textAlign: 'center', flexShrink: 0 }}>{d}</div>
+        {DAY_LABEL_KEYS.map((d, i) => (
+          <div key={i} style={{ width: 20, fontSize: 8, color: 'var(--text-dim)', textAlign: 'center', flexShrink: 0 }}>{t(d)}</div>
         ))}
       </div>
       {/* Grid */}
@@ -90,11 +92,11 @@ export default function HrvHeatmap({ rows }: Props) {
       </div>
       {/* Legend */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-        <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>Bas</span>
+        <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>{t('recovery.hrv.low')}</span>
         {['#EF4444', '#F59E0B', '#10B981', '#059669'].map(c => (
           <div key={c} style={{ width: 12, height: 12, borderRadius: 2, background: c }} />
         ))}
-        <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>Élevé</span>
+        <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>{t('recovery.hrv.high')}</span>
       </div>
     </div>
   )

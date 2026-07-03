@@ -14,6 +14,7 @@ import { RaceStage, StageSport, StageSession, StageDayParcours } from './types'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import { parseRouteFile } from '@/lib/parcours/parseRouteFile'
 import { RACE_EDITOR_CSS } from './raceTheme'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   mode?: 'create' | 'edit'
@@ -52,6 +53,7 @@ const labelDay = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('fr
 type DayProg = Record<string, { matin: StageSession[]; aprem: StageSession[] }>
 
 export default function EventModal({ mode = 'create', initialData, initialDate, onClose, onDelete, onSave }: Props) {
+  const { t } = useI18n()
   const supabase = createClient()
   const isEdit = mode === 'edit'
   const [name,      setName]      = useState(initialData?.name ?? '')
@@ -183,8 +185,8 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
 
         {/* Header sticky */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px 14px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
-          <h3 className="ed-fr" style={{ margin: 0, fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>{isEdit ? 'Modifier le stage' : 'Ajouter un stage'}</h3>
-          <button onClick={onClose} aria-label="Fermer" style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} /></button>
+          <h3 className="ed-fr" style={{ margin: 0, fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>{isEdit ? t('calendar.editStage') : t('calendar.addStage')}</h3>
+          <button onClick={onClose} aria-label={t('calendar.close')} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={16} /></button>
         </div>
 
         {/* Corps scrollable — contenu centré */}
@@ -193,7 +195,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
 
             {/* Sports */}
             <div>
-              <p style={LBL}>Sports</p>
+              <p style={LBL}>{t('calendar.sports')}</p>
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {STAGE_SPORTS.map(s => {
                   const on = sports.includes(s.id)
@@ -206,20 +208,20 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
 
             {/* Nom + dates */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
-              <div><p style={LBL}>Nom du stage</p><input style={INP} value={name} onChange={e => setName(e.target.value)} placeholder="Ex : Stage Haute Montagne" /></div>
-              <div><p style={LBL}>Début</p><input type="date" style={INP} value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
-              <div><p style={LBL}>Fin</p><input type="date" style={INP} value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
+              <div><p style={LBL}>{t('calendar.stageName')}</p><input style={INP} value={name} onChange={e => setName(e.target.value)} placeholder={t('calendar.stageNamePlaceholder')} /></div>
+              <div><p style={LBL}>{t('calendar.start')}</p><input type="date" style={INP} value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+              <div><p style={LBL}>{t('calendar.end')}</p><input type="date" style={INP} value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
             </div>
-            {days.length > 0 && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '-8px 0 0' }}>Durée : <strong style={{ color: 'var(--text)' }}>{days.length} jour{days.length > 1 ? 's' : ''}</strong></p>}
+            {days.length > 0 && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '-8px 0 0' }}>{t('calendar.duration')} : <strong style={{ color: 'var(--text)' }}>{days.length > 1 ? t('calendar.daysCountPlural', { n: days.length }) : t('calendar.daysCount', { n: days.length })}</strong></p>}
 
             {/* Description */}
-            <div><p style={LBL}>Description</p>
-              <textarea rows={2} style={{ ...INP, resize: 'vertical' }} value={desc} onChange={e => setDesc(e.target.value)} placeholder="Objectifs, contexte…" /></div>
+            <div><p style={LBL}>{t('calendar.description')}</p>
+              <textarea rows={2} style={{ ...INP, resize: 'vertical' }} value={desc} onChange={e => setDesc(e.target.value)} placeholder={t('calendar.stageDescPlaceholder')} /></div>
 
             {/* Programme par jour : Matin / Après-midi */}
             {days.length > 0 && (
               <div>
-                <p style={LBL}>Programme — Matin / Après-midi</p>
+                <p style={LBL}>{t('calendar.programMorningAfternoon')}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {days.map(d => {
                     const dp = program[d] ?? { matin: [], aprem: [] }
@@ -228,7 +230,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '0 0 10px', textTransform: 'capitalize' }}>{labelDay(d)}</p>
                         {(['matin','aprem'] as const).map(slot => (
                           <div key={slot} style={{ marginBottom: 10 }}>
-                            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px' }}>{slot === 'matin' ? 'Matin' : 'Après-midi'}</p>
+                            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px' }}>{slot === 'matin' ? t('calendar.morning') : t('calendar.afternoon')}</p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                               {dp[slot].map((ses, i) => (
                                 <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -236,13 +238,13 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                                     {sportOptions.map(sp => <option key={sp} value={sp}>{sportLabel(sp)}</option>)}
                                   </select>
                                   <input type="time" value={ses.time ?? ''} onChange={e => updSession(d, slot, i, { time: e.target.value })} style={{ ...INP, width: 'auto', flex: 'none', padding: '8px 10px' }} />
-                                  <input value={ses.title ?? ''} onChange={e => updSession(d, slot, i, { title: e.target.value })} placeholder="Titre de la séance…" style={{ ...INP, flex: 1, minWidth: 130, padding: '8px 10px' }} />
-                                  <input value={ses.detail} onChange={e => updSession(d, slot, i, { detail: e.target.value })} placeholder="Détail…" style={{ ...INP, flex: 1, minWidth: 120, padding: '8px 10px' }} />
-                                  <button onClick={() => rmSession(d, slot, i)} aria-label="Retirer" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}><IconX size={16} /></button>
+                                  <input value={ses.title ?? ''} onChange={e => updSession(d, slot, i, { title: e.target.value })} placeholder={t('calendar.sessionTitlePlaceholder')} style={{ ...INP, flex: 1, minWidth: 130, padding: '8px 10px' }} />
+                                  <input value={ses.detail} onChange={e => updSession(d, slot, i, { detail: e.target.value })} placeholder={t('calendar.detailPlaceholder')} style={{ ...INP, flex: 1, minWidth: 120, padding: '8px 10px' }} />
+                                  <button onClick={() => rmSession(d, slot, i)} aria-label={t('calendar.remove')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}><IconX size={16} /></button>
                                 </div>
                               ))}
                               <button onClick={() => addSession(d, slot)} style={{ alignSelf: 'flex-start', fontSize: 11.5, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', borderRadius: 9, padding: '7px 12px', cursor: 'pointer' }}>
-                                + Séance {slot === 'matin' ? 'du matin' : "de l'après-midi"}
+                                {slot === 'matin' ? t('calendar.addMorningSession') : t('calendar.addAfternoonSession')}
                               </button>
                             </div>
                           </div>
@@ -250,14 +252,14 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
 
                         {/* Parcours du jour */}
                         <div style={{ marginTop: 4 }}>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px' }}>Parcours du jour</p>
+                          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px' }}>{t('calendar.dayRoute')}</p>
                           {(dayParcoursFile[d] || dayParcoursUrl[d]) ? (
                             <>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                 <span style={{ fontSize: 11.5, color: 'var(--text-mid)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   📍 {dayParcoursFile[d]?.name ?? dayParcoursUrl[d]?.name}
                                 </span>
-                                <button onClick={() => clearDayParcours(d)} aria-label="Retirer le parcours" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}><IconX size={15} /></button>
+                                <button onClick={() => clearDayParcours(d)} aria-label={t('calendar.removeRoute')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}><IconX size={15} /></button>
                               </div>
                               {dayParcoursFile[d]
                                 ? <ParcoursViewer file={dayParcoursFile[d] as File} />
@@ -265,7 +267,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                             </>
                           ) : (
                             <label style={{ display: 'block', textAlign: 'center', fontSize: 11.5, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1.5px dashed var(--border-mid)', borderRadius: 10, padding: 12, cursor: 'pointer' }}>
-                              + Importer un parcours (GPX/TCX/KML)
+                              {t('calendar.importRoute')}
                               <input type="file" accept=".gpx,.tcx,.kml" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) void pickDayParcours(d, f); e.target.value = '' }} />
                             </label>
                           )}
@@ -284,16 +286,16 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
           <div style={{ display: 'flex', gap: 10, width: '100%', maxWidth: 900, alignItems: 'center' }}>
             {isEdit && onDelete && (confirmDelete ? (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: '#ef4444' }}>Supprimer ce stage ?</span>
-                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: '#ef4444', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Confirmer</button>
-                <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>Annuler</button>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: '#ef4444' }}>{t('calendar.deleteStageConfirm')}</span>
+                <button onClick={onDelete} style={{ padding: '10px 16px', borderRadius: 999, background: '#ef4444', border: 'none', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{t('calendar.confirm')}</button>
+                <button onClick={() => setConfirmDelete(false)} style={{ padding: '10px 14px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer' }}>{t('calendar.cancel')}</button>
               </div>
             ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Supprimer</button>
+              <button onClick={() => setConfirmDelete(true)} style={{ padding: 12, borderRadius: 999, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{t('calendar.delete')}</button>
             ))}
             {!confirmDelete && (<>
-              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Fermer</button>
-              <button onClick={handleSave} disabled={saving || !name.trim() || !startDate || !endDate} style={{ flex: 2, padding: 12, borderRadius: 999, background: accent, border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: (!name.trim() || !startDate || !endDate) ? 0.5 : 1 }}>{saving ? '…' : isEdit ? 'Enregistrer' : 'Ajouter'}</button>
+              <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>{t('calendar.close')}</button>
+              <button onClick={handleSave} disabled={saving || !name.trim() || !startDate || !endDate} style={{ flex: 2, padding: 12, borderRadius: 999, background: accent, border: 'none', color: '#fff', fontWeight: 700, fontSize: 13.5, cursor: saving ? 'wait' : 'pointer', opacity: (!name.trim() || !startDate || !endDate) ? 0.5 : 1 }}>{saving ? '…' : isEdit ? t('calendar.save') : t('calendar.add')}</button>
             </>)}
           </div>
         </div>

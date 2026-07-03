@@ -10,6 +10,7 @@
 // utilisé par les composants gpx/). *FIT non parsé ici → GPX/TCX/KML XML.
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { parseGPX } from '@/lib/gpxParser'
 
 export interface RoutePoint { lat: number; lon: number }
@@ -58,6 +59,7 @@ export default function RouteIntervals({
   accent: string
   onApply: (segments: RouteSegment[]) => void
 }) {
+  const { t } = useI18n()
   const [status, setStatus] = useState<'idle' | 'parsing' | 'error'>('idle')
   const [selected, setSelected] = useState<number | null>(null)
   const mapDivRef = useRef<HTMLDivElement>(null)
@@ -192,16 +194,16 @@ export default function RouteIntervals({
   if (!value) {
     return (
       <div style={{ marginBottom:16, padding:'18px 16px', borderRadius:14, border:'1px dashed var(--border)', background:'var(--bg-card2)' }}>
-        <p style={{ ...lbl, marginBottom:8 }}>Parcours</p>
+        <p style={{ ...lbl, marginBottom:8 }}>{t('session.parcours')}</p>
         <label style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'9px 16px', borderRadius:10, border:`1px solid ${accent}`, color:accent, background:`${accent}10`, fontFamily:'DM Sans,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-          {status === 'parsing' ? 'Lecture…' : 'Importer un parcours (GPX)'}
+          {status === 'parsing' ? t('session.lecture') : t('session.importerParcours')}
           <input type="file" accept=".gpx,.tcx,.kml" style={{ display:'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) void onFile(f) }}/>
         </label>
         <p style={{ fontSize:11, color:'var(--text-dim)', margin:'8px 0 0', lineHeight:1.5 }}>
-          Pose ensuite tes intervalles directement sur le tracé et le profil d'altitude.
+          {t('session.poseIntervalles')}
         </p>
-        {status === 'error' && <p style={{ fontSize:11, color:'#ef4444', margin:'6px 0 0' }}>Fichier illisible — vérifie que c'est un GPX valide.</p>}
+        {status === 'error' && <p style={{ fontSize:11, color:'#ef4444', margin:'6px 0 0' }}>{t('session.fichierIllisible')}</p>}
       </div>
     )
   }
@@ -211,14 +213,14 @@ export default function RouteIntervals({
       {/* En-tête */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'10px 14px', flexWrap:'wrap' }}>
         <div>
-          <p style={lbl}>Parcours</p>
+          <p style={lbl}>{t('session.parcours')}</p>
           <p style={{ fontSize:12, color:'var(--text-main)', margin:'2px 0 0', fontFamily:'DM Sans,sans-serif' }}>
             {value.fileName} · <span style={{ fontFamily:'DM Mono,monospace' }}>{(value.distanceM/1000).toFixed(1)}km · D+{Math.round(value.elevGain)}m</span>
           </p>
         </div>
         <button onClick={() => { onChange(undefined); setSelected(null) }}
           style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, padding:'5px 10px', cursor:'pointer', color:'var(--text-dim)', fontSize:11, fontFamily:'DM Sans,sans-serif' }}>
-          Retirer
+          {t('session.retirer')}
         </button>
       </div>
 
@@ -248,7 +250,7 @@ export default function RouteIntervals({
           <text x={PL-2} y={PT+cH} fontSize="8" fill="#6b7280" textAnchor="end">{Math.round(minE)}m</text>
           <text x={W-PR}  y={H-3}   fontSize="8" fill="#6b7280" textAnchor="end">{(totD/1000).toFixed(1)}km</text>
         </svg>
-        <p style={{ fontSize:10, color:'#6b7280', margin:0, padding:'4px 10px 8px' }}>Clique sur le profil pour ajouter une coupure d'intervalle.</p>
+        <p style={{ fontSize:10, color:'#6b7280', margin:0, padding:'4px 10px 8px' }}>{t('session.cliqueProfil')}</p>
       </div>
 
       {/* Segments → zone par segment (synchro carte/profil au survol) */}
@@ -265,12 +267,12 @@ export default function RouteIntervals({
                   borderLeft:`3px solid ${c}` }}>
                 <span style={{ fontSize:10, color:'var(--text-dim)', fontFamily:'DM Mono,monospace' }}>{seg.index+1}</span>
                 <span style={{ fontSize:11, color:'var(--text-main)', fontFamily:'DM Mono,monospace' }}>{(seg.distanceM/1000).toFixed(2)}km</span>
-                <button onClick={() => cycleZone(seg.index)} title="Changer la zone"
+                <button onClick={() => cycleZone(seg.index)} title={t('session.changerZone')}
                   style={{ border:'none', background:'transparent', cursor:'pointer', fontSize:11, fontWeight:700, color:c, fontFamily:'DM Mono,monospace', padding:'0 2px' }}>
                   Z{seg.zone}
                 </button>
                 {seg.index > 0 && (
-                  <button onClick={() => removeSplitBefore(seg.index)} title="Fusionner avec le précédent"
+                  <button onClick={() => removeSplitBefore(seg.index)} title={t('session.fusionnerPrecedent')}
                     style={{ border:'none', background:'transparent', cursor:'pointer', fontSize:13, color:'var(--text-dim)', padding:0, lineHeight:1 }}>×</button>
                 )}
               </div>
@@ -280,7 +282,7 @@ export default function RouteIntervals({
         <button onClick={() => onApply(segs)}
           style={{ alignSelf:'flex-start', padding:'8px 14px', borderRadius:10, border:'none', background:accent, color:'#fff',
             fontFamily:'DM Sans,sans-serif', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-          Convertir en blocs d'intervalles
+          {t('session.convertirBlocs')}
         </button>
       </div>
     </div>

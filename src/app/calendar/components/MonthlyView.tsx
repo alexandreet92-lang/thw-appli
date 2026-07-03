@@ -3,11 +3,13 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Race, RaceStage, RACE_CFG, MONTHS, getDaysInMonth, getFirstDayISO } from './types'
 import GpxRouteMap from '@/components/gpx/GpxRouteMap'
+import { useI18n } from '@/lib/i18n'
 
 // ── Stage day popover ─────────────────────────────────────────
 interface PopoverState { stage: RaceStage; date: string; x: number; y: number }
 
 function StageDayPopover({ stage, date, x, y, onClose, onMouseEnter, onMouseLeave }: PopoverState & { onClose: () => void; onMouseEnter: () => void; onMouseLeave: () => void }) {
+  const { t } = useI18n()
   const supabase = createClient()
   const [fileName, setFileName] = useState<string | null>(null)
   const [fileUrl,  setFileUrl]  = useState<string | null>(null)
@@ -83,7 +85,7 @@ function StageDayPopover({ stage, date, x, y, onClose, onMouseEnter, onMouseLeav
           </p>
         ) : (
           <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontStyle:'italic' }}>
-            Pas de programme renseigné
+            {t('calendar.noProgramSet')}
           </p>
         )}
       </div>
@@ -104,6 +106,7 @@ interface Props {
 }
 
 export default function MonthlyView({ races, stages, year, initialMonth, onRaceClick, onStageClick, onStageDayClick, onDayClick }: Props) {
+  const { t } = useI18n()
   const [month, setMonth] = useState(initialMonth ?? new Date().getMonth())
   const [popover, setPopover] = useState<PopoverState | null>(null)
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -151,7 +154,7 @@ export default function MonthlyView({ races, stages, year, initialMonth, onRaceC
 
         {/* Day headers */}
         <div style={{ display:'grid',gridTemplateColumns:'repeat(7, 1fr)',gap:2,marginBottom:4 }}>
-          {['L','M','M','J','V','S','D'].map((d, i) => (
+          {[t('calendar.dow0'),t('calendar.dow1'),t('calendar.dow2'),t('calendar.dow3'),t('calendar.dow4'),t('calendar.dow5'),t('calendar.dow6')].map((d, i) => (
             <div key={i} style={{ textAlign:'center',fontSize:9,fontWeight:600,color:'var(--text-dim)',padding:'3px 0' }}>{d}</div>
           ))}
         </div>

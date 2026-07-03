@@ -8,6 +8,9 @@ import { Suspense } from 'react'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { CONNECTIONS_ONBOARDING } from '@/onboarding/configs/connections.config'
+import { useI18n } from '@/lib/i18n'
+
+type TFunc = (key: string, vars?: Record<string, string | number>) => string
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -59,13 +62,13 @@ function isPolarV3Token(info: ConnectionInfo | undefined): boolean {
 
 // ── Helpers ─────────────────────────────────────────────────────
 
-function formatRelative(iso: string | null | undefined): string {
+function formatRelative(iso: string | null | undefined, t: TFunc): string {
   if (!iso) return ''
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
-  if (diff < 120)   return 'À l\'instant'
-  if (diff < 3600)  return `Il y a ${Math.floor(diff / 60)}min`
-  if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)}h`
-  return `Il y a ${Math.floor(diff / 86400)}j`
+  if (diff < 120)   return t('connections.relativeNow')
+  if (diff < 3600)  return t('connections.relativeMin', { n: Math.floor(diff / 60) })
+  if (diff < 86400) return t('connections.relativeHour', { n: Math.floor(diff / 3600) })
+  return t('connections.relativeDay', { n: Math.floor(diff / 86400) })
 }
 
 // ── Categories ──────────────────────────────────────────────────
@@ -225,27 +228,28 @@ function AppLogo({ app, size = 44, logoErrors, onError }: {
 // ── StatusBadge ─────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: ConnectionStatus }) {
+  const { t } = useI18n()
   if (status === 'connected') return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 20, background: 'rgba(34,197,94,0.13)', color: '#22c55e', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
       <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', flexShrink: 0, boxShadow: '0 0 4px #22c55e' }} />
-      Connecté
+      {t('connections.connected')}
     </span>
   )
   if (status === 'pending') return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 20, background: 'var(--primary-dim)', color: ACCENT, fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
       <Spinner size={8} color={ACCENT} />
-      En cours
+      {t('connections.inProgress')}
     </span>
   )
   if (status === 'available') return (
     <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 20, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
-      Disponible
+      {t('connections.available')}
     </span>
   )
   // coming
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 20, background: 'rgba(249,115,22,0.10)', color: '#f97316', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
-      En cours d&apos;intégration
+      {t('connections.statusComing')}
     </span>
   )
 }
@@ -259,6 +263,7 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
   onConnect: () => void; onDisconnect: () => void; onSync: () => void; isMobile: boolean
   needsReconnect?: boolean
 }) {
+  const { t } = useI18n()
   const [syncHov, setSyncHov] = useState(false)
   const [disconnectHov, setDisconnectHov] = useState(false)
   const [connectHov, setConnectHov] = useState(false)
@@ -289,7 +294,7 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
           </div>
           {!isMobile && (
             <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {app.description}
+              {t(`connections.appDesc.${app.id}`)}
             </div>
           )}
         </div>
@@ -300,7 +305,7 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
         <StatusBadge status={effectiveStatus} />
         {needsReconnect && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 20, background: 'rgba(249,115,22,0.12)', color: '#f97316', fontSize: 10, fontFamily: 'DM Sans, sans-serif', fontWeight: 600, whiteSpace: 'nowrap' }}>
-            ⚠️ v3 — Reconnecter
+            {t('connections.v3Reconnect')}
           </span>
         )}
         {!isMobile && effectiveStatus === 'connected' && lastSync && (
@@ -324,7 +329,7 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
               transition: 'background 0.14s', whiteSpace: 'nowrap',
             }}>
-            Reconnecter v4
+            {t('connections.reconnectV4')}
           </button>
         )}
 
@@ -348,7 +353,7 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
                 ? <Spinner size={11} color="var(--text-dim)" />
                 : <RefreshIcon size={10} />
               }
-              Sync
+              {t('connections.sync')}
             </button>
             {/* Disconnect */}
             <button onClick={onDisconnect}
@@ -363,7 +368,7 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
                 transition: 'background 0.14s, color 0.14s',
                 whiteSpace: 'nowrap',
               }}>
-              Déconnecter
+              {t('connections.disconnect')}
             </button>
           </>
         )}
@@ -379,14 +384,14 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
               fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 500,
               cursor: 'pointer', transition: 'background 0.14s, color 0.14s', whiteSpace: 'nowrap',
             }}>
-            Déconnecter
+            {t('connections.disconnect')}
           </button>
         )}
 
         {effectiveStatus === 'pending' && (
           <span style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', color: 'var(--text-dim)', fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
             <Spinner size={11} color="var(--text-dim)" />
-            Autorisation…
+            {t('connections.authorizing')}
           </span>
         )}
 
@@ -407,7 +412,7 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Connecter
+            {t('connections.connect')}
           </button>
         )}
 
@@ -419,7 +424,7 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
             fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 400,
             cursor: 'default', opacity: 0.55, whiteSpace: 'nowrap',
           }}>
-            Bientôt disponible
+            {t('connections.comingSoon')}
           </button>
         )}
       </div>
@@ -433,15 +438,16 @@ function AppRow({ app, effectiveStatus, lastSync, isSyncing, isHovered, logoErro
 function ComingGrid({ apps, logoErrors, onLogoError }: {
   apps: AppDef[]; logoErrors: Set<string>; onLogoError: (id: string) => void
 }) {
+  const { t } = useI18n()
   if (!apps.length) return null
   return (
     <div style={{ marginTop: 10 }}>
       <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 8 }}>
-        Bientôt disponible
+        {t('connections.comingSoon')}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {apps.map(app => (
-          <div key={app.id} title={`${app.name} — bientôt disponible`}
+          <div key={app.id} title={t('connections.comingSoonTitle', { name: app.name })}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px 4px 5px', borderRadius: 20, border: '1px solid var(--border)', background: 'var(--bg-card2)', opacity: 0.5 }}>
             <AppLogo app={app} size={18} logoErrors={logoErrors} onError={onLogoError} />
             <span style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-mid)', whiteSpace: 'nowrap' }}>{app.name}</span>
@@ -480,6 +486,7 @@ function ConnectModal({ modal, app, logoErrors, onLogoError, onCancel, onContinu
   modal: ConnectModalState; app: AppDef; logoErrors: Set<string>; onLogoError: (id: string) => void
   onCancel: () => void; onContinue: () => void
 }) {
+  const { t } = useI18n()
   const [cancelHov, setCancelHov] = useState(false)
   const [continueHov, setContinueHov] = useState(false)
   return (
@@ -490,7 +497,7 @@ function ConnectModal({ modal, app, logoErrors, onLogoError, onCancel, onContinu
           <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
             <Spinner size={36} color={ACCENT} />
             <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, color: 'var(--text-mid)', textAlign: 'center' }}>
-              Redirection vers {app.name}…
+              {t('connections.redirecting', { name: app.name })}
             </span>
           </div>
         ) : (
@@ -498,22 +505,22 @@ function ConnectModal({ modal, app, logoErrors, onLogoError, onCancel, onContinu
             <AppLogo app={app} size={56} logoErrors={logoErrors} onError={onLogoError} />
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 17, color: 'var(--text)', marginBottom: 8 }}>
-                Connexion à {app.name}
+                {t('connections.connectingTo', { name: app.name })}
               </div>
               <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: 0, maxWidth: 320 }}>
-                Tu vas être redirigé vers {app.name} pour autoriser l&apos;accès à tes données. THW Coach ne stocke jamais tes identifiants.
+                {t('connections.modalDescription', { name: app.name })}
               </p>
             </div>
             <div style={{ display: 'flex', gap: 10, width: '100%', marginTop: 4 }}>
               <button onClick={onCancel}
                 onMouseEnter={() => setCancelHov(true)} onMouseLeave={() => setCancelHov(false)}
                 style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--border-mid)', background: cancelHov ? 'var(--bg-hover)' : 'transparent', color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'background 0.14s' }}>
-                Annuler
+                {t('connections.cancel')}
               </button>
               <button onClick={onContinue}
                 onMouseEnter={() => setContinueHov(true)} onMouseLeave={() => setContinueHov(false)}
                 style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: continueHov ? ACCENT_HOVER : ACCENT, color: '#fff', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: `0 2px 14px ${ACCENT_GLOW}`, transition: 'background 0.14s' }}>
-                Continuer
+                {t('connections.continue')}
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                   <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
                 </svg>
@@ -543,6 +550,7 @@ function Toast({ message, type = 'info', onDismiss }: { message: string; type?: 
 
 function ConnectionsInner() {
   const searchParams = useSearchParams()
+  const { t } = useI18n()
   const { show, dismiss } = usePageOnboarding(CONNECTIONS_ONBOARDING.pageId, CONNECTIONS_ONBOARDING.version)
 
   const [connections, setConnections] = useState<ConnectionInfo[]>([])
@@ -616,14 +624,14 @@ function ConnectionsInner() {
     const provider = searchParams.get('provider')
     if (oauth === 'connected' && provider) {
       const app = APPS.find(a => a.provider === provider)
-      addToast(`${app?.name ?? provider} connecté avec succès`, 'success')
+      addToast(t('connections.connectedSuccess', { name: app?.name ?? provider }), 'success')
       void loadStatus()
       window.history.replaceState({}, '', '/connections')
     } else if (oauth === 'denied') {
-      addToast('Connexion annulée', 'info')
+      addToast(t('connections.connectionCancelled'), 'info')
       window.history.replaceState({}, '', '/connections')
     } else if (oauth === 'error') {
-      addToast('Erreur lors de la connexion', 'error')
+      addToast(t('connections.connectionError'), 'error')
       window.history.replaceState({}, '', '/connections')
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -646,7 +654,7 @@ function ConnectionsInner() {
     if (!app.provider) return null
     const info = connectedProviders[app.provider]
     if (!info) return null
-    return formatRelative(info.last_used_at ?? info.updated_at)
+    return formatRelative(info.last_used_at ?? info.updated_at, t)
   }
 
   const handleLogoError = useCallback((id: string) => {
@@ -664,20 +672,20 @@ function ConnectionsInner() {
         // Toast enrichi pour Polar (résumé structuré)
         if (app.provider === 'polar' && data.physical) {
           const parts: string[] = []
-          if (data.physical?.resting_hr) parts.push(`FC repos ${data.physical.resting_hr} bpm`)
-          if (data.daily_activity?.days_synced > 0) parts.push(`${data.daily_activity.days_synced} jour(s) d'activité`)
-          if (data.exercises?.exercises_synced > 0) parts.push(`${data.exercises.exercises_synced} exercice(s)`)
-          const msg = parts.length ? parts.join(' · ') : 'aucune nouvelle donnée'
-          addToast(`Polar synchronisé — ${msg}`, 'success')
+          if (data.physical?.resting_hr) parts.push(t('connections.polarRestingHr', { n: data.physical.resting_hr }))
+          if (data.daily_activity?.days_synced > 0) parts.push(t('connections.polarDaysActivity', { n: data.daily_activity.days_synced }))
+          if (data.exercises?.exercises_synced > 0) parts.push(t('connections.polarExercises', { n: data.exercises.exercises_synced }))
+          const msg = parts.length ? parts.join(' · ') : t('connections.polarNoNewData')
+          addToast(t('connections.polarSynced', { msg }), 'success')
         } else {
-          addToast(`${app.name} synchronisé — ${data.synced ?? 0} éléments`, 'success')
+          addToast(t('connections.appSynced', { name: app.name, n: data.synced ?? 0 }), 'success')
         }
         await loadStatus()
       } else {
-        addToast(`Erreur sync ${app.name}: ${data.error ?? ''}`, 'error')
+        addToast(t('connections.syncError', { name: app.name, error: data.error ?? '' }), 'error')
       }
     } catch {
-      addToast(`Erreur réseau pour ${app.name}`, 'error')
+      addToast(t('connections.networkErrorFor', { name: app.name }), 'error')
     } finally {
       setSyncingIds(prev => { const s = new Set(prev); s.delete(app.id); return s })
     }
@@ -685,7 +693,7 @@ function ConnectionsInner() {
 
   const handleSyncAll = useCallback(async () => {
     const toSync = APPS.filter(a => a.provider && connectedProviders[a.provider])
-    if (!toSync.length) { addToast('Aucune application connectée', 'info'); return }
+    if (!toSync.length) { addToast(t('connections.noAppConnected'), 'info'); return }
     setSyncingAll(true)
     const ids = new Set(toSync.map(a => a.id))
     setSyncingIds(ids)
@@ -697,10 +705,10 @@ function ConnectionsInner() {
       for (const r of results) {
         if (r.status === 'fulfilled' && r.value.ok) synced += r.value.data.synced ?? 0
       }
-      addToast(`Synchronisation terminée — ${synced} éléments importés`, 'success')
+      addToast(t('connections.syncAllDone', { n: synced }), 'success')
       await loadStatus()
     } catch {
-      addToast('Erreur lors de la synchronisation', 'error')
+      addToast(t('connections.syncAllError'), 'error')
     } finally {
       setSyncingAll(false)
       setSyncingIds(new Set())
@@ -712,13 +720,13 @@ function ConnectionsInner() {
     try {
       const res = await fetch(`/api/oauth/disconnect?provider=${app.provider}`, { method: 'POST' })
       if (res.ok) {
-        addToast(`${app.name} déconnecté`, 'info')
+        addToast(t('connections.appDisconnected', { name: app.name }), 'info')
         await loadStatus()
       } else {
-        addToast(`Erreur déconnexion ${app.name}`, 'error')
+        addToast(t('connections.disconnectError', { name: app.name }), 'error')
       }
     } catch {
-      addToast(`Erreur réseau`, 'error')
+      addToast(t('connections.networkError'), 'error')
     }
   }, [loadStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -753,10 +761,10 @@ function ConnectionsInner() {
   const modalApp = connectModal ? APPS.find(a => a.id === connectModal.appId) : null
 
   const filterPills: { id: StatusFilter; label: string }[] = [
-    { id: 'all',       label: 'Tout' },
-    { id: 'connected', label: 'Connecté' },
-    { id: 'available', label: 'Disponible' },
-    { id: 'coming',    label: 'En cours' },
+    { id: 'all',       label: t('connections.filterAll') },
+    { id: 'connected', label: t('connections.connected') },
+    { id: 'available', label: t('connections.available') },
+    { id: 'coming',    label: t('connections.inProgress') },
   ]
 
   return (
@@ -774,17 +782,19 @@ function ConnectionsInner() {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
             <div style={{ minWidth: 0 }}>
               <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, color: 'var(--text)', margin: 0, lineHeight: 1.2 }}>
-                Connexions
+                {t('connections.title')}
               </h1>
               {!isMobile && (
                 <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'var(--text-mid)', marginTop: 5, marginBottom: 0, maxWidth: 500, lineHeight: 1.6 }}>
-                  Connecte tes applications pour centraliser tes données : entraînement, récupération, nutrition et santé.
+                  {t('connections.subtitle')}
                 </p>
               )}
               {!loadingStatus && connectedCount > 0 && (
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#22c55e' }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', boxShadow: '0 0 6px #22c55e' }} />
-                  {connectedCount} app{connectedCount > 1 ? 's' : ''} connectée{connectedCount > 1 ? 's' : ''}
+                  {connectedCount > 1
+                    ? t('connections.appsConnectedPlural', { n: connectedCount })
+                    : t('connections.appsConnectedSingular', { n: connectedCount })}
                 </div>
               )}
             </div>
@@ -805,7 +815,7 @@ function ConnectionsInner() {
                   whiteSpace: 'nowrap', flexShrink: 0,
                 }}>
                 <RefreshIcon size={12} spinning={syncingAll} />
-                {syncingAll ? 'Sync…' : 'Synchroniser'}
+                {syncingAll ? t('connections.syncing') : t('connections.syncAll')}
               </button>
             </div>
           </div>
@@ -819,7 +829,7 @@ function ConnectionsInner() {
                     <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                   </svg>
                 </span>
-                <input type="text" placeholder="Rechercher une application..." value={search}
+                <input type="text" placeholder={t('connections.searchPlaceholder')} value={search}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
                   onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
                   style={{
@@ -870,7 +880,7 @@ function ConnectionsInner() {
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                       transition: 'background 0.14s, color 0.14s',
                     }}>
-                    <span style={{ lineHeight: 1.3 }}>{cat.label}</span>
+                    <span style={{ lineHeight: 1.3 }}>{t(`connections.category.${cat.id}`)}</span>
                     {catConnected > 0 && (
                       <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#22c55e', background: 'rgba(34,197,94,0.12)', padding: '1px 5px', borderRadius: 8, flexShrink: 0 }}>
                         {catConnected}
@@ -898,7 +908,7 @@ function ConnectionsInner() {
                       fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: isActive ? 600 : 400,
                       cursor: 'pointer', whiteSpace: 'nowrap',
                     }}>
-                    {cat.label}
+                    {t(`connections.category.${cat.id}`)}
                   </button>
                 )
               })}
@@ -909,7 +919,7 @@ function ConnectionsInner() {
           <div style={{ flex: 1, minWidth: 0, paddingTop: 24, paddingLeft: isMobile ? 16 : 0, paddingRight: isMobile ? 16 : 0 }}>
             {filteredApps.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', fontSize: 14 }}>
-                Aucune application ne correspond à ta recherche.
+                {t('connections.noResults')}
               </div>
             ) : (
               CATEGORIES.map(cat => {
@@ -926,17 +936,21 @@ function ConnectionsInner() {
                         letterSpacing: '0.10em', textTransform: 'uppercase' as const,
                         color: 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0,
                       }}>
-                        {cat.label}
+                        {t(`connections.category.${cat.id}`)}
                       </span>
                       <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         {connCount > 0 && (
                           <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#22c55e', background: 'rgba(34,197,94,0.12)', padding: '2px 7px', borderRadius: 10 }}>
-                            {connCount} connectée{connCount > 1 ? 's' : ''}
+                            {connCount > 1
+                              ? t('connections.connectedCountPlural', { n: connCount })
+                              : t('connections.connectedCountSingular', { n: connCount })}
                           </span>
                         )}
                         <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px solid var(--border)', padding: '2px 7px', borderRadius: 10 }}>
-                          {catApps.length} app{catApps.length > 1 ? 's' : ''}
+                          {catApps.length > 1
+                            ? t('connections.appCountPlural', { n: catApps.length })
+                            : t('connections.appCountSingular', { n: catApps.length })}
                         </span>
                       </div>
                     </div>

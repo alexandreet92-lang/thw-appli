@@ -7,6 +7,7 @@ import type { NutritionPlan, PlanDay } from '@/hooks/useNutrition'
 import type { PlannedSession } from '@/hooks/usePlanning'
 import { PlanRhythm, type RhythmDay } from './PlanRhythm'
 import { CHARGE_COLOR, CHARGE_LABEL, todayHeadline, weekOf, type DayType } from './planFormat'
+import { useI18n } from '@/lib/i18n'
 
 interface Macro { proteines: number; glucides: number; lipides: number }
 
@@ -47,13 +48,14 @@ function Dot({ type }: { type: DayType }) {
 }
 
 export function PlanTab(p: Props) {
+  const { t: tr } = useI18n()
   const { activePlan, today, todayType, todayKcalObj, todayMacroObj, todaySessions, next14Days } = p
 
   // En-tête de contexte : la semaine du plan (le nom de l'onglet est porté par la nav).
   const header = activePlan ? (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: p.isDesktop ? 22 : 20, fontWeight: 600, color: 'var(--text)', margin: 0, textTransform: 'capitalize' }}>{weekOf(today)}</h1>
-      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>· actif</span>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>{tr('nutrition.plan.activeSuffix')}</span>
     </div>
   ) : null
 
@@ -62,9 +64,9 @@ export function PlanTab(p: Props) {
       <div style={root}>
         {header}
         <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-6)' }}>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: 0 }}>Pas encore de plan nutritionnel</p>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: 'var(--space-2) 0 var(--space-4)' }}>Génère un plan calé sur ton entraînement, tes courses et ton historique.</p>
-          <button onClick={p.onOpenAI} style={primaryBtn}>Créer mon plan avec l&apos;IA</button>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: 0 }}>{tr('nutrition.plan.emptyTitle')}</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)', margin: 'var(--space-2) 0 var(--space-4)' }}>{tr('nutrition.plan.emptyDesc')}</p>
+          <button onClick={p.onOpenAI} style={primaryBtn}>{tr('nutrition.plan.createBtn')}</button>
         </div>
       </div>
     )
@@ -96,7 +98,7 @@ export function PlanTab(p: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
           <span style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 500, color: 'var(--text)' }}>{todayHeadline(today)}</span>
           <Dot type={todayType} />
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)' }}>Jour {CHARGE_LABEL[todayType]}</span>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)' }}>{tr('nutrition.hero.dayPrefix')} {CHARGE_LABEL[todayType]}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
           <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: focal, fontWeight: 600, color: 'var(--text)', lineHeight: 1 }}>{todayKcalObj}</span>
@@ -107,16 +109,16 @@ export function PlanTab(p: Props) {
         </div>
         <div style={{ marginTop: 'var(--space-3)' }}>
           {sessTitles ? (
-            <a href="/planning" style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>Calé sur {sessTitles} →</a>
+            <a href="/planning" style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>{tr('nutrition.hero.tunedOn', { titles: sessTitles })} →</a>
           ) : (
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)' }}>Jour de repos — aucune séance calée</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)' }}>{tr('nutrition.hero.restDay')}</span>
           )}
         </div>
       </div>
 
       {/* Cibles par type de jour */}
       <div>
-        <h2 style={sectionTitle}>Cibles par type de jour</h2>
+        <h2 style={sectionTitle}>{tr('nutrition.plan.targetsByDay')}</h2>
         <div style={{ display: 'flex', gap: 'var(--space-6)' }}>
           {targets.map(({ t, kcal, m }) => (
             <div key={t} style={{ flex: 1, minWidth: 0 }}>
@@ -133,16 +135,16 @@ export function PlanTab(p: Props) {
 
       {/* Rythme des 14 jours — signature */}
       <div>
-        <h2 style={sectionTitle}>Rythme des 14 jours</h2>
+        <h2 style={sectionTitle}>{tr('nutrition.plan.rhythm14')}</h2>
         <PlanRhythm days={rhythm} onOpenDay={p.onOpenDay} />
       </div>
 
       {/* Actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-        <button onClick={p.onOpenAI} style={primaryBtn}>Modifier avec l&apos;IA</button>
-        <button onClick={p.onOpenShopping} style={textBtn}>Liste de courses</button>
-        <button onClick={p.onRegen} style={textBtn}>Régénérer</button>
-        <button onClick={p.onDelete} style={{ ...textBtn, color: 'var(--text-dim)', marginLeft: 'auto' }}>Supprimer</button>
+        <button onClick={p.onOpenAI} style={primaryBtn}>{tr('nutrition.plan.editAI')}</button>
+        <button onClick={p.onOpenShopping} style={textBtn}>{tr('nutrition.plan.shoppingList')}</button>
+        <button onClick={p.onRegen} style={textBtn}>{tr('nutrition.regen.confirm')}</button>
+        <button onClick={p.onDelete} style={{ ...textBtn, color: 'var(--text-dim)', marginLeft: 'auto' }}>{tr('nutrition.common.delete')}</button>
       </div>
     </div>
   )

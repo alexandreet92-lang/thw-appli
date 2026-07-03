@@ -9,6 +9,7 @@
 
 import { Moon, Hourglass } from 'lucide-react'
 import type { HrvRow } from './useRecoveryData'
+import { useI18n } from '@/lib/i18n'
 
 const NUM = { fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' as const, fontFeatureSettings: "'zero' 0" }
 
@@ -36,6 +37,7 @@ function Spark({ vals }: { vals: number[] }) {
 }
 
 function HrvCard({ rows }: { rows: HrvRow[] }) {
+  const { t } = useI18n()
   const window = rows.slice(-21)
   const last = rows[rows.length - 1]
   const last7 = rows.slice(-7)
@@ -47,7 +49,7 @@ function HrvCard({ rows }: { rows: HrvRow[] }) {
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <span style={{ width: 7, height: 7, borderRadius: 2, background: 'var(--rec-hrv)', flexShrink: 0 }} />
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--text)' }}>Variabilité cardiaque (HRV)</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{t('recovery.hrv.title')}</h2>
       </div>
 
       {last ? (
@@ -58,18 +60,18 @@ function HrvCard({ rows }: { rows: HrvRow[] }) {
             </span>
             {avg7 != null && (
               <span style={{ ...NUM, fontSize: 12, fontWeight: 600, color: dColor }}>
-                {delta > 0 ? '+' : ''}{delta} vs moy. 7j
+                {delta > 0 ? '+' : ''}{delta} {t('recovery.hrv.vsAvg7')}
               </span>
             )}
           </div>
           <Spark vals={window.map(r => r.hrv)} />
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: '10px 0 0' }}>
-            Source : Polar · Nightly Recharge — dernière nuit reçue le {fmtDate(last.date)}
+            {t('recovery.hrv.source', { date: fmtDate(last.date) })}
           </p>
         </>
       ) : (
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)', margin: 0 }}>
-          En attente de la première nuit Nightly Recharge depuis Polar.
+          {t('recovery.hrv.waiting')}
         </p>
       )}
     </div>
@@ -77,20 +79,20 @@ function HrvCard({ rows }: { rows: HrvRow[] }) {
 }
 
 function SleepPendingCard() {
+  const { t } = useI18n()
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <Moon size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--text)' }}>Sommeil détaillé</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{t('recovery.sleepPending.title')}</h2>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 'auto', padding: '4px 10px', borderRadius: 999,
           background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
           <Hourglass size={11} color="var(--text-mid)" />
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>En attente</span>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{t('recovery.badge.pending')}</span>
         </span>
       </div>
       <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)', margin: 0, lineHeight: 1.6 }}>
-        Détail du sommeil en attente d&apos;activation côté Polar. L&apos;index des nuits est bien reçu,
-        mais durée / phases / score nécessitent l&apos;accès étendu Polar (demande en cours).
+        {t('recovery.sleepPending.body')}
       </p>
     </div>
   )

@@ -6,6 +6,7 @@ import { Sheet, primaryBtn } from './Sheet'
 import { SEV, STRUCTURES, SIDES, type Severity, type Side, type Structure, type Mechanism, type Evolution } from '../types'
 import type { NewInjury } from '../useInjuries'
 import { daysSince } from '../lib'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)'
 const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-sm)', padding: '9px 11px', fontFamily: FB, fontSize: 13, color: 'var(--text)', outline: 'none' }
@@ -42,6 +43,7 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
 }
 
 export function ReportSheet({ onClose, onSave }: { onClose: () => void; onSave: (inj: NewInjury) => Promise<string | null> }) {
+  const { t } = useI18n()
   const [severity, setSeverity] = useState<Severity>('gene')
   const [zone, setZone] = useState('')
   const [side, setSide] = useState<Side>('central')
@@ -71,20 +73,20 @@ export function ReportSheet({ onClose, onSave }: { onClose: () => void; onSave: 
   }
 
   return (
-    <Sheet title="Signaler" onClose={onClose}
-      footer={<button onClick={() => void save()} disabled={!zone.trim() || saving} style={{ ...primaryBtn, opacity: zone.trim() && !saving ? 1 : 0.5 }}>{saving ? 'Enregistrement…' : 'Enregistrer le signalement'}</button>}>
-      <Field label="Sévérité"><Seg value={severity} onChange={v => setSeverity(v as Severity)} options={(['gene', 'douleur', 'blessure'] as Severity[]).map(v => ({ v, label: SEV[v].label, color: SEV[v].varc }))} /></Field>
-      <Field label="Zone"><input value={zone} onChange={e => setZone(e.target.value)} placeholder="ex : Ischio-jambier" style={inputStyle} /></Field>
-      <Field label="Côté"><Seg value={side} onChange={v => setSide(v as Side)} options={SIDES.map(v => ({ v, label: cap(v) }))} /></Field>
-      <Field label="Structure"><Seg value={structure} onChange={v => setStructure(v as Structure)} options={STRUCTURES.map(v => ({ v, label: cap(v) }))} /></Field>
-      <Field label="Précision (optionnel)"><input value={precision} onChange={e => setPrecision(e.target.value)} placeholder="ex : insertion basse" style={inputStyle} /></Field>
-      <Slider label="Intensité au repos" value={ir} onChange={setIr} />
-      <Slider label="Intensité à l'effort" value={ie} onChange={setIe} />
-      <Field label={`Date d'apparition  ·  ≈ ${daysSince(date)} j`}><input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} /></Field>
-      <Field label="Mécanisme"><Seg value={mechanism} onChange={v => setMechanism(v as Mechanism)} options={[{ v: 'soudaine', label: 'Soudaine' }, { v: 'progressive', label: 'Progressive' }]} /></Field>
-      <Field label="Activité d'origine (optionnel)"><input value={activity} onChange={e => setActivity(e.target.value)} placeholder="ex : Running" style={inputStyle} /></Field>
-      <Field label="Évolution"><Seg value={evolution} onChange={v => setEvolution(v as Evolution)} options={[{ v: 'aggrave', label: "S'aggrave" }, { v: 'stable', label: 'Stable' }, { v: 'ameliore', label: "S'améliore" }]} /></Field>
-      <Field label="Description (optionnel)"><textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Contexte, ressenti…" style={{ ...inputStyle, resize: 'vertical' }} /></Field>
+    <Sheet title={t('injuries.reportTitle')} onClose={onClose}
+      footer={<button onClick={() => void save()} disabled={!zone.trim() || saving} style={{ ...primaryBtn, opacity: zone.trim() && !saving ? 1 : 0.5 }}>{saving ? t('injuries.saving') : t('injuries.saveReport')}</button>}>
+      <Field label={t('injuries.fieldSeverity')}><Seg value={severity} onChange={v => setSeverity(v as Severity)} options={(['gene', 'douleur', 'blessure'] as Severity[]).map(v => ({ v, label: SEV[v].label, color: SEV[v].varc }))} /></Field>
+      <Field label={t('injuries.fieldZone')}><input value={zone} onChange={e => setZone(e.target.value)} placeholder={t('injuries.zonePlaceholder')} style={inputStyle} /></Field>
+      <Field label={t('injuries.fieldSide')}><Seg value={side} onChange={v => setSide(v as Side)} options={SIDES.map(v => ({ v, label: cap(v) }))} /></Field>
+      <Field label={t('injuries.fieldStructure')}><Seg value={structure} onChange={v => setStructure(v as Structure)} options={STRUCTURES.map(v => ({ v, label: cap(v) }))} /></Field>
+      <Field label={t('injuries.fieldPrecision')}><input value={precision} onChange={e => setPrecision(e.target.value)} placeholder={t('injuries.precisionPlaceholder')} style={inputStyle} /></Field>
+      <Slider label={t('injuries.sliderRest')} value={ir} onChange={setIr} />
+      <Slider label={t('injuries.sliderEffort')} value={ie} onChange={setIe} />
+      <Field label={t('injuries.fieldOnsetDate', { days: daysSince(date) })}><input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} /></Field>
+      <Field label={t('injuries.fieldMechanism')}><Seg value={mechanism} onChange={v => setMechanism(v as Mechanism)} options={[{ v: 'soudaine', label: t('injuries.mechSudden') }, { v: 'progressive', label: t('injuries.mechProgressive') }]} /></Field>
+      <Field label={t('injuries.fieldActivity')}><input value={activity} onChange={e => setActivity(e.target.value)} placeholder={t('injuries.activityPlaceholder')} style={inputStyle} /></Field>
+      <Field label={t('injuries.fieldEvolution')}><Seg value={evolution} onChange={v => setEvolution(v as Evolution)} options={[{ v: 'aggrave', label: t('injuries.evoWorse') }, { v: 'stable', label: t('injuries.evoStable') }, { v: 'ameliore', label: t('injuries.evoBetter') }]} /></Field>
+      <Field label={t('injuries.fieldDescription')}><textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder={t('injuries.descriptionPlaceholder')} style={{ ...inputStyle, resize: 'vertical' }} /></Field>
     </Sheet>
   )
 }

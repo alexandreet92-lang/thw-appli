@@ -9,6 +9,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '@/lib/i18n'
 import { ShurikenAnimated } from './components/ShurikenAnimated'
 import { SportBubble, type SportDef } from './components/SportBubble'
 
@@ -38,6 +39,7 @@ const SPORTS: (SportDef & { x: number; y: number })[] = RAW_SPORTS.map((s, i) =>
 
 export default function ProgressionHub({ onSelectSport }: { onSelectSport?: (id: string) => void } = {}) {
   const router = useRouter()
+  const { t } = useI18n()
   const [soon, setSoon] = useState(false)
 
   function handleClick(sport: SportDef, el: HTMLButtonElement) {
@@ -90,12 +92,12 @@ export default function ProgressionHub({ onSelectSport }: { onSelectSport?: (id:
 
       <ShurikenAnimated />
 
-      {SPORTS.map(s => <SportBubble key={s.id} sport={s} onClick={el => handleClick(s, el)} />)}
+      {SPORTS.map(s => <SportBubble key={s.id} sport={{ ...s, label: t(`progression.sport_${s.id}`) }} onClick={el => handleClick(s, el)} />)}
 
       <div className="prog-hub-title">
-        <h2 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 18, color: 'var(--text)', margin: 0 }}>Ta progression par discipline</h2>
-        <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0' }}>Sélectionne un sport pour voir ton évolution</p>
-        {soon && <p style={{ fontSize: 12, color: '#84cc16', marginTop: 8, fontWeight: 600 }}>Progression Trail bientôt disponible</p>}
+        <h2 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 18, color: 'var(--text)', margin: 0 }}>{t('progression.hubTitle')}</h2>
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '4px 0 0' }}>{t('progression.hubSubtitle')}</p>
+        {soon && <p style={{ fontSize: 12, color: '#84cc16', marginTop: 8, fontWeight: 600 }}>{t('progression.trailComingSoon')}</p>}
       </div>
     </div>
   )

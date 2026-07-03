@@ -1,6 +1,7 @@
 'use client'
 import { useMemo, useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import type { CheckInRow } from './types'
 import SleepScoreRing, { type SleepRingData } from './sleep/SleepScoreRing'
 import SleepPhasesStack, { type SleepNightPhases } from './sleep/SleepPhasesStack'
@@ -29,6 +30,7 @@ function isoDate(d: Date): string {
 interface Props { checkin: CheckInRow | null; history: CheckInRow[] }
 
 export default function SleepSection({ checkin, history }: Props) {
+  const { t } = useI18n()
   const [rows, setRows] = useState<PolarRow[]>([])
 
   useEffect(() => {
@@ -112,12 +114,12 @@ export default function SleepSection({ checkin, history }: Props) {
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
         <div>
-          <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:'0 0 4px' }}>Sommeil</p>
-          <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, margin:0 }}>Analyse du sommeil</h2>
+          <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', margin:'0 0 4px' }}>{t('recovery.metric.sleep')}</p>
+          <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, margin:0 }}>{t('recovery.sleep.analysisTitle')}</h2>
         </div>
         {latest?.date && (
           <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic', paddingTop:4 }}>
-            Dernière nuit&nbsp;: {new Date(latest.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}
+            {t('recovery.sleep.lastNight')} {new Date(latest.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}
           </span>
         )}
       </div>
@@ -133,7 +135,7 @@ export default function SleepSection({ checkin, history }: Props) {
             ? <CircadianClock windows={circadian} />
             : <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:140 }}>
                 <p style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic', textAlign:'center' }}>
-                  Connecte Polar pour voir<br/>ta régularité circadienne
+                  {t('recovery.sleep.circadianL1')}<br/>{t('recovery.sleep.circadianL2')}
                 </p>
               </div>
           }
@@ -143,7 +145,7 @@ export default function SleepSection({ checkin, history }: Props) {
       {/* Phases empilées */}
       {phaseNights.length > 0 && (
         <div style={{ marginBottom:24 }}>
-          <p style={{ fontSize:11, fontWeight:600, color:'var(--text-dim)', margin:'0 0 10px' }}>Répartition des phases</p>
+          <p style={{ fontSize:11, fontWeight:600, color:'var(--text-dim)', margin:'0 0 10px' }}>{t('recovery.sleep.phasesDistribution')}</p>
           <SleepPhasesStack nights={phaseNights} />
         </div>
       )}
@@ -151,7 +153,7 @@ export default function SleepSection({ checkin, history }: Props) {
       {/* Courbes tendance */}
       {trendNights.length >= 3 && (
         <div>
-          <p style={{ fontSize:11, fontWeight:600, color:'var(--text-dim)', margin:'0 0 8px' }}>Tendances de sommeil</p>
+          <p style={{ fontSize:11, fontWeight:600, color:'var(--text-dim)', margin:'0 0 8px' }}>{t('recovery.sleep.trends')}</p>
           <SleepTrends nights={trendNights} />
         </div>
       )}

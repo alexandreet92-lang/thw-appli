@@ -10,6 +10,7 @@
 
 import { useLinkedWorkoutSession, type LinkedWorkout } from '@/lib/activity/workoutFusion'
 import { MuscuExerciseLog } from './MuscuExerciseLog'
+import { useI18n } from '@/lib/i18n'
 
 const GYM = 'var(--sport-gym)'
 
@@ -31,6 +32,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 function SessionCard({ s }: { s: LinkedWorkout }) {
+  const { t } = useI18n()
   const exos = s.exercises_detail ?? []
   const nbExos = exos.length
   const vol = s.total_volume_kg != null ? Math.round(Number(s.total_volume_kg)) : null
@@ -39,15 +41,15 @@ function SessionCard({ s }: { s: LinkedWorkout }) {
     <div style={{ background: 'var(--bg-card2)', borderRadius: 14, padding: 16, margin: '12px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: GYM, flexShrink: 0 }} />
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Séance enregistrée</span>
-        <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>· données fusionnées avec la FC</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{t('activities.recordedSession')}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('activities.mergedWithHr')}</span>
       </div>
 
       <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', marginBottom: nbExos ? 14 : 0 }}>
-        <Stat label="Exercices" value={nbExos || '—'} />
-        <Stat label="Séries" value={s.sets_completed ?? '—'} />
-        <Stat label="Volume" value={vol != null ? `${vol} kg` : '—'} />
-        <Stat label="Durée" value={fmtDur(s.duration_seconds)} />
+        <Stat label={t('activities.exercises')} value={nbExos || '—'} />
+        <Stat label={t('activities.sets')} value={s.sets_completed ?? '—'} />
+        <Stat label={t('activities.volume')} value={vol != null ? `${vol} kg` : '—'} />
+        <Stat label={t('activities.duration')} value={fmtDur(s.duration_seconds)} />
       </div>
 
       {nbExos > 0 && (

@@ -14,6 +14,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import type { DailyBrief, BriefIdea, RawIdea, InstaSnapshot } from '@/lib/marketing/types'
 import { PageLoader } from '@/components/ui/PageLoader'
 
@@ -126,6 +127,16 @@ const KEY_LABELS: Record<TabKey, string> = {
   international:   'International',
   sport:           'Sport',
   tech_innovation: 'Tech & Innovation',
+}
+
+// i18n keys pour les libellés d'onglets (affichage uniquement)
+const TAB_LABEL_KEYS: Record<TabKey, string> = {
+  ia_tech:         'briefing.tabIaTech',
+  business:        'briefing.tabBusiness',
+  bourse:          'briefing.tabBourse',
+  international:   'briefing.tabInternational',
+  sport:           'briefing.tabSport',
+  tech_innovation: 'briefing.tabTechInnovation',
 }
 
 // Priority-ordered mapping nom libre → TabKey canonique.
@@ -336,12 +347,12 @@ function intensityColor(intensity: string | null): string {
   }
 }
 
-function intensityLabel(intensity: string | null): string {
+function intensityLabel(intensity: string | null, t: (key: string) => string): string {
   switch (intensity) {
-    case 'low':      return 'Facile'
-    case 'moderate': return 'Modéré'
-    case 'high':     return 'Intense'
-    case 'max':      return 'Max'
+    case 'low':      return t('briefing.intensityLow')
+    case 'moderate': return t('briefing.intensityModerate')
+    case 'high':     return t('briefing.intensityHigh')
+    case 'max':      return t('briefing.intensityMax')
     default:         return '—'
   }
 }
@@ -351,6 +362,7 @@ function intensityLabel(intensity: string | null): string {
 // ══════════════════════════════════════════════════════════════
 
 export default function BriefingPage() {
+  const { t } = useI18n()
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
 
@@ -404,10 +416,10 @@ export default function BriefingPage() {
     try {
       const res  = await fetch('/api/marketing/insta-sync', { method: 'POST' })
       const json = await res.json() as { snapshot?: InstaSnapshot; error?: string }
-      if (!res.ok) throw new Error(json.error ?? 'Erreur sync Instagram')
+      if (!res.ok) throw new Error(json.error ?? t('briefing.errSyncInstagram'))
       setInstaApiSnapshot(json.snapshot ?? null)
     } catch (err) {
-      setInstaApiError(err instanceof Error ? err.message : 'Erreur inconnue')
+      setInstaApiError(err instanceof Error ? err.message : t('briefing.errUnknown'))
     } finally {
       setInstaApiSyncing(false)
     }
@@ -424,13 +436,13 @@ export default function BriefingPage() {
       arr.forEach(f => form.append('screenshots', f))
       const res = await fetch('/api/marketing/insta-upload', { method: 'POST', body: form })
       const json = await res.json() as { insights?: unknown; error?: string; ambiguities?: string[] }
-      if (!res.ok) throw new Error(json.error ?? 'Erreur upload')
+      if (!res.ok) throw new Error(json.error ?? t('briefing.errUpload'))
       if (json.ambiguities && json.ambiguities.length > 0) {
         setInstaAmbiguities(json.ambiguities)
       }
       void loadInstaSnapshots()
     } catch (err) {
-      setInstaError(err instanceof Error ? err.message : 'Erreur inconnue')
+      setInstaError(err instanceof Error ? err.message : t('briefing.errUnknown'))
     } finally {
       setInstaUploading(false)
     }
@@ -467,13 +479,13 @@ export default function BriefingPage() {
     try {
       const res  = await fetch('/api/marketing/daily-brief', { method: 'POST' })
       const json = await res.json() as { brief?: DailyBrief; error?: string; context_summary?: MktContextSummary }
-      if (!res.ok) throw new Error(json.error ?? 'Erreur génération')
+      if (!res.ok) throw new Error(json.error ?? t('briefing.errGeneration'))
       setMktBrief(json.brief ?? null)
       setMktCtxSum(json.context_summary ?? null)
       void loadMktHistory()
       void loadMktIdeas()
     } catch (err) {
-      setMktError(err instanceof Error ? err.message : 'Erreur inconnue')
+      setMktError(err instanceof Error ? err.message : t('briefing.errUnknown'))
     } finally {
       setMktLoading(false)
     }
@@ -566,7 +578,7 @@ export default function BriefingPage() {
         if (!cancelled) setLoading(false)
       } catch (e) {
         if (cancelled) return
-        setError(e instanceof Error ? e.message : 'Erreur de chargement')
+        setError(e instanceof Error ? e.message : t('briefing.errLoading'))
         setLoading(false)
       }
     })()
@@ -610,9 +622,9 @@ export default function BriefingPage() {
     return (
       <div style={page}>
         <div style={{ ...card, padding: 24 }}>
-          <h1 style={h1Style}>Authentification requise</h1>
+          <h1 style={h1Style}>{t('briefing.authRequired')}</h1>
           <p style={{ margin: 0, color: 'var(--text-mid)', fontSize: 14, lineHeight: 1.6 }}>
-            Connecte-toi pour accéder à ton briefing du jour.
+            {t('briefing.authRequiredBody')}
           </p>
         </div>
       </div>
@@ -622,9 +634,9 @@ export default function BriefingPage() {
     return (
       <div style={page}>
         <div style={{ ...card, padding: 24 }}>
-          <h1 style={h1Style}>Briefing du jour</h1>
+          <h1 style={h1Style}>{t('briefing.title')}</h1>
           <p style={{ margin: 0, color: '#ef4444', fontSize: 14 }}>
-            Une erreur est survenue : {error}
+            {t('briefing.errorOccurred', { error })}
           </p>
         </div>
       </div>
@@ -639,13 +651,13 @@ export default function BriefingPage() {
 
       {/* HEADER */}
       <header style={{ marginBottom: 24 }}>
-        <h1 style={h1Style}>Briefing du jour</h1>
+        <h1 style={h1Style}>{t('briefing.title')}</h1>
         <p style={dateStyle}>{formatFrenchDate(today)}</p>
       </header>
 
       {/* ─────────── SECTION 1 : SÉANCE DU JOUR ─────────── */}
       <section style={{ marginBottom: 20 }}>
-        <p style={sectionLabel}>Séance du jour</p>
+        <p style={sectionLabel}>{t('briefing.sessionOfDay')}</p>
         {sessions.length === 0 ? (
           <div style={{ ...card, padding: 20, textAlign: 'center' }}>
             <p style={{
@@ -654,10 +666,10 @@ export default function BriefingPage() {
               fontSize: 15, fontWeight: 700,
               color: 'var(--text)',
             }}>
-              Jour de repos
+              {t('briefing.restDay')}
             </p>
             <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-mid)' }}>
-              Aucune séance planifiée aujourd&apos;hui.
+              {t('briefing.noSessionPlanned')}
             </p>
           </div>
         ) : (
@@ -692,7 +704,7 @@ export default function BriefingPage() {
                 {/* Metrics row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: s.notes ? 10 : 0 }}>
                   {s.duration_min != null && (
-                    <Metric label="Durée"    value={`${s.duration_min} min`} />
+                    <Metric label={t('briefing.metricDuration')}    value={`${s.duration_min} min`} />
                   )}
                   {s.tss != null && (
                     <Metric label="SM"       value={String(s.tss)} />
@@ -704,7 +716,7 @@ export default function BriefingPage() {
                         background: intensityColor(s.intensity),
                         flexShrink: 0,
                       }} />
-                      <Metric label="Intensité" value={intensityLabel(s.intensity)} />
+                      <Metric label={t('briefing.metricIntensity')} value={intensityLabel(s.intensity, t)} />
                     </div>
                   )}
                   {s.rpe != null && (
@@ -739,13 +751,13 @@ export default function BriefingPage() {
       {/* ─────────── SECTION 2 : TÂCHES DU JOUR ─────────── */}
       {tasks.length > 0 && (
         <section style={{ marginBottom: 20 }}>
-          <p style={sectionLabel}>Tâches du jour</p>
+          <p style={sectionLabel}>{t('briefing.tasksOfDay')}</p>
           <div style={{ ...card, padding: 8 }}>
-            {tasks.map((t, i) => {
-              const crossed = t.completed
+            {tasks.map((task, i) => {
+              const crossed = task.completed
               return (
                 <label
-                  key={t.id}
+                  key={task.id}
                   style={{
                     display: 'flex', alignItems: 'flex-start', gap: 10,
                     padding: '10px 12px',
@@ -756,8 +768,8 @@ export default function BriefingPage() {
                 >
                   <input
                     type="checkbox"
-                    checked={t.completed}
-                    onChange={e => { void toggleTask(t.id, e.target.checked) }}
+                    checked={task.completed}
+                    onChange={e => { void toggleTask(task.id, e.target.checked) }}
                     style={{
                       marginTop: 3,
                       width: 16, height: 16,
@@ -770,35 +782,35 @@ export default function BriefingPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{
                         fontSize: 14,
-                        fontWeight: t.is_main ? 700 : 500,
+                        fontWeight: task.is_main ? 700 : 500,
                         color: crossed ? 'var(--text-dim)' : 'var(--text)',
                         textDecoration: crossed ? 'line-through' : 'none',
                         lineHeight: 1.4,
                       }}>
-                        {t.title}
+                        {task.title}
                       </span>
                       <span style={{ fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
-                        {formatStartTime(t.start_hour, t.start_min)}
-                        {t.duration_min != null ? ` · ${t.duration_min} min` : ''}
+                        {formatStartTime(task.start_hour, task.start_min)}
+                        {task.duration_min != null ? ` · ${task.duration_min} min` : ''}
                       </span>
-                      {t.priority && (
+                      {task.priority && (
                         <span style={{
                           fontSize: 10, fontWeight: 700,
                           padding: '2px 7px', borderRadius: 99,
                           background: 'rgba(239,68,68,0.12)', color: '#ef4444',
                         }}>
-                          Priorité
+                          {t('briefing.priority')}
                         </span>
                       )}
                     </div>
-                    {t.description && (
+                    {task.description && (
                       <p style={{
                         margin: '4px 0 0',
                         fontSize: 12, lineHeight: 1.55,
                         color: crossed ? 'var(--text-dim)' : 'var(--text-mid)',
                         textDecoration: crossed ? 'line-through' : 'none',
                       }}>
-                        {t.description}
+                        {task.description}
                       </p>
                     )}
                   </div>
@@ -813,7 +825,7 @@ export default function BriefingPage() {
       {isCreator && (
         <section>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 8 }}>
-            <p style={{ ...sectionLabel, margin: 0 }}>Actus du jour</p>
+            <p style={{ ...sectionLabel, margin: 0 }}>{t('briefing.newsOfDay')}</p>
             {briefing && (
               <span style={{
                 fontSize: 11,
@@ -823,7 +835,7 @@ export default function BriefingPage() {
                 background: 'var(--bg2, rgba(0,0,0,0.04))',
                 border: '1px solid var(--border, rgba(0,0,0,0.08))',
               }}>
-                {readingMinutes} min de lecture
+                {t('briefing.readingMin', { n: readingMinutes })}
               </span>
             )}
           </div>
@@ -837,10 +849,10 @@ export default function BriefingPage() {
                 fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 15,
                 color: 'var(--text)',
               }}>
-                Pas encore disponible
+                {t('briefing.notYetAvailable')}
               </p>
               <p style={{ margin: 0, color: 'var(--text-mid)', fontSize: 13, lineHeight: 1.7 }}>
-                Le briefing sera disponible à 7h00.
+                {t('briefing.availableAt7')}
               </p>
             </div>
           ) : (
@@ -861,7 +873,7 @@ export default function BriefingPage() {
                     textTransform: 'uppercase',
                     color: '#06B6D4',
                   }}>
-                    À retenir
+                    {t('briefing.keyTakeaways')}
                   </p>
                   <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {(briefing.content.a_retenir ?? []).slice(0, 3).map((b, i) => (
@@ -907,7 +919,7 @@ export default function BriefingPage() {
                         display: 'flex', alignItems: 'center', gap: 6,
                       }}
                     >
-                      {tab.label}
+                      {t(TAB_LABEL_KEYS[tab.key])}
                       {count > 0 && (
                         <span style={{
                           fontSize: 11, fontWeight: 600,
@@ -973,7 +985,7 @@ export default function BriefingPage() {
                 {activeArticles.length === 0 && (
                   <div style={{ ...card, padding: 24, textAlign: 'center' }}>
                     <p style={{ margin: 0, fontSize: 13, color: 'var(--text-dim)' }}>
-                      Aucune actualité dans cette catégorie aujourd&apos;hui.
+                      {t('briefing.noNewsInCategory')}
                     </p>
                   </div>
                 )}
@@ -1046,7 +1058,7 @@ export default function BriefingPage() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M3 11l19-9-9 19-2-8-8-2z"/>
               </svg>
-              Marketing
+              {t('briefing.marketing')}
             </span>
             <div style={{ flex: 1, height: 1, background: 'var(--border, rgba(0,0,0,0.08))' }} />
           </div>
@@ -1066,7 +1078,7 @@ export default function BriefingPage() {
                 fontFamily: 'DM Sans, sans-serif',
               }}
             >
-              {mktLoading ? 'Génération…' : 'Générer le brief du jour'}
+              {mktLoading ? t('briefing.generating') : t('briefing.generateBrief')}
             </button>
 
             <button
@@ -1084,12 +1096,12 @@ export default function BriefingPage() {
               }}
             >
               <span style={{ fontSize: 16 }}>📡</span>
-              {instaApiSyncing ? 'Synchronisation…' : 'Synchroniser Instagram'}
+              {instaApiSyncing ? t('briefing.syncing') : t('briefing.syncInstagram')}
             </button>
 
             {mktCtxSum && (
               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                {mktCtxSum.activities_count} activités · {mktCtxSum.commits_count} commits · {mktCtxSum.raw_ideas_count} idées · {mktCtxSum.recent_posts_count} posts
+                {t('briefing.ctxSummary', { a: mktCtxSum.activities_count, c: mktCtxSum.commits_count, i: mktCtxSum.raw_ideas_count, p: mktCtxSum.recent_posts_count })}
               </span>
             )}
           </div>
@@ -1101,9 +1113,9 @@ export default function BriefingPage() {
             )}
             {!instaApiError && instaApiSnapshot?.snapshot_date && (
               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                Instagram · dernier sync : {instaApiSnapshot.snapshot_date}
+                {t('briefing.instaLastSync', { date: instaApiSnapshot.snapshot_date })}
                 {instaApiSnapshot.followers_count != null && (
-                  <> · {instaApiSnapshot.followers_count.toLocaleString('fr-FR')} abonnés</>
+                  <> · {t('briefing.followersCount', { n: instaApiSnapshot.followers_count.toLocaleString('fr-FR') })}</>
                 )}
               </span>
             )}
@@ -1123,7 +1135,7 @@ export default function BriefingPage() {
           {mktBrief && (
             <div style={{ marginBottom: 32 }}>
               <p style={{ ...sectionLabel, color: '#f59e0b', marginBottom: 12 }}>
-                Brief du {mktBrief.date}
+                {t('briefing.briefOfDate', { date: mktBrief.date })}
               </p>
 
               {/* Analyse hebdo */}
@@ -1135,8 +1147,8 @@ export default function BriefingPage() {
                   padding: 14, marginBottom: 16,
                 }}>
                   <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 6 }}>
-                    <strong>Équilibre</strong> — Athlète&nbsp;{mktBrief.weekly_analysis.pillar_balance.athlete} · Expert&nbsp;{mktBrief.weekly_analysis.pillar_balance.expert} · Builder&nbsp;{mktBrief.weekly_analysis.pillar_balance.builder}
-                    &nbsp;·&nbsp;Urgence&nbsp;<strong>{mktBrief.weekly_analysis.urgency}</strong>
+                    <strong>{t('briefing.balance')}</strong> — {t('briefing.pillarAthlete')}&nbsp;{mktBrief.weekly_analysis.pillar_balance.athlete} · Expert&nbsp;{mktBrief.weekly_analysis.pillar_balance.expert} · Builder&nbsp;{mktBrief.weekly_analysis.pillar_balance.builder}
+                    &nbsp;·&nbsp;{t('briefing.urgency')}&nbsp;<strong>{mktBrief.weekly_analysis.urgency}</strong>
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-mid)' }}>
                     {mktBrief.weekly_analysis.recommendation}
@@ -1155,17 +1167,17 @@ export default function BriefingPage() {
 
           {/* Banque d'idées brutes */}
           <p style={{ ...sectionLabel, color: '#f59e0b', marginBottom: 10 }}>
-            Idées brutes
+            {t('briefing.rawIdeas')}
           </p>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>
-            Balance ici tes pensées en footing, lecture, conversation. L&apos;agent les utilise dans les prochains briefs.
+            {t('briefing.rawIdeasHelp')}
           </p>
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             <textarea
               value={mktNewIdea}
               onChange={e => setMktNewIdea(e.target.value)}
-              placeholder="Une pensée, un sujet, une remarque…"
+              placeholder={t('briefing.ideaPlaceholder')}
               rows={2}
               style={{
                 flex: '1 1 260px', padding: '10px 12px', borderRadius: 8,
@@ -1178,7 +1190,7 @@ export default function BriefingPage() {
             <input
               value={mktNewCtx}
               onChange={e => setMktNewCtx(e.target.value)}
-              placeholder="Contexte (optionnel)"
+              placeholder={t('briefing.contextPlaceholder')}
               style={{
                 flex: '0 1 180px', padding: '10px 12px', borderRadius: 8,
                 border: '1px solid var(--border, rgba(0,0,0,0.1))',
@@ -1199,14 +1211,14 @@ export default function BriefingPage() {
                 fontFamily: 'DM Sans, sans-serif',
               }}
             >
-              Ajouter
+              {t('briefing.add')}
             </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 32 }}>
             {mktIdeas.length === 0 && (
               <p style={{ fontSize: 13, color: 'var(--text-dim)', fontStyle: 'italic', margin: 0 }}>
-                Aucune idée pour l&apos;instant.
+                {t('briefing.noIdeas')}
               </p>
             )}
             {mktIdeas.map(idea => (
@@ -1224,7 +1236,7 @@ export default function BriefingPage() {
                     </div>
                   )}
                   {idea.used && (
-                    <div style={{ fontSize: 11, color: '#10b981', marginTop: 3 }}>✓ utilisée</div>
+                    <div style={{ fontSize: 11, color: '#10b981', marginTop: 3 }}>{t('briefing.usedLabel')}</div>
                   )}
                 </div>
                 <button
@@ -1234,7 +1246,7 @@ export default function BriefingPage() {
                     color: 'var(--text-dim)', cursor: 'pointer',
                     fontSize: 18, lineHeight: 1, padding: 0,
                   }}
-                  aria-label="Supprimer"
+                  aria-label={t('briefing.delete')}
                 >×</button>
               </div>
             ))}
@@ -1245,7 +1257,7 @@ export default function BriefingPage() {
             Instagram Insights
           </p>
           <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>
-            Dépose tes screenshots Insights pour que l&apos;IA les analyse et enrichisse le prochain brief.
+            {t('briefing.instaInsightsHelp')}
           </p>
 
           {/* Drop zone */}
@@ -1276,15 +1288,15 @@ export default function BriefingPage() {
           >
             {instaUploading ? (
               <p style={{ margin: 0, fontSize: 13, color: '#f59e0b' }}>
-                Analyse en cours par Claude Vision…
+                {t('briefing.analyzingVision')}
               </p>
             ) : (
               <>
                 <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                  Dépose tes screenshots ici
+                  {t('briefing.dropScreenshots')}
                 </p>
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--text-dim)' }}>
-                  ou clique pour choisir des fichiers (max 10 images)
+                  {t('briefing.orClickToChoose')}
                 </p>
               </>
             )}
@@ -1306,7 +1318,7 @@ export default function BriefingPage() {
               padding: '10px 14px', borderRadius: 8, marginBottom: 10,
               fontSize: 12, color: '#f59e0b',
             }}>
-              <strong>Ambiguïtés détectées :</strong>
+              <strong>{t('briefing.ambiguitiesDetected')}</strong>
               <ul style={{ margin: '6px 0 0', paddingLeft: 16 }}>
                 {instaAmbiguities.map((a, i) => <li key={i}>{a}</li>)}
               </ul>
@@ -1322,7 +1334,7 @@ export default function BriefingPage() {
           {instaSnapshots.length > 1 && (
             <details style={{ marginBottom: 32, marginTop: 8 }}>
               <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--text-dim)' }}>
-                Voir les {instaSnapshots.length - 1} snapshot(s) précédent(s)
+                {t('briefing.viewPreviousSnapshots', { n: instaSnapshots.length - 1 })}
               </summary>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
                 {instaSnapshots.slice(1).map(s => (
@@ -1336,13 +1348,13 @@ export default function BriefingPage() {
           {mktHistory.length > 0 && (
             <>
               <p style={{ ...sectionLabel, color: '#f59e0b', marginBottom: 10 }}>
-                Historique
+                {t('briefing.history')}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {mktHistory.slice(0, 10).map(h => (
                   <details key={h.id} style={{ ...card, padding: 12 }}>
                     <summary style={{ cursor: 'pointer', fontSize: 13 }}>
-                      <strong>{h.brief_date}</strong> · {h.brief_content?.ideas?.length ?? 0} idées · {h.tokens_in ?? 0}+{h.tokens_out ?? 0} tokens · {h.generation_ms ?? 0}ms
+                      <strong>{h.brief_date}</strong>{t('briefing.historyMeta', { n: h.brief_content?.ideas?.length ?? 0, tin: h.tokens_in ?? 0, tout: h.tokens_out ?? 0, ms: h.generation_ms ?? 0 })}
                     </summary>
                     <pre style={{
                       fontSize: 11, marginTop: 8, overflow: 'auto',
@@ -1365,6 +1377,7 @@ export default function BriefingPage() {
 // ── Carte idée marketing ───────────────────────────────────────
 
 function MktIdeaCard({ idea }: { idea: BriefIdea }) {
+  const { t } = useI18n()
   const tier    = MKT_TIER[idea.tier]    ?? MKT_TIER.standard
   const pillarC = MKT_PILLAR_COLORS[idea.pillar] ?? '#666'
   return (
@@ -1391,7 +1404,7 @@ function MktIdeaCard({ idea }: { idea: BriefIdea }) {
       </h3>
 
       {/* Structure */}
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 4 }}>Structure</div>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 4 }}>{t('briefing.structure')}</div>
       <div style={{ fontSize: 13, whiteSpace: 'pre-wrap', color: 'var(--text-mid)', marginBottom: 12 }}>{idea.structure}</div>
 
       {/* Caption */}
@@ -1426,7 +1439,7 @@ function MktIdeaCard({ idea }: { idea: BriefIdea }) {
           borderRadius: 6, padding: '3px 9px', fontSize: 11,
           cursor: 'pointer', color: 'var(--text-dim)',
         }}
-      >Copier</button>
+      >{t('briefing.copy')}</button>
     </div>
   )
 }
@@ -1434,6 +1447,7 @@ function MktIdeaCard({ idea }: { idea: BriefIdea }) {
 // ── Carte Instagram Snapshot ──────────────────────────────────
 
 function InstaSnapshotCard({ snapshot, compact = false }: { snapshot: InstaSnapshot; compact?: boolean }) {
+  const { t } = useI18n()
   if (compact) {
     return (
       <div style={{ ...cardStyle, padding: '10px 14px', opacity: 0.7 }}>
@@ -1497,7 +1511,7 @@ function InstaSnapshotCard({ snapshot, compact = false }: { snapshot: InstaSnaps
         )}
         {snapshot.best_format && (
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Meilleur format</div>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.08em' }}>{t('briefing.bestFormat')}</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#f59e0b', textTransform: 'capitalize' }}>{snapshot.best_format}</div>
           </div>
         )}

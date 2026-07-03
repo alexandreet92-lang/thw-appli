@@ -4,6 +4,7 @@ import { useState } from 'react'
 import LineChart from './LineChart'
 import { calcRecoveryScore, metricColor } from './helpers'
 import type { CheckInRow } from './types'
+import { useI18n } from '@/lib/i18n'
 
 interface Props { history: CheckInRow[] }
 
@@ -11,7 +12,10 @@ function avg(arr: number[]): number {
   return arr.length ? arr.reduce((a,b)=>a+b,0) / arr.length : 0
 }
 
+const DAY_LETTER_BY_DOW = ['recovery.dayLetter.sun','recovery.dayLetter.mon','recovery.dayLetter.tue','recovery.dayLetter.wed','recovery.dayLetter.thu','recovery.dayLetter.fri','recovery.dayLetter.sat']
+
 export default function SectionTrends({ history }: Props) {
+  const { t } = useI18n()
   const [range, setRange] = useState<7|30>(7)
 
   const items = history.slice(0, range).reverse() // chronologique
@@ -20,10 +24,10 @@ export default function SectionTrends({ history }: Props) {
     return (
       <div className="card-enter card-enter-2" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:24,boxShadow:'var(--shadow-card)',marginBottom:16 }}>
         <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 6px' }}>Recovery Trends</p>
-        <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'0 0 16px' }}>Tendances</h2>
+        <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'0 0 16px' }}>{t('recovery.trends.label')}</h2>
         <div style={{ padding:'20px',textAlign:'center' as const,borderRadius:12,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-          <p style={{ fontSize:13,color:'var(--text-dim)',margin:0 }}>Continue tes check-ins quotidiens pour voir tes tendances</p>
-          <p style={{ fontSize:11,color:'var(--text-dim)',margin:'6px 0 0' }}>{items.length}/3 check-ins enregistrés</p>
+          <p style={{ fontSize:13,color:'var(--text-dim)',margin:0 }}>{t('recovery.sectionTrends.emptyTitle')}</p>
+          <p style={{ fontSize:11,color:'var(--text-dim)',margin:'6px 0 0' }}>{t('recovery.sectionTrends.emptyCount', { n: items.length })}</p>
         </div>
       </div>
     )
@@ -34,37 +38,37 @@ export default function SectionTrends({ history }: Props) {
   const energies   = items.map(c => c.energy)
   const stresses   = items.map(c => c.stress)
   const sleeps     = items.map(c => c.sleep_quality)
-  const dayLabels  = items.map(c => { const d=new Date(c.date+'T12:00:00'); return ['D','L','M','M','J','V','S'][d.getDay()] })
+  const dayLabels  = items.map(c => { const d=new Date(c.date+'T12:00:00'); return t(DAY_LETTER_BY_DOW[d.getDay()]) })
 
   const todayScore = scores[scores.length-1]
   const scoreColor = todayScore >= 81 ? '#22c55e' : todayScore >= 61 ? '#06B6D4' : todayScore >= 41 ? '#f97316' : '#ef4444'
 
   const CHARTS = [
-    { key:'score',   label:'Score',   unit:'',    values:scores,   color:scoreColor,  today:todayScore, avgFn:avg, higher:true },
-    { key:'fatigue', label:'Fatigue', unit:'/10', values:fatigues, color:'#f97316',   today:fatigues[fatigues.length-1], avgFn:avg, higher:false },
-    { key:'energy',  label:'Énergie', unit:'/10', values:energies, color:'#22c55e',   today:energies[energies.length-1], avgFn:avg, higher:true },
-    { key:'stress',  label:'Stress',  unit:'/10', values:stresses, color:'#ef4444',   today:stresses[stresses.length-1], avgFn:avg, higher:false },
-    { key:'sleep',   label:'Sommeil', unit:'/10', values:sleeps,   color:'#a855f7',   today:sleeps[sleeps.length-1], avgFn:avg, higher:true },
+    { key:'score',   label:t('recovery.metric.score'),   unit:'',    values:scores,   color:scoreColor,  today:todayScore, avgFn:avg, higher:true },
+    { key:'fatigue', label:t('recovery.metric.fatigue'), unit:'/10', values:fatigues, color:'#f97316',   today:fatigues[fatigues.length-1], avgFn:avg, higher:false },
+    { key:'energy',  label:t('recovery.metric.energy'), unit:'/10', values:energies, color:'#22c55e',   today:energies[energies.length-1], avgFn:avg, higher:true },
+    { key:'stress',  label:t('recovery.metric.stress'),  unit:'/10', values:stresses, color:'#ef4444',   today:stresses[stresses.length-1], avgFn:avg, higher:false },
+    { key:'sleep',   label:t('recovery.metric.sleep'), unit:'/10', values:sleeps,   color:'#a855f7',   today:sleeps[sleeps.length-1], avgFn:avg, higher:true },
   ]
 
   const reco = todayScore >= 80
-    ? { text:'Conditions optimales pour un effort intense.', color:'#22c55e' }
+    ? { text:t('recovery.reco.optimal'), color:'#22c55e' }
     : todayScore >= 61
-    ? { text:'Intensité modérée recommandée.', color:'#06B6D4' }
-    : { text:'Privilégie la récupération active ou le repos.', color:'#f97316' }
+    ? { text:t('recovery.reco.moderate'), color:'#06B6D4' }
+    : { text:t('recovery.reco.rest'), color:'#f97316' }
 
   return (
     <div className="card-enter card-enter-2" style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:24,boxShadow:'var(--shadow-card)',marginBottom:16 }}>
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap' as const,gap:8 }}>
         <div>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>Recovery Trends</p>
-          <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'3px 0 0' }}>Tendances</h2>
+          <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'3px 0 0' }}>{t('recovery.trends.label')}</h2>
         </div>
         <div style={{ display:'flex',gap:4 }}>
           {([7,30] as const).map(v=>(
             <button key={v} onClick={()=>setRange(v)}
               style={{ padding:'5px 12px',borderRadius:8,border:`1px solid ${range===v?'#06B6D4':'var(--border)'}`,background:range===v?'rgba(6,182,212,0.10)':'var(--bg-card2)',color:range===v?'#06B6D4':'var(--text-dim)',fontSize:10,fontWeight:600,cursor:'pointer' }}>
-              {v} jours
+              {t('recovery.days', { n: v })}
             </button>
           ))}
         </div>

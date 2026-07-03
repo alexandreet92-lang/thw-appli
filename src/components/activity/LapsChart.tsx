@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface LapEntry {
   start_index?:  number
@@ -34,6 +35,7 @@ function fmtTime(s: number): string {
 }
 
 export function LapsChart({ laps, streams, avgWatts, hoveredLap, onHoverLap }: Props) {
+  const { t } = useI18n()
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -178,10 +180,10 @@ export function LapsChart({ laps, streams, avgWatts, hoveredLap, onHoverLap }: P
           minWidth:      110,
         }}>
           <div style={{ fontWeight: 700, color: '#818CF8', marginBottom: 4 }}>
-            Tour {(hoveredLap ?? 0) + 1}
+            {t('activities.lapNumber', { n: (hoveredLap ?? 0) + 1 })}
           </div>
           {hLap.avg_watts != null && (
-            <div style={{ color: 'var(--text)' }}>{Math.round(hLap.avg_watts)} W moy.</div>
+            <div style={{ color: 'var(--text)' }}>{Math.round(hLap.avg_watts)} {t('activities.wAvg')}</div>
           )}
           {hLap.avg_hr != null && (
             <div style={{ color: 'var(--text-mid)' }}>{Math.round(hLap.avg_hr)} bpm</div>

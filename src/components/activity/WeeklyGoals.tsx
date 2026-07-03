@@ -13,6 +13,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { IconFlame, IconChevronRight, IconPlus, IconTrash } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
+import { useI18n } from '@/lib/i18n'
+
+// Résolution i18n des libellés de métrique / sport (les libellés FR ci-dessous
+// restent pour typage/fallback ; l'affichage passe par ces clés).
+const METRIC_LABEL_KEY: Record<Metric, string> = { sessions: 'activities.sessions', distance: 'activities.distance', hours: 'activities.volume' }
+const METRIC_FIELD_KEY: Record<Metric, string> = { sessions: 'activities.fieldSessions', distance: 'activities.fieldDistance', hours: 'activities.fieldVolume' }
+const SPORT_LABEL_KEY: Record<string, string> = { run: 'activities.sportRun', bike: 'activities.sportBike', swim: 'activities.sportSwim', rowing: 'activities.sportRowing', ski: 'activities.sportSki', gym: 'activities.sportGym', hyrox: 'activities.sportHyrox' }
 
 interface Act { started_at: string; sport_type: string; moving_time_s: number | null; distance_m: number | null }
 
@@ -52,6 +59,7 @@ const prefersReduced = () =>
 
 // ── Jauge de progression (barre animée 0 → valeur) ────────────────
 function Gauge({ metric, cur, goal, color }: { metric: Metric; cur: number; goal: number; color: string }) {
+  const { t } = useI18n()
   const pct = goal > 0 ? Math.min(100, (cur / goal) * 100) : 0
   const done = goal > 0 && cur >= goal
   const m = METRIC_META[metric]
@@ -63,7 +71,7 @@ function Gauge({ metric, cur, goal, color }: { metric: Metric; cur: number; goal
   }, [pct])
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <span style={{ width: 58, flexShrink: 0, fontSize: 11.5, color: 'var(--text-mid)' }}>{m.label}</span>
+      <span style={{ width: 58, flexShrink: 0, fontSize: 11.5, color: 'var(--text-mid)' }}>{t(METRIC_LABEL_KEY[metric])}</span>
       <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--bg-card2)', overflow: 'hidden' }}>
         <div style={{ width: `${w}%`, height: '100%', background: color, borderRadius: 3, transition: prefersReduced() ? 'none' : 'width 0.9s cubic-bezier(0.22,1,0.36,1)' }} />
       </div>
@@ -77,11 +85,12 @@ function Gauge({ metric, cur, goal, color }: { metric: Metric; cur: number; goal
 
 // ── Champ de saisie (unité intégrée à droite) ─────────────────────
 function Field({ metric, value, onChange }: { metric: Metric; value: number | undefined; onChange: (v: number | undefined) => void }) {
+  const { t } = useI18n()
   const m = METRIC_META[metric]
   const [focus, setFocus] = useState(false)
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={{ fontSize: 12, color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>{m.field}</label>
+      <label style={{ fontSize: 12, color: 'var(--text-mid)', display: 'block', marginBottom: 6 }}>{t(METRIC_FIELD_KEY[metric])}</label>
       <div style={{
         display: 'flex', alignItems: 'center', background: 'var(--input-bg)',
         border: `1px solid ${focus ? 'var(--primary)' : 'var(--border)'}`, borderRadius: 10,
@@ -103,6 +112,8 @@ function Field({ metric, value, onChange }: { metric: Metric; value: number | un
 }
 
 export function WeeklyGoals({ activities }: { activities: Act[] }) {
+  const { t } = useI18n()
+  const sportLabel = (key: string) => (SPORT_LABEL_KEY[key] ? t(SPORT_LABEL_KEY[key]) : key)
   const [perSport, setPerSport] = useState<PerSport>({})
   const [editKey, setEditKey] = useState<string | null>(null) // sport en cours d'édition (sheet ouvert)
   const [picking, setPicking] = useState(false)               // picker « ajouter un sport »
@@ -186,10 +197,10 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
     <div style={{ background: 'var(--surface)', borderRadius: 14, border: '1px solid var(--border)', padding: '14px 16px', marginBottom: 16 }}>
       {/* En-tête */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: configured.length ? 14 : 12 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', fontFamily: 'var(--font-display)' }}>Objectifs hebdo</span>
+        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', fontFamily: 'var(--font-display)' }}>{t('activities.weeklyGoals')}</span>
         {streak > 0 && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: 'var(--sport-gym)', background: 'var(--bg-card2)', padding: '3px 9px', borderRadius: 999, fontVariantNumeric: 'tabular-nums' }}>
-            <IconFlame size={14} /> {streak} sem.
+            <IconFlame size={14} /> {t('activities.weeksStreak', { n: streak })}
           </span>
         )}
       </div>
@@ -211,7 +222,7 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{s.label}</span>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{sportLabel(s.key)}</span>
               <IconChevronRight size={16} style={{ marginLeft: 'auto', color: 'var(--text-dim)' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -232,14 +243,14 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
             marginTop: configured.length ? 4 : 0, fontFamily: 'inherit',
           }}
         >
-          <IconPlus size={16} /> {configured.length ? 'Ajouter un sport' : 'Définir mes objectifs'}
+          <IconPlus size={16} /> {configured.length ? t('activities.addSport') : t('activities.defineMyGoals')}
         </button>
       )}
 
       {/* Sheet : picker de sport ───────────────────────────────── */}
-      <BottomSheet isOpen={picking} onClose={() => setPicking(false)} title="Ajouter un objectif">
+      <BottomSheet isOpen={picking} onClose={() => setPicking(false)} title={t('activities.addGoal')}>
         <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 14px' }}>
-          Choisis un sport, puis renseigne les objectifs qui te semblent pertinents.
+          {t('activities.pickSportHint')}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {pickable.map(s => (
@@ -253,7 +264,7 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
               }}
             >
               <span style={{ width: 9, height: 9, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-              {s.label}
+              {sportLabel(s.key)}
             </button>
           ))}
         </div>
@@ -263,13 +274,13 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
       <BottomSheet
         isOpen={!!editCfg}
         onClose={() => setEditKey(null)}
-        title={editCfg ? `Objectifs — ${editCfg.label}` : undefined}
+        title={editCfg ? t('activities.goalsFor', { sport: sportLabel(editCfg.key) }) : undefined}
         icon={editCfg ? <span style={{ width: 10, height: 10, borderRadius: '50%', background: editCfg.color, display: 'inline-block' }} /> : undefined}
       >
         {editCfg && (
           <>
             <p style={{ fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 16px' }}>
-              Laisse un champ vide pour ne pas suivre cette métrique.
+              {t('activities.emptyFieldHint')}
             </p>
             {editCfg.metrics.map(m => (
               <Field key={m} metric={m} value={draft[m]} onChange={v => setDraft(d => ({ ...d, [m]: v }))} />
@@ -278,14 +289,14 @@ export function WeeklyGoals({ activities }: { activities: Act[] }) {
               onClick={saveDraft}
               style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontWeight: 700, fontSize: 15, cursor: 'pointer', marginTop: 4, fontFamily: 'inherit' }}
             >
-              Enregistrer
+              {t('activities.save')}
             </button>
             {hasAny(perSport[editCfg.key]) && (
               <button
                 onClick={() => removeSport(editCfg.key)}
                 style={{ width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: 'transparent', color: 'var(--text-dim)', fontWeight: 500, fontSize: 13, cursor: 'pointer', marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: 'inherit' }}
               >
-                <IconTrash size={15} /> Supprimer cet objectif
+                <IconTrash size={15} /> {t('activities.removeGoal')}
               </button>
             )}
           </>

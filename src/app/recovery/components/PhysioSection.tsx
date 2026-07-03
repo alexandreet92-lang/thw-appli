@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 
 // SVG icons monochromes
 const IcoPulse = () => (
@@ -83,6 +84,7 @@ function RhrChart({ points }: { points: { date: string; rhr: number }[] }) {
 }
 
 export default function PhysioSection() {
+  const { t } = useI18n()
   const [physHistory, setPhysHistory] = useState<PhysicalPoint[]>([])
 
   useEffect(() => {
@@ -147,8 +149,8 @@ export default function PhysioSection() {
 
   return (
     <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:24,boxShadow:'var(--shadow-card)' }}>
-      <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>Physiologie</p>
-      <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'0 0 16px' }}>Données physiologiques</h2>
+      <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>{t('recovery.physio.eyebrow')}</p>
+      <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'0 0 16px' }}>{t('recovery.physio.title')}</h2>
 
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12 }}>
 
@@ -157,8 +159,8 @@ export default function PhysioSection() {
           onMouseEnter={e => (e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.1)')}
           onMouseLeave={e => (e.currentTarget.style.boxShadow='none')}>
           <div style={{ color: rhrValue ? '#EF4444' : '#9CA3AF' }}><IcoHeart /></div>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0,color: rhrValue ? 'var(--text)' : 'var(--text-dim)' }}>FC repos</p>
-          <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,lineHeight:1.4 }}>Fréquence cardiaque au repos</p>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0,color: rhrValue ? 'var(--text)' : 'var(--text-dim)' }}>{t('recovery.physio.restingHr')}</p>
+          <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,lineHeight:1.4 }}>{t('recovery.physio.restingHrSub')}</p>
           {rhrValue ? (
             <>
               <p style={{ fontFamily:'Syne,sans-serif',fontSize:28,fontWeight:800,margin:0,color:'#EF4444',lineHeight:1 }}>
@@ -169,7 +171,7 @@ export default function PhysioSection() {
                 <div style={{ width:'100%' }}>
                   <RhrChart points={rhrSeries} />
                   <p style={{ fontSize:8,color:'var(--text-dim)',margin:'2px 0 0' }}>
-                    {rhrSeries.length} mesures · moy. mobile 7j en pointillé
+                    {t('recovery.physio.measures', { n: rhrSeries.length })}
                   </p>
                 </div>
               )}
@@ -178,26 +180,26 @@ export default function PhysioSection() {
           ) : (
             <>
               <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:800,margin:0,color:'var(--text-dim)' }}>—</p>
-              <span style={{ padding:'3px 9px',borderRadius:20,background:'var(--bg-card)',border:'1px solid var(--border)',fontSize:9,color:'var(--text-dim)',lineHeight:1.5 }}>Bientôt — Polar, Garmin ou Whoop</span>
+              <span style={{ padding:'3px 9px',borderRadius:20,background:'var(--bg-card)',border:'1px solid var(--border)',fontSize:9,color:'var(--text-dim)',lineHeight:1.5 }}>{t('recovery.physio.soonRestingHr')}</span>
             </>
           )}
         </div>
 
         {/* HRV */}
         {[
-          { id:'hrv',  Icon: IcoPulse, label:'HRV',         sub:'Variabilité cardiaque',           device:'Garmin, Whoop ou Oura' },
-          { id:'spo2', Icon: IcoDrop,  label:'SpO2',        sub:'Saturation en oxygène',           device:'Garmin ou Oura' },
-          { id:'temp', Icon: IcoTherm, label:'Température', sub:'Température corporelle nocturne', device:'Oura' },
+          { id:'hrv',  Icon: IcoPulse, label:'recovery.physio.label.hrv',  sub:'recovery.physio.sub.hrv',  device:'recovery.physio.device.hrv' },
+          { id:'spo2', Icon: IcoDrop,  label:'recovery.physio.label.spo2', sub:'recovery.physio.sub.spo2', device:'recovery.physio.device.spo2' },
+          { id:'temp', Icon: IcoTherm, label:'recovery.physio.label.temp', sub:'recovery.physio.sub.temp', device:'recovery.physio.device.temp' },
         ].map(({ id, Icon, label, sub, device }) => (
           <div key={id} style={{ padding:'20px 16px',borderRadius:12,background:'var(--bg-card2)',border:'1px solid #E5E7EB',display:'flex',flexDirection:'column' as const,alignItems:'center',gap:8,textAlign:'center' as const,transition:'box-shadow 0.2s' }}
             onMouseEnter={e => (e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.1)')}
             onMouseLeave={e => (e.currentTarget.style.boxShadow='none')}>
             <div style={{ color:'#9CA3AF' }}><Icon /></div>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0,color:'var(--text-dim)' }}>{label}</p>
-            <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,lineHeight:1.4 }}>{sub}</p>
+            <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0,color:'var(--text-dim)' }}>{t(label)}</p>
+            <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,lineHeight:1.4 }}>{t(sub)}</p>
             <p style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:800,margin:0,color:'var(--text-dim)' }}>—</p>
             <span style={{ padding:'3px 9px',borderRadius:20,background:'var(--bg-card)',border:'1px solid var(--border)',fontSize:9,color:'var(--text-dim)',lineHeight:1.5 }}>
-              Bientôt — {device}
+              {t('recovery.physio.soonPrefix')} {t(device)}
             </span>
           </div>
         ))}

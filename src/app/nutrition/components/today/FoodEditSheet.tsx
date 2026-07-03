@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { MealIngredient, MealCourse } from '@/hooks/useDailyMeals'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const UNITS = ['g', 'ml', 'portion', 'pièce']
@@ -38,6 +39,7 @@ export function FoodEditSheet({ food, slotLabel, onClose, onSave }: {
   onClose: () => void
   onSave: (f: EditableFood) => void
 }) {
+  const { t } = useI18n()
   const [d, setD] = useState<Draft>(() => toDraft(food))
   const base = useRef<MealIngredient | null>(food)   // référence pour le recalcul proportionnel
   useEffect(() => { base.current = food; setD(toDraft(food)) }, [food])
@@ -86,20 +88,20 @@ export function FoodEditSheet({ food, slotLabel, onClose, onSave }: {
       <style>{`.fes-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-dim)}`}</style>
       <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxHeight: '92vh', background: 'var(--bg-card)', borderRadius: '20px 20px 0 0', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-          <h2 style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{food ? 'Modifier l’aliment' : 'Ajouter un aliment'}</h2>
-          <button onClick={onClose} aria-label="Fermer" style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <h2 style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{food ? t('nutrition.food.edit') : t('nutrition.today.addFood')}</h2>
+          <button onClick={onClose} aria-label={t('nutrition.common.close')} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{slotLabel}</p>
 
           <div>
-            <p style={lbl}>Nom</p>
-            <input className="fes-input" value={d.name} onChange={e => setD(p => ({ ...p, name: e.target.value }))} placeholder="ex : Poulet rôti" style={field} autoFocus />
+            <p style={lbl}>{t('nutrition.food.name')}</p>
+            <input className="fes-input" value={d.name} onChange={e => setD(p => ({ ...p, name: e.target.value }))} placeholder={t('nutrition.food.namePlaceholder')} style={field} autoFocus />
           </div>
 
           <div>
-            <p style={lbl}>Quantité</p>
+            <p style={lbl}>{t('nutrition.food.quantity')}</p>
             <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
               <input className="fes-input tnum" type="number" inputMode="decimal" value={d.qty} onChange={e => onQty(e.target.value)} placeholder="0" style={{ ...field, flex: 1, textAlign: 'right' }} />
               <select className="fes-input" value={d.unit} onChange={e => setD(p => ({ ...p, unit: e.target.value }))} style={{ ...field, width: 96, flexShrink: 0 }}>
@@ -109,20 +111,20 @@ export function FoodEditSheet({ food, slotLabel, onClose, onSave }: {
           </div>
 
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-            {macroInput('prot', 'Protéines')}
-            {macroInput('gluc', 'Glucides')}
-            {macroInput('lip', 'Lipides')}
+            {macroInput('prot', t('nutrition.macro.proteins'))}
+            {macroInput('gluc', t('nutrition.macro.carbs'))}
+            {macroInput('lip', t('nutrition.macro.fats'))}
           </div>
 
           <p className="tnum" style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>
-            <span style={{ fontWeight: 600, color: 'var(--text)' }}>{kcal}</span> kcal calculées
+            <span style={{ fontWeight: 600, color: 'var(--text)' }}>{kcal}</span> {t('nutrition.food.kcalCalculated')}
           </p>
         </div>
 
         <div style={{ padding: '12px 20px 20px', borderTop: '1px solid var(--border)' }}>
           <button disabled={!canSave} onClick={save}
             style={{ width: '100%', padding: '13px', borderRadius: 'var(--r-sm)', border: 'none', cursor: canSave ? 'pointer' : 'not-allowed', background: canSave ? 'var(--primary)' : 'var(--bg-card2)', color: canSave ? 'var(--on-primary)' : 'var(--text-dim)', fontFamily: FB, fontSize: 14, fontWeight: 600 }}>
-            Enregistrer
+            {t('nutrition.common.save')}
           </button>
         </div>
       </div>

@@ -18,6 +18,7 @@ import { LanguageSelector } from '@/components/i18n/LanguageSelector'
 type OAuthProvider = 'strava' | 'wahoo' | 'polar' | 'withings'
 type THWModel      = 'hermes' | 'athena' | 'zeus'
 type ChatFontId    = 'dm_sans' | 'inter' | 'system' | 'serif' | 'mono'
+type TFunc         = (key: string, vars?: Record<string, string | number>) => string
 
 // ── Système de règles IA ─────────────────────────────────────
 interface AiRule {
@@ -67,13 +68,13 @@ interface Connection {
 // ══════════════════════════════════════════════════
 
 function today() { return new Date().toISOString().split('T')[0] }
-function sinceDate(d: string): string {
+function sinceDate(d: string, t: TFunc): string {
   const now = new Date(), dt = new Date(d)
   const m = (now.getFullYear()-dt.getFullYear())*12+now.getMonth()-dt.getMonth()
   const y = Math.floor(m/12), mo = m%12
-  if (y===0) return `${mo} mois`
-  if (mo===0) return `${y} an${y>1?'s':''}`
-  return `${y} an${y>1?'s':''} ${mo} mois`
+  if (y===0) return t('profile.durMonths', { n: mo, s: mo>1?'s':'' })
+  if (mo===0) return t('profile.durYears', { n: y, s: y>1?'s':'' })
+  return t('profile.durYearsMonths', { y, ys: y>1?'s':'', mo, ms: mo>1?'s':'' })
 }
 
 const SPORT_LABEL: Record<string,string> = {
@@ -350,11 +351,12 @@ interface ShoeT { id: string; name: string; brand: string | null; stats?: GearSt
 const fmtFR = (n: number) => n.toLocaleString('fr-FR')
 const ZERO_STATS: GearStatsT = { total_sessions: 0, total_km: 0, total_hours: 0 }
 
-function statsLine(s: GearStatsT) {
-  return `${fmtFR(s.total_sessions)} séance${s.total_sessions > 1 ? 's' : ''} · ${fmtFR(s.total_km)} km · ${fmtFR(s.total_hours)} h`
-}
-
 function GearBloc() {
+  const { t } = useI18n()
+  const statsLine = (s: GearStatsT) => t('profile.gearStats', {
+    sessions: fmtFR(s.total_sessions), s: s.total_sessions > 1 ? 's' : '',
+    km: fmtFR(s.total_km), hours: fmtFR(s.total_hours),
+  })
   const [bikes, setBikes] = useState<BikeT[]>([])
   const [shoes, setShoes] = useState<ShoeT[]>([])
   const [modal, setModal] = useState<null | 'bike' | 'shoes'>(null)
@@ -406,7 +408,7 @@ function GearBloc() {
         <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', margin: 0 }}>{title}</p>
         <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '3px 0 0' }}>{sub}</p>
       </div>
-      <button onClick={onDel} aria-label="Supprimer" style={{ width: 24, height: 24, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0, fontSize: 14 }}>✕</button>
+      <button onClick={onDel} aria-label={t('profile.delete')} style={{ width: 24, height: 24, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0, fontSize: 14 }}>✕</button>
     </Line>
   )
 
@@ -420,12 +422,12 @@ function GearBloc() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Intro>Tes vélos et chaussures, avec leurs statistiques d’usage.</Intro>
+      <Intro>{t('profile.gearIntro')}</Intro>
 
-      <Section label="Vélos">
+      <Section label={t('profile.bikes')}>
         <Group>
           {bikes.length === 0
-            ? <Line first><span style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>Aucun vélo enregistré.</span></Line>
+            ? <Line first><span style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>{t('profile.noBike')}</span></Line>
             : bikes.map((b, i) => gearRow(
                 <Bike size={18} />,
                 `${b.name}${b.weight_kg ? `  ·  ${String(b.weight_kg).replace('.', ',')} kg` : ''}`,
@@ -434,13 +436,13 @@ function GearBloc() {
                 i === 0,
               ))}
         </Group>
-        {addBtn('+ Ajouter un vélo', () => openAdd('bike'))}
+        {addBtn(t('profile.addBike'), () => openAdd('bike'))}
       </Section>
 
-      <Section label="Chaussures running">
+      <Section label={t('profile.runningShoes')}>
         <Group>
           {shoes.length === 0
-            ? <Line first><span style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>Aucune paire enregistrée.</span></Line>
+            ? <Line first><span style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>{t('profile.noShoes')}</span></Line>
             : shoes.map((s, i) => gearRow(
                 <Footprints size={18} />,
                 `${s.name}${s.brand ? `  ·  ${s.brand}` : ''}`,
@@ -449,7 +451,7 @@ function GearBloc() {
                 i === 0,
               ))}
         </Group>
-        {addBtn('+ Ajouter des chaussures', () => openAdd('shoes'))}
+        {addBtn(t('profile.addShoes'), () => openAdd('shoes'))}
       </Section>
 
       {/* Modal d'ajout */}
@@ -457,18 +459,18 @@ function GearBloc() {
         <div onClick={() => setModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, background: 'var(--bg-card)', borderRadius: 14, border: '1px solid var(--border-mid)', padding: 24 }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: 'var(--text)' }}>
-              {modal === 'bike' ? 'Ajouter un vélo' : 'Ajouter des chaussures'}
+              {modal === 'bike' ? t('profile.addBikeTitle') : t('profile.addShoesTitle')}
             </h3>
-            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nom *" style={inputStyle} />
-            <input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} placeholder="Marque" style={inputStyle} />
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('profile.namePh')} style={inputStyle} />
+            <input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} placeholder={t('profile.brandPh')} style={inputStyle} />
             {modal === 'bike' && <>
-              <input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} placeholder="Modèle" style={inputStyle} />
-              <input value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} placeholder="Poids (kg)" inputMode="decimal" style={inputStyle} />
+              <input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} placeholder={t('profile.modelPh')} style={inputStyle} />
+              <input value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} placeholder={t('profile.weightPh')} inputMode="decimal" style={inputStyle} />
             </>}
             <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              <button onClick={() => setModal(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
+              <button onClick={() => setModal(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('profile.cancel')}</button>
               <button onClick={() => void submit()} disabled={!form.name.trim() || saving} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: form.name.trim() && !saving ? 'var(--primary)' : 'var(--border)', color: form.name.trim() && !saving ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 13, fontWeight: 600, cursor: form.name.trim() && !saving ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-body)', opacity: saving ? 0.7 : 1 }}>
-                {saving ? '…' : 'Ajouter'}
+                {saving ? '…' : t('profile.add')}
               </button>
             </div>
           </div>
@@ -479,11 +481,11 @@ function GearBloc() {
       {confirmDel && (
         <div onClick={() => setConfirmDel(null)} style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 14, border: '1px solid var(--border-mid)', padding: 22 }}>
-            <p style={{ fontSize: 14, color: 'var(--text)', margin: '0 0 6px', fontWeight: 600 }}>Supprimer « {confirmDel.label} » ?</p>
-            <p style={{ fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.5 }}>Cet équipement sera retiré de ton profil.</p>
+            <p style={{ fontSize: 14, color: 'var(--text)', margin: '0 0 6px', fontWeight: 600 }}>{t('profile.confirmDeleteGear', { label: confirmDel.label })}</p>
+            <p style={{ fontSize: 12.5, color: 'var(--text-mid)', margin: '0 0 16px', lineHeight: 1.5 }}>{t('profile.gearRemovedInfo')}</p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setConfirmDel(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
-              <button onClick={() => void doDelete()} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Supprimer</button>
+              <button onClick={() => setConfirmDel(null)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('profile.cancel')}</button>
+              <button onClick={() => void doDelete()} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>{t('profile.delete')}</button>
             </div>
           </div>
         </div>
@@ -497,6 +499,7 @@ function GearBloc() {
 // ══════════════════════════════════════════════════
 
 function ProfilIdentityBloc() {
+  const { t } = useI18n()
   const { data: profileData, setData: setProfileData, save: saveProfile, uploadAvatar } = useProfile()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -527,24 +530,24 @@ function ProfilIdentityBloc() {
     if (url) {
       setPhoto(url)
     } else {
-      setToast({ msg:"Erreur lors de l'envoi de la photo.", ok:false })
+      setToast({ msg:t('profile.photoUploadError'), ok:false })
       setTimeout(() => setToast(null), 4000)
     }
   }
 
   async function handleSave() {
     await saveProfile()
-    setToast({ msg:'Profil enregistré ✓', ok:true }); setTimeout(()=>setToast(null), 2500)
+    setToast({ msg:t('profile.profileSaved'), ok:true }); setTimeout(()=>setToast(null), 2500)
   }
 
   const imc = profileData.height_cm && profileData.weight_kg
     ? (parseFloat(profileData.weight_kg)/((parseFloat(profileData.height_cm)/100)**2)).toFixed(1) : '—'
 
   const STATS: { label:string; val:string; key:string; unit:string; ph:string; readonly?:boolean }[] = [
-    { label:'Taille',         val:profileData.height_cm,      key:'height_cm',      unit:'cm', ph:'178' },
-    { label:'Poids',          val:profileData.weight_kg,      key:'weight_kg',      unit:'kg', ph:'72' },
-    { label:'Poids du vélo',  val:profileData.bike_weight_kg, key:'bike_weight_kg', unit:'kg', ph:'8' },
-    { label:'IMC',            val:imc,                        key:'',               unit:'',   ph:'', readonly:true },
+    { label:t('profile.height'),     val:profileData.height_cm,      key:'height_cm',      unit:'cm', ph:'178' },
+    { label:t('profile.weight'),     val:profileData.weight_kg,      key:'weight_kg',      unit:'kg', ph:'72' },
+    { label:t('profile.bikeWeight'), val:profileData.bike_weight_kg, key:'bike_weight_kg', unit:'kg', ph:'8' },
+    { label:t('profile.imc'),        val:imc,                        key:'',               unit:'',   ph:'', readonly:true },
   ]
 
   return (
@@ -557,7 +560,7 @@ function ProfilIdentityBloc() {
           <div style={{ display:'flex', alignItems:'center', gap:14, padding:'16px' }}>
             <div onClick={()=>fileRef.current?.click()} style={{ width:60, height:60, borderRadius:'50%', background:'var(--bg-card2)', border:'1px dashed var(--border-mid)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, overflow:'hidden', position:'relative' }}>
               {photo
-                ? <img src={photo} alt="profil" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                ? <img src={photo} alt={t('profile.profileAlt')} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
                 : <span style={{ fontSize:20 }}>📷</span>
               }
               {uploading && (
@@ -568,16 +571,16 @@ function ProfilIdentityBloc() {
               <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto}/>
             </div>
             <div style={{ flex:1, minWidth:0 }}>
-              <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder="Nom / Prénom" style={{ fontFamily:'var(--font-display)', fontSize:18, fontWeight:700, background:'transparent', border:'none', padding:0, color:'var(--text)', outline:'none', width:'100%', marginBottom:3, boxSizing:'border-box' as const }}/>
+              <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder={t('profile.namePlaceholder')} style={{ fontFamily:'var(--font-display)', fontSize:18, fontWeight:700, background:'transparent', border:'none', padding:0, color:'var(--text)', outline:'none', width:'100%', marginBottom:3, boxSizing:'border-box' as const }}/>
               <p style={{ fontSize:12.5, color:'var(--text-dim)', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{profileData.email||'—'}</p>
             </div>
           </div>
         </Group>
-        <p style={{ fontSize:12, color:'var(--text-dim)', margin:'8px 2px 0', lineHeight:1.5 }}>Touche la photo pour la changer. Le ✓ en haut à droite enregistre.</p>
+        <p style={{ fontSize:12, color:'var(--text-dim)', margin:'8px 2px 0', lineHeight:1.5 }}>{t('profile.photoHint')}</p>
       </Section>
 
       {/* ── Mensurations ─────────────────────────────── */}
-      <Section label="Mensurations">
+      <Section label={t('profile.measurements')}>
         <Group>
           {STATS.map((f, i) => (
             <Line key={f.label} first={i===0}>
@@ -595,12 +598,12 @@ function ProfilIdentityBloc() {
       </Section>
 
       {/* ── Bio ──────────────────────────────────────── */}
-      <Section label="Bio">
+      <Section label={t('profile.bio')}>
         <Group>
           <textarea
             value={profileData.bio}
             onChange={e=>setProfileData(p=>({...p,bio:e.target.value}))}
-            placeholder="Décris ton profil, tes objectifs, ta pratique…"
+            placeholder={t('profile.bioPlaceholder')}
             rows={3}
             style={{ width:'100%', padding:'14px 16px', border:'none', background:'transparent', color:'var(--text)', fontSize:14, outline:'none', resize:'none' as const, fontFamily:'var(--font-body)', lineHeight:1.6, boxSizing:'border-box' as const, display:'block' }}
           />
@@ -615,46 +618,47 @@ function ProfilIdentityBloc() {
 // ══════════════════════════════════════════════════
 
 function SportsBloc() {
+  const { t } = useI18n()
   const { sports, add: addSport, remove: removeSport } = useAthleteSports()
   const [newSport, setNewSport] = useState('run')
   const [newSince, setNewSince] = useState('')
 
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
-      <Intro>Tes disciplines et depuis quand tu les pratiques.</Intro>
+      <Intro>{t('profile.sportsIntro')}</Intro>
 
-      <Section label="Mes sports">
+      <Section label={t('profile.mySports')}>
         <Group>
           {sports.length === 0 && (
-            <Line first><span style={{ fontSize:13.5, color:'var(--text-dim)' }}>Aucun sport — ajoute tes disciplines ci-dessous.</span></Line>
+            <Line first><span style={{ fontSize:13.5, color:'var(--text-dim)' }}>{t('profile.noSports')}</span></Line>
           )}
           {sports.map((s,i)=>(
             <Line key={s.id} first={i===0}>
               <span style={{ width:9, height:9, borderRadius:'50%', background:SPORT_COLOR[s.sport]||'var(--text-dim)', flexShrink:0 }}/>
               <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:0 }}>{SPORT_LABEL[s.sport]||s.sport}</p>
-                {s.since_date && <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>Depuis {sinceDate(s.since_date)}</p>}
+                <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:0 }}>{SPORT_LABEL[s.sport] ? t('profile.sportName.'+s.sport) : s.sport}</p>
+                {s.since_date && <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>{t('profile.since')} {sinceDate(s.since_date, t)}</p>}
               </div>
-              <button onClick={()=>removeSport(s.id)} aria-label="Retirer" style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:15, padding:'2px 6px', flexShrink:0 }}>✕</button>
+              <button onClick={()=>removeSport(s.id)} aria-label={t('profile.remove')} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:15, padding:'2px 6px', flexShrink:0 }}>✕</button>
             </Line>
           ))}
         </Group>
       </Section>
 
-      <Section label="Ajouter un sport">
+      <Section label={t('profile.addSport')}>
         <Group>
           <Line first>
-            <span style={{ flex:1, fontSize:15, color:'var(--text)' }}>Discipline</span>
+            <span style={{ flex:1, fontSize:15, color:'var(--text)' }}>{t('profile.discipline')}</span>
             <select value={newSport} onChange={e=>setNewSport(e.target.value)} style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13.5, outline:'none' }}>
-              {Object.entries(SPORT_LABEL).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+              {Object.keys(SPORT_LABEL).map(k=><option key={k} value={k}>{t('profile.sportName.'+k)}</option>)}
             </select>
           </Line>
           <Line>
-            <span style={{ flex:1, fontSize:15, color:'var(--text)' }}>Depuis</span>
+            <span style={{ flex:1, fontSize:15, color:'var(--text)' }}>{t('profile.since')}</span>
             <input type="date" value={newSince} onChange={e=>setNewSince(e.target.value)} style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13.5, outline:'none' }}/>
           </Line>
         </Group>
-        <button onClick={()=>{ if(newSport) addSport(newSport, newSince) }} style={{ marginTop:12, width:'100%', padding:'12px', borderRadius:12, background:'var(--primary)', border:'none', color:'var(--on-primary)', fontSize:14, fontWeight:600, cursor:'pointer' }}>Ajouter ce sport</button>
+        <button onClick={()=>{ if(newSport) addSport(newSport, newSince) }} style={{ marginTop:12, width:'100%', padding:'12px', borderRadius:12, background:'var(--primary)', border:'none', color:'var(--on-primary)', fontSize:14, fontWeight:600, cursor:'pointer' }}>{t('profile.addThisSport')}</button>
       </Section>
     </div>
   )
@@ -665,6 +669,7 @@ function SportsBloc() {
 // ══════════════════════════════════════════════════
 
 function ConnexionsBloc() {
+  const { t } = useI18n()
   const searchParams = useSearchParams()
   const router = useRouter()
   const { connections, connect, disconnect, sync, reload: reloadConn } = useConnections()
@@ -674,21 +679,21 @@ function ConnexionsBloc() {
     const status = searchParams.get('oauth'); const provider = searchParams.get('provider') ?? ''
     if (!status) return
     const MSGS: Record<string,{msg:string;ok:boolean}> = {
-      connected: { msg:`${provider} connecté !`, ok:true }, denied: { msg:'Connexion annulée.', ok:false },
-      error: { msg:'Erreur de connexion.', ok:false }, token_error: { msg:"Erreur d'authentification.", ok:false },
-      invalid_state: { msg:'Erreur sécurité.', ok:false }, no_session: { msg:'Session expirée.', ok:false },
+      connected: { msg:t('profile.connConnected', { provider }), ok:true }, denied: { msg:t('profile.connCancelled'), ok:false },
+      error: { msg:t('profile.connError'), ok:false }, token_error: { msg:t('profile.connAuthError'), ok:false },
+      invalid_state: { msg:t('profile.connSecurityError'), ok:false }, no_session: { msg:t('profile.connSessionExpired'), ok:false },
     }
     if (MSGS[status]) { setToast(MSGS[status]); setTimeout(()=>setToast(null),4000); reloadConn(); router.replace('/profile') }
-  }, [searchParams, router, reloadConn])
+  }, [searchParams, router, reloadConn, t])
 
   const availableConns = connections.filter(c=>c.available)
 
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
       {toast && <Toast msg={toast.msg} ok={toast.ok}/>}
-      <Intro>Relie tes apps et montres connectées pour importer tes activités automatiquement.</Intro>
+      <Intro>{t('profile.connIntro')}</Intro>
 
-      <Section label="Applications">
+      <Section label={t('profile.applications')}>
         <Group>
           {availableConns.map((c,i)=>(
             <Line key={c.id} first={i===0}>
@@ -696,13 +701,13 @@ function ConnexionsBloc() {
               <div style={{ flex:1, minWidth:0 }}>
                 <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:0 }}>{c.label}</p>
                 <p style={{ fontSize:11, color:c.connected?'#22c55e':'var(--text-dim)', margin:'2px 0 0' }}>
-                  {c.loading?'…' : c.connected?(c.lastSync?`Connecté · sync ${c.lastSync}`:'Connecté'):'Non connecté'}
+                  {c.loading?'…' : c.connected?(c.lastSync?t('profile.connectedSync', { date: c.lastSync }):t('profile.connected')):t('profile.notConnected')}
                 </p>
               </div>
               <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                 {c.connected && <button onClick={()=>sync(c)} disabled={c.loading} style={{ padding:'6px 10px', borderRadius:8, background:'var(--primary-dim)', border:'1px solid var(--primary)', color:'var(--primary)', fontSize:12, fontWeight:600, cursor:'pointer' }}>↻</button>}
                 <button onClick={()=>c.connected?disconnect(c):connect(c)} disabled={c.loading} style={{ padding:'6px 12px', borderRadius:8, background:'transparent', border:`1px solid ${c.connected?'rgba(239,68,68,0.4)':'var(--primary)'}`, color:c.connected?'#ef4444':'var(--primary)', fontSize:12, fontWeight:600, cursor:'pointer', opacity:c.loading?0.5:1 }}>
-                  {c.loading?'…' : c.connected?'Déconnecter':'Connecter'}
+                  {c.loading?'…' : c.connected?t('profile.disconnect'):t('profile.connect')}
                 </button>
               </div>
             </Line>
@@ -792,6 +797,7 @@ const NOTIF_DEFAULTS: Record<string, boolean> = (() => {
 })()
 
 function NotificationsBloc() {
+  const { t } = useI18n()
   const [globalOn, setGlobalOn] = useState(true)
   const [prefs, setPrefs] = useState<Record<string, boolean>>(NOTIF_DEFAULTS)
 
@@ -835,8 +841,8 @@ function NotificationsBloc() {
         <Group>
           <Line first>
             <div style={{ flex:1, minWidth:0 }}>
-              <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:0 }}>Toutes les notifications</p>
-              <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:'2px 0 0' }}>Activer ou couper l’ensemble des alertes</p>
+              <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:0 }}>{t('profile.allNotifications')}</p>
+              <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:'2px 0 0' }}>{t('profile.allNotificationsSub')}</p>
             </div>
             <Toggle value={globalOn} onChange={toggleGlobal}/>
           </Line>
@@ -846,13 +852,13 @@ function NotificationsBloc() {
       {/* Sections par catégorie */}
       <div style={{ opacity:globalOn?1:0.4, pointerEvents:globalOn?'auto':'none', transition:'opacity 0.2s' }}>
         {NOTIF_CATEGORIES.map(sec=>(
-          <Section key={sec.id} label={sec.label}>
+          <Section key={sec.id} label={t('profile.notifCat.'+sec.id)}>
             <Group>
               {sec.items.map((item, idx)=>(
                 <Line key={item.key} first={idx===0}>
                   <div style={{ flex:1, minWidth:0, paddingRight:4 }}>
-                    <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{item.label}</p>
-                    <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:0, lineHeight:1.5 }}>{item.sub}</p>
+                    <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>{t('profile.notif.'+item.key+'.label')}</p>
+                    <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:0, lineHeight:1.5 }}>{t('profile.notif.'+item.key+'.sub')}</p>
                   </div>
                   <Toggle value={prefs[item.key] ?? NOTIF_DEFAULTS[item.key]} onChange={()=>toggleItem(item.key)}/>
                 </Line>
@@ -873,6 +879,7 @@ function NotificationsBloc() {
 type ThemePref = 'light' | 'dark' | 'system'
 
 function ApparenceBloc() {
+  const { t } = useI18n()
   const [pref, setPref] = useState<ThemePref>('system')
 
   useEffect(() => {
@@ -902,15 +909,15 @@ function ApparenceBloc() {
   }
 
   const OPTIONS: { id: ThemePref; label: string; sub: string; Icon: typeof Sun }[] = [
-    { id: 'light',  label: 'Claire',  sub: 'Fond clair en permanence', Icon: Sun },
-    { id: 'dark',   label: 'Sombre',  sub: 'Fond sombre en permanence', Icon: Moon },
-    { id: 'system', label: 'Système', sub: 'Jour / nuit automatique selon l’heure', Icon: Monitor },
+    { id: 'light',  label: t('profile.themeLight'),  sub: t('profile.themeLightSub'), Icon: Sun },
+    { id: 'dark',   label: t('profile.themeDark'),  sub: t('profile.themeDarkSub'), Icon: Moon },
+    { id: 'system', label: t('profile.themeSystem'), sub: t('profile.themeSystemSub'), Icon: Monitor },
   ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Intro>Choisis l’apparence de l’application. En mode Système, le fond s’adapte au lever et au coucher du soleil à ta position.</Intro>
-      <Section label="Thème">
+      <Intro>{t('profile.appearanceIntro')}</Intro>
+      <Section label={t('profile.theme')}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {OPTIONS.map(o => {
             const active = pref === o.id
@@ -958,6 +965,7 @@ const GEO_PREF_KEY = 'thw-geo-pref'      // choix d'autorisation utilisateur
 const GEO_GRANTED_AT_KEY = 'thw-geo-at'  // horodatage de l'octroi (pour le mode 1h)
 
 function LocalisationBloc() {
+  const { t } = useI18n()
   const [pref, setPref] = useState<GeoPref>('off')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -973,7 +981,7 @@ function LocalisationBloc() {
   // Récupère la position et met en cache (utilisé pour le thème jour/nuit précis).
   function capturePosition(): Promise<boolean> {
     return new Promise(resolve => {
-      if (!('geolocation' in navigator)) { setMsg("La géolocalisation n'est pas disponible sur cet appareil."); resolve(false); return }
+      if (!('geolocation' in navigator)) { setMsg(t('profile.geoUnavailable')); resolve(false); return }
       navigator.geolocation.getCurrentPosition(
         pos => {
           try {
@@ -994,32 +1002,32 @@ function LocalisationBloc() {
     if (next === 'off') {
       try { localStorage.removeItem('thw-geo'); localStorage.removeItem(GEO_PREF_KEY); localStorage.removeItem(GEO_GRANTED_AT_KEY) } catch { /* ignore */ }
       void import('@/hooks/useTheme').then(m => m.refreshAutoTheme())
-      setPref('off'); setMsg('Localisation désactivée — basée sur ton fuseau horaire.')
+      setPref('off'); setMsg(t('profile.geoDisabled'))
       return
     }
     setBusy(true)
     const ok = await capturePosition()
     setBusy(false)
-    if (!ok) { setMsg("Accès refusé par le navigateur. Autorise la localisation dans les réglages du système.") ; return }
+    if (!ok) { setMsg(t('profile.geoDenied')) ; return }
     try { localStorage.setItem(GEO_PREF_KEY, next) } catch { /* ignore */ }
     setPref(next)
     setMsg(next === '1h'
-      ? 'Localisation autorisée pour 1 heure — elle sera redemandée ensuite.'
+      ? t('profile.geoGranted1h')
       : next === 'always'
-        ? 'Localisation autorisée en permanence.'
-        : 'Localisation autorisée lorsque l’application est active.')
+        ? t('profile.geoGrantedAlways')
+        : t('profile.geoGrantedWhileUsing'))
   }
 
   const OPTIONS: { id: GeoPref; label: string; sub: string; Icon: typeof MapPin }[] = [
-    { id: 'while_using', label: "Lorsque l'application est active", sub: 'Position utilisée uniquement quand tu utilises l’app', Icon: MapPin },
-    { id: '1h',          label: 'Autoriser pendant 1 heure',        sub: 'Accès temporaire, redemandé après 1 h', Icon: MapPin },
-    { id: 'always',      label: 'Autoriser en permanence',          sub: 'Position toujours disponible pour un thème précis', Icon: MapPin },
+    { id: 'while_using', label: t('profile.geoWhileUsing'), sub: t('profile.geoWhileUsingSub'), Icon: MapPin },
+    { id: '1h',          label: t('profile.geo1h'),        sub: t('profile.geo1hSub'), Icon: MapPin },
+    { id: 'always',      label: t('profile.geoAlways'),    sub: t('profile.geoAlwaysSub'), Icon: MapPin },
   ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Intro>THW Coach utilise ta position pour ajuster le thème jour / nuit à la minute exacte et contextualiser tes parcours. Choisis comment tu veux la partager.</Intro>
-      <Section label="Autorisation">
+      <Intro>{t('profile.geoIntro')}</Intro>
+      <Section label={t('profile.authorization')}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {OPTIONS.map(o => {
             const active = pref === o.id
@@ -1044,7 +1052,7 @@ function LocalisationBloc() {
         </div>
         {pref !== 'off' && (
           <button onClick={() => void choose('off')} style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 12, border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
-            Désactiver la localisation
+            {t('profile.geoDisable')}
           </button>
         )}
         {msg && <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '12px 2px 0', lineHeight: 1.5 }}>{msg}</p>}
@@ -1055,15 +1063,16 @@ function LocalisationBloc() {
 
 // ── Bulle Confidentialité : données & vie privée ──────────────────
 function ConfidentialiteBloc() {
+  const { t } = useI18n()
   const PRIVACY_LINKS: { label: string; sub: string; href: string }[] = [
-    { label: 'Politique de confidentialité', sub: 'Comment tes données sont traitées', href: '/decouvrir/theme.html#confidentialite' },
-    { label: "Conditions d'utilisation",     sub: 'Les règles d’usage de l’application', href: '/decouvrir/theme.html#cgu' },
+    { label: t('profile.privacyPolicy'), sub: t('profile.privacyPolicySub'), href: '/decouvrir/theme.html#confidentialite' },
+    { label: t('profile.terms'),     sub: t('profile.termsSub'), href: '/decouvrir/theme.html#cgu' },
   ]
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Intro>Tes données t’appartiennent. Consulte nos politiques, exporte ou supprime tes données à tout moment.</Intro>
+      <Intro>{t('profile.privacyIntro')}</Intro>
 
-      <Section label="Documents">
+      <Section label={t('profile.documents')}>
         <Group>
           {PRIVACY_LINKS.map((l, i) => (
             <a key={l.label} href={l.href} style={{ textDecoration: 'none', display: 'block' }}>
@@ -1080,14 +1089,14 @@ function ConfidentialiteBloc() {
         </Group>
       </Section>
 
-      <Section label="Mes données">
+      <Section label={t('profile.myData')}>
         <Group>
           <a href="/api/export/data" style={{ textDecoration: 'none', display: 'block', color: 'var(--text)' }}>
             <Line first>
               <BarChart3 size={19} strokeWidth={1.8} style={{ flexShrink: 0, color: 'var(--text-mid)' }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>Exporter mes données</p>
-                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>Télécharge une copie de tes données</p>
+                <p style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>{t('profile.exportData')}</p>
+                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('profile.exportDataSub')}</p>
               </div>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
             </Line>
@@ -1096,8 +1105,8 @@ function ConfidentialiteBloc() {
             <Line>
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>Supprimer mon compte</p>
-                <p style={{ fontSize: 11.5, color: 'rgba(239,68,68,0.7)', margin: '2px 0 0' }}>Suppression définitive de toutes tes données</p>
+                <p style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>{t('profile.deleteAccount')}</p>
+                <p style={{ fontSize: 11.5, color: 'rgba(239,68,68,0.7)', margin: '2px 0 0' }}>{t('profile.deleteAccountSub')}</p>
               </div>
             </Line>
           </a>
@@ -1111,6 +1120,7 @@ function ConfidentialiteBloc() {
 type PermState = 'granted' | 'denied' | 'prompt' | 'unsupported'
 
 function AutorisationsBloc() {
+  const { t } = useI18n()
   const [geo, setGeo] = useState<PermState>('prompt')
   const [notif, setNotif] = useState<PermState>('prompt')
 
@@ -1144,21 +1154,21 @@ function AutorisationsBloc() {
   }
 
   const STATE_META: Record<PermState, { label: string; color: string }> = {
-    granted:     { label: 'Autorisé',     color: '#22c55e' },
-    denied:      { label: 'Refusé',       color: '#ef4444' },
-    prompt:      { label: 'À autoriser',  color: 'var(--text-dim)' },
-    unsupported: { label: 'Indisponible', color: 'var(--text-dim)' },
+    granted:     { label: t('profile.permGranted'),     color: '#22c55e' },
+    denied:      { label: t('profile.permDenied'),       color: '#ef4444' },
+    prompt:      { label: t('profile.permPrompt'),  color: 'var(--text-dim)' },
+    unsupported: { label: t('profile.permUnsupported'), color: 'var(--text-dim)' },
   }
 
   const rows: { label: string; sub: string; Icon: typeof MapPin; state: PermState; ask?: () => void }[] = [
-    { label: 'Localisation', sub: 'Thème jour / nuit et parcours', Icon: MapPin, state: geo, ask: geo === 'prompt' ? askGeo : undefined },
-    { label: 'Notifications', sub: 'Rappels de séance, alertes', Icon: Bell, state: notif, ask: notif === 'prompt' ? () => void askNotif() : undefined },
+    { label: t('profile.permLocation'), sub: t('profile.permLocationSub'), Icon: MapPin, state: geo, ask: geo === 'prompt' ? askGeo : undefined },
+    { label: t('profile.permNotifications'), sub: t('profile.permNotificationsSub'), Icon: Bell, state: notif, ask: notif === 'prompt' ? () => void askNotif() : undefined },
   ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Intro>Les accès accordés à THW Coach sur cet appareil. Tu peux les modifier à tout moment dans les réglages de ton navigateur ou système.</Intro>
-      <Section label="Accès">
+      <Intro>{t('profile.permIntro')}</Intro>
+      <Section label={t('profile.access')}>
         <Group>
           {rows.map((r, i) => {
             const meta = STATE_META[r.state]
@@ -1170,7 +1180,7 @@ function AutorisationsBloc() {
                   <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>{r.sub}</p>
                 </div>
                 {r.ask ? (
-                  <button onClick={r.ask} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--primary)', background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Autoriser</button>
+                  <button onClick={r.ask} style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--primary)', background: 'var(--primary-dim)', color: 'var(--primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{t('profile.authorize')}</button>
                 ) : (
                   <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: meta.color }}>{meta.label}</span>
                 )}
@@ -1185,6 +1195,7 @@ function AutorisationsBloc() {
 
 // ── Bulle Utilisation : consommation IA (tokens) ──────────────────
 function UtilisationBloc() {
+  const { t } = useI18n()
   const [details, setDetails] = useState<SubDetails | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -1197,19 +1208,19 @@ function UtilisationBloc() {
   }, [])
 
   const gauges = ([
-    details?.monthly    && { label: 'Hebdomadaire',            gauge: details.monthly,   color: 'var(--primary)' },
-    details?.rolling_6h && { label: 'Sur 6 heures glissantes', gauge: details.rolling_6h, color: 'var(--primary)' },
+    details?.monthly    && { label: t('profile.weekly'),            gauge: details.monthly,   color: 'var(--primary)' },
+    details?.rolling_6h && { label: t('profile.rolling6h'), gauge: details.rolling_6h, color: 'var(--primary)' },
   ].filter(Boolean) as { label: string; gauge: { used: number; limit: number; resets_at: string }; color: string }[])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Intro>Suis ta consommation IA. Chaque échange avec ton coach consomme des tokens selon le modèle utilisé.</Intro>
+      <Intro>{t('profile.usageIntro')}</Intro>
       {loading ? (
-        <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0', margin: 0 }}>Chargement…</p>
+        <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0', margin: 0 }}>{t('profile.loading')}</p>
       ) : gauges.length === 0 ? (
-        <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0', margin: 0 }}>Aucune donnée d’utilisation disponible.</p>
+        <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0', margin: 0 }}>{t('profile.noUsageData')}</p>
       ) : (
-        <Section label="Limites">
+        <Section label={t('profile.limits')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {gauges.map(g => {
               const pct = Math.min(100, Math.round((g.gauge.used / g.gauge.limit) * 100))
@@ -1227,8 +1238,8 @@ function UtilisationBloc() {
                     <div style={{ height: '100%', width: `${pct}%`, background: 'var(--primary)', borderRadius: 999, transition: 'width 0.4s' }}/>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{pct}% utilisé</span>
-                    <span style={{ fontSize: 11.5, color: 'var(--text-mid)', fontWeight: 600 }}>{fmtTokens(remaining)} restant{remaining > 1 ? 's' : ''}</span>
+                    <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{t('profile.pctUsed', { pct })}</span>
+                    <span style={{ fontSize: 11.5, color: 'var(--text-mid)', fontWeight: 600 }}>{t('profile.remaining', { n: fmtTokens(remaining), s: remaining > 1 ? 's' : '' })}</span>
                   </div>
                 </div>
               )
@@ -1324,6 +1335,7 @@ function RuleCreator({ addRule, onClose }: {
   addRule: (category: string, text: string) => Promise<void>
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [step,       setStep]       = useState<'input' | 'review'>('input')
   const [category,   setCategory]   = useState('training')
   const [userInput,  setUserInput]  = useState('')
@@ -1333,7 +1345,6 @@ function RuleCreator({ addRule, onClose }: {
   const [loading,    setLoading]    = useState(false)
   const [saving,     setSaving]     = useState(false)
 
-  const currentMeta = RULE_CATEGORIES.find(c => c.id === category) ?? RULE_CATEGORIES[0]
   const ready = userInput.trim().length >= 5
 
   async function callRuleHelper(input: string, previousRule?: string, modification?: string) {
@@ -1388,20 +1399,20 @@ function RuleCreator({ addRule, onClose }: {
       >
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-          <p style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:700, color:'var(--text)', margin:0 }}>Nouvelle règle</p>
+          <p style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:700, color:'var(--text)', margin:0 }}>{t('profile.newRule')}</p>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:18, lineHeight:1, padding:'2px 4px' }}>✕</button>
         </div>
 
         {step === 'input' ? (
           <>
             {/* Category */}
-            <label style={{ display:'block', fontSize:11, fontWeight:600, color:'var(--text-dim)', marginBottom:6, textTransform:'uppercase' as const, letterSpacing:'0.05em' }}>Catégorie</label>
+            <label style={{ display:'block', fontSize:11, fontWeight:600, color:'var(--text-dim)', marginBottom:6, textTransform:'uppercase' as const, letterSpacing:'0.05em' }}>{t('profile.category')}</label>
             <select
               value={category}
               onChange={e => setCategory(e.target.value)}
               style={{ width:'100%', padding:'10px 14px', borderRadius:10, marginBottom:14, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-body)', outline:'none' }}
             >
-              {RULE_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+              {RULE_CATEGORIES.map(c => <option key={c.id} value={c.id}>{t('profile.ruleCat.'+c.id)}</option>)}
             </select>
 
             {/* Textarea */}
@@ -1409,7 +1420,7 @@ function RuleCreator({ addRule, onClose }: {
               autoFocus
               value={userInput}
               onChange={e => setUserInput(e.target.value)}
-              placeholder={currentMeta.placeholder}
+              placeholder={t('profile.ruleCatPh.'+category)}
               rows={4}
               style={{ width:'100%', padding:'12px 14px', borderRadius:10, marginBottom:14, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:13, outline:'none', resize:'none' as const, fontFamily:'var(--font-body)', lineHeight:1.6, boxSizing:'border-box' as const }}
             />
@@ -1419,26 +1430,26 @@ function RuleCreator({ addRule, onClose }: {
               onClick={() => void callRuleHelper(userInput)}
               disabled={!ready || loading}
               style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:10, background: ready ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--bg-card2)', color: ready ? '#fff' : 'var(--text-dim)', fontWeight:700, fontSize:13, fontFamily:'var(--font-display)', cursor: ready && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.7 : 1 }}
-            >{loading ? 'L\'IA réfléchit…' : 'Envoyer à l\'IA →'}</button>
+            >{loading ? t('profile.aiThinking') : t('profile.sendToAi')}</button>
 
             {/* Direct save */}
             <p
               onClick={() => ready && void handleSaveDirect()}
               style={{ textAlign:'center' as const, fontSize:11, color:'var(--text-dim)', cursor: ready ? 'pointer' : 'default', margin:0, opacity: ready ? 1 : 0.4, userSelect:'none' as const }}
-            >Ou enregistrer directement</p>
+            >{t('profile.saveDirectly')}</p>
           </>
         ) : (
           <>
             {/* Proposed rule */}
             <div style={{ padding:'16px 18px', borderRadius:12, background:'rgba(91,111,255,0.06)', border:'1px solid rgba(91,111,255,0.18)', marginBottom:16 }}>
-              <p style={{ fontSize:10, fontWeight:700, color:'#5b6fff', textTransform:'uppercase' as const, letterSpacing:'0.06em', margin:'0 0 8px' }}>Règle proposée</p>
+              <p style={{ fontSize:10, fontWeight:700, color:'#5b6fff', textTransform:'uppercase' as const, letterSpacing:'0.06em', margin:'0 0 8px' }}>{t('profile.proposedRule')}</p>
               <p style={{ fontSize:13, fontWeight:500, color:'var(--text)', lineHeight:1.65, fontStyle:'italic' as const, margin:0 }}>&quot;{aiResult?.rule}&quot;</p>
             </div>
 
             {/* Suggestions */}
             {(aiResult?.suggestions?.length ?? 0) > 0 && (
               <>
-                <p style={{ fontSize:11, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.05em', margin:'0 0 8px' }}>Suggestions d'amélioration :</p>
+                <p style={{ fontSize:11, fontWeight:600, color:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.05em', margin:'0 0 8px' }}>{t('profile.improvementSuggestions')}</p>
                 <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:16 }}>
                   {aiResult!.suggestions.map((s, i) => (
                     <button
@@ -1459,7 +1470,7 @@ function RuleCreator({ addRule, onClose }: {
               onClick={() => void handleValidate()}
               disabled={saving}
               style={{ width:'100%', padding:12, borderRadius:10, border:'none', marginBottom:8, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', color:'#fff', fontWeight:700, fontSize:13, fontFamily:'var(--font-display)', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}
-            >{saving ? 'Enregistrement…' : '✓ Valider cette règle'}</button>
+            >{saving ? t('profile.saving') : t('profile.validateRule')}</button>
 
             {/* Modify */}
             {showModify ? (
@@ -1468,7 +1479,7 @@ function RuleCreator({ addRule, onClose }: {
                   autoFocus
                   value={modifyText}
                   onChange={e => setModifyText(e.target.value)}
-                  placeholder="Décris ta modification..."
+                  placeholder={t('profile.describeModif')}
                   rows={2}
                   style={{ width:'100%', padding:'10px 12px', borderRadius:10, marginBottom:8, border:'1px solid var(--border)', background:'var(--input-bg)', color:'var(--text)', fontSize:12, outline:'none', resize:'none' as const, fontFamily:'var(--font-body)', lineHeight:1.5, boxSizing:'border-box' as const }}
                 />
@@ -1476,13 +1487,13 @@ function RuleCreator({ addRule, onClose }: {
                   onClick={() => void callRuleHelper(userInput, aiResult?.rule, modifyText)}
                   disabled={modifyText.trim().length < 3 || loading}
                   style={{ width:'100%', padding:10, borderRadius:10, border:'1px solid rgba(91,111,255,0.3)', background:'rgba(91,111,255,0.08)', color:'#5b6fff', fontSize:12, fontWeight:600, fontFamily:'var(--font-body)', cursor: modifyText.trim().length >= 3 && !loading ? 'pointer' : 'not-allowed', opacity: loading ? 0.6 : 1 }}
-                >{loading ? 'Reformulation…' : 'Renvoyer →'}</button>
+                >{loading ? t('profile.reformulating') : t('profile.resend')}</button>
               </div>
             ) : (
               <button
                 onClick={() => setShowModify(true)}
                 style={{ width:'100%', padding:11, borderRadius:10, border:'1px solid var(--border)', background:'transparent', color:'var(--text-mid)', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font-body)' }}
-              >Modifier</button>
+              >{t('profile.modify')}</button>
             )}
           </>
         )}
@@ -1493,6 +1504,7 @@ function RuleCreator({ addRule, onClose }: {
 
 // ── Composant RulesCard ───────────────────────────────────────
 function RulesCard() {
+  const { t } = useI18n()
   const { rules, loading, addRule, toggleRule, deleteRule } = useAiRules()
   const [activeTab,  setActiveTab]  = useState<string>('all')
   const [showModal,  setShowModal]  = useState(false)
@@ -1508,8 +1520,8 @@ function RulesCard() {
   }
 
   const TABS = [
-    { id: 'all', label: 'Toutes', color: 'var(--text-mid)' },
-    ...RULE_CATEGORIES.map(c => ({ id: c.id, label: c.label, color: c.color })),
+    { id: 'all', label: t('profile.allRules'), color: 'var(--text-mid)' },
+    ...RULE_CATEGORIES.map(c => ({ id: c.id, label: t('profile.ruleCat.'+c.id), color: c.color })),
   ]
 
   return (
@@ -1523,16 +1535,16 @@ function RulesCard() {
       <Card>
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-          <CardTitle icon={<svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="1" width="10" height="14" rx="2"/><path d="M6 1v1a2 2 0 004 0V1M6 7h4M6 10h3"/></svg>}>Mes règles</CardTitle>
+          <CardTitle icon={<svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="1" width="10" height="14" rx="2"/><path d="M6 1v1a2 2 0 004 0V1M6 7h4M6 10h3"/></svg>}>{t('profile.myRules')}</CardTitle>
           <button
             onClick={() => setShowModal(true)}
             style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}
           >
-            <span style={{ fontSize:16, lineHeight:1 }}>+</span> Ajouter
+            <span style={{ fontSize:16, lineHeight:1 }}>+</span> {t('profile.add')}
           </button>
         </div>
         <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 14px', lineHeight:1.5 }}>
-          L'IA prend en compte ces règles dans chacune de ses réponses.
+          {t('profile.rulesInfo')}
         </p>
 
         {/* Tabs catégories */}
@@ -1554,12 +1566,12 @@ function RulesCard() {
           <div style={{ textAlign:'center' as const, padding:'28px 16px', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
             <svg width={40} height={40} viewBox="0 0 40 40" fill="none" stroke="var(--text-dim)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ opacity:0.4 }}><rect x="8" y="4" width="24" height="32" rx="4"/><path d="M15 4v2a5 5 0 0010 0V4M15 18h10M15 24h8"/></svg>
             <p style={{ fontSize:12, color:'var(--text-dim)', margin:0, lineHeight:1.55 }}>
-              {activeTab === 'all' ? 'Aucune règle configurée.' : 'Aucune règle dans cette catégorie.'}
+              {activeTab === 'all' ? t('profile.noRules') : t('profile.noRulesCategory')}
             </p>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, opacity:0.7 }}>Ajoute des règles pour personnaliser ton Coach IA.</p>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, opacity:0.7 }}>{t('profile.rulesEmptyHint')}</p>
             {activeTab === 'all' && (
               <button onClick={() => setShowModal(true)} style={{ marginTop:4, padding:'7px 18px', borderRadius:20, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:12, fontWeight:500, cursor:'pointer' }}>
-                Ajouter une règle
+                {t('profile.addRule')}
               </button>
             )}
           </div>
@@ -1579,7 +1591,7 @@ function RulesCard() {
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:12, color:'var(--text)', margin:0, lineHeight:1.4, wordBreak:'break-word' as const }}>{rule.rule_text}</p>
                     <span style={{ display:'inline-flex', alignItems:'center', gap:3, marginTop:3, fontSize:9, fontWeight:600, padding:'2px 8px', borderRadius:10, background: meta.color+'18', color: meta.color }}>
-                      {categoryIcon(rule.category, meta.color, 9)} {meta.label}
+                      {categoryIcon(rule.category, meta.color, 9)} {RULE_CATEGORIES.some(c => c.id === rule.category) ? t('profile.ruleCat.'+rule.category) : meta.label}
                     </span>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
@@ -1587,11 +1599,11 @@ function RulesCard() {
                     {(hoveredId === rule.id || confirmDel === rule.id) && (
                       confirmDel === rule.id ? (
                         <div style={{ display:'flex', gap:4 }}>
-                          <button onClick={() => void handleDelete(rule.id)} style={{ padding:'3px 8px', borderRadius:6, background:'#ef4444', border:'none', color:'#fff', fontSize:10, fontWeight:700, cursor:'pointer' }}>Oui</button>
-                          <button onClick={() => setConfirmDel(null)} style={{ padding:'3px 8px', borderRadius:6, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:10, cursor:'pointer' }}>Non</button>
+                          <button onClick={() => void handleDelete(rule.id)} style={{ padding:'3px 8px', borderRadius:6, background:'#ef4444', border:'none', color:'#fff', fontSize:10, fontWeight:700, cursor:'pointer' }}>{t('profile.yes')}</button>
+                          <button onClick={() => setConfirmDel(null)} style={{ padding:'3px 8px', borderRadius:6, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:10, cursor:'pointer' }}>{t('profile.no')}</button>
                         </div>
                       ) : (
-                        <button onClick={() => setConfirmDel(rule.id)} title="Supprimer" style={{ width:22, height:22, borderRadius:6, background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.18)', color:'#ef4444', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>×</button>
+                        <button onClick={() => setConfirmDel(rule.id)} title={t('profile.delete')} style={{ width:22, height:22, borderRadius:6, background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.18)', color:'#ef4444', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>×</button>
                       )
                     )}
                   </div>
@@ -1648,6 +1660,7 @@ function fmtAmount(amount: number, currency: string): string {
 }
 
 function AbonnementContent() {
+  const { t } = useI18n()
   const [details,  setDetails]  = useState<SubDetails | null>(null)
   const [loading,  setLoading]  = useState(true)
   const [cancelling, setCancelling] = useState(false)
@@ -1689,15 +1702,16 @@ function AbonnementContent() {
 
   const tier = details?.tier ?? 'trial'
   const meta = TIER_META[tier] ?? TIER_META.trial
+  const tierLabel = TIER_META[tier] ? t('profile.tier.'+tier) : meta.label
   const hasStripe = !!(details?.stripe?.nextBillingDate)
   const isCancelling = details?.cancel_at_period_end || details?.stripe?.cancelAtPeriodEnd
 
   return (
     <>
-      <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 4px' }}>Plan · crédits et facturation</p>
+      <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 4px' }}>{t('profile.planCreditsBilling')}</p>
 
       {loading ? (
-        <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>Chargement…</div>
+        <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>{t('profile.loading')}</div>
       ) : (
         <div style={{ padding: '8px 0 24px', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -1706,28 +1720,28 @@ function AbonnementContent() {
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
               <div>
                 <span style={{ padding: '3px 10px', borderRadius: 20, background: `${meta.color}22`, border: `1px solid ${meta.color}55`, color: meta.color, fontSize: 11, fontWeight: 700 }}>
-                  {meta.label}
+                  {tierLabel}
                 </span>
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, margin: '8px 0 2px', color: 'var(--text)' }}>
-                  THW Coach {meta.label}
+                  THW Coach {tierLabel}
                 </p>
                 {isCancelling ? (
                   <p style={{ fontSize: 11, color: '#ef4444', margin: 0, fontWeight: 600 }}>
-                    Résiliation en cours · expire le {details?.current_period_end ? fmtDate(details.current_period_end) : '—'}
+                    {t('profile.cancellingExpires', { date: details?.current_period_end ? fmtDate(details.current_period_end) : '—' })}
                   </p>
                 ) : hasStripe && details?.stripe?.nextBillingDate ? (
                   <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>
-                    Prochain paiement · {fmtDate(details.stripe.nextBillingDate)}
+                    {t('profile.nextPayment')} · {fmtDate(details.stripe.nextBillingDate)}
                     {details.stripe.amount != null && details.stripe.currency
                       ? ` · ${fmtAmount(details.stripe.amount, details.stripe.currency)}`
                       : ''}
                   </p>
                 ) : tier === 'trial' && details?.current_period_end ? (
                   <p style={{ fontSize: 11, color: meta.color, margin: 0, fontWeight: 600 }}>
-                    Expire le {fmtDate(details.current_period_end)}
+                    {t('profile.expiresOn')} {fmtDate(details.current_period_end)}
                   </p>
                 ) : (
-                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Accès complet</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{t('profile.fullAccess')}</p>
                 )}
               </div>
               {!isCancelling && (
@@ -1738,14 +1752,14 @@ function AbonnementContent() {
                       disabled={portalLoading}
                       style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: portalLoading ? 0.6 : 1 }}
                     >
-                      {portalLoading ? '…' : 'Gérer'}
+                      {portalLoading ? '…' : t('profile.manage')}
                     </button>
                   ) : (
                     <button
                       onClick={() => { window.location.href = '/profile?tab=ia' }}
                       style={{ padding: '8px 14px', borderRadius: 10, background: 'linear-gradient(135deg,#06B6D4,#5b6fff)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                     >
-                      Upgrader
+                      {t('profile.upgrade')}
                     </button>
                   )}
                 </div>
@@ -1766,8 +1780,8 @@ function AbonnementContent() {
                       <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#ffb340,#f97316)', borderRadius: 999 }}/>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Essai en cours</span>
-                      <span style={{ fontSize: 10, color: '#ffb340', fontWeight: 600 }}>{Math.ceil(leftMs / (24 * 3600 * 1000))} jours restants</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('profile.trialInProgress')}</span>
+                      <span style={{ fontSize: 10, color: '#ffb340', fontWeight: 600 }}>{t('profile.daysRemaining', { n: Math.ceil(leftMs / (24 * 3600 * 1000)) })}</span>
                     </div>
                   </>
                 )
@@ -1779,12 +1793,12 @@ function AbonnementContent() {
           {(details?.monthly || details?.rolling_6h) && (
             <div>
               <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 5, margin: '0 0 12px' }}>
-                Utilisation IA
+                {t('profile.aiUsage')}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {([
-                  details?.monthly    && { label: 'Hebdomadaire',          gauge: details.monthly,   color: '#06B6D4' },
-                  details?.rolling_6h && { label: 'Sur 6 heures glissantes', gauge: details.rolling_6h, color: '#5b6fff' },
+                  details?.monthly    && { label: t('profile.weekly'),          gauge: details.monthly,   color: '#06B6D4' },
+                  details?.rolling_6h && { label: t('profile.rolling6h'), gauge: details.rolling_6h, color: '#5b6fff' },
                 ].filter(Boolean) as { label: string; gauge: { used: number; limit: number; resets_at: string }; color: string }[]).map(g => {
                   const pct       = Math.min(100, Math.round((g.gauge.used / g.gauge.limit) * 100))
                   const remaining = g.gauge.limit - g.gauge.used
@@ -1801,8 +1815,8 @@ function AbonnementContent() {
                         <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg,${g.color},${g.color}bb)`, borderRadius: 999, transition: 'width 0.4s' }}/>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{pct}% utilisé</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-mid)', fontWeight: 600 }}>{fmtTokens(remaining)} restant{remaining > 1 ? 's' : ''}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('profile.pctUsed', { pct })}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-mid)', fontWeight: 600 }}>{t('profile.remaining', { n: fmtTokens(remaining), s: remaining > 1 ? 's' : '' })}</span>
                       </div>
                     </div>
                   )
@@ -1815,7 +1829,7 @@ function AbonnementContent() {
           {details?.invoices && details.invoices.length > 0 && (
             <div>
               <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', margin: '0 0 12px', borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
-                Derniers paiements
+                {t('profile.lastPayments')}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {details.invoices.map((inv, i) => (
@@ -1823,14 +1837,14 @@ function AbonnementContent() {
                     <div>
                       <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px' }}>{fmtDate(inv.date)}</p>
                       <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: inv.status === 'paid' ? 'rgba(34,197,94,0.12)' : 'rgba(251,191,36,0.12)', color: inv.status === 'paid' ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
-                        {inv.status === 'paid' ? 'Payé' : 'En attente'}
+                        {inv.status === 'paid' ? t('profile.paid') : t('profile.pending')}
                       </span>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <p style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 2px' }}>{fmtAmount(inv.amount, inv.currency)}</p>
                       {inv.url && (
                         <a href={inv.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#5b6fff', textDecoration: 'none' }}>
-                          Voir la facture →
+                          {t('profile.viewInvoice')}
                         </a>
                       )}
                     </div>
@@ -1844,7 +1858,7 @@ function AbonnementContent() {
           {details?.paymentMethod && (
             <div>
               <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', margin: '0 0 12px', borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
-                Moyen de paiement
+                {t('profile.paymentMethod')}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1856,7 +1870,7 @@ function AbonnementContent() {
                       •••• {details.paymentMethod.last4}
                     </p>
                     <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: 0 }}>
-                      Expire {details.paymentMethod.exp_month.toString().padStart(2, '0')}/{details.paymentMethod.exp_year}
+                      {t('profile.expiresShort')} {details.paymentMethod.exp_month.toString().padStart(2, '0')}/{details.paymentMethod.exp_year}
                     </p>
                   </div>
                 </div>
@@ -1865,7 +1879,7 @@ function AbonnementContent() {
                   disabled={portalLoading}
                   style={{ fontSize: 12, fontWeight: 600, color: '#5b6fff', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
                 >
-                  Modifier
+                  {t('profile.modify')}
                 </button>
               </div>
             </div>
@@ -1882,21 +1896,21 @@ function AbonnementContent() {
                 <polyline points="15 3 21 3 21 9"/>
                 <line x1="10" y1="14" x2="21" y2="3"/>
               </svg>
-              En savoir plus sur les abonnements
+              {t('profile.learnMoreSubscriptions')}
             </a>
             {hasStripe && !isCancelling && (
               <button
                 onClick={() => setCancelConfirm(true)}
                 style={{ width: '100%', padding: '12px', borderRadius: 12, background: 'transparent', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
-                Résilier l&apos;abonnement
+                {t('profile.cancelSubscription')}
               </button>
             )}
             {isCancelling && (
               <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', textAlign: 'center' }}>
-                <p style={{ fontSize: 12, color: '#ef4444', margin: 0, fontWeight: 600 }}>Résiliation programmée</p>
+                <p style={{ fontSize: 12, color: '#ef4444', margin: 0, fontWeight: 600 }}>{t('profile.cancellationScheduled')}</p>
                 <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>
-                  L&apos;accès reste actif jusqu&apos;au {details?.current_period_end ? fmtDate(details.current_period_end) : '—'}
+                  {t('profile.accessActiveUntil', { date: details?.current_period_end ? fmtDate(details.current_period_end) : '—' })}
                 </p>
               </div>
             )}
@@ -1917,23 +1931,23 @@ function AbonnementContent() {
             <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
             </div>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, textAlign: 'center', margin: '0 0 8px', color: 'var(--text)' }}>Résilier l&apos;abonnement ?</h3>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, textAlign: 'center', margin: '0 0 8px', color: 'var(--text)' }}>{t('profile.cancelSubscriptionConfirm')}</h3>
             <p style={{ fontSize: 12.5, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 20px' }}>
-              Ton accès restera actif jusqu&apos;à la fin de la période en cours. Aucun remboursement ne sera effectué.
+              {t('profile.cancelSubscriptionInfo')}
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={() => setCancelConfirm(false)}
                 style={{ flex: 1, padding: '11px', borderRadius: 11, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
-                Annuler
+                {t('profile.cancel')}
               </button>
               <button
                 onClick={handleCancel}
                 disabled={cancelling}
                 style={{ flex: 1, padding: '11px', borderRadius: 11, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: cancelling ? 0.6 : 1 }}
               >
-                {cancelling ? '…' : 'Confirmer'}
+                {cancelling ? '…' : t('profile.confirm')}
               </button>
             </div>
           </div>
@@ -1986,9 +2000,10 @@ const MODELES: ModeleCard[] = [
 ]
 
 function ModelesContent() {
+  const { t } = useI18n()
   return (
     <>
-      <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 16px' }}>Trois niveaux selon ta demande</p>
+      <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 16px' }}>{t('profile.threeLevels')}</p>
 
       {/* Body */}
       <div
@@ -2019,23 +2034,23 @@ function ModelesContent() {
                 borderRadius:  10,
                 letterSpacing: '0.5px',
               }}>
-                RECOMMANDÉ
+                {t('profile.recommended')}
               </span>
             )}
 
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 18, fontWeight: 500, color: m.color, margin: '0 0 2px' }}>{m.name}</p>
-                <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: 0 }}>{m.subtitle}</p>
+                <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: 0 }}>{t('profile.modelSub.'+m.id)}</p>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <p style={{ fontSize: 22, fontWeight: 500, color: m.color, margin: 0, fontVariantNumeric: 'tabular-nums' }}>× {m.multiplier}</p>
-                <p style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.5px', margin: '2px 0 0' }}>MULTIPLICATEUR</p>
+                <p style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.5px', margin: '2px 0 0' }}>{t('profile.multiplier')}</p>
               </div>
             </div>
 
             <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-mid)', margin: 0 }}>
-              {m.description}
+              {t('profile.modelDesc.'+m.id)}
             </p>
           </div>
         ))}
@@ -2050,7 +2065,7 @@ function ModelesContent() {
           lineHeight:    1.55,
           border:        '1px solid var(--border)',
         }}>
-          Tous les modèles sont accessibles. Le multiplicateur indique à quelle vitesse ton quota se vide.
+          {t('profile.modelsNote')}
         </div>
 
         {/* Bouton En savoir plus */}
@@ -2078,7 +2093,7 @@ function ModelesContent() {
             <polyline points="15 3 21 3 21 9"/>
             <line x1="10" y1="14" x2="21" y2="3"/>
           </svg>
-          En savoir plus sur les modèles
+          {t('profile.learnMoreModels')}
         </a>
       </div>
 
@@ -2090,6 +2105,7 @@ function ModelesContent() {
 }
 
 function IASettingsBloc() {
+  const { t } = useI18n()
   // Overlays
   const [modelsPageOpen, setModelsPageOpen] = useState(false)
   const [subPageOpen,    setSubPageOpen]    = useState(false)
@@ -2176,7 +2192,7 @@ function IASettingsBloc() {
       <BottomSheet
         isOpen={modelsPageOpen}
         onClose={() => setModelsPageOpen(false)}
-        title="Les modèles IA"
+        title={t('profile.aiModels')}
       >
         <ModelesContent />
       </BottomSheet>
@@ -2185,7 +2201,7 @@ function IASettingsBloc() {
       <BottomSheet
         isOpen={subPageOpen}
         onClose={() => setSubPageOpen(false)}
-        title="Abonnement"
+        title={t('profile.subscription')}
       >
         <AbonnementContent />
       </BottomSheet>
@@ -2195,7 +2211,7 @@ function IASettingsBloc() {
         <div onClick={()=>setUpgradeOpen(false)} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(0,0,0,0.65)', backdropFilter:'blur(10px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16, overflowY:'auto' }}>
           <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:20, border:'1px solid var(--border-mid)', padding:24, maxWidth:560, width:'100%', maxHeight:'92vh', overflowY:'auto' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-              <h3 style={{ fontFamily:'var(--font-display)', fontSize:17, fontWeight:700, margin:0 }}>Choisir un abonnement</h3>
+              <h3 style={{ fontFamily:'var(--font-display)', fontSize:17, fontWeight:700, margin:0 }}>{t('profile.chooseSubscription')}</h3>
               <button onClick={()=>setUpgradeOpen(false)} style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'4px 9px', cursor:'pointer', color:'var(--text-dim)', fontSize:16 }}>×</button>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -2209,10 +2225,10 @@ function IASettingsBloc() {
                     </div>
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:5, marginBottom:12 }}>
-                    {p.features.map((f,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:7 }}><span style={{ color:p.color, fontSize:11 }}>✓</span><span style={{ fontSize:12, color:'var(--text-mid)' }}>{f}</span></div>)}
+                    {p.features.map((f,i)=><div key={i} style={{ display:'flex', alignItems:'center', gap:7 }}><span style={{ color:p.color, fontSize:11 }}>✓</span><span style={{ fontSize:12, color:'var(--text-mid)' }}>{t('profile.plan.'+p.id+'.feat'+i)}</span></div>)}
                   </div>
-                  <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'var(--font-display)', fontWeight:700, fontSize:13, cursor:'pointer' }}>Choisir {p.label}</button>
-                  <p style={{ fontSize:10, color:'var(--text-dim)', textAlign:'center' as const, margin:'6px 0 0' }}>Paiement sécurisé via Stripe</p>
+                  <button style={{ width:'100%', padding:'10px', borderRadius:10, background:`linear-gradient(135deg,${p.color},${p.color}bb)`, border:'none', color:'#fff', fontFamily:'var(--font-display)', fontWeight:700, fontSize:13, cursor:'pointer' }}>{t('profile.choose', { plan: p.label })}</button>
+                  <p style={{ fontSize:10, color:'var(--text-dim)', textAlign:'center' as const, margin:'6px 0 0' }}>{t('profile.securePaymentStripe')}</p>
                 </div>
               ))}
             </div>
@@ -2221,18 +2237,18 @@ function IASettingsBloc() {
       )}
 
       {/* ── Nav : Modèles + Abonnement ────────────────── */}
-      <Section label="Coaching IA">
+      <Section label={t('profile.coachingAi')}>
         <Group>
-          <NavRow first label="Modèles" sub="Hermès · Athéna · Zeus — crédits et usages"
+          <NavRow first label={t('profile.models')} sub={t('profile.modelsSub')}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polygon points="13,2 7,13 12,13 10,22 17,11 12,11" fill="currentColor" opacity="0.75"/></svg>}
             onClick={()=>setModelsPageOpen(true)}
           />
-          <NavRow label="Abonnement" sub="Plan actuel · crédits et facturation"
+          <NavRow label={t('profile.subscription')} sub={t('profile.subscriptionSub')}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4M14 15h2"/></svg>}
             onClick={()=>setSubPageOpen(true)}
           />
-          <NavRow label="Mes compétences"
-            sub={`${activeComp ?? 0} active${(activeComp ?? 0) > 1 ? 's' : ''} sur 70`}
+          <NavRow label={t('profile.myCompetences')}
+            sub={t('profile.competencesActive', { n: activeComp ?? 0, s: (activeComp ?? 0) > 1 ? 's' : '' })}
             icon={<Target size={18} />}
             onClick={()=>router.push('/competences')}
           />
@@ -2240,12 +2256,12 @@ function IASettingsBloc() {
       </Section>
 
       {/* ── Comportement ──────────────────────────────── */}
-      <Section label="Comportement">
+      <Section label={t('profile.behavior')}>
         <Group>
           {[
-            { label:'Mode économie de crédits', sub:"L'IA sélectionne automatiquement le modèle le plus adapté pour économiser des crédits", val:creditSaving, onChange:(v:boolean)=>{ setCreditSaving(v); save('thw_ai_credit_saving',String(v)) } },
-            { label:'Autoriser les suggestions', sub:"THW Coach peut proposer des actions ou analyses proactives en dehors du chat", val:allowSuggestions, onChange:(v:boolean)=>{ setAllowSuggestions(v); save('thw_ai_allow_suggestions',String(v)) } },
-            { label:'Recherche web par défaut', sub:"Active la recherche web au démarrage de chaque conversation", val:webSearchDefault, onChange:(v:boolean)=>{ void handleWebSearchToggle(v) } },
+            { label:t('profile.creditSaving'), sub:t('profile.creditSavingSub'), val:creditSaving, onChange:(v:boolean)=>{ setCreditSaving(v); save('thw_ai_credit_saving',String(v)) } },
+            { label:t('profile.allowSuggestions'), sub:t('profile.allowSuggestionsSub'), val:allowSuggestions, onChange:(v:boolean)=>{ setAllowSuggestions(v); save('thw_ai_allow_suggestions',String(v)) } },
+            { label:t('profile.webSearchDefault'), sub:t('profile.webSearchDefaultSub'), val:webSearchDefault, onChange:(v:boolean)=>{ void handleWebSearchToggle(v) } },
           ].map((item, idx)=>(
             <Line key={item.label} first={idx===0}>
               <div style={{ flex:1, minWidth:0, paddingRight:4 }}>
@@ -2259,7 +2275,7 @@ function IASettingsBloc() {
       </Section>
 
       {/* ── Modèle par défaut ─────────────────────────── */}
-      <Section label="Modèle par défaut">
+      <Section label={t('profile.defaultModel')}>
         <div style={{ display:'flex', gap:8 }}>
           {([['hermes','Hermès','#d4a017'],['athena','Athéna','#5b6fff'],['zeus','Zeus','#8b5cf6']] as const).map(([id,label,color])=>{
             const active = defaultModel===id
@@ -2267,7 +2283,7 @@ function IASettingsBloc() {
               <button key={id} onClick={()=>{ setDefaultModel(id); save('thw_ai_default_model',id) }}
                 style={{ flex:1, padding:'10px 6px', borderRadius:11, border:`1.5px solid ${active?`${color}66`:'var(--border)'}`, background:active?`${color}18`:'transparent', color:active?color:'var(--text-dim)', fontSize:12, fontWeight:active?700:500, cursor:'pointer', transition:'all 0.15s', fontFamily:'inherit', textAlign:'center' as const }}>
                 <div style={{ fontSize:9, fontWeight:600, color:active?`${color}99`:'var(--text-dim)', textTransform:'uppercase' as const, letterSpacing:'0.06em', marginBottom:2 }}>
-                  {id==='hermes'?'Rapide':id==='athena'?'Équilibré':'Avancé'}
+                  {id==='hermes'?t('profile.speedFast'):id==='athena'?t('profile.speedBalanced'):t('profile.speedAdvanced')}
                 </div>
                 {label}
               </button>
@@ -2277,9 +2293,9 @@ function IASettingsBloc() {
       </Section>
 
       {/* ── Police du chat ────────────────────────────── */}
-      <Section label="Police du chat">
+      <Section label={t('profile.chatFont')}>
         <p style={{ fontSize:12.5, color:'var(--text-mid)', margin:'-2px 2px 12px', lineHeight:1.5 }}>
-          Change la police de lecture des réponses du Coach IA.
+          {t('profile.chatFontSub')}
         </p>
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
           {CHAT_FONTS.map(f => {
@@ -2294,8 +2310,8 @@ function IASettingsBloc() {
                   cursor:'pointer', transition:'all 0.15s', width:'100%', textAlign:'left' as const,
                 }}>
                 <div>
-                  <p style={{ fontFamily:f.family, fontSize:14.5, fontWeight:500, color: active ? 'var(--primary)' : 'var(--text)', margin:'0 0 2px' }}>{f.label}</p>
-                  <p style={{ fontFamily:f.family, fontSize:12, color:'var(--text-dim)', margin:0 }}>{f.preview}</p>
+                  <p style={{ fontFamily:f.family, fontSize:14.5, fontWeight:500, color: active ? 'var(--primary)' : 'var(--text)', margin:'0 0 2px' }}>{f.id === 'system' ? t('profile.fontSystem') : f.label}</p>
+                  <p style={{ fontFamily:f.family, fontSize:12, color:'var(--text-dim)', margin:0 }}>{t('profile.fontPreview')}</p>
                 </div>
                 {active && (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.6" strokeLinecap="round" style={{ flexShrink:0 }}><path d="M20 6L9 17l-5-5"/></svg>
@@ -2344,6 +2360,7 @@ function ListRow({ Icon, label, value, danger, last, onClick }: {
 }
 
 export function ProfileContent() {
+  const { t } = useI18n()
   const router = useRouter()
   const { data: profile } = useProfile()
   const [active, setActive] = useState<string | null>(null)
@@ -2361,40 +2378,40 @@ export function ProfileContent() {
 
   // Registre des bulles : libellé affiché dans le drill-down + contenu rapatrié.
   const CONTENT: Record<string, { label: string; node: React.ReactNode }> = {
-    profil:          { label: 'Profil',          node: <ProfilIdentityBloc /> },
-    abonnement:      { label: 'Abonnement',      node: <AbonnementContent /> },
-    utilisation:     { label: 'Utilisation',     node: <UtilisationBloc /> },
-    notifications:   { label: 'Notifications',   node: <NotificationsBloc /> },
-    confidentialite: { label: 'Confidentialité', node: <ConfidentialiteBloc /> },
-    autorisations:   { label: 'Autorisations',   node: <AutorisationsBloc /> },
-    sports:          { label: 'Sports',          node: <SportsBloc /> },
-    materiel:        { label: 'Matériel',        node: <GearBloc /> },
-    connexions:      { label: 'Connexions',      node: <ConnexionsBloc /> },
-    ia:              { label: 'Réglages IA',     node: <IASettingsBloc /> },
-    langue:          { label: 'Langue',          node: <LangueBloc /> },
-    localisation:    { label: 'Localisation',    node: <LocalisationBloc /> },
-    apparence:       { label: 'Apparence',       node: <ApparenceBloc /> },
+    profil:          { label: t('profile.navProfil'),          node: <ProfilIdentityBloc /> },
+    abonnement:      { label: t('profile.subscription'),      node: <AbonnementContent /> },
+    utilisation:     { label: t('profile.navUtilisation'),     node: <UtilisationBloc /> },
+    notifications:   { label: t('profile.navNotifications'),   node: <NotificationsBloc /> },
+    confidentialite: { label: t('profile.navConfidentialite'), node: <ConfidentialiteBloc /> },
+    autorisations:   { label: t('profile.navAutorisations'),   node: <AutorisationsBloc /> },
+    sports:          { label: t('profile.navSports'),          node: <SportsBloc /> },
+    materiel:        { label: t('profile.navMateriel'),        node: <GearBloc /> },
+    connexions:      { label: t('profile.navConnexions'),      node: <ConnexionsBloc /> },
+    ia:              { label: t('profile.navIa'),     node: <IASettingsBloc /> },
+    langue:          { label: t('profile.navLangue'),          node: <LangueBloc /> },
+    localisation:    { label: t('profile.navLocalisation'),    node: <LocalisationBloc /> },
+    apparence:       { label: t('profile.navApparence'),       node: <ApparenceBloc /> },
   }
 
   const GROUPS: { title: string; rows: { id: string; label: string; Icon: typeof User; value?: string }[] }[] = [
-    { title: 'Compte', rows: [
-      { id: 'profil',          label: 'Profil',          Icon: User },
-      { id: 'abonnement',      label: 'Abonnement',      Icon: CreditCard, value: 'Forfait Max' },
-      { id: 'utilisation',     label: 'Utilisation',     Icon: BarChart3 },
-      { id: 'notifications',   label: 'Notifications',   Icon: Bell },
-      { id: 'confidentialite', label: 'Confidentialité', Icon: Shield },
-      { id: 'autorisations',   label: 'Autorisations',   Icon: Lock },
+    { title: t('profile.groupAccount'), rows: [
+      { id: 'profil',          label: t('profile.navProfil'),          Icon: User },
+      { id: 'abonnement',      label: t('profile.subscription'),      Icon: CreditCard, value: t('profile.planMax') },
+      { id: 'utilisation',     label: t('profile.navUtilisation'),     Icon: BarChart3 },
+      { id: 'notifications',   label: t('profile.navNotifications'),   Icon: Bell },
+      { id: 'confidentialite', label: t('profile.navConfidentialite'), Icon: Shield },
+      { id: 'autorisations',   label: t('profile.navAutorisations'),   Icon: Lock },
     ]},
-    { title: 'Sport', rows: [
-      { id: 'sports',    label: 'Sports',    Icon: Dumbbell },
-      { id: 'materiel',  label: 'Matériel',  Icon: Package },
-      { id: 'connexions',label: 'Connexions',Icon: Plug },
+    { title: t('profile.groupSport'), rows: [
+      { id: 'sports',    label: t('profile.navSports'),    Icon: Dumbbell },
+      { id: 'materiel',  label: t('profile.navMateriel'),  Icon: Package },
+      { id: 'connexions',label: t('profile.navConnexions'),Icon: Plug },
     ]},
-    { title: 'Application', rows: [
-      { id: 'ia',          label: 'Réglages IA', Icon: Sparkles },
-      { id: 'langue',      label: 'Langue',      Icon: Globe },
-      { id: 'localisation',label: 'Localisation',Icon: MapPin },
-      { id: 'apparence',   label: 'Apparence',   Icon: Palette },
+    { title: t('profile.groupApp'), rows: [
+      { id: 'ia',          label: t('profile.navIa'), Icon: Sparkles },
+      { id: 'langue',      label: t('profile.navLangue'),      Icon: Globe },
+      { id: 'localisation',label: t('profile.navLocalisation'),Icon: MapPin },
+      { id: 'apparence',   label: t('profile.navApparence'),   Icon: Palette },
     ]},
   ]
 
@@ -2411,12 +2428,12 @@ export function ProfileContent() {
           // ── Drill-down : titre centré + boutons ronds flottants (façon Claude) ──
           <div>
             <div style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 40, margin: '0 -16px 16px', padding: '2px 16px 12px' }}>
-              <button onClick={back} aria-label="Retour" style={{ position: 'absolute', left: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
+              <button onClick={back} aria-label={t('profile.back')} style={{ position: 'absolute', left: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
                 <ChevronLeft size={20} />
               </button>
               <p style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{CONTENT[active]?.label}</p>
               {active === 'profil' && (
-                <button onClick={() => window.dispatchEvent(new Event('thw:profile-save'))} aria-label="Enregistrer" style={{ position: 'absolute', right: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
+                <button onClick={() => window.dispatchEvent(new Event('thw:profile-save'))} aria-label={t('profile.save')} style={{ position: 'absolute', right: 16, top: 0, width: 40, height: 40, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.14)' }}>
                   <Check size={20} />
                 </button>
               )}
@@ -2430,11 +2447,11 @@ export function ProfileContent() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '8px 4px 22px' }}>
               <div style={{ width: 58, height: 58, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: 'var(--primary-dim)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {profile.avatar_url
-                  ? <img src={profile.avatar_url} alt="profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ? <img src={profile.avatar_url} alt={t('profile.profileAlt')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <span style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, color: 'var(--primary)' }}>{initial}</span>}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.full_name || 'Mon Profil'}</p>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.full_name || t('profile.myProfile')}</p>
                 <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.email || '—'}</p>
               </div>
             </div>
@@ -2453,7 +2470,7 @@ export function ProfileContent() {
 
             {/* Se déconnecter */}
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
-              <ListRow Icon={LogOut} label={signingOut ? 'Déconnexion…' : 'Se déconnecter'} danger last onClick={() => { if (!signingOut) void handleSignOut() }} />
+              <ListRow Icon={LogOut} label={signingOut ? t('profile.signingOut') : t('profile.signOut')} danger last onClick={() => { if (!signingOut) void handleSignOut() }} />
             </div>
           </div>
         )}
@@ -2466,9 +2483,14 @@ export function ProfileContent() {
 // EXPORT
 // ══════════════════════════════════════════════════
 
+function ProfileFallback() {
+  const { t } = useI18n()
+  return <div style={{ padding:40, color:'var(--text-dim)', textAlign:'center' as const }}>{t('profile.loading')}</div>
+}
+
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<div style={{ padding:40, color:'var(--text-dim)', textAlign:'center' as const }}>Chargement…</div>}>
+    <Suspense fallback={<ProfileFallback/>}>
       <ProfileContent/>
     </Suspense>
   )

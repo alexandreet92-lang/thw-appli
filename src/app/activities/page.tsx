@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import { useTheme } from '@/hooks/useTheme'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 import { BottomSheet } from '@/components/ui/BottomSheet'
@@ -8936,6 +8937,7 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
   hasMore?: boolean
   loadingMore?: boolean
 }) {
+  const { t } = useI18n()
   const saWidth    = useWindowWidth()
   const isMobileSA = saWidth < 768
   const [view, setView]         = useState<'list'|'calendar'|'cards'>('list')
@@ -9059,7 +9061,7 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
             onClick={closeDetail}
             style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6,
               background: 'none', border: 'none', cursor: 'pointer', color: T.textSub, fontSize: 13, padding: 0 }}>
-            <span style={{ fontSize: 16 }}>←</span> Retour à la liste
+            <span style={{ fontSize: 16 }}>←</span> {t('activities.backToList')}
           </button>
         )}
         <ActivityDetail a={selected} onClose={closeDetail} closing={detailClosing} zones={zones} profile={profile} />
@@ -9089,27 +9091,27 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
             <input
               value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher…"
+              placeholder={t('activities.search')}
               style={{ flex: '1 1 160px', background: T.surface, border: `1px solid ${T.border}`,
                 borderRadius: 7, padding: '7px 12px', fontSize: 12, color: T.text, outline: 'none' }}
             />
             <select value={sport} onChange={e => setSport(e.target.value as 'all'|SportType)}
               style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 7,
                 padding: '7px 10px', fontSize: 12, color: T.text, outline: 'none' }}>
-              <option value="all">Tous les sports</option>
+              <option value="all">{t('activities.allSports')}</option>
               {allSports.map(s => <option key={s} value={s}>{SPORT_LABEL[s]}</option>)}
             </select>
             <select value={raceFilter} onChange={e => setRaceFilter(e.target.value as typeof raceFilter)}
               style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 7,
                 padding: '7px 10px', fontSize: 12, color: T.text, outline: 'none' }}>
-              <option value="all">Tout</option>
-              <option value="training">Entraînements</option>
-              <option value="race">Compétitions</option>
+              <option value="all">{t('activities.filterAll')}</option>
+              <option value="training">{t('activities.trainings')}</option>
+              <option value="race">{t('activities.competitions')}</option>
             </select>
           </div>
 
           <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 10 }}>
-            {filtered.length} activité{filtered.length !== 1 ? 's' : ''}
+            {filtered.length} {filtered.length !== 1 ? t('activities.activitiesPlural') : t('activities.activitySingular')}
           </div>
 
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden', boxShadow: T.shadow }}>
@@ -9120,7 +9122,7 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
                     <div
                       onClick={() => setConfirmDeleteId(act.id)}
                       style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 80, background: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 1 }}>
-                      <span style={{ color: 'white', fontSize: 12, fontWeight: 600 }}>Supprimer</span>
+                      <span style={{ color: 'white', fontSize: 12, fontWeight: 600 }}>{t('activities.delete')}</span>
                     </div>
                   )}
                   <div
@@ -9140,24 +9142,24 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
                   </div>
                   {confirmDeleteId === act.id && (
                     <div style={{ padding: '10px 16px', background: 'rgba(239,68,68,0.06)', borderTop: `1px solid rgba(239,68,68,0.15)`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 13, color: '#EF4444' }}>Supprimer cette activité ?</span>
+                      <span style={{ fontSize: 13, color: '#EF4444' }}>{t('activities.deleteActivityConfirm')}</span>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => { onDelete?.(act.id); setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 8, background: '#EF4444', border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Supprimer</button>
-                        <button onClick={() => { setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 8, background: T.border, border: 'none', color: T.text, fontSize: 13, cursor: 'pointer' }}>Annuler</button>
+                        <button onClick={() => { onDelete?.(act.id); setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 8, background: '#EF4444', border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('activities.delete')}</button>
+                        <button onClick={() => { setConfirmDeleteId(null); setSwipedId(null) }} style={{ padding: '5px 14px', borderRadius: 8, background: T.border, border: 'none', color: T.text, fontSize: 13, cursor: 'pointer' }}>{t('activities.cancel')}</button>
                       </div>
                     </div>
                   )}
                 </div>
               ))}
               {filtered.length === 0 && (
-                <div style={{ padding: 40, textAlign: 'center', color: T.textMuted, fontSize: 14 }}>Aucune activité</div>
+                <div style={{ padding: 40, textAlign: 'center', color: T.textMuted, fontSize: 14 }}>{t('activities.noActivity')}</div>
               )}
             </div>
           </div>
           {/* Infinite scroll sentinel */}
           <div ref={sentinelRef} style={{ height: 1 }} />
           {loadingMore && (
-            <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 12, color: T.textMuted }}>Chargement…</div>
+            <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 12, color: T.textMuted }}>{t('activities.loading')}</div>
           )}
         </div>
       )}
@@ -9181,16 +9183,17 @@ function ViewSegmented({ value, onChange }: {
   value:    'list' | 'calendar' | 'cards'
   onChange: (v: 'list' | 'calendar' | 'cards') => void
 }) {
+  const { t } = useI18n()
   const isMobile = useWindowWidth() < 640
   const options: { id: 'list'|'calendar'|'cards'; label: string; icon: React.ReactNode }[] = [
-    { id: 'list',     label: 'Liste',      icon: (
+    { id: 'list',     label: t('activities.viewList'),      icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
         <line x1="4" y1="6"  x2="20" y2="6" />
         <line x1="4" y1="12" x2="20" y2="12" />
         <line x1="4" y1="18" x2="20" y2="18" />
       </svg>
     ) },
-    { id: 'calendar', label: 'Calendrier', icon: (
+    { id: 'calendar', label: t('activities.viewCalendar'), icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="4" width="18" height="18" rx="2" />
         <line x1="16" y1="2" x2="16" y2="6" />

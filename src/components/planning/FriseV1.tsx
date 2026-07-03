@@ -11,6 +11,7 @@ import { loadBlocs, upsertBloc } from '@/app/planning/trainingBlocks'
 import type { TrainingBlocData } from '@/types/trainingBloc'
 import { buildFriseWindow, LABEL_WIDTH, COLS, TODAY_INDEX } from './friseModel'
 import { usePlannedRaces, type RaceData } from './usePlannedRaces'
+import { useI18n } from '@/lib/i18n'
 
 const RED = '#ef4444', CY = '#22d3ee' // race/today = couleurs fonctionnelles assumées
 const GRID = `${LABEL_WIDTH}px repeat(${COLS},1fr)`
@@ -29,6 +30,7 @@ function assignRaceLevels(races: RaceData[], indexOf: (s: string) => number) {
 }
 
 export function FriseV1({ readOnly = true, reloadToken = 0, onEdited }: { readOnly?: boolean; reloadToken?: number; onEdited?: () => void }) {
+  const { t } = useI18n()
   const W = useMemo(() => buildFriseWindow(), [])
   const { races } = usePlannedRaces()
   const [blocs, setBlocs] = useState<TrainingBlocData[]>(() => loadBlocs())
@@ -98,7 +100,7 @@ export function FriseV1({ readOnly = true, reloadToken = 0, onEdited }: { readOn
       <div style={{ display: 'grid', gridTemplateColumns: GRID, marginBottom: 6 }}>
         <div />
         <div style={{ gridColumn: '2 / span 12', position: 'relative', height: raceZoneH }}>
-          {races.length === 0 && <span style={{ fontSize: 9.5, color: 'var(--text-dim)' }}>Aucune course — ajoute des courses dans le Calendrier</span>}
+          {races.length === 0 && <span style={{ fontSize: 9.5, color: 'var(--text-dim)' }}>{t('planning.noRaceAddInCalendar')}</span>}
           {raceLevels.map(({ r, idx, level }) => {
             const m = new Date(r.date); m.setDate(m.getDate() - ((m.getDay() + 6) % 7))
             const sun = new Date(m); sun.setDate(m.getDate() + 6)

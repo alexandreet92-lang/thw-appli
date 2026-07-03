@@ -1,10 +1,11 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface HrvRow { date: string; hrv: number }
 interface Props { rows: HrvRow[] }
 
-const PERIODS = [{ label: '1 sem', days: 7 }, { label: '2 sem', days: 14 }, { label: '4 sem', days: 28 }]
+const PERIODS = [{ labelKey: 'recovery.period.1w', days: 7 }, { labelKey: 'recovery.period.2w', days: 14 }, { labelKey: 'recovery.period.4w', days: 28 }]
 
 function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
@@ -20,6 +21,7 @@ function movingAvg(data: HrvRow[], window = 7): Map<string, number> {
 }
 
 export default function HrvTrend({ rows }: Props) {
+  const { t } = useI18n()
   const [period, setPeriod] = useState(1)
   const [animated, setAnimated] = useState(false)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; val: number; date: string } | null>(null)
@@ -81,12 +83,12 @@ export default function HrvTrend({ rows }: Props) {
                 borderColor: period===i ? '#7C3AED' : 'var(--border)',
                 background: period===i ? 'rgba(124,58,237,0.1)' : 'transparent',
                 color: period===i ? '#7C3AED' : 'var(--text-dim)', fontWeight: period===i ? 700 : 400 }}>
-              {p.label}
+              {t(p.labelKey)}
             </button>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {curAvg != null && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Moy. {Math.round(curAvg)} ms</span>}
+          {curAvg != null && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('recovery.avgShort')} {Math.round(curAvg)} ms</span>}
           {pct != null && <span style={{ fontSize: 10, fontWeight: 700, color: pct >= 0 ? '#10B981' : '#EF4444' }}>{pct >= 0 ? '↑' : '↓'} {Math.abs(pct)}%</span>}
         </div>
       </div>

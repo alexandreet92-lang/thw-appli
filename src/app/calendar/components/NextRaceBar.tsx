@@ -1,5 +1,6 @@
 'use client'
 import { Race, RACE_CFG, daysUntil } from './types'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   races: Race[]
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export default function NextRaceBar({ races, onEdit }: Props) {
+  const { t } = useI18n()
   const next = races
     .filter(r => daysUntil(r.date) > 0 && r.status !== 'completed')
     .sort((a, b) => daysUntil(a.date) - daysUntil(b.date))[0]
@@ -39,7 +41,7 @@ export default function NextRaceBar({ races, onEdit }: Props) {
         }}>
           {days}
         </span>
-        <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>jours</span>
+        <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>{t('calendar.days')}</span>
       </div>
 
       {/* Infos course */}
@@ -63,7 +65,7 @@ export default function NextRaceBar({ races, onEdit }: Props) {
           fontSize: 11, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
         }}
       >
-        Modifier
+        {t('calendar.edit')}
       </button>
     </div>
   )

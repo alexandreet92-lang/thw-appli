@@ -3,8 +3,9 @@
 import { useMemo, useState, useEffect } from 'react'
 import type { ActivityRow } from './types'
 import { fmtSec, sportColor, sportLabel } from './types'
+import { useI18n } from '@/lib/i18n'
 
-const PERIODS = [{ label:'8 sem', weeks:8 }, { label:'16 sem', weeks:16 }]
+const PERIODS = [{ labelKey:'recovery.period.8w', weeks:8 }, { labelKey:'recovery.period.16w', weeks:16 }]
 const BAR_H = 90
 
 function getWeekStart(d: Date): string {
@@ -36,6 +37,7 @@ function buildWeeks(activities: ActivityRow[], weeks: number): WeekData[] {
 }
 
 export default function VolumeChart({ activities }: { activities: ActivityRow[] }) {
+  const { t } = useI18n()
   const [period, setPeriod] = useState(0)
   const [mounted, setMounted] = useState(false)
   const [hovered, setHovered] = useState<number | null>(null)
@@ -55,12 +57,12 @@ export default function VolumeChart({ activities }: { activities: ActivityRow[] 
     <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:'20px 20px 16px',boxShadow:'var(--shadow-card)' }}>
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap' as const,gap:8 }}>
         <div>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>Volume</p>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'2px 0 0' }}>Volume hebdomadaire</h3>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>{t('recovery.metric.volume')}</p>
+          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'2px 0 0' }}>{t('recovery.volume.weeklyTitle')}</h3>
         </div>
         <div style={{ display:'flex',gap:4 }}>
           {PERIODS.map((p,i)=>(
-            <button key={i} onClick={()=>setPeriod(i)} style={{ padding:'4px 10px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',borderColor:period===i?'#f97316':'var(--border)',background:period===i?'rgba(249,115,22,0.1)':'var(--bg-card)',color:period===i?'#f97316':'var(--text-mid)',fontWeight:period===i?600:400 }}>{p.label}</button>
+            <button key={i} onClick={()=>setPeriod(i)} style={{ padding:'4px 10px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',borderColor:period===i?'#f97316':'var(--border)',background:period===i?'rgba(249,115,22,0.1)':'var(--bg-card)',color:period===i?'#f97316':'var(--text-mid)',fontWeight:period===i?600:400 }}>{t(p.labelKey)}</button>
           ))}
         </div>
       </div>
@@ -121,15 +123,15 @@ export default function VolumeChart({ activities }: { activities: ActivityRow[] 
         const w = weeks[hovered]
         return (
           <div style={{ marginTop:8,padding:'8px 12px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',display:'flex',gap:12,flexWrap:'wrap' as const }}>
-            <span style={{ fontSize:11,fontWeight:600 }}>Semaine du {w.weekStart}</span>
+            <span style={{ fontSize:11,fontWeight:600 }}>{t('recovery.volume.weekOf')} {w.weekStart}</span>
             {w.sports.map(s=>(
               <span key={s.sport} style={{ fontSize:10,color:sportColor(s.sport) }}>
                 {sportLabel(s.sport)}: <strong>{fmtSec(s.secs)}</strong>
               </span>
             ))}
             {w.total > 0
-              ? <span style={{ fontSize:10,color:'var(--text-mid)' }}>Total: <strong>{fmtSec(w.total)}</strong></span>
-              : <span style={{ fontSize:10,color:'var(--text-dim)',fontStyle:'italic' }}>Aucune activité</span>
+              ? <span style={{ fontSize:10,color:'var(--text-mid)' }}>{t('recovery.volume.total')} <strong>{fmtSec(w.total)}</strong></span>
+              : <span style={{ fontSize:10,color:'var(--text-dim)',fontStyle:'italic' }}>{t('recovery.volume.noActivity')}</span>
             }
           </div>
         )

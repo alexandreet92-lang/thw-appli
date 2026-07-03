@@ -1,5 +1,7 @@
 'use client'
 
+import { useI18n } from '@/lib/i18n'
+
 interface LapEntry {
   start_index?:    number
   end_index?:      number
@@ -49,6 +51,7 @@ function lapAvgTemp(streams: StreamsPartial | null, startIdx: number, endIdx: nu
 }
 
 export function LapsTable({ laps, streams, maxHrEst, hoveredLap, onHoverLap }: Props) {
+  const { t } = useI18n()
   // Median watts for recovery lap detection
   const validWatts = laps.map(l => l.avg_watts ?? 0).filter(w => w > 50)
   const sorted = [...validWatts].sort((a, b) => a - b)
@@ -59,7 +62,7 @@ export function LapsTable({ laps, streams, maxHrEst, hoveredLap, onHoverLap }: P
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
         <thead>
           <tr style={{ background: 'var(--bg-card2)' }}>
-            {['Tour', 'Km', 'Durée', 'Watts moy', 'FC moy', 'FC max', 'Cadence', 'Temp', 'EF'].map(col => (
+            {[t('activities.colLap'), 'Km', t('activities.duration'), t('activities.wattsAvg'), t('activities.hrAvg'), t('activities.hrMax'), t('activities.cadence'), t('activities.temp'), 'EF'].map(col => (
               <th key={col} style={{
                 padding:       '6px 10px',
                 textAlign:     'left',

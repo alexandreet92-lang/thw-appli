@@ -4,6 +4,7 @@ import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import type { AIStatus } from '@/hooks/useAIAnalysis'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   text:    string
@@ -97,6 +98,7 @@ function ShurikenAvatar() {
 }
 
 export function AIBubble({ text, status, onRetry }: Props) {
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
 
   if (status === 'idle') return null
@@ -128,7 +130,7 @@ export function AIBubble({ text, status, onRetry }: Props) {
         }}>
           <ShurikenSpinner size={22} />
           <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-            Analyse en cours…
+            {t('activities.analysisInProgress')}
           </span>
         </div>
       </div>
@@ -149,12 +151,12 @@ export function AIBubble({ text, status, onRetry }: Props) {
           color: '#EF4444',
           boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
         }}>
-          Une erreur est survenue.{' '}
+          {t('activities.errorOccurred')}{' '}
           <button
             onClick={onRetry}
             style={{ color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
           >
-            Réessayer
+            {t('activities.retry')}
           </button>
         </div>
       </div>
@@ -186,7 +188,7 @@ export function AIBubble({ text, status, onRetry }: Props) {
               marginBottom: 12, paddingBottom: 8,
               borderBottom: '1px solid var(--border)',
             }}>
-              Analyse technique
+              {t('activities.technicalAnalysis')}
             </div>
             <ReactMarkdown components={markdownComponents}>{techPart}</ReactMarkdown>
           </div>
@@ -202,7 +204,7 @@ export function AIBubble({ text, status, onRetry }: Props) {
               marginBottom: 12, paddingBottom: 8,
               borderBottom: '1px solid var(--border)',
             }}>
-              En clair
+              {t('activities.inPlainWords')}
             </div>
             <ReactMarkdown components={markdownComponents}>{plainPart}</ReactMarkdown>
           </>
@@ -222,7 +224,7 @@ export function AIBubble({ text, status, onRetry }: Props) {
                 background: 'none', border: 'none', cursor: 'pointer',
               }}
             >
-              {copied ? '✓ Copié' : 'Copier'}
+              {copied ? t('activities.copied') : t('activities.copy')}
             </button>
             {status === 'done' && (
               <button
@@ -232,7 +234,7 @@ export function AIBubble({ text, status, onRetry }: Props) {
                   background: 'none', border: 'none', cursor: 'pointer',
                 }}
               >
-                Relancer
+                {t('activities.rerun')}
               </button>
             )}
           </div>

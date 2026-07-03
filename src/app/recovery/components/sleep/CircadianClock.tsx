@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 export interface SleepWindow {
   date: string
@@ -10,6 +11,7 @@ export interface SleepWindow {
 interface Props { windows: SleepWindow[] }
 
 export default function CircadianClock({ windows }: Props) {
+  const { t } = useI18n()
   const [step, setStep] = useState(-1)
 
   const recent = [...windows].sort((a, b) => a.date.localeCompare(b.date)).slice(-7)
@@ -94,10 +96,10 @@ export default function CircadianClock({ windows }: Props) {
         <text x={cx} y={cy - 7} textAnchor="middle" fill={scoreColor}
           fontSize={24} fontWeight={800} fontFamily="Syne,sans-serif">{score}</text>
         <text x={cx} y={cy + 10} textAnchor="middle" fill="var(--text-dim)" fontSize={9}>/10</text>
-        <text x={cx} y={cy + 23} textAnchor="middle" fill="var(--text-dim)" fontSize={8}>Régularité</text>
+        <text x={cx} y={cy + 23} textAnchor="middle" fill="var(--text-dim)" fontSize={8}>{t('recovery.circadian.regularity')}</text>
       </svg>
       <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: 0, textAlign: 'center' }}>
-        {recent.length} nuits — arcs = plage de sommeil
+        {t('recovery.circadian.footer', { n: recent.length })}
       </p>
     </div>
   )

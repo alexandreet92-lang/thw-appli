@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import type { CheckInRow, ActivityRow } from './types'
 import { estimateTss } from './types'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   checkin: CheckInRow | null
@@ -11,7 +12,7 @@ interface Props {
   hrvMax?: number | null
 }
 
-interface Factor { label: string; pts: number; color: string }
+interface Factor { labelKey: string; pts: number; color: string }
 
 function isoToday(): string {
   const d = new Date()
@@ -39,16 +40,17 @@ function computeFactors(p: Props): Factor[] {
   const pain    = c.pain > 5 ? -10 : c.pain >= 3 ? -5 : 0
 
   return [
-    { label: 'Sommeil',   pts: sleep,   color: '#3B82F6' },
-    { label: p.hrvToday != null ? 'HRV' : 'Énergie', pts: hrv, color: '#7C3AED' },
-    { label: 'Stress',    pts: stress,  color: stress  > 10 ? '#10B981' : '#F59E0B' },
-    { label: 'Fatigue',   pts: fatigue, color: fatigue > 14 ? '#10B981' : '#F59E0B' },
-    { label: 'Charge J-1',pts: load,    color: '#EF4444' },
-    { label: 'Douleurs',  pts: pain,    color: pain < 0 ? '#EF4444' : '#9CA3AF' },
+    { labelKey: 'recovery.metric.sleep',   pts: sleep,   color: '#3B82F6' },
+    { labelKey: p.hrvToday != null ? 'recovery.metric.hrv' : 'recovery.metric.energy', pts: hrv, color: '#7C3AED' },
+    { labelKey: 'recovery.metric.stress',    pts: stress,  color: stress  > 10 ? '#10B981' : '#F59E0B' },
+    { labelKey: 'recovery.metric.fatigue',   pts: fatigue, color: fatigue > 14 ? '#10B981' : '#F59E0B' },
+    { labelKey: 'recovery.waterfall.loadPrevDay', pts: load,    color: '#EF4444' },
+    { labelKey: 'recovery.metric.pain',  pts: pain,    color: pain < 0 ? '#EF4444' : '#9CA3AF' },
   ]
 }
 
 export default function RecoveryWaterfall({ checkin, activities, hrvToday, hrvMin, hrvMax }: Props) {
+  const { t } = useI18n()
   const [step, setStep] = useState(-1)
   const factors = computeFactors({ checkin, activities, hrvToday, hrvMin, hrvMax })
 
@@ -67,8 +69,8 @@ export default function RecoveryWaterfall({ checkin, activities, hrvToday, hrvMi
 
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 24, boxShadow: 'var(--shadow-card)' }}>
-      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 4px' }}>Récupération</p>
-      <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: '0 0 18px' }}>Cascade de récupération</h2>
+      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 4px' }}>{t('recovery.title')}</p>
+      <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: '0 0 18px' }}>{t('recovery.waterfall.title')}</h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
         {factors.map((f, i) => {
@@ -76,8 +78,8 @@ export default function RecoveryWaterfall({ checkin, activities, hrvToday, hrvMi
           const barPct = (Math.abs(f.pts) / maxAbs) * 55  // max 55% width each side
           const pos = f.pts >= 0
           return (
-            <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 72, flexShrink: 0 }}>{f.label}</span>
+            <div key={f.labelKey} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 72, flexShrink: 0 }}>{t(f.labelKey)}</span>
               {/* Bar zone */}
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', height: 22, position: 'relative' }}>
                 <div style={{ width: '45%', display: 'flex', justifyContent: 'flex-end' }}>
@@ -115,7 +117,7 @@ export default function RecoveryWaterfall({ checkin, activities, hrvToday, hrvMi
 
         {/* Total */}
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Score total</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{t('recovery.waterfall.totalScore')}</span>
           <span style={{ fontSize: 22, fontWeight: 800, color: totalColor, fontFamily: 'Syne,sans-serif' }}>
             {total}/100
           </span>

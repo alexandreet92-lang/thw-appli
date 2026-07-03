@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 export interface SportDef {
   id: string
@@ -12,6 +13,7 @@ export interface SportDef {
 }
 
 export function SportBubble({ sport, onClick }: { sport: SportDef; onClick: (el: HTMLButtonElement) => void }) {
+  const { t } = useI18n()
   const ref = useRef<HTMLButtonElement>(null)
   return (
     <button
@@ -19,10 +21,10 @@ export function SportBubble({ sport, onClick }: { sport: SportDef; onClick: (el:
       className="prog-bubble"
       style={{ background: sport.gradient, left: sport.pos.left, top: sport.pos.top, animationDelay: sport.floatDelay }}
       onClick={() => ref.current && onClick(ref.current)}
-      aria-label={`Voir ta progression en ${sport.label}`}
+      aria-label={t('progression.bubbleAria', { sport: sport.label })}
     >
       <span className="prog-bubble-label">{sport.label}</span>
-      {sport.comingSoon && <span className="prog-bubble-soon">À venir</span>}
+      {sport.comingSoon && <span className="prog-bubble-soon">{t('progression.comingSoon')}</span>}
     </button>
   )
 }

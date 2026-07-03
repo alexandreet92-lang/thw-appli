@@ -10,6 +10,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatPace, speedMsToPace } from '@/lib/utils/pace'
+import { useI18n } from '@/lib/i18n'
 
 interface LapData {
   lap_index?:        number
@@ -47,6 +48,7 @@ function lapSpeedMs(l: LapData): number {
 const GREEN = '#10b981', RED = '#ef4444', ORANGE = '#f97316'
 
 export function RunningLapsSection({ activityId, cachedLaps, streams, avgSpeedMs }: Props) {
+  const { t } = useI18n()
   const [laps,    setLaps]    = useState<LapData[]>(cachedLaps && cachedLaps.length > 1 ? cachedLaps : [])
   const [loading, setLoading] = useState(!cachedLaps || cachedLaps.length <= 1)
   const [hover,   setHover]   = useState<number | null>(null)
@@ -104,7 +106,7 @@ export function RunningLapsSection({ activityId, cachedLaps, streams, avgSpeedMs
   return (
     <div style={{ marginBottom: 32, paddingTop: 24 }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
-        Tours · {N}
+        {t('activities.lapsCount', { n: N })}
       </div>
 
       <svg viewBox={`0 0 ${VBW} ${SVG_H}`} style={{ width: '100%', height: 'auto', display: 'block', touchAction: 'manipulation' }} preserveAspectRatio="xMidYMid meet">
@@ -141,9 +143,9 @@ export function RunningLapsSection({ activityId, cachedLaps, streams, avgSpeedMs
 
       {/* Légende */}
       <div style={{ display: 'flex', gap: 16, margin: '6px 0 14px', fontSize: 10, color: 'var(--text-dim)' }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: GREEN }} />Allure (rapide = haut)</span>
-        {hasHr && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 2, background: '#64748b' }} />FC moy.</span>}
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 2, background: '#475569', borderTop: '1px dashed' }} />Allure moy. {avgPace > 0 ? `${formatPace(avgPace)}/km` : ''}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: GREEN }} />{t('activities.paceLegend')}</span>
+        {hasHr && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 2, background: '#64748b' }} />{t('activities.hrAvgDot')}</span>}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 2, background: '#475569', borderTop: '1px dashed' }} />{t('activities.avgPaceLegend')} {avgPace > 0 ? `${formatPace(avgPace)}/km` : ''}</span>
       </div>
 
       {/* Tableau détaillé */}
@@ -151,7 +153,7 @@ export function RunningLapsSection({ activityId, cachedLaps, streams, avgSpeedMs
         <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ textAlign: 'left', color: 'var(--text-dim)' }}>
-              {['Tour', 'Km', 'Durée', 'Allure', 'FC moy', 'FC max', 'Cadence', 'Temp', 'EF'].map(h => (
+              {[t('activities.colLap'), 'Km', t('activities.duration'), t('activities.pace'), t('activities.hrAvg'), t('activities.hrMax'), t('activities.cadence'), t('activities.temp'), 'EF'].map(h => (
                 <th key={h} style={{ padding: '4px 10px 8px 0', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>

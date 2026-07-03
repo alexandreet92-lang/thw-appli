@@ -14,6 +14,7 @@ import {
 } from '@/data/exercices'
 import { defForFamille, defForVariante } from '../biblioExercises'
 import type { ExoDefinition } from '../exercises'
+import { useI18n } from '@/lib/i18n'
 
 const famsOf = (g: Groupe) => FAMILLES_MUSCU.filter(f => f.groupe === g)
 
@@ -25,9 +26,9 @@ const rowStyle: React.CSSProperties = {
 const titleStyle: React.CSSProperties = { fontSize: 13.5, fontWeight: 600, color: 'var(--se-text)' }
 const subStyle: React.CSSProperties = { fontSize: 11, color: 'var(--se-dim)', marginTop: 2 }
 
-function metaLine(f: FamilleExercice): string {
-  return `${MODE_LABEL[primaryMode(f.modes)]} · Diff. ${f.difficulteTechnique}/10` +
-    (f.variantes.length ? ` · ${f.variantes.length} variante${f.variantes.length > 1 ? 's' : ''}` : '')
+function metaLine(f: FamilleExercice, tr: (k: string, v?: Record<string, string | number>) => string): string {
+  return `${MODE_LABEL[primaryMode(f.modes)]} · ${tr('planning.diffShort', { n: f.difficulteTechnique })}` +
+    (f.variantes.length ? ` · ${f.variantes.length} ${f.variantes.length > 1 ? tr('planning.variantsPlural') : tr('planning.variantSingular')}` : '')
 }
 
 export function ExercisePicker({ accent, onPick, onCustom }: {
@@ -35,6 +36,7 @@ export function ExercisePicker({ accent, onPick, onCustom }: {
   onPick: (def: ExoDefinition) => void
   onCustom: (name: string) => void
 }) {
+  const { t: tr } = useI18n()
   const [groupe, setGroupe] = useState<Groupe | null>(null)
   const [famille, setFamille] = useState<FamilleExercice | null>(null)
   const [query, setQuery] = useState('')
@@ -61,13 +63,13 @@ export function ExercisePicker({ accent, onPick, onCustom }: {
       {/* Barre de recherche + retour contextuel */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
         {(groupe || famille) && !q && (
-          <button type="button" aria-label="Retour" onClick={() => famille ? setFamille(null) : setGroupe(null)}
+          <button type="button" aria-label={tr('planning.back')} onClick={() => famille ? setFamille(null) : setGroupe(null)}
             style={{ border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}>
             <IconArrowLeft size={17} />
           </button>
         )}
         <IconSearch size={15} color="var(--se-dim)" />
-        <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un exercice…"
+        <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder={tr('planning.searchExercise')}
           style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: 'var(--se-text)' }} />
       </div>
 
@@ -85,7 +87,7 @@ export function ExercisePicker({ accent, onPick, onCustom }: {
             ))}
             <button type="button" onClick={() => onCustom(query.trim())}
               style={{ ...rowStyle, background: 'transparent', border: '1px dashed var(--se-rule)', color: accent }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: accent }}>+ Créer « {query.trim()} »</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: accent }}>{tr('planning.createQuoted', { q: query.trim() })}</span>
             </button>
           </>
         ) : famille ? (
@@ -95,14 +97,14 @@ export function ExercisePicker({ accent, onPick, onCustom }: {
               {bubble}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={titleStyle}>{famille.nom}</div>
-                <div style={subStyle}>Mouvement-clé · {MODE_LABEL[primaryMode(famille.modes)]}</div>
+                <div style={subStyle}>{tr('planning.keyMovement')} · {MODE_LABEL[primaryMode(famille.modes)]}</div>
               </div>
             </button>
             {famille.variantes.map(v => (
               <button key={v.id} type="button" onClick={() => onPick(defForVariante(famille, v))} style={rowStyle}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={titleStyle}>{v.nom}</div>
-                  <div style={subStyle}>Diff. {v.difficulteTechnique}/10{v.note ? ` · ${v.note}` : ''}</div>
+                  <div style={subStyle}>{tr('planning.diffShort', { n: v.difficulteTechnique })}{v.note ? ` · ${v.note}` : ''}</div>
                 </div>
               </button>
             ))}
@@ -113,7 +115,7 @@ export function ExercisePicker({ accent, onPick, onCustom }: {
             <button key={f.id} type="button" onClick={() => f.variantes.length ? setFamille(f) : onPick(defForFamille(f))} style={rowStyle}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={titleStyle}>{f.nom}</div>
-                <div style={subStyle}>{metaLine(f)}</div>
+                <div style={subStyle}>{metaLine(f, tr)}</div>
               </div>
               {f.variantes.length > 0 && <IconChevronRight size={16} color="var(--se-dim)" />}
             </button>

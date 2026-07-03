@@ -2,6 +2,7 @@
 // Bandeau objectif (GTY) — hero calme sur --bg-card2, sans carte noire pleine.
 // Tokens uniquement (DESIGN_SYSTEM.md). Compte à rebours = chiffre focal tabulaire.
 import { Race, RaceSport, daysUntil } from './types'
+import { useI18n } from '@/lib/i18n'
 
 const SPORT_DISPLAY: Record<RaceSport, string> = {
   run: 'Running', trail: 'Trail', bike: 'Cyclisme', triathlon: 'Triathlon',
@@ -21,18 +22,19 @@ const eyebrow: React.CSSProperties = {
 interface Props { gty: Race | undefined; races: Race[]; year?: number }
 
 export default function GoalBanner({ gty, races, year = new Date().getFullYear() }: Props) {
+  const { t } = useI18n()
   const yearRaces = races.filter(r => new Date(r.date).getFullYear() === year)
   const total = yearRaces.length
   const bySport: Partial<Record<RaceSport, number>> = {}
   for (const r of yearRaces) bySport[r.sport] = (bySport[r.sport] ?? 0) + 1
   const parts = (Object.entries(bySport) as [RaceSport, number][])
     .sort(([, a], [, b]) => b - a).map(([s, n]) => `${n} ${SPORT_DISPLAY[s]}`).join(' · ')
-  const statLine = total > 0 ? `${total} course${total > 1 ? 's' : ''}${parts ? ` — ${parts}` : ''}` : null
+  const statLine = total > 0 ? `${t(total > 1 ? 'calendar.racesCountPlural' : 'calendar.racesCount', { n: total })}${parts ? ` — ${parts}` : ''}` : null
 
   if (!gty) {
     return (
       <div style={wrap}>
-        <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>Aucun objectif principal défini</p>
+        <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>{t('calendar.noMainGoal')}</p>
         {statLine && <p className="tnum" style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{statLine}</p>}
       </div>
     )
@@ -42,15 +44,15 @@ export default function GoalBanner({ gty, races, year = new Date().getFullYear()
   return (
     <div style={wrap}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={eyebrow}>Objectif de l&apos;année</p>
+        <p style={eyebrow}>{t('calendar.yearGoal')}</p>
         <p style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-1)', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gty.name}</p>
-        {gty.goalTime && <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', margin: 0 }}>Objectif : {gty.goalTime}</p>}
+        {gty.goalTime && <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', margin: 0 }}>{t('calendar.goalWithValue', { value: gty.goalTime })}</p>}
         {gty.distance && !gty.goalTime && <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', margin: 0 }}>{gty.distance}</p>}
         {statLine && <p className="tnum" style={{ fontFamily: FB, fontSize: 10, color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>{statLine}</p>}
       </div>
       <div style={{ textAlign: 'center', flexShrink: 0 }}>
         <p className="tnum" style={{ fontFamily: FB, fontSize: 40, fontWeight: 600, color: 'var(--text)', margin: 0, lineHeight: 1 }}>{days}</p>
-        <p style={{ fontFamily: FB, fontSize: 10, color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>{days === 0 ? "C'est aujourd'hui" : 'jours restants'}</p>
+        <p style={{ fontFamily: FB, fontSize: 10, color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>{days === 0 ? t('calendar.itsToday') : t('calendar.daysLeft')}</p>
       </div>
     </div>
   )

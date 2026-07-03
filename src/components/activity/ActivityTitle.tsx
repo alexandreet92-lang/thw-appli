@@ -4,6 +4,7 @@
 
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   activityId: string
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function ActivityTitle({ activityId, initialName }: Props) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(false)
   const [value,   setValue]   = useState(initialName ?? '')
   const [saving,  setSaving]  = useState(false)
@@ -79,7 +81,7 @@ export function ActivityTitle({ activityId, initialName }: Props) {
         userSelect: 'none',
       }}
     >
-      {value || 'Sans titre'}
+      {value || t('activities.untitled')}
     </span>
   )
 }

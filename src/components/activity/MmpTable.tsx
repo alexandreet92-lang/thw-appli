@@ -1,5 +1,7 @@
 'use client'
 
+import { useI18n } from '@/lib/i18n'
+
 export const MMP_TABLE_DURATIONS = [1, 5, 10, 30, 60, 180, 300, 480, 600, 720, 900, 1200, 1800, 2700, 3600, 5400, 7200, 10800, 14400, 18000, 21600]
 export const MMP_TABLE_LABELS    = ["Pmax", "5''", "10''", "30''", "1'", "3'", "5'", "8'", "10'", "12'", "15'", "20'", "30'", "45'", "1h", "1h30", "2h", "3h", "4h", "5h", "6h"]
 
@@ -15,6 +17,7 @@ interface Props {
 }
 
 export function MmpTable({ sessionMmp, recordMmp, durations, labels, sessionN, filter, onFilter, loading }: Props) {
+  const { t } = useI18n()
   return (
     <div style={{ marginTop: 16 }}>
       {/* Filter toggle */}
@@ -30,7 +33,7 @@ export function MmpTable({ sessionMmp, recordMmp, durations, labels, sessionN, f
               color:      filter === f ? 'var(--text)'       : 'var(--text-dim)',
             }}
           >
-            {f === 'year' ? 'Cette année' : 'All time'}
+            {f === 'year' ? t('activities.thisYear') : t('activities.allTime')}
           </button>
         ))}
       </div>
@@ -46,7 +49,7 @@ export function MmpTable({ sessionMmp, recordMmp, durations, labels, sessionN, f
                 textTransform: 'uppercase', letterSpacing: 0.8,
                 borderRight: '1px solid var(--border)',
               }}>
-                Records
+                {t('activities.records')}
               </th>
               <th style={{
                 padding: '10px 14px', textAlign: 'center',
@@ -54,14 +57,14 @@ export function MmpTable({ sessionMmp, recordMmp, durations, labels, sessionN, f
                 textTransform: 'uppercase', letterSpacing: 0.8,
                 borderRight: '1px solid var(--border)',
               }}>
-                Durée
+                {t('activities.duration')}
               </th>
               <th style={{
                 padding: '10px 18px', textAlign: 'left',
                 fontSize: 11, fontWeight: 700, color: '#818CF8',
                 textTransform: 'uppercase', letterSpacing: 0.8,
               }}>
-                Cette séance
+                {t('activities.thisSession')}
               </th>
             </tr>
           </thead>

@@ -2,6 +2,7 @@
 // Orchestrateur Records/Hyrox (DS) : filtre format (segmented neutre), bouton
 // « + Ajouter une course » (lien cyan), comparaison (HyroxCompare) + feuille (HyroxRaceSheet).
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { Segmented } from '@/components/ui/Segmented'
 import { HyroxCompare } from './HyroxCompare'
 import { HyroxRaceSheet } from './HyroxRaceSheet'
@@ -10,6 +11,7 @@ import { fetchRaces, HYROX_FORMAT_LABELS, type HyroxRace } from './hyroxShared'
 type FilterFmt = 'all' | keyof typeof HYROX_FORMAT_LABELS
 
 export function HyroxRecords({ onSelect }: { onSelect?: (label: string, value: string) => void }) {
+  const { t } = useI18n()
   const [races, setRaces] = useState<HyroxRace[] | null>(null)
   const [fmt, setFmt] = useState<FilterFmt>('all')
   const [adding, setAdding] = useState(false)
@@ -19,7 +21,7 @@ export function HyroxRecords({ onSelect }: { onSelect?: (label: string, value: s
   const filtered = (races ?? []).filter(r => fmt === 'all' || r.format === fmt)
 
   const fmtOptions: { id: FilterFmt; label: string }[] = [
-    { id: 'all', label: 'Tous' },
+    { id: 'all', label: t('performance.all') },
     ...(Object.keys(HYROX_FORMAT_LABELS) as (keyof typeof HYROX_FORMAT_LABELS)[]).map(f => ({ id: f as FilterFmt, label: HYROX_FORMAT_LABELS[f] })),
   ]
 
@@ -31,17 +33,17 @@ export function HyroxRecords({ onSelect }: { onSelect?: (label: string, value: s
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <Segmented size="sm" ariaLabel="Format" value={fmt} onChange={setFmt} options={fmtOptions} />
         <button onClick={() => setAdding(true)} style={{ padding: 0, border: 'none', background: 'transparent', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-          + Ajouter une course
+          + {t('performance.addRace')}
         </button>
       </div>
 
       {races === null ? (
-        <div style={card}><p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>Chargement…</p></div>
+        <div style={card}><p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>{t('performance.loading')}</p></div>
       ) : filtered.length === 0 ? (
         <div style={card}>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: 0 }}>Aucune course</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 500, color: 'var(--text)', margin: 0 }}>{t('performance.noRace')}</p>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-mid)', margin: '6px 0 0' }}>
-            Ajoute ta première course Hyrox pour comparer tes temps, stations et runs compromised.
+            {t('performance.noRaceDesc')}
           </p>
         </div>
       ) : (

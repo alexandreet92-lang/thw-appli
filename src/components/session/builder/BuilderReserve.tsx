@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { IconArrowLeft, IconPlus, IconPencil, IconTrash, IconStar, IconStarFilled } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import { SlideView } from '@/components/ui/SlideView'
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import type { NutritionItem } from '@/components/planning/SessionEditor'
@@ -67,6 +68,7 @@ function favToSession(fav: Fav): Session {
 function ReserveCard({ fav, accent, onEdit, onDelete, onToggleStar }: {
   fav: Fav; accent: string; onEdit: () => void; onDelete: () => void; onToggleStar: () => void
 }) {
+  const { t } = useI18n()
   const [confirm, setConfirm] = useState(false)
   const types = favTypes(fav)
   const nBlocks = fav.blocks_data?.length ?? 0
@@ -84,7 +86,7 @@ function ReserveCard({ fav, accent, onEdit, onDelete, onToggleStar }: {
             ))}
           </div>
         </div>
-        <button onClick={onToggleStar} aria-label={fav.starred ? 'Retirer des favoris' : 'Marquer comme favori'}
+        <button onClick={onToggleStar} aria-label={fav.starred ? t('session.retirerFavoris') : t('session.marquerFavori')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0,
             color: fav.starred ? 'var(--lib-triathlon)' : 'var(--text-dim)', display: 'flex' }}>
           {fav.starred ? <IconStarFilled size={18} /> : <IconStar size={18} />}
@@ -93,17 +95,17 @@ function ReserveCard({ fav, accent, onEdit, onDelete, onToggleStar }: {
 
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
         <span>{fmtDur(fav.duration_min ?? 60)}</span>
-        {nBlocks > 0 && <span>{nBlocks} bloc{nBlocks > 1 ? 's' : ''}</span>}
+        {nBlocks > 0 && <span>{t('session.nBlocs', { n: nBlocks, s: nBlocks > 1 ? 's' : '' })}</span>}
         {fav.rpe != null && <span>RPE {fav.rpe}/10</span>}
       </div>
 
       {confirm ? (
         <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
-          <span style={{ flex: 1, fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>Supprimer cette séance ?</span>
+          <span style={{ flex: 1, fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>{t('session.supprimerSeanceConfirm')}</span>
           <button onClick={() => setConfirm(false)}
-            style={{ padding: '7px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 12, cursor: 'pointer' }}>Annuler</button>
+            style={{ padding: '7px 12px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 12, cursor: 'pointer' }}>{t('session.annuler')}</button>
           <button onClick={onDelete}
-            style={{ padding: '7px 12px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--zone-5)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Supprimer</button>
+            style={{ padding: '7px 12px', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--zone-5)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{t('session.supprimer')}</button>
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
@@ -111,9 +113,9 @@ function ReserveCard({ fav, accent, onEdit, onDelete, onToggleStar }: {
             style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 0',
               borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary)', color: 'var(--on-primary)',
               fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-            <IconPencil size={15} /> Modifier
+            <IconPencil size={15} /> {t('session.modifier')}
           </button>
-          <button onClick={() => setConfirm(true)} aria-label="Supprimer"
+          <button onClick={() => setConfirm(true)} aria-label={t('session.supprimer')}
             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '9px 12px',
               borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer' }}>
             <IconTrash size={15} />
@@ -125,6 +127,7 @@ function ReserveCard({ fav, accent, onEdit, onDelete, onToggleStar }: {
 }
 
 export function BuilderReserve() {
+  const { t } = useI18n()
   const [favs, setFavs] = useState<Fav[]>([])
   const [loading, setLoading] = useState(true)
   const [sport, setSport] = useState<BuilderSportId | null>(null)
@@ -233,7 +236,7 @@ export function BuilderReserve() {
             <button onClick={backToGrid} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none',
               border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13,
               padding: '4px 0', marginBottom: 'var(--space-4)' }}>
-              <IconArrowLeft size={16} /> Sports
+              <IconArrowLeft size={16} /> {t('session.sports')}
             </button>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-4)',
               flexWrap: 'wrap', marginBottom: 'var(--space-5)' }}>
@@ -245,7 +248,7 @@ export function BuilderReserve() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 'var(--r-sm)',
                   border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13,
                   fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                <IconPlus size={16} /> Nouvelle séance
+                <IconPlus size={16} /> {t('session.nouvelleSeance')}
               </button>
             </div>
 
@@ -254,7 +257,7 @@ export function BuilderReserve() {
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 'var(--space-5)' }}>
                 <button onClick={() => setStarredOnly(v => !v)}
                   style={{ ...chip(starredOnly, 'var(--lib-triathlon)'), display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  {starredOnly ? <IconStarFilled size={13} /> : <IconStar size={13} />} Favoris
+                  {starredOnly ? <IconStarFilled size={13} /> : <IconStar size={13} />} {t('session.favoris')}
                 </button>
                 {availableTypes.map(tp => (
                   <button key={tp} style={chip(typeFilters.includes(tp), theme.accent)} onClick={() => toggleType(tp)}>{tp}</button>
@@ -263,7 +266,7 @@ export function BuilderReserve() {
                   <button onClick={() => { setTypeFilters([]); setStarredOnly(false) }}
                     style={{ padding: '4px 10px', borderRadius: 99, border: 'none', background: 'transparent',
                       color: 'var(--text-dim)', fontFamily: FB, fontSize: 10, cursor: 'pointer', textDecoration: 'underline' }}>
-                    Effacer
+                    {t('session.effacer')}
                   </button>
                 )}
               </div>
@@ -273,21 +276,21 @@ export function BuilderReserve() {
               <div style={{ textAlign: 'center', padding: '48px 20px' }}>
                 <p style={{ fontFamily: FB, fontSize: 14, color: 'var(--text-dim)', marginBottom: 16 }}>
                   {sportFavs.length === 0
-                    ? `Aucune séance ${theme.label.toLowerCase()} en réserve.`
-                    : 'Aucune séance pour ces filtres.'}
+                    ? t('session.aucuneSeanceReserve', { sport: theme.label.toLowerCase() })
+                    : t('session.aucuneSeanceFiltres')}
                 </p>
                 {sportFavs.length === 0 ? (
                   <button onClick={() => setEditor({ mode: 'create', sport: theme.planning })}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '11px 24px', borderRadius: 'var(--r-md)',
                       border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13,
                       fontWeight: 600, cursor: 'pointer' }}>
-                    <IconPlus size={16} /> Créer une séance
+                    <IconPlus size={16} /> {t('session.creerSeance')}
                   </button>
                 ) : (
                   <button onClick={() => { setTypeFilters([]); setStarredOnly(false) }}
                     style={{ padding: '10px 22px', borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
                       background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, cursor: 'pointer' }}>
-                    Effacer les filtres
+                    {t('session.effacerFiltres')}
                   </button>
                 )}
               </div>
@@ -304,7 +307,7 @@ export function BuilderReserve() {
           </div>
         ) : (
           loading ? (
-            <div style={{ padding: '60px 0', textAlign: 'center', fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</div>
+            <div style={{ padding: '60px 0', textAlign: 'center', fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>{t('session.chargement')}</div>
           ) : (
             <BuilderSportGrid counts={counts} onSelect={openSport} />
           )

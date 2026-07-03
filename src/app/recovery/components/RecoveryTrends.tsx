@@ -3,15 +3,16 @@
 import { useMemo, useState, useEffect } from 'react'
 import type { CheckInRow, ActivityRow } from './types'
 import { calcScore, estimateTss } from './types'
+import { useI18n } from '@/lib/i18n'
 
-const PERIODS = [{ label:'14j', days:14 }, { label:'30j', days:30 }, { label:'90j', days:90 }]
+const PERIODS = [{ labelKey:'recovery.trends.period.14d', days:14 }, { labelKey:'recovery.trends.period.30d', days:30 }, { labelKey:'recovery.trends.period.90d', days:90 }]
 const METRICS = [
-  { key:'score' as const,       label:'Score',      color:'#3B8FD4', inverted:false },
-  { key:'fatigue' as const,     label:'Fatigue',    color:'#ef4444', inverted:true  },
-  { key:'energy' as const,      label:'Énergie',    color:'#10B981', inverted:false },
-  { key:'stress' as const,      label:'Stress',     color:'#ef4444', inverted:true  },
-  { key:'motivation' as const,  label:'Motivation', color:'#10B981', inverted:false },
-  { key:'sleep_quality' as const, label:'Sommeil',  color:'#8B5CF6', inverted:false },
+  { key:'score' as const,       labelKey:'recovery.metric.score',      color:'#3B8FD4', inverted:false },
+  { key:'fatigue' as const,     labelKey:'recovery.metric.fatigue',    color:'#ef4444', inverted:true  },
+  { key:'energy' as const,      labelKey:'recovery.metric.energy',    color:'#10B981', inverted:false },
+  { key:'stress' as const,      labelKey:'recovery.metric.stress',     color:'#ef4444', inverted:true  },
+  { key:'motivation' as const,  labelKey:'recovery.metric.motivation', color:'#10B981', inverted:false },
+  { key:'sleep_quality' as const, labelKey:'recovery.metric.sleep',  color:'#8B5CF6', inverted:false },
 ]
 
 type MetricKey = 'score'|'fatigue'|'energy'|'stress'|'motivation'|'sleep_quality'
@@ -35,6 +36,7 @@ function LinePath({ pts, W, H, minV, maxV, color, delayMs = 0 }: { pts:{x:number
 }
 
 function Sparkline({ data, metricKey, color, delayMs }: { data: ScoredCheckin[], metricKey: MetricKey, color: string, delayMs: number }) {
+  const { t } = useI18n()
   const W = 90, H = 30
   const vals = data.map(c => getVal(c, metricKey))
   const mn = Math.min(...vals,0), mx = Math.max(...vals, getMax(metricKey))
@@ -46,7 +48,7 @@ function Sparkline({ data, metricKey, color, delayMs }: { data: ScoredCheckin[],
     <div>
       <div style={{ display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4 }}>
         <span style={{ fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:800,color }}>{cur}</span>
-        <span style={{ fontSize:10,color:delta>=0?'#10B981':'#ef4444',fontWeight:600 }}>{delta>=0?'+':''}{delta} vs moy.</span>
+        <span style={{ fontSize:10,color:delta>=0?'#10B981':'#ef4444',fontWeight:600 }}>{delta>=0?'+':''}{delta} {t('recovery.trends.vsAvg')}</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%',height:H,display:'block' }}>
         <LinePath pts={pts} W={W} H={H} minV={mn} maxV={mx} color={color} delayMs={delayMs} />
@@ -56,6 +58,7 @@ function Sparkline({ data, metricKey, color, delayMs }: { data: ScoredCheckin[],
 }
 
 export default function RecoveryTrends({ history, activities }: { history: CheckInRow[], activities: ActivityRow[] }) {
+  const { t } = useI18n()
   const [period, setPeriod] = useState(0)
   const [tooltip, setTooltip] = useState<{ x:number; y:number; c:ScoredCheckin } | null>(null)
   const [animated, setAnimated] = useState(false)
@@ -77,9 +80,9 @@ export default function RecoveryTrends({ history, activities }: { history: Check
         <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.5} strokeLinecap="round" style={{ marginBottom:8 }}>
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
         </svg>
-        <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>Tendances</p>
+        <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>{t('recovery.trends.label')}</p>
         <p style={{ fontSize:12,color:'var(--text-dim)',margin:0 }}>
-          Continue tes check-ins quotidiens pour voir tes tendances ({history.length}/3 enregistrés)
+          {t('recovery.trends.empty', { n: history.length })}
         </p>
       </div>
     )
@@ -106,12 +109,12 @@ export default function RecoveryTrends({ history, activities }: { history: Check
       <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:24,boxShadow:'var(--shadow-card)' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap' as const,gap:8 }}>
           <div>
-            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>Tendances</p>
-            <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'2px 0 0' }}>Score de récupération</h2>
+            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>{t('recovery.trends.label')}</p>
+            <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'2px 0 0' }}>{t('recovery.trends.scoreTitle')}</h2>
           </div>
           <div style={{ display:'flex',gap:4 }}>
             {PERIODS.map((p,i)=>(
-              <button key={i} onClick={()=>setPeriod(i)} style={{ padding:'4px 10px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',borderColor:period===i?'#3B8FD4':'var(--border)',background:period===i?'rgba(59,143,212,0.12)':'var(--bg-card)',color:period===i?'#3B8FD4':'var(--text-mid)',fontWeight:period===i?600:400 }}>{p.label}</button>
+              <button key={i} onClick={()=>setPeriod(i)} style={{ padding:'4px 10px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',borderColor:period===i?'#3B8FD4':'var(--border)',background:period===i?'rgba(59,143,212,0.12)':'var(--bg-card)',color:period===i?'#3B8FD4':'var(--text-mid)',fontWeight:period===i?600:400 }}>{t(p.labelKey)}</button>
             ))}
           </div>
         </div>
@@ -139,8 +142,8 @@ export default function RecoveryTrends({ history, activities }: { history: Check
           {tooltip && (
             <div style={{ position:'absolute' as const,left:tooltip.x+8,top:Math.max(tooltip.y-50,0),background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:9,padding:'7px 10px',fontSize:11,pointerEvents:'none' as const,boxShadow:'0 4px 12px rgba(0,0,0,0.2)',zIndex:10 }}>
               <p style={{ margin:'0 0 2px',fontWeight:600 }}>{tooltip.c.date}</p>
-              <p style={{ margin:0,color:'#3B8FD4',fontWeight:600 }}>Score: {tooltip.c.score}/100</p>
-              <p style={{ margin:'2px 0 0',fontSize:10,color:'var(--text-dim)' }}>F:{tooltip.c.fatigue} É:{tooltip.c.energy} S:{tooltip.c.stress} M:{tooltip.c.motivation}</p>
+              <p style={{ margin:0,color:'#3B8FD4',fontWeight:600 }}>{t('recovery.trends.tooltip.score', { n: tooltip.c.score })}</p>
+              <p style={{ margin:'2px 0 0',fontSize:10,color:'var(--text-dim)' }}>{t('recovery.trends.tooltip.metrics', { f: tooltip.c.fatigue, e: tooltip.c.energy, s: tooltip.c.stress, m: tooltip.c.motivation })}</p>
             </div>
           )}
         </div>
@@ -150,7 +153,7 @@ export default function RecoveryTrends({ history, activities }: { history: Check
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12 }}>
         {METRICS.map((m, mi) => (
           <div key={m.key} style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:'12px 14px',boxShadow:'var(--shadow-card)' }}>
-            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 6px' }}>{m.label}</p>
+            <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 6px' }}>{t(m.labelKey)}</p>
             {data.length >= 2 ? <Sparkline data={data} metricKey={m.key} color={m.color} delayMs={mi*80} /> : <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>—</p>}
           </div>
         ))}
@@ -159,8 +162,8 @@ export default function RecoveryTrends({ history, activities }: { history: Check
       {/* Correlation */}
       {corrData.length >= 5 && (
         <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>Corrélation</p>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 14px' }}>Charge → Récupération (J+1)</h3>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>{t('recovery.trends.corr.label')}</p>
+          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 14px' }}>{t('recovery.trends.corr.title')}</h3>
           <div style={{ overflowX:'auto' as const }}>
             <svg viewBox={`0 0 ${W} 80`} style={{ width:'100%',minWidth:250,height:'auto',display:'block' }}>
               {corrData.map((d,i)=>{
@@ -177,8 +180,8 @@ export default function RecoveryTrends({ history, activities }: { history: Check
             </svg>
           </div>
           <div style={{ display:'flex',gap:16,marginTop:6 }}>
-            <div style={{ display:'flex',alignItems:'center',gap:5 }}><div style={{ width:10,height:10,borderRadius:2,background:'rgba(249,115,22,0.5)' }} /><span style={{ fontSize:10,color:'var(--text-dim)' }}>TSS veille (barres)</span></div>
-            <div style={{ display:'flex',alignItems:'center',gap:5 }}><div style={{ width:10,height:10,borderRadius:'50%',background:'#3B8FD4' }} /><span style={{ fontSize:10,color:'var(--text-dim)' }}>Score récup J+1</span></div>
+            <div style={{ display:'flex',alignItems:'center',gap:5 }}><div style={{ width:10,height:10,borderRadius:2,background:'rgba(249,115,22,0.5)' }} /><span style={{ fontSize:10,color:'var(--text-dim)' }}>{t('recovery.trends.corr.legend.tss')}</span></div>
+            <div style={{ display:'flex',alignItems:'center',gap:5 }}><div style={{ width:10,height:10,borderRadius:'50%',background:'#3B8FD4' }} /><span style={{ fontSize:10,color:'var(--text-dim)' }}>{t('recovery.trends.corr.legend.score')}</span></div>
           </div>
         </div>
       )}

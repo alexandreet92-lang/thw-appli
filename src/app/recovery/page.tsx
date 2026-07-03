@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useMemo, useState } from 'react'
 import { Activity, ClipboardList, Gauge, Moon, Plug } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 import { SectionLayout, type SectionDef } from '@/components/navigation/SectionLayout'
 import RecoveryTrendChart, { type WeekData } from '@/components/recovery/RecoveryTrendChart'
 import { buildWeeks } from '@/components/recovery/overviewData'
@@ -20,6 +21,7 @@ import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { RECOVERY_ONBOARDING } from '@/onboarding/configs/recovery.config'
 
 function OverviewTab({ weeks, readiness }: { weeks: WeekData[]; readiness: ReadinessResult | null }) {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <ReadinessCard result={readiness} />
@@ -27,8 +29,7 @@ function OverviewTab({ weeks, readiness }: { weeks: WeekData[]; readiness: Readi
         background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
         <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
-          HRV en direct depuis Polar ; readiness &amp; fatigue calculées depuis ton check-in. Sommeil détaillé en
-          attente d&apos;activation côté Polar.
+          {t('recovery.overview.hrvNote')}
         </p>
       </div>
       <RecoveryTrendChart weeks={weeks} />
@@ -40,6 +41,7 @@ function OverviewTab({ weeks, readiness }: { weeks: WeekData[]; readiness: Readi
 // PAGE RÉCUPÉRATION — coquille à onglets (sidebar verticale)
 // ══════════════════════════════════════════════════════════════
 export default function RecoveryPage() {
+  const { t } = useI18n()
   const { show, dismiss } = usePageOnboarding(RECOVERY_ONBOARDING.pageId, RECOVERY_ONBOARDING.version)
   const [reload, setReload] = useState(0)
   const data = useRecoveryData(reload)
@@ -58,17 +60,17 @@ export default function RecoveryPage() {
   }, [data])
 
   const sections: SectionDef[] = [
-    { id: 'overview', label: "Vue d'ensemble", subtitle: 'KPI + tendances',  icon: Activity,      content: <OverviewTab weeks={weeks} readiness={todayReadiness} /> },
-    { id: 'checkin',  label: 'Check-in',       subtitle: 'Ressenti du jour', icon: ClipboardList, content: <CheckinTab initial={data.todayCheckin} inputs={inputs} onSaved={() => setReload(x => x + 1)} /> },
-    { id: 'load',     label: 'Charge & forme', subtitle: 'CTL / ATL / TSB',  icon: Gauge,         content: <ChargeTab /> },
-    { id: 'sleep',    label: 'Sommeil & HRV',  subtitle: 'HRV · sommeil',    icon: Moon,          content: <SleepHrvTab rows={data.hrvRows} loading={data.loading} /> },
-    { id: 'sources',  label: 'Sources',        subtitle: 'Intégrations',     icon: Plug,          content: <SourcesTab hrvActive={data.hrvRows.length > 0} /> },
+    { id: 'overview', label: t('recovery.tab.overview'), subtitle: t('recovery.tab.overview.sub'),  icon: Activity,      content: <OverviewTab weeks={weeks} readiness={todayReadiness} /> },
+    { id: 'checkin',  label: t('recovery.tab.checkin'),       subtitle: t('recovery.tab.checkin.sub'), icon: ClipboardList, content: <CheckinTab initial={data.todayCheckin} inputs={inputs} onSaved={() => setReload(x => x + 1)} /> },
+    { id: 'load',     label: t('recovery.tab.load'), subtitle: t('recovery.tab.load.sub'),  icon: Gauge,         content: <ChargeTab /> },
+    { id: 'sleep',    label: t('recovery.tab.sleep'),  subtitle: t('recovery.tab.sleep.sub'),    icon: Moon,          content: <SleepHrvTab rows={data.hrvRows} loading={data.loading} /> },
+    { id: 'sources',  label: t('recovery.tab.sources'),        subtitle: t('recovery.tab.sources.sub'),     icon: Plug,          content: <SourcesTab hrvActive={data.hrvRows.length > 0} /> },
   ]
 
   const header = (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
       <div>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, letterSpacing: '-0.01em', margin: 0 }}>Récupération</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, letterSpacing: '-0.01em', margin: 0 }}>{t('recovery.title')}</h1>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '5px 0 0' }}>
           {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </p>

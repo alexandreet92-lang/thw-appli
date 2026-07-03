@@ -6,6 +6,7 @@ import { SPORT_LABELS, SPORT_COLORS } from '@/lib/constants/blocTypes'
 import { blocPhase, formatBlocRange, getWeekStart } from '@/lib/utils/weekDates'
 import type { TrainingBlocData } from '@/types/trainingBloc'
 import { BlocCurrentCard } from './BlocCurrentCard'
+import { useI18n } from '@/lib/i18n'
 
 const startTs = (b: TrainingBlocData) => getWeekStart(b.startYear, b.startWeek).getTime()
 
@@ -36,6 +37,7 @@ function Section({ title, count, open, onToggle, children }: { title: string; co
 export function SportColumn({ sport, blocs, onOpen, onCreate }: {
   sport: string; blocs: TrainingBlocData[]; onOpen: (id: string) => void; onCreate: (sport: string) => void
 }) {
+  const { t } = useI18n()
   const [showPast, setShowPast] = useState(false)
   const [showFuture, setShowFuture] = useState(false)
   const phaseOf = (b: TrainingBlocData) => blocPhase(b.startYear, b.startWeek, b.durationWeeks)
@@ -52,22 +54,22 @@ export function SportColumn({ sport, blocs, onOpen, onCreate }: {
       </div>
 
       {past.length > 0 && (
-        <Section title="Passés" count={past.length} open={showPast} onToggle={() => setShowPast(v => !v)}>
+        <Section title={t('planning.past')} count={past.length} open={showPast} onToggle={() => setShowPast(v => !v)}>
           {past.map(b => <CompactCard key={b.id} b={b} onOpen={onOpen} />)}
         </Section>
       )}
 
       {current.length > 0
         ? current.map(b => <BlocCurrentCard key={b.id} b={b} onOpen={onOpen} />)
-        : <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '6px 2px' }}>Aucun bloc en cours</div>}
+        : <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '6px 2px' }}>{t('planning.noCurrentBloc')}</div>}
 
       {future.length > 0 && (
-        <Section title="À venir" count={future.length} open={showFuture} onToggle={() => setShowFuture(v => !v)}>
+        <Section title={t('planning.upcoming')} count={future.length} open={showFuture} onToggle={() => setShowFuture(v => !v)}>
           {future.map(b => <CompactCard key={b.id} b={b} onOpen={onOpen} future />)}
         </Section>
       )}
 
-      <button onClick={() => onCreate(sport)} style={{ padding: '8px', borderRadius: 10, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>+ Nouveau bloc</button>
+      <button onClick={() => onCreate(sport)} style={{ padding: '8px', borderRadius: 10, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{t('planning.newBlocPlus')}</button>
     </div>
   )
 }

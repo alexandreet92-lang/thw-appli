@@ -13,6 +13,7 @@ import { DayStrip } from './DayStrip'
 import { SessionFueling } from './SessionFueling'
 import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { dateLabel, type DayType } from '../plan/planFormat'
+import { useI18n } from '@/lib/i18n'
 
 interface Macro { proteines: number; glucides: number; lipides: number }
 interface Suggestion { title: string; description: string; kcal: number; prot: number; gluc: number; lip: number }
@@ -45,6 +46,7 @@ const textBtn: React.CSSProperties = { height: 36, padding: '0 var(--space-2)', 
 const fmtL = (n: number) => n.toFixed(2).replace(/\.?0+$/, '').replace('.', ',')
 
 export function TodayTab(p: Props) {
+  const { t } = useI18n()
   const { dayMeals, hydration } = p
   const hydroPct = Math.min(hydration.liters / 2.5, 1)
 
@@ -84,14 +86,14 @@ export function TodayTab(p: Props) {
 
       {/* Autour de ta séance — fueling avant/pendant/après (reco auto + log) */}
       <div>
-        <h2 style={sectionTitle}>Autour de ta séance</h2>
+        <h2 style={sectionTitle}>{t('nutrition.today.aroundSession')}</h2>
         <SessionFueling sessions={p.todaySessions} aiPlan={p.aiPlan} />
       </div>
 
       {/* Hydratation */}
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
-          <h2 style={{ ...sectionTitle, margin: 0 }}>Hydratation</h2>
+          <h2 style={{ ...sectionTitle, margin: 0 }}>{t('nutrition.today.hydration')}</h2>
           <span className="tnum" style={{ fontFamily: FB, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{fmtL(hydration.liters)} / 2,5 L</span>
         </div>
         <svg width="100%" height={6} style={{ display: 'block', margin: 'var(--space-2) 0 var(--space-4)' }}>
@@ -107,7 +109,7 @@ export function TodayTab(p: Props) {
 
       {/* Repas de la journée — DayFoodJournal réutilisé */}
       <div id="repas-du-jour">
-        <h2 style={sectionTitle}>Repas de la journée</h2>
+        <h2 style={sectionTitle}>{t('nutrition.today.dayMeals')}</h2>
         <DayFoodJournal
           entries={dayMeals.entries}
           loading={dayMeals.loading}
@@ -121,7 +123,7 @@ export function TodayTab(p: Props) {
       <div>
         <button onClick={p.onSuggest} disabled={p.suggesting}
           style={{ height: 44, padding: '0 var(--space-2)', border: 'none', background: 'transparent', color: 'var(--ai-accent)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: p.suggesting ? 'default' : 'pointer' }}>
-          {p.suggesting ? 'Réflexion…' : 'Suggérer mon prochain repas (IA)'}
+          {p.suggesting ? t('nutrition.today.thinking') : t('nutrition.today.suggestMeal')}
         </button>
         {p.suggestion && (
           <div style={{ marginTop: 'var(--space-2)', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)' }}>

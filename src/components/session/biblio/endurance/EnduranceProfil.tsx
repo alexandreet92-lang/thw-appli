@@ -2,6 +2,7 @@
 // Profil d'intensité partagé (Aviron · Natation · Trail) — lecture seule.
 // Barres par zone (tokens). Bloc temps → durée directe ; bloc distance →
 // durée estimée via `refSecPerKm` (ancrage du sport).
+import { useI18n } from '@/lib/i18n'
 import type { Seance, Bloc, Zone } from '@/data/seances/common'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -87,10 +88,11 @@ export function EnduranceProfil({ seance, ref, full = false }: { seance: Seance;
 }
 
 export function ResumeBandeau({ seance, ref }: { seance: Seance; ref: RefPace }) {
+  const { t } = useI18n()
   const zd = zoneDominante(seance, ref)
   const stats: { k: string; v: string }[] = [
-    { k: 'Durée', v: `${seance.dureeMinMin}–${seance.dureeMaxMin} min` },
-    { k: 'Intensité', v: `${zd} · ${ZONE_LABEL[zd]}` },
+    { k: t('session.duree'), v: `${seance.dureeMinMin}–${seance.dureeMaxMin} min` },
+    { k: t('session.intensite'), v: `${zd} · ${ZONE_LABEL[zd]}` },
     { k: 'RPE', v: `${seance.rpe}/10` },
   ]
   return (

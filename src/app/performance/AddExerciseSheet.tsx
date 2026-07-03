@@ -3,12 +3,14 @@
 // (cases) + unité par défaut. Persisté en localStorage (gymShared.addCustom).
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { ALL_RECORD_TYPES, typeLabel, addCustom, type GymExercise } from './gymShared'
 
 const GYM_DOT = '#8b5cf6' // design-allow-color — teinte sport muscu sanctionnée
 const SCRIM = 'rgba(0,0,0,0.72)' // design-allow-color — voile de feuille
 
 export function AddExerciseSheet({ onClose, onAdded }: { onClose: () => void; onAdded: (ex: GymExercise) => void }) {
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [types, setTypes] = useState<string[]>(['1RM'])
   const [closing, setClosing] = useState(false)
@@ -32,20 +34,20 @@ export function AddExerciseSheet({ onClose, onAdded }: { onClose: () => void; on
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0, gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--text-mid)' }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: GYM_DOT }} />Muscu
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: GYM_DOT }} />{t('performance.sportGym')}
             </span>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Nouvel exercice</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.newExercise')}</h2>
           </div>
           <button onClick={close} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 100px' }}>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 5px' }}>Nom de l&apos;exercice</p>
-          <input className="rec-drawer" value={name} onChange={e => setName(e.target.value)} autoFocus placeholder="ex : Hip Thrust"
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 5px' }}>{t('performance.exerciseName')}</p>
+          <input className="rec-drawer" value={name} onChange={e => setName(e.target.value)} autoFocus placeholder={t('performance.egHipThrust')}
             style={{ width: '100%', padding: '11px 12px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
 
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '18px 0 8px' }}>Types de record à suivre</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '18px 0 8px' }}>{t('performance.recordTypesToTrack')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {ALL_RECORD_TYPES.map(t => {
               const on = types.includes(t)
@@ -59,7 +61,7 @@ export function AddExerciseSheet({ onClose, onAdded }: { onClose: () => void; on
             })}
           </div>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: '14px 0 0' }}>
-            L&apos;unité par défaut s&apos;adapte au type : charge (kg), répétitions (reps) ou charge ajoutée (+kg).
+            {t('performance.defaultUnitHint')}
           </p>
         </div>
 
@@ -67,7 +69,7 @@ export function AddExerciseSheet({ onClose, onAdded }: { onClose: () => void; on
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '12px 20px 20px', background: 'var(--bg-card)', borderTop: '1px solid var(--border)' }}>
           <button onClick={save} disabled={!canSave}
             style={{ width: '100%', padding: '14px', borderRadius: 'var(--r-sm)', border: 'none', cursor: canSave ? 'pointer' : 'not-allowed', background: canSave ? 'var(--primary)' : 'var(--bg-card2)', color: canSave ? 'var(--on-primary)' : 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600 }}>
-            Ajouter l&apos;exercice
+            {t('performance.addExercise')}
           </button>
         </div>
       </div>

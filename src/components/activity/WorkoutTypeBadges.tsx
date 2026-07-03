@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useActivityExtras } from '@/lib/activity/extras'
+import { useI18n } from '@/lib/i18n'
 
 interface TypeDef { id: string; label: string; color: string }
 
@@ -90,6 +91,7 @@ function lsSet(key: string, value: unknown) {
 }
 
 export function WorkoutTypeBadges({ activityId, sport }: { activityId: string; sport: string }) {
+  const { t } = useI18n()
   const base = TYPES_BY_SPORT[sport] ?? MUSCU_TYPES
   const customKey = `workout-custom-types-${sport}`
 
@@ -141,16 +143,16 @@ export function WorkoutTypeBadges({ activityId, sport }: { activityId: string; s
       <button onClick={() => setModalOpen(true)} style={{
         padding: '6px 12px', borderRadius: 999, cursor: 'pointer', fontSize: 12, fontWeight: 600,
         fontFamily: 'DM Sans,sans-serif', border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-dim)',
-      }}>+ Ajouter</button>
+      }}>{t('activities.addBadge')}</button>
 
       {modalOpen && createPortal(
         <div onClick={() => setModalOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 360, background: 'var(--bg-card)', borderRadius: 16, padding: 20 }}>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, color: 'var(--text)', margin: '0 0 14px' }}>Nouveau type d&apos;entraînement</h3>
-            <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Nom</label>
-            <input value={draftName} onChange={e => setDraftName(e.target.value)} placeholder="Ex : Spé endurance"
+            <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, color: 'var(--text)', margin: '0 0 14px' }}>{t('activities.newWorkoutType')}</h3>
+            <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>{t('activities.name')}</label>
+            <input value={draftName} onChange={e => setDraftName(e.target.value)} placeholder={t('activities.workoutTypePlaceholder')}
               style={{ width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', marginBottom: 14, boxSizing: 'border-box' }} />
-            <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>Couleur</label>
+            <label style={{ fontSize: 11, color: 'var(--text-dim)', display: 'block', marginBottom: 6 }}>{t('activities.color')}</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
               {CUSTOM_COLORS.map(c => (
                 <button key={c} onClick={() => setDraftColor(c)} aria-label={c} style={{
@@ -160,11 +162,11 @@ export function WorkoutTypeBadges({ activityId, sport }: { activityId: string; s
               ))}
             </div>
             <p style={{ fontSize: 10.5, color: 'var(--text-dim)', lineHeight: 1.4, margin: '0 0 16px' }}>
-              Les types personnalisés s&apos;appliquent manuellement. Pas de détection automatique.
+              {t('activities.customTypesHint')}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setModalOpen(false)} style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Annuler</button>
-              <button onClick={createCustom} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Créer</button>
+              <button onClick={() => setModalOpen(false)} style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('activities.cancel')}</button>
+              <button onClick={createCustom} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('activities.create')}</button>
             </div>
           </div>
         </div>,

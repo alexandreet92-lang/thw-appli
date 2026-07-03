@@ -11,6 +11,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { formatPace, speedMsToPace } from '@/lib/utils/pace'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   altitude:  number[]
@@ -154,6 +155,7 @@ function Stat({ label, value, color }: { label: string; value: string; color?: s
 }
 
 function ClimbDetailSheet({ segment, index, onClose }: { segment: ClimbSegment; index: number; onClose: () => void }) {
+  const { t } = useI18n()
   const [closing, setClosing] = useState(false)
   function doClose() { setClosing(true); setTimeout(onClose, 280) }
   if (typeof document === 'undefined') return null
@@ -183,21 +185,21 @@ function ClimbDetailSheet({ segment, index, onClose }: { segment: ClimbSegment; 
             {segment.category === 'HC' ? 'HC' : `CAT ${segment.category}`}
           </span>
           <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
-            {isClimb ? 'Montée' : 'Descente'} n°{index + 1}
+            {isClimb ? t('activities.climbN', { n: index + 1 }) : t('activities.descentN', { n: index + 1 })}
           </span>
-          <button onClick={doClose} aria-label="Fermer" style={{ marginLeft: 'auto', width: 28, height: 28, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', fontSize: 14, cursor: 'pointer' }}>×</button>
+          <button onClick={doClose} aria-label={t('activities.close')} style={{ marginLeft: 'auto', width: 28, height: 28, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', fontSize: 14, cursor: 'pointer' }}>×</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-          <Stat label="Distance" value={fmtKm(segment.distance)} />
-          <Stat label="Durée" value={fmtDur(segment.duration)} />
+          <Stat label={t('activities.distance')} value={fmtKm(segment.distance)} />
+          <Stat label={t('activities.duration')} value={fmtDur(segment.duration)} />
           <Stat label={isClimb ? 'D+' : 'D−'} value={`${isClimb ? '+' : '−'}${Math.round(segment.elevation)} m`} color={isClimb ? '#dc2626' : '#2563eb'} />
-          <Stat label="Pente moy." value={`${segment.avgGrade.toFixed(1)} %`} />
-          <Stat label="Allure" value={`${formatPace(segment.avgPace)}/km`} />
-          <Stat label="Allure ajustée" value={`${formatPace(segment.avgVap)}/km`} color="#7c3aed" />
+          <Stat label={t('activities.avgGrade')} value={`${segment.avgGrade.toFixed(1)} %`} />
+          <Stat label={t('activities.pace')} value={`${formatPace(segment.avgPace)}/km`} />
+          <Stat label={t('activities.adjustedPace')} value={`${formatPace(segment.avgVap)}/km`} color="#7c3aed" />
           {isClimb
             ? <Stat label="VAM" value={`${segment.vam} m/h`} color="#f97316" />
-            : <Stat label="Vit. moy." value={`${segment.avgSpeed.toFixed(1).replace('.', ',')} km/h`} color="#06b6d4" />}
-          <Stat label="FC moy." value={segment.avgHr > 0 ? `${segment.avgHr} bpm` : '—'} color="#f97316" />
+            : <Stat label={t('activities.avgSpeed')} value={`${segment.avgSpeed.toFixed(1).replace('.', ',')} km/h`} color="#06b6d4" />}
+          <Stat label={t('activities.hrAvgDot')} value={segment.avgHr > 0 ? `${segment.avgHr} bpm` : '—'} color="#f97316" />
         </div>
       </div>
     </>,
@@ -242,6 +244,7 @@ function ClimbGraph({ alt, dist, segments, onTap }: {
 
 // ── Composant principal ──────────────────────────────────────────────────────
 export function ClimbDescentSection({ altitude, distance, time, velocity, heartrate }: Props) {
+  const { t } = useI18n()
   const segments = useMemo(
     () => detectSegments(altitude, distance, time, velocity, heartrate),
     [altitude, distance, time, velocity, heartrate],
@@ -262,33 +265,33 @@ export function ClimbDescentSection({ altitude, distance, time, velocity, heartr
   return (
     <div style={{ marginBottom: 32, paddingTop: 8 }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
-        Montées &amp; descentes
+        {t('activities.climbsDescents')}
       </div>
 
       <ClimbGraph alt={altitude} dist={distance} segments={segments} onTap={i => setDetail(segments[i])} />
 
       {/* Légende */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', margin: '10px 0 2px', fontSize: 10, color: 'var(--text-dim)' }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#dc2626' }} />Montées</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#2563eb' }} />Descentes</span>
-        <span>Cat 4 → HC selon D+ × pente</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#dc2626' }} />{t('activities.climbs')}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#2563eb' }} />{t('activities.descents')}</span>
+        <span>{t('activities.catLegend')}</span>
       </div>
 
       {/* Résumé */}
       <div style={{ display: 'flex', gap: 12, margin: '12px 0' }}>
         <div style={{ flex: 1, textAlign: 'center', padding: '10px 0', background: 'var(--bg-card2)', borderRadius: 10 }}>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#dc2626', fontVariantNumeric: 'tabular-nums' }}>{climbs.length}</div>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Montées</div>
+          <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('activities.climbs')}</div>
         </div>
         <div style={{ flex: 1, textAlign: 'center', padding: '10px 0', background: 'var(--bg-card2)', borderRadius: 10 }}>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#2563eb', fontVariantNumeric: 'tabular-nums' }}>{descents.length}</div>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Descentes</div>
+          <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('activities.descents')}</div>
         </div>
       </div>
 
       {/* Onglets */}
       <div style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', marginBottom: 10 }}>
-        {([['climbs', `Montées (${climbs.length})`], ['descents', `Descentes (${descents.length})`]] as const).map(([id, lbl]) => (
+        {([['climbs', `${t('activities.climbs')} (${climbs.length})`], ['descents', `${t('activities.descents')} (${descents.length})`]] as const).map(([id, lbl]) => (
           <button key={id} onClick={() => setTab(id)} style={{
             padding: '6px 12px', borderRadius: 5, border: 'none', cursor: 'pointer', fontSize: 11,
             fontWeight: tab === id ? 700 : 500, fontFamily: 'inherit',
@@ -316,7 +319,7 @@ export function ClimbDescentSection({ altitude, distance, time, velocity, heartr
                 {fmtKm(s.distance)} · {s.type === 'climb' ? '+' : '−'}{Math.round(s.elevation)} m {s.type === 'climb' ? 'D+' : 'D−'}
               </span>
               <span style={{ display: 'block', fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-                {s.avgGrade.toFixed(1)} % moy. · {fmtDur(s.duration)} · {formatPace(s.avgPace)}/km
+                {s.avgGrade.toFixed(1)} % {t('activities.avgShort')} · {fmtDur(s.duration)} · {formatPace(s.avgPace)}/km
               </span>
             </span>
             <span style={{ color: 'var(--text-dim)', fontSize: 16 }}>›</span>

@@ -10,27 +10,29 @@ import type { PlannedSession } from '@/hooks/usePlanning'
 import { AiMealSheet } from './AiMealSheet'
 import type { EditableFood } from './FoodEditSheet'
 import type { AiPlanTarget } from './TodayTab'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
-const DAY_LABEL: Record<string, string> = { low: 'Jour Low', mid: 'Jour Mid', hard: 'Jour Hard' }
 
 // Bandeau rappel du plan IA pour la journée (s'affiche s'il existe un plan actif).
 function AiPlanBanner({ plan }: { plan: AiPlanTarget }) {
+  const { t } = useI18n()
   return (
     <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--ai-accent)', borderRadius: 'var(--r-md)', padding: 'var(--space-3) var(--space-4)', marginBottom: 'var(--space-3)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 4 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logos/logo_4bras.png" alt="" style={{ width: 14, height: 14, objectFit: 'contain', flexShrink: 0 }} />
-        <span style={{ fontFamily: FD, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Plan IA — {DAY_LABEL[plan.dayType] ?? 'Objectif du jour'}</span>
+        <span style={{ fontFamily: FD, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{t('nutrition.session.aiPlan')} — {t(`nutrition.dayType.${plan.dayType}`)}</span>
       </div>
       <p className="tnum" style={{ margin: 0, fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>
-        Cible : {Math.round(plan.kcal)} kcal · P {Math.round(plan.macros.proteines)} · G {Math.round(plan.macros.glucides)} · L {Math.round(plan.macros.lipides)} g
+        {t('nutrition.session.target')} : {Math.round(plan.kcal)} kcal · P {Math.round(plan.macros.proteines)} · G {Math.round(plan.macros.glucides)} · L {Math.round(plan.macros.lipides)} g
       </p>
     </div>
   )
 }
 
 function SessionCard({ session }: { session: PlannedSession }) {
+  const { t: tr } = useI18n()
   const supabase = createClient()
   const [foods, setFoods] = useState<EditableFood[]>([])
   const [adding, setAdding] = useState(false)
@@ -72,29 +74,29 @@ function SessionCard({ session }: { session: PlannedSession }) {
               <div key={i} style={{ animation: 'thwFoodIn 0.28s ease both', display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: FB, fontSize: 13, color: 'var(--text)' }}>{f.name}</span>
                 <span className="tnum" style={{ flexShrink: 0, fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>{f.kcal} kcal</span>
-                <button onClick={() => void persist(foods.filter((_, j) => j !== i))} aria-label="Retirer" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>✕</button>
+                <button onClick={() => void persist(foods.filter((_, j) => j !== i))} aria-label={tr('nutrition.common.remove')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>✕</button>
               </div>
             ))}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-2)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--border)' }}>
-            <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>Total autour de la séance</span>
+            <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>{tr('nutrition.session.totalAround')}</span>
             <span className="tnum" style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
               {Math.round(t.kcal)} kcal · P {Math.round(t.prot)} · G {Math.round(t.gluc)} · L {Math.round(t.lip)} g
             </span>
           </div>
         </>
       ) : (
-        <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>Renseigne ce que tu as mangé autour de cette séance.</p>
+        <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>{tr('nutrition.session.logPrompt')}</p>
       )}
 
       <button onClick={() => setAdding(true)}
         style={{ marginTop: 'var(--space-3)', width: '100%', height: 38, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary-dim)', color: 'var(--primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-        + Ajouter ce que tu as mangé
+        {tr('nutrition.session.addEaten')}
       </button>
 
       {adding && (
         <AiMealSheet
-          slotLabel={`Autour de ${session.title}`}
+          slotLabel={tr('nutrition.session.aroundTitle', { title: session.title })}
           onClose={() => setAdding(false)}
           onConfirm={f => { setAdding(false); void persist([...foods, f]) }}
         />
@@ -104,11 +106,12 @@ function SessionCard({ session }: { session: PlannedSession }) {
 }
 
 export function SessionFueling({ sessions, aiPlan }: { sessions: PlannedSession[]; aiPlan?: AiPlanTarget | null }) {
+  const { t } = useI18n()
   if (!sessions.length) {
     return (
       <>
         {aiPlan && <AiPlanBanner plan={aiPlan} />}
-        <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>Jour de repos — pas de séance à caler aujourd&apos;hui.</p>
+        <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>{t('nutrition.session.restDay')}</p>
       </>
     )
   }
@@ -116,7 +119,7 @@ export function SessionFueling({ sessions, aiPlan }: { sessions: PlannedSession[
     <>
       {aiPlan && <AiPlanBanner plan={aiPlan} />}
       {sessions.map(s => <SessionCard key={s.id} session={s} />)}
-      <a href="/planning" style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>Voir la séance dans le planning →</a>
+      <a href="/planning" style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>{t('nutrition.session.viewInPlanning')} →</a>
     </>
   )
 }

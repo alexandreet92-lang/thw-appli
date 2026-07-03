@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   todayHrv: number
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function HrvDaily({ todayHrv, avg7, allTime }: Props) {
+  const { t } = useI18n()
   const [animated, setAnimated] = useState(false)
   useEffect(() => { const id = setTimeout(() => setAnimated(true), 120); return () => clearTimeout(id) }, [])
 
@@ -59,7 +61,7 @@ export default function HrvDaily({ todayHrv, avg7, allTime }: Props) {
             <span style={{ fontSize: 13, fontWeight: 700, color: arrowColor }}>
               {diff >= 0 ? '↑' : '↓'} {Math.abs(Math.round(diff))} ms
             </span>
-            <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>vs moy. 7j</span>
+            <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t('recovery.hrv.vsAvg7')}</span>
           </div>
         </div>
       </div>
@@ -86,7 +88,7 @@ export default function HrvDaily({ todayHrv, avg7, allTime }: Props) {
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: 'var(--text-dim)', marginTop: 2 }}>
           <span>{Math.round(min)} ms</span>
-          <span>Plage personnelle</span>
+          <span>{t('recovery.hrv.personalRange')}</span>
           <span>{Math.round(max)} ms</span>
         </div>
       </div>

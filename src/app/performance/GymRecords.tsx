@@ -2,6 +2,7 @@
 // Records/Muscu (DS) : un bloc par exercice, une ligne par type suivi avec jauge
 // horizontale (teinte muscu modérée) + valeur neutre. « + Exercice » + Modifier.
 import { useEffect, useMemo, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { GymEditSheet } from './GymEditSheet'
 import { AddExerciseSheet } from './AddExerciseSheet'
 import { allExercises, fetchGym, fmtValue, typeLabel, type GymExercise, type GymRec } from './gymShared'
@@ -13,6 +14,7 @@ export function GymRecords({ recordYear, onSelect, selectedDatum }: {
   onSelect?: (label: string, value: string) => void
   selectedDatum?: { label: string; value: string } | null
 }) {
+  const { t: tr } = useI18n()
   const [records, setRecords] = useState<GymRec[]>([])
   const [exercises, setExercises] = useState<GymExercise[]>([])
   const [mounted, setMounted] = useState(false)
@@ -46,7 +48,7 @@ export function GymRecords({ recordYear, onSelect, selectedDatum }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button onClick={() => setAdding(true)} style={{ padding: 0, border: 'none', background: 'transparent', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Exercice</button>
+        <button onClick={() => setAdding(true)} style={{ padding: 0, border: 'none', background: 'transparent', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ {tr('performance.exercise')}</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
@@ -69,7 +71,7 @@ export function GymRecords({ recordYear, onSelect, selectedDatum }: {
                     </div>
                     <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: b ? 'var(--text)' : 'var(--text-dim)', width: 58, textAlign: 'right', flexShrink: 0 }}>{display}</span>
                     <button onClick={e => { e.stopPropagation(); setEdit({ exercise: ex.name, types: ex.types, type: t }) }}
-                      style={{ padding: 0, border: 'none', background: 'transparent', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Modifier</button>
+                      style={{ padding: 0, border: 'none', background: 'transparent', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>{tr('performance.edit')}</button>
                   </div>
                 )
               })}

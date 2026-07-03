@@ -3,8 +3,9 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import type { ActivityRow, PmcPoint } from './types'
 import { buildPmc } from '@/lib/training/pmc'
+import { useI18n } from '@/lib/i18n'
 
-const PERIODS = [{ label:'6 sem', days:42 },{ label:'12 sem', days:84 },{ label:'6 mois', days:180 }]
+const PERIODS = [{ labelKey:'recovery.period.6w', days:42 },{ labelKey:'recovery.period.12w', days:84 },{ labelKey:'recovery.period.6mo', days:180 }]
 
 interface TooltipState { x: number; y: number; point: PmcPoint }
 
@@ -19,6 +20,7 @@ function buildPath(pts: PmcPoint[], key: 'ctl'|'atl'|'tsb', W: number, H: number
 }
 
 export default function PmcChart({ activities }: { activities: ActivityRow[] }) {
+  const { t } = useI18n()
   const [period, setPeriod] = useState(1)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [animating, setAnimating] = useState(false)
@@ -56,22 +58,22 @@ export default function PmcChart({ activities }: { activities: ActivityRow[] }) 
     <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:'20px 20px 16px',boxShadow:'var(--shadow-card)' }}>
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap' as const,gap:8 }}>
         <div>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>Performance</p>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>{t('recovery.pmc.performance')}</p>
           <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'2px 0 0' }}>CTL · ATL · TSB</h3>
         </div>
         <div style={{ display:'flex',gap:4 }}>
           {PERIODS.map((p,i)=>(
-            <button key={i} onClick={()=>setPeriod(i)} style={{ padding:'4px 10px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',borderColor:period===i?'#3B8FD4':'var(--border)',background:period===i?'rgba(59,143,212,0.12)':'var(--bg-card)',color:period===i?'#3B8FD4':'var(--text-mid)',fontWeight:period===i?600:400 }}>{p.label}</button>
+            <button key={i} onClick={()=>setPeriod(i)} style={{ padding:'4px 10px',borderRadius:7,border:'1px solid',fontSize:10,cursor:'pointer',borderColor:period===i?'#3B8FD4':'var(--border)',background:period===i?'rgba(59,143,212,0.12)':'var(--bg-card)',color:period===i?'#3B8FD4':'var(--text-mid)',fontWeight:period===i?600:400 }}>{t(p.labelKey)}</button>
           ))}
         </div>
       </div>
 
       {/* Legend */}
       <div style={{ display:'flex',gap:16,marginBottom:10 }}>
-        {[{c:'#3B8FD4',l:'CTL (Forme)'},{c:'#ef4444',l:'ATL (Fatigue)'},{c:'#10B981',l:'TSB (Fraîcheur)'}].map(x=>(
+        {[{c:'#3B8FD4',l:'recovery.pmc.legend.ctl'},{c:'#ef4444',l:'recovery.pmc.legend.atl'},{c:'#10B981',l:'recovery.pmc.legend.tsb'}].map(x=>(
           <div key={x.l} style={{ display:'flex',alignItems:'center',gap:5 }}>
             <div style={{ width:16,height:2,background:x.c,borderRadius:1 }} />
-            <span style={{ fontSize:10,color:'var(--text-dim)' }}>{x.l}</span>
+            <span style={{ fontSize:10,color:'var(--text-dim)' }}>{t(x.l)}</span>
           </div>
         ))}
       </div>
@@ -120,7 +122,7 @@ export default function PmcChart({ activities }: { activities: ActivityRow[] }) 
       <style>{`@keyframes pmcDraw { from { stroke-dashoffset: ${totalLen}px; } to { stroke-dashoffset: 0; } }`}</style>
       {pts.length < 14 && (
         <p style={{ fontSize:10,color:'var(--text-dim)',textAlign:'center' as const,margin:'8px 0 0',fontStyle:'italic' }}>
-          Plus de données d'entraînement = courbe plus fiable
+          {t('recovery.pmc.moreData')}
         </p>
       )}
     </div>

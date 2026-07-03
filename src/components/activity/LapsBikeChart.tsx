@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface LapData {
   lap_index?:       number
@@ -73,6 +74,7 @@ function darken(hex: string, factor = 0.82): string {
 
 // ── Main component ─────────────────────────────────────────────────────────
 export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap }: Props) {
+  const { t } = useI18n()
   const [laps,        setLaps]        = useState<LapData[]>(cachedLaps && cachedLaps.length > 1 ? cachedLaps : [])
   const [loading,     setLoading]     = useState(!cachedLaps || cachedLaps.length <= 1)
   const [error,       setError]       = useState<string | null>(null)
@@ -87,9 +89,9 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
         if (data.error) { setError(data.error); return }
         setLaps(data.laps ?? [])
       })
-      .catch(() => setError('Impossible de charger les tours'))
+      .catch(() => setError(t('activities.lapsLoadError')))
       .finally(() => setLoading(false))
-  }, [activityId, cachedLaps])
+  }, [activityId, cachedLaps, t])
 
   if (loading) {
     return (
@@ -97,9 +99,9 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
         <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9,
           textTransform: 'uppercase', marginBottom: 16, borderBottom: '1px solid var(--border)',
           paddingBottom: 5 }}>
-          Tours
+          {t('activities.laps')}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '12px 0' }}>Chargement des tours…</div>
+        <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '12px 0' }}>{t('activities.loadingLaps')}</div>
       </div>
     )
   }
@@ -110,10 +112,10 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
         <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9,
           textTransform: 'uppercase', marginBottom: 10, borderBottom: '1px solid var(--border)',
           paddingBottom: 5 }}>
-          Tours
+          {t('activities.laps')}
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '8px 0' }}>
-          Impossible de charger les tours
+          {t('activities.lapsLoadError')}
         </div>
       </div>
     )
@@ -180,7 +182,7 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
       <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9,
         textTransform: 'uppercase', marginBottom: 16, borderBottom: '1px solid var(--border)',
         paddingBottom: 5 }}>
-        Tours · {N}
+        {t('activities.lapsCount', { n: N })}
       </div>
 
       {/* Wrapper relatif avec aspect-ratio forcé.

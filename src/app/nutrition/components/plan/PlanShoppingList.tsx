@@ -12,6 +12,17 @@ import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { NutritionPlanData, MealSet, MealSlotValue } from '@/hooks/useNutrition'
 import { slotText } from '@/hooks/useNutrition'
+import { useI18n } from '@/lib/i18n'
+
+// Mapping libellé de rayon (identifiant interne) → clé i18n d'affichage.
+const RAYON_I18N: Record<string, string> = {
+  'Fruits & légumes': 'nutrition.rayon.produce',
+  'Protéines': 'nutrition.rayon.proteins',
+  'Féculents & épicerie': 'nutrition.rayon.grocery',
+  'Produits laitiers': 'nutrition.rayon.dairy',
+  'Fruits secs & autres': 'nutrition.rayon.nuts',
+  'Autres': 'nutrition.rayon.other',
+}
 
 interface Props {
   plan:      NutritionPlanData
@@ -51,6 +62,7 @@ function extractTokens(desc: string): string[] {
 }
 
 export function PlanShoppingList({ plan, variant, selectedDate, isDesktop, onClose }: Props) {
+  const { t } = useI18n()
   const [scope, setScope] = useState<'day' | 'week'>(selectedDate ? 'day' : 'week')
 
   const grouped = useMemo(() => {
@@ -89,13 +101,13 @@ export function PlanShoppingList({ plan, variant, selectedDate, isDesktop, onClo
       <style>{`@media print { body * { visibility: hidden; } #shopping-print, #shopping-print * { visibility: visible; } #shopping-print { position: absolute; inset: 0; } }`}</style>
       <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, background: 'var(--bg-card)', borderRadius: isDesktop ? 16 : '16px 16px 0 0', padding: 22, maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 17, color: 'var(--text)', margin: 0 }}>Liste de courses</h3>
-          <button onClick={onClose} aria-label="Fermer" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer' }}>×</button>
+          <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 17, color: 'var(--text)', margin: 0 }}>{t('nutrition.plan.shoppingList')}</h3>
+          <button onClick={onClose} aria-label={t('nutrition.common.close')} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer' }}>×</button>
         </div>
 
         {/* Bascule Par jour / Semaine */}
         <div style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', marginBottom: 14 }}>
-          {([['day', 'Par jour'], ['week', 'Semaine complète']] as const).map(([id, lbl]) => (
+          {([['day', t('nutrition.shopping.perDay')], ['week', t('nutrition.shopping.fullWeek')]] as const).map(([id, lbl]) => (
             <button key={id} onClick={() => setScope(id)} disabled={id === 'day' && !selectedDate}
               style={{ padding: '6px 12px', borderRadius: 6, border: 'none', cursor: id === 'day' && !selectedDate ? 'not-allowed' : 'pointer',
                 fontSize: 12, fontWeight: scope === id ? 700 : 500, fontFamily: 'DM Sans,sans-serif',
@@ -107,10 +119,10 @@ export function PlanShoppingList({ plan, variant, selectedDate, isDesktop, onClo
 
         <div id="shopping-print">
           {isEmpty ? (
-            <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: '16px 0' }}>Aucun ingrédient à lister (repas du plan non renseignés pour cette période).</p>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: '16px 0' }}>{t('nutrition.shopping.empty')}</p>
           ) : grouped.map(g => (
             <div key={g.rayon} style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 6 }}>{g.rayon}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 6 }}>{t(RAYON_I18N[g.rayon] ?? 'nutrition.rayon.other')}</div>
               {g.items.map(it => (
                 <div key={it.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '0.5px solid var(--border)', fontSize: 13, color: 'var(--text)' }}>
                   <span>{it.label}</span>
@@ -123,12 +135,12 @@ export function PlanShoppingList({ plan, variant, selectedDate, isDesktop, onClo
 
         {!isEmpty && (
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button onClick={() => window.print()} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Imprimer</button>
-            <button onClick={() => window.print()} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Télécharger (PDF)</button>
+            <button onClick={() => window.print()} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('nutrition.shopping.print')}</button>
+            <button onClick={() => window.print()} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('nutrition.shopping.downloadPdf')}</button>
           </div>
         )}
         <p style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 10, lineHeight: 1.4 }}>
-          Quantités estimées (fourchette) à partir des descriptions de repas. Les grammages exacts ne sont pas disponibles dans le plan.
+          {t('nutrition.shopping.footnote')}
         </p>
       </div>
     </div>,

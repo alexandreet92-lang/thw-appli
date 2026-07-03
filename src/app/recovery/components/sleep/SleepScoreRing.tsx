@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 export interface SleepRingData {
   totalMin: number; deepMin: number; remMin: number
@@ -8,11 +9,11 @@ export interface SleepRingData {
 }
 
 const FACTORS = [
-  { label: 'Durée',      color: '#3B82F6' },
-  { label: 'Profondeur', color: '#4338CA' },
-  { label: 'Continuité', color: '#7C3AED' },
-  { label: 'Régularité', color: '#06B6D4' },
-  { label: 'Efficacité', color: '#10B981' },
+  { labelKey: 'recovery.sleepRing.duration',      color: '#3B82F6' },
+  { labelKey: 'recovery.sleepRing.depth', color: '#4338CA' },
+  { labelKey: 'recovery.sleepRing.continuity', color: '#7C3AED' },
+  { labelKey: 'recovery.sleepRing.regularity', color: '#06B6D4' },
+  { labelKey: 'recovery.sleepRing.efficiency', color: '#10B981' },
 ]
 
 function computeVals(d: SleepRingData): number[] {
@@ -36,6 +37,7 @@ function fmtMin(m: number): string {
 }
 
 export default function SleepScoreRing(p: SleepRingData) {
+  const { t } = useI18n()
   const [step, setStep] = useState(-1)
   const vals = computeVals(p)
 
@@ -55,9 +57,9 @@ export default function SleepScoreRing(p: SleepRingData) {
     return `M${x1.toFixed(2)} ${y1.toFixed(2)} A${R} ${R} 0 ${deg > 180 ? 1 : 0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`
   }
 
-  const badge = p.score >= 80 ? { t: 'Bon sommeil', c: '#10B981' }
-    : p.score >= 60 ? { t: 'Sommeil moyen', c: '#F97316' }
-    : { t: 'Sommeil insuffisant', c: '#EF4444' }
+  const badge = p.score >= 80 ? { t: t('recovery.sleepRing.badge.good'), c: '#10B981' }
+    : p.score >= 60 ? { t: t('recovery.sleepRing.badge.average'), c: '#F97316' }
+    : { t: t('recovery.sleepRing.badge.insufficient'), c: '#EF4444' }
 
   const subtitles = [
     fmtMin(p.totalMin), fmtMin(p.deepMin),
@@ -102,8 +104,8 @@ export default function SleepScoreRing(p: SleepRingData) {
       {/* Mini gauges */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', maxWidth: 200 }}>
         {FACTORS.map((f, i) => (
-          <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 9, color: f.color, width: 60, flexShrink: 0 }}>{f.label}</span>
+          <div key={f.labelKey} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, color: f.color, width: 60, flexShrink: 0 }}>{t(f.labelKey)}</span>
             <div style={{ flex: 1, height: 3, background: `${f.color}22`, borderRadius: 2, overflow: 'hidden' }}>
               <div style={{
                 height: '100%', background: f.color, borderRadius: 2,
@@ -119,7 +121,7 @@ export default function SleepScoreRing(p: SleepRingData) {
       </div>
       {!p.fromDevice && (
         <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: 0, fontStyle: 'italic', textAlign: 'center' }}>
-          Estimation depuis le check-in
+          {t('recovery.sleepRing.estimated')}
         </p>
       )}
     </div>

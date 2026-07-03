@@ -44,6 +44,7 @@ import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { CALENDAR_ONBOARDING } from '@/onboarding/configs/calendar.config'
 import { Trophy, Briefcase, Heart, LayoutGrid, CalendarDays } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
+import { useI18n } from '@/lib/i18n'
 type CalView       = 'year' | 'month'
 type TimelineMode  = 'vertical' | 'horizontal'
 type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty'
@@ -108,6 +109,15 @@ const CATEGORY_CONFIG = {
   race:  { label:'Race',  color:'#ef4444', bg:'rgba(239,68,68,0.10)'  },
   pro:   { label:'Pro',   color:'#3b82f6', bg:'rgba(59,130,246,0.10)' },
   perso: { label:'Perso', color:'#a855f7', bg:'rgba(168,85,247,0.10)' },
+}
+
+// Clés i18n pour les libellés (les configs ci-dessus gardent les couleurs).
+const RACE_LEVEL_KEY: Record<RaceLevel, string> = {
+  secondary: 'calendar.prioSecondary', important: 'calendar.prioImportant',
+  main: 'calendar.prioMain', gty: 'calendar.levelGty',
+}
+const CATEGORY_LABEL_KEY: Record<'race' | 'pro' | 'perso', string> = {
+  race: 'calendar.catRace', pro: 'calendar.catPro', perso: 'calendar.catPerso',
 }
 
 const RUN_DISTANCES = ['5 km','10 km','Semi-marathon','Marathon']
@@ -754,6 +764,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
   patchStageDayLocal: (stageId: string, date: string, content: string) => void
   deleteStageDayLocal: (stageId: string, date: string) => void
 }) {
+  const { t } = useI18n()
   const [calView,      setCalView]      = useState<CalView>('year')
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
   const [showRaceModal,  setShowRaceModal]  = useState(false)
@@ -858,14 +869,14 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
                 background:calView===v?'rgba(6,182,212,0.10)':'var(--bg-card)',
                 color:calView===v?'#06B6D4':'var(--text-mid)',
               }}>
-                {v === 'year' ? 'Vue annuelle' : 'Vue mensuelle'}
+                {v === 'year' ? t('calendar.annualView') : t('calendar.monthlyView')}
               </button>
             ))}
           </div>
         </div>
 
         {/* Astuce : l'ajout se fait en cliquant un jour du calendrier */}
-        <span style={{ fontSize:11, color:'var(--text-dim)' }}>Clique sur un jour pour ajouter un objectif</span>
+        <span style={{ fontSize:11, color:'var(--text-dim)' }}>{t('calendar.clickDayToAddGoal')}</span>
       </div>
 
       {/* Close year picker on outside click */}
@@ -898,12 +909,12 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
       {/* Empty state */}
       {yearRaces.length === 0 && yearStages.length === 0 && (
         <div style={{ padding:'32px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>Aucun objectif planifié en {selectedYear}</p>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:'0 0 6px' }}>{t('calendar.noGoalPlanned', { year: selectedYear })}</p>
           <button onClick={() => setChooserDate(new Date().toISOString().split('T')[0])} style={{
             padding:'9px 20px',borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',
             border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:'pointer',
           }}>
-            + Ajouter un objectif
+            {t('calendar.addGoal')}
           </button>
         </div>
       )}
@@ -965,6 +976,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
 function ObjectiveChooser({ date, onClose, onCourse, onStage }: {
   date: string; onClose: () => void; onCourse: () => void; onStage: () => void
 }) {
+  const { t } = useI18n()
   const pretty = new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
   const card: React.CSSProperties = {
     flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '22px 16px',
@@ -980,18 +992,18 @@ function ObjectiveChooser({ date, onClose, onCourse, onStage }: {
         boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
       }}>
         <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '0 auto 14px' }} />
-        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0, textAlign: 'center' }}>Ajouter un objectif</p>
+        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0, textAlign: 'center' }}>{t('calendar.addGoalTitle')}</p>
         <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: '4px 0 18px', textAlign: 'center', textTransform: 'capitalize' }}>{pretty}</h3>
         <div style={{ display: 'flex', gap: 12, maxWidth: 460, margin: '0 auto' }}>
           <button onClick={onCourse} style={card}>
             <Trophy size={26} color="#06B6D4" />
-            <span style={{ fontWeight: 700, fontSize: 15 }}>Course</span>
-            <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>Compétition : running, trail, cyclisme…</span>
+            <span style={{ fontWeight: 700, fontSize: 15 }}>{t('calendar.race')}</span>
+            <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>{t('calendar.raceChooserSub')}</span>
           </button>
           <button onClick={onStage} style={card}>
             <CalendarDays size={26} color="#5b6fff" />
-            <span style={{ fontWeight: 700, fontSize: 15 }}>Stage</span>
-            <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>Bloc d'entraînement sur plusieurs jours</span>
+            <span style={{ fontWeight: 700, fontSize: 15 }}>{t('calendar.stage')}</span>
+            <span style={{ fontSize: 11.5, color: 'var(--text-dim)', textAlign: 'center' }}>{t('calendar.stageChooserSub')}</span>
           </button>
         </div>
       </div>
@@ -1007,6 +1019,7 @@ function CategoryEventModal({ category, eventTypes, initialDate, onClose, onSave
   initialDate: string; onClose: () => void
   onSave: (e: Omit<CalEvent, 'id'>) => void
 }) {
+  const { t: tr } = useI18n()
   const types = eventTypes.filter(t => t.category === category)
   const [title, setTitle]     = useState('')
   const [date, setDate]       = useState(initialDate)
@@ -1020,18 +1033,18 @@ function CategoryEventModal({ category, eventTypes, initialDate, onClose, onSave
       <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:420,width:'100%' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
           <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>
-            Ajouter un événement {CATEGORY_CONFIG[category].label}
+            {tr('calendar.addEventCategory', { category: tr(CATEGORY_LABEL_KEY[category]) })}
           </h3>
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
 
         {types.length === 0 ? (
           <div style={{ padding:'16px',textAlign:'center',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',marginBottom:14 }}>
-            <p style={{ fontSize:12,color:'var(--text-dim)',margin:0 }}>Créez d'abord un type d'événement dans la section Types →</p>
+            <p style={{ fontSize:12,color:'var(--text-dim)',margin:0 }}>{tr('calendar.createTypeFirst')}</p>
           </div>
         ) : (
           <div style={{ marginBottom:12 }}>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>Type</p>
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{tr('calendar.type')}</p>
             <div style={{ display:'flex',gap:5,flexWrap:'wrap' }}>
               {types.map(t => (
                 <button key={t.id} onClick={() => setTypeId(t.id)}
@@ -1044,22 +1057,22 @@ function CategoryEventModal({ category, eventTypes, initialDate, onClose, onSave
         )}
 
         <div style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Titre</p>
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Réunion importante"
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.titleLabel')}</p>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder={tr('calendar.eventTitlePlaceholder')}
             style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
         <div style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Date</p>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.date')}</p>
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
             style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
         <div style={{ marginBottom:14 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Description</p>
-          <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2} placeholder="Optionnel…"
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{tr('calendar.description')}</p>
+          <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2} placeholder={tr('calendar.optional')}
             style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' }}/>
         </div>
         <div style={{ display:'flex',gap:8 }}>
-          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
+          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{tr('calendar.cancel')}</button>
           <button
             onClick={() => {
               if (!title || !date || !typeId) return
@@ -1067,7 +1080,7 @@ function CategoryEventModal({ category, eventTypes, initialDate, onClose, onSave
               onClose()
             }}
             style={{ flex:2,padding:10,borderRadius:10,background:selectedType ? selectedType.color : 'var(--bg-card2)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
-            + Ajouter
+            {tr('calendar.addBtn')}
           </button>
         </div>
       </div>
@@ -1087,6 +1100,7 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
   addEvent: (e: Omit<CalEvent, 'id'>) => void
   deleteEvent: (id: string) => void
 }) {
+  const { t: tr } = useI18n()
   const cfg = CATEGORY_CONFIG[category]
   const year = new Date().getFullYear()
   const [calView, setCalView]           = useState<CalView>('year')
@@ -1117,7 +1131,7 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
       {/* Header */}
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8 }}>
         <div style={{ display:'flex',gap:5 }}>
-          {([['year','Vue annuelle'],['month','Vue mensuelle']] as [CalView,string][]).map(([v, l]) => (
+          {([['year',tr('calendar.annualView')],['month',tr('calendar.monthlyView')]] as [CalView,string][]).map(([v, l]) => (
             <button key={v} onClick={() => setCalView(v)}
               style={{ padding:'6px 12px',borderRadius:9,border:'1px solid',borderColor:calView===v?cfg.color:'var(--border)',background:calView===v?cfg.bg:'var(--bg-card)',color:calView===v?cfg.color:'var(--text-mid)',fontSize:11,cursor:'pointer',fontWeight:calView===v?600:400 }}>
               {l}
@@ -1127,11 +1141,11 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
         <div style={{ display:'flex',gap:6 }}>
           <button onClick={() => setShowTypeManager(!showTypeManager)}
             style={{ padding:'6px 12px',borderRadius:9,background:showTypeManager?cfg.bg:'var(--bg-card)',border:`1px solid ${showTypeManager?cfg.color:'var(--border)'}`,color:showTypeManager?cfg.color:'var(--text-mid)',fontSize:11,fontWeight:600,cursor:'pointer' }}>
-            ⚙ Types
+            {tr('calendar.typesBtn')}
           </button>
           <button onClick={() => setAddEventModal(`${year}-${String(currentMonth+1).padStart(2,'0')}-01`)}
             style={{ padding:'6px 12px',borderRadius:9,background:cfg.color,border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer' }}>
-            + Événement
+            {tr('calendar.eventBtn')}
           </button>
         </div>
       </div>
@@ -1139,7 +1153,7 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
       {/* Type Manager */}
       {showTypeManager && (
         <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14,padding:16,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 12px' }}>⚙ Gérer les types</p>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 12px' }}>{tr('calendar.manageTypes')}</p>
 
           {/* Existing types */}
           {myTypes.length > 0 && (
@@ -1165,9 +1179,9 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
                   ) : (
                     <>
                       <span style={{ flex:1,fontSize:12,color:'var(--text)' }}>{t.name}</span>
-                      <span style={{ fontSize:10,color:'var(--text-dim)' }}>{myEvents.filter(e => e.typeId === t.id).length} événement(s)</span>
+                      <span style={{ fontSize:10,color:'var(--text-dim)' }}>{tr('calendar.eventsCountParen', { n: myEvents.filter(e => e.typeId === t.id).length })}</span>
                       <button onClick={() => setEditingType({ ...t })}
-                        style={{ padding:'3px 6px',borderRadius:6,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:10,cursor:'pointer' }}>Edit</button>
+                        style={{ padding:'3px 6px',borderRadius:6,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:10,cursor:'pointer' }}>{tr('calendar.editBtn')}</button>
                       <button onClick={() => deleteEventType(t.id)}
                         style={{ padding:'3px 6px',borderRadius:6,background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',color:'#ef4444',fontSize:10,cursor:'pointer' }}>✕</button>
                     </>
@@ -1179,7 +1193,7 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
 
           {/* Add new type */}
           <div style={{ display:'flex',gap:8,alignItems:'center' }}>
-            <input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="Nom du type (ex: Deadline)"
+            <input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder={tr('calendar.typeNamePlaceholder')}
               style={{ flex:1,padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
             <div style={{ display:'flex',gap:4,flexWrap:'wrap' }}>
               {PRESET_COLORS.map(c => (
@@ -1189,7 +1203,7 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
             </div>
             <button onClick={() => { if (newTypeName.trim()) { addEventType({ name:newTypeName.trim(),color:newTypeColor,category }); setNewTypeName('') } }}
               style={{ padding:'7px 12px',borderRadius:8,background:cfg.color,border:'none',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap' }}>
-              + Type
+              {tr('calendar.typeBtn')}
             </button>
           </div>
         </div>
@@ -1217,7 +1231,7 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
                         </div>
                       </div>
                     )
-                  }) : <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontStyle:'italic' }}>Aucun</p>}
+                  }) : <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,fontStyle:'italic' }}>{tr('calendar.none')}</p>}
                 </div>
               )
             })}
@@ -1236,11 +1250,11 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
             </div>
             <button onClick={() => setAddEventModal(`${year}-${String(currentMonth+1).padStart(2,'0')}-15`)}
               style={{ padding:'5px 10px',borderRadius:8,background:cfg.bg,border:`1px solid ${cfg.color}44`,color:cfg.color,fontSize:10,cursor:'pointer' }}>
-              + Événement
+              {tr('calendar.eventBtn')}
             </button>
           </div>
           <div style={{ display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:5 }}>
-            {['L','M','M','J','V','S','D'].map((d, i) => (
+            {[tr('calendar.dow0'),tr('calendar.dow1'),tr('calendar.dow2'),tr('calendar.dow3'),tr('calendar.dow4'),tr('calendar.dow5'),tr('calendar.dow6')].map((d, i) => (
               <div key={i} style={{ textAlign:'center',fontSize:9,fontWeight:600,color:'var(--text-dim)',padding:'3px 0' }}>{d}</div>
             ))}
           </div>
@@ -1262,7 +1276,7 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
                     return (
                       <div key={ev.id} onClick={e => { e.stopPropagation(); deleteEvent(ev.id) }}
                         style={{ borderRadius:3,padding:'1px 3px',background:`${col}22`,border:`1px solid ${col}44`,cursor:'pointer' }}
-                        title="Cliquer pour supprimer">
+                        title={tr('calendar.clickToDelete')}>
                         <p style={{ fontSize:7,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:col }}>{ev.title}</p>
                       </div>
                     )
@@ -1278,11 +1292,11 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
         <div style={{ padding:'28px 20px',textAlign:'center',background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:14 }}>
           <div style={{ width:32,height:32,borderRadius:'50%',background:`${cfg.color}20`,border:`1px solid ${cfg.color}40`,margin:'0 auto 10px' }}/>
 
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:'0 0 6px' }}>Aucun événement {cfg.label}</p>
-          <p style={{ fontSize:12,color:'var(--text-dim)',margin:'0 0 12px' }}>Créez d'abord vos types, puis ajoutez des événements</p>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:'0 0 6px' }}>{tr('calendar.noEventCategory', { category: tr(CATEGORY_LABEL_KEY[category]) })}</p>
+          <p style={{ fontSize:12,color:'var(--text-dim)',margin:'0 0 12px' }}>{tr('calendar.createTypesThenEvents')}</p>
           <button onClick={() => setShowTypeManager(true)}
             style={{ padding:'8px 16px',borderRadius:9,background:cfg.color,border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:600,fontSize:12,cursor:'pointer' }}>
-            ⚙ Créer un type
+            {tr('calendar.createType')}
           </button>
         </div>
       )}
@@ -1319,6 +1333,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
     sport?: RaceSport
   }
 
+  const { t: tr } = useI18n()
   const [view, setView] = useState<AllView>('vertical')
   const [detail, setDetail] = useState<UnifiedEvent | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -1365,7 +1380,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Toggle */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-        {([['vertical', '↕ Vertical'], ['circular', '◎ Circulaire']] as [AllView, string][]).map(([v, l]) => (
+        {([['vertical', tr('calendar.vertical')], ['circular', tr('calendar.circular')]] as [AllView, string][]).map(([v, l]) => (
           <button key={v} onClick={() => setView(v)} style={{
             padding: '6px 13px', borderRadius: 9, border: '1px solid', fontSize: 11, cursor: 'pointer',
             fontWeight: view === v ? 600 : 400,
@@ -1386,7 +1401,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {unified.length === 0 && (
             <div style={{ padding: '32px 20px', textAlign: 'center', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14 }}>
-              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0, fontStyle: 'italic' }}>Aucun événement pour {year}</p>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0, fontStyle: 'italic' }}>{tr('calendar.noEventForYear', { year })}</p>
             </div>
           )}
           {Object.entries(byMonth)
@@ -1399,7 +1414,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
                     {MONTH_SHORT[Number(mi)]}
                   </span>
                   <span style={{ fontSize:10, color:'var(--text-dim)' }}>
-                    {monthEvents.length} événement{monthEvents.length > 1 ? 's' : ''}
+                    {monthEvents.length > 1 ? tr('calendar.eventsCountPlural', { n: monthEvents.length }) : tr('calendar.eventsCount', { n: monthEvents.length })}
                   </span>
                 </div>
 
@@ -1445,7 +1460,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
                           )}
                         </div>
                         <span style={{ fontSize:15, fontWeight:700, color:cdColor, flexShrink:0, fontFamily:'DM Mono,monospace' }}>
-                          {isPast ? '✓' : days === 0 ? 'Auj.' : `J-${days}`}
+                          {isPast ? '✓' : days === 0 ? tr('calendar.todayAbbr') : tr('calendar.jMinus', { n: days })}
                         </span>
                       </div>
                       {/* Secondary line */}
@@ -1453,9 +1468,9 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
                         <span style={{ fontSize:12, color:'var(--text-dim)', textTransform:'capitalize' as const }}>
                           {dateLabel}
                         </span>
-                        {lvlCfg && (
+                        {lvlCfg && ev.level && (
                           <span style={{ fontSize:10, color:'var(--text-dim)', border:'1px solid var(--border)', borderRadius:4, padding:'1px 6px', flexShrink:0 }}>
-                            {lvlCfg.label}
+                            {tr(RACE_LEVEL_KEY[ev.level])}
                           </span>
                         )}
                       </div>
@@ -1475,7 +1490,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
     const race = ev.category === 'race' ? races.find(r => r.id === ev.id) : undefined
     const calEv = ev.category !== 'race' ? events.find(e => e.id === ev.id) : undefined
     const borderColor = ev.category === 'race' ? '#ef4444' : ev.category === 'pro' ? '#3b82f6' : '#a855f7'
-    const catLabel = ev.category === 'race' ? 'Race' : ev.category === 'pro' ? 'Pro' : 'Perso'
+    const catLabel = tr(CATEGORY_LABEL_KEY[ev.category])
     const dateLabel = new Date(ev.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
     const days = Math.ceil((new Date(ev.date).getTime() - Date.now()) / 86_400_000)
     const isPast = ev.date < today
@@ -1497,7 +1512,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
               <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px',textTransform:'capitalize' as const }}>{dateLabel}</p>
             </div>
             <span style={{ fontSize:20,fontWeight:800,color:isPast?'var(--text-dim)':days<7?'#ef4444':days<30?'#f97316':'var(--text)',fontFamily:'DM Mono,monospace' }}>
-              {isPast ? '✓ Passé' : days === 0 ? 'Aujourd\'hui' : `J-${days}`}
+              {isPast ? tr('calendar.pastCheck') : days === 0 ? tr('calendar.todayFull') : tr('calendar.jMinus', { n: days })}
             </span>
           </div>
           {/* Race details */}
@@ -1506,31 +1521,31 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
               {(race.sport || race.level) && (
                 <div style={{ display:'flex',gap:8,flexWrap:'wrap' as const }}>
                   {race.sport && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)' }}>{race.sport}</span>}
-                  {race.level && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:`${RACE_CONFIG[race.level].color}18`,border:`1px solid ${RACE_CONFIG[race.level].color}44`,color:RACE_CONFIG[race.level].color }}>{RACE_CONFIG[race.level].label}</span>}
+                  {race.level && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:`${RACE_CONFIG[race.level].color}18`,border:`1px solid ${RACE_CONFIG[race.level].color}44`,color:RACE_CONFIG[race.level].color }}>{tr(RACE_LEVEL_KEY[race.level])}</span>}
                   {race.runDistance && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)' }}>{race.runDistance}</span>}
                   {race.triDistance && <span style={{ fontSize:11,padding:'3px 10px',borderRadius:20,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)' }}>{race.triDistance}</span>}
                 </div>
               )}
               {(race.goalTime || race.goalSwimTime || race.goalBikeTime || race.goalRunTime) && (
                 <div style={{ padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-                  <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>Objectif</p>
+                  <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>{tr('calendar.goal')}</p>
                   <div style={{ display:'flex',gap:16,flexWrap:'wrap' as const }}>
-                    {race.goalTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>Temps</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalTime}</p></div>}
-                    {race.goalSwimTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>Natation</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalSwimTime}</p></div>}
-                    {race.goalBikeTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>Vélo</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalBikeTime}</p></div>}
-                    {race.goalRunTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>Run</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalRunTime}</p></div>}
+                    {race.goalTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>{tr('calendar.time')}</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalTime}</p></div>}
+                    {race.goalSwimTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>{tr('calendar.swimming')}</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalSwimTime}</p></div>}
+                    {race.goalBikeTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>{tr('calendar.cycling')}</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalBikeTime}</p></div>}
+                    {race.goalRunTime && <div><p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 1px' }}>{tr('calendar.runLabel')}</p><p style={{ fontSize:14,fontWeight:700,margin:0,fontFamily:'DM Mono,monospace' }}>{race.goalRunTime}</p></div>}
                   </div>
                 </div>
               )}
               {race.strategy && (
                 <div style={{ padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-                  <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>Stratégie</p>
+                  <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>{tr('calendar.strategy')}</p>
                   <p style={{ fontSize:12,color:'var(--text-mid)',margin:0,lineHeight:1.6 }}>{race.strategy}</p>
                 </div>
               )}
               {race.notes && (
                 <div style={{ padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-                  <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>Notes</p>
+                  <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>{tr('calendar.notes')}</p>
                   <p style={{ fontSize:12,color:'var(--text-mid)',margin:0,lineHeight:1.6 }}>{race.notes}</p>
                 </div>
               )}
@@ -1539,13 +1554,13 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
           {/* Pro/Perso event details */}
           {calEv?.description && (
             <div style={{ padding:'10px 14px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
-              <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>Description</p>
+              <p style={{ fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.06em',color:'var(--text-dim)',margin:'0 0 6px' }}>{tr('calendar.description')}</p>
               <p style={{ fontSize:12,color:'var(--text-mid)',margin:0,lineHeight:1.6 }}>{calEv.description}</p>
             </div>
           )}
           {/* Close */}
           <button onClick={onClose} style={{ padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer',marginTop:4 }}>
-            Fermer
+            {tr('calendar.close')}
           </button>
         </div>
       </div>
@@ -1557,6 +1572,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 // PAGE
 // ════════════════════════════════════════════════
 export default function CalendarPage() {
+  const { t } = useI18n()
   const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, patchStageDayLocal, deleteStageDayLocal, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
   const { show, dismiss } = usePageOnboarding(CALENDAR_ONBOARDING.pageId, CALENDAR_ONBOARDING.version)
 
@@ -1579,14 +1595,14 @@ export default function CalendarPage() {
   const header = (
     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
       <div>
-        <h1 style={{ fontFamily:'var(--font-display)',fontSize:24,fontWeight:600,margin:0 }}>Calendar</h1>
-        <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>Course · Pro · Perso · Tout</p>
+        <h1 style={{ fontFamily:'var(--font-display)',fontSize:24,fontWeight:600,margin:0 }}>{t('calendar.pageTitle')}</h1>
+        <p style={{ fontSize:12,color:'var(--text-dim)',margin:'5px 0 0' }}>{t('calendar.pageSubtitle')}</p>
       </div>
     </div>
   )
 
   const loader = (
-    <div style={{ padding:'40px',textAlign:'center',color:'var(--text-dim)',fontSize:13 }}>Chargement…</div>
+    <div style={{ padding:'40px',textAlign:'center',color:'var(--text-dim)',fontSize:13 }}>{t('calendar.loading')}</div>
   )
 
   return (
@@ -1595,10 +1611,10 @@ export default function CalendarPage() {
       <SectionLayout
         header={header}
         sections={[
-          { id:'race',  label:'Course', subtitle:'Compétitions',  icon:Trophy,     content: loading ? loader : <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} deleteRaceStage={deleteRaceStage} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/> },
-          { id:'pro',   label:'Pro',    subtitle:'Professionnel',  icon:Briefcase,  content: loading ? loader : <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
-          { id:'perso', label:'Perso',  subtitle:'Personnel',      icon:Heart,      content: loading ? loader : <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
-          { id:'all',   label:'Tout',   subtitle:'Vue globale',    icon:LayoutGrid, content: loading ? loader : <AllTab races={races} eventTypes={eventTypes} events={events}/> },
+          { id:'race',  label:t('calendar.tabRace'), subtitle:t('calendar.tabRaceSub'),  icon:Trophy,     content: loading ? loader : <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} deleteRaceStage={deleteRaceStage} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/> },
+          { id:'pro',   label:t('calendar.tabPro'),    subtitle:t('calendar.tabProSub'),  icon:Briefcase,  content: loading ? loader : <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
+          { id:'perso', label:t('calendar.tabPerso'),  subtitle:t('calendar.tabPersoSub'),      icon:Heart,      content: loading ? loader : <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
+          { id:'all',   label:t('calendar.tabAll'),   subtitle:t('calendar.tabAllSub'),    icon:LayoutGrid, content: loading ? loader : <AllTab races={races} eventTypes={eventTypes} events={events}/> },
         ]}
       />
     </>

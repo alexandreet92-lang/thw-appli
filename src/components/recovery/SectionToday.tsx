@@ -3,6 +3,7 @@
 import { calcRecoveryScore, scoreStatus, fmtHoursDecimal } from './helpers'
 import { ReadinessRing, MetricBar } from './ReadinessRing'
 import type { CheckInRow } from './types'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   checkin: CheckInRow | null
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function SectionToday({ checkin, onCheckIn }: Props) {
+  const { t } = useI18n()
   const score   = checkin ? calcRecoveryScore(checkin) : null
   const status  = score !== null ? scoreStatus(score) : null
   const hasData = checkin !== null
@@ -21,11 +23,11 @@ export default function SectionToday({ checkin, onCheckIn }: Props) {
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap' as const,gap:8 }}>
         <div>
           <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:0 }}>Today</p>
-          <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'3px 0 0' }}>État du jour</h2>
+          <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'3px 0 0' }}>{t('recovery.today.title')}</h2>
         </div>
         <button onClick={onCheckIn}
           style={{ padding:'8px 16px',borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer',whiteSpace:'nowrap' as const }}>
-          {hasData ? 'Modifier le check-in' : 'Check-in du matin'}
+          {hasData ? t('recovery.editCheckin') : t('recovery.checkinMorning')}
         </button>
       </div>
 
@@ -42,7 +44,7 @@ export default function SectionToday({ checkin, onCheckIn }: Props) {
                 </span>
                 <p style={{ fontSize:10,color:'var(--text-dim)',margin:'6px 0 0',lineHeight:1.5,maxWidth:140,textAlign:'center' as const }}>{status.desc}</p>
               </div>
-            : <p style={{ fontSize:11,color:'var(--text-dim)',textAlign:'center' as const,maxWidth:130,lineHeight:1.5,margin:0 }}>Fais ton check-in du matin pour voir ton score</p>
+            : <p style={{ fontSize:11,color:'var(--text-dim)',textAlign:'center' as const,maxWidth:130,lineHeight:1.5,margin:0 }}>{t('recovery.today.empty')}</p>
           }
         </div>
 
@@ -52,11 +54,11 @@ export default function SectionToday({ checkin, onCheckIn }: Props) {
           {/* FC repos / HRV / Sommeil — toujours visibles */}
           <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10 }}>
             {[
-              { label:'FC REPOS', value:'—', sub:'Garmin, Polar ou Whoop', color:'#ef4444' },
-              { label:'HRV',      value:'—', sub:'Garmin, Whoop ou Oura',  color:'#06B6D4' },
-              { label:'SOMMEIL',
+              { label:t('recovery.card.restingHr'), value:'—', sub:t('recovery.card.sub.restingHrOr'), color:'#ef4444' },
+              { label:t('recovery.card.hrv'),      value:'—', sub:t('recovery.card.sub.hrvOr'),  color:'#06B6D4' },
+              { label:t('recovery.card.sleep'),
                 value: checkin?.sleep_hours ? fmtHoursDecimal(checkin.sleep_hours) : '—',
-                sub: checkin?.sleep_hours ? 'Estimé via check-in' : 'Estimé via check-in',
+                sub: t('recovery.card.estimatedCheckin'),
                 color:'#a855f7' },
             ].map(m => (
               <div key={m.label} style={{ padding:'10px 12px',borderRadius:12,background:'var(--bg-card2)',border:'1px solid var(--border)',textAlign:'center' as const }}>
@@ -69,11 +71,11 @@ export default function SectionToday({ checkin, onCheckIn }: Props) {
 
           {/* Barres subjectives */}
           <div style={{ display:'flex',flexDirection:'column' as const,gap:10 }}>
-            <MetricBar label="Fatigue"    value={checkin?.fatigue    ?? null} inverted/>
-            <MetricBar label="Énergie"    value={checkin?.energy     ?? null}/>
-            <MetricBar label="Stress"     value={checkin?.stress     ?? null} inverted/>
-            <MetricBar label="Motivation" value={checkin?.motivation ?? null}/>
-            {(checkin?.pain ?? 0) > 1 && <MetricBar label="Douleurs" value={checkin!.pain} inverted/>}
+            <MetricBar label={t('recovery.metric.fatigue')}    value={checkin?.fatigue    ?? null} inverted/>
+            <MetricBar label={t('recovery.metric.energy')}    value={checkin?.energy     ?? null}/>
+            <MetricBar label={t('recovery.metric.stress')}     value={checkin?.stress     ?? null} inverted/>
+            <MetricBar label={t('recovery.metric.motivation')} value={checkin?.motivation ?? null}/>
+            {(checkin?.pain ?? 0) > 1 && <MetricBar label={t('recovery.metric.pain')} value={checkin!.pain} inverted/>}
           </div>
         </div>
       </div>

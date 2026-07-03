@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, type RefObject } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 const LS_KEY = 'rc_banner_dismissed'
 
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function RecoveryBanner({ sourcesRef }: Props) {
+  const { t } = useI18n()
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -37,9 +39,9 @@ export default function RecoveryBanner({ sourcesRef }: Props) {
       flexWrap: 'wrap' as const,
     }}>
       <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: 0, flex: 1, lineHeight: 1.5 }}>
-        Connecte un appareil de suivi{' '}
+        {t('recovery.banner.before')}{' '}
         <strong style={{ color: '#3B8FD4' }}>(Garmin, Whoop, Oura)</strong>{' '}
-        pour débloquer HRV, sommeil détaillé et FC repos.
+        {t('recovery.banner.after')}
       </p>
       <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
         <button
@@ -50,7 +52,7 @@ export default function RecoveryBanner({ sourcesRef }: Props) {
             color: '#3B8FD4', fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}
         >
-          Voir les sources
+          {t('recovery.banner.viewSources')}
         </button>
         <button
           onClick={dismiss}

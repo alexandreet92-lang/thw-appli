@@ -2,32 +2,34 @@
 
 import { useState, useEffect, type RefObject } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 
 // ── Static source definitions ──────────────────────────────────
 const SOURCES_DEF = [
-  { id: 'strava',    name: 'Strava',  provider: 'strava',    types: ['Activités', 'Vitesse', 'Distance', 'Puissance'] },
-  { id: 'polar',     name: 'Polar',   provider: 'polar',     types: ['Activités', 'HRV', 'Sommeil', 'FC'] },
-  { id: 'withings',  name: 'Withings',provider: 'withings',  types: ['Balance', 'Composition', 'Sommeil'] },
-  { id: 'wahoo',     name: 'Wahoo',   provider: 'wahoo',     types: ['Activités', 'Capteurs'] },
-  { id: 'garmin',    name: 'Garmin',  provider: null,        types: ['Activités', 'Sommeil', 'HRV', 'SpO2', 'FC'] },
-  { id: 'whoop',     name: 'Whoop',   provider: null,        types: ['Récupération', 'Sommeil', 'HRV', 'Stress'] },
-  { id: 'oura',      name: 'Oura',    provider: null,        types: ['Sommeil', 'HRV', 'Température', 'SpO2'] },
+  { id: 'strava',    name: 'Strava',  provider: 'strava',    types: ['recovery.dtype.activities', 'recovery.dtype.speed', 'recovery.dtype.distance', 'recovery.dtype.power'] },
+  { id: 'polar',     name: 'Polar',   provider: 'polar',     types: ['recovery.dtype.activities', 'recovery.dtype.hrv', 'recovery.dtype.sleep', 'recovery.dtype.hr'] },
+  { id: 'withings',  name: 'Withings',provider: 'withings',  types: ['recovery.dtype.scale', 'recovery.dtype.composition', 'recovery.dtype.sleep'] },
+  { id: 'wahoo',     name: 'Wahoo',   provider: 'wahoo',     types: ['recovery.dtype.activities', 'recovery.dtype.sensors'] },
+  { id: 'garmin',    name: 'Garmin',  provider: null,        types: ['recovery.dtype.activities', 'recovery.dtype.sleep', 'recovery.dtype.hrv', 'recovery.dtype.spo2', 'recovery.dtype.hr'] },
+  { id: 'whoop',     name: 'Whoop',   provider: null,        types: ['recovery.dtype.recovery', 'recovery.dtype.sleep', 'recovery.dtype.hrv', 'recovery.dtype.stress'] },
+  { id: 'oura',      name: 'Oura',    provider: null,        types: ['recovery.dtype.sleep', 'recovery.dtype.hrv', 'recovery.dtype.temperature', 'recovery.dtype.spo2'] },
 ]
 
 interface ConnInfo { provider: string; last_used_at: string | null; updated_at: string | null }
 
-function formatRelative(iso: string | null | undefined): string {
+function formatRelative(iso: string | null | undefined, t: (k: string, v?: Record<string, string | number>) => string): string {
   if (!iso) return ''
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
-  if (diff < 120)   return 'À l\'instant'
-  if (diff < 3600)  return `Il y a ${Math.floor(diff / 60)}min`
-  if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)}h`
-  return `Il y a ${Math.floor(diff / 86400)}j`
+  if (diff < 120)   return t('recovery.time.now')
+  if (diff < 3600)  return t('recovery.time.minAgo', { n: Math.floor(diff / 60) })
+  if (diff < 86400) return t('recovery.time.hAgo', { n: Math.floor(diff / 3600) })
+  return t('recovery.time.dAgo', { n: Math.floor(diff / 86400) })
 }
 
 interface Props { sourcesRef?: RefObject<HTMLDivElement | null> }
 
 export default function DataSources({ sourcesRef }: Props) {
+  const { t } = useI18n()
   const [connInfo, setConnInfo]   = useState<ConnInfo[]>([])
   const [syncing,  setSyncing]    = useState<string | null>(null)
   const [tooltip,  setTooltip]    = useState<string | null>(null)
@@ -70,12 +72,12 @@ export default function DataSources({ sourcesRef }: Props) {
   return (
     <div ref={sourcesRef} id="rc-sources"
       style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:24,boxShadow:'var(--shadow-card)' }}>
-      <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>Sources</p>
-      <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'0 0 18px' }}>Sources de données</h2>
+      <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>{t('recovery.sources.eyebrow')}</p>
+      <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,margin:'0 0 18px' }}>{t('recovery.sources.title')}</h2>
 
       {connected.length > 0 && (
         <div style={{ marginBottom:14 }}>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'#22c55e',margin:'0 0 8px' }}>Connectées</p>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'#22c55e',margin:'0 0 8px' }}>{t('recovery.sources.connected')}</p>
           <div style={{ display:'flex',flexDirection:'column' as const,gap:8 }}>
             {connected.map(s => {
               const info = connInfo.find(c => c.provider === s.provider)
@@ -85,12 +87,12 @@ export default function DataSources({ sourcesRef }: Props) {
                   <div style={{ width:8,height:8,borderRadius:'50%',background:'#22c55e',flexShrink:0 }} />
                   <div style={{ flex:1 }}>
                     <p style={{ fontSize:13,fontWeight:600,margin:0 }}>{s.name}</p>
-                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{s.types.join(' · ')}</p>
+                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{s.types.map(x => t(x)).join(' · ')}</p>
                   </div>
                   <div style={{ display:'flex',flexDirection:'column' as const,alignItems:'flex-end',gap:4 }}>
-                    <span style={{ fontSize:10,color:'#22c55e',fontWeight:600 }}>Connecté</span>
+                    <span style={{ fontSize:10,color:'#22c55e',fontWeight:600 }}>{t('recovery.status.connected')}</span>
                     {info?.last_used_at && (
-                      <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>Synchro {formatRelative(info.last_used_at)}</p>
+                      <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{t('recovery.sources.syncPrefix')} {formatRelative(info.last_used_at, t)}</p>
                     )}
                     {s.provider && (
                       <button
@@ -120,20 +122,20 @@ export default function DataSources({ sourcesRef }: Props) {
 
       {available.length > 0 && (
         <div>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>Disponibles</p>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 8px' }}>{t('recovery.sources.available')}</p>
           <div style={{ display:'flex',flexDirection:'column' as const,gap:6 }}>
             {available.map(s => (
               <div key={s.id} style={{ position:'relative' as const,display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:12,background:'var(--bg-card2)',border:'1px solid var(--border)',opacity:0.8 }}>
                 <div style={{ width:8,height:8,borderRadius:'50%',background:'var(--border)',flexShrink:0 }} />
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:12,fontWeight:600,margin:0,color:'var(--text-mid)' }}>{s.name}</p>
-                  <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{s.types.join(' · ')}</p>
+                  <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{s.types.map(x => t(x)).join(' · ')}</p>
                 </div>
                 <div style={{ position:'relative' as const }}>
                   {s.provider ? (
                     <a href={`/connections`}
                       style={{ padding:'5px 12px',borderRadius:8,background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,cursor:'pointer',textDecoration:'none',display:'inline-block' }}>
-                      Connecter
+                      {t('recovery.sources.connect')}
                     </a>
                   ) : (
                     <>
@@ -142,11 +144,11 @@ export default function DataSources({ sourcesRef }: Props) {
                         onMouseLeave={() => setTooltip(null)}
                         onClick={() => setTooltip(t => t === s.id ? null : s.id)}
                         style={{ padding:'5px 12px',borderRadius:8,background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,cursor:'pointer' }}>
-                        Bientôt
+                        {t('recovery.sources.soon')}
                       </button>
                       {tooltip === s.id && (
                         <div style={{ position:'absolute' as const,right:0,top:'calc(100% + 6px)',zIndex:50,minWidth:170,padding:'8px 12px',borderRadius:9,background:'var(--bg-card)',border:'1px solid var(--border)',boxShadow:'0 4px 14px rgba(0,0,0,0.12)' }}>
-                          <p style={{ fontSize:11,color:'var(--text-mid)',margin:0,lineHeight:1.5 }}>Bientôt disponible</p>
+                          <p style={{ fontSize:11,color:'var(--text-mid)',margin:0,lineHeight:1.5 }}>{t('recovery.sources.soonAvailable')}</p>
                         </div>
                       )}
                     </>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   watts:     number[]
@@ -28,6 +29,7 @@ function smooth(arr: number[], w = 8): number[] {
 }
 
 export function AerobicEfficiency({ watts, heartrate, time }: Props) {
+  const { t } = useI18n()
   const WINDOW = 300 // 5 min at 1 Hz
 
   const { efPoints, avgEF, trend, trendLabel } = useMemo(() => {
@@ -119,14 +121,14 @@ export function AerobicEfficiency({ watts, heartrate, time }: Props) {
       {/* Sub-header with stats */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 12, color: 'var(--text-mid)' }}>
-          EF moyenne&nbsp;
+          {t('activities.efMean')}&nbsp;
           <span style={{ fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
             {avgEF.toFixed(2)}
           </span>
         </div>
         <div style={{ fontSize: 12, color: trendColor, fontWeight: 600 }}>
           {trendLabel}&nbsp;
-          {trendLabel === '↑' ? 'En progression' : trendLabel === '↓' ? 'En baisse' : 'Stable'}
+          {trendLabel === '↑' ? t('activities.trendUp') : trendLabel === '↓' ? t('activities.trendDown') : t('activities.trendStable')}
         </div>
       </div>
 
@@ -166,7 +168,7 @@ export function AerobicEfficiency({ watts, heartrate, time }: Props) {
 
       {/* Note */}
       <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
-        L&apos;EF mesure combien de watts tu produis par battement cardiaque. Une courbe stable = bonne endurance fondamentale.
+        {t('activities.efNote')}
       </div>
     </div>
   )

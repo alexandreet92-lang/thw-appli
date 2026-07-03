@@ -6,6 +6,7 @@ import {
   SEANCES_VELO, VELO_BUCKET_ORDER, VELO_BUCKET_LABEL, VELO_BUCKET_SUB, SUPPORT_LABEL,
   type Seance, type VeloBucket,
 } from '@/data/seances/velo'
+import { useI18n } from '@/lib/i18n'
 import { SlideView } from '@/components/ui/SlideView'
 import { CategoryPanel, CategoryRow } from '../CategoryRow'
 import { SPORT_THEME } from '../sportTheme'
@@ -18,17 +19,19 @@ const FD = 'var(--font-display)', FB = 'var(--font-body)'
 const TH = SPORT_THEME.velo
 
 function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '0 12px', height: 42, borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', flex: 1, minWidth: 0 }}>
       <IconSearch size={17} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
-      <input value={value} onChange={e => onChange(e.target.value)} placeholder="Rechercher une séance…" style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontFamily: FB, fontSize: 13 }} />
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={t('session.rechercherSeance')} style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontFamily: FB, fontSize: 13 }} />
     </div>
   )
 }
 function FiltreBtn({ n, onClick }: { n: number; onClick: () => void }) {
+  const { t } = useI18n()
   return (
-    <button onClick={onClick} aria-label="Filtrer" style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42, padding: '0 14px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', flexShrink: 0, background: n > 0 ? 'var(--primary-dim)' : 'var(--bg-card2)', color: n > 0 ? 'var(--primary)' : 'var(--text-mid)', fontFamily: FB, fontSize: 13, fontWeight: 500 }}>
-      <IconAdjustmentsHorizontal size={17} /> Filtrer{n > 0 ? ` · ${n}` : ''}
+    <button onClick={onClick} aria-label={t('session.filtrer')} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42, padding: '0 14px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', flexShrink: 0, background: n > 0 ? 'var(--primary-dim)' : 'var(--bg-card2)', color: n > 0 ? 'var(--primary)' : 'var(--text-mid)', fontFamily: FB, fontSize: 13, fontWeight: 500 }}>
+      <IconAdjustmentsHorizontal size={17} /> {t('session.filtrer')}{n > 0 ? ` · ${n}` : ''}
     </button>
   )
 }
@@ -37,6 +40,7 @@ function Chip({ children }: { children: React.ReactNode }) {
 }
 
 function SeanceCard({ s, showBucket, onClick }: { s: Seance; showBucket: boolean; onClick: () => void }) {
+  const { t } = useI18n()
   return (
     <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', width: '100%', textAlign: 'left', padding: 'var(--space-4)', borderRadius: 'var(--r-md)', border: 'none', cursor: 'pointer', background: 'var(--bg-card2)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', width: '100%' }}>
@@ -48,14 +52,15 @@ function SeanceCard({ s, showBucket, onClick }: { s: Seance; showBucket: boolean
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
         {showBucket && <Chip>{VELO_BUCKET_LABEL[s.bucket]}</Chip>}
         {s.support.map(sp => <Chip key={sp}>{SUPPORT_LABEL[sp]}</Chip>)}
-        {s.terrain === 'cote' && <Chip>Côte</Chip>}
-        {s.cadenceTag && <Chip>{s.cadenceTag === 'basse' ? 'Cad. basse' : s.cadenceTag === 'haute' ? 'Cad. haute' : 'Cad.'}</Chip>}
+        {s.terrain === 'cote' && <Chip>{t('session.cote')}</Chip>}
+        {s.cadenceTag && <Chip>{s.cadenceTag === 'basse' ? t('session.cadBasse') : s.cadenceTag === 'haute' ? t('session.cadHaute') : t('session.cadShort')}</Chip>}
       </div>
     </button>
   )
 }
 
 export function SeancesVelo() {
+  const { t } = useI18n()
   const [view, setView] = useState<'buckets' | 'list'>('buckets')
   const [lock, setLock] = useState<VeloBucket | null>(null)
   const [query, setQuery] = useState('')
@@ -97,22 +102,22 @@ export function SeancesVelo() {
       ) : (
         <>
           <button onClick={backToBuckets} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, padding: '4px 0', marginBottom: 'var(--space-4)' }}>
-            <IconArrowLeft size={16} /> Intentions
+            <IconArrowLeft size={16} /> {t('session.intentions')}
           </button>
           <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-4)' }}>
-            {lock ? VELO_BUCKET_LABEL[lock] : 'Toutes les séances'}
+            {lock ? VELO_BUCKET_LABEL[lock] : t('session.toutesLesSeances')}
           </h2>
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
             <SearchBar value={query} onChange={setQuery} />
             <FiltreBtn n={vf.nbActifs} onClick={() => setSheet(true)} />
           </div>
           {(vf.nbActifs > 0 || query.trim()) && (
-            <button onClick={() => { vf.reset(); setQuery('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontFamily: FB, fontSize: 12.5, padding: '0 0 var(--space-3)' }}>Effacer les filtres</button>
+            <button onClick={() => { vf.reset(); setQuery('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontFamily: FB, fontSize: 12.5, padding: '0 0 var(--space-3)' }}>{t('session.effacerFiltres')}</button>
           )}
           {results.length === 0 ? (
             <div style={{ padding: '48px 24px', borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', textAlign: 'center' }}>
-              <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>Aucune séance ne colle</p>
-              <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>Élargis tes filtres ou change d'intention.</p>
+              <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>{t('session.aucuneSeanceColle')}</p>
+              <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>{t('session.elargisIntention')}</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>

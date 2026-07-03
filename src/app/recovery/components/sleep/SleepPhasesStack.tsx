@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 export interface SleepNightPhases {
   date: string
@@ -8,10 +9,10 @@ export interface SleepNightPhases {
 }
 
 const SEGS = [
-  { key: 'deep',  label: 'Profond',       color: '#1E3A8A' },
-  { key: 'rem',   label: 'REM',           color: '#7C3AED' },
-  { key: 'light', label: 'Léger',         color: '#60A5FA' },
-  { key: 'wake',  label: 'Interruptions', color: '#F97316' },
+  { key: 'deep',  labelKey: 'recovery.phase.deep',       color: '#1E3A8A' },
+  { key: 'rem',   labelKey: 'recovery.phase.rem',           color: '#7C3AED' },
+  { key: 'light', labelKey: 'recovery.phase.light',         color: '#60A5FA' },
+  { key: 'wake',  labelKey: 'recovery.phase.interruptions', color: '#F97316' },
 ] as const
 
 function fmtMin(m: number): string {
@@ -20,6 +21,7 @@ function fmtMin(m: number): string {
 }
 
 export default function SleepPhasesStack({ nights }: { nights: SleepNightPhases[] }) {
+  const { t } = useI18n()
   const [vis, setVis] = useState(0)
   const [tip, setTip] = useState<{ label: string; min: number } | null>(null)
 
@@ -42,7 +44,7 @@ export default function SleepPhasesStack({ nights }: { nights: SleepNightPhases[
         {SEGS.map(s => (
           <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 8, height: 8, borderRadius: 2, background: s.color }} />
-            <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{s.label}</span>
+            <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t(s.labelKey)}</span>
           </div>
         ))}
       </div>
@@ -69,7 +71,7 @@ export default function SleepPhasesStack({ nights }: { nights: SleepNightPhases[
               <div style={{ flex: 1, height: 16, borderRadius: 3, overflow: 'hidden', display: 'flex' }}>
                 {segs.map(s => (
                   <div key={s.key}
-                    onMouseEnter={() => setTip({ label: s.label, min: s.min })}
+                    onMouseEnter={() => setTip({ label: s.labelKey, min: s.min })}
                     onMouseLeave={() => setTip(null)}
                     style={{
                       width: show ? `${s.pct}%` : '0%',
@@ -93,7 +95,7 @@ export default function SleepPhasesStack({ nights }: { nights: SleepNightPhases[
           background: 'var(--bg-card)', border: '1px solid var(--border)',
           borderRadius: 6, display: 'inline-block', color: 'var(--text)',
         }}>
-          {tip.label} · {fmtMin(tip.min)}
+          {t(tip.label)} · {fmtMin(tip.min)}
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { Race, RaceStage, RACE_CFG, MONTHS, getDaysInMonth, getFirstDayISO } from './types'
+import { useI18n } from '@/lib/i18n'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Props {
@@ -23,10 +24,10 @@ function fmtDate(y: number, m: number, d: number): string {
   return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
 }
 
-const DAY_LABELS = ['L','M','M','J','V','S','D']
-
 // ── Component ─────────────────────────────────────────────────
 export default function AppleCalendarView({ races, stages, year, onDayClick, onRaceClick, onStageDayClick }: Props) {
+  const { t } = useI18n()
+  const DAY_LABELS = [t('calendar.dow0'),t('calendar.dow1'),t('calendar.dow2'),t('calendar.dow3'),t('calendar.dow4'),t('calendar.dow5'),t('calendar.dow6')]
   const today     = localToday()
   const todayMonth = new Date().getMonth()
   const todayYear  = new Date().getFullYear()

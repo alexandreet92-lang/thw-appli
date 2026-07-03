@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 // ── Types ──────────────────────────────────────────────────────
 interface SleepPhase {
@@ -73,10 +74,10 @@ function buildPhasesFromTotals(d: SleepDataProp): SleepPhase[] {
 
 // ── Phase config ───────────────────────────────────────────────
 const PHASE_CONFIG = {
-  light: { label:'Léger',        color:'#60A5FA', yLevel:1 },
-  deep:  { label:'Profond',      color:'#1D4ED8', yLevel:3 },
-  rem:   { label:'REM',          color:'#34D399', yLevel:2 },
-  wake:  { label:'Interruption', color:'#F97316', yLevel:0 },
+  light: { labelKey:'recovery.phase.light',        color:'#60A5FA', yLevel:1 },
+  deep:  { labelKey:'recovery.phase.deep',      color:'#1D4ED8', yLevel:3 },
+  rem:   { labelKey:'recovery.phase.rem',          color:'#34D399', yLevel:2 },
+  wake:  { labelKey:'recovery.phase.interruption', color:'#F97316', yLevel:0 },
 } as const
 
 type Stage = keyof typeof PHASE_CONFIG
@@ -96,15 +97,16 @@ function addMinutes(timeStr: string, min: number): string {
 
 // ── Phase pills ────────────────────────────────────────────────
 function PhasePills({ phases }: { phases: SleepPhase[] }) {
+  const { t } = useI18n()
   const totals: Record<Stage, number> = { light:0, deep:0, rem:0, wake:0 }
   for (const p of phases) totals[p.stage] += p.durationMin
-  const entries: [Stage, string][] = [['light','Léger'],['deep','Profond'],['rem','REM'],['wake','Interruptions']]
+  const entries: [Stage, string][] = [['light','recovery.phase.light'],['deep','recovery.phase.deep'],['rem','recovery.phase.rem'],['wake','recovery.phase.interruptions']]
   return (
     <div style={{ display:'flex',gap:8,flexWrap:'wrap' as const,marginBottom:16 }}>
-      {entries.map(([stage, label]) => (
+      {entries.map(([stage, labelKey]) => (
         <div key={stage} style={{ display:'flex',alignItems:'center',gap:6,padding:'6px 12px',borderRadius:20,background:`${PHASE_CONFIG[stage].color}18`,border:`1px solid ${PHASE_CONFIG[stage].color}40` }}>
           <div style={{ width:8,height:8,borderRadius:'50%',background:PHASE_CONFIG[stage].color,flexShrink:0 }} />
-          <span style={{ fontSize:11,fontWeight:600,color:PHASE_CONFIG[stage].color }}>{label}</span>
+          <span style={{ fontSize:11,fontWeight:600,color:PHASE_CONFIG[stage].color }}>{t(labelKey)}</span>
           <span style={{ fontSize:12,fontWeight:700,color:'var(--text)',fontFamily:'DM Mono,monospace' }}>{fmtMinutes(totals[stage])}</span>
         </div>
       ))}
@@ -114,6 +116,7 @@ function PhasePills({ phases }: { phases: SleepPhase[] }) {
 
 // ── Hypnogram SVG ──────────────────────────────────────────────
 function HypnogramChart({ phases, sleepStart }: { phases: SleepPhase[]; sleepStart: string }) {
+  const { t } = useI18n()
   const [animated, setAnimated] = useState(false)
   useEffect(() => { const id = setTimeout(() => setAnimated(true), 120); return () => clearTimeout(id) }, [])
 
@@ -132,7 +135,7 @@ function HypnogramChart({ phases, sleepStart }: { phases: SleepPhase[]; sleepSta
           ))}
           {(['wake','light','rem','deep'] as Stage[]).map((stage, i) => (
             <text key={stage} x={3} y={yForLevel(i)+levelH/2+4} fill="var(--text-dim)" fontSize={7} fontWeight={500}>
-              {PHASE_CONFIG[stage].label}
+              {t(PHASE_CONFIG[stage].labelKey)}
             </text>
           ))}
           {phases.map((p, i) => {
@@ -146,7 +149,7 @@ function HypnogramChart({ phases, sleepStart }: { phases: SleepPhase[]; sleepSta
             return (
               <rect key={i} x={x} y={animated ? y : y+20} width={Math.max(w-1,2)} height={levelH-2}
                 fill={color} rx={2} opacity={animated ? 0.85 : 0}
-                onMouseEnter={() => setTooltip({ x:x+w/2, y:yForLevel(lvl)-4, label:`${PHASE_CONFIG[p.stage].label} · ${startLabel}–${endLabel} · ${fmtMinutes(p.durationMin)}` })}
+                onMouseEnter={() => setTooltip({ x:x+w/2, y:yForLevel(lvl)-4, label:`${t(PHASE_CONFIG[p.stage].labelKey)} · ${startLabel}–${endLabel} · ${fmtMinutes(p.durationMin)}` })}
                 onMouseLeave={() => setTooltip(null)}
                 style={{ cursor:'default', transition:`y 0.6s ease-out ${i*30}ms, opacity 0.4s ease-out ${i*30}ms` }}
               />
@@ -191,6 +194,7 @@ function SummaryBar({ phases, sleepStart, sleepEnd }: { phases: SleepPhase[]; sl
 
 // ── Score circle ───────────────────────────────────────────────
 function ScoreCircle({ score }: { score: number }) {
+  const { t } = useI18n()
   const R = 20, C = 2 * Math.PI * R
   const [offset, setOffset] = useState(C)
   useEffect(() => { const id = setTimeout(() => setOffset(C - (score/100)*C), 150); return () => clearTimeout(id) }, [score, C])
@@ -203,7 +207,7 @@ function ScoreCircle({ score }: { score: number }) {
           transform="rotate(-90 27 27)" style={{ transition:'stroke-dashoffset 1.2s ease-out' }} />
         <text x={27} y={31} textAnchor="middle" fill="#8B5CF6" fontSize={12} fontWeight={700}>{score}</text>
       </svg>
-      <span style={{ fontSize:9,color:'var(--text-dim)',textAlign:'center' as const }}>Score<br/>sommeil</span>
+      <span style={{ fontSize:9,color:'var(--text-dim)',textAlign:'center' as const }}>{t('recovery.hypno.scoreWord')}<br/>{t('recovery.hypno.sleepWord')}</span>
     </div>
   )
 }
@@ -216,6 +220,7 @@ interface Props {
 }
 
 export default function SleepHypnogram({ sleepData, polarConnected = false }: Props) {
+  const { t } = useI18n()
   const hasDeviceSleepData = !!sleepData
 
   // DEBUG — à retirer une fois les données confirmées
@@ -239,7 +244,7 @@ export default function SleepHypnogram({ sleepData, polarConnected = false }: Pr
         {hasDeviceSleepData && (
           <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:12 }}>
             <span style={{ width:6,height:6,borderRadius:'50%',background:'#8B5CF6',boxShadow:'0 0 5px #8B5CF6',flexShrink:0,display:'inline-block' }} />
-            <span style={{ fontSize:10,fontWeight:600,color:'#8B5CF6',fontFamily:'DM Mono,monospace' }}>Données Polar</span>
+            <span style={{ fontSize:10,fontWeight:600,color:'#8B5CF6',fontFamily:'DM Mono,monospace' }}>{t('recovery.hypno.polarData')}</span>
             <span style={{ fontSize:10,color:'var(--text-dim)',marginLeft:'auto' }}>
               {sleepStart} → {sleepEnd}
             </span>
@@ -254,7 +259,7 @@ export default function SleepHypnogram({ sleepData, polarConnected = false }: Pr
           </div>
           <div style={{ display:'flex',flexDirection:'column' as const,alignItems:'center',gap:8,paddingTop:4 }}>
             <ScoreCircle score={score} />
-            <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,textAlign:'center' as const }}>{cycles} cycle{cycles > 1 ? 's' : ''}</p>
+            <p style={{ fontSize:10,color:'var(--text-dim)',margin:0,textAlign:'center' as const }}>{cycles} {t(cycles > 1 ? 'recovery.cycles' : 'recovery.cycle')}</p>
           </div>
         </div>
 
@@ -267,8 +272,8 @@ export default function SleepHypnogram({ sleepData, polarConnected = false }: Pr
       {!hasDeviceSleepData && !polarConnected && (
         <div style={{ position:'absolute' as const,inset:0,borderRadius:14,background:'rgba(var(--bg-card-rgb,255,255,255),0.55)',backdropFilter:'blur(2px)',display:'flex',flexDirection:'column' as const,alignItems:'center',justifyContent:'center',gap:10,pointerEvents:'none' as const }}>
           <div style={{ padding:'8px 16px',borderRadius:20,background:'rgba(139,92,246,0.12)',border:'1px solid rgba(139,92,246,0.35)',textAlign:'center' as const }}>
-            <p style={{ fontSize:12,fontWeight:700,color:'#8B5CF6',margin:'0 0 3px' }}>Aperçu</p>
-            <p style={{ fontSize:10,color:'var(--text-mid)',margin:0,lineHeight:1.4 }}>Connecte Polar, Garmin ou Oura<br/>pour voir tes données réelles</p>
+            <p style={{ fontSize:12,fontWeight:700,color:'#8B5CF6',margin:'0 0 3px' }}>{t('recovery.hypno.preview')}</p>
+            <p style={{ fontSize:10,color:'var(--text-mid)',margin:0,lineHeight:1.4 }}>{t('recovery.hypno.previewL1')}<br/>{t('recovery.hypno.previewL2')}</p>
           </div>
         </div>
       )}
@@ -277,9 +282,9 @@ export default function SleepHypnogram({ sleepData, polarConnected = false }: Pr
           <div style={{ padding:'8px 16px',borderRadius:20,background:'rgba(139,92,246,0.10)',border:'1px solid rgba(139,92,246,0.25)',textAlign:'center' as const }}>
             <p style={{ fontSize:11,fontWeight:600,color:'#8B5CF6',margin:'0 0 3px',display:'flex',alignItems:'center',gap:6,justifyContent:'center' }}>
               <span style={{ width:6,height:6,borderRadius:'50%',background:'#8B5CF6',display:'inline-block',animation:'pulse 1.5s ease-in-out infinite' }} />
-              En attente de données
+              {t('recovery.hypno.waitingData')}
             </p>
-            <p style={{ fontSize:9,color:'var(--text-mid)',margin:0,lineHeight:1.4 }}>Lance une synchronisation Polar<br/>pour charger tes nuits</p>
+            <p style={{ fontSize:9,color:'var(--text-mid)',margin:0,lineHeight:1.4 }}>{t('recovery.hypno.syncL1')}<br/>{t('recovery.hypno.syncL2')}</p>
           </div>
         </div>
       )}

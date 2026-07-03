@@ -11,9 +11,11 @@ import {
 } from '@/app/planning/page'
 import { sportColor, fmtDur, parseDurInput } from './editorial'
 import { Card, FieldLabel, Gauge } from './ui'
+import { useI18n } from '@/lib/i18n'
 
 const SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique']
-const RPE_DESC = ['Très facile', 'Très facile', 'Facile', 'Facile', 'Modéré', 'Modéré', 'Soutenu', 'Difficile', 'Très difficile', 'Maximal']
+// Clés i18n des descripteurs d'effort perçu (RPE 1→10).
+const RPE_DESC = ['planning.rpeVeryEasy', 'planning.rpeVeryEasy', 'planning.rpeEasy', 'planning.rpeEasy', 'planning.rpeModerate', 'planning.rpeModerate', 'planning.rpeSustained', 'planning.rpeHard', 'planning.rpeVeryHard', 'planning.rpeMaximal']
 
 export function MainFields(p: {
   reserveMode?: boolean
@@ -27,6 +29,7 @@ export function MainFields(p: {
   desc: string; setDesc: (v: string) => void
   athlete: { ftp: number | null; lthrBike: number | null; lthrRun: number | null; runThresholdPaceStr: string | null; swimCSSStr: string | null; hrMax: number | null } | null
 }) {
+  const { t: tr } = useI18n()
   const trainTypes = TRAINING_TYPES[p.sport] ?? []
   const rpeIdx = Math.max(0, Math.min(9, Math.round(p.rpe) - 1))
 
@@ -35,9 +38,9 @@ export function MainFields(p: {
   const a = p.athlete
   if (a) {
     if (p.sport === 'bike') { if (a.ftp) stats.push({ label: 'FTP', value: `${a.ftp} W` }); if (a.lthrBike) stats.push({ label: 'LTHR', value: `${a.lthrBike}` }) }
-    else if (p.sport === 'run') { if (a.runThresholdPaceStr) stats.push({ label: 'Seuil', value: `${a.runThresholdPaceStr}/km` }); if (a.lthrRun) stats.push({ label: 'LTHR', value: `${a.lthrRun}` }) }
+    else if (p.sport === 'run') { if (a.runThresholdPaceStr) stats.push({ label: tr('planning.threshold'), value: `${a.runThresholdPaceStr}/km` }); if (a.lthrRun) stats.push({ label: 'LTHR', value: `${a.lthrRun}` }) }
     else if (p.sport === 'swim') { if (a.swimCSSStr) stats.push({ label: 'CSS', value: `${a.swimCSSStr}/100m` }) }
-    if (a.hrMax) stats.push({ label: 'FC max', value: `${a.hrMax}` })
+    if (a.hrMax) stats.push({ label: tr('planning.hrMax'), value: `${a.hrMax}` })
   }
 
   return (
@@ -45,7 +48,7 @@ export function MainFields(p: {
       {/* §3 — Sélecteur de sport (masqué en réserve : le sport est déjà choisi) */}
       {!p.reserveMode && (
         <div>
-          <h3 className="se-fr" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 600 }}>Sport</h3>
+          <h3 className="se-fr" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 600 }}>{tr('planning.sport')}</h3>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             {SPORTS.map(s => {
               const on = s === p.sport
@@ -73,20 +76,20 @@ export function MainFields(p: {
 
       {/* Brick Run : enchaînement vélo → course à pied (crée une course liée) */}
       {p.sport === 'bike' && !p.reserveMode && (
-        <button type="button" onClick={() => p.setBrickRun(!p.brickRun)} title="Enchaînement vélo → running"
+        <button type="button" onClick={() => p.setBrickRun(!p.brickRun)} title={tr('planning.brickRunTitle')}
           style={{ alignSelf: 'flex-start', padding: '10px 16px', borderRadius: 999, cursor: 'pointer', fontSize: 13, fontWeight: 700,
             border: `1px solid ${p.brickRun ? sportColor('run') : 'var(--se-rule)'}`,
             background: p.brickRun ? `${sportColor('run')}1f` : 'var(--se-card)',
             color: p.brickRun ? sportColor('run') : 'var(--se-dim)', display: 'flex', alignItems: 'center', gap: 7 }}>
           {p.brickRun ? '✓' : '+'} Brick Run
-          <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.85 }}>vélo → course</span>
+          <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.85 }}>{tr('planning.bikeToRun')}</span>
         </button>
       )}
 
       {/* Type de séance */}
       {trainTypes.length > 0 && (
         <div>
-          <h3 className="se-fr" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 600 }}>Type de séance</h3>
+          <h3 className="se-fr" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 600 }}>{tr('planning.sessionType')}</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {trainTypes.map(t => {
               const on = p.trainingTypes.includes(t)
@@ -100,11 +103,11 @@ export function MainFields(p: {
       {!p.reserveMode && (
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
           <Card style={{ padding: '12px 16px' }}>
-            <FieldLabel>Date</FieldLabel>
+            <FieldLabel>{tr('planning.date')}</FieldLabel>
             <input type="date" value={p.date} onChange={e => p.setDate(e.target.value)} className="se-fr" style={inp} />
           </Card>
           <Card style={{ padding: '12px 16px' }}>
-            <FieldLabel>Heure</FieldLabel>
+            <FieldLabel>{tr('planning.hour')}</FieldLabel>
             <input type="time" value={p.time} onChange={e => p.setTime(e.target.value)} className="se-fr" style={inp} />
           </Card>
         </div>
@@ -114,8 +117,8 @@ export function MainFields(p: {
       <Card>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>Effort perçu</p>
-            <p className="se-fr" style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600, color: 'var(--se-text)' }}>{RPE_DESC[rpeIdx]}</p>
+            <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>{tr('planning.perceivedEffort')}</p>
+            <p className="se-fr" style={{ margin: '8px 0 0', fontSize: 15, fontWeight: 600, color: 'var(--se-text)' }}>{tr(RPE_DESC[rpeIdx])}</p>
           </div>
           <p className="se-fr se-tnum" style={{ margin: 0, fontSize: 34, fontWeight: 600, color: 'var(--se-text)', lineHeight: 1 }}>{p.rpe}<span style={{ fontSize: 13, color: 'var(--se-dim)' }}>/10</span></p>
         </div>
@@ -127,7 +130,7 @@ export function MainFields(p: {
       {/* Durée — jauge (pas 5min, jusqu'à 10h) + saisie manuelle */}
       <Card>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-          <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>Durée</p>
+          <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>{tr('planning.duration')}</p>
           <span className="se-fr se-tnum" style={{ fontSize: 26, fontWeight: 600 }}>{fmtDur(p.dur)}</span>
           <input defaultValue={fmtDur(p.dur)} key={p.dur} placeholder="2h00"
             onBlur={e => { const v = parseDurInput(e.target.value); if (v != null) p.setDur(Math.max(5, Math.min(600, v))) }}
@@ -153,8 +156,8 @@ export function MainFields(p: {
 
       {/* Description */}
       <div>
-        <FieldLabel>Description</FieldLabel>
-        <textarea value={p.desc} onChange={e => p.setDesc(e.target.value)} rows={3} placeholder="Notes, consignes…"
+        <FieldLabel>{tr('planning.description')}</FieldLabel>
+        <textarea value={p.desc} onChange={e => p.setDesc(e.target.value)} rows={3} placeholder={tr('planning.notesConsignes')}
           style={{ width: '100%', resize: 'vertical', background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: 12, fontSize: 13, color: 'var(--se-text)', outline: 'none', boxSizing: 'border-box' }} />
       </div>
     </div>

@@ -11,18 +11,20 @@
 import { useState } from 'react'
 import { CalendarDays, ClipboardList, TrendingUp, Scale } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 export type NutritionTab = 'today' | 'plan' | 'tracking' | 'body'
 
 const CYAN = '#06B6D4'
-const RAIL_SECTIONS: { id: NutritionTab; label: string; subtitle: string; icon: LucideIcon }[] = [
-  { id: 'today',    label: "Aujourd'hui", subtitle: 'Fueling du jour',    icon: CalendarDays },
-  { id: 'plan',     label: 'Mon plan',    subtitle: 'Plan nutritionnel',  icon: ClipboardList },
-  { id: 'tracking', label: 'Suivi',       subtitle: 'Bilan & tendances',  icon: TrendingUp },
-  { id: 'body',     label: 'Composition', subtitle: 'Poids & composition', icon: Scale },
+const RAIL_SECTIONS: { id: NutritionTab; subKey: string; icon: LucideIcon }[] = [
+  { id: 'today',    subKey: 'nutrition.rail.todaySub',    icon: CalendarDays },
+  { id: 'plan',     subKey: 'nutrition.rail.planSub',     icon: ClipboardList },
+  { id: 'tracking', subKey: 'nutrition.rail.trackingSub', icon: TrendingUp },
+  { id: 'body',     subKey: 'nutrition.rail.bodySub',     icon: Scale },
 ]
 
 export function NutritionRail({ tab, onChange }: { tab: NutritionTab; onChange: (t: NutritionTab) => void }) {
+  const { t } = useI18n()
   const [railOpen, setRailOpen] = useState(false)
   return (
     <div style={{ width: 56, flexShrink: 0, position: 'relative', alignSelf: 'stretch' }}>
@@ -42,7 +44,7 @@ export function NutritionRail({ tab, onChange }: { tab: NutritionTab; onChange: 
           const active = tab === s.id
           const Icon = s.icon
           return (
-            <button key={s.id} onClick={() => onChange(s.id)} title={s.label}
+            <button key={s.id} onClick={() => onChange(s.id)} title={t(`nutrition.tab.${s.id}`)}
               style={{
                 position: 'relative', display: 'flex', alignItems: 'center', gap: 12, width: '100%',
                 padding: '11px 11px', borderRadius: 10, marginBottom: 4, cursor: 'pointer',
@@ -56,8 +58,8 @@ export function NutritionRail({ tab, onChange }: { tab: NutritionTab; onChange: 
               {active && <span style={{ position: 'absolute', left: -8, top: 8, bottom: 8, width: 3, borderRadius: '0 3px 3px 0', background: CYAN }} />}
               <Icon size={18} color={active ? CYAN : 'var(--text-mid)'} style={{ flexShrink: 0 }} />
               <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease' }}>
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: active ? CYAN : 'var(--text)' }}>{s.label}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{s.subtitle}</span>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: active ? CYAN : 'var(--text)' }}>{t(`nutrition.tab.${s.id}`)}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t(s.subKey)}</span>
               </span>
             </button>
           )

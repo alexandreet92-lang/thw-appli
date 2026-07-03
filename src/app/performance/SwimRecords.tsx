@@ -1,6 +1,7 @@
 'use client'
 // Records Natation = DistanceRecords avec barème natation (allure /100m, genré H/F).
 import { DistanceRecords, type DistDef, type Bench } from './DistanceRecords'
+import { useI18n } from '@/lib/i18n'
 
 const SWIM = '#0ea5b7' // design-allow-color — teinte sport natation sanctionnée
 
@@ -28,9 +29,10 @@ export interface SwimRecordsProps {
 }
 
 export function SwimRecords(props: SwimRecordsProps) {
+  const { t } = useI18n()
   return (
     <DistanceRecords
-      sportLabel="Natation" color={SWIM} dists={DISTS}
+      sportLabel={t('performance.sportSwimming')} color={SWIM} dists={DISTS}
       benchH={BENCH_H} benchF={BENCH_F} paceBaseM={100} paceSuffix="/100m" showGender
       {...props}
     />

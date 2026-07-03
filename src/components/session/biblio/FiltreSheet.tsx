@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { IconX } from '@tabler/icons-react'
+import { useI18n } from '@/lib/i18n'
 import {
   MODE_LABEL, MODE_ORDER, MUSCLE_LABEL, MUSCLES_PAR_REGION, REGION_LABEL, REGION_ORDER,
   EQUIP_LABEL, EQUIP_ORDER,
@@ -46,6 +47,7 @@ function Bloc({ titre, children }: { titre: string; children: React.ReactNode })
 }
 
 export function FiltreSheet(p: Props) {
+  const { t } = useI18n()
   const { filtre: f } = p
   const reduce = useReducedMotion()
   const [mounted, setMounted] = useState(false)
@@ -73,18 +75,18 @@ export function FiltreSheet(p: Props) {
           <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 20px 12px' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Filtrer</h3>
-          <button onClick={p.onClose} aria-label="Fermer" style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex' }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('session.filtrer')}</h3>
+          <button onClick={p.onClose} aria-label={t('session.fermer')} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex' }}>
             <IconX size={20} />
           </button>
         </div>
 
         <div style={{ overflowY: 'auto', padding: '0 20px 8px', flex: 1 }}>
-          <Bloc titre="Qualité / mode">
+          <Bloc titre={t('session.qualiteMode')}>
             {MODE_ORDER.map(m => <Chip key={m} active={f.modes.includes(m)} label={MODE_LABEL[m]} onClick={() => p.toggleMode(m)} />)}
           </Bloc>
 
-          <Bloc titre="Muscle">
+          <Bloc titre={t('session.muscle')}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', width: '100%' }}>
               {REGION_ORDER.map(r => (
                 <div key={r}>
@@ -97,32 +99,32 @@ export function FiltreSheet(p: Props) {
             </div>
           </Bloc>
 
-          <Bloc titre="Équipement">
+          <Bloc titre={t('session.equipement')}>
             {EQUIP_ORDER.map(eq => <Chip key={eq} active={f.equipement.includes(eq)} label={EQUIP_LABEL[eq]} onClick={() => p.toggleEquip(eq)} />)}
           </Bloc>
 
-          <Bloc titre={`Difficulté technique — max ${f.difficulteMax}${f.difficulteMax === 10 ? ' (toutes)' : ''}`}>
+          <Bloc titre={f.difficulteMax === 10 ? t('session.difficulteMaxToutes', { n: f.difficulteMax }) : t('session.difficulteMax', { n: f.difficulteMax })}>
             <input type="range" min={1} max={10} step={1} value={f.difficulteMax}
               onChange={e => p.setDifficulteMax(+e.target.value)}
               style={{ width: '100%', accentColor: 'var(--primary)' }} />
           </Bloc>
 
-          <Bloc titre="Filtres">
-            <Chip active={f.unilateral} label="Unilatéral" onClick={() => p.toggleFlag('unilateral')} />
-            <Chip active={f.aEncadrer} label="À encadrer" onClick={() => p.toggleFlag('aEncadrer')} />
-            <Chip active={f.avecFiche} label="Avec fiche" onClick={() => p.toggleFlag('avecFiche')} />
-            <Chip active={f.masquerAccessoires} label="Masquer les accessoires" onClick={() => p.toggleFlag('masquerAccessoires')} />
+          <Bloc titre={t('session.filtres')}>
+            <Chip active={f.unilateral} label={t('session.unilateral')} onClick={() => p.toggleFlag('unilateral')} />
+            <Chip active={f.aEncadrer} label={t('session.aEncadrer')} onClick={() => p.toggleFlag('aEncadrer')} />
+            <Chip active={f.avecFiche} label={t('session.avecFiche')} onClick={() => p.toggleFlag('avecFiche')} />
+            <Chip active={f.masquerAccessoires} label={t('session.masquerAccessoires')} onClick={() => p.toggleFlag('masquerAccessoires')} />
           </Bloc>
         </div>
 
         <div style={{ display: 'flex', gap: 'var(--space-3)', padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
           <button onClick={p.reset} style={{ padding: '11px 16px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',
             background: 'var(--bg-card2)', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500 }}>
-            Effacer
+            {t('session.effacer')}
           </button>
           <button onClick={p.onClose} style={{ flex: 1, padding: '11px 16px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',
             background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600 }}>
-            Voir {p.nbResultats} exercice{p.nbResultats > 1 ? 's' : ''}
+            {t('session.voirNExercices', { n: p.nbResultats, s: p.nbResultats > 1 ? 's' : '' })}
           </button>
         </div>
       </motion.div>

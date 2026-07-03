@@ -10,9 +10,10 @@ import { points, windowStats, annualSummaries, METRIC_UNIT, METRIC_LABEL, type W
 import { WeightGraph } from './WeightGraph'
 import { AnnualSheet } from './AnnualSheet'
 import { MeasureForm } from './MeasureForm'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)'
-const PERIODS: [string, number][] = [['30 j', 30], ['3 mois', 90], ['1 an', 365]]
+const PERIODS: [string, number][] = [['nutrition.comp.period30d', 30], ['nutrition.comp.period3m', 90], ['nutrition.comp.period1y', 365]]
 const METRICS: { key: WeightMetric; needsHeight?: boolean; dim?: boolean }[] = [
   { key: 'weight_kg' }, { key: 'fat_mass_percent' }, { key: 'muscle_mass_kg' },
   { key: 'ffmi', needsHeight: true }, { key: 'bmi', needsHeight: true, dim: true },
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export function CompositionTab(p: Props) {
+  const { t } = useI18n()
   const today = new Date().toISOString().split('T')[0]
   const [period, setPeriod] = useState(90)
   const [metric, setMetric] = useState<WeightMetric>('weight_kg')
@@ -72,8 +74,8 @@ export function CompositionTab(p: Props) {
       {/* Pas de titre redondant : la nav indique déjà l'onglet. On démarre sur la
           bannière balance + les bascules de métrique. */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
-        <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>Aucune balance connectée — la saisie ci-dessous remplit le suivi.</span>
-        <a href="/connections" style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Connecter une balance →</a>
+        <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>{t('nutrition.comp.noScale')}</span>
+        <a href="/connections" style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none', whiteSpace: 'nowrap' }}>{t('nutrition.comp.connectScale')} →</a>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6" style={{ maxWidth: '100%', minWidth: 0 }}>
@@ -82,7 +84,7 @@ export function CompositionTab(p: Props) {
           <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
             {PERIODS.map(([lbl, d]) => (
               <button key={d} onClick={() => setPeriod(d)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0,
-                fontFamily: FB, fontSize: 13, fontWeight: period === d ? 600 : 500, color: period === d ? 'var(--text)' : 'var(--text-dim)' }}>{lbl}</button>
+                fontFamily: FB, fontSize: 13, fontWeight: period === d ? 600 : 500, color: period === d ? 'var(--text)' : 'var(--text-dim)' }}>{t(lbl)}</button>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
@@ -90,7 +92,7 @@ export function CompositionTab(p: Props) {
               const disabled = needsHeight && p.heightCm == null
               const active = metric === key
               return (
-                <button key={key} disabled={disabled} onClick={() => setMetric(key)} title={disabled ? 'Renseigne ta taille dans le profil' : undefined}
+                <button key={key} disabled={disabled} onClick={() => setMetric(key)} title={disabled ? t('nutrition.comp.needHeight') : undefined}
                   style={{ border: 'none', background: 'transparent', cursor: disabled ? 'not-allowed' : 'pointer', padding: 0,
                     fontFamily: FB, fontSize: 13, fontWeight: active ? 600 : dim ? 400 : 500,
                     opacity: disabled ? 0.4 : 1, color: active ? 'var(--text)' : dim ? 'var(--text-dim)' : 'var(--text-mid)' }}>
@@ -103,10 +105,10 @@ export function CompositionTab(p: Props) {
           {/* Stats — grille responsive (2 col mobile, 4 desktop), jamais alarmiste */}
           <div className="comp-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 'var(--space-2)' }}>
             <style>{`@media(min-width:560px){.comp-stats{grid-template-columns:repeat(4,minmax(0,1fr))!important}}`}</style>
-            {stat('Actuel', stats ? `${stats.current}${unit}` : '—')}
-            {stat('Variation', stats ? `${stats.delta > 0 ? '+' : ''}${stats.delta}${unit}` : '—')}
-            {stat('Min', stats ? `${stats.min}${unit}` : '—')}
-            {stat('Max', stats ? `${stats.max}${unit}` : '—')}
+            {stat(t('nutrition.comp.current'), stats ? `${stats.current}${unit}` : '—')}
+            {stat(t('nutrition.comp.variation'), stats ? `${stats.delta > 0 ? '+' : ''}${stats.delta}${unit}` : '—')}
+            {stat(t('nutrition.comp.min'), stats ? `${stats.min}${unit}` : '—')}
+            {stat(t('nutrition.comp.max'), stats ? `${stats.max}${unit}` : '—')}
           </div>
 
           {/* Graphe dans une carte (floating) pour ne pas être collé aux bords */}
@@ -117,7 +119,7 @@ export function CompositionTab(p: Props) {
           {/* Résumés annuels — chaque année ouvre une feuille coulissante */}
           {summaries.length > 0 && (
             <div>
-              <div style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', marginBottom: 'var(--space-3)' }}>Résumés annuels</div>
+              <div style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', marginBottom: 'var(--space-3)' }}>{t('nutrition.comp.annualSummaries')}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
                 {summaries.map(s => (
                   <button key={s.year} onClick={() => setYear(s.year)} style={{ border: '1px solid var(--border)', background: 'var(--bg-card2)', cursor: 'pointer',

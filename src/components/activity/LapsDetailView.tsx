@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { formatPace, speedMsToPace } from '@/lib/utils/pace'
+import { useI18n } from '@/lib/i18n'
 
 type Sport = 'cycling' | 'running'
 
@@ -158,11 +159,12 @@ function computeLapWidths(laps: LapData[], availableWidth: number, isMobile: boo
   return withMin
 }
 
+// Renvoie une clé i18n (traduite au rendu) plutôt qu'un libellé FR en dur.
 function cadenceDescriptor(cad: number | null | undefined): string | null {
   if (cad == null || cad <= 0) return null
-  if (cad < 70) return 'En force'
-  if (cad <= 90) return 'En cadence'
-  return 'En vélocité'
+  if (cad < 70) return 'activities.cadInForce'
+  if (cad <= 90) return 'activities.cadInCadence'
+  return 'activities.cadInVelocity'
 }
 function powerZoneLabel(watts: number | null | undefined, ftp: number | null): string {
   if (watts == null || !ftp || ftp <= 0) return '—'
@@ -346,6 +348,7 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
   hrZones:   ParsedZone[] | null
   sport:     Sport
 }) {
+  const { t } = useI18n()
   void bikeZones
   const isRun = sport === 'running'
   const [closing, setClosing] = useState(false)
@@ -412,10 +415,10 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
   const tDist  = distrTemp(tSlice)
   const cDist  = distrCad(cSlice, sport)
   const donuts: { title: string; data: ZoneArc[] }[] = []
-  if (hrDist.length > 0) donuts.push({ title: 'FC zones',    data: hrDist })
-  if (!isRun && pwDist.length > 0) donuts.push({ title: 'Puissance',   data: pwDist })
-  if (tDist.length  > 0) donuts.push({ title: 'Température', data: tDist  })
-  if (cDist.length  > 0) donuts.push({ title: 'Cadence',     data: cDist  })
+  if (hrDist.length > 0) donuts.push({ title: t('activities.hrZones'),    data: hrDist })
+  if (!isRun && pwDist.length > 0) donuts.push({ title: t('activities.power'),   data: pwDist })
+  if (tDist.length  > 0) donuts.push({ title: t('activities.temperature'), data: tDist  })
+  if (cDist.length  > 0) donuts.push({ title: t('activities.cadence'),     data: cDist  })
 
   if (!open || typeof document === 'undefined') return null
 
@@ -454,7 +457,7 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, padding: '0 4px' }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Tour {lapIndex + 1} — Détails</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{t('activities.lapDetailsTitle', { n: lapIndex + 1 })}</div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
               {fmtKm(lap.distance_m)} · {fmtDur(lap.moving_time_s)}
               {isRun ? ` · ${formatPace(avgPaceMin)}/km` : ` · ${powerZoneLabel(lap.avg_watts, ftp)}`}
@@ -462,7 +465,7 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
           </div>
           <button
             onClick={doClose}
-            aria-label="Fermer"
+            aria-label={t('activities.close')}
             style={{
               width: 28, height: 28, borderRadius: '50%',
               background: 'var(--bg-card2)', border: 'none',
@@ -479,35 +482,35 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
           borderBottom: '1px solid var(--border)',
         }}>
           <div style={{ borderRight: '1px solid var(--border)' }}>
-            <HeroStat label="Distance"  value={lap.distance_m != null ? (lap.distance_m / 1000).toFixed(2).replace('.', ',') : '—'} unit="km" />
+            <HeroStat label={t('activities.distance')}  value={lap.distance_m != null ? (lap.distance_m / 1000).toFixed(2).replace('.', ',') : '—'} unit="km" />
           </div>
           <div>
             {isRun
-              ? <HeroStat label="Allure moy." value={formatPace(avgPaceMin)} unit="/km" color="#10b981" />
-              : <HeroStat label="Watts moy." value={lap.avg_watts != null ? `${Math.round(lap.avg_watts)}` : '—'} unit="W" color={PURPLE_ACTIVE} />}
+              ? <HeroStat label={t('activities.avgPaceLegend')} value={formatPace(avgPaceMin)} unit="/km" color="#10b981" />
+              : <HeroStat label={t('activities.wattsAvgDot')} value={lap.avg_watts != null ? `${Math.round(lap.avg_watts)}` : '—'} unit="W" color={PURPLE_ACTIVE} />}
           </div>
           <div style={{ borderRight: '1px solid var(--border)', borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 14 }}>
-            <HeroStat label="FC moy."    value={lap.avg_hr != null ? `${Math.round(lap.avg_hr)}` : '—'} unit="bpm" color="#f97316" />
+            <HeroStat label={t('activities.hrAvgDot')}    value={lap.avg_hr != null ? `${Math.round(lap.avg_hr)}` : '—'} unit="bpm" color="#f97316" />
           </div>
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 14 }}>
             {isRun
               ? (gapPaceMin != null
-                  ? <HeroStat label="Allure ajustée" value={formatPace(gapPaceMin)} unit="/km" color="#7c3aed" />
-                  : <HeroStat label="Allure max" value={formatPace(maxPaceMin)} unit="/km" color="#7c3aed" />)
-              : <HeroStat label="Vit. moy."  value={lap.avg_speed_ms != null ? (lap.avg_speed_ms * 3.6).toFixed(1).replace('.', ',') : '—'} unit="km/h" color="#06b6d4" />}
+                  ? <HeroStat label={t('activities.adjustedPace')} value={formatPace(gapPaceMin)} unit="/km" color="#7c3aed" />
+                  : <HeroStat label={t('activities.maxPace')} value={formatPace(maxPaceMin)} unit="/km" color="#7c3aed" />)
+              : <HeroStat label={t('activities.avgSpeed')}  value={lap.avg_speed_ms != null ? (lap.avg_speed_ms * 3.6).toFixed(1).replace('.', ',') : '—'} unit="km/h" color="#06b6d4" />}
           </div>
         </div>
 
         {/* Détails */}
         <div style={{ padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
-          <DetailRow label="Durée"         value={fmtDur(lap.moving_time_s)} />
+          <DetailRow label={t('activities.duration')}         value={fmtDur(lap.moving_time_s)} />
           {isRun
-            ? <DetailRow label="Allure max" value={isFinite(maxPaceMin) ? `${formatPace(maxPaceMin)}/km` : '—'} />
-            : <DetailRow label="Watts normalisés (NP)" value={npSeg != null ? `${npSeg} W` : '—'} />}
+            ? <DetailRow label={t('activities.maxPace')} value={isFinite(maxPaceMin) ? `${formatPace(maxPaceMin)}/km` : '—'} />
+            : <DetailRow label={t('activities.normalizedWatts')} value={npSeg != null ? `${npSeg} W` : '—'} />}
           <DetailRow label="D+"            value={altSlice ? `+${Math.round(dPlus)} m` : '—'} />
           <DetailRow label="D−"            value={altSlice ? `−${Math.round(dMinus)} m` : '—'} />
-          <DetailRow label="Cadence moy."  value={cAvgPedal != null ? `${Math.round(cAvgPedal)} ${isRun ? 'spm' : 'rpm'}` : '—'} />
-          <DetailRow label="Temp. moy."    value={tAvg != null ? `${Math.round(tAvg)} °C` : '—'} />
+          <DetailRow label={t('activities.cadenceAvg')}  value={cAvgPedal != null ? `${Math.round(cAvgPedal)} ${isRun ? 'spm' : 'rpm'}` : '—'} />
+          <DetailRow label={t('activities.tempAvgDot')}    value={tAvg != null ? `${Math.round(tAvg)} °C` : '—'} />
         </div>
 
         {/* Donuts */}
@@ -517,7 +520,7 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
               fontSize: 10, fontWeight: 700,
               letterSpacing: '0.12em', textTransform: 'uppercase',
               color: 'var(--text-dim)', marginBottom: 12,
-            }}>Répartitions</div>
+            }}>{t('activities.distributions')}</div>
             <div style={{
               display: 'grid',
               gridTemplateColumns: donuts.length >= 3 ? 'repeat(2, 1fr)' : `repeat(${donuts.length}, 1fr)`,
@@ -537,6 +540,7 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
 // LapsDetailView — Niveau 1
 // ─────────────────────────────────────────────────────────────
 export function LapsDetailView(props: LapsDetailViewProps) {
+  const { t } = useI18n()
   const { open, onClose, initialActiveLap, laps, streams, sportLabel,
           totalDistanceM, totalDurationS, ftp, bikeZones, hrZones } = props
   const isRun = props.sport === 'running'
@@ -688,7 +692,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
         }}>
           <button
             onClick={doClose}
-            aria-label="Retour"
+            aria-label={t('activities.back')}
             style={{
               width: 36, height: 36, borderRadius: '50%',
               background: 'var(--bg-card2)', border: 'none',
@@ -698,7 +702,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
             }}
           >‹</button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: 0, lineHeight: 1.2 }}>Tours</h1>
+            <h1 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: 0, lineHeight: 1.2 }}>{t('activities.laps')}</h1>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
               {sportLabel} · {fmtKm(totalDistanceM)} · {fmtDur(totalDurationS)}
             </div>
@@ -714,7 +718,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
           flexWrap: 'wrap',
           borderBottom: '1px solid var(--border)',
         }}>
-          <strong style={{ color: 'var(--text)' }}>Tour {activeLap + 1}</strong>
+          <strong style={{ color: 'var(--text)' }}>{t('activities.lapNumber', { n: activeLap + 1 })}</strong>
           <span style={{ color: 'var(--text-dim)' }}>·</span>
           {isRun ? (
             <>
@@ -744,7 +748,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
               {aCadDesc && (
                 <>
                   <span style={{ color: 'var(--text-dim)' }}>·</span>
-                  <span>{aCadDesc}</span>
+                  <span>{t(aCadDesc)}</span>
                 </>
               )}
             </>
@@ -891,7 +895,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
             fontSize: 10, fontWeight: 700,
             letterSpacing: '0.12em', textTransform: 'uppercase',
             color: 'var(--text-dim)',
-          }}>Autres tours</div>
+          }}>{t('activities.otherLaps')}</div>
           {laps.map((lap, i) => {
             const isActive = i === activeLap
             return (
@@ -965,7 +969,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
             onMouseEnter={e => { e.currentTarget.style.background = PURPLE_ACTIVE_2 }}
             onMouseOut={e => { e.currentTarget.style.background = PURPLE_ACTIVE }}
           >
-            Détails du tour {activeLap + 1} ›
+            {t('activities.lapDetailsCta', { n: activeLap + 1 })}
           </button>
         </div>
       </div>

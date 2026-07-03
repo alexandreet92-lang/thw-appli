@@ -3,6 +3,7 @@
 // catégorie 3px + nom + date + tag priorité). Couleur = catégorie (fonctionnel,
 // support minimal) ; priorité = tag texte séparé. Tokens uniquement.
 import { Race, RaceStage, MONTH_SHORT, daysUntil } from './types'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   races: Race[]; stages: RaceStage[]; year: number
@@ -13,7 +14,7 @@ interface Props {
 }
 
 const FB = 'var(--font-body)'
-const PRIO: Record<string, string> = { secondary: 'Secondaire', important: 'Important', main: 'Principal', gty: 'Objectif' }
+const PRIO_KEY: Record<string, string> = { secondary: 'calendar.prioSecondary', important: 'calendar.prioImportant', main: 'calendar.prioMain', gty: 'calendar.prioGty' }
 const raceColor = (level: string) => level === 'gty' ? 'var(--gty-bg)' : 'var(--cat-race)'
 
 function Filet({ color }: { color: string }) {
@@ -24,6 +25,7 @@ const nameStyle: React.CSSProperties = { fontFamily: FB, fontSize: 11, fontWeigh
 const metaStyle: React.CSSProperties = { fontFamily: FB, fontSize: 9, color: 'var(--text-dim)', margin: 0 }
 
 export default function AnnualView({ races, stages, year, onRaceClick, onStageClick, onMonthClick, onMarkComplete }: Props) {
+  const { t } = useI18n()
   const racesForMonth = (mi: number) => races
     .filter(r => { const d = new Date(r.date); return d.getFullYear() === year && d.getMonth() === mi })
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -51,10 +53,10 @@ export default function AnnualView({ races, stages, year, onRaceClick, onStageCl
                     <Filet color={raceColor(r.level)} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={nameStyle}>{r.name}</p>
-                      <p style={metaStyle}><span className="tnum">{day}</span> {label}{r.level !== 'gty' ? ` · ${PRIO[r.level]}` : ''}</p>
+                      <p style={metaStyle}><span className="tnum">{day}</span> {label}{r.level !== 'gty' ? ` · ${t(PRIO_KEY[r.level])}` : ''}</p>
                     </div>
                     {past && !completed && (
-                      <button onClick={e => { e.stopPropagation(); onMarkComplete(r.id) }} title="Marquer comme terminée"
+                      <button onClick={e => { e.stopPropagation(); onMarkComplete(r.id) }} title={t('calendar.markCompleted')}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 12, padding: '0 2px', flexShrink: 0 }}>○</button>
                     )}
                     {completed && <span style={{ fontSize: 11, color: 'var(--text-mid)', flexShrink: 0, alignSelf: 'center' }}>✓</span>}
@@ -67,12 +69,12 @@ export default function AnnualView({ races, stages, year, onRaceClick, onStageCl
                   <Filet color="var(--text-mid)" />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={nameStyle}>{s.name}</p>
-                    <p style={metaStyle}><span className="tnum">{new Date(s.startDate).getDate()}→{new Date(s.endDate).getDate()}</span> {label} · Stage</p>
+                    <p style={metaStyle}><span className="tnum">{new Date(s.startDate).getDate()}→{new Date(s.endDate).getDate()}</span> {label} · {t('calendar.stage')}</p>
                   </div>
                 </div>
               ))}
 
-              {!hasItems && <p style={{ ...metaStyle, fontStyle: 'italic' }}>Aucun</p>}
+              {!hasItems && <p style={{ ...metaStyle, fontStyle: 'italic' }}>{t('calendar.none')}</p>}
             </div>
           )
         })}

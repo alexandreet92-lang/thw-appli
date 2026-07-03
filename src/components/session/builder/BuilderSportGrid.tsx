@@ -4,6 +4,7 @@
 // responsive de cartes sport (puce-icône, titre serif, tagline, compteur).
 // Une seule action principale (cyan) : + Nouvelle séance.
 import { IconChevronRight } from '@tabler/icons-react'
+import { useI18n } from '@/lib/i18n'
 import { BUILDER_THEME, BUILDER_ORDER, type BuilderSportId, type BuilderSportTheme } from './builderTheme'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
@@ -21,6 +22,7 @@ const STYLE = `
 `
 
 function Card({ theme, count, onSelect }: { theme: BuilderSportTheme; count: number; onSelect: (id: BuilderSportId) => void }) {
+  const { t } = useI18n()
   const Ic = theme.icon
   return (
     <button className="bld-card" onClick={() => onSelect(theme.id)}
@@ -35,7 +37,7 @@ function Card({ theme, count, onSelect }: { theme: BuilderSportTheme; count: num
       <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0, lineHeight: 1.4 }}>{theme.tagline}</p>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 'auto', paddingTop: 'var(--space-4)',
         fontFamily: FB, fontSize: 12.5, fontWeight: 600, color: count > 0 ? theme.accent : 'var(--text-dim)' }}>
-        {count > 0 ? `${count} séance${count > 1 ? 's' : ''}` : 'Aucune séance'}
+        {count > 0 ? t('session.nSeances', { n: count, s: count > 1 ? 's' : '' }) : t('session.aucuneSeance')}
         <IconChevronRight size={15} className="bld-chevron" />
       </span>
     </button>
@@ -46,6 +48,7 @@ export function BuilderSportGrid({ counts, onSelect }: {
   counts: Record<BuilderSportId, number>
   onSelect: (id: BuilderSportId) => void
 }) {
+  const { t } = useI18n()
   return (
     <div>
       <style>{STYLE}</style>
@@ -54,10 +57,10 @@ export function BuilderSportGrid({ counts, onSelect }: {
           Builder
         </p>
         <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px', lineHeight: 1.2 }}>
-          Mes séances en réserve
+          {t('session.builderTitle')}
         </h2>
         <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', margin: 0, maxWidth: 520, lineHeight: 1.5 }}>
-          Choisis un sport pour créer tes séances et retrouver celles que tu as déjà enregistrées.
+          {t('session.builderSubtitle')}
         </p>
       </div>
 

@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import { SPORT_COLOR } from './types'
 import { paceKm, pace100, speedKmh, numOr0 } from '@/lib/race/computePace'
 import { SegmentCard, TransitionCard, SegInput, CalcField, ROW2 } from './RaceSegmentCard'
+import { useI18n } from '@/lib/i18n'
 
 const TRI_FORMATS: { label: string; swim: number; bike: number; run: number }[] = [
   { label: 'S', swim: 750, bike: 20, run: 5 },
@@ -19,6 +20,7 @@ export default function TriSegments({ pd, setPd, bikeParcours, runParcours }: {
   pd: Record<string, unknown>; setPd: (v: Record<string, unknown>) => void
   bikeParcours?: ReactNode; runParcours?: ReactNode
 }) {
+  const { t } = useI18n()
   const g = (k: string) => (pd[k] as string) ?? ''
   const s = (k: string, v: string) => setPd({ ...pd, [k]: v })
   const bikeKm = numOr0(pd.triBikeDist)
@@ -32,7 +34,7 @@ export default function TriSegments({ pd, setPd, bikeParcours, runParcours }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Format / distance */}
       <div>
-        <p style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>Distance</p>
+        <p style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>{t('calendar.distance')}</p>
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
           {TRI_FORMATS.map(f => { const on = pd.triFormat === f.label; return (
             <button key={f.label} onClick={() => pickFormat(f)} style={{ padding: '8px 16px', borderRadius: 999, border: `1px solid ${on ? TRI : 'var(--border)'}`, background: on ? 'var(--bg-card)' : 'transparent', color: on ? TRI : 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{f.label}</button>
@@ -40,32 +42,32 @@ export default function TriSegments({ pd, setPd, bikeParcours, runParcours }: {
         </div>
       </div>
 
-      <SegmentCard color={SPORT_COLOR.swim} label="Natation" volume={numOr0(pd.triSwimDist) ? `${numOr0(pd.triSwimDist)} m` : undefined}>
+      <SegmentCard color={SPORT_COLOR.swim} label={t('calendar.swimming')} volume={numOr0(pd.triSwimDist) ? `${numOr0(pd.triSwimDist)} m` : undefined}>
         <div style={ROW2}>
-          <SegInput label="Temps" value={g('triSwimTime')} onChange={v => s('triSwimTime', v)} placeholder="00:30:00" />
-          <CalcField label="Allure /100m" value={pace100(g('triSwimTime'), swimM)} />
+          <SegInput label={t('calendar.time')} value={g('triSwimTime')} onChange={v => s('triSwimTime', v)} placeholder="00:30:00" />
+          <CalcField label={t('calendar.pace100m')} value={pace100(g('triSwimTime'), swimM)} />
         </div>
       </SegmentCard>
 
-      <TransitionCard label="T1 · Transition" from="Natation" to="Vélo" value={g('t1')} onChange={v => s('t1', v)} />
+      <TransitionCard label={t('calendar.t1Transition')} from={t('calendar.swimming')} to={t('calendar.cycling')} value={g('t1')} onChange={v => s('t1', v)} />
 
-      <SegmentCard color={SPORT_COLOR.bike} label="Vélo" volume={bikeKm ? `${bikeKm} km` : undefined}>
+      <SegmentCard color={SPORT_COLOR.bike} label={t('calendar.cycling')} volume={bikeKm ? `${bikeKm} km` : undefined}>
         <div style={ROW2}>
-          <SegInput label="Temps" value={g('triBikeTime')} onChange={v => s('triBikeTime', v)} placeholder="02:30:00" />
-          <SegInput label="Distance (km)" value={g('triBikeDist')} onChange={v => s('triBikeDist', v)} placeholder="90" type="number" />
-          <SegInput label="Watts cible" value={g('bikeWatts')} onChange={v => s('bikeWatts', v)} placeholder="180" type="number" />
-          <CalcField label="Vitesse" value={speedKmh(g('triBikeTime'), bikeKm)} />
+          <SegInput label={t('calendar.time')} value={g('triBikeTime')} onChange={v => s('triBikeTime', v)} placeholder="02:30:00" />
+          <SegInput label={t('calendar.distanceKm')} value={g('triBikeDist')} onChange={v => s('triBikeDist', v)} placeholder="90" type="number" />
+          <SegInput label={t('calendar.targetWatts')} value={g('bikeWatts')} onChange={v => s('bikeWatts', v)} placeholder="180" type="number" />
+          <CalcField label={t('calendar.speed')} value={speedKmh(g('triBikeTime'), bikeKm)} />
         </div>
         {bikeParcours}
       </SegmentCard>
 
-      <TransitionCard label="T2 · Transition" from="Vélo" to="Course" value={g('t2')} onChange={v => s('t2', v)} />
+      <TransitionCard label={t('calendar.t2Transition')} from={t('calendar.cycling')} to={t('calendar.running')} value={g('t2')} onChange={v => s('t2', v)} />
 
-      <SegmentCard color={SPORT_COLOR.run} label="Course" volume={runKm ? `${runKm} km` : undefined}>
+      <SegmentCard color={SPORT_COLOR.run} label={t('calendar.running')} volume={runKm ? `${runKm} km` : undefined}>
         <div style={ROW2}>
-          <SegInput label="Temps" value={g('triRunTime')} onChange={v => s('triRunTime', v)} placeholder="01:30:00" />
-          <SegInput label="Distance (km)" value={g('triRunDist')} onChange={v => s('triRunDist', v)} placeholder="21.1" type="number" />
-          <CalcField label="Allure /km" value={paceKm(g('triRunTime'), runKm)} />
+          <SegInput label={t('calendar.time')} value={g('triRunTime')} onChange={v => s('triRunTime', v)} placeholder="01:30:00" />
+          <SegInput label={t('calendar.distanceKm')} value={g('triRunDist')} onChange={v => s('triRunDist', v)} placeholder="21.1" type="number" />
+          <CalcField label={t('calendar.paceKm')} value={paceKm(g('triRunTime'), runKm)} />
         </div>
         {runParcours}
       </SegmentCard>

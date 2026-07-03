@@ -3,6 +3,7 @@
 // Champ Temps + champs additionnels (children) + auto-calc en texte neutre +
 // bouton « Lier une activité » (surpage) + puces de données réelles.
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { LinkActivitySheet } from './LinkActivitySheet'
 import type { ActivityLite, Segment } from './triActivities'
 
@@ -16,7 +17,7 @@ export const triInp: React.CSSProperties = {
   outline: 'none', boxSizing: 'border-box',
 }
 
-export function TriSegment({ title, distLabel, dot, segment, time, setTime, timeLabel = 'Temps (hh:mm:ss)', auto, children, onLink, chips, linked }: {
+export function TriSegment({ title, distLabel, dot, segment, time, setTime, timeLabel, auto, children, onLink, chips, linked }: {
   title: string
   distLabel?: string
   dot?: string
@@ -30,7 +31,9 @@ export function TriSegment({ title, distLabel, dot, segment, time, setTime, time
   chips?: { label: string; value: string }[]
   linked?: boolean
 }) {
+  const { t } = useI18n()
   const [showLink, setShowLink] = useState(false)
+  const timeLabelText = timeLabel ?? t('performance.timeHms')
   return (
     <div style={{ background: 'var(--bg-card2)', borderRadius: 14, padding: '14px 16px', marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -40,13 +43,13 @@ export function TriSegment({ title, distLabel, dot, segment, time, setTime, time
         {segment && onLink && (
           <button onClick={() => setShowLink(true)}
             style={{ marginLeft: 'auto', padding: 0, border: 'none', background: 'transparent', color: linked ? 'var(--text-mid)' : 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-            {linked ? '✓ Activité liée' : '+ Lier une activité'}
+            {linked ? t('performance.activityLinked') : t('performance.linkActivity')}
           </button>
         )}
       </div>
 
-      <p style={lbl}>{timeLabel}</p>
-      <input style={time && segment === 'run' ? { ...triInp, maxWidth: 200 } : triInp} value={time} onChange={e => setTime(e.target.value)} placeholder="ex : 0:25:00" />
+      <p style={lbl}>{timeLabelText}</p>
+      <input style={time && segment === 'run' ? { ...triInp, maxWidth: 200 } : triInp} value={time} onChange={e => setTime(e.target.value)} placeholder={t('performance.egTime')} />
       {auto && <div style={{ marginTop: 6 }}><span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-mid)' }}>→ {auto}</span></div>}
 
       {children}

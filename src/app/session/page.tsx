@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { TabbedPageLayout, type PageTab } from '@/components/ui/TabbedPageLayout'
 import { Dumbbell, Library } from 'lucide-react'
 import { BibliothequeTab } from '@/components/session/biblio/BibliothequeTab'
@@ -16,11 +17,12 @@ type TopTab = 'builder' | 'biblio'
 
 export default function SessionPage() {
   const [topTab, setTopTab] = useState<TopTab>('builder')
+  const { t } = useI18n()
   const { show, dismiss } = usePageOnboarding(SESSION_ONBOARDING.pageId, SESSION_ONBOARDING.version)
 
   const TABS: PageTab<TopTab>[] = [
-    { id: 'builder', label: 'Builder',      short: 'Builder', subtitle: 'Créer & réutiliser', icon: Dumbbell },
-    { id: 'biblio',  label: 'Bibliothèque', short: 'Biblio',  subtitle: 'Séances expliquées', icon: Library },
+    { id: 'builder', label: 'Builder',                  short: 'Builder',                 subtitle: t('session.tabBuilderSubtitle'), icon: Dumbbell },
+    { id: 'biblio',  label: t('session.tabBiblioLabel'), short: t('session.tabBiblioShort'), subtitle: t('session.tabBiblioSubtitle'),  icon: Library },
   ]
 
   return (

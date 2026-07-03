@@ -2,6 +2,7 @@
 // Écran grille des sports. Eyebrow + titre serif + sous-texte, puis grille
 // responsive 2→4 colonnes de SportCard. Styles hover/focus + reduced-motion
 // via une feuille scopée (focus clavier visible, respect des préférences).
+import { useI18n } from '@/lib/i18n'
 import { SportCard } from './SportCard'
 import { SPORT_THEME, SPORT_ORDER, type SportId } from './sportTheme'
 
@@ -20,17 +21,18 @@ const STYLE = `
 `
 
 export function SportGrid({ onSelect }: { onSelect: (id: SportId) => void }) {
+  const { t } = useI18n()
   return (
     <div>
       <style>{STYLE}</style>
       <p style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', margin: '0 0 6px' }}>
-        Bibliothèque
+        {t('session.biblioEyebrow')}
       </p>
       <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px', lineHeight: 1.2 }}>
-        Des séances et exercices types, expliqués
+        {t('session.biblioTitle')}
       </h2>
       <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', margin: '0 0 24px', maxWidth: 560, lineHeight: 1.5 }}>
-        Choisis un sport pour explorer ses exercices et ses séances : leur objectif, leur déroulé, et le bon moment pour les programmer.
+        {t('session.biblioSubtitle')}
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 'var(--space-4)' }}>

@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { SPORT_CONFIGS, GENERAL_CONFIGS } from '@/lib/progression/sportConfig'
 import { calculateTrend, fmtRelDate, type ProgSession } from '@/lib/progression/helpers'
@@ -16,6 +17,7 @@ import { EvolutionChart } from './EvolutionChart'
 const COLS = 'id,started_at,title,distance_m,moving_time_s,avg_hr,avg_watts,avg_speed_ms,avg_pace_s_km,ef_value,power_hr_ratio,calories'
 
 export function GeneralView({ sport }: { sport: string }) {
+  const { t } = useI18n()
   const cfg = SPORT_CONFIGS[sport]
   const gen = GENERAL_CONFIGS[sport]
   const [sessions, setSessions] = useState<ProgSession[] | null>(null)
@@ -37,7 +39,7 @@ export function GeneralView({ sport }: { sport: string }) {
   }, [sport, cfg.sportTypes])
 
   if (sessions === null) return <div style={{ height: 200, borderRadius: 14, background: 'var(--bg-card2)', animation: 'pulse 1.4s ease-in-out infinite' }} />
-  if (sessions.length === 0) return <div style={{ fontSize: 13, color: 'var(--text-dim)', padding: '24px 0' }}>Pas encore de séances enregistrées pour ce sport.</div>
+  if (sessions.length === 0) return <div style={{ fontSize: 13, color: 'var(--text-dim)', padding: '24px 0' }}>{t('progression.noSessions')}</div>
 
   const hero = gen.hero(sessions)
   const trend = calculateTrend(sessions, gen.trendMetric, gen.trendInverse)
@@ -81,7 +83,7 @@ export function GeneralView({ sport }: { sport: string }) {
       {/* Liste des séances */}
       <div>
         <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
-          Dernières séances · {sessions.length}
+          {t('progression.lastSessions', { n: sessions.length })}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {visible.map((s, i) => (
@@ -98,12 +100,12 @@ export function GeneralView({ sport }: { sport: string }) {
               </span>
               <button onClick={() => setCompare({ a: s, b: sessions[Math.min(i + 1, sessions.length - 1)] })}
                 disabled={sessions.length < 2}
-                style={{ fontSize: 11, fontWeight: 600, color: cfg.color, background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 9px', cursor: sessions.length < 2 ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>Comparer</button>
+                style={{ fontSize: 11, fontWeight: 600, color: cfg.color, background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 9px', cursor: sessions.length < 2 ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>{t('progression.compare')}</button>
             </div>
           ))}
         </div>
         {!showAll && sessions.length > 5 && (
-          <button onClick={() => setShowAll(true)} style={{ marginTop: 10, fontSize: 12, color: cfg.color, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Voir toutes les séances ({sessions.length})</button>
+          <button onClick={() => setShowAll(true)} style={{ marginTop: 10, fontSize: 12, color: cfg.color, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>{t('progression.viewAllSessions', { n: sessions.length })}</button>
         )}
       </div>
 
@@ -111,11 +113,11 @@ export function GeneralView({ sport }: { sport: string }) {
         <div onClick={() => setCompare(null)} style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, background: 'var(--bg-card)', borderRadius: 16, padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, margin: 0, color: 'var(--text)' }}>Comparaison</h3>
+              <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, margin: 0, color: 'var(--text)' }}>{t('progression.comparison')}</h3>
               <button onClick={() => setCompare(null)} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 18, cursor: 'pointer' }}>×</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              {([['Récente', compare.a, cfg.color], ['Ancienne', compare.b, 'var(--text-dim)']] as const).map(([lbl, s, col]) => (
+              {([[t('progression.recent'), compare.a, cfg.color], [t('progression.older'), compare.b, 'var(--text-dim)']] as const).map(([lbl, s, col]) => (
                 <div key={lbl} style={{ background: 'var(--bg-card2)', borderRadius: 12, padding: 12 }}>
                   <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' }}>{lbl} · {fmtRelDate(s.started_at)}</div>
                   {gen.columns.map(c => (

@@ -25,6 +25,7 @@ for (const f of files) {
   for (const m of c.matchAll(/\bt\(\s*(['"])([^'"]+)\1/g)) {
     const k = m[2]
     if (!k.includes('.')) continue // ignore les t(dynamique) sans namespace
+    if (k.endsWith('.')) continue  // préfixe dynamique t('ns.x.'+id) — vérifié au cas par cas
     if (!used.has(k)) used.set(k, f)
   }
 }

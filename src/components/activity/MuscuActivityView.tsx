@@ -16,6 +16,7 @@
 import type { ReactNode } from 'react'
 import { useSmSn } from '@/hooks/useSmSn'
 import { smSnFromRow } from '@/lib/metrics/smSn'
+import { useI18n } from '@/lib/i18n'
 
 interface MuscuActivity {
   moving_time_s?: number | null
@@ -77,6 +78,7 @@ function FcChartSimple({ stream }: { stream: number[] }) {
 }
 
 export function MuscuActivityView({ activity, z2DurationS, jauges }: Props) {
+  const { t } = useI18n()
   const a = activity
   const hr = a.streams?.heartrate ?? null
   const hasHr = !!hr && hr.length > 1
@@ -84,24 +86,24 @@ export function MuscuActivityView({ activity, z2DurationS, jauges }: Props) {
   const smsn = smSnFromRow({ sport_type: 'gym', moving_time_s: a.moving_time_s ?? null, avg_hr: a.avg_hr ?? null, avg_temp_c: a.avg_temp_c ?? null }, benchmarks)
 
   const kpis: { label: string; value: string; color?: string }[] = [
-    { label: 'Durée',    value: fmtDur(a.moving_time_s) },
-    { label: 'FC moy',   value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
-    { label: 'FC max',   value: a.max_hr ? `${Math.round(Number(a.max_hr))} bpm` : '—', color: '#f97316' },
-    { label: 'Calories', value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
+    { label: t('activities.duration'),    value: fmtDur(a.moving_time_s) },
+    { label: t('activities.hrAvg'),   value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
+    { label: t('activities.hrMax'),   value: a.max_hr ? `${Math.round(Number(a.max_hr))} bpm` : '—', color: '#f97316' },
+    { label: t('activities.calories'), value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
     { label: 'SM',       value: String(smsn.sm) },
-    { label: 'Durée Z2', value: z2DurationS != null ? fmtDur(z2DurationS) : '—' },
+    { label: t('activities.z2Duration'), value: z2DurationS != null ? fmtDur(z2DurationS) : '—' },
   ]
 
   const cardio: { label: string; value: string }[] = [
-    { label: 'FC max',   value: a.max_hr ? `${Math.round(Number(a.max_hr))} bpm` : '—' },
-    { label: 'FC moy',   value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—' },
-    { label: 'Durée Z2', value: z2DurationS != null ? fmtDur(z2DurationS) : '—' },
+    { label: t('activities.hrMax'),   value: a.max_hr ? `${Math.round(Number(a.max_hr))} bpm` : '—' },
+    { label: t('activities.hrAvg'),   value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—' },
+    { label: t('activities.z2Duration'), value: z2DurationS != null ? fmtDur(z2DurationS) : '—' },
   ]
   const seance: { label: string; value: string }[] = [
-    { label: 'Temp. moy',  value: a.avg_temp_c != null ? `${Math.round(Number(a.avg_temp_c))} °C` : '—' },
-    { label: 'Calories',   value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
+    { label: t('activities.tempAvg'),  value: a.avg_temp_c != null ? `${Math.round(Number(a.avg_temp_c))} °C` : '—' },
+    { label: t('activities.calories'),   value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
     { label: 'SN',         value: String(smsn.sn) },
-    { label: 'Difficulté', value: a.difficulty != null ? `${a.difficulty} / 10` : '—' },
+    { label: t('activities.difficulty'), value: a.difficulty != null ? `${a.difficulty} / 10` : '—' },
   ]
   const notes = a.notes ?? a.description
 
@@ -116,7 +118,7 @@ export function MuscuActivityView({ activity, z2DurationS, jauges }: Props) {
 
       {/* Stats : Cardio + Séance (pas de Terrain/Conditions) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
-        {[{ title: 'Cardio', color: '#EF4444', rows: cardio }, { title: 'Séance', color: '#7c3aed', rows: seance }].map(block => (
+        {[{ title: t('activities.cardio'), color: '#EF4444', rows: cardio }, { title: t('activities.session'), color: '#7c3aed', rows: seance }].map(block => (
           <div key={block.title}>
             <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '.07em', textTransform: 'uppercase', color: block.color, marginBottom: 6, paddingBottom: 4, borderBottom: `1px solid ${block.color}25` }}>{block.title}</div>
             {block.rows.map(r => (
@@ -132,7 +134,7 @@ export function MuscuActivityView({ activity, z2DurationS, jauges }: Props) {
       {/* Courbe FC simple (pas de toggles Empilé/Superposé/Mono) */}
       {hasHr && (
         <div>
-          <div style={sectionTitle}>Fréquence cardiaque</div>
+          <div style={sectionTitle}>{t('activities.heartRate')}</div>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
             <FcChartSimple stream={hr as number[]} />
           </div>
@@ -141,16 +143,16 @@ export function MuscuActivityView({ activity, z2DurationS, jauges }: Props) {
 
       {/* Détail par exercice — non disponible (données structurées absentes) */}
       <div>
-        <div style={sectionTitle}>Détail par exercice</div>
+        <div style={sectionTitle}>{t('activities.exerciseDetail')}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-          <span>Le détail par exercice (séries, charges, 1RM, circuits) nécessite des données structurées d&apos;exercices, non fournies par la synchronisation actuelle. Voir PROMPT_MUSCU_HYROX_INTERFACE.md pour les prérequis (schéma + source).</span>
+          <span>{t('activities.exerciseDetailNote')}</span>
         </div>
       </div>
 
       {notes && (
         <div>
-          <div style={sectionTitle}>Commentaire</div>
+          <div style={sectionTitle}>{t('activities.comment')}</div>
           <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{notes}</div>
         </div>
       )}

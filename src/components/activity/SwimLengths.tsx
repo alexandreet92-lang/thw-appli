@@ -10,11 +10,13 @@
 
 import { useEffect, useState } from 'react'
 import { useActivityExtras } from '@/lib/activity/extras'
+import { useI18n } from '@/lib/i18n'
 
 const PRESETS = [25, 33, 50]
 const SWIM = 'var(--sport-swim)'
 
 export function SwimLengths({ activityId, distanceM }: { activityId: string; distanceM: number | null }) {
+  const { t } = useI18n()
   const { extras, loaded, save } = useActivityExtras(activityId)
   const pool = extras.pool_length_m ?? 25
   const isSet = extras.pool_length_m != null
@@ -37,21 +39,21 @@ export function SwimLengths({ activityId, distanceM }: { activityId: string; dis
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>
-            Longueurs
+            {t('activities.lengths')}
           </div>
           <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, marginTop: 4 }}>
             {lengths != null ? lengths : '—'}
-            {lengths != null && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 6 }}>longueurs</span>}
+            {lengths != null && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 6 }}>{t('activities.lengthsUnit')}</span>}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-            {isSet ? `Bassin ${pool} m` : 'Bassin non renseigné'}{distanceM ? ` · ${(distanceM / 1000).toFixed(2)} km` : ''}
+            {isSet ? t('activities.poolLength', { n: pool }) : t('activities.poolNotSet')}{distanceM ? ` · ${(distanceM / 1000).toFixed(2)} km` : ''}
           </div>
         </div>
         {!editing && (
           <button onClick={() => setEditing(true)} style={{
             fontSize: 12, color: SWIM, background: 'none', border: '1px solid var(--border)',
             borderRadius: 999, padding: '6px 14px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit',
-          }}>{isSet ? 'Bassin' : 'Renseigner'}</button>
+          }}>{isSet ? t('activities.pool') : t('activities.fillIn')}</button>
         )}
       </div>
 

@@ -3,6 +3,7 @@
 // Aucune couleur hex : tout via var(--se-*) ou la prop `accent` reçue.
 import { useRef } from 'react'
 import type { ReactNode } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 export function Card({ children, style }: { children: ReactNode; style?: React.CSSProperties }) {
   return (
@@ -46,10 +47,11 @@ export function Banner({ cells }: { cells: { label: string; value: string; color
 
 /** En-tête de section builder : titre Fraunces + toggle Manuel/IA. */
 export function BuilderHeader({ accent, tab, onTab }: { accent: string; tab: 'manual' | 'ai'; onTab: (t: 'manual' | 'ai') => void }) {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-      <h3 className="se-fr" style={{ margin: 0, fontSize: 19, fontWeight: 600 }}>Construction de la séance</h3>
-      <Segmented accent={accent} value={tab} onChange={onTab} options={[{ key: 'manual', label: 'Manuel' }, { key: 'ai', label: '+ IA' }]} />
+      <h3 className="se-fr" style={{ margin: 0, fontSize: 19, fontWeight: 600 }}>{t('planning.sessionBuilder')}</h3>
+      <Segmented accent={accent} value={tab} onChange={onTab} options={[{ key: 'manual', label: t('planning.manual') }, { key: 'ai', label: t('planning.aiPlus') }]} />
     </div>
   )
 }

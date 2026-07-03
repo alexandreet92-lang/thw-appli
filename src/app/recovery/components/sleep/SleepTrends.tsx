@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 export interface TrendNight {
   date: string
@@ -8,14 +9,14 @@ export interface TrendNight {
 }
 
 const CURVES = [
-  { key: 'totalMin',  label: 'Durée',          color: '#3B82F6', dash: false, w: 2 },
-  { key: 'deepMin',   label: 'Profond',         color: '#4338CA', dash: true,  w: 1.5 },
-  { key: 'remMin',    label: 'REM',             color: '#7C3AED', dash: true,  w: 1.5 },
-  { key: 'lightMin',  label: 'Léger',           color: '#60A5FA', dash: true,  w: 1.5 },
-  { key: 'wakeMin',   label: 'Interruptions',   color: '#F97316', dash: true,  w: 1.5 },
+  { key: 'totalMin',  labelKey: 'recovery.sleepTrends.duration',          color: '#3B82F6', dash: false, w: 2 },
+  { key: 'deepMin',   labelKey: 'recovery.phase.deep',         color: '#4338CA', dash: true,  w: 1.5 },
+  { key: 'remMin',    labelKey: 'recovery.phase.rem',             color: '#7C3AED', dash: true,  w: 1.5 },
+  { key: 'lightMin',  labelKey: 'recovery.phase.light',           color: '#60A5FA', dash: true,  w: 1.5 },
+  { key: 'wakeMin',   labelKey: 'recovery.phase.interruptions',   color: '#F97316', dash: true,  w: 1.5 },
 ] as const
 
-const PERIODS = [{ label: '1 sem', days: 7 }, { label: '2 sem', days: 14 }, { label: '4 sem', days: 28 }]
+const PERIODS = [{ labelKey: 'recovery.period.1w', days: 7 }, { labelKey: 'recovery.period.2w', days: 14 }, { labelKey: 'recovery.period.4w', days: 28 }]
 
 function fmtMin(m: number): string {
   const h = Math.floor(m / 60), mm = Math.round(m % 60)
@@ -36,6 +37,7 @@ function isoDate(d: Date): string {
 }
 
 export default function SleepTrends({ nights }: { nights: TrendNight[] }) {
+  const { t } = useI18n()
   const [period, setPeriod] = useState(1)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [animated, setAnimated] = useState(false)
@@ -88,12 +90,12 @@ export default function SleepTrends({ nights }: { nights: TrendNight[] }) {
                 borderColor: period===i ? '#3B82F6' : 'var(--border)',
                 background: period===i ? 'rgba(59,130,246,0.10)' : 'transparent',
                 color: period===i ? '#3B82F6' : 'var(--text-dim)', fontWeight: period===i ? 700 : 400 }}>
-              {p.label}
+              {t(p.labelKey)}
             </button>
           ))}
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          {curAvg != null && <span style={{ fontSize:10, color:'var(--text-dim)' }}>Moy. {fmtMin(Math.round(curAvg))}</span>}
+          {curAvg != null && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{t('recovery.avgShort')} {fmtMin(Math.round(curAvg))}</span>}
           {pct != null && <span style={{ fontSize:10, fontWeight:700, color: pct >= 0 ? '#10B981' : '#EF4444' }}>
             {pct >= 0 ? '↑' : '↓'} {Math.abs(pct)}%
           </span>}
@@ -113,7 +115,7 @@ export default function SleepTrends({ nights }: { nights: TrendNight[] }) {
                 backgroundImage: c.dash
                   ? `repeating-linear-gradient(90deg,${c.color} 0,${c.color} 3px,transparent 3px,transparent 6px)`
                   : 'none' }} />
-              <span style={{ fontSize:9, color: c.color, fontWeight:600 }}>{c.label}</span>
+              <span style={{ fontSize:9, color: c.color, fontWeight:600 }}>{t(c.labelKey)}</span>
             </button>
           )
         })}

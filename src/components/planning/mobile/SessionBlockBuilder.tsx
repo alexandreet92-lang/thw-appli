@@ -13,12 +13,14 @@ import { BlockCard } from './BlockCard'
 import { Segmented } from './ui'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import type { PanelParcours } from './panelProps'
+import { useI18n } from '@/lib/i18n'
 
 export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, refs, parcoursData, builderTab, onBuilderTab }: {
   sport: SportType; accent: string; blocks: MBlock[]; onChange: (b: MBlock[]) => void
   sm: number; sn: number; refs: AthleteRefs; parcoursData?: PanelParcours
   builderTab: 'manual' | 'ai'; onBuilderTab: (t: 'manual' | 'ai') => void
 }) {
+  const { t: tr } = useI18n()
   const [openId, setOpenId] = useState<string | null>(null)
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
@@ -87,10 +89,10 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
   })()
 
   const cells: { label: string; value: string; color?: string }[] = [
-    { label: 'SM métab.', value: String(sm), color: '#22b8c4' },
-    { label: 'SN neuro', value: String(sn), color: '#a855f7' },
-    isSwim ? { label: 'Distance', value: dist ? `${dist}m` : '—' } : { label: 'Durée', value: fmtDur(tot) },
-    { label: sport === 'bike' ? 'Intensité moy.' : 'Allure moy.', value: fourth ?? '—' },
+    { label: tr('planning.smMetab'), value: String(sm), color: '#22b8c4' },
+    { label: tr('planning.snNeuro'), value: String(sn), color: '#a855f7' },
+    isSwim ? { label: tr('planning.distance'), value: dist ? `${dist}m` : '—' } : { label: tr('planning.duration'), value: fmtDur(tot) },
+    { label: sport === 'bike' ? tr('planning.avgIntensity') : tr('planning.avgPace'), value: fourth ?? '—' },
   ]
 
   function add(b: MBlock) { onChange([...blocks, b]); setOpenId(b.id) }
@@ -163,7 +165,7 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
         const obj = raw.match(/\{[\s\S]*\}/)
         if (obj) { try { const o = JSON.parse(obj[0]) as Record<string, unknown>; const a = (o.blocks ?? o.blocs) as unknown; if (Array.isArray(a)) jsonStr = JSON.stringify(a) } catch { /* noop */ } }
       }
-      if (!jsonStr) { setAiError(`Réponse IA invalide : ${raw.slice(0, 200) || '(vide)'}`); return }
+      if (!jsonStr) { setAiError(tr('planning.aiInvalidResponse', { r: raw.slice(0, 200) || tr('planning.empty') })); return }
       const parsed = JSON.parse(jsonStr) as Record<string, unknown>[]
       const newBlocks: MBlock[] = parsed.map((b, i) => {
         const value = String(b.value ?? '')
@@ -177,17 +179,17 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
           id: `ai_${Date.now()}_${i}`, mode, type: (typeof b.type === 'string' ? b.type : 'effort') as MBlock['type'],
           durationMin: mode === 'interval' ? Math.round(reps * (effortMin + recoveryMin) * 100) / 100 : durationMin,
           zone, value, hrAvg: typeof b.hrAvg === 'string' ? b.hrAvg : '',
-          label: typeof b.label === 'string' ? b.label : 'Bloc',
+          label: typeof b.label === 'string' ? b.label : tr('planning.bloc'),
           reps: reps || undefined, effortMin: effortMin || undefined, recoveryMin: recoveryMin || undefined,
           recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
         }
       })
-      if (newBlocks.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
+      if (newBlocks.length === 0) { setAiError(tr('planning.aiEmptyArray')); return }
       onChange(newBlocks)
       setAiPrompt('')
       onBuilderTab('manual')
     } catch (e) {
-      setAiError(`Erreur : ${e instanceof Error ? e.message : String(e)}`)
+      setAiError(tr('planning.errorPrefix', { e: e instanceof Error ? e.message : String(e) }))
     } finally {
       setAiLoading(false)
     }
@@ -197,9 +199,9 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
     <div>
       {/* Header + toggle */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-        <h3 className="se-fr" style={{ margin: 0, fontSize: 19, fontWeight: 600 }}>Construction de la séance</h3>
+        <h3 className="se-fr" style={{ margin: 0, fontSize: 19, fontWeight: 600 }}>{tr('planning.sessionBuilder')}</h3>
         <Segmented accent={accent} value={builderTab} onChange={onBuilderTab}
-          options={[{ key: 'manual', label: 'Manuel' }, { key: 'ai', label: '+ IA' }]} />
+          options={[{ key: 'manual', label: tr('planning.manual') }, { key: 'ai', label: tr('planning.aiPlus') }]} />
       </div>
 
       {/* Bandeau résumé 4 cellules */}
@@ -215,7 +217,7 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
       {/* Profil d'intensité */}
       <div style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: '14px 14px 10px', marginBottom: 18 }}>
         <p style={{ margin: '0 0 10px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>
-          Profil d&apos;intensité <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {isSwim ? 'par distance' : 'haut = intensité'}</span>
+          {tr('planning.intensityProfile')} <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {isSwim ? tr('planning.byDistance') : tr('planning.highIsIntensity')}</span>
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: 150, paddingBottom: 2 }}>
@@ -223,7 +225,7 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
           </div>
           <div style={{ flex: 1, height: 150, display: 'flex', alignItems: 'flex-end', gap: 2, borderLeft: '1px solid var(--se-rule)', borderBottom: '1px solid var(--se-rule)', paddingLeft: 4 }}>
             {bars.length === 0
-              ? <span style={{ fontSize: 11, color: 'var(--se-dim)', alignSelf: 'center', margin: '0 auto' }}>Ajoute un bloc pour voir le profil</span>
+              ? <span style={{ fontSize: 11, color: 'var(--se-dim)', alignSelf: 'center', margin: '0 auto' }}>{tr('planning.addBlockToSeeProfile')}</span>
               : bars.map(bar => (
                 <div key={bar.id} title={`Z${bar.zone}${bar.value ? ` · ${bar.value}` : ''} · ${Math.round(bar.min)}min`} style={{
                   flexGrow: Math.max(1, bar.min), flexBasis: 0, minWidth: 3,
@@ -242,7 +244,7 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
         {blocks.map(b => (
           <div key={b.id} ref={el => { rowRefs.current[b.id] = el }}
             style={{ display: 'flex', alignItems: 'stretch', gap: 6, opacity: dragging === b.id ? 0.55 : 1, transition: 'opacity 0.12s' }}>
-            <div onPointerDown={e => onDragStart(b.id, e)} aria-label="Déplacer le bloc" title="Glisser pour déplacer"
+            <div onPointerDown={e => onDragStart(b.id, e)} aria-label={tr('planning.moveBlock')} title={tr('planning.dragToMove')}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px', color: 'var(--se-dim)', cursor: 'grab', touchAction: 'none', flexShrink: 0 }}>
               <IconGripVertical size={16} />
             </div>
@@ -257,26 +259,26 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
 
       {/* Boutons d'ajout */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <button type="button" onClick={() => add(newSingle(sport))} style={addBtn}><IconPlus size={15} /> Bloc simple</button>
-        <button type="button" onClick={() => add(newInterval(sport))} style={addBtn}><IconRefresh size={15} /> {isSwim ? 'Série' : 'Intervalle'}</button>
+        <button type="button" onClick={() => add(newSingle(sport))} style={addBtn}><IconPlus size={15} /> {tr('planning.simpleBlock')}</button>
+        <button type="button" onClick={() => add(newInterval(sport))} style={addBtn}><IconRefresh size={15} /> {isSwim ? tr('planning.series') : tr('planning.interval')}</button>
       </div>
 
       {/* IA : champ d'écriture → génération des blocs d'intensité */}
       {builderTab === 'ai' && (
         <div style={{ marginTop: 14, padding: 14, border: '1px dashed var(--se-rule)', borderRadius: 'var(--se-r)' }}>
           <p style={{ margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: accent }}>
-            <IconSparkles size={15} /> Décris ta séance, l&apos;IA crée les blocs
+            <IconSparkles size={15} /> {tr('planning.aiDescribeSession')}
           </p>
           <textarea
             value={aiPrompt}
             onChange={e => { setAiPrompt(e.target.value); if (aiError) setAiError(null) }}
             rows={4}
-            placeholder={sport === 'bike' ? 'Ex : 3×10min à 300W récup 5min, échauffement 15min…' : 'Ex : 10×400m @3:30/km récup 1min, échauffement 15min…'}
+            placeholder={sport === 'bike' ? tr('planning.aiPlaceholderBike') : tr('planning.aiPlaceholderDefault')}
             style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-card2)', border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', color: 'var(--se-text)', padding: 12, fontSize: 13, outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
           />
           <button type="button" onClick={() => void generate()} disabled={aiLoading || !aiPrompt.trim()}
             style={{ marginTop: 8, width: '100%', padding: 12, borderRadius: 'var(--se-r)', border: 'none', background: aiLoading ? 'var(--se-rule)' : accent, color: '#fff', fontSize: 13, fontWeight: 700, cursor: aiLoading || !aiPrompt.trim() ? 'default' : 'pointer', opacity: !aiPrompt.trim() ? 0.5 : 1 }}>
-            {aiLoading ? 'Génération…' : 'Générer les blocs'}
+            {aiLoading ? tr('planning.generating') : tr('planning.generateBlocks')}
           </button>
           {aiError && (
             <p style={{ margin: '8px 0 0', padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, lineHeight: 1.4 }}>{aiError}</p>
@@ -291,7 +293,7 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <IconMapPin size={15} color={accent} />
               <span style={{ flex: 1, fontSize: 12, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parcoursFile.name}</span>
-              <button type="button" onClick={() => setParcoursFile(null)} aria-label="Retirer le parcours" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
+              <button type="button" onClick={() => setParcoursFile(null)} aria-label={tr('planning.removeParcours')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
             </div>
             <ParcoursViewer file={parcoursFile} />
           </div>
@@ -299,14 +301,14 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <IconMapPin size={15} color={accent} />
-              <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parcoursData.name || 'Parcours du stage'}</span>
-              <button type="button" onClick={() => parcoursInputRef.current?.click()} style={{ background: 'none', border: 'none', color: accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Remplacer</button>
+              <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parcoursData.name || tr('planning.stageParcours')}</span>
+              <button type="button" onClick={() => parcoursInputRef.current?.click()} style={{ background: 'none', border: 'none', color: accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>{tr('planning.replace')}</button>
             </div>
             <ParcoursViewer data={parcoursData} />
           </div>
         ) : (
           <button type="button" onClick={() => parcoursInputRef.current?.click()} style={addBtn}>
-            <IconMapPin size={15} /> Intégrer un parcours
+            <IconMapPin size={15} /> {tr('planning.addParcours')}
           </button>
         )}
         <input ref={parcoursInputRef} type="file" accept=".gpx,.tcx,.kml" style={{ display: 'none' }}

@@ -3,6 +3,8 @@
 // Saisie manuelle d'une mesure + objectif de poids. Les inputs sont les seuls
 // éléments autorisés à porter une bordure (DESIGN_SYSTEM.md §3).
 
+import { useI18n } from '@/lib/i18n'
+
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
 const inputStyle: React.CSSProperties = {
@@ -27,6 +29,7 @@ interface Props {
 }
 
 export function MeasureForm(p: Props) {
+  const { t } = useI18n()
   const field = (label: string, value: string, on: (v: string) => void, type: string) => (
     <div style={{ minWidth: 0 }}>
       <label style={labelStyle}>{label}</label>
@@ -36,33 +39,33 @@ export function MeasureForm(p: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       <div>
-        <h2 style={title}>Ajouter une mesure</h2>
+        <h2 style={title}>{t('nutrition.measure.addTitle')}</h2>
         <style>{`.measure-fields{grid-template-columns:1fr}@media(min-width:380px){.measure-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}`}</style>
         <div className="measure-fields" style={{ display: 'grid', gap: 'var(--space-4) var(--space-3)', marginBottom: 'var(--space-4)', maxWidth: '100%' }}>
-          {field('Date', p.date, p.onDate, 'date')}
-          {field('Poids (kg)', p.weight, p.onWeight, 'number')}
-          {field('Masse grasse (%)', p.mg, p.onMg, 'number')}
-          {field('Masse musculaire (kg)', p.mm, p.onMm, 'number')}
+          {field(t('nutrition.measure.date'), p.date, p.onDate, 'date')}
+          {field(t('nutrition.measure.weightKg'), p.weight, p.onWeight, 'number')}
+          {field(t('nutrition.measure.fatPct'), p.mg, p.onMg, 'number')}
+          {field(t('nutrition.measure.muscleKg'), p.mm, p.onMm, 'number')}
         </div>
-        <button onClick={p.onSave} style={compactBtn}>Enregistrer</button>
+        <button onClick={p.onSave} style={compactBtn}>{t('nutrition.common.save')}</button>
       </div>
 
       <div>
-        <h2 style={title}>Objectif de poids</h2>
+        <h2 style={title}>{t('nutrition.measure.goalTitle')}</h2>
         <button onClick={p.onGoToPlan} style={{ background: 'none', border: 'none', padding: 0, marginBottom: 'var(--space-3)', cursor: 'pointer',
           fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)', textAlign: 'left' }}>
-          Relié à ton plan nutritionnel →
+          {t('nutrition.measure.linkedPlan')} →
         </button>
         <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end' }}>
           <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Poids cible (kg)</label>
-            <input type="number" step="0.1" value={p.goalInput} onChange={e => p.onGoalInput(e.target.value)} placeholder="ex: 75.0" style={inputStyle} />
+            <label style={labelStyle}>{t('nutrition.measure.goalWeightKg')}</label>
+            <input type="number" step="0.1" value={p.goalInput} onChange={e => p.onGoalInput(e.target.value)} placeholder={t('nutrition.measure.goalPlaceholder')} style={inputStyle} />
           </div>
-          <button onClick={p.onSaveGoal} style={{ ...compactBtn, alignSelf: 'auto' }}>Définir</button>
+          <button onClick={p.onSaveGoal} style={{ ...compactBtn, alignSelf: 'auto' }}>{t('nutrition.measure.setBtn')}</button>
         </div>
         {p.goalWeight != null && (
           <p style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-2) 0 0' }}>
-            Objectif tracé en pointillé sur le graphe « Poids ».
+            {t('nutrition.measure.goalNote')}
           </p>
         )}
       </div>

@@ -4,6 +4,7 @@
 // puis le contenu réel du sport (logique inchangée).
 import { useState } from 'react'
 import { IconArrowLeft } from '@tabler/icons-react'
+import { useI18n } from '@/lib/i18n'
 import { SlideView } from '@/components/ui/SlideView'
 import { SPORTS_AVEC_EXERCICES, type SportTheme } from './sportTheme'
 import { ExercicesMuscu } from './ExercicesMuscu'
@@ -18,8 +19,9 @@ const FD = 'var(--font-display)', FB = 'var(--font-body)'
 function SousOnglets({ theme, value, onChange }: {
   theme: SportTheme; value: 'exos' | 'seances'; onChange: (v: 'exos' | 'seances') => void
 }) {
+  const { t } = useI18n()
   const items: { id: 'exos' | 'seances'; label: string }[] = [
-    { id: 'exos', label: 'Exercices' }, { id: 'seances', label: 'Séances' },
+    { id: 'exos', label: t('session.exercices') }, { id: 'seances', label: t('session.seances') },
   ]
   return (
     <div style={{ display: 'flex', gap: 'var(--space-5)', borderBottom: '1px solid var(--border)', marginBottom: 'var(--space-5)' }}>
@@ -39,10 +41,11 @@ function SousOnglets({ theme, value, onChange }: {
 }
 
 function Contenu({ theme, tab }: { theme: SportTheme; tab: 'exos' | 'seances' }) {
+  const { t } = useI18n()
   if (tab === 'exos') {
     if (theme.id === 'muscu') return <ExercicesMuscu />
-    return <EnPreparation titre="Exercices Hyrox en préparation"
-      texte="Sled, ergo, wall ball, carry — les ateliers Hyrox détaillés arrivent ici, dans le même esprit que la muscu." />
+    return <EnPreparation titre={t('session.exosHyroxTitre')}
+      texte={t('session.exosHyroxTexte')} />
   }
   switch (theme.id) {
     case 'running':  return <SeancesRunning />
@@ -51,12 +54,13 @@ function Contenu({ theme, tab }: { theme: SportTheme; tab: 'exos' | 'seances' })
     case 'natation': return <SeancesEndurance cfg={NATATION_CONFIG} />
     case 'trail':    return <SeancesEndurance cfg={TRAIL_CONFIG} />
     default:
-      return <EnPreparation titre="Séances en préparation"
-        texte={`Des dizaines de séances ${theme.label.toLowerCase()} structurées par objectif arrivent ici — échauffement, corps de séance, retour au calme.`} />
+      return <EnPreparation titre={t('session.seancesPrepTitre')}
+        texte={t('session.seancesPrepTexte', { sport: theme.label.toLowerCase() })} />
   }
 }
 
 export function SportDetail({ theme, onBack }: { theme: SportTheme; onBack: () => void }) {
+  const { t } = useI18n()
   const hasExos = SPORTS_AVEC_EXERCICES.includes(theme.id)
   const [tab, setTab] = useState<'exos' | 'seances'>(hasExos ? 'exos' : 'seances')
   const [tabDir, setTabDir] = useState(1)
@@ -66,7 +70,7 @@ export function SportDetail({ theme, onBack }: { theme: SportTheme; onBack: () =
     <div>
       <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
         cursor: 'pointer', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, padding: '4px 0', marginBottom: 'var(--space-4)' }}>
-        <IconArrowLeft size={16} /> Sports
+        <IconArrowLeft size={16} /> {t('session.sports')}
       </button>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
         <span style={{ width: 10, height: 10, borderRadius: '50%', background: theme.accent, flexShrink: 0 }} />

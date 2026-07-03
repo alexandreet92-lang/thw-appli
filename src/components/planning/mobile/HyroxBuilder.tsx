@@ -6,6 +6,7 @@ import {
 } from './strength'
 import { Banner, BuilderHeader } from './ui'
 import { GroupBuilder } from './GroupBuilder'
+import { useI18n } from '@/lib/i18n'
 
 export function HyroxBuilder(p: {
   accent: string
@@ -14,26 +15,27 @@ export function HyroxBuilder(p: {
   map: Record<string, string>; setMap: (m: Record<string, string>) => void
   sm: number; sn: number; builderTab: 'manual' | 'ai'; onBuilderTab: (t: 'manual' | 'ai') => void
 }) {
+  const { t } = useI18n()
   const firstCid = p.circuits[0]?.id ?? 'default'
   const add = (item: ExerciseItem) => { p.setExercises([...p.exercises, item]); p.setMap({ ...p.map, [item.id]: firstCid }) }
   const tt = targetTimeSec(p.exercises, p.circuits)
   const cells = [
-    { label: 'SM métab.', value: String(p.sm), color: '#22b8c4' },
-    { label: 'SN neuro', value: String(p.sn), color: 'var(--pat-core)' },
-    { label: 'Temps cible', value: tt ? fmtSec(tt) : '—' },
-    { label: 'Stations', value: String(p.exercises.length) },
+    { label: t('planning.smMetab'), value: String(p.sm), color: '#22b8c4' },
+    { label: t('planning.snNeuro'), value: String(p.sn), color: 'var(--pat-core)' },
+    { label: t('planning.targetTime'), value: tt ? fmtSec(tt) : '—' },
+    { label: t('planning.stations'), value: String(p.exercises.length) },
   ]
 
   const presets = (
     <div style={{ marginBottom: 16 }}>
-      <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>Stations officielles</p>
+      <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>{t('planning.officialStations')}</p>
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' as React.CSSProperties['scrollbarWidth'] }}>
         {hyroxStations().map(def => (
           <button key={def.id} type="button" onClick={() => add(itemFromDef(def))}
             style={chip(p.accent, false)}>{def.name}</button>
         ))}
-        <button type="button" onClick={() => add(customItem('Exercice libre', 'hyrox'))} style={chip(p.accent, true)}>
-          <IconPlus size={13} /> Libre
+        <button type="button" onClick={() => add(customItem(t('planning.freeExercise'), 'hyrox'))} style={chip(p.accent, true)}>
+          <IconPlus size={13} /> {t('planning.free')}
         </button>
       </div>
     </div>

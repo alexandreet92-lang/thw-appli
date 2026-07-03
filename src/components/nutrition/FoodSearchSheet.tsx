@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { searchFoods, getRecentFoods, saveToRecent, type FoodItem } from '@/lib/food-search'
 import { COMMON_FOODS } from '@/lib/common-foods'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   onSelect: (food: FoodItem, grams: number) => void
@@ -56,6 +57,7 @@ function Skeleton() {
 }
 
 export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
+  const { t } = useI18n()
   const [query, setQuery] = useState(initialBarcode ?? '')
   const [loading, setLoading] = useState(!!initialBarcode)
   const [localResults, setLocalResults] = useState<FoodItem[]>([])
@@ -121,7 +123,7 @@ export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
               <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
             </svg>
-            <input ref={inputRef} value={query} onChange={e => handleChange(e.target.value)} placeholder="Rechercher un aliment..." style={{ width: '100%', padding: '9px 9px 9px 32px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', outline: 'none', boxSizing: 'border-box' }} />
+            <input ref={inputRef} value={query} onChange={e => handleChange(e.target.value)} placeholder={t('nutrition.foodSearch.placeholder')} style={{ width: '100%', padding: '9px 9px 9px 32px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', outline: 'none', boxSizing: 'border-box' }} />
           </div>
           <button onClick={onClose} style={{ width: 34, height: 34, borderRadius: 8, border: 'none', background: 'var(--bg-card2)', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -136,8 +138,8 @@ export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
               <input type="number" value={grams} onChange={e => setGrams(e.target.value)} min="1" style={{ width: 80, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Mono,monospace', outline: 'none' }} />
               <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>g</span>
               <div style={{ flex: 1 }} />
-              <button onClick={() => setPending(null)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>Retour</button>
-              <button onClick={handleConfirm} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#06B6D4,#3B82F6)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne,sans-serif' }}>Ajouter</button>
+              <button onClick={() => setPending(null)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>{t('nutrition.common.back')}</button>
+              <button onClick={handleConfirm} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#06B6D4,#3B82F6)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne,sans-serif' }}>{t('nutrition.common.add')}</button>
             </div>
           </div>
         )}
@@ -151,12 +153,12 @@ export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
               <>
                 {recentFoods.length > 0 && (
                   <>
-                    <p style={{ padding: '4px 16px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>Recemment utilises</p>
+                    <p style={{ padding: '4px 16px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>{t('nutrition.foodSearch.recent')}</p>
                     {recentFoods.map(f => <FoodRow key={f.code} food={f} onSelect={handleSelect} />)}
                     <div style={{ height: 1, background: 'var(--border)', margin: '4px 16px' }} />
                   </>
                 )}
-                <p style={{ padding: '4px 16px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>Aliments frequents</p>
+                <p style={{ padding: '4px 16px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>{t('nutrition.foodSearch.frequent')}</p>
                 {COMMON_FOODS.map(f => <FoodRow key={f.code} food={f} onSelect={handleSelect} />)}
               </>
             )}
@@ -165,14 +167,14 @@ export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
               <>
                 {localResults.length > 0 && (
                   <>
-                    <p style={{ padding: '4px 16px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>Bibliothèque</p>
+                    <p style={{ padding: '4px 16px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>{t('nutrition.foodSearch.library')}</p>
                     {localResults.map(f => <FoodRow key={f.code} food={f} onSelect={handleSelect} />)}
                   </>
                 )}
                 {apiResults.length > 0 && (
                   <>
                     {localResults.length > 0 && <div style={{ height: 1, background: 'var(--border)', margin: '4px 16px' }} />}
-                    <p style={{ padding: '4px 16px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>Produits</p>
+                    <p style={{ padding: '4px 16px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>{t('nutrition.foodSearch.products')}</p>
                     {apiResults.map(f => <FoodRow key={f.code} food={f} onSelect={handleSelect} />)}
                   </>
                 )}
@@ -180,10 +182,10 @@ export function FoodSearchSheet({ onSelect, onClose, initialBarcode }: Props) {
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 24px', gap: 10 }}>
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="1.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                     <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
-                      Aucun aliment trouve pour &ldquo;{query}&rdquo;<br/>
-                      <span style={{ fontSize: 11 }}>Essayez un terme plus simple ou saisissez les valeurs manuellement</span>
+                      {t('nutrition.foodSearch.notFound', { query })}<br/>
+                      <span style={{ fontSize: 11 }}>{t('nutrition.foodSearch.tryAgain')}</span>
                     </p>
-                    <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', marginTop: 4 }}>Saisie manuelle</button>
+                    <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', marginTop: 4 }}>{t('nutrition.foodSearch.manualEntry')}</button>
                   </div>
                 )}
               </>

@@ -8,8 +8,10 @@
 // ══════════════════════════════════════════════════════════════════
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { ProfileContent } from '@/app/profile/page'
+import { useI18n } from '@/lib/i18n'
 
 export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [closing, setClosing] = useState(false)
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -81,7 +83,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
 
         {/* Corps scrollable — la liste / le drill-down */}
         <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
-          <Suspense fallback={<div style={{ padding: 40, color: 'var(--text-dim)', textAlign: 'center' }}>Chargement…</div>}>
+          <Suspense fallback={<div style={{ padding: 40, color: 'var(--text-dim)', textAlign: 'center' }}>{t('profile.loading')}</div>}>
             <ProfileContent />
           </Suspense>
         </div>

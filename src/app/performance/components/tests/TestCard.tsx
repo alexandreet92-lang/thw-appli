@@ -2,6 +2,7 @@
 // Carte de test — patron unique (DESIGN_SYSTEM.md). Fond --bg-card2, aucune bordure
 // colorée, ombre douce au survol (.card-interactive). Tag d'intensité = point + label
 // (fonctionnel, support minimal). Chiffres neutres tabulaires. Tokens uniquement.
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const INTENSITY: Record<string, string> = {
@@ -12,6 +13,7 @@ const inten = (d: string) => INTENSITY[d] ?? 'var(--text-mid)'
 interface TestLike { name: string; desc: string; duration: string; difficulty: string }
 
 export function TestCard({ test, onOpen }: { test: TestLike; onOpen: () => void }) {
+  const { t } = useI18n()
   const c = inten(test.difficulty)
   return (
     <div className="card-interactive" role="button" tabIndex={0} onClick={onOpen}
@@ -32,7 +34,7 @@ export function TestCard({ test, onOpen }: { test: TestLike; onOpen: () => void 
           <span className="tnum" style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>{test.duration}</span>
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: FB, fontSize: 11, fontWeight: 600, color: 'var(--primary)' }}>
-          Voir le protocole
+          {t('performance.viewProtocol')}
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M9 18l6-6-6-6" /></svg>
         </span>
       </div>

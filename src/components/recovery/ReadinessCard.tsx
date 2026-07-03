@@ -8,6 +8,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import type { ReadinessResult, ReadinessKey } from '@/lib/recovery/computeReadiness'
+import { useI18n } from '@/lib/i18n'
 
 const NUM = { fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' as const, fontFeatureSettings: "'zero' 0" }
 const LABELS: Record<ReadinessKey, string> = { checkin: 'check-in', hrv: 'HRV', tsb: 'TSB' }
@@ -19,13 +20,14 @@ function scoreColor(s: number): string {
 }
 
 export default function ReadinessCard({ result }: { result: ReadinessResult | null }) {
+  const { t } = useI18n()
   const has = result != null && result.score != null
 
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <span style={{ width: 7, height: 7, borderRadius: 2, background: 'var(--rec-readiness)', flexShrink: 0 }} />
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--text)' }}>Readiness du jour</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--text)' }}>{t('recovery.readiness.title')}</h2>
       </div>
 
       {has ? (
@@ -51,7 +53,7 @@ export default function ReadinessCard({ result }: { result: ReadinessResult | nu
         <>
           <div style={{ ...NUM, fontSize: 40, fontWeight: 600, color: 'var(--text-dim)', lineHeight: 1, marginBottom: 8 }}>—</div>
           <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)', margin: 0 }}>
-            Complète ton check-in pour calculer ta readiness.
+            {t('recovery.readiness.empty')}
           </p>
         </>
       )}

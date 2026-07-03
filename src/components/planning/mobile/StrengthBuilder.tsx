@@ -4,6 +4,7 @@ import { type ExerciseItem, type ExoCircuit, tonnageKg, estDurationMin } from '.
 import { fmtDur } from './editorial'
 import { Banner, BuilderHeader } from './ui'
 import { GroupBuilder } from './GroupBuilder'
+import { useI18n } from '@/lib/i18n'
 
 export function StrengthBuilder(p: {
   accent: string
@@ -12,12 +13,13 @@ export function StrengthBuilder(p: {
   map: Record<string, string>; setMap: (m: Record<string, string>) => void
   sn: number; builderTab: 'manual' | 'ai'; onBuilderTab: (t: 'manual' | 'ai') => void
 }) {
+  const { t } = useI18n()
   const tonnage = tonnageKg(p.exercises)
   const cells = [
-    { label: 'SN neuro', value: String(p.sn) },
-    { label: 'Volume', value: tonnage ? `${(tonnage / 1000).toFixed(1)} t` : '—' },
-    { label: 'Durée est.', value: p.exercises.length ? fmtDur(estDurationMin(p.exercises, p.circuits)) : '—' },
-    { label: 'Exercices', value: String(p.exercises.length) },
+    { label: t('planning.snNeuro'), value: String(p.sn) },
+    { label: t('planning.volume'), value: tonnage ? `${(tonnage / 1000).toFixed(1)} t` : '—' },
+    { label: t('planning.durationEst'), value: p.exercises.length ? fmtDur(estDurationMin(p.exercises, p.circuits)) : '—' },
+    { label: t('planning.exercises'), value: String(p.exercises.length) },
   ]
   return (
     <div>

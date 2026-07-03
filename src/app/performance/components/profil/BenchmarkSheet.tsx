@@ -2,6 +2,7 @@
 // Feuille « Modifier les benchmarks » — sort le formulaire de la page (createPortal).
 // Champs arrondis, unité intégrée à droite, focus var(--primary) + halo --primary-dim.
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { Sheet, primaryBtn } from '@/app/injuries/components/Sheet'
 
 const FB = 'var(--font-body)'
@@ -28,9 +29,10 @@ export function BenchmarkSheet({ title, fields, values, onChange, onSave, saving
   title: string; fields: BenchField[]; values: Record<string, string>
   onChange: (key: string, val: string) => void; onSave: () => void; saving: boolean; onClose: () => void
 }) {
+  const { t } = useI18n()
   return (
-    <Sheet title={`Benchmarks — ${title}`} onClose={onClose}
-      footer={<button onClick={onSave} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button>}>
+    <Sheet title={t('performance.benchmarksTitle', { sport: title })} onClose={onClose}
+      footer={<button onClick={onSave} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}>{saving ? t('performance.saving') : t('performance.save')}</button>}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3) var(--space-3)' }}>
         {fields.map(f => (
           <div key={f.key}>

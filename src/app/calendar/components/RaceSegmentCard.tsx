@@ -3,6 +3,7 @@
 // volume) + corps. Plus primitives SegInput / CalcField / TransitionCard.
 import type { ReactNode } from 'react'
 import { IconArrowRight } from '@tabler/icons-react'
+import { useI18n } from '@/lib/i18n'
 
 export function SegmentCard({ color, label, volume, children }: {
   color: string; label: string; volume?: string; children: ReactNode
@@ -49,11 +50,12 @@ export function SegInput({ label, value, onChange, placeholder, type }: {
 }
 
 export function CalcField({ label, value }: { label: string; value: string }) {
+  const { t } = useI18n()
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         <span style={fLbl}>{label}</span>
-        <span style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', border: '1px dashed var(--border-mid)', borderRadius: 5, padding: '1px 5px' }}>calc</span>
+        <span style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)', border: '1px dashed var(--border-mid)', borderRadius: 5, padding: '1px 5px' }}>{t('calendar.calcBadge')}</span>
       </div>
       <div className="ed-tnum" style={{ background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', borderRadius: 9, padding: '9px 11px', fontSize: 13.5, fontWeight: 600, color: value === '—' ? 'var(--text-dim)' : 'var(--text)' }}>{value}</div>
     </div>

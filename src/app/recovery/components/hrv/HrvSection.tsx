@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import HrvDaily from './HrvDaily'
 import HrvTrend from './HrvTrend'
 import HrvHeatmap from './HrvHeatmap'
@@ -8,6 +9,7 @@ import HrvHeatmap from './HrvHeatmap'
 export interface HrvRow { date: string; hrv: number }
 
 export default function HrvSection() {
+  const { t } = useI18n()
   const [rows, setRows] = useState<HrvRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -86,7 +88,7 @@ export default function HrvSection() {
           HRV
         </p>
         <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, margin: 0 }}>
-          Variabilité cardiaque
+          {t('recovery.hrv.hrvChartTitle')}
         </h2>
       </div>
 
@@ -96,7 +98,7 @@ export default function HrvSection() {
         <HrvDaily todayHrv={todayRow.hrv} avg7={avg7} allTime={allVals} />
         <div>
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', margin: '0 0 10px' }}>
-            Patterns hebdomadaires
+            {t('recovery.hrv.weeklyPatterns')}
           </p>
           <HrvHeatmap rows={sorted} />
         </div>
@@ -105,7 +107,7 @@ export default function HrvSection() {
       {/* Trend chart */}
       <div>
         <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', margin: '0 0 8px' }}>
-          Tendance HRV
+          {t('recovery.hrv.trendTitle')}
         </p>
         <HrvTrend rows={sorted} />
       </div>

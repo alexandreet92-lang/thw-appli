@@ -3,13 +3,14 @@
 import { useEffect, useState, useRef } from 'react'
 import type { CheckInRow } from './types'
 import { calcScore, scoreStatus, metricDotColor, fmtHours } from './types'
+import { useI18n } from '@/lib/i18n'
 
 const METRICS = [
-  { key: 'fatigue'     as const, label: 'Fatigue',    inverted: true,  color: '#ef4444' },
-  { key: 'energy'      as const, label: 'Énergie',    inverted: false, color: '#10B981' },
-  { key: 'stress'      as const, label: 'Stress',     inverted: true,  color: '#ef4444' },
-  { key: 'motivation'  as const, label: 'Motivation', inverted: false, color: '#10B981' },
-  { key: 'pain'        as const, label: 'Douleurs',   inverted: true,  color: '#ef4444' },
+  { key: 'fatigue'     as const, labelKey: 'recovery.metric.fatigue',    inverted: true,  color: '#ef4444' },
+  { key: 'energy'      as const, labelKey: 'recovery.metric.energy',    inverted: false, color: '#10B981' },
+  { key: 'stress'      as const, labelKey: 'recovery.metric.stress',     inverted: true,  color: '#ef4444' },
+  { key: 'motivation'  as const, labelKey: 'recovery.metric.motivation', inverted: false, color: '#10B981' },
+  { key: 'pain'        as const, labelKey: 'recovery.metric.pain',   inverted: true,  color: '#ef4444' },
 ]
 
 interface Props {
@@ -56,6 +57,7 @@ function DonutScore({ score, color }: { score: number; color: string }) {
 }
 
 export default function DailyScore({ checkin, history, streak, onCheckIn }: Props) {
+  const { t } = useI18n()
   const [barMounted, setBarMounted] = useState(false)
   const last7 = history.slice(0, 7)
 
@@ -70,10 +72,10 @@ export default function DailyScore({ checkin, history, streak, onCheckIn }: Prop
         <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom:8 }}>
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
         </svg>
-        <p style={{ fontFamily:'Syne,sans-serif',fontSize:17,fontWeight:700,margin:'0 0 6px' }}>Pas encore de check-in aujourd'hui</p>
-        <p style={{ fontSize:12,color:'var(--text-dim)',margin:'0 0 18px' }}>Fais ton check-in matinal pour voir ton score de récupération.</p>
+        <p style={{ fontFamily:'Syne,sans-serif',fontSize:17,fontWeight:700,margin:'0 0 6px' }}>{t('recovery.dailyScore.empty.title')}</p>
+        <p style={{ fontSize:12,color:'var(--text-dim)',margin:'0 0 18px' }}>{t('recovery.dailyScore.empty.subtitle')}</p>
         <button onClick={onCheckIn} style={{ padding:'11px 28px',borderRadius:12,background:'linear-gradient(135deg,#3B8FD4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,cursor:'pointer' }}>
-          ✦ Check-in du matin
+          ✦ {t('recovery.checkinMorning')}
         </button>
       </div>
     )
@@ -97,21 +99,21 @@ export default function DailyScore({ checkin, history, streak, onCheckIn }: Prop
         </div>
         <span style={{ padding:'3px 10px',borderRadius:20,background:st.bg,color:st.color,fontSize:11,fontWeight:700 }}>{st.label}</span>
         <p style={{ fontSize:10,color:'var(--text-dim)',textAlign:'center' as const,margin:0,maxWidth:120,lineHeight:1.4 }}>{st.desc}</p>
-        {streak >= 2 && <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{streak} jours consécutifs</p>}
+        {streak >= 2 && <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{t('recovery.dailyScore.streak', { n: streak })}</p>}
       </div>
 
       {/* Right: cards + bars */}
       <div style={{ flex:1,minWidth:220,display:'flex',flexDirection:'column' as const,gap:12 }}>
         <div style={{ display:'flex',justifyContent:'flex-end' }}>
-          <button onClick={onCheckIn} style={{ padding:'5px 11px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:10,cursor:'pointer' }}>Modifier le check-in</button>
+          <button onClick={onCheckIn} style={{ padding:'5px 11px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:10,cursor:'pointer' }}>{t('recovery.editCheckin')}</button>
         </div>
         {/* Metric cards row */}
         <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:7 }}>
-          {[{l:'FC REPOS',v:'—',sub:'Garmin, Polar, Whoop'},{l:'HRV',v:'—',sub:'Garmin, Whoop, Oura'},{l:'SOMMEIL',v:fmtHours(checkin.sleep_hours),sub:'Estimé via check-in'}].map(c=>(
+          {[{l:'recovery.card.restingHr',v:'—',sub:'recovery.card.sub.devices1'},{l:'recovery.card.hrv',v:'—',sub:'recovery.card.sub.devices2'},{l:'recovery.card.sleep',v:fmtHours(checkin.sleep_hours),sub:'recovery.card.estimatedCheckin'}].map(c=>(
             <div key={c.l} style={{ padding:'8px 10px',borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',textAlign:'center' as const }}>
-              <p style={{ fontSize:8,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 3px' }}>{c.l}</p>
+              <p style={{ fontSize:8,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.08em',color:'var(--text-dim)',margin:'0 0 3px' }}>{t(c.l)}</p>
               <p style={{ fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:800,color:c.v==='—'?'var(--text-dim)':'var(--text)',margin:0 }}>{c.v}</p>
-              <p style={{ fontSize:8,color:'var(--text-dim)',margin:'2px 0 0',lineHeight:1.3 }}>{c.sub}</p>
+              <p style={{ fontSize:8,color:'var(--text-dim)',margin:'2px 0 0',lineHeight:1.3 }}>{t(c.sub)}</p>
             </div>
           ))}
         </div>
@@ -122,7 +124,7 @@ export default function DailyScore({ checkin, history, streak, onCheckIn }: Prop
           return (
             <div key={m.key}>
               <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:3 }}>
-                <span style={{ fontSize:11,color:'var(--text-mid)',fontWeight:500 }}>{m.label}</span>
+                <span style={{ fontSize:11,color:'var(--text-mid)',fontWeight:500 }}>{t(m.labelKey)}</span>
                 <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',color:m.color,fontWeight:700 }}>{v}/10</span>
               </div>
               <div style={{ height:6,borderRadius:6,background:'var(--border)',overflow:'hidden' }}>

@@ -8,6 +8,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 export type Serie = 'hrv' | 'sommeil' | 'readiness' | 'fc' | 'fatigue'
 export interface WeekData {
@@ -16,15 +17,15 @@ export interface WeekData {
 }
 interface Props { weeks: WeekData[] }
 
-const SERIES: Record<Serie, { label: string; cssVar: string; unit: string; min: number; max: number; upGood: boolean; empty: string }> = {
-  hrv:       { label: 'HRV',       cssVar: '--rec-hrv',       unit: ' ms',  min: 40, max: 80, upGood: true,  empty: 'à venir' },
-  sommeil:   { label: 'Sommeil',   cssVar: '--rec-sommeil',   unit: ' h',   min: 5,  max: 9,  upGood: true,  empty: 'en attente Polar' },
-  readiness: { label: 'Readiness', cssVar: '--rec-readiness', unit: '',     min: 0,  max: 100, upGood: true,  empty: 'via check-in' },
-  fc:        { label: 'FC repos',  cssVar: '--rec-fc',        unit: ' bpm', min: 45, max: 62, upGood: false, empty: 'à venir' },
-  fatigue:   { label: 'Fatigue',   cssVar: '--rec-fatigue',   unit: '/10',  min: 0,  max: 10, upGood: false, empty: 'via check-in' },
+const SERIES: Record<Serie, { labelKey: string; cssVar: string; unit: string; min: number; max: number; upGood: boolean; emptyKey: string }> = {
+  hrv:       { labelKey: 'recovery.series.hrv',       cssVar: '--rec-hrv',       unit: ' ms',  min: 40, max: 80, upGood: true,  emptyKey: 'recovery.series.comingSoon' },
+  sommeil:   { labelKey: 'recovery.series.sommeil',   cssVar: '--rec-sommeil',   unit: ' h',   min: 5,  max: 9,  upGood: true,  emptyKey: 'recovery.series.waitingPolar' },
+  readiness: { labelKey: 'recovery.series.readiness', cssVar: '--rec-readiness', unit: '',     min: 0,  max: 100, upGood: true,  emptyKey: 'recovery.series.viaCheckin' },
+  fc:        { labelKey: 'recovery.series.fc',  cssVar: '--rec-fc',        unit: ' bpm', min: 45, max: 62, upGood: false, emptyKey: 'recovery.series.comingSoon' },
+  fatigue:   { labelKey: 'recovery.series.fatigue',   cssVar: '--rec-fatigue',   unit: '/10',  min: 0,  max: 10, upGood: false, emptyKey: 'recovery.series.viaCheckin' },
 }
 const KEYS: Serie[] = ['hrv', 'sommeil', 'readiness', 'fc', 'fatigue']
-const DAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+const DAY_KEYS = ['recovery.dayLetter.mon', 'recovery.dayLetter.tue', 'recovery.dayLetter.wed', 'recovery.dayLetter.thu', 'recovery.dayLetter.fri', 'recovery.dayLetter.sat', 'recovery.dayLetter.sun']
 const W = 720, H = 300, PAD = { l: 46, r: 18, t: 24, b: 34 }
 const NUM = { fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' as const, fontFeatureSettings: "'zero' 0" }
 const varRef = (k: Serie) => `var(${SERIES[k].cssVar})`
@@ -37,6 +38,7 @@ const firstLast = (a: (number | null)[]) => ({
 })
 
 export default function RecoveryTrendChart({ weeks }: Props) {
+  const { t } = useI18n()
   const [wIdx, setWIdx] = useState(Math.max(0, weeks.length - 1))
   const [visible, setVisible] = useState<Record<Serie, boolean>>(() => ({ hrv: true, sommeil: true, readiness: true, fc: true, fatigue: true }))
   const [colors, setColors] = useState<Record<Serie, string>>(() => Object.fromEntries(KEYS.map(k => [k, varRef(k)])) as Record<Serie, string>)
@@ -80,12 +82,12 @@ export default function RecoveryTrendChart({ weeks }: Props) {
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
       {/* Navigation semaine */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>Semaine du {week.label}</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{t('recovery.trendChart.weekOf')} {week.label}</span>
         <div style={{ display: 'flex', gap: 6 }}>
           {([['‹', -1], ['›', 1]] as const).map(([g, d]) => {
             const disabled = wIdx + d < 0 || wIdx + d > weeks.length - 1
             return (
-              <button key={g} disabled={disabled} onClick={() => setWIdx(i => i + d)} aria-label={d < 0 ? 'Semaine précédente' : 'Semaine suivante'}
+              <button key={g} disabled={disabled} onClick={() => setWIdx(i => i + d)} aria-label={d < 0 ? t('recovery.trendChart.prevWeek') : t('recovery.trendChart.nextWeek')}
                 style={{ width: 30, height: 30, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-mid)', fontSize: 16, lineHeight: 1, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.35 : 1 }}>{g}</button>
             )
           })}
@@ -101,13 +103,13 @@ export default function RecoveryTrendChart({ weeks }: Props) {
           const good = cfg.upGood ? delta > 0 : delta < 0
           const dColor = delta === 0 ? 'var(--text-dim)' : good ? 'var(--charge-low)' : 'var(--charge-hard)'
           return (
-            <button key={s} onClick={() => toggle(s)} onDoubleClick={() => isolate(s)} disabled={!live} title={live ? cfg.label : cfg.empty}
+            <button key={s} onClick={() => toggle(s)} onDoubleClick={() => isolate(s)} disabled={!live} title={live ? t(cfg.labelKey) : t(cfg.emptyKey)}
               style={{ textAlign: 'left', padding: '9px 11px', borderRadius: 12, cursor: live ? 'pointer' : 'default',
                 background: live && on ? 'var(--bg-card2)' : 'transparent', border: '1px solid var(--border)',
                 opacity: live ? (on ? 1 : 0.5) : 0.45 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 7, height: 7, borderRadius: 2, background: live ? colors[s] : 'var(--text-dim)', flexShrink: 0 }} />
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, color: 'var(--text-mid)', fontWeight: 600 }}>{cfg.label}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, color: 'var(--text-mid)', fontWeight: 600 }}>{t(cfg.labelKey)}</span>
               </span>
               {live ? (
                 <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
@@ -117,7 +119,7 @@ export default function RecoveryTrendChart({ weeks }: Props) {
               ) : (
                 <span style={{ display: 'block', marginTop: 4 }}>
                   <span style={{ ...NUM, fontWeight: 600, fontSize: 19, color: 'var(--text-dim)' }}>—</span>
-                  <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 9, fontWeight: 500, color: 'var(--text-dim)' }}>{cfg.empty}</span>
+                  <span style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 9, fontWeight: 500, color: 'var(--text-dim)' }}>{t(cfg.emptyKey)}</span>
                 </span>
               )}
             </button>
@@ -131,7 +133,7 @@ export default function RecoveryTrendChart({ weeks }: Props) {
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}
           onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
           {gridY.map((y, i) => <line key={i} x1={PAD.l} x2={W - PAD.r} y1={y} y2={y} stroke="var(--border)" strokeWidth={1} />)}
-          {DAYS.map((d, i) => <text key={i} x={xAt(i)} y={H - PAD.b + 18} textAnchor="middle" fontSize={11} fill="var(--text-dim)">{d}</text>)}
+          {DAY_KEYS.map((d, i) => <text key={i} x={xAt(i)} y={H - PAD.b + 18} textAnchor="middle" fontSize={11} fill="var(--text-dim)">{t(d)}</text>)}
           {hover && <line x1={xAt(hover.day)} x2={xAt(hover.day)} y1={PAD.t} y2={H - PAD.b} stroke="var(--text-dim)" strokeWidth={1} strokeDasharray="3 3" />}
           {KEYS.filter(s => visible[s] && hasData[s]).map(s => {
             const segs: string[] = []; let cur: string[] = []
@@ -151,19 +153,19 @@ export default function RecoveryTrendChart({ weeks }: Props) {
 
         {!anyVisible && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>Aucune donnée synchronisée — connecte une source (Garmin, Polar, Oura…)</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)' }}>{t('recovery.trendChart.noData')}</span>
           </div>
         )}
 
         {hover && anyVisible && (
           <div style={{ position: 'absolute', top: 4, left: Math.min(hover.px + 12, W - 150), pointerEvents: 'none', background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 10, padding: '8px 10px', boxShadow: 'var(--shadow)', zIndex: 3, minWidth: 120 }}>
-            <p style={{ margin: '0 0 5px', fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600 }}>{DAYS[hover.day]} · {week.label}</p>
+            <p style={{ margin: '0 0 5px', fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)', fontWeight: 600 }}>{t(DAY_KEYS[hover.day])} · {week.label}</p>
             {KEYS.filter(s => visible[s] && hasData[s]).map(s => {
               const v = week.values[s][hover.day]
               return (
                 <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                   <span style={{ width: 7, height: 7, borderRadius: 2, background: colors[s], flexShrink: 0 }} />
-                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, color: 'var(--text-mid)', flex: 1 }}>{SERIES[s].label}</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 10.5, color: 'var(--text-mid)', flex: 1 }}>{t(SERIES[s].labelKey)}</span>
                   <span style={{ ...NUM, fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>{v == null ? '—' : fmt(v) + SERIES[s].unit}</span>
                 </div>
               )

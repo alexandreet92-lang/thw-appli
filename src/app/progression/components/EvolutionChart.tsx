@@ -2,14 +2,16 @@
 
 // Courbe d'évolution SVG brut (8 dernières séances, chronologique).
 import type { ProgSession } from '@/lib/progression/helpers'
+import { useI18n } from '@/lib/i18n'
 
 export function EvolutionChart({ sessions, metric, color }: {
   sessions: ProgSession[]; metric: keyof ProgSession; color: string
 }) {
+  const { t } = useI18n()
   const pts = sessions.slice(0, 8).reverse()
     .map(s => ({ y: (s[metric] as number | null), d: s.started_at }))
     .filter((p): p is { y: number; d: string } => typeof p.y === 'number' && isFinite(p.y))
-  if (pts.length < 2) return <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '16px 0' }}>Pas assez de données pour la tendance.</div>
+  if (pts.length < 2) return <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '16px 0' }}>{t('progression.notEnoughData')}</div>
 
   const W = 600, H = 150, padX = 12, padT = 14, padB = 20
   const ys = pts.map(p => p.y)

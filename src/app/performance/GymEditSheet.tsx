@@ -3,6 +3,7 @@
 // (segmented) + champ Valeur adaptatif (kg / reps / +kg). Bouton var(--primary).
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { Segmented } from '@/components/ui/Segmented'
 import { unitKind, typeLabel, upsertGym, type GymRec } from './gymShared'
 
@@ -17,6 +18,7 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
   onClose: () => void
   onSaved: (rec: GymRec) => void
 }) {
+  const { t } = useI18n()
   const [type, setType] = useState(initialType)
   const cur = getBest(type)
   const [value, setValue] = useState(cur?.performance ?? '')
@@ -35,7 +37,7 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
 
   const kind = unitKind(type)
   const unitTxt = kind === 'reps' ? 'reps' : kind === 'addkg' ? '+kg' : 'kg'
-  const fieldLabel = kind === 'reps' ? 'Nombre de répétitions' : kind === 'addkg' ? 'Charge ajoutée' : 'Charge'
+  const fieldLabel = kind === 'reps' ? t('performance.repsCount') : kind === 'addkg' ? t('performance.addedLoad') : t('performance.load')
   const canSave = !!value.trim() && Number(value) > 0
 
   async function save() {
@@ -52,17 +54,17 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--text-mid)' }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: GYM_DOT }} />Muscu
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: GYM_DOT }} />{t('performance.sportGym')}
             </span>
             <span style={{ padding: '3px 9px', borderRadius: 8, background: 'var(--bg-card2)', fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, color: 'var(--text-mid)' }}>{exercise}</span>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Modifier le record</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.editRecord')}</h2>
           </div>
           <button onClick={close} style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 100px' }}>
-          <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 8px' }}>Type de record</p>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 8px' }}>{t('performance.recordType')}</p>
           <Segmented size="sm" ariaLabel="Type" value={type} onChange={pickType} options={types.map(t => ({ id: t, label: typeLabel(t) }))} />
 
           <div style={{ marginTop: 18 }}>
@@ -75,7 +77,7 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
           </div>
 
           <div style={{ marginTop: 16 }}>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 5px' }}>Date</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 5px' }}>{t('performance.date')}</p>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="rec-drawer"
               style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--input-bg)', color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 13, outline: 'none' }} />
           </div>
@@ -85,7 +87,7 @@ export function GymEditSheet({ exercise, types, initialType, getBest, onClose, o
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '12px 20px 20px', background: 'var(--bg-card)', borderTop: '1px solid var(--border)' }}>
           <button onClick={() => void save()} disabled={!canSave || saving}
             style={{ width: '100%', padding: '14px', borderRadius: 'var(--r-sm)', border: 'none', cursor: canSave && !saving ? 'pointer' : 'not-allowed', background: canSave && !saving ? 'var(--primary)' : 'var(--bg-card2)', color: canSave && !saving ? 'var(--on-primary)' : 'var(--text-dim)', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600 }}>
-            {saving ? 'Enregistrement…' : 'Enregistrer ce record'}
+            {saving ? t('performance.saving') : t('performance.saveThisRecord')}
           </button>
         </div>
       </div>

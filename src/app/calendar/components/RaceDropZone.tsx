@@ -2,10 +2,12 @@
 // Zone d'upload de parcours (glisser-déposer GPX/TCX) — style éditorial clair.
 import { useRef, useState } from 'react'
 import { IconUpload, IconX } from '@tabler/icons-react'
+import { useI18n } from '@/lib/i18n'
 
 export default function RaceDropZone({ label, list, setter }: {
   label?: string; list: File[]; setter: (f: File[]) => void
 }) {
+  const { t } = useI18n()
   const ref = useRef<HTMLInputElement>(null)
   const [over, setOver] = useState(false)
   const add = (l: FileList | null) => { if (l) setter([...list, ...Array.from(l)]) }
@@ -16,7 +18,7 @@ export default function RaceDropZone({ label, list, setter }: {
         onDrop={e => { e.preventDefault(); setOver(false); add(e.dataTransfer.files) }} onClick={() => ref.current?.click()}
         style={{ border: `1.5px dashed ${over ? 'var(--text-dim)' : 'var(--border-mid)'}`, borderRadius: 12, padding: '16px', textAlign: 'center', cursor: 'pointer', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
         <IconUpload size={15} color="var(--text-dim)" />
-        <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>Glisser-déposer ou parcourir</p>
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{t('calendar.dragDropOrBrowse')}</p>
         <input ref={ref} type="file" multiple accept=".gpx,.tcx,.kml" style={{ display: 'none' }} onChange={e => add(e.target.files)} />
       </div>
       {list.length > 0 && (

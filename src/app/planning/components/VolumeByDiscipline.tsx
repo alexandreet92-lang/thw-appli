@@ -3,6 +3,7 @@
 // Données réelles : séances de la semaine (status 'done' = réalisé, tss = source existante).
 // Couleur sport via tokens --sport-*. Chiffres neutres.
 import { formatDuration } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface S { sport: string; durationMin: number; tss?: number; status: string }
 
@@ -21,6 +22,7 @@ const strong: React.CSSProperties = { color: 'var(--text)', fontWeight: 600 }
 const track: React.CSSProperties = { flex: 1, height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }
 
 export function VolumeByDiscipline({ sessions }: { sessions: S[] }) {
+  const { t } = useI18n()
   const map = new Map<string, { volT: number; volD: number; tssT: number; tssD: number }>()
   for (const s of sessions) {
     const sp = s.sport; if (!sp) continue
@@ -36,7 +38,7 @@ export function VolumeByDiscipline({ sessions }: { sessions: S[] }) {
 
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 18 }}>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 14px' }}>Volume par discipline</h2>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 14px' }}>{t('planning.volumeByDiscipline')}</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {rows.map(e => {
           const c = col(e.sport)
@@ -49,14 +51,14 @@ export function VolumeByDiscipline({ sessions }: { sessions: S[] }) {
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', textTransform: 'capitalize' }}>{e.sport}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                <span style={lbl}>VOL.</span>
+                <span style={lbl}>{t('planning.volShortCaps')}</span>
                 <div style={track}><div style={{ width: `${volPct}%`, height: '100%', borderRadius: 3, background: c, animation: 'barFill 0.9s cubic-bezier(0.25,1,0.5,1) both' }} /></div>
                 <span style={val}><strong style={strong}>{formatDuration(e.volD)}</strong> / {formatDuration(e.volT)}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={lbl}>TSS</span>
                 <div style={track}><div style={{ width: `${tssPct}%`, height: '100%', borderRadius: 3, background: c, opacity: 0.55, animation: 'barFill 0.9s cubic-bezier(0.25,1,0.5,1) both' }} /></div>
-                <span style={val}><strong style={strong}>{Math.round(e.tssD)}</strong> / {e.tssT > 0 ? Math.round(e.tssT) : '--'} pts</span>
+                <span style={val}><strong style={strong}>{Math.round(e.tssD)}</strong> / {e.tssT > 0 ? Math.round(e.tssT) : '--'} {t('planning.pts')}</span>
               </div>
             </div>
           )

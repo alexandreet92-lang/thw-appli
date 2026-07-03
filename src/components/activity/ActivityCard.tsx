@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { formatRecordDuration, durationRank } from '@/lib/records/format'
 import { SmSnStat } from '@/components/metrics/SmSnStat'
 import { workoutTypeDefs } from '@/components/activity/WorkoutTypeBadges'
+import { useI18n } from '@/lib/i18n'
 
 // ── Couleurs sémantiques fixes ─────────────────────────────────────────
 const GOLD = '#eab308'
@@ -101,6 +102,7 @@ function TrophyIcon({ color, size = 12 }: { color: string; size?: number }) {
 
 // ── Main component ─────────────────────────────────────────────────────
 export function ActivityCard({ data, onClick }: Props) {
+  const { t } = useI18n()
   const [hover, setHover] = useState(false)
   const [active, setActive] = useState(false)
 
@@ -141,7 +143,7 @@ export function ActivityCard({ data, onClick }: Props) {
           fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {data.title ?? 'Activité sans titre'}
+          {data.title ?? t('activities.untitledActivity')}
         </p>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6, marginTop: 4,
@@ -200,14 +202,14 @@ export function ActivityCard({ data, onClick }: Props) {
       }}>
         {(data.sportType === 'gym' || data.sportType === 'hyrox') ? (
           <>
-            <Stat label="Exercices" value={data.nbExercises != null ? String(data.nbExercises) : '—'} />
-            <Stat label="Durée"     value={fmtDurCompact(data.moving_time_s)} />
-            <Stat label="Circuits"  value={data.nbCircuits != null ? String(data.nbCircuits) : '—'} />
+            <Stat label={t('activities.exercises')} value={data.nbExercises != null ? String(data.nbExercises) : '—'} />
+            <Stat label={t('activities.duration')}  value={fmtDurCompact(data.moving_time_s)} />
+            <Stat label={t('activities.circuits')}  value={data.nbCircuits != null ? String(data.nbCircuits) : '—'} />
           </>
         ) : (
           <>
-            <Stat label="Distance" value={fmtDistKm(data.distance_m)} />
-            <Stat label="Durée"    value={fmtDurCompact(data.moving_time_s)} />
+            <Stat label={t('activities.distance')} value={fmtDistKm(data.distance_m)} />
+            <Stat label={t('activities.duration')} value={fmtDurCompact(data.moving_time_s)} />
             <Stat label="D+"       value={fmtElev(data.elevation_gain_m)} />
           </>
         )}
@@ -262,7 +264,7 @@ export function ActivityCard({ data, onClick }: Props) {
                 <CountBlock accent={GOLD} count={allTime.length} label="All Time" />
               )}
               {year.length > 0 && (
-                <CountBlock accent={CYAN} count={year.length} label={`Record ${yearLabel}`} />
+                <CountBlock accent={CYAN} count={year.length} label={t('activities.recordYear', { year: yearLabel })} />
               )}
             </div>
           )}

@@ -6,6 +6,7 @@
 //  2. Lignes détaillées : jauge horizontale + temps + allure auto + PR + Préc. + Modifier.
 // Chiffres neutres (tokens). La teinte sport est fournie par l'appelant (constante sanctionnée).
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { Segmented } from '@/components/ui/Segmented'
 
 export interface DistDef { id: string; m: number; label?: string }
@@ -47,6 +48,7 @@ export interface DistanceRecordsProps {
 
 export function DistanceRecords(props: DistanceRecordsProps) {
   const { sportLabel, color, dists, benchH, benchF, paceBaseM, paceSuffix, showGender, getBest, getPrev, onSelect, onEdit, selectedPerf } = props
+  const { t } = useI18n()
   const [gender, setGender] = useState<'M' | 'F'>('M')
   const [mounted, setMounted] = useState(false)
   useEffect(() => { const t = setTimeout(() => setMounted(true), 30); return () => clearTimeout(t) }, [])
@@ -64,9 +66,9 @@ export function DistanceRecords(props: DistanceRecordsProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 8, flexWrap: 'wrap' }}>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Niveau par distance</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.levelByDistance')}</h2>
           {showGender && benchF && (
-            <Segmented size="sm" ariaLabel="Genre" value={gender} onChange={setGender}
+            <Segmented size="sm" ariaLabel={t('performance.genderLabel')} value={gender} onChange={setGender}
               options={[{ id: 'M', label: 'H' }, { id: 'F', label: 'F' }]} />
           )}
         </div>
@@ -93,7 +95,7 @@ export function DistanceRecords(props: DistanceRecordsProps) {
 
       {/* Lignes détaillées + saisie */}
       <div style={card}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 12px' }}>Records {sportLabel.toLowerCase()}</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 12px' }}>{t('performance.recordsOf', { sport: sportLabel.toLowerCase() })}</h2>
         {rows.map(r => {
           const perf = r.best?.perf ?? '—'
           const speed = r.sec > 0 ? paceStr(r.m, r.sec, paceBaseM, paceSuffix) : null
@@ -114,12 +116,12 @@ export function DistanceRecords(props: DistanceRecordsProps) {
                   {speed && <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)' }}>{speed}</span>}
                 </div>
                 {r.prev?.perf && r.prev.perf !== '—' && (
-                  <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)' }}>Préc. : {r.prev.perf}</span>
+                  <span className="tnum" style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-dim)' }}>{t('performance.previous')} : {r.prev.perf}</span>
                 )}
               </div>
               <button onClick={e => { e.stopPropagation(); onEdit(r.id, r.best?.id ?? null, r.best?.perf ?? '') }}
                 style={{ flexShrink: 0, padding: 0, border: 'none', background: 'transparent', color: 'var(--primary)', fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                Modifier
+                {t('performance.edit')}
               </button>
             </div>
           )

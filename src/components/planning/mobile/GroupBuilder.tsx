@@ -14,6 +14,7 @@ import { ExerciseCard } from './ExerciseCard'
 import { ExercisePicker } from './ExercisePicker'
 import { Stepper } from './ui'
 import { CIRCUIT_TYPES, type CircuitType } from '@/app/planning/page'
+import { useI18n } from '@/lib/i18n'
 
 // Réglages par défaut selon le type de circuit (mêmes valeurs que le desktop).
 const circuitDefaults = (type: string) => ({
@@ -28,6 +29,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
   map: Record<string, string>; setMap: (m: Record<string, string>) => void
   banner: ReactNode; presets?: ReactNode
 }) {
+  const { t: tr } = useI18n()
   const [adding, setAdding] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [menu, setMenu] = useState<string | null>(null)
@@ -42,13 +44,13 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
   function addCircuit(typeId?: CircuitType) {
     const n = circuits.length + 1
     if (variant === 'hyrox') {
-      setCircuits([...circuits, { id: genCircuitId(), name: `Circuit ${n}`, type: 'circuit', rounds: 1, restBetweenRoundsSec: 0, targetTimeSec: 0 }])
+      setCircuits([...circuits, { id: genCircuitId(), name: tr('planning.circuitN', { n }), type: 'circuit', rounds: 1, restBetweenRoundsSec: 0, targetTimeSec: 0 }])
       return
     }
     const t = typeId ?? 'series'
     const ct = CIRCUIT_TYPES.find(c => c.id === t)
     const d = circuitDefaults(t)
-    setCircuits([...circuits, { id: genCircuitId(), name: `${ct?.label ?? 'Séries'} ${n}`, type: t, rounds: d.rounds, restBetweenRoundsSec: d.rest }])
+    setCircuits([...circuits, { id: genCircuitId(), name: `${ct?.label ?? tr('planning.seriesPlural')} ${n}`, type: t, rounds: d.rounds, restBetweenRoundsSec: d.rest }])
     setTypeMenu(null)
   }
   function changeCircuitType(cid: string, typeId: CircuitType) {
@@ -80,7 +82,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
               className="se-fr" style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', fontSize: 15, fontWeight: 600, color: 'var(--se-text)' }} />
             {variant === 'hyrox' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: 'var(--se-dim)' }}>Cible</span>
+                <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: 'var(--se-dim)' }}>{tr('planning.target')}</span>
                 <input value={fmtSec(c.targetTimeSec ?? 0)} onChange={e => { const m = e.target.value.match(/^(\d+):(\d{1,2})$/); updateCircuit(c.id, { targetTimeSec: m ? (+m[1]) * 60 + (+m[2]) : (parseInt(e.target.value) || 0) }) }}
                   className="se-fr se-tnum" style={{ width: 52, textAlign: 'center', background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 8, padding: '4px 4px', fontSize: 12, color: 'var(--se-text)', outline: 'none' }} />
               </div>
@@ -89,14 +91,14 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
               <button type="button" onClick={() => setTypeMenu(typeMenu === c.id ? null : c.id)}
                 style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 999, border: `1px solid ${accent}`, background: `${accent}14`, color: accent, fontSize: 11.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 <span>{CIRCUIT_TYPES.find(t => t.id === (c.type ?? 'series'))?.icon ?? '▤'}</span>
-                {CIRCUIT_TYPES.find(t => t.id === (c.type ?? 'series'))?.label ?? 'Séries'}
+                {CIRCUIT_TYPES.find(t => t.id === (c.type ?? 'series'))?.label ?? tr('planning.seriesPlural')}
               </button>
             )}
             <div style={{ position: 'relative' }}>
               <button type="button" onClick={() => setMenu(menu === c.id ? null : c.id)} style={{ border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconDotsVertical size={17} /></button>
               {menu === c.id && (
                 <div style={{ position: 'absolute', right: 0, top: 24, zIndex: 5, background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderRadius: 10, boxShadow: '0 6px 20px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
-                  <button type="button" onClick={() => removeCircuit(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', border: 'none', background: 'transparent', color: '#ff5f5f', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}><IconTrash size={15} /> Supprimer le groupe</button>
+                  <button type="button" onClick={() => removeCircuit(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', border: 'none', background: 'transparent', color: '#ff5f5f', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}><IconTrash size={15} /> {tr('planning.deleteGroup')}</button>
                 </div>
               )}
             </div>
@@ -111,7 +113,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
           {variant !== 'hyrox' && (c.type ?? 'series') !== 'series' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--se-text)', flexShrink: 0 }}>
-                {c.type === 'emom' ? 'Durée' : 'Tours'}
+                {c.type === 'emom' ? tr('planning.duration') : tr('planning.rounds')}
               </span>
               <div style={{ width: 132 }}>
                 <Stepper value={String(c.rounds)} unit={c.type === 'emom' ? 'min' : '×'}
@@ -120,7 +122,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
                   onInc={() => updateCircuit(c.id, { rounds: c.rounds + 1 })} />
               </div>
               <span style={{ fontSize: 11, color: 'var(--se-dim)' }}>
-                {c.type === 'emom' ? '1 exo / minute' : c.type === 'tabata' ? '20s / 10s' : c.type === 'superset' ? '2 exos enchaînés' : 'on enchaîne puis on répète'}
+                {c.type === 'emom' ? tr('planning.oneExoPerMin') : c.type === 'tabata' ? '20s / 10s' : c.type === 'superset' ? tr('planning.twoExosChained') : tr('planning.chainThenRepeat')}
               </span>
             </div>
           )}
@@ -148,7 +150,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
               <div style={{ marginTop: 10, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', background: 'var(--se-card)', padding: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <IconSearch size={15} color="var(--se-dim)" />
-                  <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher ou nom libre…"
+                  <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder={tr('planning.searchOrFreeName')}
                     style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: 'var(--se-text)' }} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
@@ -158,7 +160,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
                   ))}
                   {query.trim() && (
                     <button type="button" onClick={() => addItem(customItem(query.trim(), 'hyrox'), c.id)}
-                      style={{ textAlign: 'left', border: '1px dashed var(--se-rule)', background: 'transparent', color: accent, fontSize: 13, fontWeight: 600, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', marginTop: 2 }}>+ Créer « {query.trim()} »</button>
+                      style={{ textAlign: 'left', border: '1px dashed var(--se-rule)', background: 'transparent', color: accent, fontSize: 13, fontWeight: 600, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', marginTop: 2 }}>{tr('planning.createQuoted', { q: query.trim() })}</button>
                   )}
                 </div>
               </div>
@@ -169,7 +171,7 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
             )
           ) : (
             <button type="button" onClick={() => { setAdding(c.id); setQuery('') }} style={addBtn(accent)}>
-              <IconPlus size={15} /> {variant === 'hyrox' ? 'Ajouter une station / exercice' : 'Ajouter un exercice'}
+              <IconPlus size={15} /> {variant === 'hyrox' ? tr('planning.addStationExercise') : tr('planning.addExercise')}
             </button>
           )}
         </div>
@@ -178,17 +180,17 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
       {/* Ajouter un circuit — muscu : choix du type ; hyrox : direct */}
       {variant === 'hyrox' ? (
         <button type="button" onClick={() => addCircuit()} style={{ ...addBtn(accent), border: '1px dashed var(--se-rule)', width: '100%', justifyContent: 'center' }}>
-          <IconRefresh size={15} /> Ajouter un circuit
+          <IconRefresh size={15} /> {tr('planning.addCircuit')}
         </button>
       ) : typeMenu === 'new' ? (
         <div style={{ border: '1px dashed var(--se-rule)', borderRadius: 'var(--se-r)', padding: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)', marginBottom: 8 }}>Type de circuit</div>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)', marginBottom: 8 }}>{tr('planning.circuitType')}</div>
           <CircuitTypeChips current={null} accent={accent} onPick={t => addCircuit(t)} />
-          <button type="button" onClick={() => setTypeMenu(null)} style={{ ...addBtn(accent), color: 'var(--se-dim)', marginTop: 4 }}>Annuler</button>
+          <button type="button" onClick={() => setTypeMenu(null)} style={{ ...addBtn(accent), color: 'var(--se-dim)', marginTop: 4 }}>{tr('planning.cancel')}</button>
         </div>
       ) : (
         <button type="button" onClick={() => setTypeMenu('new')} style={{ ...addBtn(accent), border: '1px dashed var(--se-rule)', width: '100%', justifyContent: 'center' }}>
-          <IconRefresh size={15} /> Ajouter un circuit
+          <IconRefresh size={15} /> {tr('planning.addCircuit')}
         </button>
       )}
     </div>

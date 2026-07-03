@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { smooth, type Pt } from './compositionData'
+import { useI18n } from '@/lib/i18n'
 
 interface Props { pts: Pt[]; unit: string; goal: number | null; periodDays: number; isDesktop: boolean }
 
@@ -20,6 +21,7 @@ const empty = (text: string) => (
 interface Tip { log: Pt['log']; x: number; y: number }
 
 export function WeightGraph({ pts, unit, goal, periodDays, isDesktop }: Props) {
+  const { t } = useI18n()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [vw, setVw] = useState(0)
   const [tip, setTip] = useState<Tip | null>(null)
@@ -38,14 +40,14 @@ export function WeightGraph({ pts, unit, goal, periodDays, isDesktop }: Props) {
     if (el) el.scrollLeft = el.scrollWidth
   }, [vw, periodDays, pts.length])
 
-  if (!pts.length) return empty('Ajoute ta première mesure ci-dessous.')
+  if (!pts.length) return empty(t('nutrition.weightGraph.empty1'))
   if (pts.length === 1) {
     return (
       <div>
         <svg width="100%" height={H} style={{ display: 'block' }}>
           <circle cx="50%" cy={H / 2} r={4} fill="var(--primary)" />
         </svg>
-        {empty('Ajoute une 2ᵉ mesure pour voir ta tendance.')}
+        {empty(t('nutrition.weightGraph.empty2'))}
       </div>
     )
   }
@@ -71,7 +73,7 @@ export function WeightGraph({ pts, unit, goal, periodDays, isDesktop }: Props) {
 
   const scrollBy = (dir: number) => scrollRef.current?.scrollBy({ left: dir * (vw * 0.6), behavior: 'smooth' })
   const chevron = (dir: number, d: string) => (
-    <button onClick={() => scrollBy(dir)} aria-label={dir < 0 ? 'Reculer' : 'Avancer'}
+    <button onClick={() => scrollBy(dir)} aria-label={dir < 0 ? t('nutrition.common.scrollBack') : t('nutrition.common.scrollForward')}
       style={{ position: 'absolute', top: '50%', [dir < 0 ? 'left' : 'right']: 0, transform: 'translateY(-50%)', zIndex: 2,
         width: 28, height: 28, borderRadius: '50%', border: 'none', background: 'var(--bg-card2)', color: 'var(--text-mid)',
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -127,7 +129,7 @@ export function WeightGraph({ pts, unit, goal, periodDays, isDesktop }: Props) {
       {goal != null && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 'var(--space-2)', paddingLeft: 44 + 8 }}>
           <span style={{ width: 14, height: 0, borderTop: '1.5px dashed var(--primary)', flexShrink: 0 }} />
-          <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-mid)' }}>Objectif {goal}{unit}</span>
+          <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-mid)' }}>{t('nutrition.weightGraph.goal')} {goal}{unit}</span>
         </div>
       )}
       {tip && createPortal(<PointTip tip={tip} unit={unit} onClose={() => setTip(null)} />, document.body)}
@@ -136,6 +138,7 @@ export function WeightGraph({ pts, unit, goal, periodDays, isDesktop }: Props) {
 }
 
 function PointTip({ tip, unit, onClose }: { tip: Tip; unit: string; onClose: () => void }) {
+  const { t } = useI18n()
   const l = tip.log
   const left = Math.min(Math.max(tip.x - 80, 8), (typeof window !== 'undefined' ? window.innerWidth : 360) - 168)
   const row = (k: string, v: string) => (
@@ -150,10 +153,10 @@ function PointTip({ tip, unit, onClose }: { tip: Tip; unit: string; onClose: () 
         background: 'var(--bg-card)', borderRadius: 'var(--r-sm)', boxShadow: 'var(--shadow-card)', padding: 'var(--space-3)',
         fontFamily: FB, fontSize: 12, display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
         <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 'var(--space-1)' }}>{l.measured_at.slice(0, 10)}</div>
-        {l.weight_kg != null && row('Poids', `${l.weight_kg} kg`)}
-        {l.fat_mass_percent != null && row('Masse grasse', `${l.fat_mass_percent} %`)}
-        {l.muscle_mass_kg != null && row('Masse musc.', `${l.muscle_mass_kg} kg`)}
-        {unit === '' && <div style={{ color: 'var(--text-dim)', fontSize: 11 }}>Calculé (taille requise)</div>}
+        {l.weight_kg != null && row(t('nutrition.tip.weight'), `${l.weight_kg} kg`)}
+        {l.fat_mass_percent != null && row(t('nutrition.tip.fat'), `${l.fat_mass_percent} %`)}
+        {l.muscle_mass_kg != null && row(t('nutrition.tip.muscle'), `${l.muscle_mass_kg} kg`)}
+        {unit === '' && <div style={{ color: 'var(--text-dim)', fontSize: 11 }}>{t('nutrition.tip.calculated')}</div>}
       </div>
     </div>
   )

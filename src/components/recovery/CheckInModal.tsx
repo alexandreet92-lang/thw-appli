@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { metricColor, localToday } from './helpers'
 import type { CheckInDraft, CheckInRow } from './types'
 import { BLANK_DRAFT } from './types'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   existing: CheckInRow | null
@@ -12,16 +13,17 @@ interface Props {
   onSaved: (row: CheckInRow) => void
 }
 
-const FIELDS: { key: keyof CheckInDraft; label: string; sub: string; inverted?: boolean; isNum?: boolean }[] = [
-  { key:'fatigue',       label:'Fatigue',    sub:'Niveau de fatigue générale',                   inverted:true, isNum:true },
-  { key:'energy',        label:'Énergie',    sub:'Énergie disponible pour t\'entraîner',          isNum:true },
-  { key:'stress',        label:'Stress',     sub:'Stress mental ou émotionnel',                   inverted:true, isNum:true },
-  { key:'motivation',    label:'Motivation', sub:'Envie de t\'entraîner aujourd\'hui',             isNum:true },
-  { key:'pain',          label:'Douleurs',   sub:'Douleurs ou gênes musculaires / articulaires',  inverted:true, isNum:true },
-  { key:'sleep_quality', label:'Sommeil',    sub:'Qualité perçue de ta nuit',                     isNum:true },
+const FIELDS: { key: keyof CheckInDraft; labelKey: string; subKey: string; inverted?: boolean; isNum?: boolean }[] = [
+  { key:'fatigue',       labelKey:'recovery.metric.fatigue',    subKey:'recovery.checkinModal.sub.fatigue',    inverted:true, isNum:true },
+  { key:'energy',        labelKey:'recovery.metric.energy',    subKey:'recovery.checkinModal.sub.energy',     isNum:true },
+  { key:'stress',        labelKey:'recovery.metric.stress',     subKey:'recovery.checkinModal.sub.stress',     inverted:true, isNum:true },
+  { key:'motivation',    labelKey:'recovery.metric.motivation', subKey:'recovery.checkinModal.sub.motivation', isNum:true },
+  { key:'pain',          labelKey:'recovery.metric.pain',   subKey:'recovery.checkinModal.sub.pain',  inverted:true, isNum:true },
+  { key:'sleep_quality', labelKey:'recovery.metric.sleep',    subKey:'recovery.checkinModal.sub.sleep',      isNum:true },
 ]
 
 export default function CheckInModal({ existing, onClose, onSaved }: Props) {
+  const { t } = useI18n()
   const init: CheckInDraft = existing
     ? { fatigue:existing.fatigue, energy:existing.energy, stress:existing.stress,
         motivation:existing.motivation, pain:existing.pain,
@@ -38,7 +40,7 @@ export default function CheckInModal({ existing, onClose, onSaved }: Props) {
     setSaving(true); setErr(null)
     const sb = createClient()
     const { data:{ user } } = await sb.auth.getUser()
-    if (!user) { setErr('Non connecté'); setSaving(false); return }
+    if (!user) { setErr(t('recovery.checkinModal.err.notConnected')); setSaving(false); return }
 
     const payload = {
       user_id: user.id, date: localToday(),
@@ -52,7 +54,7 @@ export default function CheckInModal({ existing, onClose, onSaved }: Props) {
     const { data, error } = await sb.from('daily_checkin')
       .upsert(payload, { onConflict: 'user_id,date' })
       .select().single()
-    if (error || !data) { setErr(error?.message ?? 'Erreur inconnue'); setSaving(false); return }
+    if (error || !data) { setErr(error?.message ?? t('recovery.checkinModal.err.unknown')); setSaving(false); return }
     onSaved(data as CheckInRow)
     onClose()
   }
@@ -62,7 +64,7 @@ export default function CheckInModal({ existing, onClose, onSaved }: Props) {
       <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:20,border:'1px solid var(--border-mid)',padding:24,maxWidth:480,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20 }}>
           <div>
-            <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0 }}>Check-in du matin</h3>
+            <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0 }}>{t('recovery.checkinMorning')}</h3>
             <p style={{ fontSize:11,color:'var(--text-dim)',margin:'3px 0 0' }}>{new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p>
           </div>
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 9px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
@@ -76,8 +78,8 @@ export default function CheckInModal({ existing, onClose, onSaved }: Props) {
               <div key={String(f.key)}>
                 <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4 }}>
                   <div>
-                    <p style={{ fontSize:13,fontWeight:600,margin:0 }}>{f.label}</p>
-                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{f.sub}</p>
+                    <p style={{ fontSize:13,fontWeight:600,margin:0 }}>{t(f.labelKey)}</p>
+                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:'1px 0 0' }}>{t(f.subKey)}</p>
                   </div>
                   <span style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color,minWidth:28,textAlign:'right' }}>{val}</span>
                 </div>
@@ -91,25 +93,25 @@ export default function CheckInModal({ existing, onClose, onSaved }: Props) {
 
           {d.pain > 5 && (
             <div>
-              <p style={{ fontSize:12,fontWeight:600,margin:'0 0 5px' }}>Où as-tu mal ?</p>
+              <p style={{ fontSize:12,fontWeight:600,margin:'0 0 5px' }}>{t('recovery.checkinModal.painLocation')}</p>
               <input value={d.pain_location} onChange={e=>setD(prev=>({...prev,pain_location:e.target.value}))}
-                placeholder="Ex : genou gauche, épaule droite…"
+                placeholder={t('recovery.checkinModal.painPlaceholder')}
                 style={{ width:'100%',padding:'8px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--input-bg,var(--bg-card2))',color:'var(--text)',fontSize:12,outline:'none' }}/>
             </div>
           )}
 
           <div>
-            <p style={{ fontSize:12,fontWeight:600,margin:'0 0 5px' }}>Heures de sommeil estimées</p>
+            <p style={{ fontSize:12,fontWeight:600,margin:'0 0 5px' }}>{t('recovery.checkinModal.sleepHours')}</p>
             <input type="number" min={0} max={24} step={0.5} value={d.sleep_hours}
               onChange={e=>setD(prev=>({...prev,sleep_hours:e.target.value}))}
-              placeholder="Ex : 7.5"
+              placeholder={t('recovery.checkinModal.sleepHoursPlaceholder')}
               style={{ width:'100%',padding:'8px 12px',borderRadius:9,border:'1px solid var(--border)',background:'var(--input-bg,var(--bg-card2))',color:'var(--text)',fontSize:12,outline:'none' }}/>
           </div>
 
           <div>
-            <p style={{ fontSize:12,fontWeight:600,margin:'0 0 5px' }}>Notes libres</p>
+            <p style={{ fontSize:12,fontWeight:600,margin:'0 0 5px' }}>{t('recovery.checkinModal.notes')}</p>
             <textarea value={d.notes} onChange={e=>setD(prev=>({...prev,notes:e.target.value}))}
-              placeholder="Comment tu te sens ce matin ?"
+              placeholder={t('recovery.checkinModal.notesPlaceholder')}
               rows={3}
               style={{ width:'100%',padding:'9px 12px',borderRadius:10,border:'1px solid var(--border)',background:'var(--input-bg,var(--bg-card2))',color:'var(--text)',fontSize:12,outline:'none',resize:'none',lineHeight:1.5 }}/>
           </div>
@@ -118,10 +120,10 @@ export default function CheckInModal({ existing, onClose, onSaved }: Props) {
         {err && <p style={{ fontSize:11,color:'#ef4444',margin:'10px 0 0' }}>{err}</p>}
 
         <div style={{ display:'flex',gap:8,marginTop:20 }}>
-          <button onClick={onClose} style={{ flex:1,padding:'10px',borderRadius:11,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
+          <button onClick={onClose} style={{ flex:1,padding:'10px',borderRadius:11,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('recovery.cancel')}</button>
           <button onClick={save} disabled={saving}
             style={{ flex:2,padding:'10px',borderRadius:11,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,cursor:saving?'default':'pointer',opacity:saving?0.7:1 }}>
-            {saving ? 'Enregistrement…' : 'Enregistrer'}
+            {saving ? t('recovery.saving') : t('recovery.save')}
           </button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { RaceStage } from './types'
 import GpxFullView from '@/components/gpx/GpxFullView'
 import { sanitizeFileName } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface DayFile { id: string; file_url: string; file_name: string }
 
@@ -27,6 +28,7 @@ function labelDay(d: string) {
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error'
 
 export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: Props) {
+  const { t } = useI18n()
   const supabase = createClient()
   const stageId  = stage.id
 
@@ -81,7 +83,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
   async function handleSave() {
     if (!hasId) {
       setSaveStatus('error')
-      setSaveMsg('Erreur : identifiant de l\'événement manquant.')
+      setSaveMsg(t('calendar.errEventIdMissing'))
       return
     }
     setSaveStatus('saving')
@@ -98,7 +100,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
 
       if (evFetchErr || !evData) {
         console.error('[DayModal save] step 1 fetch error', evFetchErr)
-        throw new Error('Impossible de récupérer l\'événement.')
+        throw new Error(t('calendar.errCannotFetchEvent'))
       }
 
       const existing: { date: string; content: string }[] =
@@ -115,14 +117,14 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
 
       if (updateErr) {
         console.error('[DayModal save] step 1 UPDATE error', updateErr)
-        throw new Error(`UPDATE daily_program échoué : ${updateErr.message}`)
+        throw new Error(t('calendar.errUpdateProgram', { msg: updateErr.message }))
       }
       console.log('[DayModal save] step 1 ✓ daily_program saved')
 
       // ── ÉTAPE 2 : file upload (if new file selected) ──
       if (newFile) {
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) throw new Error('Utilisateur non authentifié.')
+        if (!user) throw new Error(t('calendar.errUserNotAuthenticated'))
 
         console.log('[DayModal save] step 2 — uploading file', newFile.name)
         const safeName = sanitizeFileName(newFile.name)
@@ -132,7 +134,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
 
         if (storErr || !storData) {
           console.error('[DayModal save] step 2 storage upload error', storErr)
-          throw new Error(`Upload fichier échoué : ${storErr?.message ?? 'no data'}`)
+          throw new Error(t('calendar.errFileUpload', { msg: storErr?.message ?? 'no data' }))
         }
 
         const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
@@ -156,7 +158,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
             .eq('event_date', date)
           if (updFileErr) {
             console.error('[DayModal save] step 2 UPDATE race_event_files error', updFileErr)
-            throw new Error(`UPDATE race_event_files échoué : ${updFileErr.message}`)
+            throw new Error(t('calendar.errUpdateEventFiles', { msg: updFileErr.message }))
           }
         } else {
           console.log('[DayModal save] step 2 — inserting new race_event_files row')
@@ -165,7 +167,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
             .insert({ event_id: stageId, file_url: fileUrl, file_name: newFile.name, event_date: date })
           if (insFileErr) {
             console.error('[DayModal save] step 2 INSERT race_event_files error', insFileErr)
-            throw new Error(`INSERT race_event_files échoué : ${insFileErr.message}`)
+            throw new Error(t('calendar.errInsertEventFiles', { msg: insFileErr.message }))
           }
         }
 
@@ -177,7 +179,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
 
       // ── ÉTAPE 3 : success feedback ──
       setSaveStatus('success')
-      setSaveMsg('Enregistré ✓')
+      setSaveMsg(t('calendar.savedCheck'))
       console.log('[DayModal save] ✓ all done')
 
       // Notify parent to refresh local state
@@ -196,17 +198,17 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
     setDeleting(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Non authentifié')
+      if (!user) throw new Error(t('calendar.errNotAuthenticated'))
 
       // 1. Remove day entry from daily_program
       const { data: evData, error: fetchErr } = await supabase
         .from('race_events').select('daily_program').eq('id', stageId).single()
-      if (fetchErr || !evData) throw new Error('Événement introuvable')
+      if (fetchErr || !evData) throw new Error(t('calendar.errEventNotFound'))
       const dp = (evData as { daily_program: { date: string; content: string }[] }).daily_program ?? []
       const updatedDp = dp.filter(p => p.date !== date)
       const { error: updErr } = await supabase
         .from('race_events').update({ daily_program: updatedDp }).eq('id', stageId)
-      if (updErr) throw new Error(`Mise à jour daily_program : ${updErr.message}`)
+      if (updErr) throw new Error(t('calendar.errUpdateProgramShort', { msg: updErr.message }))
       console.log('[DayModal delete] daily_program updated')
 
       // 2. Delete from race_event_files & Storage
@@ -234,7 +236,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
       const msg = e instanceof Error ? e.message : String(e)
       console.error('[DayModal delete] error:', msg)
       setSaveStatus('error')
-      setSaveMsg(`Suppression échouée : ${msg}`)
+      setSaveMsg(t('calendar.errDeleteFailed', { msg }))
       setConfirmDelete(false)
     } finally {
       setDeleting(false)
@@ -269,7 +271,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
         {/* Guard: missing stageId */}
         {!hasId && (
           <div style={{ padding:'10px 14px',borderRadius:9,background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',fontSize:12 }}>
-            Erreur : identifiant de l'événement introuvable. Fermez et réouvrez ce modal.
+            {t('calendar.errEventIdNotFound')}
           </div>
         )}
 
@@ -286,7 +288,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
             {!displayFile.isLocal && (
               <a href={displayFile.url} download={displayFile.name} target="_blank" rel="noopener noreferrer"
                 style={{ fontSize:10,color:'#3b82f6',textDecoration:'none',whiteSpace:'nowrap' }}>
-                Télécharger
+                {t('calendar.download')}
               </a>
             )}
           </div>
@@ -294,15 +296,15 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
 
         {/* Programme */}
         <div>
-          <label style={LBL}>Programme de la journée</label>
+          <label style={LBL}>{t('calendar.dayProgram')}</label>
           <textarea rows={5} style={{ ...INP, resize:'vertical' as const }}
             value={content} onChange={e => { setContent(e.target.value); if (saveStatus !== 'idle') setSaveStatus('idle') }}
-            placeholder="Décrivez le programme de ce jour…" />
+            placeholder={t('calendar.dayProgramPlaceholder')} />
         </div>
 
         {/* Upload file */}
         <div>
-          <label style={LBL}>Fichier du jour (GPX, PDF, image…)</label>
+          <label style={LBL}>{t('calendar.dayFile')}</label>
           {newFile ? (
             <div style={{ display:'flex',alignItems:'center',gap:6,padding:'6px 10px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)' }}>
               <span style={{ flex:1,fontSize:11,color:'var(--text-mid)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{newFile.name}</span>
@@ -314,7 +316,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
               border:'1px dashed var(--border)',background:'var(--bg-card2)',
               color:'var(--text-dim)',fontSize:11,cursor:'pointer',
             }}>
-              {dayFile ? '↺ Remplacer le fichier' : '+ Ajouter un fichier'}
+              {dayFile ? t('calendar.replaceFile') : t('calendar.addFile')}
             </button>
           )}
           <input ref={fileRef} type="file" style={{ display:'none' }}
@@ -340,29 +342,29 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
               onClick={() => setConfirmDelete(true)}
               disabled={deleting || !hasId}
               style={{ padding:'10px 14px',borderRadius:10,background:'transparent',border:'1px solid rgba(239,68,68,0.4)',color:'#ef4444',fontSize:12,cursor:'pointer',flexShrink:0 }}>
-              Supprimer
+              {t('calendar.delete')}
             </button>
           ) : (
             <div style={{ display:'flex',gap:4,alignItems:'center' }}>
-              <span style={{ fontSize:11,color:'var(--text-dim)',whiteSpace:'nowrap' }}>Confirmer ?</span>
+              <span style={{ fontSize:11,color:'var(--text-dim)',whiteSpace:'nowrap' }}>{t('calendar.confirmQ')}</span>
               <button onClick={handleDelete} disabled={deleting}
                 style={{ padding:'6px 10px',borderRadius:8,background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.4)',color:'#ef4444',fontSize:11,cursor:'pointer' }}>
-                {deleting ? '…' : 'Oui'}
+                {deleting ? '…' : t('calendar.yes')}
               </button>
               <button onClick={() => setConfirmDelete(false)}
                 style={{ padding:'6px 10px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
-                Non
+                {t('calendar.no')}
               </button>
             </div>
           )}
           <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>
-            Fermer
+            {t('calendar.close')}
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving || !hasId}
             style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:isSaving?'wait':'pointer',opacity:!hasId?0.4:1 }}>
-            {isSaving ? 'Enregistrement…' : 'Enregistrer'}
+            {isSaving ? t('calendar.saving') : t('calendar.save')}
           </button>
         </div>
       </div>

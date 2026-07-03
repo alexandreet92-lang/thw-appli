@@ -1,6 +1,7 @@
 'use client'
 // Records Aviron = DistanceRecords avec barème aviron (allure /500m, type Concept2).
 import { DistanceRecords, type DistDef, type Bench } from './DistanceRecords'
+import { useI18n } from '@/lib/i18n'
 
 const ROW = '#14b8a6' // design-allow-color — teinte sport aviron sanctionnée
 
@@ -24,9 +25,10 @@ export interface RowingRecordsProps {
 }
 
 export function RowingRecords(props: RowingRecordsProps) {
+  const { t } = useI18n()
   return (
     <DistanceRecords
-      sportLabel="Aviron" color={ROW} dists={DISTS}
+      sportLabel={t('performance.sportRowing')} color={ROW} dists={DISTS}
       benchH={BENCH_H} paceBaseM={500} paceSuffix="/500m"
       {...props}
     />

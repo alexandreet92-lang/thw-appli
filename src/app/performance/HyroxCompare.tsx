@@ -3,6 +3,7 @@
 // teinte hyrox modérée, animées, cliquables). 2) Stations + run compromised — barres
 // horizontales avec repère = moyenne (sur les courses affichées). Chiffres neutres.
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { HYROX_STATIONS, toSec, hmsTotal, mmss, type HyroxRace } from './hyroxShared'
 
 const HYROX = '#ec4899' // design-allow-color — teinte sport hyrox sanctionnée
@@ -11,6 +12,7 @@ function fmtDate(iso: string) { return new Date(iso).toLocaleDateString('fr-FR',
 function mean(xs: number[]) { const v = xs.filter(x => x > 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0 }
 
 export function HyroxCompare({ races, onSelect }: { races: HyroxRace[]; onSelect?: (label: string, value: string) => void }) {
+  const { t } = useI18n()
   const [selId, setSelId] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   useEffect(() => { const t = setTimeout(() => setMounted(true), 30); return () => clearTimeout(t) }, [])
@@ -42,7 +44,7 @@ export function HyroxCompare({ races, onSelect }: { races: HyroxRace[]; onSelect
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Courses entre elles */}
       <div style={card}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 16px' }}>Courses</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 16px' }}>{t('performance.races')}</h2>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
           {ordered.map(r => {
             const on = r.id === sel.id
@@ -63,8 +65,8 @@ export function HyroxCompare({ races, onSelect }: { races: HyroxRace[]; onSelect
       {/* Stations + run compromised */}
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Détail — {fmtDate(sel.date)}</h2>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)' }}>repère = moyenne</span>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.detail')} — {fmtDate(sel.date)}</h2>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)' }}>{t('performance.markerAverage')}</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           {bars.map(b => {

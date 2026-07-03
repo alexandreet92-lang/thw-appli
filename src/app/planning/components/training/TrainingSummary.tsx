@@ -7,6 +7,7 @@
 // toutes les valeurs sont calculées en amont et passées en props. Tokens uniquement.
 
 import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)'
 const SPORT_VAR: Record<string, string> = {
@@ -58,6 +59,7 @@ function Dot({ sport, size = 7 }: { sport: string; size?: number }) {
 }
 
 export function TrainingSummary<S extends Sess>(p: Props<S>) {
+  const { t } = useI18n()
   const volPct = p.plannedMin ? Math.min(p.doneMin / p.plannedMin * 100, 100) : 0
   // Si doneTSS=0 (séances pas encore done + pas d'activités Strava), on affiche la charge
   // planifiée dans la jauge pour qu'elle ne reste pas vide. Sinon ratio done/planned classique.
@@ -70,17 +72,17 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--space-6)' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <p style={label}>Volume</p>
-            <button onClick={p.onOpen10w} style={w10}>10 sem.</button>
+            <p style={label}>{t('planning.volume')}</p>
+            <button onClick={p.onOpen10w} style={w10}>{t('planning.tenWeeks')}</button>
           </div>
-          <p style={prevu}>Prévu {mm(p.plannedMin)}</p>
+          <p style={prevu}>{t('planning.planned')} {mm(p.plannedMin)}</p>
           <p className="tnum" style={big}>{mm(p.doneMin)}</p>
           <AnimatedBar pct={volPct} color="var(--text-mid)" height={5} />
-          <p className="tnum" style={{ ...prevu, margin: 'var(--space-1) 0 0' }}>{Math.round(volPct)}% réalisé</p>
+          <p className="tnum" style={{ ...prevu, margin: 'var(--space-1) 0 0' }}>{t('planning.percentDone', { n: Math.round(volPct) })}</p>
         </div>
         <div>
-          <p style={label}>Séances</p>
-          <p style={prevu}>Prévu {p.plannedN}</p>
+          <p style={label}>{t('planning.sessions')}</p>
+          <p style={prevu}>{t('planning.planned')} {p.plannedN}</p>
           <p className="tnum" style={big}><CountUp value={p.doneN} /></p>
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
             {p.sportCounts.map(s => (
@@ -91,14 +93,14 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
           </div>
         </div>
         <div>
-          <p style={label}>SM <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>métab.</span></p>
-          <p style={prevu}>Prévu {p.plannedSM}</p>
+          <p style={label}>SM <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>{t('planning.metabShort')}</span></p>
+          <p style={prevu}>{t('planning.planned')} {p.plannedSM}</p>
           <p className="tnum" style={{ ...big, color: 'var(--primary)' }}><CountUp value={p.doneSM} /></p>
           <AnimatedBar pct={smPct} color="var(--primary)" height={5} />
         </div>
         <div>
-          <p style={label}>SN <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>neuro.</span></p>
-          <p style={prevu}>Prévu {p.plannedSN}</p>
+          <p style={label}>SN <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>{t('planning.neuroShort')}</span></p>
+          <p style={prevu}>{t('planning.planned')} {p.plannedSN}</p>
           <p className="tnum" style={{ ...big, color: 'var(--sport-gym)' }}><CountUp value={p.doneSN} /></p>
           <AnimatedBar pct={snPct} color="var(--sport-gym)" height={5} />
         </div>
@@ -107,7 +109,7 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
       {/* Volume par discipline — 2 barres par sport (VOL. + TSS), à plat (pas de carte) */}
       {p.sportStats.length > 0 && (
         <div>
-          <p style={{ ...label, marginBottom: 'var(--space-3)' }}>Volume par discipline</p>
+          <p style={{ ...label, marginBottom: 'var(--space-3)' }}>{t('planning.volumeByDiscipline')}</p>
           {p.sportStats.map(s => {
             const volPct = s.plannedH > 0 ? Math.min(s.doneH / s.plannedH * 100, 100) : 0
             const smPctS = s.plannedSM > 0 ? Math.min((s.doneSM > 0 ? s.doneSM : s.plannedSM) / s.plannedSM * 100, 100) : 0
@@ -118,7 +120,7 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
                   <Dot sport={s.sport} /><span style={{ fontFamily: FB, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{SPORT_LABEL[s.sport] ?? s.sport}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
-                  <span style={miniLbl}>Vol.</span>
+                  <span style={miniLbl}>{t('planning.volShort')}</span>
                   <div style={track}><div style={{ width: `${volPct}%`, height: '100%', borderRadius: 3, background: c, animation: 'barFill 0.9s cubic-bezier(0.25,1,0.5,1) both' }} /></div>
                   <span className="tnum" style={valS}><strong style={strongS}>{hh(s.doneH)}</strong> / {hh(s.plannedH)}</span>
                 </div>
@@ -139,15 +141,15 @@ export function TrainingSummary<S extends Sess>(p: Props<S>) {
       {/* Aujourd'hui — carte sombre, filet gauche sport 3px, statut discret à droite (maquette) */}
       {p.todaySessions.length > 0 && (
         <div>
-          <p style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px' }}>Aujourd&apos;hui{p.today ? ` — ${p.today.day} ${p.today.date}` : ''}</p>
+          <p style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px' }}>{t('planning.today')}{p.today ? ` — ${p.today.day} ${p.today.date}` : ''}</p>
           {p.todaySessions.map(s => (
             <div key={s.id} onClick={() => p.onOpenSession(s)} style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--bg-card2)', borderRadius: 12, padding: '12px 14px', marginBottom: 7, borderLeft: `3px solid ${sv(s.sport)}`, cursor: 'pointer' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: FB, fontWeight: 600, fontSize: 13.5, color: 'var(--text)' }}>{s.title}</div>
                 <div className="tnum" style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>{s.time} · {mm(s.durationMin)}{s.tss ? ` · SM ${s.tss}` : ''}</div>
               </div>
-              {s.status !== 'done' && p.isModified(s) && <span title="Modifié par toi" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />}
-              <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>{s.status === 'done' ? 'Fait' : 'À faire'}</span>
+              {s.status !== 'done' && p.isModified(s) && <span title={t('planning.modifiedByYou')} style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />}
+              <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>{s.status === 'done' ? t('planning.done') : t('planning.todo')}</span>
             </div>
           ))}
         </div>

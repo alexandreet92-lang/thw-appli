@@ -22,6 +22,7 @@ import { NutritionRail } from '@/app/nutrition/components/NutritionRail'
 import { PlanTab } from '@/app/nutrition/components/plan/PlanTab'
 import type { NutritionPlanData, PlanDay, MealSet, MealSlotValue, DailyLog, WeightLog } from '@/hooks/useNutrition'
 import { slotText, slotMacros } from '@/hooks/useNutrition'
+import { useI18n } from '@/lib/i18n'
 const AIPanel = dynamicImport(() => import('@/components/ai/AIPanel'), { ssr: false })
 const BarcodeScanner = dynamicImport(
   () => import('@/components/nutrition/BarcodeScanner').then(m => ({ default: m.BarcodeScanner })),
@@ -51,15 +52,6 @@ const DAY_COLORS: Record<DayType, { bg: string; border: string; text: string; la
   low:  { bg: 'rgba(34,197,94,0.10)',  border: '#22c55e', text: '#22c55e',  label: 'Jour Low'  },
   mid:  { bg: 'rgba(234,179,8,0.10)',  border: '#eab308', text: '#eab308',  label: 'Jour Mid'  },
   hard: { bg: 'rgba(239,68,68,0.10)',  border: '#ef4444', text: '#ef4444',  label: 'Jour Hard' },
-}
-
-const MEAL_LABELS: Record<MealKey, string> = {
-  petit_dejeuner:       'Petit-dejeuner',
-  collation_matin:      'Collation matin',
-  dejeuner:             'Dejeuner',
-  collation_apres_midi: 'Collation apres-midi',
-  diner:                'Diner',
-  collation_soir:       'Collation soir',
 }
 
 const MEAL_KEYS: MealKey[] = [
@@ -408,32 +400,33 @@ function TemplateForm({
   inputStyle: React.CSSProperties
   labelStyle: React.CSSProperties
 }) {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
-        <p style={labelStyle}>Nom du repas</p>
+        <p style={labelStyle}>{t('nutrition.templateForm.name')}</p>
         <input
           value={form.nom}
           onChange={e => setForm(prev => ({ ...prev, nom: e.target.value }))}
-          placeholder="ex: Porridge avoine banane"
+          placeholder={t('nutrition.templateForm.namePlaceholder')}
           style={inputStyle}
         />
       </div>
       <div>
-        <p style={labelStyle}>Description (optionnel)</p>
+        <p style={labelStyle}>{t('nutrition.templateForm.description')}</p>
         <input
           value={form.description}
           onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
-          placeholder="Ingrédients, quantités..."
+          placeholder={t('nutrition.templateForm.descPlaceholder')}
           style={inputStyle}
         />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
         {[
-          { key: 'kcal' as const, label: 'Kcal', placeholder: '350' },
-          { key: 'proteines' as const, label: 'Prot (g)', placeholder: '20' },
-          { key: 'glucides' as const, label: 'Gluc (g)', placeholder: '45' },
-          { key: 'lipides' as const, label: 'Lip (g)', placeholder: '8' },
+          { key: 'kcal' as const, label: t('nutrition.macro.kcal'), placeholder: '350' },
+          { key: 'proteines' as const, label: t('nutrition.macro.protG'), placeholder: '20' },
+          { key: 'glucides' as const, label: t('nutrition.macro.glucG'), placeholder: '45' },
+          { key: 'lipides' as const, label: t('nutrition.macro.lipG'), placeholder: '8' },
         ].map(({ key, label, placeholder }) => (
           <div key={key}>
             <p style={labelStyle}>{label}</p>
@@ -457,7 +450,7 @@ function TemplateForm({
             fontFamily: 'DM Sans,sans-serif',
           }}
         >
-          Annuler
+          {t('nutrition.common.cancel')}
         </button>
         <button
           onClick={() => void onSave()}
@@ -470,7 +463,7 @@ function TemplateForm({
             fontFamily: 'DM Sans,sans-serif',
           }}
         >
-          {saving ? 'Sauvegarde...' : isEdit ? 'Modifier' : 'Ajouter'}
+          {saving ? t('nutrition.common.saving') : isEdit ? t('nutrition.common.edit') : t('nutrition.common.add')}
         </button>
       </div>
     </div>
@@ -496,6 +489,7 @@ function MealTemplatesSection({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [addingFor, setAddingFor] = useState<MealKey | null>(null)
   const [saving, setSaving] = useState(false)
+  const { t: tr } = useI18n()
 
   function startAdd(mealKey: MealKey) {
     setForm({ ...EMPTY_FORM, type_repas: mealKey })
@@ -552,7 +546,7 @@ function MealTemplatesSection({
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Supprimer ce repas type ?')) return
+    if (!confirm(tr('nutrition.templates.deleteConfirm'))) return
     await onDelete(id)
   }
 
@@ -609,7 +603,7 @@ function MealTemplatesSection({
           padding: '16px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0,
         }}>
           <h2 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, margin: 0, color: 'var(--text)' }}>
-            Mes repas types
+            {tr('nutrition.templates.title')}
           </h2>
           <button
             onClick={onClose}
@@ -627,7 +621,7 @@ function MealTemplatesSection({
         {/* Content */}
         <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px 24px' }}>
           {loading ? (
-            <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>Chargement...</p>
+            <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>{tr('nutrition.common.loading')}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {(Object.keys(TEMPLATE_MEAL_LABELS) as MealKey[]).map(mealKey => {
@@ -642,7 +636,7 @@ function MealTemplatesSection({
                       marginBottom: 8,
                     }}>
                       <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
-                        {TEMPLATE_MEAL_LABELS[mealKey]}
+                        {tr(`nutrition.meal.${mealKey}`)}
                       </span>
                       {addingFor !== mealKey && (
                         <button
@@ -655,7 +649,7 @@ function MealTemplatesSection({
                             cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
                           }}
                         >
-                          + Ajouter
+                          {tr('nutrition.templates.addBtn')}
                         </button>
                       )}
                     </div>
@@ -663,7 +657,7 @@ function MealTemplatesSection({
                     {/* Templates in this group */}
                     {groupTemplates.length === 0 && !isAddingHere && (
                       <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 4px', fontStyle: 'italic' }}>
-                        Aucun repas type
+                        {tr('nutrition.templates.empty')}
                       </p>
                     )}
 
@@ -716,7 +710,7 @@ function MealTemplatesSection({
                           {/* Toggle actif */}
                           <button
                             onClick={() => void handleToggle(t)}
-                            title={t.actif ? 'Désactiver' : 'Activer'}
+                            title={t.actif ? tr('nutrition.templates.deactivate') : tr('nutrition.templates.activate')}
                             style={{
                               width: 32, height: 18, borderRadius: 9,
                               border: 'none',
@@ -811,6 +805,7 @@ const TAB_ORDER: NutritionTab[] = NUTRITION_TAB_ITEMS.map(t => t.id)
 
 // Onglets « pilule » — segmented control identique à SectionLayout (page Récupération).
 function NutritionTabs({ tab, onChange }: { tab: NutritionTab; onChange: (t: NutritionTab) => void }) {
+  const { t: tr } = useI18n()
   return (
     <div
       className="nt-tabscroll"
@@ -836,7 +831,7 @@ function NutritionTabs({ tab, onChange }: { tab: NutritionTab; onChange: (t: Nut
                 transition: 'background 0.18s, color 0.18s',
               }}
             >
-              {t.label}
+              {tr(`nutrition.tab.${t.id}`)}
             </button>
           )
         })}
@@ -858,6 +853,7 @@ export default function NutritionPage() {
   const [dayDir, setDayDir] = useState<'right' | 'left'>('right')
   const selectDay = useCallback((d: string) => { setDayDir(d >= today ? 'right' : 'left'); setSelDay(d) }, [today])
   const { show, dismiss } = usePageOnboarding(NUTRITION_ONBOARDING.pageId, NUTRITION_ONBOARDING.version)
+  const { t } = useI18n()
 
   const { activePlan, dailyLogs, weightLogs, loading: nutLoading, saveDailyLog, saveWeightLog, deactivatePlan } = useNutrition()
   const { profile } = useProfile()
@@ -1041,7 +1037,7 @@ export default function NutritionPage() {
 
   // ── Supprimer (désactiver) le plan actif ────────────────────────
   const handleDeletePlan = useCallback(async () => {
-    if (!confirm('Supprimer le plan actif ? Tu pourras en recréer un à tout moment.')) return
+    if (!confirm(t('nutrition.plan.deleteConfirm'))) return
     await deactivatePlan()
   }, [deactivatePlan])
 
@@ -1074,7 +1070,7 @@ export default function NutritionPage() {
 
   // ── Loading ────────────────────────────────────────────────────
   if (nutLoading) {
-    return <div style={{ padding: 24, color: 'var(--text-dim)' }}>Chargement...</div>
+    return <div style={{ padding: 24, color: 'var(--text-dim)' }}>{t('nutrition.common.loading')}</div>
   }
 
   // ── 14-day dates ───────────────────────────────────────────────
@@ -1116,14 +1112,14 @@ export default function NutritionPage() {
 
       {/* ── HEADER ─────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 24, paddingLeft: isDesktop ? 32 : 'max(22px, env(safe-area-inset-left))', paddingRight: isDesktop ? 32 : 'max(22px, env(safe-area-inset-right))', width: '100%', maxWidth: 1100, margin: '0 auto', boxSizing: 'border-box' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, margin: 0 }}>Nutrition</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, margin: 0 }}>{t('nutrition.title')}</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Bouton scanner — visible mobile uniquement (md:hidden via Tailwind) */}
           <button
             onClick={() => setScannerOpen(true)}
             className="flex md:hidden items-center justify-center w-9 h-9 rounded-full"
             style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text-dim)' }}
-            aria-label="Scanner un code-barres"
+            aria-label={t('nutrition.scanBarcode')}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
               <path d="M3 5h2M7 5h1M3 7v2M21 5h-2M17 5h-1M21 7v2M3 17v2M3 19h2M7 19h1M21 17v2M21 19h-2M17 19h-1"/>
@@ -1137,7 +1133,7 @@ export default function NutritionPage() {
       {scannedBarcode && (
         <div style={{ margin: '12px 20px 0', padding: '10px 14px', borderRadius: 10, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <div>
-            <p style={{ fontSize: 11, color: '#06B6D4', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Code scanne</p>
+            <p style={{ fontSize: 11, color: '#06B6D4', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('nutrition.scannedCode')}</p>
             <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>{scannedBarcode}</p>
           </div>
           <button
@@ -1295,15 +1291,15 @@ export default function NutritionPage() {
                   color: DAY_COLORS[dayDetailOpen.type_jour].text,
                   fontSize: 10, fontFamily: 'Syne,sans-serif', fontWeight: 700,
                 }}>
-                  {DAY_COLORS[dayDetailOpen.type_jour].label}
+                  {t(`nutrition.dayType.${dayDetailOpen.type_jour}`)}
                 </div>
                 {/* Interconnexion → séance qui justifie le type de jour */}
                 {daySess.length > 0 ? (
                   <a href="/planning" style={{ display: 'block', marginTop: 8, fontSize: 12, color: '#06B6D4', fontFamily: 'DM Sans,sans-serif', fontWeight: 600, textDecoration: 'none' }}>
-                    {daySess.map(s => s.title).filter(Boolean).join(' · ') || 'Séance prévue'} →
+                    {daySess.map(s => s.title).filter(Boolean).join(' · ') || t('nutrition.plannedSession')} →
                   </a>
                 ) : (
-                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Aucune séance liée ce jour</div>
+                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>{t('nutrition.noSessionLinked')}</div>
                 )}
               </div>
               <button
@@ -1326,10 +1322,10 @@ export default function NutritionPage() {
               borderRadius: 12, border: '1px solid var(--border)',
               marginBottom: 16,
             }}>
-              <MacroDonut label="Calories"  consumed={modalTotals.kcal} objective={dayDetailOpen.kcal}      unit="kcal" color="#06B6D4" size={72} />
-              <MacroDonut label="Proteines" consumed={modalTotals.prot} objective={dayDetailOpen.proteines} unit="g"    color="#22c55e" size={72} />
-              <MacroDonut label="Glucides"  consumed={modalTotals.gluc} objective={dayDetailOpen.glucides}  unit="g"    color="#eab308" size={72} />
-              <MacroDonut label="Lipides"   consumed={modalTotals.lip}  objective={dayDetailOpen.lipides}   unit="g"    color="#f97316" size={72} />
+              <MacroDonut label={t('nutrition.macro.calories')}  consumed={modalTotals.kcal} objective={dayDetailOpen.kcal}      unit="kcal" color="#06B6D4" size={72} />
+              <MacroDonut label={t('nutrition.macro.proteins')} consumed={modalTotals.prot} objective={dayDetailOpen.proteines} unit="g"    color="#22c55e" size={72} />
+              <MacroDonut label={t('nutrition.macro.carbs')}  consumed={modalTotals.gluc} objective={dayDetailOpen.glucides}  unit="g"    color="#eab308" size={72} />
+              <MacroDonut label={t('nutrition.macro.fats')}   consumed={modalTotals.lip}  objective={dayDetailOpen.lipides}   unit="g"    color="#f97316" size={72} />
             </div>
 
             {/* ── Option A / B toggle ────────────────────────── */}
@@ -1347,7 +1343,7 @@ export default function NutritionPage() {
                     fontSize: 12, fontFamily: 'Syne,sans-serif', cursor: 'pointer',
                   }}
                 >
-                  Option {v}
+                  {t('nutrition.optionLabel', { v })}
                 </button>
               ))}
             </div>
@@ -1382,7 +1378,7 @@ export default function NutritionPage() {
                         fontSize: 10, fontFamily: 'Syne,sans-serif', fontWeight: 700,
                         color: 'var(--text-mid)', flex: 1,
                       }}>
-                        {MEAL_LABELS[mealKey]}
+                        {t(`nutrition.meal.${mealKey}`)}
                       </div>
 
                       {/* Edit button */}
@@ -1432,7 +1428,7 @@ export default function NutritionPage() {
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
                               <polyline points="20 6 9 17 4 12" />
                             </svg>
-                            Validé
+                            {t('nutrition.validated')}
                           </>
                         ) : (
                           <>
@@ -1440,7 +1436,7 @@ export default function NutritionPage() {
                               <circle cx="12" cy="12" r="10"/>
                               <polyline points="12 8 12 12 14 14"/>
                             </svg>
-                            Valider
+                            {t('nutrition.validate')}
                           </>
                         )}
                       </button>
@@ -1482,13 +1478,13 @@ export default function NutritionPage() {
                         }}
                       >
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                        Rechercher un aliment
+                        {t('nutrition.searchFood')}
                       </button>
                       <textarea
                         rows={2}
                         value={editDesc}
                         onChange={e => setEditDesc(e.target.value)}
-                        placeholder="Description réelle..."
+                        placeholder={t('nutrition.actualDescPlaceholder')}
                         style={{
                           width: '100%', background: 'var(--input-bg)',
                           border: '1px solid var(--border)', borderRadius: 8,
@@ -1499,10 +1495,10 @@ export default function NutritionPage() {
                       />
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 10 }}>
                         {[
-                          { label: 'Kcal',    val: editKcal, set: setEditKcal },
-                          { label: 'Prot (g)',val: editProt, set: setEditProt },
-                          { label: 'Gluc (g)',val: editGluc, set: setEditGluc },
-                          { label: 'Lip (g)', val: editLip,  set: setEditLip  },
+                          { label: t('nutrition.macro.kcal'),    val: editKcal, set: setEditKcal },
+                          { label: t('nutrition.macro.protG'),val: editProt, set: setEditProt },
+                          { label: t('nutrition.macro.glucG'),val: editGluc, set: setEditGluc },
+                          { label: t('nutrition.macro.lipG'), val: editLip,  set: setEditLip  },
                         ].map(({ label, val, set }) => (
                           <div key={label}>
                             <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 3 }}>{label}</div>
@@ -1539,7 +1535,7 @@ export default function NutritionPage() {
                             fontSize: 12, cursor: 'pointer',
                           }}
                         >
-                          Enregistrer
+                          {t('nutrition.common.save')}
                         </button>
                         <button
                           onClick={() => setEditSlot(null)}
@@ -1549,7 +1545,7 @@ export default function NutritionPage() {
                             color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
                           }}
                         >
-                          Annuler
+                          {t('nutrition.common.cancel')}
                         </button>
                       </div>
                     </div>
@@ -1579,13 +1575,13 @@ export default function NutritionPage() {
       {regenConfirm && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 2100, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setRegenConfirm(false)}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 16, padding: 22 }}>
-            <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, color: 'var(--text)', margin: '0 0 8px' }}>Régénérer le plan ?</h3>
+            <h3 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 16, color: 'var(--text)', margin: '0 0 8px' }}>{t('nutrition.regen.title')}</h3>
             <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, margin: '0 0 18px' }}>
-              Un nouveau plan sera généré selon ton planning. L&apos;ancien plan actif sera remplacé.
+              {t('nutrition.regen.desc')}
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setRegenConfirm(false)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Annuler</button>
-              <button onClick={() => { setRegenConfirm(false); setAiPanelOpen(true) }} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#06B6D4,#5b6fff)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Régénérer</button>
+              <button onClick={() => setRegenConfirm(false)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('nutrition.common.cancel')}</button>
+              <button onClick={() => { setRegenConfirm(false); setAiPanelOpen(true) }} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#06B6D4,#5b6fff)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('nutrition.regen.confirm')}</button>
             </div>
           </div>
         </div>,
@@ -1596,7 +1592,7 @@ export default function NutritionPage() {
       {tab === 'plan' && (
       <div style={{ padding: '8px 16px 24px', textAlign: 'center' }}>
         <Button variant="ghost" onClick={() => setShowTemplates(true)}>
-          Mes repas types
+          {t('nutrition.templates.title')}
         </Button>
       </div>
       )}

@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom'
 import { useDailyMeals, SLOT_LABELS, type MealSlotKey } from '@/hooks/useDailyMeals'
 import { MacroDonut } from '../today/MacroDonut'
 import { foodsOf } from '../today/mealJournalUtils'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
@@ -19,6 +20,7 @@ function fmtDate(iso: string): string {
 }
 
 export function DayMealsSheet({ date, onClose }: { date: string; onClose: () => void }) {
+  const { t: tr } = useI18n()
   const { entries, loading } = useDailyMeals(date)
   const startY = useRef<number | null>(null)
   const [closing, setClosing] = useState(false)
@@ -57,9 +59,9 @@ export function DayMealsSheet({ date, onClose }: { date: string; onClose: () => 
 
         <div style={{ overflowY: 'auto', padding: 'var(--space-2) var(--space-6) var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           {loading && !entries.length ? (
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>Chargement…</p>
+            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>{tr('nutrition.common.loading')}</p>
           ) : !meals.length ? (
-            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5 }}>Aucun repas enregistré ce jour-là.</p>
+            <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5 }}>{tr('nutrition.suivi.noMealsDay')}</p>
           ) : meals.map(({ entry, foods }) => {
             const t = foods.reduce((s, f) => ({ kcal: s.kcal + f.kcal, prot: s.prot + f.prot, gluc: s.gluc + f.gluc, lip: s.lip + f.lip }), { kcal: 0, prot: 0, gluc: 0, lip: 0 })
             const photos = (entry.photos && entry.photos.length) ? entry.photos : (entry.photo_url ? [entry.photo_url] : [])

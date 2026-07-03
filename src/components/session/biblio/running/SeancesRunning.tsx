@@ -6,6 +6,7 @@ import {
   SEANCES_RUNNING, BUCKET_ORDER, BUCKET_LABEL, BUCKET_SHORT, BUCKET_SUBTITLE, FILIERE_LABEL,
   type Seance, type RunBucket,
 } from '@/data/seances/running'
+import { useI18n } from '@/lib/i18n'
 import { SlideView } from '@/components/ui/SlideView'
 import { CategoryPanel, CategoryRow } from '../CategoryRow'
 import { SPORT_THEME } from '../sportTheme'
@@ -18,22 +19,24 @@ const FD = 'var(--font-display)', FB = 'var(--font-body)'
 const TH = SPORT_THEME.running
 
 function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '0 12px', height: 42,
       borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', flex: 1, minWidth: 0 }}>
       <IconSearch size={17} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
-      <input value={value} onChange={e => onChange(e.target.value)} placeholder="Rechercher une séance…"
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={t('session.rechercherSeance')}
         style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontFamily: FB, fontSize: 13 }} />
     </div>
   )
 }
 function FiltreBtn({ n, onClick }: { n: number; onClick: () => void }) {
+  const { t } = useI18n()
   return (
-    <button onClick={onClick} aria-label="Filtrer" style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42,
+    <button onClick={onClick} aria-label={t('session.filtrer')} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42,
       padding: '0 14px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer', flexShrink: 0,
       background: n > 0 ? 'var(--primary-dim)' : 'var(--bg-card2)', color: n > 0 ? 'var(--primary)' : 'var(--text-mid)',
       fontFamily: FB, fontSize: 13, fontWeight: 500 }}>
-      <IconAdjustmentsHorizontal size={17} /> Filtrer{n > 0 ? ` · ${n}` : ''}
+      <IconAdjustmentsHorizontal size={17} /> {t('session.filtrer')}{n > 0 ? ` · ${n}` : ''}
     </button>
   )
 }
@@ -61,6 +64,7 @@ function SeanceCard({ s, showBucket, onClick }: { s: Seance; showBucket: boolean
 }
 
 export function SeancesRunning() {
+  const { t } = useI18n()
   const [view, setView] = useState<'buckets' | 'list'>('buckets')
   const [lock, setLock] = useState<RunBucket | null>(null)
   const [query, setQuery] = useState('')
@@ -103,10 +107,10 @@ export function SeancesRunning() {
         <>
           <button onClick={backToBuckets} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
             cursor: 'pointer', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, padding: '4px 0', marginBottom: 'var(--space-4)' }}>
-            <IconArrowLeft size={16} /> Distances
+            <IconArrowLeft size={16} /> {t('session.distances')}
           </button>
           <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-4)' }}>
-            {lock ? BUCKET_LABEL[lock] : 'Toutes les séances'}
+            {lock ? BUCKET_LABEL[lock] : t('session.toutesLesSeances')}
           </h2>
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
             <SearchBar value={query} onChange={setQuery} />
@@ -114,12 +118,12 @@ export function SeancesRunning() {
           </div>
           {(rf.nbActifs > 0 || query.trim()) && (
             <button onClick={() => { rf.reset(); setQuery('') }} style={{ background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--primary)', fontFamily: FB, fontSize: 12.5, padding: '0 0 var(--space-3)' }}>Effacer les filtres</button>
+              color: 'var(--primary)', fontFamily: FB, fontSize: 12.5, padding: '0 0 var(--space-3)' }}>{t('session.effacerFiltres')}</button>
           )}
           {results.length === 0 ? (
             <div style={{ padding: '48px 24px', borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)', textAlign: 'center' }}>
-              <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>Aucune séance ne colle</p>
-              <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>Élargis tes filtres ou change de distance.</p>
+              <p style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>{t('session.aucuneSeanceColle')}</p>
+              <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>{t('session.elargisDistance')}</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>

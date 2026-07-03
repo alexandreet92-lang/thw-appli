@@ -8,10 +8,12 @@ import { BlocSummaryView } from '@/components/planning/BlocSummaryView'
 import { BlocDetailOverlay } from '@/components/planning/BlocDetailOverlay'
 import { GanttOverlay } from '@/components/planning/GanttOverlay'
 import { loadBlocs, upsertBloc, newBloc, syncBlocsFromCloud } from '@/app/planning/trainingBlocks'
+import { useI18n } from '@/lib/i18n'
 
 const T = 'var(--text)' // surface/texte = tokens de thème
 
 export function TrainingBlockSummary() {
+  const { t: tr } = useI18n()
   const [tab, setTab] = useState<'bloc' | 'plan'>('bloc')
   const [blocs, setBlocs] = useState(() => loadBlocs())
   const [version, setVersion] = useState(0)
@@ -34,7 +36,7 @@ export function TrainingBlockSummary() {
         <div style={{ display: 'inline-flex', background: 'var(--bg-card2)', borderRadius: 10, padding: 3, gap: 2 }}>
           {(['bloc', 'plan'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{ padding: '9px 20px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', borderRadius: 8, transition: 'all .18s', background: tab === t ? 'var(--bg-card)' : 'transparent', color: tab === t ? T : 'var(--text-dim)', boxShadow: tab === t ? 'var(--shadow-card)' : 'none' }}>
-              {t === 'bloc' ? 'Training Bloc' : 'Training Planification'}
+              {t === 'bloc' ? tr('planning.trainingBloc') : tr('planning.trainingPlanification')}
             </button>
           ))}
         </div>
@@ -46,7 +48,7 @@ export function TrainingBlockSummary() {
         <div onClick={() => setGantt(true)} style={{ padding: '14px 16px 18px', cursor: 'pointer' }}>
           <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ color: '#22d3ee' }}>↔</span>
-            12 semaines · <strong style={{ color: 'var(--text-mid)' }}>Clique pour modifier</strong>
+            {tr('planning.twelveWeeks')} · <strong style={{ color: 'var(--text-mid)' }}>{tr('planning.clickToEdit')}</strong>
           </p>
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingTop: 50 }}>
             <FriseV1 readOnly reloadToken={version} />

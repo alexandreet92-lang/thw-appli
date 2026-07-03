@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   nights7: { date: string; totalMin: number | null }[]
@@ -13,6 +14,7 @@ function fmtDebt(debt: number): string {
 }
 
 export default function SleepDebt({ nights7, recommended = 8 }: Props) {
+  const { t } = useI18n()
   const [animated, setAnimated] = useState(false)
 
   useEffect(() => {
@@ -26,7 +28,7 @@ export default function SleepDebt({ nights7, recommended = 8 }: Props) {
   const filled = Math.max(0, 1 - ratio)
 
   const color = ratio < 0.15 ? '#10B981' : ratio < 0.45 ? '#F97316' : '#EF4444'
-  const label = ratio < 0.15 ? '✓ Bien récupéré' : ratio < 0.45 ? '⚠ Récupération partielle' : '⚡ Déficit important'
+  const label = ratio < 0.15 ? t('recovery.sleepDebt.good') : ratio < 0.45 ? t('recovery.sleepDebt.partial') : t('recovery.sleepDebt.deficit')
 
   const R = 30, C = 2 * Math.PI * R
   const [offset, setOffset] = useState(C * 0.01) // near-full at start
@@ -57,10 +59,10 @@ export default function SleepDebt({ nights7, recommended = 8 }: Props) {
       </svg>
       <div>
         <p style={{ fontSize: 12, fontWeight: 700, margin: '0 0 2px', color: 'var(--text)' }}>
-          Dette de sommeil
+          {t('recovery.sleepDebt.title')}
         </p>
         <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '0 0 5px' }}>
-          7 jours glissants · réf. {recommended}h/nuit
+          {t('recovery.sleepDebt.window', { n: recommended })}
         </p>
         <p style={{ fontSize: 9, color, margin: 0, fontWeight: 600 }}>{label}</p>
       </div>

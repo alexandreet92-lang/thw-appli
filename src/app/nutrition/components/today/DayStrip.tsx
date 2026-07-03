@@ -7,6 +7,7 @@
 // kcal. SVG brut, tokens.
 import { useEffect, useRef, useState } from 'react'
 import { useDaysTotals } from '@/hooks/useDaysTotals'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)'
 const PAGE = 7
@@ -30,6 +31,7 @@ export function DayStrip({ today, selected, targetKcal, onSelect }: {
   targetKcal: number
   onSelect: (date: string) => void
 }) {
+  const { t: tr } = useI18n()
   const [page, setPage] = useState(0)         // 0 = semaine courante ; négatif = plus ancien
   const [dir, setDir] = useState<'l' | 'r'>('r')
   const [isDesktop, setIsDesktop] = useState(false)
@@ -75,7 +77,7 @@ export function DayStrip({ today, selected, targetKcal, onSelect }: {
       `}</style>
 
       {isDesktop && (
-        <button type="button" aria-label="7 jours précédents" onClick={prev} style={arrowBtn(false)}>
+        <button type="button" aria-label={tr('nutrition.dayStrip.prev7')} onClick={prev} style={arrowBtn(false)}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
         </button>
       )}
@@ -122,7 +124,7 @@ export function DayStrip({ today, selected, targetKcal, onSelect }: {
       </div>
 
       {isDesktop && (
-        <button type="button" aria-label="7 jours suivants" onClick={next} disabled={page >= 0} style={arrowBtn(page >= 0)}>
+        <button type="button" aria-label={tr('nutrition.dayStrip.next7')} onClick={next} disabled={page >= 0} style={arrowBtn(page >= 0)}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
         </button>
       )}

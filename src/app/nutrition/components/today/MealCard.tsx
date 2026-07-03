@@ -7,6 +7,7 @@ import { MealMacroGauges } from './MealMacroGauges'
 import { MealDetail } from './MealDetail'
 import type { EditableFood } from './FoodEditSheet'
 import type { MealCourse } from '@/hooks/useDailyMeals'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const COURSES: { key: MealCourse; label: string }[] = [
@@ -37,6 +38,7 @@ export function MealCard({ slotLabel, foods, courses, photoUrl, photos, score, a
   onPhoto: () => void
   onClear: () => void
 }) {
+  const { t: tr } = useI18n()
   const t = foods.reduce((a, f) => ({ kcal: a.kcal + f.kcal, prot: a.prot + f.prot, gluc: a.gluc + f.gluc, lip: a.lip + f.lip }), { kcal: 0, prot: 0, gluc: 0, lip: 0 })
   const textBtn: React.CSSProperties = { height: 32, padding: '0 var(--space-2)', border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: FB, fontSize: 12, fontWeight: 500, cursor: 'pointer' }
   // Multi-photos : on affiche toutes les photos accumulées (fallback sur l'ancienne photo unique).
@@ -89,22 +91,22 @@ export function MealCard({ slotLabel, foods, courses, photoUrl, photos, score, a
           {COURSES.map(c => (
             <button key={c.key} onClick={() => onAddSearch(c.key)} style={{ flex: 1, minWidth: 0, height: 38, borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary-dim)', color: 'var(--primary)', fontFamily: FB, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-              {c.label}
+              {tr(`nutrition.course.${c.key}`)}
             </button>
           ))}
         </div>
       ) : (
         <button onClick={() => onAddSearch()} style={{ height: 38, width: '100%', borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--primary-dim)', color: 'var(--primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          Ajouter un aliment
+          {tr('nutrition.today.addFood')}
         </button>
       )}
 
       {/* Actions secondaires démotées */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
-        <button onClick={onPhoto} style={textBtn}>Photo IA</button>
-        <button onClick={() => onAddManual()} style={textBtn}>Manuel</button>
-        <button onClick={onClear} style={{ ...textBtn, color: 'var(--text-dim)', marginLeft: 'auto' }}>Vider</button>
+        <button onClick={onPhoto} style={textBtn}>{tr('nutrition.today.photoAI')}</button>
+        <button onClick={() => onAddManual()} style={textBtn}>{tr('nutrition.today.manual')}</button>
+        <button onClick={onClear} style={{ ...textBtn, color: 'var(--text-dim)', marginLeft: 'auto' }}>{tr('nutrition.today.clear')}</button>
       </div>
     </div>
   )

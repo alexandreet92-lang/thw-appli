@@ -4,33 +4,35 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { localToday } from './types'
 import type { BodyWeightRow, HydrationRow, PainLogRow } from './types'
+import { useI18n } from '@/lib/i18n'
 
 const HYDRATION_OPTS = [0.5, 1, 1.5, 2, 2.5, 3]
 
-const BODY_ZONES: { id: string; label: string }[] = [
-  { id:'head',      label:'Tête'      },
-  { id:'neck',      label:'Cou'       },
-  { id:'lshoulder', label:'Épaule G'  },
-  { id:'rshoulder', label:'Épaule D'  },
-  { id:'larm',      label:'Bras G'    },
-  { id:'rarm',      label:'Bras D'    },
-  { id:'upperback', label:'Dos haut'  },
-  { id:'chest',     label:'Poitrine'  },
-  { id:'lowerback', label:'Dos bas'   },
-  { id:'belly',     label:'Abdomen'   },
-  { id:'lhip',      label:'Hanche G'  },
-  { id:'rhip',      label:'Hanche D'  },
-  { id:'lthigh',    label:'Cuisse G'  },
-  { id:'rthigh',    label:'Cuisse D'  },
-  { id:'lknee',     label:'Genou G'   },
-  { id:'rknee',     label:'Genou D'   },
-  { id:'lcalf',     label:'Mollet G'  },
-  { id:'rcalf',     label:'Mollet D'  },
-  { id:'lfoot',     label:'Pied G'    },
-  { id:'rfoot',     label:'Pied D'    },
+const BODY_ZONES: { id: string; labelKey: string }[] = [
+  { id:'head',      labelKey:'recovery.zone.head'      },
+  { id:'neck',      labelKey:'recovery.zone.neck'       },
+  { id:'lshoulder', labelKey:'recovery.zone.lshoulder'  },
+  { id:'rshoulder', labelKey:'recovery.zone.rshoulder'  },
+  { id:'larm',      labelKey:'recovery.zone.larm'    },
+  { id:'rarm',      labelKey:'recovery.zone.rarm'    },
+  { id:'upperback', labelKey:'recovery.zone.upperback'  },
+  { id:'chest',     labelKey:'recovery.zone.chest'  },
+  { id:'lowerback', labelKey:'recovery.zone.lowerback'   },
+  { id:'belly',     labelKey:'recovery.zone.belly'   },
+  { id:'lhip',      labelKey:'recovery.zone.lhip'  },
+  { id:'rhip',      labelKey:'recovery.zone.rhip'  },
+  { id:'lthigh',    labelKey:'recovery.zone.lthigh'  },
+  { id:'rthigh',    labelKey:'recovery.zone.rthigh'  },
+  { id:'lknee',     labelKey:'recovery.zone.lknee'   },
+  { id:'rknee',     labelKey:'recovery.zone.rknee'   },
+  { id:'lcalf',     labelKey:'recovery.zone.lcalf'   },
+  { id:'rcalf',     labelKey:'recovery.zone.rcalf'   },
+  { id:'lfoot',     labelKey:'recovery.zone.lfoot'    },
+  { id:'rfoot',     labelKey:'recovery.zone.rfoot'    },
 ]
 
 export default function BodyTracking() {
+  const { t } = useI18n()
   const [userId, setUserId] = useState<string | null>(null)
   const [weights, setWeights] = useState<BodyWeightRow[]>([])
   const [hydration, setHydration] = useState<HydrationRow[]>([])
@@ -115,20 +117,20 @@ export default function BodyTracking() {
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:14 }}>
         {/* Weight */}
         <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 12px' }}>Poids</p>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 12px' }}>{t('recovery.body.weight')}</p>
           <div style={{ display:'flex',gap:8,marginBottom:12 }}>
             <input type="number" step={0.1} min={30} max={200} value={weightInput} onChange={e=>setWeightInput(e.target.value)}
               placeholder={weights.length?String(weights[weights.length-1].weight_kg):'70.0'}
               style={{ flex:1,padding:'7px 10px',borderRadius:9,border:'1px solid var(--border)',background:'var(--input-bg,var(--bg-card2))',color:'var(--text)',fontSize:13,outline:'none',fontFamily:'DM Mono,monospace' }} />
             <span style={{ display:'flex',alignItems:'center',fontSize:12,color:'var(--text-dim)' }}>kg</span>
             <button onClick={saveWeight} disabled={saving==='weight'} style={{ padding:'7px 14px',borderRadius:9,background:'linear-gradient(135deg,#6b7280,#9ca3af)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',fontWeight:600,opacity:saving==='weight'?0.6:1 }}>
-              {saving==='weight'?'…':'Enregistrer'}
+              {saving==='weight'?'…':t('recovery.save')}
             </button>
           </div>
           {weights.length >= 2 ? (
             <div>
               <div style={{ display:'flex',justifyContent:'space-between',marginBottom:4 }}>
-                <span style={{ fontSize:10,color:'var(--text-dim)' }}>30 derniers jours</span>
+                <span style={{ fontSize:10,color:'var(--text-dim)' }}>{t('recovery.body.last30days')}</span>
                 {weights.length>=2 && <span style={{ fontSize:11,fontWeight:600,color:weights[weights.length-1].weight_kg<=weights[0].weight_kg?'#10B981':'#ef4444' }}>
                   {(weights[weights.length-1].weight_kg-weights[0].weight_kg>=0?'+':'')+((weights[weights.length-1].weight_kg-weights[0].weight_kg).toFixed(1))}kg
                 </span>}
@@ -137,12 +139,12 @@ export default function BodyTracking() {
                 <path d={wPath} fill="none" stroke="#6B7280" strokeWidth={2} strokeDasharray={W*1.2} strokeDashoffset={wMounted?0:W*1.2} style={{ transition:'stroke-dashoffset 1s ease-out' }} />
               </svg>
             </div>
-          ) : <p style={{ fontSize:11,color:'var(--text-dim)',textAlign:'center' as const,fontStyle:'italic',margin:'8px 0' }}>Enregistre ton poids pour suivre ta progression</p>}
+          ) : <p style={{ fontSize:11,color:'var(--text-dim)',textAlign:'center' as const,fontStyle:'italic',margin:'8px 0' }}>{t('recovery.body.weightEmpty')}</p>}
         </div>
 
         {/* Hydration */}
         <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 12px' }}>Hydratation</p>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 12px' }}>{t('recovery.body.hydration')}</p>
           <div style={{ display:'flex',alignItems:'flex-end',gap:12,marginBottom:16 }}>
             {/* Glass */}
             <svg width={36} height={50} viewBox="0 0 36 50">
@@ -152,7 +154,7 @@ export default function BodyTracking() {
               <text x={18} y={28} textAnchor="middle" fill="var(--text)" fontSize={9} fontWeight={700}>{todayHyd}L</text>
             </svg>
             <div style={{ flex:1 }}>
-              <p style={{ fontSize:12,color:'var(--text-mid)',margin:'0 0 8px' }}>Aujourd'hui :</p>
+              <p style={{ fontSize:12,color:'var(--text-mid)',margin:'0 0 8px' }}>{t('recovery.body.today')}</p>
               <div style={{ display:'flex',gap:6,flexWrap:'wrap' as const }}>
                 {HYDRATION_OPTS.map(v=>(
                   <button key={v} onClick={()=>saveHydration(v)}
@@ -168,14 +170,14 @@ export default function BodyTracking() {
 
       {/* Pain zones — pill grid */}
       <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
-        <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 12px' }}>Zones de douleur</p>
+        <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 12px' }}>{t('recovery.body.painZones')}</p>
         <div style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:14 }}>
           {BODY_ZONES.map(z => {
             const selected = painZones.includes(z.id)
             const cnt = zoneCount[z.id] ?? 0
             return (
               <button key={z.id} onClick={()=>togglePainZone(z.id)}
-                title={cnt > 0 ? `${cnt}× / 30j` : undefined}
+                title={cnt > 0 ? t('recovery.body.countPer30', { n: cnt }) : undefined}
                 style={{
                   padding:'6px 4px',
                   borderRadius:8,
@@ -190,7 +192,7 @@ export default function BodyTracking() {
                   transition:'all 0.15s',
                   position:'relative' as const,
                 }}>
-                {z.label}
+                {t(z.labelKey)}
                 {cnt > 0 && !selected && (
                   <span style={{ display:'block',fontSize:8,color:'rgba(239,68,68,0.6)',marginTop:1 }}>{cnt}×</span>
                 )}
@@ -200,17 +202,17 @@ export default function BodyTracking() {
         </div>
         <p style={{ fontSize:11,color:painZones.length>0?'#ef4444':'var(--text-dim)',fontWeight:painZones.length>0?600:400,margin:0 }}>
           {painZones.length > 0
-            ? `${painZones.length} zone${painZones.length>1?'s':''} signalée${painZones.length>1?'s':''} aujourd'hui`
-            : 'Aucune douleur aujourd\'hui'}
+            ? t(painZones.length>1?'recovery.body.zonesReported.other':'recovery.body.zonesReported.one', { n: painZones.length })
+            : t('recovery.body.noPain')}
         </p>
         {Object.keys(zoneCount).length > 0 && (
           <div style={{ marginTop:12 }}>
-            <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 6px',fontWeight:600 }}>Zones fréquentes (30j) :</p>
+            <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 6px',fontWeight:600 }}>{t('recovery.body.frequentZones')}</p>
             {Object.entries(zoneCount).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([z,c])=>{
               const info = BODY_ZONES.find(bz=>bz.id===z)
               return <div key={z} style={{ display:'flex',justifyContent:'space-between',marginBottom:3 }}>
-                <span style={{ fontSize:11,color:'var(--text-mid)' }}>{info?.label??z}</span>
-                <span style={{ fontSize:11,color:'#ef4444',fontWeight:600 }}>{c}× / 30j</span>
+                <span style={{ fontSize:11,color:'var(--text-mid)' }}>{info?.labelKey?t(info.labelKey):z}</span>
+                <span style={{ fontSize:11,color:'#ef4444',fontWeight:600 }}>{t('recovery.body.countPer30', { n: c })}</span>
               </div>
             })}
           </div>

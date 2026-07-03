@@ -14,6 +14,7 @@ import { useDaysTotals } from '@/hooks/useDaysTotals'
 import { buildPeriod, periodSummary, adherenceByType, periodDates } from './suiviData'
 import { KcalTrendChart, AdherenceByTypeChart, ProteinGkgChart, HydrationChart, LoggingGrid } from './SuiviCharts'
 import { DayMealsSheet } from './DayMealsSheet'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   dailyLogs: DailyLog[]
@@ -46,6 +47,7 @@ function Mod({ title, subtitle, children }: { title: string; subtitle: string; c
 }
 
 export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
+  const { t } = useI18n()
   const [days, setDays] = useState<number>(7)
   const [hydro, setHydro] = useState<Record<string, number>>({})
   const [dayOpen, setDayOpen] = useState<string | null>(null)
@@ -83,9 +85,9 @@ export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', padding: 'var(--space-2) 0 var(--space-6)' }}>
       {/* Intro courte : à quoi sert cet onglet (le user trouvait la page obscure). */}
       <div>
-        <h2 style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Ton suivi sur la période</h2>
+        <h2 style={{ fontFamily: FD, fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('nutrition.suivi.title')}</h2>
         <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 'var(--space-1) 0 0', lineHeight: 1.5 }}>
-          Ce que tu as réellement loggé dans l&apos;onglet Aujourd&apos;hui, agrégé jour par jour : quantité, régularité et — si tu as un plan — l&apos;écart à ta cible.
+          {t('nutrition.suivi.intro')}
         </p>
       </div>
 
@@ -97,42 +99,42 @@ export function SuiviSection({ dailyLogs, plan, weightKg, today }: Props) {
             borderRadius: 999, padding: '5px 14px',
             fontFamily: FB, fontSize: 13, fontWeight: days === p ? 600 : 500,
             color: days === p ? 'var(--text)' : 'var(--text-dim)',
-          }}>{p === 1 ? "Aujourd'hui" : `${p} jours`}</button>
+          }}>{p === 1 ? t('nutrition.tab.today') : t('nutrition.suivi.daysN', { n: p })}</button>
         ))}
       </div>
 
       {/* Bilan — 4 stats nues, grille responsive (2 col mobile, 4 desktop) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 'var(--space-5) var(--space-4)' }} className="suivi-stats">
         <style>{`@media(min-width:560px){.suivi-stats{grid-template-columns:repeat(4,minmax(0,1fr))!important}}`}</style>
-        <StatNu label="Jours loggés" value={`${summary.daysLogged}/${summary.totalDays}`} note={`${summary.loggedPct}%`} />
-        <StatNu label="Adhérence" value={summary.adherencePct == null ? '—' : `${summary.adherencePct}%`} note={summary.adherencePct == null ? 'pas de plan' : 'jours dans la cible'} />
-        <StatNu label="Kcal moy." value={summary.avgKcal == null ? '—' : `${summary.avgKcal}`} note={summary.avgTargetKcal ? `cible ${summary.avgTargetKcal}` : 'par jour loggé'} />
-        <StatNu label="Protéines" value={summary.avgGkg == null ? '—' : `${summary.avgGkg}`} note={summary.avgGkg == null ? 'poids manquant' : 'g/kg moy.'} />
+        <StatNu label={t('nutrition.suivi.statDaysLogged')} value={`${summary.daysLogged}/${summary.totalDays}`} note={`${summary.loggedPct}%`} />
+        <StatNu label={t('nutrition.suivi.statAdherence')} value={summary.adherencePct == null ? '—' : `${summary.adherencePct}%`} note={summary.adherencePct == null ? t('nutrition.suivi.noPlan') : t('nutrition.suivi.inTargetDays')} />
+        <StatNu label={t('nutrition.suivi.statAvgKcal')} value={summary.avgKcal == null ? '—' : `${summary.avgKcal}`} note={summary.avgTargetKcal ? t('nutrition.suivi.targetN', { n: summary.avgTargetKcal }) : t('nutrition.suivi.perLoggedDay')} />
+        <StatNu label={t('nutrition.macro.proteins')} value={summary.avgGkg == null ? '—' : `${summary.avgGkg}`} note={summary.avgGkg == null ? t('nutrition.suivi.weightMissing') : t('nutrition.suivi.gkgAvg')} />
       </div>
 
       {/* Hero — calories par jour (consommé vs cible) : le module le plus clair */}
-      <Mod title="Calories par jour" subtitle={hasPlan ? 'Touche un jour pour voir tes repas · tiret = cible du jour' : 'Touche un jour pour voir tes repas'}>
+      <Mod title={t('nutrition.suivi.caloriesPerDay')} subtitle={hasPlan ? t('nutrition.suivi.calSubPlan') : t('nutrition.suivi.calSub')}>
         <KcalTrendChart rows={rows} onSelectDay={setDayOpen} />
       </Mod>
 
       {/* Modules secondaires — uniquement ce qui a une vraie source de données */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-4)' }}>
         {hasPlan && (
-          <Mod title="Adhérence par type de jour" subtitle="Consommé (plein) vs cible (clair)">
+          <Mod title={t('nutrition.suivi.adherenceByType')} subtitle={t('nutrition.suivi.adherenceSub')}>
             <AdherenceByTypeChart data={byType} />
           </Mod>
         )}
-        <Mod title="Protéines (g/kg)" subtitle="Manges-tu assez de protéines pour ta charge ?">
+        <Mod title={t('nutrition.suivi.proteinGkg')} subtitle={t('nutrition.suivi.proteinSub')}>
           <ProteinGkgChart rows={rows} weightKg={weightKg} />
         </Mod>
-        <Mod title="Hydratation" subtitle="Litres loggés par jour · objectif 2,5 L">
+        <Mod title={t('nutrition.today.hydration')} subtitle={t('nutrition.suivi.hydrationSub')}>
           <HydrationChart data={hydroSeries} />
         </Mod>
-        <Mod title="Régularité de logging" subtitle={`${summary.daysLogged} / ${summary.totalDays} jours sur la période`}>
+        <Mod title={t('nutrition.suivi.loggingTitle')} subtitle={t('nutrition.suivi.loggingSub', { a: summary.daysLogged, b: summary.totalDays })}>
           <LoggingGrid rows={rows} />
           {summary.loggedPct < 50 && (
             <div style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', marginTop: 'var(--space-2)', lineHeight: 1.4 }}>
-              Sous 50 % de jours loggés, les tendances ci-dessus sont peu fiables.
+              {t('nutrition.suivi.lowLoggingWarn')}
             </div>
           )}
         </Mod>

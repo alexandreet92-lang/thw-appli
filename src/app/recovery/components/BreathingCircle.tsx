@@ -1,15 +1,17 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 type Phase = 'idle' | 'inhale' | 'hold' | 'exhale'
 
-const SEQUENCE: { phase: Phase; ms: number; label: string }[] = [
-  { phase: 'inhale', ms: 4000, label: 'Inspire' },
-  { phase: 'hold',   ms: 2000, label: 'Retiens' },
-  { phase: 'exhale', ms: 6000, label: 'Expire'  },
+const SEQUENCE: { phase: Phase; ms: number; labelKey: string }[] = [
+  { phase: 'inhale', ms: 4000, labelKey: 'recovery.breathing.inhale' },
+  { phase: 'hold',   ms: 2000, labelKey: 'recovery.breathing.hold' },
+  { phase: 'exhale', ms: 6000, labelKey: 'recovery.breathing.exhale'  },
 ]
 
 export default function BreathingCircle() {
+  const { t } = useI18n()
   const [active, setActive]   = useState(false)
   const [phase,  setPhase]    = useState<Phase>('idle')
   const [cycles, setCycles]   = useState(0)
@@ -59,16 +61,17 @@ export default function BreathingCircle() {
     ? 'radial-gradient(circle, #60A5FA, #06B6D4)'
     : 'radial-gradient(circle, #3B82F6, #1D4ED8)'
 
-  const label = phase === 'idle' ? 'Prêt' : (SEQUENCE.find(s => s.phase === phase)?.label ?? '')
+  const seqLabelKey = SEQUENCE.find(s => s.phase === phase)?.labelKey
+  const label = phase === 'idle' ? t('recovery.breathing.ready') : (seqLabelKey ? t(seqLabelKey) : '')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '28px 24px', gap: 18 }}>
       <div>
         <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 4px', textAlign: 'center' }}>
-          Récupération active
+          {t('recovery.breathing.eyebrow')}
         </p>
         <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 16, fontWeight: 700, margin: 0, textAlign: 'center', color: 'var(--text)' }}>
-          Respiration guidée · 4-2-6
+          {t('recovery.breathing.title')}
         </h3>
       </div>
 
@@ -109,26 +112,26 @@ export default function BreathingCircle() {
           color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
           boxShadow: '0 4px 14px rgba(59,130,246,0.35)',
         }}>
-          Démarrer
+          {t('recovery.breathing.start')}
         </button>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
           {cycles > 0 && (
             <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-              {cycles} cycle{cycles > 1 ? 's' : ''} complété{cycles > 1 ? 's' : ''}
+              {t(cycles > 1 ? 'recovery.breathing.cyclesDone.other' : 'recovery.breathing.cyclesDone.one', { n: cycles })}
             </span>
           )}
           <button onClick={stop} style={{
             padding: '7px 20px', borderRadius: 18, border: '1px solid var(--border)',
             background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
           }}>
-            Arrêter
+            {t('recovery.breathing.stop')}
           </button>
         </div>
       )}
 
       <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: 0, textAlign: 'center' }}>
-        4s inspire · 2s retenir · 6s expirer · réduit stress &amp; HRV
+        {t('recovery.breathing.footer')}
       </p>
     </div>
   )

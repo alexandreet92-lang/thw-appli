@@ -7,6 +7,7 @@
 import { useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import type { YearSummary } from './compositionData'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
@@ -25,6 +26,7 @@ function Spark({ pts }: { pts: { t: number; v: number }[] }) {
 }
 
 export function AnnualSheet({ summary, metricLabel, unit, onClose }: { summary: YearSummary; metricLabel: string; unit: string; onClose: () => void }) {
+  const { t } = useI18n()
   const startY = useRef<number | null>(null)
   const [closing, setClosing] = useState(false)
   // Fermeture animée : on joue le glissement vers le bas avant de démonter.
@@ -53,20 +55,20 @@ export function AnnualSheet({ summary, metricLabel, unit, onClose }: { summary: 
         <div style={{ width: 36, height: 4, borderRadius: 'var(--r-sm)', background: 'var(--border)', margin: '0 auto var(--space-4)' }} />
         <h2 style={{ fontFamily: FD, fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-1)' }}>{summary.year} · {metricLabel}</h2>
         <div style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', marginBottom: 'var(--space-4)' }}>
-          <span className="tnum">{summary.count}</span> mesure{summary.count > 1 ? 's' : ''} sur l&apos;année
+          <span className="tnum">{summary.count}</span> {t(summary.count > 1 ? 'nutrition.annual.measures' : 'nutrition.annual.measure')}
         </div>
         <div style={{ marginBottom: 'var(--space-4)' }}><Spark pts={summary.pts} /></div>
         <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-2)' }}>
-          {stat('Max', `${summary.max}${unit}`)}
-          {stat('Min', `${summary.min}${unit}`)}
+          {stat(t('nutrition.comp.max'), `${summary.max}${unit}`)}
+          {stat(t('nutrition.comp.min'), `${summary.min}${unit}`)}
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-5)' }}>
-          {stat('Amplitude', `${summary.amplitude}${unit}`)}
-          {stat('Variation', `${summary.delta > 0 ? '+' : ''}${summary.delta}${unit}`)}
+          {stat(t('nutrition.annual.amplitude'), `${summary.amplitude}${unit}`)}
+          {stat(t('nutrition.comp.variation'), `${summary.delta > 0 ? '+' : ''}${summary.delta}${unit}`)}
         </div>
         <button onClick={requestClose} style={{ width: '100%', height: 40, border: 'none', borderRadius: 'var(--r-sm)',
           background: 'var(--bg-card2)', color: 'var(--text)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-          Fermer
+          {t('nutrition.common.close')}
         </button>
       </div>
     </div>,

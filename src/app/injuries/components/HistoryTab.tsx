@@ -4,19 +4,21 @@
 import { AnimatedBar } from '@/components/ui/AnimatedBar'
 import { SEV, type Injury, type Severity } from '../types'
 import { durationDays, isRecidive, zonesRanking, sportsRanking } from '../lib'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)'
 const lbl: React.CSSProperties = { fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 var(--space-3)' }
-const LANES: { sev: Severity; label: string }[] = [
-  { sev: 'blessure', label: 'Blessure' }, { sev: 'douleur', label: 'Douleur' }, { sev: 'gene', label: 'Gêne' },
-]
 const ts = (d: string) => new Date(d).getTime()
 const moYr = (t: number) => { const d = new Date(t); return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(2)}` }
 
 // Frise des épisodes — lanes de sévérité, pastilles auréolées (taille = durée),
 // axe temporel daté. SVG brut (aucune lib), couleurs = tokens de sévérité.
 function Frise({ injuries, onOpen }: { injuries: Injury[]; onOpen: (i: Injury) => void }) {
-  if (!injuries.length) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>Aucun épisode enregistré.</p>
+  const { t } = useI18n()
+  const LANES: { sev: Severity; label: string }[] = [
+    { sev: 'blessure', label: t('injuries.sevBlessure') }, { sev: 'douleur', label: t('injuries.sevDouleur') }, { sev: 'gene', label: t('injuries.sevGene') },
+  ]
+  if (!injuries.length) return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>{t('injuries.friseEmpty')}</p>
   const W = 340, padT = 14, padB = 30, laneH = 48, laneGap = 10, plotL = 92, padR = 16
   const H = padT + LANES.length * laneH + (LANES.length - 1) * laneGap + padB
   const times = injuries.map(i => ts(i.onset_date))
@@ -55,7 +57,7 @@ function Frise({ injuries, onOpen }: { injuries: Injury[]; onOpen: (i: Injury) =
           <g key={i.id} style={{ cursor: 'pointer' }} onClick={() => onOpen(i)}>
             <circle cx={cx} cy={cy} r={r + 4} fill={c} opacity={0.16} />
             <circle cx={cx} cy={cy} r={r} fill={c} stroke="var(--bg-card)" strokeWidth={1.5}>
-              <title>{`${i.zone}${i.structure ? ' · ' + i.structure : ''} · ${SEV[i.severity].label} · ${durationDays(i)} j${i.activity ? ' · ' + i.activity : ''} · ${i.onset_date}`}</title>
+              <title>{`${i.zone}${i.structure ? ' · ' + i.structure : ''} · ${SEV[i.severity].label} · ${durationDays(i)} ${t('injuries.dayUnit')}${i.activity ? ' · ' + i.activity : ''} · ${i.onset_date}`}</title>
             </circle>
           </g>
         )
@@ -87,27 +89,28 @@ function Ranking({ title, data }: { title: string; data: { key: string; count: n
 }
 
 export function HistoryTab({ injuries, onOpen }: { injuries: Injury[]; onOpen: (i: Injury) => void }) {
+  const { t } = useI18n()
   const resolved = injuries.filter(i => i.status === 'resolved')
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
       <div>
-        <p style={lbl}>Frise des épisodes</p>
+        <p style={lbl}>{t('injuries.friseTitle')}</p>
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 'var(--space-4)' }}>
           <Frise injuries={injuries} onOpen={onOpen} />
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-6)' }}>
-        <Ranking title="Zones les plus touchées" data={zonesRanking(injuries)} />
-        <Ranking title="Sports les plus à risque" data={sportsRanking(injuries)} />
+        <Ranking title={t('injuries.rankZones')} data={zonesRanking(injuries)} />
+        <Ranking title={t('injuries.rankSports')} data={sportsRanking(injuries)} />
       </div>
       <div>
-        <p style={lbl}>Épisodes résolus</p>
-        {resolved.length === 0 ? <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>Aucun épisode résolu.</p> : resolved.map(i => (
+        <p style={lbl}>{t('injuries.resolvedTitle')}</p>
+        {resolved.length === 0 ? <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>{t('injuries.resolvedEmpty')}</p> : resolved.map(i => (
           <div key={i.id} onClick={() => onOpen(i)} className="card-interactive" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', background: 'var(--bg-card2)', borderRadius: 'var(--r-sm)', padding: 'var(--space-2) var(--space-3)', marginBottom: 'var(--space-2)' }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: SEV[i.severity].varc, flexShrink: 0 }} />
             <span style={{ fontFamily: FB, fontSize: 13, color: 'var(--text)', flex: 1 }}>{i.zone}</span>
-            {isRecidive(i, injuries) && <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, color: 'var(--text-dim)' }}>récidive</span>}
-            <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>{durationDays(i)} j</span>
+            {isRecidive(i, injuries) && <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, color: 'var(--text-dim)' }}>{t('injuries.recidiveTag')}</span>}
+            <span className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>{durationDays(i)} {t('injuries.dayUnit')}</span>
           </div>
         ))}
       </div>

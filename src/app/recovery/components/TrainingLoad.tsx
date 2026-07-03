@@ -3,13 +3,14 @@
 import { useMemo, useEffect, useState } from 'react'
 import type { ActivityRow } from './types'
 import { estimateTss, fmtSec } from './types'
+import { useI18n } from '@/lib/i18n'
 import PmcChart from './PmcChart'
 
 const ACWR_ZONES = [
-  { max:0.8,  color:'#3B8FD4', label:'Sous-entraîn.' },
-  { max:1.3,  color:'#10B981', label:'Zone optimale' },
-  { max:1.5,  color:'#f97316', label:'Attention' },
-  { max:99,   color:'#ef4444', label:'Surcharge' },
+  { max:0.8,  color:'#3B8FD4', labelKey:'recovery.load.acwr.under' },
+  { max:1.3,  color:'#10B981', labelKey:'recovery.load.acwr.optimal' },
+  { max:1.5,  color:'#f97316', labelKey:'recovery.load.acwr.caution' },
+  { max:99,   color:'#ef4444', labelKey:'recovery.load.acwr.overload' },
 ]
 
 const Z_COLORS = ['#6b7280','#3b82f6','#10B981','#eab308','#f97316','#ef4444','#8b5cf6']
@@ -24,6 +25,7 @@ function getWeekBounds(offsetWeeks = 0): { start: string; end: string } {
 }
 
 export default function TrainingLoad({ activities }: { activities: ActivityRow[] }) {
+  const { t } = useI18n()
   const [acwrMounted, setAcwrMounted] = useState(false)
   const [barsMounted, setBarsMounted] = useState(false)
 
@@ -75,7 +77,7 @@ export default function TrainingLoad({ activities }: { activities: ActivityRow[]
   const acwrZone = ACWR_ZONES.find(z => acwr <= z.max) ?? ACWR_ZONES[3]
   const acwrPct = Math.min(acwr / 2, 1) * 100
 
-  const monoLabel = monotony < 1.5 ? { l:'Normale', c:'#10B981' } : monotony < 2 ? { l:'Élevée', c:'#f97316' } : { l:'Critique', c:'#ef4444' }
+  const monoLabel = monotony < 1.5 ? { l:t('recovery.load.mono.normal'), c:'#10B981' } : monotony < 2 ? { l:t('recovery.load.mono.high'), c:'#f97316' } : { l:t('recovery.load.mono.critical'), c:'#ef4444' }
   const totalZone = zoneSecs.reduce((s,v)=>s+v,0)
 
   return (
@@ -87,11 +89,11 @@ export default function TrainingLoad({ activities }: { activities: ActivityRow[]
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:14 }}>
         {/* ACWR */}
         <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>Charge aiguë / chronique</p>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 4px' }}>{t('recovery.load.acwrTitle')}</p>
           <div style={{ display:'flex',alignItems:'baseline',gap:8,marginBottom:14 }}>
             <span style={{ fontFamily:'Syne,sans-serif',fontSize:28,fontWeight:800,color:acwrZone.color }}>{acwr.toFixed(2)}</span>
             <span style={{ fontSize:11,color:'var(--text-dim)' }}>ACWR</span>
-            <span style={{ padding:'2px 8px',borderRadius:20,background:`${acwrZone.color}22`,color:acwrZone.color,fontSize:10,fontWeight:600 }}>{acwrZone.label}</span>
+            <span style={{ padding:'2px 8px',borderRadius:20,background:`${acwrZone.color}22`,color:acwrZone.color,fontSize:10,fontWeight:600 }}>{t(acwrZone.labelKey)}</span>
           </div>
           {/* Gauge */}
           <div style={{ position:'relative' as const,height:10,borderRadius:5,overflow:'hidden',marginBottom:4, background:'linear-gradient(90deg,#3B8FD4 0%,#10B981 40%,#f97316 65%,#ef4444 75%,#ef4444 100%)' }}>
@@ -101,27 +103,27 @@ export default function TrainingLoad({ activities }: { activities: ActivityRow[]
             <span>0.0</span><span>0.8</span><span>1.3</span><span>1.5</span><span>2.0</span>
           </div>
           <div style={{ display:'flex',gap:16,marginTop:12 }}>
-            <div><p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px' }}>SM 7j</p><p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,color:'var(--text)' }}>{tss7}</p></div>
-            <div><p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px' }}>SM 28j</p><p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,color:'var(--text)' }}>{tss28}</p></div>
+            <div><p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px' }}>{t('recovery.load.sm7')}</p><p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,color:'var(--text)' }}>{tss7}</p></div>
+            <div><p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 1px' }}>{t('recovery.load.sm28')}</p><p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,color:'var(--text)' }}>{tss28}</p></div>
           </div>
         </div>
 
         {/* Monotonie & Strain */}
         <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 14px' }}>Monotonie & Strain</p>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 14px' }}>{t('recovery.load.monoStrainTitle')}</p>
           <div style={{ display:'flex',gap:20 }}>
             <div>
-              <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 4px' }}>Monotonie</p>
+              <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 4px' }}>{t('recovery.load.monotony')}</p>
               <div style={{ display:'flex',alignItems:'center',gap:8 }}>
                 <span style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:800,color:monoLabel.c }}>{monotony > 0 ? monotony.toFixed(1) : '—'}</span>
                 {monotony > 0 && <span style={{ padding:'2px 8px',borderRadius:20,background:`${monoLabel.c}22`,color:monoLabel.c,fontSize:10,fontWeight:600 }}>{monoLabel.l}</span>}
               </div>
-              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',lineHeight:1.4 }}>SM moy / écart-type</p>
+              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',lineHeight:1.4 }}>{t('recovery.load.monotonyFormula')}</p>
             </div>
             <div>
               <p style={{ fontSize:10,color:'var(--text-dim)',margin:'0 0 4px' }}>Strain</p>
               <span style={{ fontFamily:'Syne,sans-serif',fontSize:26,fontWeight:800,color:'var(--text)' }}>{strain > 0 ? strain : '—'}</span>
-              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',lineHeight:1.4 }}>SM semaine × monotonie</p>
+              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'4px 0 0',lineHeight:1.4 }}>{t('recovery.load.strainFormula')}</p>
             </div>
           </div>
         </div>
@@ -130,7 +132,7 @@ export default function TrainingLoad({ activities }: { activities: ActivityRow[]
       {/* Zones */}
       {zoneSecs.length > 0 && (
         <div style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:20,padding:20,boxShadow:'var(--shadow-card)' }}>
-          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 12px' }}>Répartition par zones — cette semaine</p>
+          <p style={{ fontSize:10,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.1em',color:'var(--text-dim)',margin:'0 0 12px' }}>{t('recovery.load.zonesTitle')}</p>
           {zoneSecs.map((s, zi) => (
             <div key={zi} style={{ marginBottom:8 }}>
               <div style={{ display:'flex',justifyContent:'space-between',marginBottom:3 }}>

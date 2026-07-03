@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import { CountUp } from '@/components/ui/AnimatedBar'
 import DatasTab from './DatasTab'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import {
   TEST_BENCHMARKS,
@@ -131,6 +132,7 @@ function SelectedDatumBubble({ datum, onClear, onAsk }: {
   datum: SelectedDatum; onClear: () => void; onAsk: () => void
 }) {
   const [mounted, setMounted] = useState(false)
+  const { t } = useI18n()
   useEffect(() => { setMounted(true) }, [])
   if (!mounted) return null
 
@@ -161,7 +163,7 @@ function SelectedDatumBubble({ datum, onClear, onAsk }: {
           whiteSpace:'nowrap' as const, flexShrink:0,
         }}
       >
-        Demander au Coach IA
+        {t('performance.askAICoach')}
       </button>
       <button
         onClick={onClear}
@@ -240,6 +242,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
   const [profLoading,  setProfLoading]  = useState(true)
   const [profileEmpty, setProfileEmpty] = useState(false)
   const isMobile = useWindowWidth() < 768
+  const { t } = useI18n()
 
   // Profil Spécifique
   const [specSport,  setSpecSport]  = useState<SportSpecId>('running')
@@ -384,7 +387,7 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'40px 0', color:'var(--text-dim)', fontSize:13, gap:10 }}>
         <span style={{ width:16, height:16, border:'2px solid var(--border)', borderTopColor:'#06B6D4', borderRadius:'50%', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
-        Chargement du profil…
+        {t('performance.loadingProfile')}
       </div>
     )
   }
@@ -395,10 +398,10 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
       {profileEmpty && (
         <div style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
           <div style={{ flex: 1 }}>
-            <p style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Profil non configuré</p>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>Les valeurs affichées sont des exemples. Renseigne ton profil pour des analyses personnalisées.</p>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.profileNotConfigured')}</p>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>{t('performance.profileNotConfiguredDesc')}</p>
           </div>
-          <button onClick={() => setEditing(true)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>Compléter →</button>
+          <button onClick={() => setEditing(true)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>{t('performance.complete')} →</button>
         </div>
       )}
 
@@ -406,20 +409,20 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)', marginBottom: 'var(--space-5)' }}>
           <div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Profil Global</h2>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>Paramètres physiologiques transversaux</p>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.globalProfile')}</h2>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>{t('performance.globalProfileSubtitle')}</p>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'baseline' }}>
             {!editing && onAnalyzeProfile && (
-              <button onClick={() => { setAnalyzing(true); onAnalyzeProfile().finally(() => setAnalyzing(false)) }} disabled={analyzing} style={{ border: 'none', background: 'transparent', cursor: analyzing ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)', opacity: analyzing ? 0.6 : 1 }}>{analyzing ? 'Analyse…' : 'Analyser'}</button>
+              <button onClick={() => { setAnalyzing(true); onAnalyzeProfile().finally(() => setAnalyzing(false)) }} disabled={analyzing} style={{ border: 'none', background: 'transparent', cursor: analyzing ? 'default' : 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)', opacity: analyzing ? 0.6 : 1 }}>{analyzing ? t('performance.analyzing') : t('performance.analyze')}</button>
             )}
             {editing ? (
               <>
-                <button onClick={() => setEditing(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text-dim)' }}>Annuler</button>
-                <button onClick={() => { void handleSaveGlobal() }} disabled={saving} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)', opacity: saving ? 0.6 : 1 }}>{saving ? 'Enregistrement…' : savedOk ? 'Enregistré' : 'Enregistrer'}</button>
+                <button onClick={() => setEditing(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text-dim)' }}>{t('performance.cancel')}</button>
+                <button onClick={() => { void handleSaveGlobal() }} disabled={saving} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--primary)', opacity: saving ? 0.6 : 1 }}>{saving ? t('performance.saving') : savedOk ? t('performance.saved') : t('performance.save')}</button>
               </>
             ) : (
-              <button onClick={() => setEditing(true)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text-mid)' }}>Modifier</button>
+              <button onClick={() => setEditing(true)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text-mid)' }}>{t('performance.edit')}</button>
             )}
           </div>
         </div>
@@ -427,11 +430,11 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
           // Mêmes 8 données que la grille d'affichage (sans Poids ni Âge).
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
             <NInput label="FTP" unit="W" value={p.ftp} onChange={v => setP({ ...p, ftp: v })} />
-            <TInput label="Allure seuil" value={p.thresholdPace} onChange={v => setP({ ...p, thresholdPace: v })} placeholder="4:08" />
+            <TInput label={t('performance.thresholdPace')} value={p.thresholdPace} onChange={v => setP({ ...p, thresholdPace: v })} placeholder="4:08" />
             <NInput label="VMA" unit="km/h" value={p.vma} onChange={v => setP({ ...p, vma: v })} step={0.5} />
             <TInput label="CSS" value={p.css} onChange={v => setP({ ...p, css: v })} placeholder="1:28" />
-            <NInput label="FC max" unit="bpm" value={p.hrMax} onChange={v => setP({ ...p, hrMax: v })} />
-            <NInput label="FC repos" unit="bpm" value={p.hrRest} onChange={v => setP({ ...p, hrRest: v })} />
+            <NInput label={t('performance.hrMax')} unit="bpm" value={p.hrMax} onChange={v => setP({ ...p, hrMax: v })} />
+            <NInput label={t('performance.hrRest')} unit="bpm" value={p.hrRest} onChange={v => setP({ ...p, hrRest: v })} />
             <NInput label="LTHR" unit="bpm" value={p.lthr} onChange={v => setP({ ...p, lthr: v })} />
             <NInput label="VO2max" value={p.vo2max} onChange={v => setP({ ...p, vo2max: v })} />
           </div>
@@ -451,18 +454,18 @@ function ProfilTab({ onSelect, selectedDatum, profile: p, setProfile: setP, onAn
 
       {/* Profil Spécifique */}
       <div>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Profil Spécifique</h2>
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-1) 0 var(--space-4)' }}>Benchmarks personnels par discipline</p>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('performance.specificProfile')}</h2>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-1) 0 var(--space-4)' }}>{t('performance.specificProfileSubtitle')}</p>
         <ProfilSpecific p={p} wkg={wkg} specSport={specSport} onSport={setSpecSport} params={specParams[specSport]} fields={SPORT_SPEC_FIELDS[specSport]} onEditBenchmarks={() => setBenchOpen(true)} />
       </div>
 
       {/* Niveau estimé */}
       <div>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-4)' }}>Niveau estimé</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-4)' }}>{t('performance.estimatedLevel')}</h2>
         <LevelBars metrics={[
-          { label: 'W/kg', display: wkg, pct: Math.min(parseFloat(wkg) / 6 * 100, 100), qualifier: parseFloat(wkg) >= 4.5 ? 'Expert' : parseFloat(wkg) >= 3.5 ? 'Avancé' : parseFloat(wkg) >= 2.5 ? 'Intermédiaire' : 'Débutant', selected: selectedDatum?.label === 'W/kg', onSelect: () => onSelect('W/kg', `${wkg} W/kg`) },
-          { label: 'VO2max', display: `${p.vo2max}`, pct: Math.min(p.vo2max / 80 * 100, 100), qualifier: p.vo2max >= 65 ? 'Élite' : p.vo2max >= 55 ? 'Élevé' : p.vo2max >= 45 ? 'Bon' : 'Moyen', selected: selectedDatum?.label === 'VO2max', onSelect: () => onSelect('VO2max', `${p.vo2max} ml/kg/min`) },
-          { label: 'FC repos', display: `${p.hrRest}`, pct: Math.min(Math.max(0, 80 - p.hrRest) / 50 * 100, 100), qualifier: p.hrRest <= 40 ? 'Élite' : p.hrRest <= 50 ? 'Élevé' : p.hrRest <= 60 ? 'Bon' : 'Moyen', selected: selectedDatum?.label === 'FC repos', onSelect: () => onSelect('FC repos', `${p.hrRest} bpm`) },
+          { label: 'W/kg', display: wkg, pct: Math.min(parseFloat(wkg) / 6 * 100, 100), qualifier: parseFloat(wkg) >= 4.5 ? t('performance.levelExpert') : parseFloat(wkg) >= 3.5 ? t('performance.levelAdvanced') : parseFloat(wkg) >= 2.5 ? t('performance.levelIntermediate') : t('performance.levelBeginner'), selected: selectedDatum?.label === 'W/kg', onSelect: () => onSelect('W/kg', `${wkg} W/kg`) },
+          { label: 'VO2max', display: `${p.vo2max}`, pct: Math.min(p.vo2max / 80 * 100, 100), qualifier: p.vo2max >= 65 ? t('performance.levelElite') : p.vo2max >= 55 ? t('performance.levelHigh') : p.vo2max >= 45 ? t('performance.levelGood') : t('performance.levelAverage'), selected: selectedDatum?.label === 'VO2max', onSelect: () => onSelect('VO2max', `${p.vo2max} ml/kg/min`) },
+          { label: 'FC repos', display: `${p.hrRest}`, pct: Math.min(Math.max(0, 80 - p.hrRest) / 50 * 100, 100), qualifier: p.hrRest <= 40 ? t('performance.levelElite') : p.hrRest <= 50 ? t('performance.levelHigh') : p.hrRest <= 60 ? t('performance.levelGood') : t('performance.levelAverage'), selected: selectedDatum?.label === 'FC repos', onSelect: () => onSelect('FC repos', `${p.hrRest} bpm`) },
         ]} />
       </div>
 
@@ -1270,6 +1273,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
   const [pendingDocs, setPendingDocs] = useState<{ file: File; name: string }[]>([])
   const [gender, setGender]           = useState<'M' | 'F'>('M')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { t } = useI18n()
 
   const testId = ot?.test.id ?? null
 
@@ -1482,21 +1486,21 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
 
         {!proto ? (
           <div style={{ textAlign:'center' as const, padding:'32px 0', color:'var(--text-dim)', fontSize:13 }}>
-            Protocole en cours de rédaction…
+            {t('performance.protocolInProgress')}
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
 
             {/* Objectif */}
             <div style={{ padding:'13px 16px', borderRadius:13, background:`${cfg.color}0d`, border:`1px solid ${cfg.color}30` }}>
-              <SH icon={<IcoTarget/>} label="Objectif" color={cfg.color}/>
+              <SH icon={<IcoTarget/>} label={t('performance.objective')} color={cfg.color}/>
               <p style={{ fontSize:13, color:'var(--text)', margin:0, lineHeight:1.65 }}>{proto.objectif}</p>
             </div>
 
             {/* Avertissement */}
             {proto.avertissement && (
               <div style={{ padding:'12px 16px', borderRadius:13, background:'rgba(251,146,60,0.08)', border:'1px solid rgba(251,146,60,0.35)' }}>
-                <SH icon={<IcoWarn/>} label="Attention" color="#f97316"/>
+                <SH icon={<IcoWarn/>} label={t('performance.warning')} color="#f97316"/>
                 <p style={{ fontSize:12.5, color:'var(--text-mid)', margin:0, lineHeight:1.6 }}>{proto.avertissement}</p>
               </div>
             )}
@@ -1504,7 +1508,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
             {/* Conditions + Échauffement — grid 2 col */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
               <div style={{ padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-                <SH icon={<IcoCheck/>} label="Conditions" color="var(--text-mid)"/>
+                <SH icon={<IcoCheck/>} label={t('performance.conditions')} color="var(--text-mid)"/>
                 <ul style={{ margin:0, padding:'0 0 0 14px', display:'flex', flexDirection:'column', gap:4 }}>
                   {proto.conditions.map((c,i) => (
                     <li key={i} style={{ fontSize:11.5, color:'var(--text-mid)', lineHeight:1.5 }}>{c}</li>
@@ -1512,7 +1516,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                 </ul>
               </div>
               <div style={{ padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-                <SH icon={<IcoFlame/>} label="Échauffement" color="#f59e0b"/>
+                <SH icon={<IcoFlame/>} label={t('performance.warmup')} color="#f59e0b"/>
                 <ul style={{ margin:0, padding:'0 0 0 14px', display:'flex', flexDirection:'column', gap:4 }}>
                   {proto.echauffement.map((e,i) => (
                     <li key={i} style={{ fontSize:11.5, color:'var(--text-mid)', lineHeight:1.5 }}>{e}</li>
@@ -1523,7 +1527,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
 
             {/* Étapes */}
             <div style={{ padding:'13px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <SH icon={<IcoList/>} label="Protocole — étapes" color="var(--text)"/>
+              <SH icon={<IcoList/>} label={t('performance.protocolSteps')} color="var(--text)"/>
               <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
                 {proto.etapes.map((e, i) => (
                   <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
@@ -1536,7 +1540,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
 
             {/* Interprétation */}
             <div style={{ padding:'13px 16px', borderRadius:13, background:'rgba(34,197,94,0.06)', border:'1px solid rgba(34,197,94,0.25)' }}>
-              <SH icon={<IcoBook/>} label="Interprétation des résultats" color="#22c55e"/>
+              <SH icon={<IcoBook/>} label={t('performance.resultsInterpretation')} color="#22c55e"/>
               <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
                 {proto.interpretation.map((r, i) => (
                   <div key={i} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
@@ -1550,7 +1554,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
             {/* Erreurs + Fréquence — grid 2 col */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
               <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.20)' }}>
-                <SH icon={<IcoWarn/>} label="Erreurs courantes" color="#ef4444"/>
+                <SH icon={<IcoWarn/>} label={t('performance.commonMistakes')} color="#ef4444"/>
                 <ul style={{ margin:0, padding:'0 0 0 14px', display:'flex', flexDirection:'column', gap:4 }}>
                   {proto.erreurs.map((e,i) => (
                     <li key={i} style={{ fontSize:11.5, color:'var(--text-mid)', lineHeight:1.5 }}>{e}</li>
@@ -1558,7 +1562,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                 </ul>
               </div>
               <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.22)' }}>
-                <SH icon={<IcoClock/>} label="Fréquence" color="#818cf8"/>
+                <SH icon={<IcoClock/>} label={t('performance.frequency')} color="#818cf8"/>
                 <p style={{ fontSize:12, color:'var(--text-mid)', margin:0, lineHeight:1.6 }}>{proto.frequence}</p>
               </div>
             </div>
@@ -1573,10 +1577,10 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                   <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:`1px solid ${cfg.color}35` }}>
                     {/* Gender toggle in header */}
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-                      <SH icon={<IcoSave/>} label="Saisir mes résultats" color={cfg.color}/>
+                      <SH icon={<IcoSave/>} label={t('performance.enterMyResults')} color={cfg.color}/>
                       {hasBench && (
                         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                          <span style={{ fontSize:10, color:'var(--text-dim)' }}>Genre :</span>
+                          <span style={{ fontSize:10, color:'var(--text-dim)' }}>{t('performance.gender')}</span>
                           <div style={{ display:'flex', background:'var(--bg)', borderRadius:7, overflow:'hidden', border:'1px solid var(--border)' }}>
                             {(['M','F'] as const).map(g => (
                               <button key={g} onClick={() => setGender(g)} style={{ padding:'3px 11px', background:gender===g?cfg.color:'transparent', border:'none', cursor:'pointer', color:gender===g?'#fff':'var(--text-dim)', fontSize:11, fontWeight:700, transition:'background 0.15s' }}>{g}</button>
@@ -1595,7 +1599,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                           <input
                             value={vals[f.cle] ?? ''}
                             onChange={e => setVal(f.cle, e.target.value)}
-                            placeholder={f.placeholder ?? (f.unite ? `En ${f.unite}` : '—')}
+                            placeholder={f.placeholder ?? (f.unite ? t('performance.inUnit', { unit: f.unite }) : '—')}
                             style={{ padding:'7px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', width:'100%', boxSizing:'border-box' as const }}
                           />
                           {f.helper && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{f.helper}</span>}
@@ -1607,7 +1611,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                       disabled={saving}
                       style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:10, background:saved ? 'rgba(34,197,94,0.25)' : saving ? 'var(--bg-card2)' : `${cfg.color}22`, color:saved ? '#22c55e' : saving ? 'var(--text-dim)' : cfg.color, fontSize:13, fontWeight:700, cursor:saving?'not-allowed':'pointer', fontFamily:'DM Sans,sans-serif', transition:'all 0.2s', border:`1px solid ${saved ? 'rgba(34,197,94,0.5)' : saving ? 'var(--border)' : cfg.color+'40'}` }}
                     >
-                      {saved ? '✓ Résultats enregistrés' : saving ? 'Enregistrement…' : 'Enregistrer ce test'}
+                      {saved ? t('performance.resultsSaved') : saving ? t('performance.saving') : t('performance.saveThisTest')}
                     </button>
                   </div>
 
@@ -1621,7 +1625,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                     <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:12 }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth={2}><path d="M3 3h18M3 9h18M3 15h18M3 21h18"/></svg>
-                        <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:cfg.color }}>Niveaux de référence</span>
+                        <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:cfg.color }}>{t('performance.referenceLevels')}</span>
                         {scoreResult && (
                           <ScoreBadge score={scoreResult.overall} level={scoreResult.level} size="sm" />
                         )}
@@ -1640,7 +1644,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
 
             {/* Documents */}
             <div style={{ padding:'14px 16px', borderRadius:13, background:'var(--bg-card2)', border:'1px solid var(--border)' }}>
-              <SH icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>} label="Documents" color="var(--text-mid)"/>
+              <SH icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>} label={t('performance.documents')} color="var(--text-mid)"/>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -1672,11 +1676,11 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-dim)' }}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Ajouter un fichier (PDF, image, document…)
+                {t('performance.addFile')}
               </button>
               {pendingDocs.length > 0 && (
                 <p style={{ fontSize:10, color:'var(--text-dim)', margin:'6px 0 0', textAlign:'center' as const }}>
-                  {pendingDocs.length} fichier{pendingDocs.length > 1 ? 's' : ''} — seront uploadés à l&apos;enregistrement
+                  {t('performance.filesWillUpload', { n: pendingDocs.length })}
                 </p>
               )}
             </div>
@@ -1691,14 +1695,14 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                   <div style={{ display:'flex', alignItems:'center', gap:7 }}>
                     <IcoClock/>
                     <span style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.07em', color:'var(--text-mid)' }}>
-                      Historique ({history.length})
+                      {t('performance.history')} ({history.length})
                     </span>
                   </div>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2} style={{ transform: showHistory ? 'rotate(180deg)' : 'none', transition:'transform 0.2s' }}><path d="M6 9l6 6 6-6"/></svg>
                 </div>
                 {showHistory && (
                   histLoading ? (
-                    <p style={{ fontSize:11, color:'var(--text-dim)', margin:'10px 0 0' }}>Chargement…</p>
+                    <p style={{ fontSize:11, color:'var(--text-dim)', margin:'10px 0 0' }}>{t('performance.loading')}</p>
                   ) : (
                     <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:10 }}>
                       {history.map(entry => (
@@ -1756,6 +1760,7 @@ interface GlobalTestResult {
 function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
   const [results,  setResults]  = useState<GlobalTestResult[]>([])
   const [loading,  setLoading]  = useState(true)
+  const { t } = useI18n()
 
   useEffect(() => {
     async function load() {
@@ -1801,18 +1806,18 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
           <div>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:19, fontWeight:800, margin:'0 0 3px', letterSpacing:'-0.02em' }}>Historique des tests</h2>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>Toutes disciplines · triés par date</p>
+            <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:19, fontWeight:800, margin:'0 0 3px', letterSpacing:'-0.02em' }}>{t('performance.testsHistory')}</h2>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>{t('performance.allDisciplinesSortedByDate')}</p>
           </div>
           <button onClick={onClose} style={{ width:32, height:32, borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-dim)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>×</button>
         </div>
 
         {loading ? (
-          <div style={{ textAlign:'center' as const, padding:'40px 0', color:'var(--text-dim)', fontSize:13 }}>Chargement…</div>
+          <div style={{ textAlign:'center' as const, padding:'40px 0', color:'var(--text-dim)', fontSize:13 }}>{t('performance.loading')}</div>
         ) : results.length === 0 ? (
           <div style={{ textAlign:'center' as const, padding:'40px 0' }}>
-            <p style={{ fontSize:14, color:'var(--text-dim)', marginBottom:8 }}>Aucun test enregistré</p>
-            <p style={{ fontSize:12, color:'var(--text-dim)' }}>Ouvre un protocole de test et clique sur &quot;Enregistrer ce test&quot; pour commencer.</p>
+            <p style={{ fontSize:14, color:'var(--text-dim)', marginBottom:8 }}>{t('performance.noTestSaved')}</p>
+            <p style={{ fontSize:12, color:'var(--text-dim)' }}>{t('performance.noTestSavedDesc')}</p>
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
@@ -1875,6 +1880,7 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
   const [openTest,       setOpenTest]       = useState<OpenTest | null>(null)
   const [showHistorique, setShowHistorique] = useState(false)
   const isMobile = useWindowWidth() < 768
+  const { t } = useI18n()
 
   // Open specific test on mount when navigated via URL params
   useEffect(() => {
@@ -1925,7 +1931,7 @@ function TestsTab({ profile, onAnalyzeTest, initialSport, initialTestId, onFtpUp
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-dim)' }}
         >
           <IcoClock/>
-          Historique
+          {t('performance.history')}
         </button>
       </div>
 
@@ -1975,6 +1981,7 @@ export default function PerformancePage() {
   const [aiInitMsg,   setAiInitMsg]     = useState<string | undefined>(undefined)
   const [initialTest, setInitialTest]   = useState<{ sport: TestSport; testId: string } | null>(null)
   const isMobile = useWindowWidth() < 768
+  const { t } = useI18n()
 
   // Read URL params on first mount — navigate to specific test if needed
   useEffect(() => {
@@ -2007,12 +2014,12 @@ export default function PerformancePage() {
         body: JSON.stringify({ action: 'analyzeProfile', payload: { profile } }),
       })
       const data = await res.json() as { reply?: string; error?: string }
-      setAiInitLabel('Analyse mon profil')
-      setAiInitMsg(data.reply ?? data.error ?? 'Erreur lors de l\'analyse.')
+      setAiInitLabel(t('performance.analyzeMyProfile'))
+      setAiInitMsg(data.reply ?? data.error ?? t('performance.analysisError'))
       setAiOpen(true)
     } catch {
-      setAiInitLabel('Analyse mon profil')
-      setAiInitMsg('Erreur réseau. Vérifie ta connexion et réessaie.')
+      setAiInitLabel(t('performance.analyzeMyProfile'))
+      setAiInitMsg(t('performance.networkError'))
       setAiOpen(true)
     }
   }
@@ -2025,12 +2032,12 @@ export default function PerformancePage() {
         body: JSON.stringify({ action: 'analyzeTest', payload: { testName: test.name, testResults: {}, profile } }),
       })
       const data = await res.json() as { reply?: string; error?: string }
-      setAiInitLabel(`Analyse : ${test.name}`)
-      setAiInitMsg(data.reply ?? data.error ?? 'Erreur lors de l\'analyse.')
+      setAiInitLabel(t('performance.analysisOf', { name: test.name }))
+      setAiInitMsg(data.reply ?? data.error ?? t('performance.analysisError'))
       setAiOpen(true)
     } catch {
-      setAiInitLabel(`Analyse : ${test.name}`)
-      setAiInitMsg('Erreur réseau. Vérifie ta connexion et réessaie.')
+      setAiInitLabel(t('performance.analysisOf', { name: test.name }))
+      setAiInitMsg(t('performance.networkError'))
       setAiOpen(true)
     }
   }
@@ -2046,11 +2053,11 @@ export default function PerformancePage() {
       })
       const data = await res.json() as { reply?: string; error?: string }
       setAiInitLabel(`${selectedDatum.label} : ${selectedDatum.value}`)
-      setAiInitMsg(data.reply ?? data.error ?? 'Erreur lors de l\'analyse.')
+      setAiInitMsg(data.reply ?? data.error ?? t('performance.analysisError'))
       setAiOpen(true)
     } catch {
       setAiInitLabel(`${selectedDatum.label} : ${selectedDatum.value}`)
-      setAiInitMsg('Erreur réseau. Vérifie ta connexion et réessaie.')
+      setAiInitMsg(t('performance.networkError'))
       setAiPrefill(buildAIMessage(selectedDatum))
       setAiOpen(true)
     }
@@ -2063,7 +2070,7 @@ export default function PerformancePage() {
       {/* ── Sous-navigation de page (composant réutilisable) ── */}
       <TabbedPageLayout
         title="Performance"
-        tabs={[{ id: 'profil', label: 'Profil', subtitle: 'Zones & benchmarks', icon: User }, { id: 'datas', label: 'Datas', subtitle: 'Records & volume', icon: Database }, { id: 'tests', label: 'Tests', subtitle: 'Protocoles', icon: FlaskConical }]}
+        tabs={[{ id: 'profil', label: t('performance.tabProfil'), subtitle: t('performance.tabProfilSubtitle'), icon: User }, { id: 'datas', label: t('performance.tabDatas'), subtitle: t('performance.tabDatasSubtitle'), icon: Database }, { id: 'tests', label: t('performance.tabTests'), subtitle: t('performance.tabTestsSubtitle'), icon: FlaskConical }]}
         active={tab}
         onChange={setTab}
         renderPanel={id => id === 'profil' ? (

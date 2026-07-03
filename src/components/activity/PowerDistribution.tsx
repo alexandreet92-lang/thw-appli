@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   watts: number[]
@@ -28,6 +29,7 @@ function fmtTimeShort(s: number): string {
 }
 
 export function PowerDistribution({ watts, ftp }: Props) {
+  const { t } = useI18n()
   const [mode, setMode] = useState<'abs' | 'pct'>('abs')
 
   const { bins, zoneTime, totalActive } = useMemo(() => {
@@ -79,11 +81,11 @@ export function PowerDistribution({ watts, ftp }: Props) {
     const z2pct = zoneTime[1] / totalActive
     const z3pct = zoneTime[2] / totalActive
     if (z2pct > 0.50)
-      return { type: 'good',    text: 'Profil d\'endurance — effort polarisé. La majorité du temps en Z2 favorise les adaptations aérobies de base.' }
+      return { type: 'good',    text: t('activities.powerInsightEndurance') }
     if (z3pct > 0.40)
-      return { type: 'neutral', text: 'Profil tempo — effort soutenu. Charge élevée sur la filière aérobie-lactique.' }
-    return   { type: 'neutral', text: 'Effort variable — distribution étalée sur plusieurs zones de puissance.' }
-  }, [ftp, zoneTime, totalActive])
+      return { type: 'neutral', text: t('activities.powerInsightTempo') }
+    return   { type: 'neutral', text: t('activities.powerInsightVariable') }
+  }, [ftp, zoneTime, totalActive, t])
 
   if (bins.length === 0) return null
 
@@ -102,7 +104,7 @@ export function PowerDistribution({ watts, ftp }: Props) {
               color: mode === m ? 'var(--text)' : 'var(--text-dim)',
             }}
           >
-            {m === 'abs' ? 'Absolu (min)' : 'Relatif (%)'}
+            {m === 'abs' ? t('activities.absoluteMin') : t('activities.relativePct')}
           </button>
         ))}
       </div>

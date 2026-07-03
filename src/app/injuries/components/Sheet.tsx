@@ -4,12 +4,14 @@
 // en fondu). Toute fermeture (voile, croix, glissement) passe par requestClose.
 import { useCallback, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 
 const FD = 'var(--font-display)'
 
 export function Sheet({ title, onClose, children, footer }: {
   title: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode
 }) {
+  const { t } = useI18n()
   const [closing, setClosing] = useState(false)
   const startY = useRef<number | null>(null)
   const requestClose = useCallback(() => { setClosing(true); setTimeout(onClose, 260) }, [onClose])
@@ -28,7 +30,7 @@ export function Sheet({ title, onClose, children, footer }: {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-5) var(--space-6) var(--space-3)', flexShrink: 0 }}>
           <h2 style={{ fontFamily: FD, fontSize: 18, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{title}</h2>
-          <button onClick={requestClose} aria-label="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', padding: 4, display: 'flex' }}>
+          <button onClick={requestClose} aria-label={t('injuries.close')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', padding: 4, display: 'flex' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>

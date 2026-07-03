@@ -7,23 +7,28 @@ import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import dynamic from 'next/dynamic'
 import { Maximize2, Minimize2 } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 type LayerId = 'std' | 'sat' | 'hyb'
 
 interface LatLng { lat: number; lng: number }
 
 // Chargement côté client uniquement (Leaflet ne supporte pas le SSR)
-const ActivityMapInner = dynamic(() => import('./ActivityMapInner'), {
-  ssr: false,
-  loading: () => (
+function MapLoading() {
+  const { t } = useI18n()
+  return (
     <div style={{
       width: '100%', height: '100%',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: '#0F172A', color: '#64748B', fontSize: 12,
     }}>
-      Chargement de la carte…
+      {t('activities.loadingMap')}
     </div>
-  ),
+  )
+}
+const ActivityMapInner = dynamic(() => import('./ActivityMapInner'), {
+  ssr: false,
+  loading: () => <MapLoading />,
 })
 
 // ── Décodeur Google Polyline ──────────────────────────────────────────────────

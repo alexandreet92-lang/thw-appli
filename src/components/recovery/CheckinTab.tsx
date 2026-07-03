@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { computeReadiness, fatigueScore, type CheckinScales } from '@/lib/recovery/computeReadiness'
+import { useI18n } from '@/lib/i18n'
 
 export interface ReadinessInputsLite {
   hrvToday: number | null
@@ -18,11 +19,11 @@ export interface ReadinessInputsLite {
   tsb: number | null
 }
 
-const FIELDS: { key: keyof CheckinScales; label: string; lo: string; hi: string }[] = [
-  { key: 'sleepQuality', label: 'Qualité du sommeil', lo: 'mauvaise', hi: 'excellente' },
-  { key: 'fatigue',      label: 'Fatigue',            lo: 'aucune',   hi: 'intense' },
-  { key: 'soreness',     label: 'Courbatures',        lo: 'aucunes',  hi: 'intenses' },
-  { key: 'mood',         label: 'Humeur',             lo: 'basse',    hi: 'excellente' },
+const FIELDS: { key: keyof CheckinScales; labelKey: string; loKey: string; hiKey: string }[] = [
+  { key: 'sleepQuality', labelKey: 'recovery.checkin.field.sleepQuality', loKey: 'recovery.checkin.field.sleepQuality.lo', hiKey: 'recovery.checkin.field.sleepQuality.hi' },
+  { key: 'fatigue',      labelKey: 'recovery.checkin.field.fatigue',      loKey: 'recovery.checkin.field.fatigue.lo',      hiKey: 'recovery.checkin.field.fatigue.hi' },
+  { key: 'soreness',     labelKey: 'recovery.checkin.field.soreness',     loKey: 'recovery.checkin.field.soreness.lo',     hiKey: 'recovery.checkin.field.soreness.hi' },
+  { key: 'mood',         labelKey: 'recovery.checkin.field.mood',         loKey: 'recovery.checkin.field.mood.lo',         hiKey: 'recovery.checkin.field.mood.hi' },
 ]
 const DEFAULT: CheckinScales = { sleepQuality: 3, fatigue: 3, soreness: 3, mood: 3 }
 
@@ -61,6 +62,7 @@ export default function CheckinTab({ initial, inputs, onSaved }: {
   inputs: ReadinessInputsLite
   onSaved: () => void
 }) {
+  const { t } = useI18n()
   const [v, setV] = useState<CheckinScales>(initial ?? DEFAULT)
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(initial != null)
@@ -74,7 +76,7 @@ export default function CheckinTab({ initial, inputs, onSaved }: {
     setSaving(true); setErr(null)
     const sb = createClient()
     const { data: { user } } = await sb.auth.getUser()
-    if (!user) { setSaving(false); setErr('Session expirée'); return }
+    if (!user) { setSaving(false); setErr(t('recovery.checkin.err.session')); return }
     const date = todayStr()
 
     const { error: e1 } = await sb.from('recovery_checkin').upsert(
@@ -92,35 +94,35 @@ export default function CheckinTab({ initial, inputs, onSaved }: {
       { onConflict: 'user_id,provider,date,data_type' },
     )
     setSaving(false)
-    if (e1 || e2) { setErr(e1?.message ?? e2?.message ?? 'Erreur d’enregistrement'); return }
+    if (e1 || e2) { setErr(e1?.message ?? e2?.message ?? t('recovery.checkin.err.save')); return }
     setDone(true); onSaved()
   }
 
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: '0 0 4px', color: 'var(--text)' }}>Check-in du jour</h2>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: '0 0 4px', color: 'var(--text)' }}>{t('recovery.checkin.title')}</h2>
       <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '0 0 18px' }}>
-        {done ? 'Déjà enregistré aujourd’hui — tu peux le mettre à jour.' : 'Quelques secondes pour calculer ta readiness.'}
+        {done ? t('recovery.checkin.subtitle.done') : t('recovery.checkin.subtitle.new')}
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {FIELDS.map(f => (
           <div key={f.key}>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>{f.label}</p>
-            <Scale value={v[f.key]} onChange={n => setV(prev => ({ ...prev, [f.key]: n }))} lo={f.lo} hi={f.hi} />
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>{t(f.labelKey)}</p>
+            <Scale value={v[f.key]} onChange={n => setV(prev => ({ ...prev, [f.key]: n }))} lo={t(f.loKey)} hi={t(f.hiKey)} />
           </div>
         ))}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
         <span style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-mid)' }}>
-          Readiness estimée : <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--text)' }}>{preview.score ?? '—'}{preview.score != null ? '/100' : ''}</span>
+          {t('recovery.checkin.estimated')} <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--text)' }}>{preview.score ?? '—'}{preview.score != null ? '/100' : ''}</span>
         </span>
         <button onClick={save} disabled={saving} style={{
           padding: '10px 18px', borderRadius: 11, cursor: saving ? 'default' : 'pointer',
           fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
           background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', opacity: saving ? 0.6 : 1,
-        }}>{saving ? 'Enregistrement…' : done ? 'Mettre à jour' : 'Valider le check-in'}</button>
+        }}>{saving ? t('recovery.checkin.saving') : done ? t('recovery.checkin.update') : t('recovery.checkin.submit')}</button>
       </div>
       {err && <p style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--charge-hard)', margin: '10px 0 0' }}>{err}</p>}
     </div>

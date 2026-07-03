@@ -8,6 +8,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { SPORT_CONFIGS } from '@/lib/progression/sportConfig'
 import { GeneralView } from './GeneralView'
 import { FamilyEmptyState } from './FamilyEmptyState'
@@ -15,17 +16,18 @@ import { SportEmptyState } from './SportEmptyState'
 
 export function ProgressionSportView({ sport, onBack }: { sport: string; onBack: () => void }) {
   const config = SPORT_CONFIGS[sport]
+  const { t } = useI18n()
   const [active, setActive] = useState(config?.families[0]?.id ?? 'general')
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, [])
 
   const header = (
     <header style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-      <button onClick={onBack} aria-label="Retour"
+      <button onClick={onBack} aria-label={t('progression.back')}
         style={{ width: 36, height: 36, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 18, cursor: 'pointer', flexShrink: 0 }}>‹</button>
       <div>
-        <h1 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 22, color: 'var(--text)', margin: 0 }}>Progression {config?.label ?? sport}</h1>
-        <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '2px 0 0' }}>Évolution de tes performances</p>
+        <h1 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 800, fontSize: 22, color: 'var(--text)', margin: 0 }}>{t('progression.sportViewTitle', { sport: config?.label ?? sport })}</h1>
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '2px 0 0' }}>{t('progression.sportViewSubtitle')}</p>
       </div>
     </header>
   )

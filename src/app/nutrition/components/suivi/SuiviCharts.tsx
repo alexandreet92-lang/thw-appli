@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 import type { DayRow, TypeAdherence } from './suiviData'
+import { useI18n } from '@/lib/i18n'
 
 const TYPE_COLOR: Record<string, string> = {
   low: 'var(--charge-low)', mid: 'var(--charge-mid)', hard: 'var(--charge-hard)',
@@ -17,8 +18,9 @@ const FONT = 'var(--font-body)'
 // ── Calories par jour : barre = consommé, trait pointillé = cible (si plan) ──
 // Cliquable : chaque jour loggé ouvre le détail des repas (donuts + photos + ingrédients).
 export function KcalTrendChart({ rows, onSelectDay }: { rows: DayRow[]; onSelectDay?: (date: string) => void }) {
+  const { t } = useI18n()
   const logged = rows.filter(r => r.logged)
-  if (!logged.length) return <Empty text="Aucune journée loggée sur la période. Renseigne tes repas dans l'onglet Aujourd'hui pour voir ta tendance." />
+  if (!logged.length) return <Empty text={t('nutrition.charts.noLoggedDays')} />
   const W = 320, H = 192, padB = 28, padT = 10, padL = 32
   const maxKcal = Math.max(...rows.map(r => r.kcal), ...rows.map(r => r.targetKcal ?? 0), 1)
   // Axe Y : graduations rondes tous les 1000 kcal.
@@ -68,8 +70,9 @@ export function KcalTrendChart({ rows, onSelectDay }: { rows: DayRow[]; onSelect
 
 // ── Adhérence par type de jour : consommé (plein) vs cible (teinte claire) ──
 export function AdherenceByTypeChart({ data }: { data: TypeAdherence[] }) {
+  const { t } = useI18n()
   const shown = data.filter(d => d.days > 0)
-  if (!shown.length) return <Empty text="Pas encore de jours loggés avec un plan." />
+  if (!shown.length) return <Empty text={t('nutrition.charts.noPlanDays')} />
   const maxV = Math.max(...shown.flatMap(d => [d.consumedKcal ?? 0, d.targetKcal ?? 0])) * 1.1 || 1
   const W = 320, H = 150, padB = 28, padT = 8, groupW = W / shown.length
   return (
@@ -95,9 +98,10 @@ export function AdherenceByTypeChart({ data }: { data: TypeAdherence[] }) {
 
 // ── Protéines (g/kg) dans le temps + bande cible NEUTRE 1,6–2,2 ──
 export function ProteinGkgChart({ rows, weightKg }: { rows: DayRow[]; weightKg: number | null }) {
-  if (!weightKg || weightKg <= 0) return <Empty text="Poids non renseigné dans le profil — g/kg indisponible." />
+  const { t } = useI18n()
+  if (!weightKg || weightKg <= 0) return <Empty text={t('nutrition.charts.noWeight')} />
   const pts = rows.filter(r => r.logged).map(r => ({ date: r.date, gkg: +(r.prot / weightKg).toFixed(2) }))
-  if (pts.length < 2) return <Empty text="Pas assez de jours loggés pour une tendance." />
+  if (pts.length < 2) return <Empty text={t('nutrition.charts.notEnoughDays')} />
   const W = 320, H = 150, padB = 18, padT = 8, padL = 4
   const maxG = Math.max(2.4, ...pts.map(p => p.gkg)) * 1.05
   const x = (i: number) => padL + (i / (pts.length - 1)) * (W - padL * 2)
@@ -110,15 +114,16 @@ export function ProteinGkgChart({ rows, weightKg }: { rows: DayRow[]; weightKg: 
       <line x1={0} y1={y(2.2)} x2={W} y2={y(2.2)} stroke="var(--border)" strokeWidth="1" strokeDasharray="3 3" />
       <path d={line} fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
       {pts.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.gkg)} r={2} fill="var(--primary)" />)}
-      <text x={4} y={y(1.9) + 3} fontSize="8" fill="var(--text-dim)" fontFamily={FONT}>cible 1,6–2,2 g/kg</text>
+      <text x={4} y={y(1.9) + 3} fontSize="8" fill="var(--text-dim)" fontFamily={FONT}>{t('nutrition.charts.proteinTarget')}</text>
     </svg>
   )
 }
 
 // ── Hydratation : barres + repère d'objectif (2,5 L) ──
 export function HydrationChart({ data }: { data: { date: string; liters: number }[] }) {
+  const { t } = useI18n()
   const shown = data.filter(d => d.liters > 0)
-  if (!shown.length) return <Empty text="Aucune hydratation loggée sur la période." />
+  if (!shown.length) return <Empty text={t('nutrition.charts.noHydration')} />
   const W = 320, H = 130, padB = 16, padT = 8
   const goal = 2.5
   const maxL = Math.max(goal, ...data.map(d => d.liters)) * 1.05

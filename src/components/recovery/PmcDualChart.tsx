@@ -9,14 +9,15 @@
 
 import { useTrainingLoad } from '@/hooks/useTrainingLoad'
 import { PMC_COLORS, type PmcDualPoint } from '@/lib/training/pmcDual'
+import { useI18n } from '@/lib/i18n'
 
 const W = 620, H = 132
 const NUM = { fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' as const, fontFeatureSettings: "'zero' 0" }
 
-type Axis = { title: string; accent: string; ctl: keyof PmcDualPoint; atl: keyof PmcDualPoint; tsb: keyof PmcDualPoint }
+type Axis = { titleKey: string; accent: string; ctl: keyof PmcDualPoint; atl: keyof PmcDualPoint; tsb: keyof PmcDualPoint }
 const AXES: Axis[] = [
-  { title: 'Métabolique (SM)',      accent: PMC_COLORS.sm, ctl: 'ctlSm', atl: 'atlSm', tsb: 'tsbSm' },
-  { title: 'Neuromusculaire (SN)',  accent: PMC_COLORS.sn, ctl: 'ctlSn', atl: 'atlSn', tsb: 'tsbSn' },
+  { titleKey: 'recovery.pmc.axis.metabolic',      accent: PMC_COLORS.sm, ctl: 'ctlSm', atl: 'atlSm', tsb: 'tsbSm' },
+  { titleKey: 'recovery.pmc.axis.neuromuscular',  accent: PMC_COLORS.sn, ctl: 'ctlSn', atl: 'atlSn', tsb: 'tsbSn' },
 ]
 
 function pathOf(pts: PmcDualPoint[], key: keyof PmcDualPoint, min: number, max: number): string {
@@ -30,6 +31,7 @@ function pathOf(pts: PmcDualPoint[], key: keyof PmcDualPoint, min: number, max: 
 }
 
 function Panel({ pts, axis }: { pts: PmcDualPoint[]; axis: Axis }) {
+  const { t } = useI18n()
   const vals = pts.flatMap(p => [Number(p[axis.ctl]), Number(p[axis.atl]), Number(p[axis.tsb])])
   const min = Math.min(...vals, -10), max = Math.max(...vals, 10)
   const range = max - min || 1
@@ -44,7 +46,7 @@ function Panel({ pts, axis }: { pts: PmcDualPoint[]; axis: Axis }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: axis.accent, flexShrink: 0 }} />
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{axis.title}</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{t(axis.titleKey)}</span>
         <span style={{ marginLeft: 'auto', display: 'flex', gap: 12 }}>
           {[{ l: 'CTL', c: axis.accent }, { l: 'ATL', c: 'var(--rec-fatigue)' }, { l: 'TSB', c: 'var(--text-mid)' }].map(x => (
             <span key={x.l} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -72,24 +74,25 @@ function Panel({ pts, axis }: { pts: PmcDualPoint[]; axis: Axis }) {
 }
 
 export default function PmcDualChart() {
-  const t = useTrainingLoad()
+  const { t } = useI18n()
+  const tl = useTrainingLoad()
 
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, boxShadow: 'var(--shadow-card)' }}>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, margin: '0 0 4px', color: 'var(--text)' }}>Performance Management Chart</h2>
       <p style={{ ...NUM, fontFamily: 'var(--font-body)', fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 16px' }}>
-        CTL (forme) · ATL (fatigue) · TSB (fraîcheur) — {t.series.length} jours
+        {t('recovery.pmc.legend', { n: tl.series.length })}
       </p>
 
-      {t.loading ? (
-        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)', margin: 0 }}>Chargement de la charge…</p>
-      ) : t.series.length < 2 ? (
+      {tl.loading ? (
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)', margin: 0 }}>{t('recovery.pmc.loading')}</p>
+      ) : tl.series.length < 2 ? (
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12.5, color: 'var(--text-mid)', margin: 0 }}>
-          Pas assez d&apos;historique d&apos;entraînement pour tracer le PMC.
+          {t('recovery.pmc.notEnough')}
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {AXES.map(a => <Panel key={a.title} pts={t.series} axis={a} />)}
+          {AXES.map(a => <Panel key={a.titleKey} pts={tl.series} axis={a} />)}
         </div>
       )}
     </div>

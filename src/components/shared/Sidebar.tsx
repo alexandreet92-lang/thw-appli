@@ -7,6 +7,7 @@ import { useProfile } from '@/hooks/useProfile'
 import { createClient } from '@/lib/supabase/client'
 import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
+import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 
@@ -77,7 +78,7 @@ function useBriefingBadge(): BriefingSummary {
 const NAV = [
   {
     href: '/',
-    label: 'Dashboard',
+    labelKey: 'nav.dashboard',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <rect x="3" y="3" width="7" height="7" rx="1.5"/>
@@ -89,7 +90,7 @@ const NAV = [
   },
   {
     href: '/planning',
-    label: 'Planning',
+    labelKey: 'nav.planning',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -99,7 +100,7 @@ const NAV = [
   },
   {
     href: '/calendar',
-    label: 'Calendar',
+    labelKey: 'nav.calendar',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -112,7 +113,7 @@ const NAV = [
   },
   {
     href: '/session',
-    label: 'Session',
+    labelKey: 'nav.session',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <rect x="3" y="3" width="18" height="18" rx="3"/>
@@ -122,7 +123,7 @@ const NAV = [
   },
   {
     href: '/activities',
-    label: 'Training',
+    labelKey: 'nav.training',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
@@ -131,7 +132,7 @@ const NAV = [
   },
   {
     href: '/recovery',
-    label: 'Récupération',
+    labelKey: 'nav.recovery',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
@@ -142,7 +143,7 @@ const NAV = [
   },
   {
     href: '/nutrition',
-    label: 'Nutrition',
+    labelKey: 'nav.nutrition',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path d="M12 2C8 2 5 5 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-4-3-7-7-7z"/>
@@ -152,7 +153,7 @@ const NAV = [
   },
   {
     href: '/performance',
-    label: 'Performance',
+    labelKey: 'nav.performance',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -161,7 +162,7 @@ const NAV = [
   },
   {
     href: '/injuries',
-    label: 'Blessures',
+    labelKey: 'nav.injuries',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
@@ -171,7 +172,7 @@ const NAV = [
   },
   {
     href: '/connections',
-    label: 'Connexions',
+    labelKey: 'nav.connections',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
@@ -286,7 +287,8 @@ function NavItem({
 
 export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: () => void; onOpenAI?: () => void; headerSlot?: React.ReactNode }) {
   const pathname = usePathname()
-  const { mode, toggleTheme, label } = useTheme()
+  const { mode, toggleTheme } = useTheme()
+  const { t } = useI18n()
   const { profile } = useProfile()
   const briefing = useBriefingBadge()
   const briefingActive = pathname === '/briefing'
@@ -362,7 +364,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             lineHeight: 1.3,
           }}>
-            {profile?.full_name ?? 'Mon profil'}
+            {profile?.full_name ?? t('nav.myProfile')}
           </div>
           <div style={{
             fontSize: 11,
@@ -370,7 +372,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
             marginTop: 2,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
-            Athlète
+            {t('nav.athlete')}
           </div>
         </div>
       </Link>
@@ -387,7 +389,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
           <NavItem
             key={item.href}
             href={item.href}
-            label={item.label}
+            label={t(item.labelKey)}
             icon={item.icon}
             active={pathname === item.href}
             onClick={onClose}
@@ -406,7 +408,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
         {isAdmin && (
           <NavItem
             href="/admin"
-            label="Cockpit"
+            label={t('nav.cockpit')}
             icon={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path d="M3 18a9 9 0 1 1 18 0"/>
@@ -421,7 +423,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
         {/* Candidatures */}
         <NavItem
           href="/questionnaire"
-          label="Candidatures"
+          label={t('nav.applications')}
           icon={
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
               <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
@@ -470,7 +472,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
               <line x1="8" y1="17" x2="13" y2="17" />
             </svg>
           </span>
-          <span style={{ flex: 1 }}>Briefing du jour</span>
+          <span style={{ flex: 1 }}>{t('nav.dailyBriefing')}</span>
           {!briefing.lu && briefing.unreadCount > 0 && (
             <span style={{
               flexShrink: 0,
@@ -516,7 +518,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}>
-              Assistant IA
+              {t('nav.aiAssistant')}
             </span>
           </button>
         )}
@@ -547,7 +549,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
               </svg>
             )}
           </span>
-          {label}
+          {t(mode === 'dark' ? 'nav.themeDark' : 'nav.themeLight')}
         </button>
 
       </div>

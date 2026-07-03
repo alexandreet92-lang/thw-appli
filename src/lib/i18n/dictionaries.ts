@@ -71,6 +71,19 @@ const fr: Dict = {
   'q.lvl.elite': 'Élite', 'q.lvl.eliteD': 'Compétiteur de haut niveau.',
   // Profil
   'profile.langTitle': 'Langue de l’application', 'profile.langDesc': 'Choisis la langue de l’interface.',
+  // Navigation (sidebar + barre d'onglets mobile)
+  'nav.dashboard': 'Dashboard', 'nav.planning': 'Planning', 'nav.calendar': 'Calendar',
+  'nav.session': 'Session', 'nav.training': 'Training', 'nav.recovery': 'Récupération',
+  'nav.nutrition': 'Nutrition', 'nav.performance': 'Performance', 'nav.injuries': 'Blessures',
+  'nav.connections': 'Connexions',
+  'nav.myProfile': 'Mon profil', 'nav.athlete': 'Athlète', 'nav.cockpit': 'Cockpit',
+  'nav.applications': 'Candidatures', 'nav.dailyBriefing': 'Briefing du jour', 'nav.aiAssistant': 'Assistant IA',
+  'nav.themeDark': 'Mode Nuit', 'nav.themeLight': 'Mode Jour',
+  // Mobile tab bar
+  'nav.recoveryShort': 'Récup', 'nav.perfShort': 'Perf', 'nav.briefing': 'Briefing',
+  'nav.profile': 'Profil', 'nav.settings': 'Réglages',
+  'nav.tabPlan': 'Plan', 'nav.tabStats': 'Stats', 'nav.tabStart': 'Démarrer', 'nav.tabPlus': 'Plus',
+  'nav.startActivity': 'Démarrer une activité', 'nav.coachAI': 'Coach IA',
 }
 
 const en: Dict = {
@@ -128,6 +141,19 @@ const en: Dict = {
   'q.lvl.confirme': 'Advanced', 'q.lvl.confirmeD': 'Several years of structured training.',
   'q.lvl.elite': 'Elite', 'q.lvl.eliteD': 'High-level competitor.',
   'profile.langTitle': 'App language', 'profile.langDesc': 'Choose the interface language.',
+  // Navigation (sidebar + mobile tab bar)
+  'nav.dashboard': 'Dashboard', 'nav.planning': 'Planning', 'nav.calendar': 'Calendar',
+  'nav.session': 'Session', 'nav.training': 'Training', 'nav.recovery': 'Recovery',
+  'nav.nutrition': 'Nutrition', 'nav.performance': 'Performance', 'nav.injuries': 'Injuries',
+  'nav.connections': 'Connections',
+  'nav.myProfile': 'My profile', 'nav.athlete': 'Athlete', 'nav.cockpit': 'Cockpit',
+  'nav.applications': 'Applications', 'nav.dailyBriefing': 'Daily briefing', 'nav.aiAssistant': 'AI Assistant',
+  'nav.themeDark': 'Night mode', 'nav.themeLight': 'Day mode',
+  // Mobile tab bar
+  'nav.recoveryShort': 'Recovery', 'nav.perfShort': 'Perf', 'nav.briefing': 'Briefing',
+  'nav.profile': 'Profile', 'nav.settings': 'Settings',
+  'nav.tabPlan': 'Plan', 'nav.tabStats': 'Stats', 'nav.tabStart': 'Start', 'nav.tabPlus': 'More',
+  'nav.startActivity': 'Start an activity', 'nav.coachAI': 'AI Coach',
 }
 
 const es: Dict = {

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
+import { useI18n } from '@/lib/i18n'
 import type { LucideIcon } from 'lucide-react'
 import {
   CalendarDays, BarChart3, Grid3x3, ChevronLeft,
@@ -28,45 +29,46 @@ const ROUTE_TO_TAB: Record<string, Exclude<Mode, 'main'>> = {
   '/connections': 'plus', '/briefing': 'plus',     '/profile': 'plus',  '/parametres': 'plus',
 }
 
-type Sub = { href: string; label: string; Icon: LucideIcon }
+type Sub = { href: string; labelKey: string; Icon: LucideIcon }
 
 const SUBS: Record<Exclude<Mode, 'main'>, Sub[]> = {
   plan: [
-    { href: '/planning',  label: 'Planning',   Icon: ClipboardList },
-    { href: '/calendar',  label: 'Calendar',   Icon: Calendar },
-    { href: '/session',   label: 'Session',    Icon: Dumbbell },
-    { href: '/injuries',  label: 'Blessures',  Icon: HeartPulse },
+    { href: '/planning',  labelKey: 'nav.planning', Icon: ClipboardList },
+    { href: '/calendar',  labelKey: 'nav.calendar', Icon: Calendar },
+    { href: '/session',   labelKey: 'nav.session',  Icon: Dumbbell },
+    { href: '/injuries',  labelKey: 'nav.injuries', Icon: HeartPulse },
   ],
   stats: [
-    { href: '/activities',  label: 'Training',  Icon: Activity },
-    { href: '/recovery',    label: 'Récup',     Icon: Moon },
-    { href: '/nutrition',   label: 'Nutrition', Icon: Apple },
-    { href: '/performance', label: 'Perf',      Icon: Trophy },
+    { href: '/activities',  labelKey: 'nav.training',      Icon: Activity },
+    { href: '/recovery',    labelKey: 'nav.recoveryShort', Icon: Moon },
+    { href: '/nutrition',   labelKey: 'nav.nutrition',     Icon: Apple },
+    { href: '/performance', labelKey: 'nav.perfShort',     Icon: Trophy },
   ],
   plus: [
-    { href: '/connections', label: 'Connexions', Icon: LinkIcon },
-    { href: '/briefing',    label: 'Briefing',   Icon: FileText },
-    { href: '/profile',     label: 'Profil',     Icon: User },
-    { href: '/parametres',  label: 'Réglages',   Icon: Settings },
+    { href: '/connections', labelKey: 'nav.connections', Icon: LinkIcon },
+    { href: '/briefing',    labelKey: 'nav.briefing',    Icon: FileText },
+    { href: '/profile',     labelKey: 'nav.profile',     Icon: User },
+    { href: '/parametres',  labelKey: 'nav.settings',    Icon: Settings },
   ],
 }
 
 // ── Sub-item component ─────────────────────────────────────────
 
-function SubItem({ href, label, Icon, active }: Sub & { active: boolean }) {
+function SubItem({ href, labelKey, Icon, active }: Sub & { active: boolean }) {
+  const { t } = useI18n()
   // « Mon Profil » s'ouvre en sur-page (par-dessus la page courante), pas en route.
   if (href === '/profile') {
     return (
       <button onClick={() => window.dispatchEvent(new Event('thw:open-profile'))} style={{ ...BTN, background: 'none', border: 'none', cursor: 'pointer' }}>
         <Icon size={20} color={active ? ACCENT : DIM} />
-        <span style={lbl(active)}>{label}</span>
+        <span style={lbl(active)}>{t(labelKey)}</span>
       </button>
     )
   }
   return (
     <Link href={href} style={{ ...BTN, textDecoration: 'none' }}>
       <Icon size={20} color={active ? ACCENT : DIM} />
-      <span style={lbl(active)}>{label}</span>
+      <span style={lbl(active)}>{t(labelKey)}</span>
     </Link>
   )
 }
@@ -76,6 +78,7 @@ function SubItem({ href, label, Icon, active }: Sub & { active: boolean }) {
 export default function MobileTabBar() {
   const pathname              = usePathname()
   const router                = useRouter()
+  const { t }                 = useI18n()
   const [mode, setMode]       = useState<Mode>('main')
   const [exiting, setExiting] = useState(false)
   const [aiOpen, setAiOpen]   = useState(false)
@@ -160,28 +163,28 @@ export default function MobileTabBar() {
               {/* Plan */}
               <button onClick={() => switchTo('plan')} style={BTN}>
                 <CalendarDays size={22} color={col(activeTab === 'plan')} />
-                <span style={lbl(activeTab === 'plan')}>Plan</span>
+                <span style={lbl(activeTab === 'plan')}>{t('nav.tabPlan')}</span>
               </button>
 
               {/* Stats */}
               <button onClick={() => switchTo('stats')} style={BTN}>
                 <BarChart3 size={22} color={col(activeTab === 'stats')} />
-                <span style={lbl(activeTab === 'stats')}>Stats</span>
+                <span style={lbl(activeTab === 'stats')}>{t('nav.tabStats')}</span>
               </button>
 
               {/* Record — centre, plat et aligné avec les autres (façon Strava) */}
-              <Link href="/record" style={{ ...BTN, textDecoration: 'none' }} aria-label="Démarrer une activité">
+              <Link href="/record" style={{ ...BTN, textDecoration: 'none' }} aria-label={t('nav.startActivity')}>
                 <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
                   <circle cx="13" cy="13" r="10" stroke={ACCENT} strokeWidth="1.7" />
                   <circle cx="13" cy="13" r="5"  fill={ACCENT} />
                 </svg>
-                <span style={lbl(false)}>Démarrer</span>
+                <span style={lbl(false)}>{t('nav.tabStart')}</span>
               </Link>
 
               {/* Plus */}
               <button onClick={() => switchTo('plus')} style={BTN}>
                 <Grid3x3 size={22} color={col(activeTab === 'plus')} />
-                <span style={lbl(activeTab === 'plus')}>Plus</span>
+                <span style={lbl(activeTab === 'plus')}>{t('nav.tabPlus')}</span>
               </button>
 
               {/* IA */}
@@ -189,7 +192,7 @@ export default function MobileTabBar() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/logos/logo_4bras.png"
-                  alt="Coach IA"
+                  alt={t('nav.coachAI')}
                   width={24} height={24}
                   style={{ objectFit: 'contain' }}
                 />

@@ -895,7 +895,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
   sport: SportType; blocks: Block[]; onChange: (b: Block[]) => void
   nutritionItems?: Array<{ timeMin: number; name: string; type: string; glucidesG: number }>
   exoHistory?: Record<string, { weight: string; reps: number; date: string }>
-  athleteData?: { ftp: number | null } | null
+  athleteData?: { ftp: number | null; runThresholdPaceSec?: number | null; cssSecPer100m?: number | null } | null
 }) {
   const vLabel = sport === 'bike' ? 'Watts' : sport === 'swim' ? 'Allure /100m' : 'Allure /km'
   const vPlh   = sport === 'bike' ? '250' : sport === 'swim' ? '1:35' : '4:30'
@@ -928,17 +928,80 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
   const zh  = (z: number) => ZONE_H[Math.max(0, Math.min(6, z - 1))]
   const znm = (z: number) => ZONE_NMS[Math.max(0, Math.min(6, z - 1))]
 
-  // ── Profil éditable (style Zwift) : glisser vertical = zone, bord droit = durée ──
+  // ── Profil éditable (style Zwift) : glisser vertical = intensité, bord droit = durée ──
   const maxZone = (sport === 'bike' || sport === 'elliptique') ? 7 : 5
   const blockMin = (b: Block) => b.mode === 'interval' && b.reps && b.effortMin != null ? (b.reps as number) * ((b.effortMin as number) + (b.recoveryMin || 0)) : (b.durationMin || 0)
+
+  // ── Hauteur de jauge CONTINUE selon l'intensité réelle (pas seulement la zone) ──
+  // 200 W et 210 W sont dans la même zone (même couleur) mais 210 W est un peu plus
+  // haut : la position dans la bande de zone reflète où tombe l'intensité.
+  const runThrSec = athleteData?.runThresholdPaceSec ?? null   // s/km
+  const cssSec    = athleteData?.cssSecPer100m ?? null          // s/100m
+  // Bornes hautes de chaque zone, exprimées en ratio intensité / seuil.
+  const ZONE_TOPS = (sport === 'bike' || sport === 'elliptique')
+    ? [0.55, 0.75, 0.87, 1.05, 1.20, 1.50, 1.85]   // % FTP (7 zones)
+    : [0.78, 0.87, 0.94, 1.02, 1.15]               // % allure seuil (5 zones, run & swim)
+  // Ratio intensité/seuil d'un bloc, ou null si pas de référence / valeur.
+  function intensityRatio(b: Block): number | null {
+    if (sport === 'bike' || sport === 'elliptique') {
+      const w = parseInt(b.value ?? '') || 0
+      return ftp && w > 0 ? w / ftp : null
+    }
+    if (sport === 'run') {
+      const p = mmssToMin(b.value ?? '') * 60
+      return runThrSec && p > 0 ? runThrSec / p : null   // allure + rapide → ratio + grand
+    }
+    if (sport === 'swim') {
+      const p = mmssToMin(b.value ?? '') * 60
+      return cssSec && p > 0 ? cssSec / p : null
+    }
+    return null
+  }
+  // Position continue sur l'échelle de zones (0..maxZone) — interpolation dans la bande.
+  function zonePosF(b: Block): number {
+    const zoneInt = Math.max(1, Math.min(maxZone, b.zone))
+    const r = intensityRatio(b)
+    if (r == null) return zoneInt   // pas de référence → ancrage sur la zone entière
+    let lo = 0
+    for (let i = 0; i < ZONE_TOPS.length; i++) {
+      const hi = ZONE_TOPS[i]
+      if (r <= hi || i === ZONE_TOPS.length - 1) {
+        const frac = Math.max(0, Math.min(1, (r - lo) / (hi - lo || 1)))
+        return Math.max(0.35, Math.min(maxZone, i + frac))
+      }
+      lo = hi
+    }
+    return zoneInt
+  }
+  // Inverse : position 0..maxZone → { zone entière, valeur (W ou allour mm:ss) } pour le drag.
+  function posToBlockPatch(posF: number): { zone: number; value?: string } {
+    const bandIdx = Math.max(0, Math.min(ZONE_TOPS.length - 1, Math.floor(posF)))
+    const zone = bandIdx + 1
+    const lo = bandIdx === 0 ? 0 : ZONE_TOPS[bandIdx - 1]
+    const hi = ZONE_TOPS[bandIdx]
+    const frac = Math.max(0, Math.min(1, posF - bandIdx))
+    const r = lo + frac * (hi - lo)
+    if ((sport === 'bike' || sport === 'elliptique') && ftp && r > 0)
+      return { zone, value: String(Math.round(ftp * r)) }
+    if (sport === 'run' && runThrSec && r > 0)
+      return { zone, value: durMMSS((runThrSec / r) / 60) }
+    if (sport === 'swim' && cssSec && r > 0)
+      return { zone, value: durMMSS((cssSec / r) / 60) }
+    return { zone }
+  }
   const barsRef = useRef<HTMLDivElement | null>(null)
   const pdrag = useRef<{ id: string; mode: 'zone' | 'dur'; el: HTMLElement; startX: number; rowW: number; rowBottom: number; usableH: number; totalMin: number; baseMin: number } | null>(null)
   function profileMove(e: PointerEvent) {
     const d = pdrag.current; if (!d) return
     if (d.mode === 'zone') {
       const ratio = Math.max(0, Math.min(1, (d.rowBottom - e.clientY) / d.usableH))
-      const z = Math.max(1, Math.min(maxZone, Math.round(ratio * maxZone)))
-      d.el.style.height = `${(z / maxZone) * d.usableH}px`; d.el.style.background = zc(z); d.el.dataset.z = String(z)
+      // Position continue 0..maxZone : la hauteur suit l'intensité, pas la zone entière.
+      const posF = Math.max(0.35, Math.min(maxZone, ratio * maxZone))
+      const patch = posToBlockPatch(posF)
+      d.el.style.height = `${(posF / maxZone) * d.usableH}px`
+      d.el.style.background = zc(patch.zone)
+      d.el.dataset.z = String(patch.zone)
+      if (patch.value != null) d.el.dataset.val = patch.value
     } else {
       const perMin = d.rowW / d.totalMin
       const m = Math.max(1, d.baseMin + Math.round((e.clientX - d.startX) / perMin))
@@ -949,10 +1012,11 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
     const d = pdrag.current; if (!d) return
     window.removeEventListener('pointermove', profileMove); window.removeEventListener('pointerup', profileUp)
     const z = parseInt(d.el.dataset.z || '0'), m = parseInt(d.el.dataset.m || '0')
+    const val = d.el.dataset.val
     onChange(blocks.map(b => {
       if (b.id !== d.id) return b
       const nb = { ...b }
-      if (d.mode === 'zone' && z) nb.zone = z
+      if (d.mode === 'zone' && z) { nb.zone = z; if (val != null && val !== '') nb.value = val }
       if (d.mode === 'dur' && m) { if (b.mode === 'interval' && b.reps) nb.effortMin = Math.max(0.5, m / b.reps - (b.recoveryMin || 0)); else nb.durationMin = m }
       return nb
     }))
@@ -964,7 +1028,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
     const el = (e.currentTarget as HTMLElement).closest('[data-pbar]') as HTMLElement | null; if (!el) return
     const rect = barsRef.current.getBoundingClientRect()
     pdrag.current = { id: b.id, mode, el, startX: e.clientX, rowW: rect.width, rowBottom: rect.bottom, usableH: rect.height, totalMin: blocks.reduce((a, x) => a + blockMin(x), 0) || 1, baseMin: blockMin(b) }
-    el.dataset.z = String(b.zone); el.dataset.m = String(blockMin(b))
+    el.dataset.z = String(b.zone); el.dataset.m = String(blockMin(b)); delete el.dataset.val
     window.addEventListener('pointermove', profileMove); window.addEventListener('pointerup', profileUp)
   }
 
@@ -1125,8 +1189,8 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
               <div ref={barsRef} style={{ flex: 1, height: Hpx, display: 'flex', alignItems: 'flex-end', gap: 3, position: 'relative' as const }}>
                 {Array.from({ length: maxZone }, (_, k) => k + 1).map(z => { const top = Hpx - (z / maxZone) * Hpx; return (
                   <div key={`g${z}`} style={{ position: 'absolute' as const, left: 0, right: 0, top, borderTop: '1px dashed var(--border)', pointerEvents: 'none' as const }} />) })}
-                {blocks.map(b => { const m = blockMin(b); const zclamp = Math.max(1, Math.min(maxZone, b.zone)); const h = (zclamp / maxZone) * Hpx; return (
-                  <div key={b.id} data-pbar onPointerDown={e => profileDown(e, b, 'zone')} title={`Z${b.zone} · ${durMMSS(m)}`}
+                {blocks.map(b => { const m = blockMin(b); const h = (zonePosF(b) / maxZone) * Hpx; const r = intensityRatio(b); return (
+                  <div key={b.id} data-pbar onPointerDown={e => profileDown(e, b, 'zone')} title={`Z${b.zone}${r != null ? ` · ${Math.round(r * 100)}% seuil` : ''} · ${durMMSS(m)}`}
                     style={{ position: 'relative' as const, flexGrow: m, flexBasis: 0, minWidth: 6, height: h, background: zc(b.zone), borderRadius: '6px 6px 2px 2px', cursor: 'ns-resize', touchAction: 'none' as const, transition: pdrag.current ? 'none' : 'height 0.12s' }}>
                     <span onPointerDown={e => profileDown(e, b, 'dur')} style={{ position: 'absolute' as const, right: -2, top: 0, bottom: 0, width: 9, cursor: 'ew-resize', touchAction: 'none' as const }} />
                   </div>) })}

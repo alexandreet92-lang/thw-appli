@@ -6,11 +6,13 @@ import { IconArrowLeft } from '@tabler/icons-react'
 import type { Seance, Bloc, PhaseBloc, Niveau } from '@/data/seances/running'
 import { FILIERE_LABEL, BUCKET_SHORT, NIVEAUX, hasNiveaux, scaleSeance, volumePrefixe, volumeSignature } from '@/data/seances/running'
 import { RunProfil, ResumeBandeau, ZONE_TOKEN, ZONE_LABEL } from './RunProfil'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
-const PHASE_LABEL: Record<PhaseBloc, string> = {
-  echauffement: 'Échauffement', corps: 'Corps', recup: 'Récup', 'retour-calme': 'Retour au calme',
+// Clés i18n des phases (résolues au rendu, pas à la portée module).
+const PHASE_KEY: Record<PhaseBloc, string> = {
+  echauffement: 'session.phaseEchauffement', corps: 'session.phaseCorps', recup: 'session.phaseRecup', 'retour-calme': 'session.phaseRetourCalme',
 }
 
 function fmtDuree(sec?: number): string {
@@ -36,13 +38,14 @@ function Tag({ children }: { children: React.ReactNode }) {
 }
 
 function BlocRow({ b, niveau }: { b: Bloc; niveau: Niveau }) {
+  const { t } = useI18n()
   const { prefix, mesure } = volumePrefixe(b, niveau)
   const allure = b.segments && b.segments.length ? '' : (b.allure ? ` ${b.allure}` : '')
   return (
     <div style={{ padding: 'var(--space-4)', borderRadius: 'var(--r-md)', background: 'var(--bg-card2)',
       borderLeft: `3px solid ${ZONE_TOKEN[b.zone]}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{PHASE_LABEL[b.phase]}</span>
+        <span style={{ fontFamily: FB, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{t(PHASE_KEY[b.phase])}</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: FB, fontSize: 11, color: 'var(--text-mid)' }}>
           <span style={{ width: 7, height: 7, borderRadius: 2, background: ZONE_TOKEN[b.zone] }} />{b.zone} · {ZONE_LABEL[b.zone]}
         </span>
@@ -55,7 +58,7 @@ function BlocRow({ b, niveau }: { b: Bloc; niveau: Niveau }) {
       </div>
       {b.recup && (
         <p style={{ fontFamily: FB, fontSize: 11.5, color: 'var(--text-dim)', margin: '5px 0 0' }}>
-          Récup {b.recup.actif ? 'active' : 'passive'} · {b.recup.label ? `${b.recup.label} · ` : ''}
+          {t('session.recup')} {b.recup.actif ? t('session.actif') : t('session.passif')} · {b.recup.label ? `${b.recup.label} · ` : ''}
           {blocMesure(b.recup.zone, undefined, b.recup.distanceM, b.recup.dureeSec)}
         </p>
       )}
@@ -88,6 +91,7 @@ function ConseilLigne({ titre, texte }: { titre: string; texte?: string }) {
 }
 
 export function SeanceDetail({ seance, onBack }: { seance: Seance; onBack: () => void }) {
+  const { t } = useI18n()
   const [niveau, setNiveau] = useState<Niveau>('intermediaire')
   const [varianteId, setVarianteId] = useState<string | null>(null)
 
@@ -105,7 +109,7 @@ export function SeanceDetail({ seance, onBack }: { seance: Seance; onBack: () =>
     <div>
       <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
         cursor: 'pointer', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, padding: '4px 0', marginBottom: 'var(--space-4)' }}>
-        <IconArrowLeft size={16} /> Retour
+        <IconArrowLeft size={16} /> {t('session.retour')}
       </button>
 
       <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>{seance.nom}</h2>
@@ -121,7 +125,7 @@ export function SeanceDetail({ seance, onBack }: { seance: Seance; onBack: () =>
       {seance.variantes && seance.variantes.length > 0 && (
         <div style={{ marginBottom: 'var(--space-4)' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-            <Pill active={!variante} onClick={() => setVarianteId(null)}>Base</Pill>
+            <Pill active={!variante} onClick={() => setVarianteId(null)}>{t('session.base')}</Pill>
             {seance.variantes.map(v => (
               <Pill key={v.id} active={variante?.id === v.id} onClick={() => setVarianteId(v.id)}>{v.nom}</Pill>
             ))}
@@ -135,7 +139,7 @@ export function SeanceDetail({ seance, onBack }: { seance: Seance; onBack: () =>
       {/* Bulles de niveau — pilotent le volume (fourchette) + le profil */}
       {showNiveaux && (
         <div style={{ marginBottom: 'var(--space-4)' }}>
-          <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)' }}>Niveau</span>
+          <span style={{ fontFamily: FB, fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{t('session.niveauLabel')}</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
             {NIVEAUX.map(n => (
               <Pill key={n.id} active={niveau === n.id} onClick={() => setNiveau(n.id)}>{n.label}</Pill>
@@ -143,7 +147,7 @@ export function SeanceDetail({ seance, onBack }: { seance: Seance; onBack: () =>
           </div>
           {signature && (
             <p style={{ fontFamily: FB, fontSize: 12.5, color: 'var(--text-mid)', margin: 'var(--space-2) 0 0' }}>
-              Volume {niveauLabel.toLowerCase()} : <strong style={{ color: 'var(--text)' }}>{signature}</strong>
+              {t('session.volume')} {niveauLabel.toLowerCase()} : <strong style={{ color: 'var(--text)' }}>{signature}</strong>
             </p>
           )}
         </div>
@@ -159,30 +163,30 @@ export function SeanceDetail({ seance, onBack }: { seance: Seance; onBack: () =>
       </div>
 
       {/* Structure en blocs (adaptée au niveau) */}
-      <h4 style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-3)' }}>Déroulé</h4>
+      <h4 style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-3)' }}>{t('session.deroule')}</h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         {view.blocs.map((b, i) => <BlocRow key={i} b={b} niveau={niveau} />)}
       </div>
 
       {/* Pour qui / quand */}
       <div style={{ marginTop: 'var(--space-6)' }}>
-        <h4 style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>Pour qui · quand</h4>
+        <h4 style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-2)' }}>{t('session.pourQuiQuand')}</h4>
         <p style={{ fontFamily: FB, fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.5, margin: 0 }}>{seance.pourQui}</p>
       </div>
 
       {/* Conseils approfondis */}
       {(seance.conseils || base.conseil) && (
         <div style={{ marginTop: 'var(--space-4)', padding: 'var(--space-4)', borderRadius: 'var(--r-md)', background: 'var(--primary-dim)' }}>
-          <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--primary)' }}>Conseils</span>
+          <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--primary)' }}>{t('session.conseilsTitle')}</span>
           {base.conseil && (
             <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55, margin: 'var(--space-2) 0 0' }}>{base.conseil}</p>
           )}
           {seance.conseils && (
             <>
-              <ConseilLigne titre="Exécution" texte={seance.conseils.execution} />
-              <ConseilLigne titre="Erreurs à éviter" texte={seance.conseils.erreurs} />
-              <ConseilLigne titre="Progression" texte={seance.conseils.progression} />
-              <ConseilLigne titre="Quand la placer" texte={seance.conseils.quand} />
+              <ConseilLigne titre={t('session.execution')} texte={seance.conseils.execution} />
+              <ConseilLigne titre={t('session.erreursEviter')} texte={seance.conseils.erreurs} />
+              <ConseilLigne titre={t('session.progression')} texte={seance.conseils.progression} />
+              <ConseilLigne titre={t('session.quandPlacer')} texte={seance.conseils.quand} />
             </>
           )}
         </div>

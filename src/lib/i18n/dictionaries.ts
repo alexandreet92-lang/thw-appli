@@ -1180,6 +1180,18 @@ const fr: Dict = {
   'briefing.copy': 'Copier', 'briefing.bestFormat': 'Meilleur format', 'briefing.errUnknown': 'Erreur inconnue',
   'briefing.errSyncInstagram': 'Erreur sync Instagram', 'briefing.errUpload': 'Erreur upload',
   'briefing.errGeneration': 'Erreur génération', 'briefing.errLoading': 'Erreur de chargement',
+  // ===== i18n wave (auto) =====
+  // session
+  'session.base': 'Base', 'session.niveauLabel': 'Niveau', 'session.conseilsTitle': 'Conseils',
+  'session.erreursEviter': 'Erreurs à éviter', 'session.progression': 'Progression',
+  'session.quandPlacer': 'Quand la placer',
+  // ===== i18n wave (auto) =====
+  // activities
+  'activities.msHide': 'Masquer', 'activities.msOpen': 'Ouvrir le récap détaillé',
+  'activities.msTitle': 'Récap du mois', 'activities.msSessions': 'Séances', 'activities.msTime': 'Temps',
+  'activities.msDistance': 'Distance', 'activities.msSmTotal': 'SM total', 'activities.msTopSession': 'Top séance',
+  'activities.msTopVal': 'SM {n}', 'activities.msShare': 'Partager mon mois',
+  'activities.msShareTitle': 'Mon mois — {label}', 'activities.msShareSubtitle': 'Récap mensuel',
 }
 
 const en: Dict = {
@@ -2296,6 +2308,18 @@ const en: Dict = {
   'briefing.copy': 'Copy', 'briefing.bestFormat': 'Best format', 'briefing.errUnknown': 'Unknown error',
   'briefing.errSyncInstagram': 'Instagram sync error', 'briefing.errUpload': 'Upload error',
   'briefing.errGeneration': 'Generation error', 'briefing.errLoading': 'Loading error',
+  // ===== i18n wave (auto) =====
+  // session
+  'session.base': 'Base', 'session.niveauLabel': 'Level', 'session.conseilsTitle': 'Tips',
+  'session.erreursEviter': 'Mistakes to avoid', 'session.progression': 'Progression',
+  'session.quandPlacer': 'When to schedule it',
+  // ===== i18n wave (auto) =====
+  // activities
+  'activities.msHide': 'Hide', 'activities.msOpen': 'Open detailed recap', 'activities.msTitle': 'Monthly recap',
+  'activities.msSessions': 'Sessions', 'activities.msTime': 'Time', 'activities.msDistance': 'Distance',
+  'activities.msSmTotal': 'Total SM', 'activities.msTopSession': 'Top session', 'activities.msTopVal': 'SM {n}',
+  'activities.msShare': 'Share my month', 'activities.msShareTitle': 'My month — {label}',
+  'activities.msShareSubtitle': 'Monthly recap',
 }
 
 const es: Dict = {

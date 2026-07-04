@@ -17,7 +17,39 @@ const ZONE_HEIGHT: Record<Zone, number> = { Z1: 14, Z2: 26, Z3: 40, Z4: 56, Z5: 
 // Allure de référence schématique (s/km) par zone — durée d'un bloc distance.
 const REF_PACE: Record<Zone, number> = { Z1: 400, Z2: 340, Z3: 300, Z4: 270, Z5: 240, Z6: 220, Z7: 200 }
 
-interface Bar { zone: Zone; durationSec: number; effort: boolean }
+// VITESSE relative (~% de l'allure 5k) — pilote la HAUTEUR de la barre. Deux
+// blocs de MÊME zone mais d'allure différente (ex. @5k vs @3000, tous deux Z5)
+// n'ont PAS la même hauteur : la hauteur suit l'ALLURE, la couleur suit la zone.
+const ZONE_VITESSE: Record<Zone, number> = { Z1: 55, Z2: 72, Z3: 88, Z4: 93, Z5: 100, Z6: 108, Z7: 122 }
+function allureVitesse(allure: string | undefined, zone: Zone): number {
+  const t = (allure ?? '').toLowerCase().replace(/\s/g, '')
+  if (!t) return ZONE_VITESSE[zone]
+  const mVma = t.match(/(\d+)%vma/); if (mVma) return 106 * (parseInt(mVma[1], 10) / 100)
+  const mPct = t.match(/(\d+)%/);    if (mPct) return parseInt(mPct[1], 10)   // % de l'allure 5k
+  if (t.includes('sprint')) return 122
+  if (t.includes('1500')) return 113
+  if (t.includes('2000')) return 109
+  if (t.includes('vma')) return 106
+  if (t.includes('3000')) return 105
+  if (t.includes('marathon') || t.includes('42k')) return 86
+  if (t.includes('semi') || t.includes('21k')) return 90
+  if (t.includes('15k')) return 94
+  if (t.includes('10k')) return 96
+  if (t.includes('5k')) return 100
+  if (t.includes('seuil')) return 93
+  if (t.includes('float')) return 85
+  if (t.includes('trot')) return 62
+  if (t.includes('marche')) return 50
+  if (t.includes('ef') || t.includes('endurance')) return 72
+  return ZONE_VITESSE[zone]
+}
+function vitesseHauteur(v: number, H: number): number {
+  const lo = 45, hi = 124
+  const frac = Math.max(0.10, Math.min(1, (v - lo) / (hi - lo)))
+  return frac * (H - 2)
+}
+
+interface Bar { zone: Zone; durationSec: number; effort: boolean; vitesse: number }
 
 function blocDureeSec(zone: Zone, dureeSec?: number, distanceM?: number): number {
   if (dureeSec) return dureeSec
@@ -32,15 +64,15 @@ function blocBars(b: Bloc): Bar[] {
       // Set composite : une barre par segment (intensités entrelacées).
       for (const s of b.segments) {
         const d = blocDureeSec(s.zone, s.dureeSec, s.distanceM)
-        if (d > 0) out.push({ zone: s.zone, durationSec: d, effort: true })
+        if (d > 0) out.push({ zone: s.zone, durationSec: d, effort: true, vitesse: allureVitesse(s.allure, s.zone) })
       }
     } else {
       const eff = blocDureeSec(b.zone, b.dureeSec, b.distanceM)
-      if (eff > 0) out.push({ zone: b.zone, durationSec: eff, effort: true })
+      if (eff > 0) out.push({ zone: b.zone, durationSec: eff, effort: true, vitesse: allureVitesse(b.allure, b.zone) })
     }
     if (b.recup) {
       const r = blocDureeSec(b.recup.zone, b.recup.dureeSec, b.recup.distanceM)
-      if (r > 0) out.push({ zone: b.recup.zone, durationSec: r, effort: false })
+      if (r > 0) out.push({ zone: b.recup.zone, durationSec: r, effort: false, vitesse: allureVitesse(b.recup.label, b.recup.zone) })
     }
   }
   return out
@@ -74,7 +106,7 @@ export function RunProfil({ seance, full = false }: { seance: Seance; full?: boo
       <svg width="100%" height={H} viewBox={`0 0 100 ${H}`} preserveAspectRatio="none" style={{ display: 'block' }}>
         {bars.map((bar, i) => {
           const w = (bar.durationSec / total) * 100
-          const h = (ZONE_HEIGHT[bar.zone] / 100) * (H - 2)
+          const h = vitesseHauteur(bar.vitesse, H)
           const rect = (
             <rect key={i} x={x} y={H - h} width={Math.max(w - GAP, 0.4)} height={h} rx={1.2}
               fill={ZONE_TOKEN[bar.zone]} opacity={bar.effort ? 0.9 : 0.4} />

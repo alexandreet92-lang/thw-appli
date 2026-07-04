@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useRef, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 export interface ClarifyingQuestion {
   header: string
@@ -28,6 +29,7 @@ export function CoachQuestionCard({
   data: ClarifyingQuestions
   onSubmit: (recap: string) => void
 }) {
+  const { t } = useI18n()
   const qs = data.questions
   const [page, setPage] = useState(0)
   const [anim, setAnim] = useState<'next' | 'prev' | null>(null)
@@ -47,7 +49,7 @@ export function CoachQuestionCard({
       <div style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
           <span style={checkBadge}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg></span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-mid)' }}>Réponses envoyées</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-mid)' }}>{t('ai.answersSent')}</span>
         </div>
         {lines.map((l, i) => (
           <div key={i} style={{ marginBottom: 7 }}>
@@ -81,9 +83,9 @@ export function CoachQuestionCard({
       const ans = answers[i]
       const parts = [...ans.selected]
       if (ans.other.trim()) parts.push(ans.other.trim())
-      return `- ${qq.question} → ${parts.length ? parts.join(', ') : '(sans réponse)'}`
+      return `- ${qq.question} → ${parts.length ? parts.join(', ') : t('ai.noAnswer')}`
     })
-    onSubmit(`Mes réponses :\n${lines.join('\n')}`)
+    onSubmit(`${t('ai.myAnswers')}\n${lines.join('\n')}`)
   }
 
   // ── Swipe horizontal entre questions ────────────────────────
@@ -164,7 +166,7 @@ export function CoachQuestionCard({
           <input
             value={a.other}
             onChange={e => setOther(e.target.value)}
-            placeholder="Autre…"
+            placeholder={t('ai.other')}
             style={{ width: '100%', padding: '10px 8px', border: 'none', borderBottom: `1px solid ${a.other.trim() ? '#3C90D5' : 'var(--ai-border)'}`, background: 'transparent', color: 'var(--ai-text)', fontSize: 13.5, fontFamily: 'DM Sans,sans-serif', outline: 'none', boxSizing: 'border-box' }}
           />
         </div>
@@ -174,10 +176,10 @@ export function CoachQuestionCard({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
         <button onClick={goPrev} disabled={page === 0} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 10px', border: 'none', background: 'transparent', cursor: page === 0 ? 'default' : 'pointer', color: page === 0 ? 'var(--ai-border)' : 'var(--ai-mid)', fontSize: 12.5, fontWeight: 600 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-          Précédent
+          {t('ai.previous')}
         </button>
         <button onClick={() => { if (isLast) submit(); else goNext() }} disabled={!canProceed} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 999, border: 'none', cursor: canProceed ? 'pointer' : 'not-allowed', background: canProceed ? '#3C90D5' : 'var(--ai-border)', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'Syne,sans-serif', boxShadow: canProceed ? '0 3px 10px rgba(60,144,213,0.32)' : 'none', transition: 'background 0.15s' }}>
-          {isLast ? 'Envoyer' : 'Suivant'}
+          {isLast ? t('ai.send') : t('ai.next')}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">{isLast ? <path d="M5 12h14M13 6l6 6-6 6" /> : <path d="M9 18l6-6-6-6" />}</svg>
         </button>
       </div>

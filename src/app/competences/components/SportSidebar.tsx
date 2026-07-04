@@ -1,6 +1,7 @@
 'use client'
 
 import type { CategorieCompetence } from '@/types/competences'
+import { useI18n } from '@/lib/i18n'
 import {
   SPORTS_ORDER, SPORT_LABELS, sportIcon,
   CATEGORIES_ORDER, CATEGORY_LABELS, categoryIcon,
@@ -47,9 +48,10 @@ function Item({ active, icon, label, onClick }: { active: boolean; icon: React.R
 }
 
 export default function SportSidebar({ activeSport, activeCategory, onSelectSport, onSelectCategory }: Props) {
+  const { t } = useI18n()
   return (
     <div>
-      <div style={labelStyle}>Sports</div>
+      <div style={labelStyle}>{t('competences.sports')}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {SPORTS_ORDER.map(s => (
           <Item key={s} active={activeSport === s} icon={sportIcon(s)} label={SPORT_LABELS[s]} onClick={() => onSelectSport(s)} />
@@ -58,7 +60,7 @@ export default function SportSidebar({ activeSport, activeCategory, onSelectSpor
 
       <div style={{ height: 1, background: 'var(--border)', margin: '14px 10px' }} />
 
-      <div style={{ ...labelStyle, marginTop: 10 }}>Catégories</div>
+      <div style={{ ...labelStyle, marginTop: 10 }}>{t('competences.categories')}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {CATEGORIES_ORDER.map(c => (
           <Item

@@ -5,6 +5,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
 import { Card, SectionTitle, SportDot, Skeleton, EmptyState } from './primitives'
@@ -20,6 +21,7 @@ interface Act {
 const SELECT = 'id, sport_type, title, started_at, moving_time_s, elapsed_time_s, distance_m, normalized_watts, ftp_at_time, avg_hr, avg_temp_c, elevation_gain_m, total_descent_m, elevation_loss_m'
 
 export function LastActivityCard() {
+  const { t } = useI18n()
   const [loading, setLoading] = useState(true)
   const [act, setAct] = useState<Act | null>(null)
   const { compute } = useSmSn()
@@ -55,10 +57,10 @@ export function LastActivityCard() {
 
   return (
     <Card href={act ? `/activities?id=${act.id}` : undefined}>
-      <SectionTitle>Dernière activité</SectionTitle>
+      <SectionTitle>{t('dashboard.lastActivity')}</SectionTitle>
 
       {!act ? (
-        <EmptyState title="Aucune activité enregistrée" hint="Lance ta première séance." href="/session" cta="Enregistrer" />
+        <EmptyState title={t('dashboard.lastActivityEmptyTitle')} hint={t('dashboard.lastActivityEmptyHint')} href="/session" cta={t('dashboard.record')} />
       ) : (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>

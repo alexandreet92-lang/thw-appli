@@ -11,12 +11,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { MobileSheet } from './MobileSheet'
 import { methodsForSport, methodById, type MethodSport } from '@/lib/coach/methods'
+import { useI18n } from '@/lib/i18n'
 
-const SPORTS: { id: MethodSport; label: string }[] = [
-  { id: 'cyclisme', label: 'Cyclisme' },
-  { id: 'running', label: 'Running' },
-  { id: 'triathlon', label: 'Triathlon' },
-]
+const SPORTS: MethodSport[] = ['cyclisme', 'running', 'triathlon']
 
 function MethodGlyph({ size = 13 }: { size?: number }) {
   return (
@@ -38,9 +35,15 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
   disabled?: boolean
   isMobile?: boolean
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'sports' | MethodSport>('sports')
   const ref = useRef<HTMLDivElement>(null)
+  const sportLabel: Record<MethodSport, string> = {
+    cyclisme: t('ai.sportCyclisme'),
+    running: t('ai.sportRunning'),
+    triathlon: t('ai.sportTriathlon'),
+  }
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -67,7 +70,7 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
   }
 
   const current = methodById(method)
-  const label = current ? current.name : 'Auto'
+  const label = current ? current.name : t('ai.methodAuto')
 
   const close = () => { setOpen(false); setView('sports') }
 
@@ -88,15 +91,15 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
         onMouseEnter={hoverOn} onMouseLeave={e => { if (method !== 'auto') hoverOff(e) }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>Automatique</div>
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 1 }}>L&apos;IA choisit la méthode selon tes données</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{t('ai.methodAutomatic')}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 1 }}>{t('ai.methodAutoDesc')}</div>
         </div>
         {method === 'auto' && <Check />}
       </button>
       <div style={{ height: 1, background: 'var(--border)', margin: '6px 8px' }} />
       {SPORTS.map(s => (
-        <button key={s.id} onClick={() => setView(s.id)} style={rowBase} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
-          <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{s.label}</span>
+        <button key={s} onClick={() => setView(s)} style={rowBase} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+          <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{sportLabel[s]}</span>
           <span style={{ color: 'var(--text-dim)' }}><Chevron /></span>
         </button>
       ))}
@@ -109,7 +112,7 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
       <button onClick={() => setView('sports')} style={{ ...rowBase, gap: 8 }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
         <span style={{ color: 'var(--text-mid)', display: 'flex' }}><Chevron dir="left" /></span>
         <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-mid)' }}>
-          {SPORTS.find(s => s.id === sport)?.label}
+          {sportLabel[sport]}
         </span>
       </button>
       <div style={{ height: 1, background: 'var(--border)', margin: '4px 8px 6px' }} />
@@ -144,7 +147,7 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
     >
       <button
         onClick={() => { if (!disabled) { setView('sports'); setOpen(o => !o) } }}
-        title={current ? `Méthode : ${current.name}` : 'Méthode d\'entraînement'}
+        title={current ? t('ai.methodNamed', { name: current.name }) : t('ai.methodTraining')}
         className="aip-icon-btn"
         style={{
           display: 'flex', alignItems: 'center', gap: 4, height: 28, padding: '0 8px', borderRadius: 8,
@@ -156,7 +159,7 @@ export function MethodPicker({ method, onChange, disabled = false, isMobile = fa
       </button>
 
       {open && (isMobile ? (
-        <MobileSheet title="Méthode d'entraînement" onClose={close}>{content}</MobileSheet>
+        <MobileSheet title={t('ai.methodTraining')} onClose={close}>{content}</MobileSheet>
       ) : (
         <div style={{
           position: 'absolute', bottom: 'calc(100% + 10px)', left: '50%', transform: 'translateX(-50%)',

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import type { Segment } from '@/types/segment'
+import { useI18n } from '@/lib/i18n'
 import SegmentLeaderboard from './SegmentLeaderboard'
 import SegmentHistory from './SegmentHistory'
 
@@ -18,6 +19,7 @@ function fmt(s: number) {
 }
 
 export default function SegmentDetail({ segmentId, onClose, isDark }: Props) {
+  const { t } = useI18n()
   const [segment, setSegment] = useState<Segment | null>(null)
   const [tab, setTab] = useState<'leaderboard' | 'history'>('leaderboard')
   const [mounted, setMounted] = useState(false)
@@ -61,7 +63,7 @@ export default function SegmentDetail({ segmentId, onClose, isDark }: Props) {
           <p style={{ fontSize: 15, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{segment?.name ?? '…'}</p>
           {segment && (
             <p style={{ fontSize: 11, color: dim, margin: '1px 0 0' }}>
-              {fmt(segment.distance_m)} · {segment.sport === 'cycling' ? 'Vélo' : segment.sport === 'running' ? 'Running' : segment.sport === 'trail' ? 'Trail' : segment.sport}
+              {fmt(segment.distance_m)} · {segment.sport === 'cycling' ? t('shared.sportCycling') : segment.sport === 'running' ? t('shared.sportRunning') : segment.sport === 'trail' ? t('shared.sportTrail') : segment.sport}
             </p>
           )}
         </div>
@@ -72,9 +74,9 @@ export default function SegmentDetail({ segmentId, onClose, isDark }: Props) {
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${sep}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: 10 }}>
             {[
-              { l: 'Distance', v: fmt(segment.distance_m) },
+              { l: t('shared.distance'), v: fmt(segment.distance_m) },
               { l: 'D+', v: `${Math.round(segment.elevation_gain_m)} m` },
-              { l: 'Visibilité', v: segment.is_public ? 'Public' : 'Privé' },
+              { l: t('shared.visibility'), v: segment.is_public ? t('shared.public') : t('shared.private') },
             ].map(({ l, v }) => (
               <div key={l} style={{ flex: 1, background: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
                 <p style={{ fontSize: 9, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 3px' }}>{l}</p>
@@ -87,13 +89,13 @@ export default function SegmentDetail({ segmentId, onClose, isDark }: Props) {
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: `1px solid ${sep}`, flexShrink: 0 }}>
-        {(['leaderboard', 'history'] as const).map(t => (
+        {(['leaderboard', 'history'] as const).map(tabKey => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{ flex: 1, height: 44, border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: tab === t ? '#06B6D4' : dim, fontFamily: 'DM Sans, sans-serif', borderBottom: `2px solid ${tab === t ? '#06B6D4' : 'transparent'}`, transition: 'all 200ms' }}
+            key={tabKey}
+            onClick={() => setTab(tabKey)}
+            style={{ flex: 1, height: 44, border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: tab === tabKey ? '#06B6D4' : dim, fontFamily: 'DM Sans, sans-serif', borderBottom: `2px solid ${tab === tabKey ? '#06B6D4' : 'transparent'}`, transition: 'all 200ms' }}
           >
-            {t === 'leaderboard' ? 'Classement' : 'Mon historique'}
+            {tabKey === 'leaderboard' ? t('shared.leaderboard') : t('shared.myHistory')}
           </button>
         ))}
       </div>

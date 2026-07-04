@@ -4,17 +4,19 @@
 // Fond --bg-card2, segment actif --bg-elev. Bascule en direct.
 // ══════════════════════════════════════════════════════════════
 
+import { useI18n } from '@/lib/i18n'
 import { FB } from './lib'
 import type { DashboardModel } from './useDashboardModel'
 
-const SEGMENTS: { key: DashboardModel; label: string }[] = [
-  { key: 'classique', label: 'Classique' },
-  { key: 'data', label: 'Datas' },
+const SEGMENTS: { key: DashboardModel; labelKey: string }[] = [
+  { key: 'classique', labelKey: 'dashboard.modelClassic' },
+  { key: 'data', labelKey: 'dashboard.modelData' },
 ]
 
 export function DashboardModelSwitch({ value, onChange }: { value: DashboardModel; onChange: (m: DashboardModel) => void }) {
+  const { t } = useI18n()
   return (
-    <div role="tablist" aria-label="Modèle de tableau de bord"
+    <div role="tablist" aria-label={t('dashboard.modelSwitchLabel')}
       style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 999, background: 'var(--bg-card2)' }}>
       {SEGMENTS.map(s => {
         const active = s.key === value
@@ -32,7 +34,7 @@ export function DashboardModelSwitch({ value, onChange }: { value: DashboardMode
               transition: 'background 0.18s, color 0.18s',
             }}
           >
-            {s.label}
+            {t(s.labelKey)}
           </button>
         )
       })}

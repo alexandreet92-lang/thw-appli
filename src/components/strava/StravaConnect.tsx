@@ -3,21 +3,23 @@
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useStrava } from '@/hooks/useStrava'
+import { useI18n } from '@/lib/i18n'
 
-const STATUS_MESSAGES: Record<string, { msg: string; ok: boolean }> = {
-  connected:     { msg: 'Strava connecté avec succès !',         ok: true  },
-  denied:        { msg: 'Connexion annulée.',                    ok: false },
-  error:         { msg: 'Erreur de connexion Strava.',           ok: false },
-  token_error:   { msg: 'Erreur d\'authentification Strava.',    ok: false },
-  invalid_state: { msg: 'Erreur de sécurité — réessaye.',        ok: false },
-  no_session:    { msg: 'Session expirée — reconnecte-toi.',     ok: false },
+const STATUS_MESSAGES: Record<string, { key: string; ok: boolean }> = {
+  connected:     { key: 'shared.stravaConnected',        ok: true  },
+  denied:        { key: 'shared.connectionCancelled',    ok: false },
+  error:         { key: 'shared.stravaConnectionError',  ok: false },
+  token_error:   { key: 'shared.stravaAuthError',        ok: false },
+  invalid_state: { key: 'shared.securityErrorRetry',     ok: false },
+  no_session:    { key: 'shared.sessionExpired',         ok: false },
 }
 
 export function StravaConnect() {
   const searchParams = useSearchParams()
   const router       = useRouter()
+  const { t } = useI18n()
   const { connected, syncing, sync, disconnect, activities } = useStrava()
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [toast, setToast] = useState<{ key: string; ok: boolean } | null>(null)
 
   // Affiche le toast après le callback OAuth
   useEffect(() => {
@@ -47,7 +49,7 @@ export function StravaConnect() {
           backdropFilter:'blur(8px)',
           fontFamily:    'DM Sans, sans-serif',
         }}>
-          {toast.msg}
+          {t(toast.key)}
         </div>
       )}
 
@@ -69,7 +71,7 @@ export function StravaConnect() {
               fontFamily: 'DM Sans, sans-serif',
             }}
           >
-            {syncing ? '⟳ Sync en cours…' : '↻ Synchroniser'}
+            {syncing ? `⟳ ${t('shared.syncInProgress')}` : `↻ ${t('shared.synchronize')}`}
           </button>
 
           <button
@@ -86,12 +88,12 @@ export function StravaConnect() {
               fontFamily: 'DM Sans, sans-serif',
             }}
           >
-            Déconnecter
+            {t('shared.disconnect')}
           </button>
 
           {activities.length > 0 && (
             <span style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>
-              {activities.length} activité{activities.length > 1 ? 's' : ''}
+              {activities.length > 1 ? t('shared.activityCountMany', { n: activities.length }) : t('shared.activityCountOne', { n: activities.length })}
             </span>
           )}
         </div>
@@ -117,7 +119,7 @@ export function StravaConnect() {
             <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066l-2.084 4.116z" fill="white"/>
             <path d="M11.214 13.828l2.084-4.116 2.089 4.116h3.066L13.298 3.656l-5.15 10.172h3.066z" fill="white"/>
           </svg>
-          Connecter Strava
+          {t('shared.connectStrava')}
         </button>
       )}
     </>

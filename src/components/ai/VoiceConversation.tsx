@@ -15,6 +15,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 
 const SILENCE_MS = 1400
 // WAV silencieux minimal — sert à déverrouiller la lecture audio sur iOS.
@@ -39,16 +40,9 @@ const DEFAULT_SETTINGS: VoiceSettings = { style: 'douce', lang: 'fr-FR', speed: 
 const SETTINGS_KEY = 'thw_voice_settings'
 
 const STYLE_ORDER: StyleKey[] = ['douce', 'neutre', 'energique']
-const STYLE_LABEL: Record<StyleKey, string> = { douce: 'Douce', neutre: 'Neutre', energique: 'Énergique' }
-const STYLE_DESC: Record<StyleKey, string> = {
-  douce: 'Chaleureuse et apaisante',
-  neutre: 'Claire et posée',
-  energique: 'Dynamique et motivante',
-}
 const LANG_ORDER: LangKey[] = ['fr-FR', 'en-US', 'es-ES']
 const LANG_LABEL: Record<LangKey, string> = { 'fr-FR': 'French', 'en-US': 'English', 'es-ES': 'Español' }
 const SPEED_ORDER: SpeedKey[] = ['lent', 'normal', 'rapide']
-const SPEED_LABEL: Record<SpeedKey, string> = { lent: 'Lent', normal: 'Normal', rapide: 'Rapide' }
 const SPEED_VALUE: Record<SpeedKey, number> = { lent: 0.85, normal: 1.0, rapide: 1.15 }
 // Cadence d'apparition du texte (caractères/seconde) ≈ débit de la voix.
 const SPEED_CPS: Record<SpeedKey, number> = { lent: 12.5, normal: 15, rapide: 17.5 }
@@ -94,6 +88,7 @@ export function VoiceConversation({ onTurn, onClose }: {
   onTurn: (text: string, onOral: (oralSoFar: string) => void) => Promise<{ speak: string; show: string }>
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [phase, setPhase] = useState<Phase>('listening')
   const [supported, setSupported] = useState(true)
@@ -470,7 +465,7 @@ export function VoiceConversation({ onTurn, onClose }: {
 
   return createPortal(
     <div
-      role="dialog" aria-modal="true" aria-label="Conversation vocale"
+      role="dialog" aria-modal="true" aria-label={t('ai.voiceConversation')}
       onPointerDown={unlockAudio}
       style={{
         position: 'fixed', inset: 0, zIndex: 1500, overflow: 'hidden',
@@ -489,7 +484,7 @@ export function VoiceConversation({ onTurn, onClose }: {
       {(muted || !supported) && (
         <div style={{ position: 'relative', textAlign: 'center', padding: '4px 16px 0', flexShrink: 0 }}>
           <span style={{ fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-body)', color: !supported ? 'var(--text-mid)' : MUTE_RED }}>
-            {!supported ? 'Vocal non supporté sur ce navigateur' : 'Micro désactivé'}
+            {!supported ? t('ai.voiceNotSupported') : t('ai.micDisabled')}
           </span>
         </div>
       )}
@@ -503,7 +498,7 @@ export function VoiceConversation({ onTurn, onClose }: {
       }}>
         {!hasConvo ? (
           <p style={{ textAlign: 'center', margin: 0, fontSize: 19, fontWeight: 500, fontFamily: 'var(--font-body)', color: 'var(--text-mid)' }}>
-            Commencez à parler
+            {t('ai.startSpeaking')}
           </p>
         ) : (
           <div style={{ width: '100%', maxWidth: 640, margin: '0 auto', animation: 'vc_in 0.25s ease' }}>
@@ -545,10 +540,10 @@ export function VoiceConversation({ onTurn, onClose }: {
             {/* Retours (pouce haut / bas) — comme Claude */}
             {displayText && !liveUser && phase === 'listening' && (
               <div style={{ display: 'flex', gap: 14, marginTop: 18 }}>
-                <button onClick={() => setFeedback(feedback === 'up' ? null : 'up')} aria-label="Bonne réponse" style={fbBtn(feedback === 'up')}>
+                <button onClick={() => setFeedback(feedback === 'up' ? null : 'up')} aria-label={t('ai.goodAnswer')} style={fbBtn(feedback === 'up')}>
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v11M2 13v6a2 2 0 0 0 2 2h13.3a2 2 0 0 0 2-1.7l1.4-9A2 2 0 0 0 19.7 8H14V4a2 2 0 0 0-2-2l-3 8" /></svg>
                 </button>
-                <button onClick={() => setFeedback(feedback === 'down' ? null : 'down')} aria-label="Mauvaise réponse" style={fbBtn(feedback === 'down')}>
+                <button onClick={() => setFeedback(feedback === 'down' ? null : 'down')} aria-label={t('ai.badAnswer')} style={fbBtn(feedback === 'down')}>
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 14V3M22 11V5a2 2 0 0 0-2-2H6.7a2 2 0 0 0-2 1.7l-1.4 9A2 2 0 0 0 5.3 16H11v4a2 2 0 0 0 2 2l3-8" /></svg>
                 </button>
               </div>
@@ -563,7 +558,7 @@ export function VoiceConversation({ onTurn, onClose }: {
         padding: '8px 22px calc(20px + env(safe-area-inset-bottom,0px))',
       }}>
         {/* Réglages */}
-        <button onClick={() => setSettingsOpen(true)} aria-label="Paramètres vocaux" style={circleBtn('light')}>
+        <button onClick={() => setSettingsOpen(true)} aria-label={t('ai.voiceSettings')} style={circleBtn('light')}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -577,7 +572,7 @@ export function VoiceConversation({ onTurn, onClose }: {
             onPointerDown={pushStart}
             onPointerUp={pushEnd}
             onPointerLeave={() => { if (pressing) pushEnd() }}
-            aria-label={settings.mode === 'push' ? 'Maintiens pour parler' : (muted ? 'Réactiver le micro' : 'Couper le micro')}
+            aria-label={settings.mode === 'push' ? t('ai.holdToTalk') : (muted ? t('ai.unmuteMic') : t('ai.muteMic'))}
             style={{
               width: 60, height: 60, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
               border: micActive ? '1px solid var(--border)' : 'none',
@@ -601,7 +596,7 @@ export function VoiceConversation({ onTurn, onClose }: {
           </button>
 
           {/* Fermer */}
-          <button onClick={onClose} aria-label="Terminer la conversation" style={circleBtn('dark')}>
+          <button onClick={onClose} aria-label={t('ai.endConversation')} style={circleBtn('dark')}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </div>
@@ -655,6 +650,14 @@ function SettingsSheet({ settings, onChange, onClose }: {
   onChange: (patch: Partial<VoiceSettings>) => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
+  const STYLE_LABEL: Record<StyleKey, string> = { douce: t('ai.voiceStyleSoft'), neutre: t('ai.voiceStyleNeutral'), energique: t('ai.voiceStyleEnergetic') }
+  const STYLE_DESC: Record<StyleKey, string> = {
+    douce: t('ai.voiceStyleSoftDesc'),
+    neutre: t('ai.voiceStyleNeutralDesc'),
+    energique: t('ai.voiceStyleEnergeticDesc'),
+  }
+  const SPEED_LABEL: Record<SpeedKey, string> = { lent: t('ai.speedSlow'), normal: t('ai.speedNormal'), rapide: t('ai.speedFast') }
   const styleIdx = STYLE_ORDER.indexOf(settings.style)
   const cycleStyle = (dir: number) => {
     const n = (styleIdx + dir + STYLE_ORDER.length) % STYLE_ORDER.length
@@ -694,13 +697,13 @@ function SettingsSheet({ settings, onChange, onClose }: {
 
         {/* En-tête : ✕ à gauche, titre centré */}
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, minHeight: 40 }}>
-          <button onClick={onClose} aria-label="Fermer" style={{
+          <button onClick={onClose} aria-label={t('ai.close')} style={{
             position: 'absolute', left: 0, width: 40, height: 40, borderRadius: '50%', border: 'none', cursor: 'pointer',
             background: 'var(--bg-card2)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
-          <span style={{ fontSize: 19, fontWeight: 600, fontFamily: 'var(--font-display)', color: 'var(--text)' }}>Paramètres vocaux</span>
+          <span style={{ fontSize: 19, fontWeight: 600, fontFamily: 'var(--font-display)', color: 'var(--text)' }}>{t('ai.voiceSettings')}</span>
         </div>
 
         <div style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -712,12 +715,12 @@ function SettingsSheet({ settings, onChange, onClose }: {
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}>
               {/* Zones de tap gauche/droite */}
-              <button onClick={() => cycleStyle(-1)} aria-label="Voix précédente" style={carouselArrow('left')}>
+              <button onClick={() => cycleStyle(-1)} aria-label={t('ai.previousVoice')} style={carouselArrow('left')}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
               </button>
               <span style={{ fontSize: 27, fontWeight: 600, fontFamily: 'var(--font-display)', color: 'var(--text)' }}>{STYLE_LABEL[settings.style]}</span>
               <span style={{ fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--text-mid)' }}>{STYLE_DESC[settings.style]}</span>
-              <button onClick={() => cycleStyle(1)} aria-label="Voix suivante" style={carouselArrow('right')}>
+              <button onClick={() => cycleStyle(1)} aria-label={t('ai.nextVoice')} style={carouselArrow('right')}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
               </button>
             </div>
@@ -732,7 +735,7 @@ function SettingsSheet({ settings, onChange, onClose }: {
           {/* Langue */}
           <button onClick={cycleLang} style={settingRow()}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--text)' }}>Langue</span>
+              <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--text)' }}>{t('ai.language')}</span>
               <span style={{ fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--text-mid)', background: 'var(--bg-card)', borderRadius: 6, padding: '2px 7px' }}>Beta</span>
             </span>
             <span style={rowValue()}>{LANG_LABEL[settings.lang]} <Chevrons /></span>
@@ -740,7 +743,7 @@ function SettingsSheet({ settings, onChange, onClose }: {
 
           {/* Vitesse */}
           <button onClick={cycleSpeed} style={settingRow()}>
-            <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--text)' }}>Vitesse</span>
+            <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--text)' }}>{t('ai.speed')}</span>
             <span style={rowValue()}>{SPEED_LABEL[settings.speed]} <Chevrons /></span>
           </button>
 
@@ -748,15 +751,15 @@ function SettingsSheet({ settings, onChange, onClose }: {
           <div style={{ marginTop: 4 }}>
             <button onClick={() => onChange({ mode: 'hands' })} style={modeRow(settings.mode === 'hands')}>
               <span style={{ flex: 1 }}>
-                <span style={{ display: 'block', fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--text)' }}>Mains libres</span>
-                <span style={{ display: 'block', fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--text-mid)', marginTop: 2 }}>Idéal pour les environnements calmes</span>
+                <span style={{ display: 'block', fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--text)' }}>{t('ai.handsFree')}</span>
+                <span style={{ display: 'block', fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--text-mid)', marginTop: 2 }}>{t('ai.handsFreeDesc')}</span>
               </span>
               {settings.mode === 'hands' && <Check />}
             </button>
             <button onClick={() => onChange({ mode: 'push' })} style={modeRow(settings.mode === 'push')}>
               <span style={{ flex: 1 }}>
-                <span style={{ display: 'block', fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--text)' }}>Appuyer pour parler</span>
-                <span style={{ display: 'block', fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--text-mid)', marginTop: 2 }}>Maintenez pour parler, relâchez pour envoyer</span>
+                <span style={{ display: 'block', fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-body)', color: 'var(--text)' }}>{t('ai.pushToTalk')}</span>
+                <span style={{ display: 'block', fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--text-mid)', marginTop: 2 }}>{t('ai.pushToTalkDesc')}</span>
               </span>
               {settings.mode === 'push' && <Check />}
             </button>

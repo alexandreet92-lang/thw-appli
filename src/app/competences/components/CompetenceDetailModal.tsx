@@ -5,6 +5,7 @@ import { X, Zap, ArrowUp, AlertTriangle, Target, ClipboardList, Sliders, Message
 import type { CompetenceWithUserState } from '@/types/competences'
 import { SPORT_LABELS, CATEGORY_LABELS, type SportFilter } from '../constants'
 import { streamCompetenceAI, type AIChatMsg } from '../lib/streamCompetenceAI'
+import { useI18n } from '@/lib/i18n'
 import MicButton from '@/components/ai-coach/MicButton'
 
 interface Props {
@@ -47,6 +48,7 @@ function stripPromptTag(text: string): string {
 }
 
 export default function CompetenceDetailModal({ competence, conflicts, isOpen, onClose, onSave, onDelete }: Props) {
+  const { t } = useI18n()
   const basePrompt = competence.user_state?.prompt_custom ?? competence.prompt_base
   const [currentPrompt, setCurrentPrompt] = useState(basePrompt)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -119,14 +121,14 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
     } catch (e) {
       setMessages(prev => {
         const next = [...prev]
-        next[next.length - 1] = { role: 'assistant', content: e instanceof Error ? e.message : 'Erreur IA' }
+        next[next.length - 1] = { role: 'assistant', content: e instanceof Error ? e.message : t('competences.aiError') }
         return next
       })
     } finally {
       setIsStreaming(false)
       busyRef.current = false
     }
-  }, [input, messages, currentPrompt, competence.nom])
+  }, [input, messages, currentPrompt, competence.nom, t])
 
   if (!isOpen) return null
 
@@ -134,10 +136,10 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
   const isActive = !!competence.user_state?.active
   const blocks = parsePrompt(currentPrompt)
   const sections = [
-    { key: 'philosophie', cls: 'section-philosophie', label: 'PHILOSOPHIE', Icon: Target,        text: blocks.philosophie },
-    { key: 'regles',      cls: 'section-regles',      label: 'RÈGLES',      Icon: ClipboardList,  text: blocks.regles },
-    { key: 'exclusions',  cls: 'section-exclusions',  label: 'EXCLUSIONS',  Icon: AlertTriangle,  text: blocks.exclusions },
-    { key: 'adaptations', cls: 'section-adaptations', label: 'ADAPTATIONS', Icon: Sliders,        text: blocks.adaptations },
+    { key: 'philosophie', cls: 'section-philosophie', label: t('competences.sectionPhilosophie'), Icon: Target,        text: blocks.philosophie },
+    { key: 'regles',      cls: 'section-regles',      label: t('competences.sectionRegles'),      Icon: ClipboardList,  text: blocks.regles },
+    { key: 'exclusions',  cls: 'section-exclusions',  label: t('competences.sectionExclusions'),  Icon: AlertTriangle,  text: blocks.exclusions },
+    { key: 'adaptations', cls: 'section-adaptations', label: t('competences.sectionAdaptations'), Icon: Sliders,        text: blocks.adaptations },
   ]
   const hasStructured = sections.some(s => s.text)
 
@@ -156,7 +158,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
           {(isActive || conflicts.length > 0) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 7 }}>
               {isActive && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: '#06B6D4', background: 'rgba(6,182,212,0.12)', border: '0.5px solid rgba(6,182,212,0.3)', borderRadius: 5, padding: '2px 8px' }}>Active</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: '#06B6D4', background: 'rgba(6,182,212,0.12)', border: '0.5px solid rgba(6,182,212,0.3)', borderRadius: 5, padding: '2px 8px' }}>{t('competences.active')}</span>
               )}
               {conflicts.map(c => (
                 <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'rgba(239,68,68,0.9)', border: '0.5px solid rgba(239,68,68,0.35)', borderRadius: 5, padding: '2px 8px' }}>
@@ -169,7 +171,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
       </div>
       <button
         onClick={closeFn}
-        aria-label="Fermer"
+        aria-label={t('competences.close')}
         style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-hover)', border: '0.5px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 150ms' }}
         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
@@ -202,11 +204,11 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
       <div className="cmp-section cmp-section-remodeler" style={{ marginBottom: 0 }}>
         <div className="cmp-section-head">
           <span className="cmp-section-icon" style={{ color: 'var(--text-mid)' }}><MessageSquare size={14} /></span>
-          <span className="cmp-section-label" style={{ color: 'var(--text-mid)' }}>REMODELER</span>
+          <span className="cmp-section-label" style={{ color: 'var(--text-mid)' }}>{t('competences.sectionRemodeler')}</span>
         </div>
-        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Modifier cette compétence</div>
+        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{t('competences.editThisSkill')}</div>
         <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, marginBottom: 12 }}>
-          Décris ce que tu veux changer, l&apos;IA mettra à jour le prompt
+          {t('competences.editHint')}
         </div>
 
         {/* Messages */}
@@ -240,7 +242,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
                       onClick={() => setCurrentPrompt(proposed)}
                       style={{ fontSize: 11, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 500 }}
                     >
-                      Appliquer cette version
+                      {t('competences.applyThisVersion')}
                     </button>
                   </div>
                 )}
@@ -257,7 +259,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
             onChange={e => setInput(e.target.value)}
             onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 100) + 'px' }}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() } }}
-            placeholder="Ex : rends-la plus tournée vers le volume…"
+            placeholder={t('competences.reshapePlaceholder')}
             rows={1}
             style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', minHeight: 22, maxHeight: 100 }}
           />
@@ -266,7 +268,7 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
             <button
               onClick={() => void send()}
               disabled={!input.trim() || isStreaming}
-              aria-label="Envoyer"
+              aria-label={t('competences.send')}
               style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', flexShrink: 0, cursor: input.trim() && !isStreaming ? 'pointer' : 'not-allowed', background: input.trim() && !isStreaming ? '#06B6D4' : 'var(--border)', opacity: input.trim() && !isStreaming ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <ArrowUp size={15} color="#fff" />
@@ -281,17 +283,17 @@ Garde le prompt entre 80 et 150 mots. Réponds d'abord en expliquant brièvement
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '14px 24px', borderTop: '0.5px solid var(--border)', flexShrink: 0 }}>
       {isCustom ? (
         <button
-          onClick={() => { if (confirm('Supprimer définitivement cette compétence ?')) onDelete() }}
+          onClick={() => { if (confirm(t('competences.deleteConfirm'))) onDelete() }}
           style={{ background: 'transparent', color: '#EF4444', border: '0.5px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
-        >Supprimer</button>
+        >{t('competences.delete')}</button>
       ) : <span />}
       <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={closeFn} style={{ background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}>Fermer</button>
+        <button onClick={closeFn} style={{ background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}>{t('competences.close')}</button>
         <button
           onClick={() => onSave(currentPrompt)}
           disabled={!dirty}
           style={{ background: dirty ? '#06B6D4' : 'var(--border)', color: dirty ? '#fff' : 'var(--text-dim)', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 12, fontWeight: 500, cursor: dirty ? 'pointer' : 'not-allowed', opacity: dirty ? 1 : 0.6 }}
-        >Enregistrer</button>
+        >{t('competences.save')}</button>
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { parseGpxText } from './GpxRouteSvg'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   fileUrl: string
@@ -9,6 +10,7 @@ interface Props {
 
 /** Interactive Leaflet map rendered from a remote GPX URL. */
 export default function GpxRouteMap({ fileUrl, height = 220 }: Props) {
+  const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading')
 
@@ -64,12 +66,12 @@ export default function GpxRouteMap({ fileUrl, height = 220 }: Props) {
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
       {status === 'loading' && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', fontSize: 11, color: '#9ca3af', pointerEvents: 'none' }}>
-          Chargement carte…
+          {t('shared.loadingMap')}
         </div>
       )}
       {status === 'error' && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a1a2e', fontSize: 11, color: '#6b7280' }}>
-          Tracé non disponible
+          {t('shared.traceUnavailable')}
         </div>
       )}
     </div>

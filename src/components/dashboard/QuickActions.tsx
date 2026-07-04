@@ -4,14 +4,16 @@
 // ══════════════════════════════════════════════════════════════
 
 import Link from 'next/link'
+import { useI18n } from '@/lib/i18n'
 import { FB } from './lib'
 
-const ACTIONS: { label: string; href: string }[] = [
-  { label: 'Faire mon check-in', href: '/recovery' },
-  { label: 'Créer un plan', href: '/planning' },
+const ACTIONS: { labelKey: string; href: string }[] = [
+  { labelKey: 'dashboard.actionCheckin', href: '/recovery' },
+  { labelKey: 'dashboard.actionCreatePlan', href: '/planning' },
 ]
 
 export function QuickActions() {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
       {ACTIONS.map(a => (
@@ -24,7 +26,7 @@ export function QuickActions() {
             fontFamily: FB, fontSize: 13, fontWeight: 500, textDecoration: 'none',
           }}
         >
-          {a.label}
+          {t(a.labelKey)}
         </Link>
       ))}
     </div>

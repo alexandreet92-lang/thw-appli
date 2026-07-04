@@ -180,7 +180,7 @@ export default function BienvenuePage() {
             {/* Pied : retour + Suivant/Terminer */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 22 }}>
               {step > 0 ? (
-                <button onClick={onBack} aria-label="Retour" style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ArrowLeft size={18} /></button>
+                <button onClick={onBack} aria-label={t('onboarding.back')} style={{ width: 44, height: 44, borderRadius: '50%', border: '1px solid var(--border-mid)', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ArrowLeft size={18} /></button>
               ) : <span />}
               <button onClick={onNext} disabled={!canNext || saving} style={{
                 height: 48, padding: '0 24px', borderRadius: 999, border: 'none',
@@ -207,10 +207,10 @@ export default function BienvenuePage() {
 
             {/* Récap */}
             <div style={{ textAlign: 'left', background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 22 }}>
-              <RecapRow label="Objectif" value={(a.primary_goal && a.primary_goal !== 'autre') ? t('q.goal.' + a.primary_goal) : (other.trim() || t('q.other'))} fallbackRaw />
-              {a.sports.length > 0 && <RecapRow label="Sports" value={a.sports.map(s => t('q.sport.' + s)).join(', ')} />}
-              {a.weekly_volume && <RecapRow label="Volume" value={t('q.vol.' + a.weekly_volume)} />}
-              {a.level && <RecapRow label="Niveau" value={t('q.lvl.' + a.level)} />}
+              <RecapRow label={t('onboarding.recapGoal')} value={(a.primary_goal && a.primary_goal !== 'autre') ? t('q.goal.' + a.primary_goal) : (other.trim() || t('q.other'))} fallbackRaw />
+              {a.sports.length > 0 && <RecapRow label={t('onboarding.recapSports')} value={a.sports.map(s => t('q.sport.' + s)).join(', ')} />}
+              {a.weekly_volume && <RecapRow label={t('onboarding.recapVolume')} value={t('q.vol.' + a.weekly_volume)} />}
+              {a.level && <RecapRow label={t('onboarding.recapLevel')} value={t('q.lvl.' + a.level)} />}
             </div>
 
             <button onClick={() => { router.replace('/'); router.refresh() }} style={{

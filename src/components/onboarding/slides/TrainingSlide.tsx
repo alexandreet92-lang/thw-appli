@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 const DAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 const SESSIONS = [
@@ -10,13 +11,14 @@ const SESSIONS = [
 ]
 
 function CalendarMockup() {
+  const { t } = useI18n()
   return (
     <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 18, padding: 18, width: '100%', maxWidth: 300, margin: '0 auto', border: '1px solid rgba(255,255,255,0.08)' }}>
       {/* Week header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
         {DAYS.map((d, i) => (
           <div key={i} style={{ flex: 1, textAlign: 'center' }}>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', margin: 0, fontFamily: 'DM Sans, sans-serif' }}>{d}</p>
+            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)', margin: 0, fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.dayShort' + (i + 1))}</p>
           </div>
         ))}
       </div>
@@ -33,7 +35,7 @@ function CalendarMockup() {
       </div>
       {/* Load bar */}
       <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.38)', margin: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}>Charge</p>
+        <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.38)', margin: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}>{t('onboarding.load')}</p>
         <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)' }}>
           <div style={{ width: '68%', height: '100%', borderRadius: 2, background: 'linear-gradient(90deg,#06B6D4,#2563EB)', animation: 'fade-in 0.6s 0.4s both' }} />
         </div>
@@ -44,12 +46,13 @@ function CalendarMockup() {
 }
 
 export default function TrainingSlide() {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '0 24px', gap: 28 }}>
       <CalendarMockup />
       <div style={{ textAlign: 'center' }}>
-        <h2 style={{ fontSize: 26, fontWeight: 800, color: '#fff', margin: '0 0 10px', fontFamily: 'Syne, sans-serif' }}>Planifie et suis tes progrès</h2>
-        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.58)', lineHeight: 1.6, margin: 0, fontFamily: 'DM Sans, sans-serif' }}>Programme tes séances, suis ton planning<br />hebdomadaire, analyse ta progression.</p>
+        <h2 style={{ fontSize: 26, fontWeight: 800, color: '#fff', margin: '0 0 10px', fontFamily: 'Syne, sans-serif' }}>{t('onboarding.trainingTitle')}</h2>
+        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.58)', lineHeight: 1.6, margin: 0, fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.trainingSub1')}<br />{t('onboarding.trainingSub2')}</p>
       </div>
     </div>
   )

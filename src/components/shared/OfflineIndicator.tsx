@@ -2,8 +2,10 @@
 import { useEffect, useState } from 'react'
 import { syncPendingSessions } from '@/lib/syncPendingSessions'
 import { getPendingSessions } from '@/lib/offlineStorage'
+import { useI18n } from '@/lib/i18n'
 
 export default function OfflineIndicator() {
+  const { t } = useI18n()
   const [isOnline, setIsOnline] = useState(true)
   const [syncCount, setSyncCount] = useState(0)
   const [syncing, setSyncing] = useState(false)
@@ -66,7 +68,7 @@ export default function OfflineIndicator() {
         }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />
           <span style={{ fontSize: 12, color: 'white', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
-            Hors ligne — séances sauvegardées localement
+            {t('shared.offlineSaved')}
           </span>
         </div>
       )}
@@ -81,7 +83,7 @@ export default function OfflineIndicator() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         }}>
           <span style={{ fontSize: 12, color: 'white', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
-            Synchronisation en cours…
+            {t('shared.syncing')}
           </span>
         </div>
       )}
@@ -96,7 +98,7 @@ export default function OfflineIndicator() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         }}>
           <span style={{ fontSize: 12, color: 'white', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
-            {syncCount} séance{syncCount > 1 ? 's' : ''} synchronisée{syncCount > 1 ? 's' : ''} ✓
+            {syncCount > 1 ? t('shared.sessionsSyncedMany', { n: syncCount }) : t('shared.sessionsSyncedOne', { n: syncCount })}
           </span>
         </div>
       )}

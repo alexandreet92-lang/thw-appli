@@ -8,6 +8,7 @@
 
 import { Mic } from 'lucide-react'
 import { useSpeechToText } from '@/hooks/useSpeechToText'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   onTranscript: (text: string) => void
@@ -18,6 +19,7 @@ interface Props {
 
 export default function MicButton({ onTranscript, iconSize = 16, boxSize = 24, dimColor = 'var(--text-mid)' }: Props) {
   const { supported, isListening, toggle } = useSpeechToText(onTranscript)
+  const { t } = useI18n()
 
   if (!supported) return null
 
@@ -25,8 +27,8 @@ export default function MicButton({ onTranscript, iconSize = 16, boxSize = 24, d
     <button
       type="button"
       onClick={toggle}
-      aria-label={isListening ? 'Arrêter la dictée' : 'Dictée vocale'}
-      title={isListening ? 'Arrêter la dictée' : 'Dictée vocale'}
+      aria-label={isListening ? t('ai.stopDictation') : t('ai.voiceDictation')}
+      title={isListening ? t('ai.stopDictation') : t('ai.voiceDictation')}
       className={isListening ? 'mic-listening' : undefined}
       style={{
         width: boxSize, height: boxSize, borderRadius: '50%',

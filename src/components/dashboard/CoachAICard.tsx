@@ -8,12 +8,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useI18n } from '@/lib/i18n'
 import { Card, Gauge, useReducedMotion } from './primitives'
 import { FB, FD, NUM } from './lib'
 
 interface Usage { used: number; limit: number }
 
 export function CoachAICard() {
+  const { t } = useI18n()
   const reduce = useReducedMotion()
   const [text, setText] = useState('')
   const [usage, setUsage] = useState<Usage | null>(null)
@@ -46,7 +48,7 @@ export function CoachAICard() {
 
   return (
     <Card>
-      <h2 style={{ margin: '0 0 var(--space-3)', fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Coach IA</h2>
+      <h2 style={{ margin: '0 0 var(--space-3)', fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{t('dashboard.coachTitle')}</h2>
 
       <div style={{
         display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
@@ -58,12 +60,12 @@ export function CoachAICard() {
           value={text}
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') ask() }}
-          placeholder="Demander au coach…"
+          placeholder={t('dashboard.coachPlaceholder')}
           style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', fontFamily: FB, fontSize: 14, color: 'var(--text)' }}
         />
         <button
           onClick={ask}
-          aria-label="Envoyer au coach"
+          aria-label={t('dashboard.coachSend')}
           style={{
             width: 34, height: 34, flexShrink: 0, borderRadius: '50%', border: 'none', cursor: 'pointer',
             background: 'var(--ai-accent)', color: 'var(--on-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -78,16 +80,16 @@ export function CoachAICard() {
 
       <Link href="/settings/subscription" style={{ display: 'block', marginTop: 'var(--space-4)', textDecoration: 'none' }}>
         {unlimited ? (
-          <p style={{ margin: 0, fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>Messages — Illimité</p>
+          <p style={{ margin: 0, fontFamily: FB, fontSize: 13, color: 'var(--text-mid)' }}>{t('dashboard.messagesUnlimited')}</p>
         ) : hasLimit && usage ? (
           <>
             <p style={{ margin: '0 0 var(--space-2)', ...NUM, fontSize: 13, color: 'var(--text-mid)' }}>
-              <span style={{ color: 'var(--text)', fontWeight: 600 }}>{usage.used} / {usage.limit}</span> messages
+              <span style={{ color: 'var(--text)', fontWeight: 600 }}>{usage.used} / {usage.limit}</span> {t('dashboard.messagesLabel')}
             </p>
             <Gauge value={usage.used} max={usage.limit} />
           </>
         ) : (
-          <p style={{ margin: 0, fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>Voir mon abonnement →</p>
+          <p style={{ margin: 0, fontFamily: FB, fontSize: 13, color: 'var(--text-dim)' }}>{t('dashboard.viewSubscription')}</p>
         )}
       </Link>
     </Card>

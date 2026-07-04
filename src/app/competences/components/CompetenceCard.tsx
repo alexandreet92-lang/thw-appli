@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from 'lucide-react'
 import type { CompetenceWithUserState } from '@/types/competences'
+import { useI18n } from '@/lib/i18n'
 import { sportIcon, SPORT_LABELS, type SportFilter } from '../constants'
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function CompetenceCard({ competence, conflicts, onToggle, onOpenDetail, compact }: Props) {
+  const { t } = useI18n()
   const active = competence.user_state?.active ?? false
 
   return (
@@ -37,7 +39,7 @@ export default function CompetenceCard({ competence, conflicts, onToggle, onOpen
         {/* Toggle */}
         <button
           onClick={e => { e.stopPropagation(); onToggle() }}
-          aria-label={active ? 'Désactiver' : 'Activer'}
+          aria-label={active ? t('competences.deactivate') : t('competences.activate')}
           style={{
             width: 32, height: 17, borderRadius: 9, flexShrink: 0,
             cursor: 'pointer', position: 'relative',
@@ -93,7 +95,7 @@ export default function CompetenceCard({ competence, conflicts, onToggle, onOpen
             border: '0.5px solid rgba(239,68,68,0.35)', borderRadius: 5, padding: '2px 8px',
           }}>
             <AlertTriangle size={11} strokeWidth={1.8} />
-            Conflit : {c.nom}
+            {t('competences.conflictTag', { nom: c.nom })}
           </span>
         ))}
 
@@ -106,7 +108,7 @@ export default function CompetenceCard({ competence, conflicts, onToggle, onOpen
               background: 'transparent', cursor: 'pointer',
             }}
           >
-            Voir le prompt
+            {t('competences.viewPrompt')}
           </button>
         )}
       </div>

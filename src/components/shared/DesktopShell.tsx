@@ -12,6 +12,7 @@ import { PageTransition } from '@/components/ui/PageTransition'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
+import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
@@ -20,6 +21,7 @@ const SCROLL: React.CSSProperties['WebkitOverflowScrolling'] = 'touch'
 
 export function DesktopShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { t } = useI18n()
   const { profile } = useProfile()
   const [open, setOpen] = useState(true)
   const [aiOpen, setAiOpen] = useState(false)
@@ -95,13 +97,13 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         <div aria-hidden style={{ position: 'fixed', top: 0, left: open ? W : 0, right: 0, height: 62, zIndex: 50, pointerEvents: 'none', background: 'linear-gradient(var(--bg), transparent)', transition: reduce ? 'none' : `left ${ease}` }} />
 
         {/* ☰ repli — suit le bord de la sidebar */}
-        <button aria-label="Replier le menu" onClick={() => setOpen(o => !o)}
+        <button aria-label={t('shared.collapseMenu')} onClick={() => setOpen(o => !o)}
           style={{ ...fab, left: open ? W + 12 : 12, flexDirection: 'column', gap: 4 }}>
           {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
         </button>
 
         {/* Cloche notifications — ouvre une surpage centrée (sans quitter la page) */}
-        <button aria-label="Notifications" onClick={() => setNotifOpen(true)}
+        <button aria-label={t('shared.notifications')} onClick={() => setNotifOpen(true)}
           style={{ ...fab, right: 62, left: 'auto' }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -115,10 +117,10 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         </button>
 
         {/* Shuriken IA — droite (asset classique 4 branches, sur verre neutre pour qu'il ressorte) */}
-        <button aria-label="Coach IA" onClick={() => setAiOpen(true)}
+        <button aria-label={t('shared.aiCoach')} onClick={() => setAiOpen(true)}
           style={{ ...fab, right: 16, left: 'auto', overflow: 'hidden' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logos/logo_4bras.png" alt="Coach IA" style={{ width: 24, height: 24, objectFit: 'contain' }} />
+          <img src="/logos/logo_4bras.png" alt={t('shared.aiCoach')} style={{ width: 24, height: 24, objectFit: 'contain' }} />
         </button>
 
         <PageTransition>{children}</PageTransition>

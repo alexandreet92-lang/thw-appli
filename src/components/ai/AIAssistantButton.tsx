@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import type { PageAgent } from './agentConfig'
+import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('./AIPanel'), { ssr: false })
 
@@ -19,6 +20,7 @@ interface Props {
 export default function AIAssistantButton({ agent, context }: Props) {
   const [open, setOpen]       = useState(false)
   const [hovered, setHovered] = useState(false)
+  const { t } = useI18n()
 
   return (
     <>
@@ -27,7 +29,7 @@ export default function AIAssistantButton({ agent, context }: Props) {
         onClick={() => setOpen(o => !o)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        title="Coach IA"
+        title={t('ai.coachIA')}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -76,7 +78,7 @@ export default function AIAssistantButton({ agent, context }: Props) {
           whiteSpace: 'nowrap' as const,
           letterSpacing: '0.01em',
         }}>
-          Coach IA
+          {t('ai.coachIA')}
         </span>
       </button>
 

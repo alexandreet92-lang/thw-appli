@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 const PARTICLES = Array.from({ length: 18 }, (_, i) => ({
   x: (i * 37 + 11) % 100,
@@ -10,6 +11,7 @@ const PARTICLES = Array.from({ length: 18 }, (_, i) => ({
 }))
 
 export default function WelcomeSlide() {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '0 32px', textAlign: 'center', position: 'relative' }}>
       <style>{`
@@ -55,7 +57,7 @@ export default function WelcomeSlide() {
         THW Coaching
       </h1>
       <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.62)', lineHeight: 1.65, margin: 0, fontFamily: 'DM Sans, sans-serif', position: 'relative', zIndex: 1 }}>
-        Ton compagnon d'entraînement intelligent.<br />Enregistre, analyse, progresse.
+        {t('onboarding.welcomeTagline1')}<br />{t('onboarding.welcomeTagline2')}
       </p>
     </div>
   )

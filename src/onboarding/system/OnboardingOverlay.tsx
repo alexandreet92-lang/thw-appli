@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { PageOnboardingConfig } from './types'
+import { useI18n } from '@/lib/i18n'
 import { OnboardingVisual } from './OnboardingVisual'
 import { AnimatedBackground } from './AnimatedBackground'
 import { ProgressBar } from './ProgressBar'
@@ -9,6 +10,7 @@ import { ProgressBar } from './ProgressBar'
 interface Props { config: PageOnboardingConfig; onDismiss: () => void }
 
 export function OnboardingOverlay({ config, onDismiss }: Props) {
+  const { t } = useI18n()
   const [current, setCurrent] = useState(0)
   const [exiting, setExiting] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -87,7 +89,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
         fontSize: 12, cursor: 'pointer', zIndex: 10,
         fontFamily: 'DM Sans, sans-serif',
       }}>
-        Passer
+        {t('onboarding.skip')}
       </button>
 
       {/* Visual zone — 58vh */}
@@ -209,7 +211,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
                 boxShadow: '0 4px 16px rgba(6,182,212,0.35)',
                 fontFamily: 'DM Sans, sans-serif',
               }}>
-                Suivant →
+                {t('onboarding.next')} →
               </button>
             ) : (
               <button onClick={handleDismiss} style={{
@@ -220,7 +222,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
                 boxShadow: '0 4px 20px rgba(6,182,212,0.4)',
                 fontFamily: 'DM Sans, sans-serif',
               }}>
-                C&apos;est parti ✦
+                {t('onboarding.letsGo')} ✦
               </button>
             )}
           </div>

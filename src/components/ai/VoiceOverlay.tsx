@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 
 const NBARS = 38
 
@@ -53,6 +54,7 @@ export function VoiceOverlay({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getAudioCtx?: () => any
 }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [phase, setPhase] = useState<'rec' | 'transcribing' | 'error'>('rec')
   const [errorMsg, setErrorMsg] = useState('')
@@ -131,7 +133,7 @@ export function VoiceOverlay({
       } catch (e) {
         const err = e as { name?: string; message?: string }
         setPhase('error')
-        setErrorMsg(`Micro refusé (${err?.name || err?.message || 'inconnu'}). Autorise le micro pour ce site.`)
+        setErrorMsg(t('ai.micDenied', { reason: err?.name || err?.message || t('ai.unknown') }))
         return
       }
       if (closedRef.current) { stream.getTracks().forEach(t => t.stop()); return }
@@ -179,7 +181,7 @@ export function VoiceOverlay({
       } catch (e) {
         const err = e as { name?: string; message?: string }
         setPhase('error')
-        setErrorMsg(`Audio impossible (${err?.name || err?.message || 'AudioContext'})`)
+        setErrorMsg(t('ai.audioFailed', { reason: err?.name || err?.message || 'AudioContext' }))
       }
     })()
 
@@ -231,7 +233,7 @@ export function VoiceOverlay({
     const secs = total / sampleRateRef.current
     if (total < sampleRateRef.current * 0.25) {   // < 0,25 s d'audio capté
       if (srFallback) { onConfirm(srFallback); return }
-      setPhase('error'); setErrorMsg(`Rien capté (${secs.toFixed(2)} s). Parle un peu plus longtemps.`)
+      setPhase('error'); setErrorMsg(t('ai.nothingCaptured', { secs: secs.toFixed(2) }))
       return
     }
     const wav = encodeWAV(pcmRef.current, sampleRateRef.current)
@@ -244,17 +246,17 @@ export function VoiceOverlay({
         if (srFallback) { onConfirm(srFallback); return }   // repli sur la reco navigateur
         let detail = ''
         try { detail = ((await res.json()) as { error?: string }).error ?? '' } catch { /* ignore */ }
-        setPhase('error'); setErrorMsg(`Transcription : erreur ${res.status}${detail ? ' — ' + detail : ''}`)
+        setPhase('error'); setErrorMsg(t('ai.transcriptionError', { status: res.status, detail: detail ? ' — ' + detail : '' }))
         return
       }
       const { text } = await res.json() as { text?: string }
       const clean = (text ?? '').trim() || srFallback
-      if (!clean) { setPhase('error'); setErrorMsg('Transcription vide (rien compris).'); return }
+      if (!clean) { setPhase('error'); setErrorMsg(t('ai.transcriptionEmpty')); return }
       onConfirm(clean)
     } catch (e) {
       if (srFallback) { onConfirm(srFallback); return }
       const err = e as { message?: string }
-      setPhase('error'); setErrorMsg(`Transcription : échec réseau (${err?.message || 'fetch'})`)
+      setPhase('error'); setErrorMsg(t('ai.transcriptionNetworkError', { reason: err?.message || 'fetch' }))
     }
   }
 
@@ -316,7 +318,7 @@ export function VoiceOverlay({
       }}>
         <button
           onClick={cancel}
-          aria-label="Annuler"
+          aria-label={t('ai.cancel')}
           style={{
             width: 42, height: 42, borderRadius: '50%', border: 'none', flexShrink: 0,
             background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer',
@@ -344,7 +346,7 @@ export function VoiceOverlay({
 
         <button
           onClick={confirm}
-          aria-label="Valider"
+          aria-label={t('ai.validate')}
           disabled={phase !== 'rec'}
           style={{
             width: 42, height: 42, borderRadius: '50%', border: 'none', flexShrink: 0,
@@ -371,7 +373,7 @@ export function VoiceOverlay({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Dictée vocale"
+        aria-label={t('ai.voiceDictation')}
         style={{
           position: 'fixed', inset: 0, zIndex: 1500,
           display: 'flex', flexDirection: 'column', alignItems: 'center',

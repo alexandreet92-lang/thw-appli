@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'destructive'
@@ -67,6 +68,7 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
+  const { t } = useI18n()
   return (
     <motion.button
       disabled={disabled || loading}
@@ -85,7 +87,7 @@ export function Button({
       {loading ? (
         <>
           <LoadingDots />
-          <span>Chargement…</span>
+          <span>{t('ui.loading')}</span>
         </>
       ) : children}
     </motion.button>

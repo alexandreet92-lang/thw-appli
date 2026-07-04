@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -81,6 +82,7 @@ function fmtDate(iso: string | null | undefined) {
 // ── Micro-composants ───────────────────────────────────────────────
 
 function StatutBadge({ statut }: { statut: Statut }) {
+  const { t } = useI18n()
   const s = STATUTS[statut]
   return (
     <span style={{
@@ -92,7 +94,7 @@ function StatutBadge({ statut }: { statut: Statut }) {
       border: `1px solid ${s.color}44`,
       whiteSpace: 'nowrap',
     }}>
-      {s.label}
+      {t('onboarding.statut.' + statut)}
     </span>
   )
 }
@@ -145,6 +147,7 @@ function Field({ label, value }: { label: string; value?: string | number | null
 }
 
 function BoolRow({ label, value }: { label: string; value: boolean }) {
+  const { t } = useI18n()
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -155,7 +158,7 @@ function BoolRow({ label, value }: { label: string; value: boolean }) {
     }}>
       <span>{label}</span>
       <span style={{ fontSize: 11, fontWeight: 700, color: value ? '#22c55e' : 'var(--text-dim)' }}>
-        {value ? '✓ Oui' : '—'}
+        {value ? '✓ ' + t('onboarding.yes') : '—'}
       </span>
     </div>
   )
@@ -188,6 +191,7 @@ function DetailPanel({
   onClose: () => void
   saving: boolean
 }) {
+  const { t } = useI18n()
   return (
     <>
       <div
@@ -235,7 +239,7 @@ function DetailPanel({
               {q.prenom} {q.nom}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
-              Soumis le {fmtDate(q.created_at)}
+              {t('onboarding.submittedOn', { date: fmtDate(q.created_at) })}
             </div>
           </div>
           <StatutBadge statut={q.statut} />
@@ -247,7 +251,7 @@ function DetailPanel({
           {/* Boutons statut */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', marginBottom: 8 }}>
-              Changer le statut
+              {t('onboarding.changeStatus')}
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {(Object.entries(STATUTS) as [Statut, typeof STATUTS[Statut]][]).map(([key, s]) => {
@@ -268,7 +272,7 @@ function DetailPanel({
                       opacity: saving && !active ? 0.5 : 1,
                     }}
                   >
-                    {s.label}
+                    {t('onboarding.statut.' + key)}
                   </button>
                 )
               })}
@@ -276,29 +280,29 @@ function DetailPanel({
           </div>
 
           {/* Identité */}
-          <Section title="Identité">
+          <Section title={t('onboarding.sectionIdentity')}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-              <Field label="Prénom" value={q.prenom} />
-              <Field label="Nom" value={q.nom} />
-              <Field label="Âge" value={q.age ? `${q.age} ans` : null} />
-              <Field label="Sexe" value={q.sexe} />
+              <Field label={t('onboarding.firstName')} value={q.prenom} />
+              <Field label={t('onboarding.lastName')} value={q.nom} />
+              <Field label={t('onboarding.age')} value={q.age ? `${q.age} ${t('onboarding.yearsOld')}` : null} />
+              <Field label={t('onboarding.sex')} value={q.sexe} />
             </div>
-            <Field label="Email" value={q.email} />
+            <Field label={t('onboarding.email')} value={q.email} />
           </Section>
 
           {/* Objectif principal */}
-          <Section title="Objectif principal">
+          <Section title={t('onboarding.sectionMainGoal')}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-              <Field label="Sport" value={q.objectif_sport} />
-              <Field label="Temps visé" value={q.objectif_temps} />
+              <Field label={t('onboarding.sport')} value={q.objectif_sport} />
+              <Field label={t('onboarding.targetTime')} value={q.objectif_temps} />
             </div>
-            <Field label="Course / épreuve" value={q.objectif_course} />
-            <Field label="Date" value={q.objectif_date ? fmtDate(q.objectif_date) : null} />
+            <Field label={t('onboarding.raceEvent')} value={q.objectif_course} />
+            <Field label={t('onboarding.date')} value={q.objectif_date ? fmtDate(q.objectif_date) : null} />
           </Section>
 
           {/* Autres courses */}
           {q.autres_courses?.length > 0 && (
-            <Section title="Autres courses de la saison">
+            <Section title={t('onboarding.sectionOtherRaces')}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {q.autres_courses.map((c, i) => (
                   <div key={i} style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
@@ -326,12 +330,12 @@ function DetailPanel({
           )}
 
           {/* Mode de vie */}
-          <Section title="Mode de vie">
-            <Field label="Heures d'entraînement / semaine" value={q.heures_par_semaine ? `${q.heures_par_semaine}h` : null} />
+          <Section title={t('onboarding.sectionLifestyle')}>
+            <Field label={t('onboarding.trainingHoursPerWeek')} value={q.heures_par_semaine ? `${q.heures_par_semaine}h` : null} />
             {q.jours_disponibles?.length > 0 && (
               <div style={{ marginBottom: 10 }}>
                 <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', marginBottom: 6 }}>
-                  Jours disponibles
+                  {t('onboarding.availableDays')}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                   {q.jours_disponibles.map(j => (
@@ -342,38 +346,38 @@ function DetailPanel({
                 </div>
               </div>
             )}
-            <Field label="Contraintes pro / perso" value={q.contraintes} />
-            <Field label="Blessures / antécédents" value={q.blessures} />
+            <Field label={t('onboarding.constraints')} value={q.contraintes} />
+            <Field label={t('onboarding.injuries')} value={q.blessures} />
           </Section>
 
           {/* Matériel */}
-          <Section title="Matériel">
-            <BoolRow label="Montre GPS" value={q.montre_gps} />
-            <BoolRow label="Capteur de puissance" value={q.capteur_puissance} />
-            <BoolRow label="Home trainer" value={q.home_trainer} />
-            <BoolRow label="Salle de muscu" value={q.salle_muscu} />
-            <BoolRow label="Strava connecté" value={q.strava_connecte} />
+          <Section title={t('onboarding.sectionEquipment')}>
+            <BoolRow label={t('onboarding.gpsWatch')} value={q.montre_gps} />
+            <BoolRow label={t('onboarding.powerMeter')} value={q.capteur_puissance} />
+            <BoolRow label={t('onboarding.homeTrainer')} value={q.home_trainer} />
+            <BoolRow label={t('onboarding.gym')} value={q.salle_muscu} />
+            <BoolRow label={t('onboarding.stravaConnected')} value={q.strava_connecte} />
           </Section>
 
           {/* Coaching choisi */}
-          <Section title="Coaching choisi">
+          <Section title={t('onboarding.sectionCoachingChosen')}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-              <Field label="Type" value={q.coaching_type === 'pack' ? 'Pack' : q.coaching_type === 'abonnement' ? 'Abonnement' : null} />
-              <Field label="Durée" value={q.coaching_duree} />
-              <Field label="Sport" value={q.coaching_sport} />
+              <Field label={t('onboarding.type')} value={q.coaching_type === 'pack' ? t('onboarding.coachingPack') : q.coaching_type === 'abonnement' ? t('onboarding.coachingSubscription') : null} />
+              <Field label={t('onboarding.duration')} value={q.coaching_duree} />
+              <Field label={t('onboarding.sport')} value={q.coaching_sport} />
             </div>
-            <Field label="Objectif coaching" value={q.coaching_objectif} />
+            <Field label={t('onboarding.coachingGoal')} value={q.coaching_objectif} />
           </Section>
 
           {/* Options */}
-          <Section title="Options">
-            <BoolRow label="Renforcement musculaire" value={q.option_renfo} />
-            <Field label="Niveau de suivi" value={q.niveau_suivi} />
+          <Section title={t('onboarding.sectionOptions')}>
+            <BoolRow label={t('onboarding.strengthTraining')} value={q.option_renfo} />
+            <Field label={t('onboarding.followUpLevel')} value={q.niveau_suivi} />
           </Section>
 
           {/* Infos complémentaires */}
           {q.infos_complementaires && (
-            <Section title="Informations complémentaires">
+            <Section title={t('onboarding.sectionAdditionalInfo')}>
               <div style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.65, background: 'var(--bg-card2)', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
                 {q.infos_complementaires}
               </div>
@@ -381,11 +385,11 @@ function DetailPanel({
           )}
 
           {/* Notes coach */}
-          <Section title="Notes coach">
+          <Section title={t('onboarding.sectionCoachNotes')}>
             <textarea
               value={notes}
               onChange={e => onNotesChange(e.target.value)}
-              placeholder="Ajouter des notes sur ce candidat…"
+              placeholder={t('onboarding.notesPlaceholder')}
               rows={4}
               style={{
                 width: '100%', padding: '10px 12px', borderRadius: 8,
@@ -409,7 +413,7 @@ function DetailPanel({
                 transition: 'all 0.14s',
               }}
             >
-              {saving ? 'Enregistrement…' : 'Sauvegarder les notes'}
+              {saving ? t('onboarding.saving') : t('onboarding.saveNotes')}
             </button>
           </Section>
 
@@ -422,6 +426,7 @@ function DetailPanel({
 // ── Page principale ────────────────────────────────────────────────
 
 export default function QuestionnairePage() {
+  const { t } = useI18n()
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -508,10 +513,10 @@ export default function QuestionnairePage() {
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
           <div>
             <h1 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 26, color: 'var(--text)', margin: 0, lineHeight: 1.2 }}>
-              Candidatures
+              {t('onboarding.applicationsTitle')}
             </h1>
             <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: '4px 0 0' }}>
-              Questionnaires reçus depuis le site web
+              {t('onboarding.applicationsSubtitle')}
             </p>
           </div>
           {countNouveau > 0 && (
@@ -521,7 +526,7 @@ export default function QuestionnairePage() {
               fontSize: 12, fontWeight: 700,
               border: '1px solid rgba(6,182,212,0.3)',
             }}>
-              {countNouveau} nouveau{countNouveau > 1 ? 'x' : ''}
+              {t(countNouveau > 1 ? 'onboarding.newCountPlural' : 'onboarding.newCountSingular', { n: countNouveau })}
             </span>
           )}
         </div>
@@ -537,7 +542,7 @@ export default function QuestionnairePage() {
             </svg>
             <input
               type="text"
-              placeholder="Rechercher par nom ou email…"
+              placeholder={t('onboarding.searchPlaceholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
@@ -561,9 +566,9 @@ export default function QuestionnairePage() {
               backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
             }}
           >
-            <option value="">Tous les statuts</option>
-            {(Object.entries(STATUTS) as [Statut, typeof STATUTS[Statut]][]).map(([k, s]) => (
-              <option key={k} value={k}>{s.label}</option>
+            <option value="">{t('onboarding.allStatuses')}</option>
+            {(Object.entries(STATUTS) as [Statut, typeof STATUTS[Statut]][]).map(([k]) => (
+              <option key={k} value={k}>{t('onboarding.statut.' + k)}</option>
             ))}
           </select>
 
@@ -580,12 +585,12 @@ export default function QuestionnairePage() {
               backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
             }}
           >
-            <option value="">Tous les sports</option>
+            <option value="">{t('onboarding.allSports')}</option>
             {sports.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
           <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-dim)' }}>
-            {loading ? '…' : `${filtered.length} / ${questionnaires.length} candidature${questionnaires.length !== 1 ? 's' : ''}`}
+            {loading ? '…' : `${filtered.length} / ${questionnaires.length} ${t(questionnaires.length !== 1 ? 'onboarding.applicationsPlural' : 'onboarding.applicationsSingular')}`}
           </div>
         </div>
 
@@ -598,9 +603,17 @@ export default function QuestionnairePage() {
             padding: '10px 16px', borderBottom: '1px solid var(--border)',
             background: 'var(--bg-card2)',
           }}>
-            {['Athlète', 'Email', 'Sport', 'Coaching', 'Objectif', 'Soumis le', 'Statut'].map(h => (
-              <div key={h} style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>
-                {h}
+            {[
+              { k: 'athlete', label: t('onboarding.colAthlete') },
+              { k: 'email', label: t('onboarding.colEmail') },
+              { k: 'sport', label: t('onboarding.colSport') },
+              { k: 'coaching', label: t('onboarding.colCoaching') },
+              { k: 'objectif', label: t('onboarding.colGoal') },
+              { k: 'submitted', label: t('onboarding.colSubmittedOn') },
+              { k: 'statut', label: t('onboarding.colStatus') },
+            ].map(h => (
+              <div key={h.k} style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>
+                {h.label}
               </div>
             ))}
           </div>
@@ -612,8 +625,8 @@ export default function QuestionnairePage() {
           {!loading && filtered.length === 0 && (
             <div style={{ padding: '52px 24px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
               {questionnaires.length === 0
-                ? 'Aucune candidature reçue pour le moment'
-                : 'Aucune candidature ne correspond aux filtres'
+                ? t('onboarding.emptyNoApplications')
+                : t('onboarding.emptyNoMatch')
               }
             </div>
           )}

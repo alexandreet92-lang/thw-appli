@@ -1,26 +1,28 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 const ACTIONS = [
-  { label: "Plan d'entraînement",  model: 'Zeus',   icon: '📋' },
-  { label: 'Points faibles',       model: 'Athéna', icon: '🎯' },
-  { label: 'Plan nutritionnel',    model: 'Athéna', icon: '🥗' },
-  { label: "Guide de l'app",       model: 'Hermès', icon: '💡' },
-  { label: 'Training Analyse',     model: 'Athéna', icon: '📊' },
-  { label: 'Stratégie de course',  model: 'Athéna', icon: '🏁' },
+  { label: 'onboarding.g.quickActions.trainingPlan',  model: 'Zeus',   icon: '📋' },
+  { label: 'onboarding.g.quickActions.weakPoints',    model: 'Athéna', icon: '🎯' },
+  { label: 'onboarding.g.quickActions.nutritionPlan', model: 'Athéna', icon: '🥗' },
+  { label: 'onboarding.g.quickActions.appGuide',      model: 'Hermès', icon: '💡' },
+  { label: 'onboarding.g.quickActions.trainingAnalysis', model: 'Athéna', icon: '📊' },
+  { label: 'onboarding.g.quickActions.raceStrategy',  model: 'Athéna', icon: '🏁' },
 ]
 
 export const QUICK_ACTIONS_META = {
-  badge: 'Actions rapides',
-  title: 'Actions instantanées',
-  description: "Lance une analyse, génère un plan d'entraînement ou obtiens des conseils nutritionnels — en un seul tap depuis l'interface IA.",
+  badge: 'onboarding.g.quickActions.badge',
+  title: 'onboarding.g.quickActions.title',
+  description: 'onboarding.g.quickActions.desc',
   keyPoints: [
-    "Génération de plan d'entraînement en 1 tap",
-    'Analyse de tes données et points faibles',
-    'Conseils personnalisés en temps réel',
+    'onboarding.g.quickActions.kp1',
+    'onboarding.g.quickActions.kp2',
+    'onboarding.g.quickActions.kp3',
   ],
 }
 
 export function QuickActionsVisual() {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9, padding: '0 4px' }}>
       <style>{`
@@ -41,7 +43,7 @@ export function QuickActionsVisual() {
           }}>
             {a.icon}
           </div>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'white', margin: '0 0 3px', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.3 }}>{a.label}</p>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'white', margin: '0 0 3px', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.3 }}>{t(a.label)}</p>
           <p style={{ fontSize: 10, color: 'rgba(249,115,22,0.7)', margin: 0, fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>{a.model}</p>
         </div>
       ))}

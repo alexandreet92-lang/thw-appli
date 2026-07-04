@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { sportColor, sportLabel } from '@/components/recovery/helpers'
 import { Card, SectionTitle, SportDot, Skeleton, EmptyState, useReducedMotion } from './primitives'
@@ -15,9 +16,10 @@ import { FD, FB, NUM, formatDuration, weekStartIso, currentDayIndex } from './li
 interface Session { id: string; sport: string; title: string; duration_min: number | null; intensity: string | null; notes: string | null }
 interface Task { id: string; title: string; completed: boolean }
 
-const ZONE_LABEL: Record<string, string> = { low: 'Facile', recovery: 'Récup', moderate: 'Modéré', mid: 'Modéré', high: 'Intense', hard: 'Intense', max: 'Max' }
+const ZONE_KEY: Record<string, string> = { low: 'dashboard.zoneEasy', recovery: 'dashboard.zoneRecovery', moderate: 'dashboard.zoneModerate', mid: 'dashboard.zoneModerate', high: 'dashboard.zoneIntense', hard: 'dashboard.zoneIntense', max: 'dashboard.zoneMax' }
 
 export function TodayCard() {
+  const { t } = useI18n()
   const router = useRouter()
   const reduce = useReducedMotion()
   const [loading, setLoading] = useState(true)
@@ -56,17 +58,17 @@ export function TodayCard() {
 
   if (loading) return <Skeleton height={200} />
 
-  const zone = session?.intensity ? (ZONE_LABEL[session.intensity] ?? session.intensity) : null
+  const zone = session?.intensity ? (ZONE_KEY[session.intensity] ? t(ZONE_KEY[session.intensity]) : session.intensity) : null
   const meta = session
     ? [formatDuration(session.duration_min), zone].filter(Boolean).join(' · ')
     : ''
 
   return (
     <Card style={{ background: 'var(--bg-elev)' }}>
-      <SectionTitle>Aujourd&apos;hui</SectionTitle>
+      <SectionTitle>{t('dashboard.todayTitle')}</SectionTitle>
 
       {!session ? (
-        <EmptyState title="Rien de prévu aujourd'hui" hint="Planifie ta semaine pour garder le cap." href="/planning" cta="Planifier" />
+        <EmptyState title={t('dashboard.todayEmptyTitle')} hint={t('dashboard.todayEmptyHint')} href="/planning" cta={t('dashboard.plan')} />
       ) : (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
@@ -89,14 +91,14 @@ export function TodayCard() {
               transition: reduce ? 'none' : 'opacity 0.15s',
             }}
           >
-            Démarrer
+            {t('dashboard.start')}
           </button>
         </div>
       )}
 
       {tasks.length > 0 && (
         <div style={{ marginTop: 'var(--space-5)' }}>
-          <p style={{ margin: '0 0 var(--space-2)', fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text-mid)' }}>Tâches du jour</p>
+          <p style={{ margin: '0 0 var(--space-2)', fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text-mid)' }}>{t('dashboard.todayTasks')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {tasks.map(t => (
               <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: '8px 0', cursor: 'pointer', minHeight: 44 }}>

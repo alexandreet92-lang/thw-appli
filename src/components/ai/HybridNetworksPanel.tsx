@@ -8,6 +8,7 @@
 
 import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import type { InstaSnapshot, DailyBrief, BriefIdea } from '@/lib/marketing/types'
 import type { PerformanceAnalysis } from '@/app/api/marketing/analyze-performance/route'
 
@@ -156,6 +157,7 @@ function Spinner() {
 // ── Sub-components ─────────────────────────────────────────────
 
 function IdeaCard({ idea }: { idea: BriefIdea }) {
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const tier    = TIER[idea.tier]    ?? TIER.standard
   const pillarC = PILLAR_COLORS[idea.pillar] ?? '#666'
@@ -189,10 +191,10 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
         {idea.hook}
       </p>
       {/* Structure */}
-      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 3px' }}>Structure</p>
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 3px' }}>{t('ai.structure')}</p>
       <p style={{ fontSize: 12, whiteSpace: 'pre-wrap', color: 'var(--ai-mid)', margin: '0 0 10px' }}>{idea.structure}</p>
       {/* Caption */}
-      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 3px' }}>Caption</p>
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 3px' }}>{t('ai.caption')}</p>
       <p style={{ fontSize: 12, whiteSpace: 'pre-wrap', background: 'rgba(0,0,0,0.2)', padding: '8px 10px', borderRadius: 8, margin: '0 0 8px', color: 'var(--ai-mid)' }}>
         {idea.caption}
       </p>
@@ -213,7 +215,7 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
         onClick={copyCaption}
         style={{ position: 'absolute', top: 10, right: 10, background: 'transparent', border: '1px solid var(--ai-border)', borderRadius: 6, padding: '2px 8px', fontSize: 10, cursor: 'pointer', color: copied ? '#22c55e' : 'var(--ai-dim)' }}
       >
-        {copied ? 'Copié' : 'Copier'}
+        {copied ? t('ai.copied') : t('ai.copy')}
       </button>
     </div>
   )
@@ -269,6 +271,7 @@ export default function HybridNetworksPanel({
   onConvsChange,
   onActiveIdChange,
 }: HybridNetworksPanelProps) {
+  const { t } = useI18n()
   const [isAdmin,  setIsAdmin]  = useState(false)
   const [checking, setChecking] = useState(true)
 
@@ -325,10 +328,10 @@ export default function HybridNetworksPanel({
     try {
       const res = await fetch('/api/marketing/insta-sync', { method: 'POST' })
       const json = await res.json() as { snapshot?: InstaSnapshot; error?: string }
-      if (!res.ok) throw new Error(json.error ?? 'Erreur sync')
+      if (!res.ok) throw new Error(json.error ?? t('ai.syncError'))
       setSnapshot(json.snapshot ?? null)
     } catch (err) {
-      setSyncError(err instanceof Error ? err.message : 'Erreur inconnue')
+      setSyncError(err instanceof Error ? err.message : t('ai.unknownError'))
     } finally {
       setSyncing(false)
     }
@@ -343,10 +346,10 @@ export default function HybridNetworksPanel({
     try {
       const res = await fetch('/api/marketing/daily-brief', { method: 'POST' })
       const json = await res.json() as { brief?: DailyBrief; error?: string }
-      if (!res.ok) throw new Error(json.error ?? 'Erreur génération')
+      if (!res.ok) throw new Error(json.error ?? t('ai.generationError'))
       setBrief(json.brief ?? null)
     } catch (err) {
-      setBriefError(err instanceof Error ? err.message : 'Erreur inconnue')
+      setBriefError(err instanceof Error ? err.message : t('ai.unknownError'))
     } finally {
       setBriefLoading(false)
     }
@@ -355,7 +358,7 @@ export default function HybridNetworksPanel({
   // ── Analyser performances ────────────────────────────────────
   const handleAnalyze = useCallback(async () => {
     if (!snapshot) {
-      setAnalyzeError('Synchronise d\'abord ton Instagram pour récupérer les données.')
+      setAnalyzeError(t('ai.syncInstagramFirst'))
       return
     }
     setAnalyzeLoading(true)
@@ -365,10 +368,10 @@ export default function HybridNetworksPanel({
     try {
       const res = await fetch('/api/marketing/analyze-performance', { method: 'POST' })
       const json = await res.json() as { analysis?: PerformanceAnalysis; error?: string }
-      if (!res.ok) throw new Error(json.error ?? 'Erreur analyse')
+      if (!res.ok) throw new Error(json.error ?? t('ai.analysisError'))
       setAnalysis(json.analysis ?? null)
     } catch (err) {
-      setAnalyzeError(err instanceof Error ? err.message : 'Erreur inconnue')
+      setAnalyzeError(err instanceof Error ? err.message : t('ai.unknownError'))
     } finally {
       setAnalyzeLoading(false)
     }
@@ -487,7 +490,7 @@ export default function HybridNetworksPanel({
 
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
-        const errMsg = err instanceof Error ? err.message : 'Erreur inconnue'
+        const errMsg = err instanceof Error ? err.message : t('ai.unknownError')
         onConvsChange(prev => prev.map(c =>
           c.id === convId
             ? { ...c, msgs: [...c.msgs, { id: genId(), role: 'assistant' as const, content: `❌ ${errMsg}`, ts: Date.now() }], updatedAt: Date.now() }
@@ -517,8 +520,8 @@ export default function HybridNetworksPanel({
         </div>
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 18, color: 'var(--ai-text)', margin: '0 0 8px' }}>Hybrid Networks</p>
-          <p style={{ fontSize: 13, color: 'var(--ai-mid)', margin: '0 0 6px', lineHeight: 1.7 }}>Analyse Instagram · Brief marketing · Stratégie de contenu</p>
-          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Cet agent arrive bientôt.</p>
+          <p style={{ fontSize: 13, color: 'var(--ai-mid)', margin: '0 0 6px', lineHeight: 1.7 }}>{t('ai.hnTagline')}</p>
+          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>{t('ai.agentComingSoon')}</p>
         </div>
       </div>
     )
@@ -550,8 +553,8 @@ export default function HybridNetworksPanel({
           </div>
           <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 0 42px' }}>
             {snapshot
-              ? `Dernier sync : ${snapshot.snapshot_date}${snapshot.followers_count != null ? ` · ${snapshot.followers_count.toLocaleString('fr-FR')} abonnés` : ''}`
-              : 'Ton agent marketing connecté à Instagram'
+              ? `${t('ai.lastSync')} : ${snapshot.snapshot_date}${snapshot.followers_count != null ? ` · ${t('ai.followersCount', { count: snapshot.followers_count.toLocaleString('fr-FR') })}` : ''}`
+              : t('ai.hnConnectedTagline')
             }
           </p>
         </div>
@@ -559,14 +562,14 @@ export default function HybridNetworksPanel({
         {/* ── ACTIONS RAPIDES ────────────────────────────────── */}
         <div style={{ marginBottom: 20 }}>
           <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
-            Actions rapides
+            {t('ai.quickActions')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div className="hn-qa">
               <QuickActionCard
                 icon={<span className="hn-qa-icon"><IconRefresh size={15} /></span>}
-                label="Synchroniser Instagram"
-                sub="Récupérer les dernières stats de ton compte"
+                label={t('ai.syncInstagram')}
+                sub={t('ai.syncInstagramSub')}
                 loading={syncing}
                 onClick={handleSync}
               />
@@ -574,8 +577,8 @@ export default function HybridNetworksPanel({
             <div className="hn-qa">
               <QuickActionCard
                 icon={<span className="hn-qa-icon"><IconSparkles size={15} /></span>}
-                label="Générer le brief du jour"
-                sub="3 idées de posts basées sur tes données"
+                label={t('ai.generateDailyBrief')}
+                sub={t('ai.generateDailyBriefSub')}
                 loading={briefLoading}
                 onClick={handleBrief}
               />
@@ -583,8 +586,8 @@ export default function HybridNetworksPanel({
             <div className="hn-qa">
               <QuickActionCard
                 icon={<span className="hn-qa-icon"><IconBarChart size={15} /></span>}
-                label="Analyser mes performances"
-                sub="Analyse détaillée de ce qui marche et ce qui marche pas"
+                label={t('ai.analyzePerformance')}
+                sub={t('ai.analyzePerformanceSub')}
                 loading={analyzeLoading}
                 onClick={handleAnalyze}
               />
@@ -603,27 +606,27 @@ export default function HybridNetworksPanel({
         {snapshot && (
           <div style={{ marginBottom: 20, animation: 'ai_slidein 0.2s ease' }}>
             <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
-              Stats Instagram
+              {t('ai.instagramStats')}
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {snapshot.followers_count != null && (
                 <KpiCard
-                  label="Abonnés"
+                  label={t('ai.followers')}
                   value={snapshot.followers_count.toLocaleString('fr-FR')}
                   sub={snapshot.followers_delta_7d != null
-                    ? `${snapshot.followers_delta_7d > 0 ? '+' : ''}${snapshot.followers_delta_7d} cette semaine`
+                    ? t('ai.thisWeekDelta', { delta: `${snapshot.followers_delta_7d > 0 ? '+' : ''}${snapshot.followers_delta_7d}` })
                     : undefined}
                 />
               )}
               {snapshot.reach_total != null && (
-                <KpiCard label="Reach 28j" value={snapshot.reach_total.toLocaleString('fr-FR')} />
+                <KpiCard label={t('ai.reach28d')} value={snapshot.reach_total.toLocaleString('fr-FR')} />
               )}
               {snapshot.impressions_total != null && (
-                <KpiCard label="Impressions 28j" value={snapshot.impressions_total.toLocaleString('fr-FR')} />
+                <KpiCard label={t('ai.impressions28d')} value={snapshot.impressions_total.toLocaleString('fr-FR')} />
               )}
               {snapshot.best_format && (
                 <KpiCard
-                  label="Meilleur format"
+                  label={t('ai.bestFormat')}
                   value={snapshot.best_format.charAt(0).toUpperCase() + snapshot.best_format.slice(1)}
                 />
               )}
@@ -635,7 +638,7 @@ export default function HybridNetworksPanel({
         {snapshot && (snapshot.top_posts ?? []).length > 0 && (
           <div style={{ marginBottom: 20, animation: 'ai_slidein 0.2s ease' }}>
             <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
-              Top 3 posts
+              {t('ai.top3Posts')}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               {(snapshot.top_posts ?? []).slice(0, 3).map((post, i) => (
@@ -649,7 +652,7 @@ export default function HybridNetworksPanel({
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 12, color: 'var(--ai-text)', margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: 'italic' }}>
-                      {post.caption_excerpt || '(sans légende)'}
+                      {post.caption_excerpt || t('ai.noCaption')}
                     </p>
                     <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--ai-dim)' }}>
                       <span>♥ {post.likes.toLocaleString('fr-FR')}</span>
@@ -669,11 +672,11 @@ export default function HybridNetworksPanel({
           <div style={{ marginBottom: 20, animation: 'ai_slidein 0.25s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
               <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#f59e0b', margin: 0 }}>
-                Brief du {brief.date}
+                {t('ai.briefOf', { date: brief.date })}
               </p>
               {brief.weekly_analysis && (
                 <span style={{ fontSize: 10, color: 'var(--ai-dim)', marginLeft: 'auto' }}>
-                  Urgence : <strong>{brief.weekly_analysis.urgency}</strong>
+                  {t('ai.urgency')} : <strong>{brief.weekly_analysis.urgency}</strong>
                 </span>
               )}
             </div>
@@ -701,10 +704,10 @@ export default function HybridNetworksPanel({
                 </span>
               </div>
               <div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px' }}>Score global</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px' }}>{t('ai.overallScore')}</p>
                 <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--ai-dim)', flexWrap: 'wrap' }}>
-                  <span>Engagement : <strong style={{ color: 'var(--ai-mid)' }}>{analysis.engagement_rate}</strong></span>
-                  <span>Tendance : <strong style={{ color: analysis.follower_trend === 'growing' ? '#22c55e' : analysis.follower_trend === 'declining' ? '#ef4444' : 'var(--ai-mid)' }}>{analysis.follower_trend === 'growing' ? 'Croissance' : analysis.follower_trend === 'declining' ? 'Déclin' : 'Stable'}</strong></span>
+                  <span>{t('ai.engagement')} : <strong style={{ color: 'var(--ai-mid)' }}>{analysis.engagement_rate}</strong></span>
+                  <span>{t('ai.trend')} : <strong style={{ color: analysis.follower_trend === 'growing' ? '#22c55e' : analysis.follower_trend === 'declining' ? '#ef4444' : 'var(--ai-mid)' }}>{analysis.follower_trend === 'growing' ? t('ai.trendGrowing') : analysis.follower_trend === 'declining' ? t('ai.trendDeclining') : t('ai.trendStable')}</strong></span>
                 </div>
               </div>
             </div>
@@ -719,7 +722,7 @@ export default function HybridNetworksPanel({
             {/* B — Ce qui marche */}
             {(analysis.what_works?.length ?? 0) > 0 && (
               <div style={{ marginBottom: 14 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#22c55e', margin: '0 0 7px' }}>Ce qui marche</p>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#22c55e', margin: '0 0 7px' }}>{t('ai.whatWorks')}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {(analysis.what_works ?? []).map((item, i) => (
                     <div key={i} style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, padding: '9px 12px' }}>
@@ -734,7 +737,7 @@ export default function HybridNetworksPanel({
             {/* C — Ce qui ne marche pas */}
             {(analysis.what_doesnt_work?.length ?? 0) > 0 && (
               <div style={{ marginBottom: 14 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#ef4444', margin: '0 0 7px' }}>Ce qui ne marche pas</p>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#ef4444', margin: '0 0 7px' }}>{t('ai.whatDoesntWork')}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {(analysis.what_doesnt_work ?? []).map((item, i) => (
                     <div key={i} style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '9px 12px' }}>
@@ -749,7 +752,7 @@ export default function HybridNetworksPanel({
             {/* D — Recommandations */}
             {(analysis.recommendations?.length ?? 0) > 0 && (
               <div style={{ marginBottom: 14 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 7px' }}>Recommandations</p>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 7px' }}>{t('ai.recommendations')}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {(analysis.recommendations ?? []).map((rec, i) => (
                     <div key={i} style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 8, padding: '9px 12px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -769,7 +772,7 @@ export default function HybridNetworksPanel({
             {/* E — Projection */}
             {analysis.growth_projection && (
               <div style={{ background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 6px' }}>Projection fin 2026</p>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 6px' }}>{t('ai.projectionEnd2026')}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
                   <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'Syne,sans-serif', color: 'var(--ai-text)' }}>
                     {analysis.growth_projection.current_followers.toLocaleString('fr-FR')}
@@ -779,7 +782,7 @@ export default function HybridNetworksPanel({
                     {analysis.growth_projection.projected_dec_2026.toLocaleString('fr-FR')}
                   </span>
                   <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: analysis.growth_projection.on_track ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)', color: analysis.growth_projection.on_track ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
-                    {analysis.growth_projection.on_track ? 'On track' : 'À accélérer'}
+                    {analysis.growth_projection.on_track ? t('ai.onTrack') : t('ai.toAccelerate')}
                   </span>
                 </div>
                 <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0 }}>
@@ -795,7 +798,7 @@ export default function HybridNetworksPanel({
         {activeConv && activeConv.msgs.length > 0 && (
           <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 4px' }}>
-              Conversation
+              {t('ai.conversation')}
             </p>
             {activeConv.msgs.map(msg => (
               <div key={msg.id} style={{
@@ -856,7 +859,7 @@ export default function HybridNetworksPanel({
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage() }
             }}
-            placeholder="Demande une stratégie, un hook, une analyse..."
+            placeholder={t('ai.hnInputPlaceholder')}
             rows={1}
             style={{
               flex: 1, resize: 'none', border: 'none', outline: 'none',

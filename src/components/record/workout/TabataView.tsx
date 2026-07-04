@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import type { WorkoutExercise, CompletedSet } from '@/types/workout'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   exercise: WorkoutExercise
@@ -12,6 +13,7 @@ interface Props {
 type Phase = 'idle' | 'work' | 'rest' | 'done'
 
 export default function TabataView({ exercise, onSetDone, isDark, accent }: Props) {
+  const { t } = useI18n()
   const totalRounds = exercise.tabataRounds ?? 8
   const workSec = exercise.tabataWorkSec ?? 20
   const restSec = exercise.tabataRestSec ?? 10
@@ -59,7 +61,7 @@ export default function TabataView({ exercise, onSetDone, isDark, accent }: Prop
   return (
     <div style={{ padding: '20px', fontFamily: 'DM Sans, sans-serif' }}>
       <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: dim, margin: '0 0 4px' }}>Tabata</p>
-      <p style={{ fontSize: 13, color: dim, margin: '0 0 16px' }}>Tour {phase === 'done' ? totalRounds : round + 1} / {totalRounds}</p>
+      <p style={{ fontSize: 13, color: dim, margin: '0 0 16px' }}>{t('record.tabataRoundProgress', { current: phase === 'done' ? totalRounds : round + 1, total: totalRounds })}</p>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
         {Array.from({ length: totalRounds }).map((_, i) => (
@@ -83,7 +85,7 @@ export default function TabataView({ exercise, onSetDone, isDark, accent }: Prop
           </div>
         </div>
         <p style={{ fontSize: 15, fontWeight: 700, color: phaseColor, margin: '10px 0 0', letterSpacing: '0.08em', transition: 'color 0.3s' }}>
-          {phase === 'idle' ? 'PRÊT' : phase === 'work' ? 'TRAVAIL' : phase === 'rest' ? 'REPOS' : 'TERMINÉ'}
+          {phase === 'idle' ? t('record.tabataReady') : phase === 'work' ? t('record.tabataWork') : phase === 'rest' ? t('record.tabataRest') : t('record.tabataDoneLabel')}
         </p>
         <p style={{ fontSize: 12, color: dim, margin: '4px 0 0' }}>{workSec}s / {restSec}s</p>
       </div>
@@ -95,11 +97,11 @@ export default function TabataView({ exercise, onSetDone, isDark, accent }: Prop
 
       {phase === 'idle' && (
         <button onClick={start} style={{ width: '100%', height: 52, borderRadius: 16, background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
-          Démarrer Tabata
+          {t('record.tabataStart')}
         </button>
       )}
       {phase === 'done' && (
-        <div style={{ textAlign: 'center', padding: '8px 0', color: accent, fontSize: 15, fontWeight: 600 }}>Tabata terminé ✓</div>
+        <div style={{ textAlign: 'center', padding: '8px 0', color: accent, fontSize: 15, fontWeight: 600 }}>{t('record.tabataDone')}</div>
       )}
     </div>
   )

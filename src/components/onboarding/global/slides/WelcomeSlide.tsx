@@ -1,13 +1,13 @@
 'use client'
 
 export const WELCOME_META = {
-  badge: 'Bienvenue',
-  title: 'Bienvenue dans Hybrid',
-  description: "La plateforme d'entraînement intelligente conçue pour les athlètes sérieux. Enregistre, analyse, progresse — avec l'IA à tes côtés.",
+  badge: 'onboarding.g.welcome.badge',
+  title: 'onboarding.g.welcome.title',
+  description: 'onboarding.g.welcome.desc',
   keyPoints: [
-    'Conçu pour tous les sports de performance',
-    'Intelligence artificielle intégrée à chaque fonctionnalité',
-    'Données centralisées en un seul endroit',
+    'onboarding.g.welcome.kp1',
+    'onboarding.g.welcome.kp2',
+    'onboarding.g.welcome.kp3',
   ],
 }
 

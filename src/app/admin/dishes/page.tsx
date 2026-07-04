@@ -7,6 +7,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 
 const CYAN = '#06B6D4'
 
@@ -27,6 +28,7 @@ interface SeedResult {
 }
 
 export default function SeedDishesPage() {
+  const { t } = useI18n()
   const router = useRouter()
   const [authChecked, setAuthChecked] = useState(false)
   const [count, setCount]   = useState<number | null>(null)
@@ -57,7 +59,7 @@ export default function SeedDishesPage() {
       setResult(data)
       if (data.ok) await loadCount()
     } catch (e) {
-      setResult({ error: e instanceof Error ? e.message : 'Erreur réseau' })
+      setResult({ error: e instanceof Error ? e.message : t('admin.dishes.networkError') })
     } finally {
       setRunning(false)
     }
@@ -77,16 +79,15 @@ export default function SeedDishesPage() {
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: '24px 16px 64px' }}>
       <h1 style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 24, color: 'var(--text)', margin: '0 0 4px' }}>
-        Catalogue de plats
+        {t('admin.dishes.title')}
       </h1>
       <p style={{ fontFamily: 'DM Sans,sans-serif', fontSize: 13, color: 'var(--text-mid)', margin: '0 0 24px', lineHeight: 1.5 }}>
-        Reconstruit le catalogue de plats sportifs (français, macros maîtrisées)
-        et va chercher une photo par plat. Rejouable à volonté.
+        {t('admin.dishes.intro')}
       </p>
 
       {/* État actuel */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 16 }}>
-        <div style={label}>Plats en base</div>
+        <div style={label}>{t('admin.dishes.dishesInDb')}</div>
         <div style={{ fontFamily: 'DM Mono,monospace', fontWeight: 700, fontSize: 32, color: count ? CYAN : 'var(--text-dim)', marginTop: 4 }}>
           {count ?? '—'}
         </div>
@@ -99,12 +100,11 @@ export default function SeedDishesPage() {
             background: running ? 'var(--border)' : `linear-gradient(135deg,${CYAN},#3B82F6)`,
             color: '#fff', fontWeight: 700, fontSize: 14, fontFamily: 'Syne,sans-serif',
             cursor: running ? 'default' : 'pointer' }}>
-          {running ? 'Reconstruction en cours…' : 'Reconstruire le catalogue + photos'}
+          {running ? t('admin.dishes.rebuilding') : t('admin.dishes.rebuild')}
         </button>
 
         <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '10px 0 0', lineHeight: 1.5 }}>
-          Nécessite <code style={{ fontFamily: 'DM Mono,monospace' }}>SPOONACULAR_API_KEY</code> dans les variables
-          d&apos;environnement Vercel (pour les photos). L&apos;opération prend ~10&nbsp;s.
+          {t('admin.dishes.apiKeyBefore')}<code style={{ fontFamily: 'DM Mono,monospace' }}>SPOONACULAR_API_KEY</code>{t('admin.dishes.apiKeyAfter')}
         </p>
       </div>
 
@@ -114,7 +114,7 @@ export default function SeedDishesPage() {
           {result.ok ? (
             <>
               <div style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 14, color: CYAN, marginBottom: 4 }}>
-                ✓ {result.inserted} plats · {result.photos ?? 0} avec photo
+                {t('admin.dishes.resultOk', { inserted: result.inserted ?? 0, photos: result.photos ?? 0 })}
               </div>
               {result.warning && (
                 <div style={{ fontSize: 11, color: '#f59e0b', marginBottom: 10 }}>{result.warning}</div>

@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import type { WorkoutExercise, CompletedSet } from '@/types/workout'
+import { useI18n } from '@/lib/i18n'
 import RestTimer from './RestTimer'
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function SupersetView({ exercise, onSetDone, isDark, accent }: Props) {
+  const { t } = useI18n()
   const partnerB = exercise.supersetPartner
   const [currentSet, setCurrentSet] = useState(0)
   const [phase, setPhase] = useState<'A' | 'B'>('A')
@@ -49,7 +51,7 @@ export default function SupersetView({ exercise, onSetDone, isDark, accent }: Pr
   return (
     <div style={{ padding: '20px', fontFamily: 'DM Sans, sans-serif' }}>
       <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: dim, margin: '0 0 4px' }}>Superset</p>
-      <p style={{ fontSize: 13, color: dim, margin: '0 0 20px' }}>Série {done ? exercise.sets : currentSet + 1} / {exercise.sets}</p>
+      <p style={{ fontSize: 13, color: dim, margin: '0 0 20px' }}>{t('record.supersetSetProgress', { current: done ? exercise.sets : currentSet + 1, total: exercise.sets })}</p>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {Array.from({ length: exercise.sets }).map((_, i) => (
@@ -58,7 +60,7 @@ export default function SupersetView({ exercise, onSetDone, isDark, accent }: Pr
       </div>
 
       {done ? (
-        <div style={{ textAlign: 'center', padding: '24px 0', color: accent, fontSize: 15, fontWeight: 600 }}>Superset terminé ✓</div>
+        <div style={{ textAlign: 'center', padding: '24px 0', color: accent, fontSize: 15, fontWeight: 600 }}>{t('record.supersetDone')}</div>
       ) : (
         <>
           <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
@@ -79,12 +81,12 @@ export default function SupersetView({ exercise, onSetDone, isDark, accent }: Pr
           </div>
 
           <div style={{ background: surface, borderRadius: 12, padding: '12px 16px', marginBottom: 20 }}>
-            <p style={{ fontSize: 12, color: dim, margin: '0 0 2px' }}>Maintenant</p>
-            <p style={{ fontSize: 16, fontWeight: 600, color: text, margin: 0 }}>{activeEx.name} — {activeEx.reps} × {activeEx.weightKg > 0 ? `${activeEx.weightKg}kg` : 'poids de corps'}</p>
+            <p style={{ fontSize: 12, color: dim, margin: '0 0 2px' }}>{t('record.supersetNow')}</p>
+            <p style={{ fontSize: 16, fontWeight: 600, color: text, margin: 0 }}>{activeEx.name} — {activeEx.reps} × {activeEx.weightKg > 0 ? `${activeEx.weightKg}kg` : t('record.supersetBodyweight')}</p>
           </div>
 
           <button onClick={handleMark} style={{ width: '100%', height: 52, borderRadius: 16, background: `linear-gradient(135deg, ${accentA}, ${accentB})`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
-            Marquer — {phase}
+            {t('record.supersetMark', { phase })}
           </button>
         </>
       )}

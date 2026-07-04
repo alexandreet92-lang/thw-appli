@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import SportSelector, { type SportId, getSportIcon, getSportLabel } from '@/components/record/SportSelector'
 import Toast from '@/components/record/Toast'
+import { useI18n } from '@/lib/i18n'
 import type { WorkoutExercise } from '@/types/workout'
 
 const MapBackground    = dynamic(() => import('@/components/record/MapBackground'),    { ssr: false })
@@ -35,6 +36,7 @@ interface ActiveRoute {
 }
 
 export default function RecordPage() {
+  const { t } = useI18n()
   const [view, setView] = useState<View>('home')
   const [sport, setSport] = useState<SportId>('cycling')
   const [sportSheetOpen, setSportSheetOpen] = useState(false)
@@ -133,7 +135,7 @@ export default function RecordPage() {
     else if (sport === 'padel')       setView('padel')
     else if (sport === 'openwater')   setView('openwater')
     else if (sport === 'hometrainer') setView('hometrainer')
-    else setToast('Bientôt disponible')
+    else setToast(t('record.pageComingSoon'))
   }
 
   if (view === 'cycling') {
@@ -142,7 +144,7 @@ export default function RecordPage() {
         <CyclingScreen
           route={activeRoute}
           onExit={() => setView('home')}
-          onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
+          onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
@@ -155,7 +157,7 @@ export default function RecordPage() {
         <RunningScreen
           route={activeRoute}
           onExit={() => setView('home')}
-          onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
+          onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
@@ -168,7 +170,7 @@ export default function RecordPage() {
         <TrailScreen
           route={activeRoute}
           onExit={() => setView('home')}
-          onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
+          onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
@@ -178,7 +180,7 @@ export default function RecordPage() {
   if (view === 'hiking') {
     return (
       <>
-        <HikingScreen onExit={() => setView('home')} onFinished={() => { setToast('Séance enregistrée'); setView('home') }} />
+        <HikingScreen onExit={() => setView('home')} onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }} />
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
     )
@@ -187,7 +189,7 @@ export default function RecordPage() {
   if (view === 'mtb') {
     return (
       <>
-        <MTBScreen onExit={() => setView('home')} onFinished={() => { setToast('Séance enregistrée'); setView('home') }} />
+        <MTBScreen onExit={() => setView('home')} onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }} />
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
     )
@@ -198,7 +200,7 @@ export default function RecordPage() {
       <>
         <SkiScreen
           onExit={() => setView('home')}
-          onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
+          onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
@@ -222,7 +224,7 @@ export default function RecordPage() {
       <>
         <OpenWaterScreen
           onExit={() => setView('home')}
-          onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
+          onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
@@ -234,7 +236,7 @@ export default function RecordPage() {
       <>
         <HomeTrainerScreen
           onExit={() => setView('home')}
-          onFinished={() => { setToast('Séance enregistrée'); setView('home') }}
+          onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
       </>
@@ -342,7 +344,7 @@ export default function RecordPage() {
           {/* CENTRE — Démarrer */}
           <button
             onClick={() => { if (sheetDragged.current) return; handleStart() }}
-            aria-label="Démarrer"
+            aria-label={t('record.pageStart')}
             style={{
               width: 64, height: 64, borderRadius: '50%',
               background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
@@ -380,21 +382,21 @@ export default function RecordPage() {
                 <path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/>
               </svg>
             </span>
-            <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>Parcours</span>
+            <span style={{ fontSize: 12, color: 'var(--text-mid)' }}>{t('record.pageRoutes')}</span>
           </button>
           </div>
         </div>
 
         {/* Paramètres de la séance — révélés en dépliant le sheet */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '4px 16px 16px', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 4px 10px' }}>Paramètres de la séance</p>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '6px 4px 10px' }}>{t('record.pageSessionSettings')}</p>
           <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
             {([
-              { key: 'liveshare', label: 'Partager ma position en direct', sub: 'Tes proches suivent ta sortie en temps réel', on: liveShare,   set: (v: boolean) => { setLiveShare(v); persist('thw-rec-liveshare', v) },
+              { key: 'liveshare', label: t('record.pageLiveShareLabel'), sub: t('record.pageLiveShareSub'), on: liveShare,   set: (v: boolean) => { setLiveShare(v); persist('thw-rec-liveshare', v) },
                 icon: <><circle cx="12" cy="12" r="2.5"/><path d="M7.5 7.5a6 6 0 0 0 0 9M16.5 7.5a6 6 0 0 1 0 9M4.5 4.5a10 10 0 0 0 0 15M19.5 4.5a10 10 0 0 1 0 15"/></> },
-              { key: 'audio',     label: 'Alertes audio',        sub: 'Annonces vocales (km, allure, temps)',        on: audioAlerts, set: (v: boolean) => { setAudioAlerts(v); persist('thw-rec-audio', v) },
+              { key: 'audio',     label: t('record.pageAudioLabel'),        sub: t('record.pageAudioSub'),        on: audioAlerts, set: (v: boolean) => { setAudioAlerts(v); persist('thw-rec-audio', v) },
                 icon: <><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></> },
-              { key: 'autopause', label: 'Pause automatique',     sub: 'Met en pause à l’arrêt, reprend au départ', on: autoPause,  set: (v: boolean) => { setAutoPause(v); persist('thw-rec-autopause', v) },
+              { key: 'autopause', label: t('record.pageAutoPauseLabel'),     sub: t('record.pageAutoPauseSub'), on: autoPause,  set: (v: boolean) => { setAutoPause(v); persist('thw-rec-autopause', v) },
                 icon: <><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></> },
             ] as const).map((row, i) => (
               <div key={row.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', borderTop: i > 0 ? '1px solid var(--border)' : 'none' }}>
@@ -414,10 +416,10 @@ export default function RecordPage() {
 
           <div style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', marginTop: 12 }}>
             {([
-              { key: 'sensor', label: 'Ajouter un capteur', sub: 'Cardio, cadence, puissance (Bluetooth)', icon: <><path d="M4 12h3l2-7 4 14 2-7h5"/></> },
-              { key: 'gps',    label: 'Paramètres GPS & écran', sub: 'Précision, maintien de l’écran allumé', icon: <><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></> },
+              { key: 'sensor', label: t('record.pageAddSensorLabel'), sub: t('record.pageAddSensorSub'), icon: <><path d="M4 12h3l2-7 4 14 2-7h5"/></> },
+              { key: 'gps',    label: t('record.pageGpsLabel'), sub: t('record.pageGpsSub'), icon: <><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></> },
             ] as const).map((row, i) => (
-              <button key={row.key} onClick={() => setToast('Bientôt disponible')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', background: 'transparent', border: 'none', borderTop: i > 0 ? '1px solid var(--border)' : 'none', cursor: 'pointer', textAlign: 'left' }}>
+              <button key={row.key} onClick={() => setToast(t('record.pageComingSoon'))} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', background: 'transparent', border: 'none', borderTop: i > 0 ? '1px solid var(--border)' : 'none', cursor: 'pointer', textAlign: 'left' }}>
                 <span style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)', color: 'var(--text-mid)' }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{row.icon}</svg>
                 </span>

@@ -4,9 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
+import { useI18n } from '@/lib/i18n'
 
 export default function UpdatePasswordPage() {
   const router = useRouter()
+  const { t } = useI18n()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,11 +17,11 @@ export default function UpdatePasswordPage() {
 
   async function handleSubmit() {
     if (password !== confirm) {
-      setError('Les mots de passe ne correspondent pas.')
+      setError(t('auth.pwMismatch'))
       return
     }
     if (password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères.')
+      setError(t('authpage.pwMin6'))
       return
     }
     setLoading(true)
@@ -30,7 +32,7 @@ export default function UpdatePasswordPage() {
     if (error) {
       setError(error.message)
     } else {
-      setSuccess('Mot de passe mis à jour ! Redirection...')
+      setSuccess(t('authpage.pwUpdatedRedirect'))
       setTimeout(() => router.push('/profile'), 2000)
     }
   }
@@ -61,20 +63,20 @@ export default function UpdatePasswordPage() {
           </div>
           <div>
             <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 15, color: 'var(--text)', margin: 0, lineHeight: 1.2 }}>THW Coaching</p>
-            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Nouveau mot de passe</p>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{t('authpage.newPassword')}</p>
           </div>
         </div>
 
         <p style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 18, color: 'var(--text)', margin: '0 0 8px' }}>
-          Réinitialiser le mot de passe
+          {t('auth.forgotTitle')}
         </p>
         <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 24px' }}>
-          Choisis un nouveau mot de passe pour ton compte.
+          {t('authpage.chooseNewPassword')}
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', marginBottom: 6 }}>Nouveau mot de passe</p>
+            <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', marginBottom: 6 }}>{t('authpage.newPassword')}</p>
             <input
               type="password"
               value={password}
@@ -85,7 +87,7 @@ export default function UpdatePasswordPage() {
             />
           </div>
           <div>
-            <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', marginBottom: 6 }}>Confirmer le mot de passe</p>
+            <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', marginBottom: 6 }}>{t('auth.confirm')}</p>
             <input
               type="password"
               value={confirm}
@@ -115,7 +117,7 @@ export default function UpdatePasswordPage() {
             loading={loading}
             style={{ width: '100%', marginTop: 4, justifyContent: 'center' }}
           >
-            Mettre à jour le mot de passe
+            {t('authpage.updatePasswordBtn')}
           </Button>
         </div>
       </div>

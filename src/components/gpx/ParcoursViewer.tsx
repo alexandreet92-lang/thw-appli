@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { parseGPX } from '@/lib/gpxParser'
+import { useI18n } from '@/lib/i18n'
 
 const MapInner = dynamic(() => import('@/components/activity/ActivityMapInner'), {
   ssr: false,
@@ -82,6 +83,7 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
   data?: ParcoursViewerData
   mapHeight?: number
 }) {
+  const { t } = useI18n()
   const [data, setData] = useState<Parsed | null>(null)
   const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading')
   const [layer, setLayer] = useState<'std' | 'sat' | 'hyb'>('std')
@@ -139,10 +141,10 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
   }
 
   if (status === 'error') {
-    return <p style={{ fontSize:12, color:'#ef4444', margin:'8px 0 0' }}>Parcours illisible — fichier GPX invalide.</p>
+    return <p style={{ fontSize:12, color:'#ef4444', margin:'8px 0 0' }}>{t('shared.gpxInvalid')}</p>
   }
   if (status === 'loading' || !data) {
-    return <div style={{ height: mapHeight, borderRadius:12, background:'#0F172A', display:'flex', alignItems:'center', justifyContent:'center', color:'#64748B', fontSize:12 }}>Lecture du parcours…</div>
+    return <div style={{ height: mapHeight, borderRadius:12, background:'#0F172A', display:'flex', alignItems:'center', justifyContent:'center', color:'#64748B', fontSize:12 }}>{t('shared.readingRoute')}</div>
   }
 
   const KPI = ({ label, value }: { label: string; value: string }) => (
@@ -156,7 +158,7 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
     <div style={{ borderRadius:12, overflow:'hidden', border:'1px solid var(--border)' }}>
       {/* KPIs */}
       <div style={{ display:'flex', gap:14, padding:'12px 14px', background:'var(--bg-card2)', flexWrap:'wrap' }}>
-        <KPI label="Distance" value={`${(data.distanceM/1000).toFixed(1)} km`} />
+        <KPI label={t('shared.distance')} value={`${(data.distanceM/1000).toFixed(1)} km`} />
         <KPI label="D+" value={`${Math.round(data.gain)} m`} />
         <KPI label="D−" value={`${data.loss} m`} />
         <KPI label="Alt." value={`${Math.round(data.altMin)}–${Math.round(data.altMax)} m`} />

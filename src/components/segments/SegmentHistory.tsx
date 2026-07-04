@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 
 interface Effort {
   started_at: string
@@ -18,6 +19,7 @@ function fmt(s: number) {
 }
 
 export default function SegmentHistory({ segmentId, isDark }: Props) {
+  const { t } = useI18n()
   const [efforts, setEfforts] = useState<Effort[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -41,11 +43,11 @@ export default function SegmentHistory({ segmentId, isDark }: Props) {
   const dim = isDark ? 'rgba(255,255,255,0.45)' : '#8C8C8C'
   const gridLine = isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6'
 
-  if (loading) return <div style={{ padding: '32px 0', textAlign: 'center', color: dim, fontFamily: 'DM Sans, sans-serif' }}>Chargement…</div>
+  if (loading) return <div style={{ padding: '32px 0', textAlign: 'center', color: dim, fontFamily: 'DM Sans, sans-serif' }}>{t('shared.loading')}</div>
 
   if (!efforts.length) return (
     <div style={{ padding: '32px 20px', textAlign: 'center', fontFamily: 'DM Sans, sans-serif' }}>
-      <p style={{ fontSize: 15, color: dim, margin: 0 }}>Aucun effort personnel</p>
+      <p style={{ fontSize: 15, color: dim, margin: 0 }}>{t('shared.noPersonalEffort')}</p>
     </div>
   )
 
@@ -73,9 +75,9 @@ export default function SegmentHistory({ segmentId, isDark }: Props) {
       {/* Header stats */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
         {[
-          { l: 'Efforts', v: String(efforts.length) },
-          { l: 'Meilleur', v: fmt(minV) },
-          { l: 'Dernier', v: fmt(values[values.length - 1]) },
+          { l: t('shared.efforts'), v: String(efforts.length) },
+          { l: t('shared.best'), v: fmt(minV) },
+          { l: t('shared.last'), v: fmt(values[values.length - 1]) },
         ].map(({ l, v }) => (
           <div key={l} style={{ flex: 1, background: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6', borderRadius: 12, padding: '10px 12px' }}>
             <p style={{ fontSize: 9, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 3px' }}>{l}</p>

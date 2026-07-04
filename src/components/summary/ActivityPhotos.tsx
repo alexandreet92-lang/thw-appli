@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import PhotoViewer from './PhotoViewer'
 
 interface Photo { id: string; url: string; taken_at: string }
@@ -8,6 +9,7 @@ interface Photo { id: string; url: string; taken_at: string }
 interface Props { sessionId: string }
 
 export default function ActivityPhotos({ sessionId }: Props) {
+  const { t } = useI18n()
   const [photos, setPhotos] = useState<Photo[]>([])
   const [viewerIdx, setViewerIdx] = useState<number | null>(null)
 
@@ -28,7 +30,7 @@ export default function ActivityPhotos({ sessionId }: Props) {
     <>
       <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
         <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.45)', margin: '0 0 10px', fontFamily: 'DM Sans, sans-serif' }}>
-          Photos · {photos.length}
+          {t('shared.photos')} · {photos.length}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
           {photos.map((p, i) => (

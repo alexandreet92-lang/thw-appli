@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n";
 
 function isAdminEmail(email: string | undefined | null): boolean {
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
@@ -33,6 +34,7 @@ interface FeedbackRow {
 type RatingFilter = "all" | "up" | "down";
 
 export default function CoachFeedbackAdminPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
   const [rows, setRows] = useState<FeedbackRow[]>([]);
@@ -53,10 +55,10 @@ export default function CoachFeedbackAdminPage() {
       try {
         const res = await fetch("/api/coach/feedback");
         const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? "Erreur");
+        if (!res.ok) throw new Error(json.error ?? t("admin.error"));
         setRows((json.feedback ?? []) as FeedbackRow[]);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Erreur de chargement");
+        setError(e instanceof Error ? e.message : t("admin.loadError"));
       } finally {
         setLoading(false);
       }
@@ -89,19 +91,19 @@ export default function CoachFeedbackAdminPage() {
   return (
     <div style={{ maxWidth: 880, margin: "0 auto", padding: "32px 20px", fontFamily: "DM Sans, sans-serif", color: "#111827" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Retours du coach IA</h1>
-        <Link href="/admin/coach-insights" style={{ fontSize: 13, color: "#06B6D4" }}>Curer les enseignements →</Link>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{t("admin.feedback.title")}</h1>
+        <Link href="/admin/coach-insights" style={{ fontSize: 13, color: "#06B6D4" }}>{t("admin.feedback.curateLink")}</Link>
       </div>
       <p style={{ color: "#6B7280", fontSize: 14, marginTop: 6 }}>
-        Phase 1 de l&apos;apprentissage : ce que les athlètes jugent bon ou mauvais. Sert de base à la curation des insights.
+        {t("admin.feedback.intro")}
       </p>
 
       {/* Stats */}
       <div style={{ display: "flex", gap: 12, margin: "20px 0", flexWrap: "wrap" }}>
-        <StatCard label="Total retours" value={String(stats.total)} />
-        <StatCard label="👍 Positifs" value={String(stats.up)} color="#16A34A" />
-        <StatCard label="👎 Négatifs" value={String(stats.down)} color="#DC2626" />
-        <StatCard label="Taux de satisfaction" value={`${stats.winRate}%`} color="#06B6D4" />
+        <StatCard label={t("admin.feedback.totalFeedback")} value={String(stats.total)} />
+        <StatCard label={t("admin.feedback.positive")} value={String(stats.up)} color="#16A34A" />
+        <StatCard label={t("admin.feedback.negative")} value={String(stats.down)} color="#DC2626" />
+        <StatCard label={t("admin.feedback.satisfactionRate")} value={`${stats.winRate}%`} color="#06B6D4" />
       </div>
 
       {/* Filtres */}
@@ -109,22 +111,22 @@ export default function CoachFeedbackAdminPage() {
         {(["all", "up", "down"] as RatingFilter[]).map(f => (
           <button key={f} onClick={() => setRatingFilter(f)}
             style={chip(ratingFilter === f)}>
-            {f === "all" ? "Tous" : f === "up" ? "👍 Positifs" : "👎 Négatifs"}
+            {f === "all" ? t("admin.filterAll") : f === "up" ? t("admin.feedback.positive") : t("admin.feedback.negative")}
           </button>
         ))}
         {sports.length > 0 && (
           <select value={sportFilter} onChange={e => setSportFilter(e.target.value)}
             style={{ ...chip(false), cursor: "pointer", appearance: "auto" as const }}>
-            <option value="all">Tous sports</option>
+            <option value="all">{t("admin.allSports")}</option>
             {sports.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         )}
       </div>
 
-      {loading && <p style={{ color: "#6B7280" }}>Chargement…</p>}
+      {loading && <p style={{ color: "#6B7280" }}>{t("admin.loading")}</p>}
       {error && <p style={{ color: "#DC2626" }}>{error}</p>}
       {!loading && !error && filtered.length === 0 && (
-        <p style={{ color: "#6B7280" }}>Aucun retour pour ce filtre.</p>
+        <p style={{ color: "#6B7280" }}>{t("admin.feedback.noFeedback")}</p>
       )}
 
       {/* Liste */}
@@ -145,17 +147,17 @@ export default function CoachFeedbackAdminPage() {
             </div>
             {r.user_message && (
               <p style={{ margin: "4px 0", fontSize: 13 }}>
-                <strong style={{ color: "#6B7280" }}>Q : </strong>{r.user_message}
+                <strong style={{ color: "#6B7280" }}>{t("admin.feedback.qLabel")}</strong>{r.user_message}
               </p>
             )}
             {r.assistant_message && (
               <p style={{ margin: "4px 0", fontSize: 13, color: "#374151", whiteSpace: "pre-wrap" }}>
-                <strong style={{ color: "#6B7280" }}>R : </strong>
+                <strong style={{ color: "#6B7280" }}>{t("admin.feedback.rLabel")}</strong>
                 {r.assistant_message.length > 600 ? r.assistant_message.slice(0, 600) + "…" : r.assistant_message}
               </p>
             )}
             {r.reason && (
-              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#9CA3AF", fontStyle: "italic" }}>Motif : {r.reason}</p>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#9CA3AF", fontStyle: "italic" }}>{t("admin.feedback.reasonLabel")}{r.reason}</p>
             )}
           </div>
         ))}

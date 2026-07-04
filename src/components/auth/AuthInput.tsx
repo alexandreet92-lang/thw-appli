@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   label: string
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function AuthInput({ label, type, placeholder, value, onChange, showToggle, error, autoComplete }: Props) {
+  const { t } = useI18n()
   const [visible, setVisible] = useState(false)
   const [focus, setFocus] = useState(false)
   const borderColor = error ? 'var(--charge-hard)' : focus ? 'var(--primary)' : 'var(--border-mid)'
@@ -52,7 +54,7 @@ export function AuthInput({ label, type, placeholder, value, onChange, showToggl
         {showToggle && (
           <button
             type="button"
-            aria-label={visible ? 'Masquer' : 'Afficher'}
+            aria-label={visible ? t('authpage.hidePassword') : t('authpage.showPassword')}
             onClick={() => setVisible(s => !s)}
             style={{
               position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',

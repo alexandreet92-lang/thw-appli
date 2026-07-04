@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import { Mail, Check } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   isOpen: boolean
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function TopupEmailModal({ isOpen, onClose }: Props) {
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -43,10 +45,10 @@ export default function TopupEmailModal({ isOpen, onClose }: Props) {
         body: JSON.stringify({ email }),
       })
       const json = await res.json() as { success?: boolean; error?: string }
-      if (!res.ok || !json.success) throw new Error(json.error ?? 'Erreur')
+      if (!res.ok || !json.success) throw new Error(json.error ?? t('shared.error'))
       setSent(true)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur')
+      setError(e instanceof Error ? e.message : t('shared.error'))
     } finally {
       setLoading(false)
     }
@@ -66,12 +68,12 @@ export default function TopupEmailModal({ isOpen, onClose }: Props) {
             <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
               <Check size={26} color="#22C55E" />
             </div>
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', margin: '0 0 8px' }}>Lien envoyé à {email}</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', margin: '0 0 8px' }}>{t('shared.linkSentTo', { email })}</h2>
             <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 24px' }}>
-              Vérifie ta boîte mail et clique sur le lien pour acheter tes tokens.
+              {t('shared.checkMailbox')}
             </p>
             <button onClick={onClose} style={{ width: '100%', padding: 12, borderRadius: 10, border: '0.5px solid var(--border-mid)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
-              Fermer
+              {t('shared.close')}
             </button>
           </div>
         ) : (
@@ -79,16 +81,16 @@ export default function TopupEmailModal({ isOpen, onClose }: Props) {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
               <Mail size={32} color="var(--primary)" />
             </div>
-            <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', textAlign: 'center', margin: '0 0 10px' }}>Recharger en tokens</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', textAlign: 'center', margin: '0 0 10px' }}>{t('shared.topUpTokens')}</h2>
             <p style={{ fontSize: 13, color: 'var(--text-mid)', textAlign: 'center', lineHeight: 1.6, margin: '0 0 20px' }}>
-              Saisis ton email — tu recevras un lien sécurisé pour acheter ton pack via Stripe. Le paiement se fait en dehors de l&apos;app pour éviter les frais Apple.
+              {t('shared.topupDescription')}
             </p>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') void submit() }}
-              placeholder="ton@email.com"
+              placeholder={t('shared.emailPlaceholder')}
               className="topup-email-input"
               style={{ width: '100%', background: 'var(--bg-alt)', border: '1px solid var(--border-mid)', borderRadius: 10, padding: '12px 14px', fontSize: 14, color: 'var(--text)', outline: 'none', marginBottom: 14, fontFamily: 'DM Sans, sans-serif' }}
             />
@@ -98,10 +100,10 @@ export default function TopupEmailModal({ isOpen, onClose }: Props) {
               disabled={loading || !email}
               style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: '#06B6D4', color: '#fff', fontSize: 14, fontWeight: 500, cursor: loading || !email ? 'not-allowed' : 'pointer', opacity: loading || !email ? 0.6 : 1 }}
             >
-              {loading ? 'Envoi…' : 'Envoyer le lien'}
+              {loading ? t('shared.sending') : t('shared.sendLink')}
             </button>
             <p style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.5, margin: '14px 0 0' }}>
-              Le lien est valide 24h. Aucun paiement ne se fait depuis l&apos;app.
+              {t('shared.linkValid24h')}
             </p>
           </>
         )}

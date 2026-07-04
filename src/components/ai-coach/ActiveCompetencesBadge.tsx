@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 interface ActiveComp { id: string; nom: string }
 
@@ -18,6 +19,7 @@ interface Row {
 
 export default function ActiveCompetencesBadge() {
   const router = useRouter()
+  const { t } = useI18n()
   const [items, setItems] = useState<ActiveComp[]>([])
 
   useEffect(() => {
@@ -62,13 +64,13 @@ export default function ActiveCompetencesBadge() {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 8 }}>
       <Sparkles size={13} style={{ color: '#06B6D4', opacity: 0.8 }} />
       {shown.map(c => (
-        <button key={c.id} type="button" style={pill} onClick={() => router.push('/competences')} title={`Compétence active : ${c.nom}`}>
+        <button key={c.id} type="button" style={pill} onClick={() => router.push('/competences')} title={t('ai.activeCompetence', { name: c.nom })}>
           {c.nom}
         </button>
       ))}
       {extra > 0 && (
         <button type="button" style={{ ...pill, background: 'transparent', color: 'var(--text-dim)', borderColor: 'var(--border)' }} onClick={() => router.push('/competences')}>
-          +{extra} autre{extra > 1 ? 's' : ''}
+          +{extra} {extra > 1 ? t('ai.othersPlural') : t('ai.otherSingular')}
         </button>
       )}
     </div>

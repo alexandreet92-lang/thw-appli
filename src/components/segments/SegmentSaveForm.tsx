@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   defaultName?: string
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function SegmentSaveForm({ defaultName = '', sport, onSave, onClose, isDark }: Props) {
+  const { t } = useI18n()
   const [name, setName] = useState(defaultName)
   const [isPublic, setIsPublic] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -45,37 +47,37 @@ export default function SegmentSaveForm({ defaultName = '', sport, onSave, onClo
         <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: btnBg, border: 'none', color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
-        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>Créer un segment</span>
+        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>{t('shared.createSegment')}</span>
         <button onClick={handleSave} disabled={saving || !name.trim()} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 10, background: 'none', border: 'none', color: name.trim() ? '#06B6D4' : dim, fontSize: 15, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'default', opacity: saving ? 0.5 : 1 }}>
-          {saving ? '…' : 'Créer'}
+          {saving ? '…' : t('shared.create')}
         </button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '28px 20px' }}>
         <div style={{ marginBottom: 24 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: dim, marginBottom: 10 }}>Nom du segment</p>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: dim, marginBottom: 10 }}>{t('shared.segmentName')}</p>
           <input
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="Ex: Montée du Col de la Croix"
+            placeholder={t('shared.segmentNamePlaceholder')}
             autoFocus
             style={{ width: '100%', boxSizing: 'border-box', background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: '12px 16px', fontSize: 16, color: text, outline: 'none', fontFamily: 'DM Sans, sans-serif' }}
           />
         </div>
 
         <div style={{ marginBottom: 24 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: dim, marginBottom: 10 }}>Sport</p>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: dim, marginBottom: 10 }}>{t('shared.sport')}</p>
           <div style={{ background: surface, borderRadius: 12, padding: '12px 16px', border: `1px solid ${border}` }}>
             <span style={{ fontSize: 15, color: text, fontWeight: 500 }}>
-              {sport === 'cycling' ? 'Vélo' : sport === 'running' ? 'Running' : sport === 'trail' ? 'Trail' : sport === 'mtb' ? 'VTT' : sport === 'hiking' ? 'Randonnée' : sport}
+              {sport === 'cycling' ? t('shared.sportCycling') : sport === 'running' ? t('shared.sportRunning') : sport === 'trail' ? t('shared.sportTrail') : sport === 'mtb' ? t('shared.sportMtb') : sport === 'hiking' ? t('shared.sportHiking') : sport}
             </span>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderTop: `1px solid ${sep}` }}>
           <div>
-            <p style={{ fontSize: 15, fontWeight: 500, margin: 0, color: text }}>Segment public</p>
-            <p style={{ fontSize: 12, color: dim, margin: '2px 0 0' }}>Visible dans les classements</p>
+            <p style={{ fontSize: 15, fontWeight: 500, margin: 0, color: text }}>{t('shared.publicSegment')}</p>
+            <p style={{ fontSize: 12, color: dim, margin: '2px 0 0' }}>{t('shared.visibleInLeaderboards')}</p>
           </div>
           <button
             onClick={() => setIsPublic(p => !p)}
@@ -88,7 +90,7 @@ export default function SegmentSaveForm({ defaultName = '', sport, onSave, onClo
 
       <div style={{ padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),20px)' }}>
         <button onClick={handleSave} disabled={saving || !name.trim()} style={{ width: '100%', height: 52, borderRadius: 16, background: name.trim() ? 'linear-gradient(135deg,#06B6D4,#2563EB)' : (isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6'), border: 'none', color: name.trim() ? '#fff' : dim, fontSize: 16, fontWeight: 600, cursor: name.trim() ? 'pointer' : 'default', fontFamily: 'DM Sans, sans-serif' }}>
-          {saving ? 'Création…' : 'Créer le segment'}
+          {saving ? t('shared.creating') : t('shared.createTheSegment')}
         </button>
       </div>
     </div>,

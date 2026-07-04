@@ -6,6 +6,7 @@
 // --se-* sont fournis inline → suit le thème jour/nuit de l'app.
 // ══════════════════════════════════════════════════════════════════
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { ExercisePicker } from '@/components/planning/mobile/ExercisePicker'
 import type { ExoDefinition } from '@/components/planning/exercises'
 import type { WorkoutExercise } from '@/types/workout'
@@ -26,11 +27,12 @@ function defToWorkout(def: ExoDefinition): WorkoutExercise {
 export default function RecordExercisePicker({ accent, onAdd, onClose }: {
   accent: string; onAdd: (e: WorkoutExercise) => void; onClose: () => void
 }) {
+  const { t } = useI18n()
   return createPortal(
     <div style={seVars}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
         <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
-        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Ajouter un exercice</span>
+        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{t('record.pickerAddExercise')}</span>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px 24px' }}>
         <ExercisePicker accent={accent}

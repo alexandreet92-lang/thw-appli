@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('./AIPanel'), { ssr: false })
 
@@ -16,6 +17,7 @@ export default function GlobalAIButton() {
   const pathname  = usePathname()
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const { t } = useI18n()
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -33,7 +35,7 @@ export default function GlobalAIButton() {
     <>
       <button
         onClick={() => setOpen(o => !o)}
-        aria-label="Ouvrir Coach IA"
+        aria-label={t('ai.openCoachIA')}
         style={{
           position:    'fixed',
           bottom:      24,
@@ -76,7 +78,7 @@ export default function GlobalAIButton() {
           whiteSpace:  'nowrap',
           letterSpacing: '0.01em',
         }}>
-          Coach IA
+          {t('ai.coachIA')}
         </span>
       </button>
 

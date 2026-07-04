@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 
 interface Effort {
   id: string
@@ -24,6 +25,7 @@ function fmt(s: number) {
 }
 
 export default function SegmentLeaderboard({ segmentId, isDark }: Props) {
+  const { t } = useI18n()
   const [efforts, setEfforts] = useState<Effort[]>([])
   const [myId, setMyId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,14 +54,14 @@ export default function SegmentLeaderboard({ segmentId, isDark }: Props) {
 
   if (loading) return (
     <div style={{ padding: '32px 0', textAlign: 'center', color: dim, fontFamily: 'DM Sans, sans-serif' }}>
-      Chargement…
+      {t('shared.loading')}
     </div>
   )
 
   if (!efforts.length) return (
     <div style={{ padding: '32px 20px', textAlign: 'center', fontFamily: 'DM Sans, sans-serif' }}>
-      <p style={{ fontSize: 15, color: dim, margin: 0 }}>Aucun effort enregistré</p>
-      <p style={{ fontSize: 13, color: dim, margin: '6px 0 0', opacity: 0.7 }}>Sois le premier à parcourir ce segment !</p>
+      <p style={{ fontSize: 15, color: dim, margin: 0 }}>{t('shared.noEffortRecorded')}</p>
+      <p style={{ fontSize: 13, color: dim, margin: '6px 0 0', opacity: 0.7 }}>{t('shared.beFirstSegment')}</p>
     </div>
   )
 
@@ -79,7 +81,7 @@ export default function SegmentLeaderboard({ segmentId, isDark }: Props) {
             </div>
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 14, fontWeight: isMe ? 600 : 400, color: isMe ? '#06B6D4' : text, margin: 0 }}>
-                {isMe ? 'Moi' : `Athlète ${e.user_id.slice(0, 6)}`}
+                {isMe ? t('shared.me') : t('shared.athleteN', { id: e.user_id.slice(0, 6) })}
               </p>
               <p style={{ fontSize: 11, color: dim, margin: '2px 0 0' }}>
                 {new Date(e.started_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}

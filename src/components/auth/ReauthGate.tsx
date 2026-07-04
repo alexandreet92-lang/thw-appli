@@ -10,6 +10,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
+import { useI18n } from '@/lib/i18n'
 
 const DAY = 86_400_000
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -20,6 +21,7 @@ const field: React.CSSProperties = {
 }
 
 export function ReauthGate() {
+  const { t } = useI18n()
   const pathname = usePathname()
   const [need, setNeed] = useState(false)
   const [email, setEmail] = useState('')
@@ -51,7 +53,7 @@ export function ReauthGate() {
     const sb = createClient()
     const { error: e } = await sb.auth.signInWithPassword({ email, password })
     setLoading(false)
-    if (e) { setError('Email ou mot de passe incorrect.'); return }
+    if (e) { setError(t('authpage.wrongCredentials')); return }
     localStorage.setItem('thw_last_pw_auth', String(Date.now()))
     setPassword(''); setNeed(false)
   }
@@ -71,18 +73,18 @@ export function ReauthGate() {
       <div style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: '28px 24px' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logos/logo_4bras.png" alt="" style={{ width: 40, height: 40, objectFit: 'contain', display: 'block', margin: '0 auto 14px' }} />
-        <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', textAlign: 'center', margin: '0 0 6px' }}>Confirme ton identité</h2>
+        <h2 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', textAlign: 'center', margin: '0 0 6px' }}>{t('authpage.reauthTitle')}</h2>
         <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', textAlign: 'center', margin: '0 0 20px', lineHeight: 1.5 }}>
-          Par sécurité, ressaisis ton email et ton mot de passe.
+          {t('authpage.reauthDesc')}
         </p>
-        <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email" style={field} />
+        <input value={email} onChange={e => setEmail(e.target.value)} placeholder={t('authpage.emailPlaceholder')} type="email" style={field} />
         <div style={{ height: 10 }} />
-        <input value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void confirm() }} placeholder="Mot de passe" type="password" autoFocus style={field} />
+        <input value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void confirm() }} placeholder={t('auth.password')} type="password" autoFocus style={field} />
         {error && <p style={{ color: '#EF4444', fontFamily: FB, fontSize: 12, margin: '10px 0 0' }}>{error}</p>}
         <button onClick={() => void confirm()} disabled={disabled} style={{ width: '100%', height: 48, marginTop: 16, borderRadius: 12, border: 'none', background: disabled ? 'var(--bg-card2)' : 'var(--primary-gradient)', color: disabled ? 'var(--text-dim)' : '#fff', fontFamily: FB, fontSize: 15, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer' }}>
-          {loading ? 'Vérification…' : 'Confirmer'}
+          {loading ? t('authpage.verifying') : t('authpage.confirmBtn')}
         </button>
-        <button onClick={() => void logout()} style={{ width: '100%', marginTop: 10, background: 'none', border: 'none', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13, cursor: 'pointer' }}>Se déconnecter</button>
+        <button onClick={() => void logout()} style={{ width: '100%', marginTop: 10, background: 'none', border: 'none', color: 'var(--text-dim)', fontFamily: FB, fontSize: 13, cursor: 'pointer' }}>{t('authpage.logout')}</button>
       </div>
     </div>
   )

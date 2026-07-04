@@ -10,6 +10,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 export interface GenBloc {
   nom: string; type: string; semaine_debut: number; semaine_fin: number
@@ -43,9 +44,6 @@ export interface PlanProposal {
   error?: string
 }
 
-const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-const SPORTS: Record<string, string> = { run: 'Course', bike: 'Vélo', swim: 'Natation', hyrox: 'Hyrox', rowing: 'Aviron', gym: 'Muscu' }
-const sportLabel = (s?: string) => SPORTS[(s ?? '').toLowerCase()] ?? (s ?? '')
 const weekVol = (w: GenWeek) => w.volume_h ?? Math.round((w.seances ?? []).reduce((a, s) => a + (s.duree_min ?? 0), 0) / 6) / 10
 
 export function PlanProposalCard({
@@ -57,6 +55,10 @@ export function PlanProposalCard({
   onValidate: () => void
   onCancel: () => void
 }) {
+  const { t } = useI18n()
+  const DAYS = [t('ai.dayMon'), t('ai.dayTue'), t('ai.dayWed'), t('ai.dayThu'), t('ai.dayFri'), t('ai.daySat'), t('ai.daySun')]
+  const SPORT_LABEL: Record<string, string> = { run: t('ai.sportRun'), bike: t('ai.sportBike'), swim: t('ai.sportSwim'), hyrox: 'Hyrox', rowing: t('ai.sportRowing'), gym: t('ai.sportGym') }
+  const sportLabel = (s?: string) => SPORT_LABEL[(s ?? '').toLowerCase()] ?? (s ?? '')
   const [openWeek, setOpenWeek] = useState<number | null>(1)
 
   // ── États transitoires ──────────────────────────────────────
@@ -66,8 +68,8 @@ export function PlanProposalCard({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={spinner} />
           <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--ai-text)' }}>Je construis ton plan…</p>
-            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--ai-dim)' }}>Analyse de tes données, zones et historique (ça peut prendre 1-2 min).</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--ai-text)' }}>{t('ai.buildingPlan')}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--ai-dim)' }}>{t('ai.buildingPlanSub')}</p>
           </div>
         </div>
         <style>{`@keyframes pp_spin{to{transform:rotate(360deg)}}`}</style>
@@ -77,8 +79,8 @@ export function PlanProposalCard({
   if (proposal.status === 'error') {
     return (
       <div style={card}>
-        <p style={{ margin: 0, fontSize: 12.5, color: '#ef4444' }}>{proposal.error ?? 'La génération a échoué.'}</p>
-        <button onClick={onCancel} style={ghostBtn}>Fermer</button>
+        <p style={{ margin: 0, fontSize: 12.5, color: '#ef4444' }}>{proposal.error ?? t('ai.genFailed')}</p>
+        <button onClick={onCancel} style={ghostBtn}>{t('ai.close')}</button>
       </div>
     )
   }
@@ -98,7 +100,7 @@ export function PlanProposalCard({
     <div style={card}>
       {/* Titre */}
       <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
-        {prog.nom ?? proposal.requirements.name ?? "Plan d'entraînement"}
+        {prog.nom ?? proposal.requirements.name ?? t('ai.trainingPlan')}
       </p>
       {(prog.objectif_principal ?? proposal.requirements.objectif_principal) && (
         <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--ai-mid)' }}>{prog.objectif_principal ?? proposal.requirements.objectif_principal}</p>
@@ -107,7 +109,7 @@ export function PlanProposalCard({
       {/* Analyse du coach (méthodologie) — directement sur l'interface, pas de sous-boîte */}
       {prog.methodologie && (
         <div style={{ marginTop: 12 }}>
-          <p style={sectionTitle}>L&apos;analyse du coach</p>
+          <p style={sectionTitle}>{t('ai.coachAnalysis')}</p>
           <RichText text={prog.methodologie} />
         </div>
       )}
@@ -115,10 +117,10 @@ export function PlanProposalCard({
       {/* Volumes */}
       <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
         {[
-          { l: 'Début', v: vStart !== undefined ? `${vStart}h` : '—' },
-          { l: 'Fin', v: vEnd !== undefined ? `${vEnd}h` : '—' },
-          { l: 'Max/sem', v: vMax !== undefined ? `${vMax}h` : '—' },
-          { l: 'Durée', v: `${prog.duree_semaines ?? weeks.length} sem` },
+          { l: t('ai.volStart'), v: vStart !== undefined ? `${vStart}h` : '—' },
+          { l: t('ai.volEnd'), v: vEnd !== undefined ? `${vEnd}h` : '—' },
+          { l: t('ai.volMaxPerWeek'), v: vMax !== undefined ? `${vMax}h` : '—' },
+          { l: t('ai.duration'), v: `${prog.duree_semaines ?? weeks.length} ${t('ai.weeksUnit')}` },
         ].map(k => (
           <div key={k.l} style={kpi}>
             <p style={kpiL}>{k.l}</p>
@@ -130,7 +132,7 @@ export function PlanProposalCard({
       {/* Courbe de volume par semaine (colorée par phase) */}
       {weeks.length > 1 && (
         <div style={{ marginTop: 14 }}>
-          <p style={sectionTitle}>Volume par semaine</p>
+          <p style={sectionTitle}>{t('ai.volumePerWeek')}</p>
           <VolumeChart weeks={weeks} blocs={blocs} />
         </div>
       )}
@@ -140,7 +142,7 @@ export function PlanProposalCard({
         <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
           <SportDonut dist={sportDist} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={sectionTitle}>Répartition par sport</p>
+            <p style={sectionTitle}>{t('ai.sportDistribution')}</p>
             {sportDist.map(d => {
               const total = sportDist.reduce((s, x) => s + x.min, 0) || 1
               return (
@@ -158,7 +160,7 @@ export function PlanProposalCard({
       {/* Phases de périodisation */}
       {blocs.length > 0 && (
         <div style={{ marginTop: 12 }}>
-          <p style={sectionTitle}>Phases jusqu&apos;à l&apos;objectif</p>
+          <p style={sectionTitle}>{t('ai.phasesToGoal')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {blocs.map((b, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
@@ -176,15 +178,15 @@ export function PlanProposalCard({
       {/* 2 premières semaines détaillées */}
       {previewWeeks.length > 0 && (
         <div style={{ marginTop: 12 }}>
-          <p style={sectionTitle}>Les 2 premières semaines</p>
+          <p style={sectionTitle}>{t('ai.firstTwoWeeks')}</p>
           {previewWeeks.map(w => {
             const num = w.numero ?? 0
             const open = openWeek === num
             return (
               <div key={num} style={{ marginBottom: 10 }}>
                 <button onClick={() => setOpenWeek(open ? null : num)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '7px 0', border: 'none', borderBottom: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer' }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>Semaine {num}{w.type ? ` · ${w.type}` : ''}</span>
-                  <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{weekVol(w)}h · {(w.seances ?? []).length} séances {open ? '▾' : '▸'}</span>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{t('ai.weekN', { n: num })}{w.type ? ` · ${w.type}` : ''}</span>
+                  <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>{weekVol(w)}h · {t('ai.sessionsCount', { n: (w.seances ?? []).length })} {open ? '▾' : '▸'}</span>
                 </button>
                 {open && (
                   <div style={{ paddingTop: 7 }}>
@@ -221,7 +223,7 @@ export function PlanProposalCard({
       {/* Logique / conseils */}
       {(prog.points_cles?.length || prog.conseils_adaptation?.length) ? (
         <div style={{ marginTop: 12 }}>
-          <p style={sectionTitle}>La logique</p>
+          <p style={sectionTitle}>{t('ai.theLogic')}</p>
           {(prog.points_cles ?? []).map((p, i) => (
             <p key={`k${i}`} style={bullet}>• {p}</p>
           ))}
@@ -235,13 +237,13 @@ export function PlanProposalCard({
       {validated ? (
         <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6, color: '#22c55e', fontSize: 12.5, fontWeight: 600 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-          Ajouté au planning
+          {t('ai.addedToPlanning')}
         </div>
       ) : (
         <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={ghostBtn}>Annuler</button>
+          <button onClick={onCancel} style={ghostBtn}>{t('ai.cancel')}</button>
           <button onClick={onValidate} style={primaryBtn}>
-            Valider et ajouter au planning
+            {t('ai.validateAddToPlanning')}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6 }}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </button>
         </div>

@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { parseSleepNight, type SleepNight, type SleepRow } from '@/lib/health/sleep'
 import { Card, SectionTitle, Skeleton, EmptyState, useReducedMotion } from './primitives'
@@ -19,6 +20,7 @@ function fmtH(min: number): string {
 }
 
 export function SleepCard() {
+  const { t } = useI18n()
   const reduce = useReducedMotion()
   const [loading, setLoading] = useState(true)
   const [night, setNight] = useState<SleepNight | null>(null)
@@ -50,15 +52,15 @@ export function SleepCard() {
 
   return (
     <Card>
-      <SectionTitle>Sommeil</SectionTitle>
+      <SectionTitle>{t('dashboard.sleep')}</SectionTitle>
 
       {!night ? (
-        <EmptyState title="Pas de données de sommeil" hint="Connecte une montre (Polar, Withings…) pour suivre tes nuits." href="/connections" cta="Connecter" />
+        <EmptyState title={t('dashboard.sleepEmptyTitle')} hint={t('dashboard.sleepEmptyHint')} href="/connections" cta={t('dashboard.connect')} />
       ) : (
         <>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
             <span style={{ ...NUM, fontSize: 28, fontWeight: 600, lineHeight: 1 }}>{fmtH(night.totalMin)}</span>
-            <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>de sommeil</span>
+            <span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)' }}>{t('dashboard.ofSleep')}</span>
           </div>
 
           {night.stages.length > 0 && (
@@ -85,7 +87,7 @@ export function SleepCard() {
 
           {night.awakeMin > 0 && (
             <p style={{ margin: 'var(--space-3) 0 0', ...NUM, fontSize: 12, color: 'var(--text-dim)' }}>
-              Éveils · {fmtH(night.awakeMin)}
+              {t('dashboard.awakenings')} · {fmtH(night.awakeMin)}
             </p>
           )}
         </>

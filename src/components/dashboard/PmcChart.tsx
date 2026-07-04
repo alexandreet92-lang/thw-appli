@@ -6,6 +6,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useMemo, useRef } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { buildPmc, LOAD_COLORS, type ActivityRow, type PmcPoint } from '@/lib/training/pmc'
 import { Card, SectionTitle, Skeleton, EmptyState, useReducedMotion } from './primitives'
 import { FB } from './lib'
@@ -29,6 +30,7 @@ const LEGEND: { key: 'ctl' | 'atl' | 'tsb'; label: string; color: string }[] = [
 ]
 
 export function PmcChart({ activities, loading }: { activities: ActivityRow[]; loading: boolean }) {
+  const { t } = useI18n()
   const reduce = useReducedMotion()
   const ref = useRef<SVGGElement>(null)
   const pts = useMemo(() => (loading ? [] : buildPmc(activities, 28)), [activities, loading])
@@ -58,10 +60,10 @@ export function PmcChart({ activities, loading }: { activities: ActivityRow[]; l
 
   return (
     <Card href="/activities">
-      <SectionTitle action={<span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>→</span>}>Charge · 4 semaines</SectionTitle>
+      <SectionTitle action={<span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>→</span>}>{t('dashboard.load4weeks')}</SectionTitle>
 
       {pts.length < 2 ? (
-        <EmptyState title="Pas assez de données" hint="Le PMC se dessine avec l'historique d'entraînement." />
+        <EmptyState title={t('dashboard.pmcEmptyTitle')} hint={t('dashboard.pmcEmptyHint')} />
       ) : (
         <>
           <div style={{ display: 'flex', gap: 'var(--space-4)', marginBottom: 'var(--space-2)' }}>

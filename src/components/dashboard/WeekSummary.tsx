@@ -6,6 +6,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { sportColor } from '@/components/recovery/helpers'
 import { Card, SectionTitle, Gauge, Skeleton, EmptyState } from './primitives'
@@ -17,6 +18,7 @@ interface Intensity { day_index: number; intensity: string }
 interface State { sessions: PSession[]; intensities: Intensity[]; doneMin: number }
 
 export function WeekSummary() {
+  const { t } = useI18n()
   const [loading, setLoading] = useState(true)
   const [s, setS] = useState<State>({ sessions: [], intensities: [], doneMin: 0 })
 
@@ -52,16 +54,16 @@ export function WeekSummary() {
 
   return (
     <Card href="/planning">
-      <SectionTitle action={<span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>→</span>}>Cette semaine</SectionTitle>
+      <SectionTitle action={<span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>→</span>}>{t('dashboard.thisWeek')}</SectionTitle>
 
       {total === 0 ? (
-        <EmptyState title="Aucune séance planifiée cette semaine" hint="Construis ta semaine pour suivre ta charge." />
+        <EmptyState title={t('dashboard.weekEmptyTitle')} hint={t('dashboard.weekEmptyHint')} />
       ) : (
         <>
           <p style={{ margin: '0 0 var(--space-4)', ...NUM, fontSize: 13, color: 'var(--text-mid)' }}>
-            <span style={{ color: 'var(--text)', fontWeight: 600 }}>{done} / {total}</span> séances
+            <span style={{ color: 'var(--text)', fontWeight: 600 }}>{done} / {total}</span> {t('dashboard.sessionsLabel')}
             {objMin > 0 && <> · {formatDuration(Math.round(s.doneMin))}</>}
-            {intensityDays > 0 && <> · {intensityDays} j d&apos;intensité</>}
+            {intensityDays > 0 && <> · {t('dashboard.intensityDays', { n: intensityDays })}</>}
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: objMin > 0 ? 'var(--space-4)' : 0 }}>

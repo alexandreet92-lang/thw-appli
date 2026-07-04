@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useRef } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { latestPmc, tsbVerdict, daysToOptimal, type ActivityRow, LOAD_COLORS } from '@/lib/training/pmc'
 import { Card, SectionTitle, Skeleton, EmptyState, useReducedMotion } from './primitives'
 import { FD, FB, NUM } from './lib'
@@ -17,6 +18,7 @@ const TSB_MIN = -40, TSB_MAX = 25
 const arc = `M ${CX - R} ${CY} A ${R} ${R} 0 0 1 ${CX + R} ${CY}`
 
 export function FormeArc({ activities, loading }: { activities: ActivityRow[]; loading: boolean }) {
+  const { t } = useI18n()
   const reduce = useReducedMotion()
   const ref = useRef<SVGPathElement>(null)
   const pmc = loading ? null : latestPmc(activities)
@@ -37,10 +39,10 @@ export function FormeArc({ activities, loading }: { activities: ActivityRow[]; l
 
   return (
     <Card style={{ background: 'var(--bg-elev)' }}>
-      <SectionTitle>Forme du jour</SectionTitle>
+      <SectionTitle>{t('dashboard.todayForm')}</SectionTitle>
 
       {!pmc ? (
-        <EmptyState title="Pas encore de données de charge" hint="Enregistre des séances pour suivre ta forme (CTL/ATL/TSB)." href="/session" cta="Enregistrer" />
+        <EmptyState title={t('dashboard.formEmptyTitle')} hint={t('dashboard.formEmptyHint')} href="/session" cta={t('dashboard.record')} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <svg viewBox={`0 0 ${W} 132`} style={{ width: '100%', maxWidth: 320, height: 'auto', display: 'block' }}>
@@ -64,7 +66,7 @@ export function FormeArc({ activities, loading }: { activities: ActivityRow[]; l
 
           {days != null && days > 0 && (
             <p style={{ margin: 'var(--space-1) 0 0', fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>
-              Forme optimale dans ~{days} j au repos
+              {t('dashboard.optimalFormIn', { n: days })}
             </p>
           )}
         </div>

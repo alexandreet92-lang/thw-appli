@@ -2,6 +2,7 @@
 import { useState, useMemo } from 'react'
 import type { WorkoutExercise } from '@/types/workout'
 import { DEFAULT_GYM_EXERCISES, DEFAULT_HYROX_EXERCISES } from '@/types/workout'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   sport: 'gym' | 'hyrox'
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function ExerciseSearch({ sport, onAdd, onClose, isDark }: Props) {
+  const { t } = useI18n()
   const [query, setQuery] = useState('')
   const pool = sport === 'gym' ? DEFAULT_GYM_EXERCISES : DEFAULT_HYROX_EXERCISES
   const text = 'var(--text)'
@@ -34,7 +36,7 @@ export default function ExerciseSearch({ sport, onAdd, onClose, isDark }: Props)
           autoFocus
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Rechercher un exercice…"
+          placeholder={t('record.searchPlaceholder')}
           style={{ flex: 1, background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 14px', fontSize: 15, color: text, outline: 'none', fontFamily: 'DM Sans, sans-serif' }}
         />
       </div>
@@ -63,7 +65,7 @@ export default function ExerciseSearch({ sport, onAdd, onClose, isDark }: Props)
         ))}
         {filtered.length === 0 && (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: dim }}>
-            <p style={{ fontSize: 14 }}>Aucun exercice trouvé</p>
+            <p style={{ fontSize: 14 }}>{t('record.searchEmpty')}</p>
           </div>
         )}
       </div>

@@ -5,6 +5,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useTrainingLoad } from '@/hooks/useTrainingLoad'
+import { useI18n } from '@/lib/i18n'
 import { PMC_COLORS } from '@/lib/training/pmcDual'
 import { InfoSmSn } from '@/components/metrics/InfoSmSn'
 import { Skeleton } from './primitives'
@@ -22,6 +23,7 @@ function Kpi({ label, value, accent }: { label: string; value: number; accent: s
 }
 
 export function LoadKpis() {
+  const { t: tr } = useI18n()
   const t = useTrainingLoad()
   if (t.loading) return <Skeleton height={90} />
   const empty = !t.CTL_SM && !t.ATL_SM && !t.CTL_SN && !t.ATL_SN
@@ -30,7 +32,7 @@ export function LoadKpis() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>Métabolique (SM)</span>
+        <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{tr('dashboard.metabolicSm')}</span>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: PMC_COLORS.sm }} />
         <InfoSmSn />
       </div>
@@ -40,7 +42,7 @@ export function LoadKpis() {
         <Kpi label="TSB" value={t.TSB_SM} accent={PMC_COLORS.sm} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 'var(--space-1)' }}>
-        <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>Neuromusculaire (SN)</span>
+        <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-mid)' }}>{tr('dashboard.neuromuscularSn')}</span>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: PMC_COLORS.sn }} />
       </div>
       <div style={{ display: 'flex', gap: 'var(--space-3)' }}>

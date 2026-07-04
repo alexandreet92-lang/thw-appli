@@ -1,34 +1,35 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 const PLANS = [
   {
     name: 'Premium', price: '14€', model: 'Hermès', color: '#06B6D4',
-    trial: '14j gratuits',
-    features: ['30 messages/mois', '2 plans/mois', '6 mois historique'],
+    trial: 'onboarding.g.plans.trial14',
+    features: ['onboarding.g.plans.premiumF1', 'onboarding.g.plans.premiumF2', 'onboarding.g.plans.premiumF3'],
     highlighted: false,
   },
   {
     name: 'Pro', price: '26€', model: 'Athéna', color: '#8B5CF6',
     trial: null,
-    features: ['100 messages/mois', '6 plans/mois', '24 mois historique'],
+    features: ['onboarding.g.plans.proF1', 'onboarding.g.plans.proF2', 'onboarding.g.plans.proF3'],
     highlighted: true,
   },
   {
     name: 'Expert', price: '49€', model: 'Zeus', color: '#F59E0B',
     trial: null,
-    features: ['300 messages/mois', '20 plans/mois', 'Historique illimité'],
+    features: ['onboarding.g.plans.expertF1', 'onboarding.g.plans.expertF2', 'onboarding.g.plans.expertF3'],
     highlighted: false,
   },
 ]
 
 export const PLANS_META = {
-  badge: 'Abonnements',
-  title: 'Choisis ton niveau',
-  description: "14 jours d'essai Premium offerts. Sans engagement, sans carte bancaire. Accède à toutes les fonctionnalités pour découvrir Hybrid.",
+  badge: 'onboarding.g.plans.badge',
+  title: 'onboarding.g.plans.title',
+  description: 'onboarding.g.plans.desc',
   keyPoints: [
-    '14 jours Premium gratuits dès l\'inscription',
-    'Pas de carte bancaire requise pour l\'essai',
-    'Upgrade ou downgrade à tout moment',
+    'onboarding.g.plans.kp1',
+    'onboarding.g.plans.kp2',
+    'onboarding.g.plans.kp3',
   ],
 }
 
@@ -38,6 +39,7 @@ function hexRgb(hex: string) {
 }
 
 export function PlansVisual() {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'stretch', padding: '0 4px' }}>
       <style>{`
@@ -62,7 +64,7 @@ export function PlansVisual() {
               whiteSpace: 'nowrap', letterSpacing: 0.5,
               fontFamily: 'DM Sans, sans-serif',
             }}>
-              POPULAIRE
+              {t('onboarding.g.plans.popular')}
             </div>
           )}
 
@@ -70,13 +72,13 @@ export function PlansVisual() {
             {plan.name}
           </p>
           <p style={{ fontSize: 11, color: plan.color, margin: '0 0 6px', textAlign: 'center', fontWeight: 700, fontFamily: 'DM Sans, sans-serif' }}>
-            {plan.price}/mois
+            {plan.price}{t('onboarding.g.plans.perMonth')}
           </p>
 
           {plan.trial && (
             <div style={{ background: `rgba(${hexRgb(plan.color)},0.15)`, borderRadius: 6, padding: '3px 6px', marginBottom: 8, textAlign: 'center' }}>
               <span style={{ fontSize: 9, color: plan.color, fontWeight: 700, letterSpacing: 0.5, fontFamily: 'DM Sans, sans-serif' }}>
-                {plan.trial.toUpperCase()}
+                {t(plan.trial).toUpperCase()}
               </span>
             </div>
           )}
@@ -89,7 +91,7 @@ export function PlansVisual() {
             {plan.features.map((f, j) => (
               <div key={j} style={{ display: 'flex', gap: 5, alignItems: 'flex-start' }}>
                 <div style={{ width: 12, height: 12, borderRadius: '50%', background: `rgba(${hexRgb(plan.color)},0.25)`, border: `1px solid rgba(${hexRgb(plan.color)},0.4)`, flexShrink: 0, marginTop: 1 }} />
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', lineHeight: 1.4, fontFamily: 'DM Sans, sans-serif' }}>{f}</span>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', lineHeight: 1.4, fontFamily: 'DM Sans, sans-serif' }}>{t(f)}</span>
               </div>
             ))}
           </div>

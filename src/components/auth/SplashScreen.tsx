@@ -1,9 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props { onDone: () => void }
 
 export function SplashScreen({ onDone }: Props) {
+  const { t } = useI18n()
   const [phase, setPhase] = useState<0 | 1 | 2 | 3>(0)
 
   useEffect(() => {
@@ -72,7 +74,7 @@ export function SplashScreen({ onDone }: Props) {
             fontFamily: 'DM Sans, sans-serif',
             animation: 'fade-in 0.4s both',
           }}>
-            by The Hybrid Way
+            {t('auth.tagline')}
           </p>
         )}
       </div>

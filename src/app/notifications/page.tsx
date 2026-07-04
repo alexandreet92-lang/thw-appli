@@ -8,25 +8,27 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 
 const FD = 'var(--font-display)', FB = 'var(--font-body)'
 
 interface Notif { id: string; type: string; title: string; body: string | null; link: string | null; read: boolean; created_at: string }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: (key: string, vars?: Record<string, string | number>) => string): string {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (m < 1) return "à l'instant"
-  if (m < 60) return `il y a ${m} min`
+  if (m < 1) return t('misc.justNow')
+  if (m < 60) return t('misc.timeMin', { n: m })
   const h = Math.floor(m / 60)
-  if (h < 24) return `il y a ${h} h`
+  if (h < 24) return t('misc.timeHour', { n: h })
   const d = Math.floor(h / 24)
-  return d === 1 ? 'hier' : `il y a ${d} j`
+  return d === 1 ? t('misc.yesterday') : t('misc.timeDay', { n: d })
 }
 
 export default function NotificationsPage() {
   const [notifs, setNotifs] = useState<Notif[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const { t } = useI18n()
 
   useEffect(() => {
     let cancelled = false
@@ -54,7 +56,7 @@ export default function NotificationsPage() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-8) var(--space-5) 80px' }}>
-      <h1 style={{ margin: '0 0 var(--space-6)', fontFamily: FD, fontSize: 28, fontWeight: 600, color: 'var(--text)' }}>Notifications</h1>
+      <h1 style={{ margin: '0 0 var(--space-6)', fontFamily: FD, fontSize: 28, fontWeight: 600, color: 'var(--text)' }}>{t('misc.notificationsTitle')}</h1>
 
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
@@ -62,9 +64,9 @@ export default function NotificationsPage() {
         </div>
       ) : notifs.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 'var(--space-12) var(--space-5)', borderRadius: 'var(--r-lg)', background: 'var(--bg-card2)' }}>
-          <p style={{ margin: 0, fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)' }}>Rien de neuf pour l&apos;instant</p>
+          <p style={{ margin: 0, fontFamily: FD, fontSize: 17, fontWeight: 500, color: 'var(--text)' }}>{t('misc.notifEmptyTitle')}</p>
           <p style={{ margin: 'var(--space-2) 0 0', fontFamily: FB, fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.6 }}>
-            Tes alertes (séances, nutrition, compétitions, objectifs) apparaîtront ici.
+            {t('misc.notifEmptyBody')}
           </p>
         </div>
       ) : (
@@ -76,11 +78,11 @@ export default function NotificationsPage() {
                 background: 'none', border: 'none', cursor: n.link ? 'pointer' : 'default', padding: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 3 }}>
                   <span style={{ fontFamily: FD, fontWeight: 600, fontSize: 14.5, color: 'var(--text)' }}>{n.title}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{timeAgo(n.created_at)}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{timeAgo(n.created_at, t)}</span>
                 </div>
                 {n.body && <p style={{ margin: 0, fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5 }}>{n.body}</p>}
               </button>
-              <button onClick={() => remove(n.id)} aria-label="Supprimer" style={{ background: 'none', border: 'none', cursor: 'pointer',
+              <button onClick={() => remove(n.id)} aria-label={t('misc.delete')} style={{ background: 'none', border: 'none', cursor: 'pointer',
                 color: 'var(--text-dim)', fontSize: 16, lineHeight: 1, flexShrink: 0, padding: 2 }}>✕</button>
             </div>
           ))}

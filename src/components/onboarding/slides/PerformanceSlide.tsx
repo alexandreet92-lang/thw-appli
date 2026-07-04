@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 const PTS = [18, 32, 27, 44, 40, 55, 50, 66]
 const W = 280, H = 110, PAD_X = 4, PAD_Y = 8
@@ -14,6 +15,7 @@ const AREA = `${LINE} L${(W - PAD_X).toFixed(1)} ${H} L${PAD_X} ${H} Z`
 const PATH_LEN = 520
 
 function ChartMockup() {
+  const { t } = useI18n()
   const [prog, setProg] = useState(0)
   useEffect(() => {
     const t = setTimeout(() => {
@@ -54,18 +56,19 @@ function ChartMockup() {
           ) : null
         })}
       </svg>
-      <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: '6px 0 0', textAlign: 'right', fontFamily: 'DM Sans, sans-serif' }}>8 semaines</p>
+      <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: '6px 0 0', textAlign: 'right', fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.weeksN', { n: 8 })}</p>
     </div>
   )
 }
 
 export default function PerformanceSlide() {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '0 24px', gap: 28 }}>
       <ChartMockup />
       <div style={{ textAlign: 'center' }}>
-        <h2 style={{ fontSize: 26, fontWeight: 800, color: '#fff', margin: '0 0 10px', fontFamily: 'Syne, sans-serif' }}>Analyse ta performance</h2>
-        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.58)', lineHeight: 1.6, margin: 0, fontFamily: 'DM Sans, sans-serif' }}>CTL, ATL, zones d'entraînement, historique complet.<br />Comprends ce que font tes données.</p>
+        <h2 style={{ fontSize: 26, fontWeight: 800, color: '#fff', margin: '0 0 10px', fontFamily: 'Syne, sans-serif' }}>{t('onboarding.perfTitle')}</h2>
+        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.58)', lineHeight: 1.6, margin: 0, fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.perfSub1')}<br />{t('onboarding.perfSub2')}</p>
       </div>
     </div>
   )

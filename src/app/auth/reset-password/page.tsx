@@ -8,6 +8,7 @@ import { AuthInput } from '@/components/auth/AuthInput'
 import { ErrorMessage } from '@/components/auth/ErrorMessage'
 import { PasswordStrengthBar } from '@/components/auth/PasswordStrengthBar'
 import { getAuthError } from '@/lib/auth/errors'
+import { useI18n } from '@/lib/i18n'
 
 const BG = 'linear-gradient(160deg, #060614 0%, #0A0F1E 50%, #050B1A 100%)'
 
@@ -23,6 +24,7 @@ const primaryBtn: React.CSSProperties = {
 
 export default function ResetPasswordPage() {
   const router = useRouter()
+  const { t } = useI18n()
   const [password, setPassword] = useState('')
   const [confirm,  setConfirm]  = useState('')
   const [loading,  setLoading]  = useState(false)
@@ -80,29 +82,29 @@ export default function ResetPasswordPage() {
               </svg>
             </div>
             <h3 style={{ fontSize: 22, fontWeight: 700, color: 'white', margin: '0 0 12px', fontFamily: 'Syne, sans-serif' }}>
-              Mot de passe modifié
+              {t('authpage.passwordChanged')}
             </h3>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: 0, fontFamily: 'DM Sans, sans-serif' }}>
-              Redirection en cours…
+              {t('authpage.redirecting')}
             </p>
           </div>
         ) : (
           <>
             <h3 style={{ color: 'white', fontSize: 22, fontWeight: 700, margin: '0 0 8px', textAlign: 'center', fontFamily: 'Syne, sans-serif' }}>
-              Nouveau mot de passe
+              {t('authpage.newPassword')}
             </h3>
             <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, margin: '0 0 28px', textAlign: 'center', lineHeight: 1.5, fontFamily: 'DM Sans, sans-serif' }}>
-              Choisis un mot de passe sécurisé d&apos;au moins 6 caractères.
+              {t('authpage.chooseSecurePassword')}
             </p>
 
-            <AuthInput label="Nouveau mot de passe" type="password" placeholder="••••••••" value={password} onChange={setPassword} showToggle />
+            <AuthInput label={t('authpage.newPassword')} type="password" placeholder="••••••••" value={password} onChange={setPassword} showToggle />
             <PasswordStrengthBar password={password} />
             <div style={{ height: 16 }} />
-            <AuthInput label="Confirmer le mot de passe" type="password" placeholder="••••••••" value={confirm} onChange={setConfirm} showToggle />
+            <AuthInput label={t('auth.confirm')} type="password" placeholder="••••••••" value={confirm} onChange={setConfirm} showToggle />
 
             {confirm && password !== confirm && (
               <p style={{ fontSize: 12, color: '#EF4444', margin: '4px 0 0', fontFamily: 'DM Sans, sans-serif' }}>
-                Les mots de passe ne correspondent pas.
+                {t('auth.pwMismatch')}
               </p>
             )}
 
@@ -114,7 +116,7 @@ export default function ResetPasswordPage() {
               disabled={loading || isDisabled}
               style={{ ...primaryBtn, opacity: loading || isDisabled ? 0.5 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer' }}
             >
-              {loading ? 'Modification…' : 'Modifier le mot de passe'}
+              {loading ? t('authpage.updating') : t('authpage.changePasswordBtn')}
             </button>
           </>
         )}

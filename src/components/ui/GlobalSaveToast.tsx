@@ -10,12 +10,14 @@
 // ──────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from 'react'
 import { SAVE_EVENT, type SaveEventDetail } from '@/lib/ui/saveToast'
+import { useI18n } from '@/lib/i18n'
 
 const INTERACTION_WINDOW_MS = 8000
 
 interface ToastState { status: 'saved' | 'error'; message: string; key: number }
 
 export default function GlobalSaveToast() {
+  const { t } = useI18n()
   const [state, setState] = useState<ToastState | null>(null)
   const [leaving, setLeaving] = useState(false)
   const lastInteraction = useRef(0)
@@ -31,7 +33,7 @@ export default function GlobalSaveToast() {
       // Ignore les écritures non déclenchées par l'utilisateur (background/au montage).
       if (Date.now() - lastInteraction.current > INTERACTION_WINDOW_MS) return
       const d = (e as CustomEvent<SaveEventDetail>).detail
-      const message = d.message ?? (d.status === 'error' ? 'Échec de l’enregistrement' : 'Enregistré')
+      const message = d.message ?? (d.status === 'error' ? t('ui.saveError') : t('ui.saved'))
       setLeaving(false)
       setState(s => ({ status: d.status, message, key: (s?.key ?? 0) + 1 }))
       clearTimeout(hideT.current); clearTimeout(killT.current)

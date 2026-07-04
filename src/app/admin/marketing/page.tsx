@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n";
 import type { DailyBrief, BriefIdea, RawIdea, InstaSnapshot } from "@/lib/marketing/types";
 
 // ── Admin email check (client-side, UI only) ───────────────────
@@ -41,6 +42,7 @@ interface BriefHistoryItem {
 }
 
 export default function MarketingAdminPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -121,13 +123,13 @@ export default function MarketingAdminPage() {
         error?: string;
         context_summary?: ContextSummary;
       };
-      if (!res.ok) throw new Error(json.error ?? "Erreur génération");
+      if (!res.ok) throw new Error(json.error ?? t("admin.marketing.genError"));
       setBrief(json.brief ?? null);
       setContextSummary(json.context_summary ?? null);
       void loadHistory();
       void loadIdeas();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
+      setError(err instanceof Error ? err.message : t("admin.unknownError"));
     } finally {
       setLoading(false);
     }
@@ -169,10 +171,10 @@ export default function MarketingAdminPage() {
     try {
       const res = await fetch("/api/marketing/insta-sync", { method: "POST" });
       const json = await res.json() as { snapshot?: InstaSnapshot; error?: string };
-      if (!res.ok) throw new Error(json.error ?? "Erreur sync");
+      if (!res.ok) throw new Error(json.error ?? t("admin.marketing.syncError"));
       setInstaApiSnapshot(json.snapshot ?? null);
     } catch (err) {
-      setInstaApiError(err instanceof Error ? err.message : "Erreur inconnue");
+      setInstaApiError(err instanceof Error ? err.message : t("admin.unknownError"));
     } finally {
       setInstaApiSyncing(false);
     }
@@ -197,13 +199,13 @@ export default function MarketingAdminPage() {
       arr.forEach(f => form.append("screenshots", f));
       const res = await fetch("/api/marketing/insta-upload", { method: "POST", body: form });
       const json = await res.json() as { error?: string; ambiguities?: string[] };
-      if (!res.ok) throw new Error(json.error ?? "Erreur upload");
+      if (!res.ok) throw new Error(json.error ?? t("admin.marketing.uploadError"));
       if (json.ambiguities && json.ambiguities.length > 0) {
         setInstaAmbiguities(json.ambiguities);
       }
       void loadInstaSnapshots();
     } catch (err) {
-      setInstaError(err instanceof Error ? err.message : "Erreur inconnue");
+      setInstaError(err instanceof Error ? err.message : t("admin.unknownError"));
     } finally {
       setInstaUploading(false);
     }
@@ -218,7 +220,7 @@ export default function MarketingAdminPage() {
         Marketing Agent
       </h1>
       <p style={{ color: "#666", marginBottom: 24 }}>
-        Brief quotidien généré à partir de tes activités, commits, et idées brutes.
+        {t("admin.marketing.intro")}
       </p>
 
       {/* ── Actions principales ────────────────────────────────────── */}
@@ -238,7 +240,7 @@ export default function MarketingAdminPage() {
             opacity: loading ? 0.6 : 1,
           }}
         >
-          {loading ? "Génération en cours..." : "Générer le brief du jour"}
+          {loading ? t("admin.marketing.generating") : t("admin.marketing.generateBrief")}
         </button>
 
         {/* ── Bouton sync Instagram ───────────────────────────────── */}
@@ -262,14 +264,14 @@ export default function MarketingAdminPage() {
           }}
         >
           <span style={{ fontSize: 17 }}>📸</span>
-          {instaApiSyncing ? "Connexion Instagram…" : "Synchroniser Instagram"}
+          {instaApiSyncing ? t("admin.marketing.instaConnecting") : t("admin.marketing.instaSync")}
         </button>
 
         {instaApiSnapshot?.snapshot_date && !instaApiSyncing && (
           <span style={{ fontSize: 12, color: "#9ca3af" }}>
-            Dernier sync : {instaApiSnapshot.snapshot_date}
+            {t("admin.marketing.lastSync")} {instaApiSnapshot.snapshot_date}
             {instaApiSnapshot.followers_count != null && (
-              <> · {instaApiSnapshot.followers_count.toLocaleString("fr-FR")} abonnés</>
+              <> {t("admin.marketing.followersSuffix", { n: instaApiSnapshot.followers_count.toLocaleString("fr-FR") })}</>
             )}
           </span>
         )}
@@ -282,8 +284,7 @@ export default function MarketingAdminPage() {
 
         {contextSummary && (
           <div style={{ fontSize: 13, color: "#666" }}>
-            Contexte : {contextSummary.activities_count} activités · {contextSummary.commits_count} commits ·{" "}
-            {contextSummary.raw_ideas_count} idées · {contextSummary.recent_posts_count} posts récents
+            {t("admin.marketing.context", { a: contextSummary.activities_count, c: contextSummary.commits_count, i: contextSummary.raw_ideas_count, p: contextSummary.recent_posts_count })}
           </div>
         )}
       </div>
@@ -298,7 +299,7 @@ export default function MarketingAdminPage() {
       {brief && (
         <section style={{ marginBottom: 48 }}>
           <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, marginBottom: 16 }}>
-            Brief du {brief.date}
+            {t("admin.marketing.briefOf", { date: brief.date })}
           </h2>
 
           {brief.weekly_analysis && (
@@ -312,14 +313,14 @@ export default function MarketingAdminPage() {
               }}
             >
               <div style={{ fontSize: 12, fontWeight: 600, color: "#666", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
-                Analyse de la semaine
+                {t("admin.marketing.weekAnalysis")}
               </div>
               <div style={{ fontSize: 14, marginBottom: 8 }}>
-                <strong>Équilibre piliers</strong> · Athlète : {brief.weekly_analysis.pillar_balance.athlete} · Expert : {brief.weekly_analysis.pillar_balance.expert} · Builder : {brief.weekly_analysis.pillar_balance.builder}
+                <strong>{t("admin.marketing.pillarBalanceLabel")}</strong>{t("admin.marketing.pillarBalanceValues", { a: brief.weekly_analysis.pillar_balance.athlete, e: brief.weekly_analysis.pillar_balance.expert, b: brief.weekly_analysis.pillar_balance.builder })}
               </div>
               <div style={{ fontSize: 14, marginBottom: 4 }}>{brief.weekly_analysis.recommendation}</div>
               <div style={{ fontSize: 12, color: "#666" }}>
-                Urgence : <strong>{brief.weekly_analysis.urgency}</strong>
+                {t("admin.marketing.urgency")}<strong>{brief.weekly_analysis.urgency}</strong>
               </div>
             </div>
           )}
@@ -337,14 +338,14 @@ export default function MarketingAdminPage() {
         <section style={{ marginBottom: 48 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
             <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, margin: 0 }}>
-              Stats Instagram
+              {t("admin.marketing.instaStats")}
             </h2>
             <span style={{
               fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 99,
               background: "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)",
               color: "white", letterSpacing: 0.5,
             }}>
-              API connectée
+              {t("admin.marketing.apiConnected")}
             </span>
           </div>
 
@@ -359,19 +360,19 @@ export default function MarketingAdminPage() {
               )}
               {instaApiSnapshot.reach_total != null && (
                 <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Reach 28j</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{t("admin.marketing.reach28")}</div>
                   <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.reach_total.toLocaleString("fr-FR")}</div>
                 </div>
               )}
               {instaApiSnapshot.impressions_total != null && (
                 <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Impressions 28j</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{t("admin.marketing.impressions28")}</div>
                   <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.impressions_total.toLocaleString("fr-FR")}</div>
                 </div>
               )}
               {instaApiSnapshot.best_format && (
                 <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Meilleur format</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{t("admin.marketing.bestFormat")}</div>
                   <div style={{ fontSize: 18, fontWeight: 700, textTransform: "capitalize" }}>{instaApiSnapshot.best_format}</div>
                 </div>
               )}
@@ -381,7 +382,7 @@ export default function MarketingAdminPage() {
             {(instaApiSnapshot.top_posts ?? []).slice(0, 3).length > 0 && (
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#666", marginBottom: 8 }}>
-                  Top 3 posts
+                  {t("admin.marketing.top3posts")}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {(instaApiSnapshot.top_posts ?? []).slice(0, 3).map((p, i) => (
@@ -391,7 +392,7 @@ export default function MarketingAdminPage() {
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, color: "#333", fontStyle: "italic", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {p.caption_excerpt || "(sans légende)"}
+                          {p.caption_excerpt || t("admin.marketing.noCaption")}
                         </div>
                         <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#666" }}>
                           <span>❤ {p.likes.toLocaleString("fr-FR")}</span>
@@ -412,17 +413,17 @@ export default function MarketingAdminPage() {
       {/* ── Banque d'idées ─────────────────────────────────────────── */}
       <section style={{ marginBottom: 48 }}>
         <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, marginBottom: 16 }}>
-          Banque d&apos;idées brutes
+          {t("admin.marketing.ideaBank")}
         </h2>
         <p style={{ color: "#666", fontSize: 14, marginBottom: 12 }}>
-          Balance ici les pensées que tu as pendant tes footings, lectures, conversations. L&apos;agent les utilisera dans les prochains briefs.
+          {t("admin.marketing.ideaBankIntro")}
         </p>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
           <textarea
             value={newIdea}
             onChange={(e) => setNewIdea(e.target.value)}
-            placeholder="Une pensée, une remarque, un sujet en tête..."
+            placeholder={t("admin.marketing.ideaPlaceholder")}
             rows={2}
             style={{
               flex: "1 1 300px",
@@ -437,7 +438,7 @@ export default function MarketingAdminPage() {
           <input
             value={newIdeaContext}
             onChange={(e) => setNewIdeaContext(e.target.value)}
-            placeholder="Contexte (optionnel)"
+            placeholder={t("admin.marketing.contextPlaceholder")}
             style={{
               flex: "0 1 200px",
               padding: 12,
@@ -462,14 +463,14 @@ export default function MarketingAdminPage() {
               opacity: newIdea.trim() ? 1 : 0.4,
             }}
           >
-            Ajouter
+            {t("admin.add")}
           </button>
         </div>
 
         <div style={{ display: "grid", gap: 8 }}>
           {ideas.length === 0 && (
             <div style={{ color: "#999", fontSize: 14, fontStyle: "italic" }}>
-              Aucune idée encore. Balance-en quelques-unes !
+              {t("admin.marketing.noIdeas")}
             </div>
           )}
           {ideas.map((idea) => (
@@ -495,7 +496,7 @@ export default function MarketingAdminPage() {
                 )}
                 {idea.used && (
                   <div style={{ fontSize: 11, color: "#10b981", marginTop: 4 }}>
-                    ✓ utilisée
+                    {t("admin.marketing.ideaUsed")}
                   </div>
                 )}
               </div>
@@ -509,7 +510,7 @@ export default function MarketingAdminPage() {
                   fontSize: 18,
                   lineHeight: 1,
                 }}
-                aria-label="Supprimer"
+                aria-label={t("admin.delete")}
               >
                 ×
               </button>
@@ -528,12 +529,12 @@ export default function MarketingAdminPage() {
             padding: "10px 0",
           }}>
             <span style={{ fontSize: 12 }}>▶</span>
-            Upload manuel (backup)
+            {t("admin.marketing.manualUpload")}
           </summary>
 
           <div style={{ marginTop: 12 }}>
             <p style={{ color: "#666", fontSize: 14, marginBottom: 14 }}>
-              Dépose tes screenshots Insights pour que Claude Vision les analyse et enrichisse le prochain brief.
+              {t("admin.marketing.uploadIntro")}
             </p>
 
             {/* Drop zone */}
@@ -563,14 +564,14 @@ export default function MarketingAdminPage() {
               }}
             >
               {instaUploading ? (
-                <p style={{ margin: 0, fontSize: 14, color: "#5b6fff" }}>Analyse en cours par Claude Vision…</p>
+                <p style={{ margin: 0, fontSize: 14, color: "#5b6fff" }}>{t("admin.marketing.analyzing")}</p>
               ) : (
                 <>
                   <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 600, color: "#333" }}>
-                    Dépose tes screenshots ici
+                    {t("admin.marketing.dropHere")}
                   </p>
                   <p style={{ margin: 0, fontSize: 13, color: "#999" }}>
-                    ou clique pour choisir des fichiers · max 10 images
+                    {t("admin.marketing.dropHint")}
                   </p>
                 </>
               )}
@@ -583,7 +584,7 @@ export default function MarketingAdminPage() {
             )}
             {instaAmbiguities.length > 0 && (
               <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 12, color: "#92400e" }}>
-                <strong>Ambiguïtés détectées :</strong>
+                <strong>{t("admin.marketing.ambiguities")}</strong>
                 <ul style={{ margin: "6px 0 0", paddingLeft: 16 }}>
                   {instaAmbiguities.map((a, i) => <li key={i}>{a}</li>)}
                 </ul>
@@ -600,7 +601,7 @@ export default function MarketingAdminPage() {
             )}
             {instaSnapshots.length === 0 && !instaUploading && (
               <p style={{ fontSize: 13, color: "#999", fontStyle: "italic" }}>
-                Aucun snapshot encore. Upload tes premiers screenshots !
+                {t("admin.marketing.noSnapshot")}
               </p>
             )}
           </div>
@@ -610,7 +611,7 @@ export default function MarketingAdminPage() {
       {/* ── Historique ─────────────────────────────────────────────── */}
       <section>
         <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, marginBottom: 16 }}>
-          Historique
+          {t("admin.marketing.history")}
         </h2>
         <div style={{ display: "grid", gap: 8 }}>
           {history.slice(0, 10).map((h) => (
@@ -624,7 +625,7 @@ export default function MarketingAdminPage() {
               }}
             >
               <summary style={{ cursor: "pointer", fontSize: 14 }}>
-                <strong>{h.brief_date}</strong> · {h.brief_content?.ideas?.length ?? 0} idées · {h.tokens_in}+{h.tokens_out} tokens · {h.generation_ms}ms
+                <strong>{h.brief_date}</strong>{t("admin.marketing.historyMeta", { n: h.brief_content?.ideas?.length ?? 0, tin: h.tokens_in, tout: h.tokens_out, ms: h.generation_ms })}
               </summary>
               <pre style={{ fontSize: 11, marginTop: 8, overflow: "auto", maxHeight: 400 }}>
                 {JSON.stringify(h.brief_content, null, 2)}
@@ -638,6 +639,7 @@ export default function MarketingAdminPage() {
 }
 
 function IdeaCard({ idea }: { idea: BriefIdea }) {
+  const { t } = useI18n();
   const tierMeta = TIER_LABELS[idea.tier] ?? TIER_LABELS.standard;
   const pillarColor = PILLAR_COLORS[idea.pillar] ?? "#666";
 
@@ -746,13 +748,14 @@ function IdeaCard({ idea }: { idea: BriefIdea }) {
           cursor: "pointer", color: "#666",
         }}
       >
-        Copier
+        {t("admin.copy")}
       </button>
     </div>
   );
 }
 
 function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; defaultOpen?: boolean }) {
+  const { t } = useI18n();
   const delta = snapshot.followers_delta_7d;
   const topPosts = snapshot.top_posts ?? [];
 
@@ -831,7 +834,7 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
         {topPosts.length > 0 && (
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#666", marginBottom: 8 }}>
-              Top posts
+              {t("admin.marketing.topPosts")}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {topPosts.map((p, i) => (
@@ -864,7 +867,7 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
         {/* Texte brut */}
         {snapshot.raw_extracted_text && (
           <details>
-            <summary style={{ cursor: "pointer", fontSize: 12, color: "#999" }}>Voir le texte brut extrait</summary>
+            <summary style={{ cursor: "pointer", fontSize: 12, color: "#999" }}>{t("admin.marketing.viewRawText")}</summary>
             <pre style={{ fontSize: 11, marginTop: 8, overflow: "auto", maxHeight: 200, background: "#f7f8fa", padding: 10, borderRadius: 6 }}>
               {snapshot.raw_extracted_text}
             </pre>

@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react'
 
 export const FINAL_META = {
   badge: null,
-  title: 'Tout est prêt',
-  description: "Ton compte est créé. Commence par explorer l'interface IA ou lance ta première activité. Hybrid évolue avec toi.",
+  title: 'onboarding.g.final.title',
+  description: 'onboarding.g.final.desc',
   keyPoints: null,
 }
 

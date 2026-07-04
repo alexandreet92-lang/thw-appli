@@ -1,7 +1,8 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 // Jauge de robustesse — 8 segments, indicative (ne bloque rien). Tokens only.
-const LABELS = ['', 'Très faible', 'Faible', 'Correct', 'Bon', 'Solide', 'Fort', 'Excellent', 'Excellent']
+const LABEL_KEYS = ['', 'authpage.pwVeryWeak', 'authpage.pwWeak', 'authpage.pwOk', 'authpage.pwGood', 'authpage.pwSolid', 'authpage.pwStrong', 'authpage.pwExcellent', 'authpage.pwExcellent']
 const COLORS = [
   'transparent', 'var(--charge-hard)', 'var(--charge-hard)', 'var(--charge-mid)',
   'var(--charge-mid)', 'var(--charge-low)', 'var(--charge-low)', 'var(--primary)', 'var(--primary)',
@@ -21,6 +22,7 @@ function score(pwd: string): number {
 }
 
 export function PasswordStrengthBar({ password }: { password: string }) {
+  const { t } = useI18n()
   if (!password) return null
   const s = score(password)
   const color = COLORS[s]
@@ -35,7 +37,7 @@ export function PasswordStrengthBar({ password }: { password: string }) {
           }} />
         ))}
       </div>
-      <p style={{ fontSize: 11, color, margin: 0, fontFamily: 'var(--font-body)' }}>{LABELS[s]}</p>
+      <p style={{ fontSize: 11, color, margin: 0, fontFamily: 'var(--font-body)' }}>{s > 0 ? t(LABEL_KEYS[s]) : ''}</p>
     </div>
   )
 }

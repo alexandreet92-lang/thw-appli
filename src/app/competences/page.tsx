@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Menu, Lock, X } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import type { CategorieCompetence, CompetenceWithUserState } from '@/types/competences'
 import { useCompetences } from './hooks/useCompetences'
@@ -20,6 +21,7 @@ import { SPORTS_ORDER, SPORT_LABELS, sportIcon, type SportFilter, type Competenc
 
 export default function CompetencesPage() {
   useTheme()
+  const { t } = useI18n()
   const router = useRouter()
   const { competences, setCompetences, loading, reload } = useCompetences()
   const { checkLimit, detectConflicts, toggleCompetence } = useUserCompetences()
@@ -70,12 +72,12 @@ export default function CompetencesPage() {
       : x))
     const res = await toggleCompetence(c.id, currentlyActive)
     if (!res.ok) {
-      setNotice(res.error ?? 'Erreur lors de la mise à jour.')
+      setNotice(res.error ?? t('competences.updateError'))
       setCompetences(prev => prev.map(x => x.id === c.id
         ? { ...x, user_state: { active: currentlyActive, prompt_custom: x.user_state?.prompt_custom ?? null, activated_at: x.user_state?.activated_at ?? null } }
         : x))
     }
-  }, [toggleCompetence, setCompetences])
+  }, [toggleCompetence, setCompetences, t])
 
   const handleToggle = useCallback(async (c: CompetenceWithUserState) => {
     const currentlyActive = c.user_state?.active ?? false
@@ -116,7 +118,7 @@ export default function CompetencesPage() {
     try {
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
-      if (!user) { setNotice('Non connecté'); return }
+      if (!user) { setNotice(t('competences.notConnected')); return }
       if (!detail.is_predefined && detail.created_by === user.id) {
         // compétence custom du créateur → modifier le prompt de base
         await sb.from('competences').update({ prompt_base: newPrompt }).eq('id', detail.id)
@@ -127,26 +129,26 @@ export default function CompetencesPage() {
           { onConflict: 'user_id,competence_id' },
         )
       }
-      setNotice('Prompt enregistré')
+      setNotice(t('competences.promptSaved'))
       setDetail(null)
       await reload()
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : 'Erreur')
+      setNotice(e instanceof Error ? e.message : t('competences.error'))
     }
-  }, [detail, reload])
+  }, [detail, reload, t])
 
   const handleDeleteDetail = useCallback(async () => {
     if (!detail) return
     try {
       const sb = createClient()
       await sb.from('competences').delete().eq('id', detail.id)
-      setNotice('Compétence supprimée')
+      setNotice(t('competences.skillDeleted'))
       setDetail(null)
       await reload()
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : 'Erreur')
+      setNotice(e instanceof Error ? e.message : t('competences.error'))
     }
-  }, [detail, reload])
+  }, [detail, reload, t])
 
   const focusCreate = useCallback(() => {
     const el = document.getElementById('create-competence-input')
@@ -161,7 +163,7 @@ export default function CompetencesPage() {
 
   const badge = (
     <span style={{ fontSize: 12, fontWeight: 500, background: 'var(--bg-alt)', border: '0.5px solid var(--border-mid)', borderRadius: 20, padding: '5px 14px', color: 'var(--text)', whiteSpace: 'nowrap' }}>
-      <span style={{ color: '#06B6D4', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} actives · Plan {limit.planLabel}
+      <span style={{ color: '#06B6D4', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} {t('competences.activesPlan', { plan: limit.planLabel })}
     </span>
   )
 
@@ -197,27 +199,29 @@ export default function CompetencesPage() {
                 <Lock size={18} color="#06B6D4" />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Limite atteinte</h3>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{t('competences.limitReachedTitle')}</h3>
                 <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-mid)' }}>
-                  Plan {limit.planLabel} · {limit.limit} compétence{limit.limit > 1 ? 's' : ''} active{limit.limit > 1 ? 's' : ''} maximum
+                  {limit.limit > 1
+                    ? t('competences.limitPlanLinePlural', { plan: limit.planLabel, n: limit.limit })
+                    : t('competences.limitPlanLineSingular', { plan: limit.planLabel, n: limit.limit })}
                 </p>
               </div>
             </div>
             <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5 }}>
-              Désactive une compétence active pour en ajouter une autre, ou passe à un plan supérieur pour en activer davantage.
+              {t('competences.limitBody')}
             </p>
             <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
               <button
                 onClick={() => { setActiveTab('actives'); setLimitModal(false) }}
                 style={{ flex: 1, fontSize: 12.5, background: 'transparent', color: 'var(--text)', border: '0.5px solid var(--border-mid)', borderRadius: 9, padding: '9px 14px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
               >
-                Voir les compétences actives
+                {t('competences.viewActiveSkills')}
               </button>
               <button
                 onClick={() => router.push('/settings/subscription')}
                 style={{ flex: 1, fontSize: 12.5, fontWeight: 500, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 9, padding: '9px 14px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
               >
-                Découvrir les plans
+                {t('competences.discoverPlans')}
               </button>
             </div>
           </div>
@@ -232,11 +236,11 @@ export default function CompetencesPage() {
           display: 'flex', flexDirection: 'column', gap: 10,
         }}>
           <span style={{ fontSize: 12.5, color: 'var(--text)' }}>
-            Cette compétence entre en conflit avec « {conflictState.blocker.nom} ».
+            {t('competences.conflictBar', { nom: conflictState.blocker.nom })}
           </span>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={() => setConflictState(null)} style={{ fontSize: 12, background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>Annuler</button>
-            <button onClick={() => void resolveConflict()} style={{ fontSize: 12, fontWeight: 500, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>Désactiver l&apos;autre et activer celle-ci</button>
+            <button onClick={() => setConflictState(null)} style={{ fontSize: 12, background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>{t('competences.cancel')}</button>
+            <button onClick={() => void resolveConflict()} style={{ fontSize: 12, fontWeight: 500, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>{t('competences.deactivateOtherActivateThis')}</button>
           </div>
         </div>
       )}
@@ -253,15 +257,15 @@ export default function CompetencesPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
           padding: 'calc(14px + env(safe-area-inset-top)) 16px 14px', background: 'var(--bg-card)', borderBottom: '0.5px solid var(--border)',
         }}>
-          <button onClick={() => setMobileOpen(true)} aria-label="Filtres"
+          <button onClick={() => setMobileOpen(true)} aria-label={t('competences.filters')}
             style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-alt)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Menu size={16} color="var(--text)" />
           </button>
           <div style={{ textAlign: 'center', minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Compétences</div>
-            <div style={{ fontSize: 11, color: 'var(--text-mid)' }}>Personnalise ton coach IA</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{t('competences.title')}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-mid)' }}>{t('competences.subtitleMobile')}</div>
           </div>
-          <button onClick={goBack} aria-label="Retour au Coach IA"
+          <button onClick={goBack} aria-label={t('competences.backToCoach')}
             style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-alt)', border: '0.5px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <X size={16} color="var(--text)" />
           </button>
@@ -290,7 +294,7 @@ export default function CompetencesPage() {
 
         {/* Compteur sous les chips */}
         <div style={{ fontSize: 12, color: 'var(--text-mid)', padding: '0 16px 12px' }}>
-          <span style={{ color: '#06B6D4', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} actives · Plan {limit.planLabel}
+          <span style={{ color: '#06B6D4', fontWeight: 700, fontSize: 13 }}>{limit.active_count}</span> / {limit.limit} {t('competences.activesPlan', { plan: limit.planLabel })}
         </div>
 
         {/* Notice */}
@@ -299,9 +303,9 @@ export default function CompetencesPage() {
         {/* Liste */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 16px 120px' }}>
           {loading ? (
-            <p style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 4px' }}>Chargement…</p>
+            <p style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 4px' }}>{t('competences.loading')}</p>
           ) : filtered.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 4px' }}>Aucune compétence dans ce filtre.</p>
+            <p style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 4px' }}>{t('competences.emptyFilter')}</p>
           ) : (
             filtered.map(c => (
               <CompetenceCard key={c.id} competence={c} conflicts={conflictsFor(c)} compact
@@ -334,14 +338,14 @@ export default function CompetencesPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px', borderBottom: '0.5px solid var(--border)', flexShrink: 0 }}>
         <div>
-          <h1 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Compétences</h1>
-          <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>Personnalise le comportement de ton coach IA</p>
+          <h1 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('competences.title')}</h1>
+          <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '2px 0 0' }}>{t('competences.subtitleDesktop')}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {badge}
           <button onClick={focusCreate}
             style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-            <Plus size={15} /> Créer
+            <Plus size={15} /> {t('competences.create')}
           </button>
         </div>
       </div>

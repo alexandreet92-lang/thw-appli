@@ -1,29 +1,30 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 const SPORTS = [
-  { name: 'Vélo',        color: '#06B6D4' },
-  { name: 'Running',     color: '#10B981' },
-  { name: 'Trail',       color: '#F59E0B' },
-  { name: 'Natation',    color: '#3B82F6' },
-  { name: 'Muscu',       color: '#8B5CF6' },
-  { name: 'Ski',         color: '#06B6D4' },
-  { name: 'Yoga',        color: '#EC4899' },
-  { name: 'Hyrox',       color: '#EF4444' },
-  { name: 'Aviron',      color: '#F97316' },
-  { name: 'VTT',         color: '#10B981' },
-  { name: 'Home Trainer',color: '#3B82F6' },
-  { name: 'Padel',       color: '#F59E0B' },
+  { name: 'onboarding.g.sports.cycling',      color: '#06B6D4' },
+  { name: 'onboarding.g.sports.running',      color: '#10B981' },
+  { name: 'onboarding.g.sports.trail',        color: '#F59E0B' },
+  { name: 'onboarding.g.sports.swimming',     color: '#3B82F6' },
+  { name: 'onboarding.g.sports.strength',     color: '#8B5CF6' },
+  { name: 'onboarding.g.sports.ski',          color: '#06B6D4' },
+  { name: 'onboarding.g.sports.yoga',         color: '#EC4899' },
+  { name: 'onboarding.g.sports.hyrox',        color: '#EF4444' },
+  { name: 'onboarding.g.sports.rowing',       color: '#F97316' },
+  { name: 'onboarding.g.sports.mtb',          color: '#10B981' },
+  { name: 'onboarding.g.sports.homeTrainer',  color: '#3B82F6' },
+  { name: 'onboarding.g.sports.padel',        color: '#F59E0B' },
 ]
 
 export const SPORTS_META = {
-  badge: 'Sports',
-  title: '15 sports, une seule app',
-  description: "GPS haute précision, données temps réel, création de parcours et segments. Chaque sport a ses données spécifiques et ses réglages dédiés.",
+  badge: 'onboarding.g.sports.badge',
+  title: 'onboarding.g.sports.title',
+  description: 'onboarding.g.sports.desc',
   keyPoints: [
-    'GPS précis avec Wake Lock (écran allumé)',
-    'Création de parcours avec snapping sur les routes',
-    'Segments avec classements entre athlètes',
+    'onboarding.g.sports.kp1',
+    'onboarding.g.sports.kp2',
+    'onboarding.g.sports.kp3',
   ],
 }
 
@@ -33,6 +34,7 @@ function hexRgb(hex: string) {
 }
 
 export function SportsVisual() {
+  const { t } = useI18n()
   const [offset, setOffset] = useState(0)
   const doubled = [...SPORTS, ...SPORTS]
 
@@ -60,7 +62,7 @@ export function SportsVisual() {
             background: `rgba(${hexRgb(sport.color)}, 0.12)`,
             border: `1px solid rgba(${hexRgb(sport.color)}, 0.3)`,
           }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: sport.color, fontFamily: 'DM Sans, sans-serif' }}>{sport.name}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: sport.color, fontFamily: 'DM Sans, sans-serif' }}>{t(sport.name)}</span>
           </div>
         ))}
       </div>
@@ -79,7 +81,7 @@ export function SportsVisual() {
             background: `rgba(${hexRgb(sport.color)}, 0.07)`,
             border: `1px solid rgba(${hexRgb(sport.color)}, 0.15)`,
           }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: `rgba(${hexRgb(sport.color)}, 0.7)`, fontFamily: 'DM Sans, sans-serif' }}>{sport.name}</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: `rgba(${hexRgb(sport.color)}, 0.7)`, fontFamily: 'DM Sans, sans-serif' }}>{t(sport.name)}</span>
           </div>
         ))}
       </div>

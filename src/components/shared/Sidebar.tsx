@@ -185,6 +185,7 @@ const NAV = [
 // ── Avatar helper ──────────────────────────────────────────────
 
 export function Avatar({ url, name, size = 40 }: { url: string | null; name: string | null; size?: number }) {
+  const { t } = useI18n()
   const initials = name
     ? name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
     : '?'
@@ -194,7 +195,7 @@ export function Avatar({ url, name, size = 40 }: { url: string | null; name: str
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={url}
-        alt={name ?? 'Avatar'}
+        alt={name ?? t('shared.avatar')}
         style={{
           width: size, height: size,
           borderRadius: '50%',
@@ -509,7 +510,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logos/logo_4bras.png"
-              alt="Assistant IA"
+              alt={t('shared.aiAssistant')}
               style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0, opacity: 0.85 }}
             />
             <span style={{
@@ -565,6 +566,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
 
 
 export function Sidebar() {
+  const { t } = useI18n()
   const [aiOpen, setAiOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [desktopOpen, setDesktopOpen] = useState(false)
@@ -595,7 +597,7 @@ export function Sidebar() {
           if (closeTimer.current) clearTimeout(closeTimer.current)
           setDesktopOpen(true)
         }}
-        aria-label="Menu"
+        aria-label={t('shared.menu')}
         style={{
           position: 'fixed', top: 12, left: 12, zIndex: 100,
           flexDirection: 'column', justifyContent: 'center',
@@ -679,7 +681,7 @@ export function Sidebar() {
         {/* Hamburger — gauche */}
         <button
           onClick={() => setMobileOpen(o => !o)}
-          aria-label="Menu"
+          aria-label={t('shared.menu')}
           style={{
             display: 'flex', flexDirection: 'column', justifyContent: 'center',
             alignItems: 'center', gap: 5,
@@ -709,7 +711,7 @@ export function Sidebar() {
         {/* Logo IA — ouvre Coach IA */}
         <button
           onClick={() => setAiOpen(o => !o)}
-          aria-label="Coach IA"
+          aria-label={t('shared.aiCoach')}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: 36, height: 36,
@@ -720,7 +722,7 @@ export function Sidebar() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logos/logo_4bras.png"
-            alt="Coach IA"
+            alt={t('shared.aiCoach')}
             style={{ width: 36, height: 36, objectFit: 'contain' }}
           />
         </button>

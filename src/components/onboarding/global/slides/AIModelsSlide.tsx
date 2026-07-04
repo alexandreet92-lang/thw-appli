@@ -1,23 +1,25 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 const MODELS = [
-  { name: 'Hermès',  color: '#d4a017', icon: '/logos/logo_3bras.png', level: 1, desc: 'Rapide et direct — Réponses immédiates, va droit au but.' },
-  { name: 'Athéna',  color: '#5b6fff', icon: '/logos/logo_4bras.png', level: 2, desc: 'Analyse approfondie — Coach intelligent, données croisées, conseils précis.' },
-  { name: 'Zeus',    color: '#8b5cf6', icon: '/logos/logo_6bras.png', level: 3, desc: 'Vision stratégique — Analyse maximale, profondeur et précision sans limite.' },
+  { name: 'Hermès',  color: '#d4a017', icon: '/logos/logo_3bras.png', level: 1, desc: 'onboarding.g.aiModels.hermesDesc' },
+  { name: 'Athéna',  color: '#5b6fff', icon: '/logos/logo_4bras.png', level: 2, desc: 'onboarding.g.aiModels.athenaDesc' },
+  { name: 'Zeus',    color: '#8b5cf6', icon: '/logos/logo_6bras.png', level: 3, desc: 'onboarding.g.aiModels.zeusDesc' },
 ]
 
 export const AI_MODELS_META = {
-  badge: '3 Modèles IA',
-  title: '3 niveaux d\'intelligence',
-  description: 'Choisis le modèle adapté à chaque situation. Plus tu montes en niveau, plus l\'analyse est précise et détaillée.',
+  badge: 'onboarding.g.aiModels.badge',
+  title: 'onboarding.g.aiModels.title',
+  description: 'onboarding.g.aiModels.desc',
   keyPoints: [
-    'Hermès : réponses rapides pour les décisions immédiates',
-    'Athéna : coaching approfondi et personnalisé',
-    'Zeus : analyse expert, ultra-précise et stratégique',
+    'onboarding.g.aiModels.kp1',
+    'onboarding.g.aiModels.kp2',
+    'onboarding.g.aiModels.kp3',
   ],
 }
 
 export function AIModelsVisual() {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '0 4px' }}>
       <style>{`
@@ -41,7 +43,7 @@ export function AIModelsVisual() {
                 ))}
               </div>
             </div>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.4, fontFamily: 'DM Sans, sans-serif' }}>{m.desc}</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.4, fontFamily: 'DM Sans, sans-serif' }}>{t(m.desc)}</p>
           </div>
         </div>
       ))}

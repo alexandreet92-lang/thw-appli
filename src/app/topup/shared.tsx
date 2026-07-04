@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import {
   MessageCircle, Activity, Calendar, Sunrise, ArrowRight, Receipt, Shield,
 } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 
 export const APP_URL = '/'
 export const GRAD = 'linear-gradient(135deg, #06B6D4, #5b6fff)'
@@ -97,6 +98,7 @@ export function TokenGauge({ value, total, size = 248, label, sub, run = true, d
 }
 
 export function Header() {
+  const { t } = useI18n()
   return (
     <header style={{ position: 'sticky', top: 0, zIndex: 30, borderBottom: '1px solid var(--border)', background: 'var(--nav-bg)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
       <div className="topup-wrap" style={{ paddingTop: 13, paddingBottom: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -106,7 +108,7 @@ export function Header() {
           <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em' }}>Hybrid Training</span>
         </a>
         <a href={APP_URL} className="topup-back" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border-mid)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-          <span className="hdr-back-txt">Retour à l&apos;app</span>
+          <span className="hdr-back-txt">{t('misc.backToApp')}</span>
           <ArrowRight size={14} />
         </a>
       </div>
@@ -115,11 +117,12 @@ export function Header() {
 }
 
 export function Footer() {
+  const { t } = useI18n()
   return (
     <footer style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-alt)' }}>
       <div className="topup-wrap" style={{ paddingTop: 30, paddingBottom: 34, textAlign: 'center' }}>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 22, flexWrap: 'wrap', marginBottom: 18 }}>
-          <a href="#" style={{ fontSize: 12.5, color: 'var(--text-mid)', textDecoration: 'none' }}>Conditions de vente</a>
+          <a href="#" style={{ fontSize: 12.5, color: 'var(--text-mid)', textDecoration: 'none' }}>{t('misc.termsOfSale')}</a>
           <a href="#" style={{ fontSize: 12.5, color: 'var(--text-mid)', textDecoration: 'none' }}>FAQ</a>
           <a href="mailto:support@thwcoaching.com" style={{ fontSize: 12.5, color: 'var(--text-mid)', textDecoration: 'none' }}>support@thwcoaching.com</a>
         </div>
@@ -129,7 +132,7 @@ export function Footer() {
           ))}
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-dim)' }}>
-          <Shield size={13} /> Paiement sécurisé par Stripe · Tokens sans expiration
+          <Shield size={13} /> {t('misc.securePaymentTokens')}
         </div>
       </div>
     </footer>

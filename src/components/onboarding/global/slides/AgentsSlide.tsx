@@ -1,24 +1,26 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 const PAGE_AGENTS = [
-  { label: 'Planning',      color: '#10B981' },
-  { label: 'Récupération',  color: '#06B6D4' },
-  { label: 'Nutrition',     color: '#F59E0B' },
-  { label: 'Séances',       color: '#8B5CF6' },
+  { label: 'onboarding.g.agents.planning',     color: '#10B981' },
+  { label: 'onboarding.g.agents.recovery',     color: '#06B6D4' },
+  { label: 'onboarding.g.agents.nutrition',    color: '#F59E0B' },
+  { label: 'onboarding.g.agents.sessions',     color: '#8B5CF6' },
 ]
 
 export const AGENTS_META = {
-  badge: 'Agents IA',
-  title: 'Des assistants spécialisés',
-  description: "THW Coach répond à tout. Les agents de page sont des assistants dédiés à chaque domaine — Planning, Récupération, Nutrition… 4 autres arrivent bientôt.",
+  badge: 'onboarding.g.agents.badge',
+  title: 'onboarding.g.agents.title',
+  description: 'onboarding.g.agents.desc',
   keyPoints: [
-    'Chaque agent maîtrise son domaine à la perfection',
-    'Accès direct depuis chaque page de l\'app',
-    'Mémoire de tes données et de ton historique',
+    'onboarding.g.agents.kp1',
+    'onboarding.g.agents.kp2',
+    'onboarding.g.agents.kp3',
   ],
 }
 
 export function AgentsVisual() {
+  const { t } = useI18n()
   return (
     <div style={{ padding: '0 4px' }}>
       {/* Carte principale THW Coach */}
@@ -37,11 +39,11 @@ export function AgentsVisual() {
           </div>
           <div>
             <p style={{ fontSize: 15, fontWeight: 700, color: 'white', margin: 0, fontFamily: 'Syne, sans-serif' }}>THW Coach</p>
-            <p style={{ fontSize: 11, color: '#10B981', margin: '2px 0 0', fontWeight: 700, letterSpacing: 0.5, fontFamily: 'DM Sans, sans-serif' }}>DISPONIBLE</p>
+            <p style={{ fontSize: 11, color: '#10B981', margin: '2px 0 0', fontWeight: 700, letterSpacing: 0.5, fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.g.agents.available')}</p>
           </div>
         </div>
         <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', margin: 0, lineHeight: 1.5, fontFamily: 'DM Sans, sans-serif' }}>
-          Assistant IA principal avec 3 modèles (Hermès, Athéna, Zeus). Accessible depuis toute l&apos;app.
+          {t('onboarding.g.agents.mainAssistant')}
         </p>
       </div>
 
@@ -55,7 +57,7 @@ export function AgentsVisual() {
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)', fontFamily: 'DM Sans, sans-serif' }}>{a.label}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)', fontFamily: 'DM Sans, sans-serif' }}>{t(a.label)}</span>
           </div>
         ))}
         {[0,1,2,3].map(i => (
@@ -66,7 +68,7 @@ export function AgentsVisual() {
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)', fontFamily: 'DM Sans, sans-serif' }}>Bientôt…</span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)', fontFamily: 'DM Sans, sans-serif' }}>{t('onboarding.g.agents.soon')}</span>
           </div>
         ))}
       </div>

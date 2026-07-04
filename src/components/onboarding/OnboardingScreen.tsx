@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import OnboardingSlide from './OnboardingSlide'
 import SetupScreen from './SetupScreen'
 import WelcomeSlide from './slides/WelcomeSlide'
@@ -20,6 +21,7 @@ const SLIDES = [
 interface Props { onComplete: () => void }
 
 export default function OnboardingScreen({ onComplete }: Props) {
+  const { t } = useI18n()
   const [current, setCurrent] = useState(0)
   const [direction, setDirection] = useState(1)
   const [showSetup, setShowSetup] = useState(false)
@@ -56,7 +58,7 @@ export default function OnboardingScreen({ onComplete }: Props) {
       {/* Skip */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 16px', flexShrink: 0 }}>
         <button onClick={onComplete} style={{ background: 'rgba(255,255,255,0.10)', border: 'none', color: 'rgba(255,255,255,0.60)', fontSize: 13, fontWeight: 500, cursor: 'pointer', padding: '6px 14px', borderRadius: 20, fontFamily: 'DM Sans, sans-serif' }}>
-          Passer
+          {t('onboarding.skip')}
         </button>
       </div>
 
@@ -93,11 +95,11 @@ export default function OnboardingScreen({ onComplete }: Props) {
           <div style={{ display: 'flex', gap: 10 }}>
             {current > 0 && (
               <button onClick={prev} style={{ height: 52, paddingInline: 24, borderRadius: 14, background: 'rgba(255,255,255,0.10)', border: 'none', color: 'rgba(255,255,255,0.75)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-                Retour
+                {t('onboarding.back')}
               </button>
             )}
             <button onClick={next} style={{ flex: 1, height: 52, borderRadius: 14, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', boxShadow: '0 4px 20px rgba(6,182,212,0.30)' }}>
-              {current === SLIDES.length - 1 ? 'Configurer mon profil' : 'Suivant'}
+              {current === SLIDES.length - 1 ? t('onboarding.configureProfile') : t('onboarding.next')}
             </button>
           </div>
         </div>

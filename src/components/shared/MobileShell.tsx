@@ -14,6 +14,7 @@ import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/N
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
 import { ProfileSheet } from '@/components/profile/ProfileSheet'
 import { haptic } from '@/lib/ui/haptic'
+import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
@@ -24,6 +25,7 @@ const EDGE = 28 // px depuis le bord gauche pour amorcer l'ouverture
 
 export function MobileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { t } = useI18n()
   const { profile } = useProfile()
   const [open, setOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
@@ -126,7 +128,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const hybridHeader = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 14px', flexShrink: 0 }}>
       <span style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>Hybrid</span>
-      <button onClick={() => { setOpen(false); setProfileOpen(true) }} aria-label="Mon profil" style={{ display: 'flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+      <button onClick={() => { setOpen(false); setProfileOpen(true) }} aria-label={t('shared.myProfile')} style={{ display: 'flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
         <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={38} />
       </button>
     </div>
@@ -170,13 +172,13 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             maskImage: 'linear-gradient(to bottom, #000 50%, transparent)',
             WebkitMaskImage: 'linear-gradient(to bottom, #000 50%, transparent)',
           }} />}
-          <button aria-label="Menu" onClick={() => settle(!open)} style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
+          <button aria-label={t('shared.menu')} onClick={() => settle(!open)} style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
             {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
           </button>
           {/* IA + notifications masqués sur /record (immersion carte). */}
           {!isRecord && <>
           {/* Cloche notifications — ouvre une surpage centrée (sans quitter la page) */}
-          <button aria-label="Notifications" onClick={() => { setOpen(false); setNotifOpen(true) }}
+          <button aria-label={t('shared.notifications')} onClick={() => { setOpen(false); setNotifOpen(true) }}
             style={{ ...fab, right: 58, borderRadius: 12 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -188,11 +190,11 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
               </span>
             )}
           </button>
-          <button aria-label="Coach IA" onClick={() => setAiOpen(true)}
+          <button aria-label={t('shared.aiCoach')} onClick={() => setAiOpen(true)}
             style={{ ...fab, right: 12, borderRadius: 12, overflow: 'hidden' }}>
             {/* Shuriken Athéna classique 4 branches existant — non redessiné, sur verre neutre */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logos/logo_4bras.png" alt="Coach IA" style={{ width: 24, height: 24, objectFit: 'contain' }} />
+            <img src="/logos/logo_4bras.png" alt={t('shared.aiCoach')} style={{ width: 24, height: 24, objectFit: 'contain' }} />
           </button>
           </>}
         </>}

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface GpxPt { lat: number; lon: number; ele: number }
 interface ElevPt { dist: number; ele: number }
@@ -34,6 +35,7 @@ function buildProfile(pts: GpxPt[]): ElevPt[] {
 }
 
 export default function GpxFullView({ fileUrl, height = 320 }: { fileUrl: string; height?: number }) {
+  const { t } = useI18n()
   const mapDivRef = useRef<HTMLDivElement>(null)
   const syncRef   = useRef<((idx: number | null) => void) | null>(null)
   const [pts,      setPts]      = useState<GpxPt[]>([])
@@ -130,12 +132,12 @@ export default function GpxFullView({ fileUrl, height = 320 }: { fileUrl: string
         <div ref={mapDivRef} style={{ width: '100%', height: '100%' }} />
         {status === 'loading' && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', fontSize: 11, color: '#9ca3af', pointerEvents: 'none' }}>
-            Chargement carte…
+            {t('shared.loadingMap')}
           </div>
         )}
         {status === 'error' && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a1a2e', fontSize: 11, color: '#6b7280' }}>
-            Tracé non disponible
+            {t('shared.traceUnavailable')}
           </div>
         )}
       </div>

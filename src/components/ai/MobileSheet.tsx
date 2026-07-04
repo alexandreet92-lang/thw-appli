@@ -16,6 +16,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 
 const SPRING = 'height 0.34s cubic-bezier(0.32,0.72,0,1), transform 0.34s cubic-bezier(0.32,0.72,0,1)'
 
@@ -38,6 +39,7 @@ export function MobileSheet({
   onClose: () => void
   children: React.ReactNode
 }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const backdropRef = useRef<HTMLDivElement>(null)
@@ -193,7 +195,7 @@ export function MobileSheet({
               <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'DM Sans,sans-serif' }}>{title}</span>
               <button
                 onClick={requestClose}
-                aria-label="Fermer"
+                aria-label={t('ai.close')}
                 style={{
                   width: 30, height: 30, borderRadius: '50%', border: 'none',
                   background: 'var(--bg-alt)', color: 'var(--text)', cursor: 'pointer',

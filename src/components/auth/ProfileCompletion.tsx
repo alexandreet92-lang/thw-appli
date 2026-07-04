@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 
 interface Props { onDone: () => void }
 
@@ -10,21 +11,21 @@ function hexRgb(hex: string) {
 }
 
 const SPORTS = [
-  { id: 'cycling',   label: 'Cyclisme',    color: '#06B6D4' },
-  { id: 'running',   label: 'Running',     color: '#10B981' },
-  { id: 'trail',     label: 'Trail',       color: '#F59E0B' },
-  { id: 'swimming',  label: 'Natation',    color: '#3B82F6' },
-  { id: 'strength',  label: 'Musculation', color: '#8B5CF6' },
-  { id: 'triathlon', label: 'Triathlon',   color: '#EC4899' },
-  { id: 'ski',       label: 'Ski',         color: '#06B6D4' },
-  { id: 'other',     label: 'Autre',       color: '#8C8C8C' },
+  { id: 'cycling',   labelKey: 'sport.cycling',        color: '#06B6D4' },
+  { id: 'running',   labelKey: 'sport.running',        color: '#10B981' },
+  { id: 'trail',     labelKey: 'sport.trail',          color: '#F59E0B' },
+  { id: 'swimming',  labelKey: 'q.sport.natation',     color: '#3B82F6' },
+  { id: 'strength',  labelKey: 'authpage.sportStrength', color: '#8B5CF6' },
+  { id: 'triathlon', labelKey: 'sport.triathlon',      color: '#EC4899' },
+  { id: 'ski',       labelKey: 'authpage.sportSki',    color: '#06B6D4' },
+  { id: 'other',     labelKey: 'q.other',              color: '#8C8C8C' },
 ]
 
 const OBJECTIVES = [
-  { id: 'performance', label: 'Améliorer ma performance',  desc: 'Battre mes records, progresser en compétition', color: '#06B6D4' },
-  { id: 'health',      label: 'Rester en forme',           desc: 'Santé, bien-être, activité régulière',          color: '#10B981' },
-  { id: 'weight',      label: 'Perte de poids',            desc: 'Composition corporelle et nutrition',            color: '#F59E0B' },
-  { id: 'endurance',   label: 'Préparer un événement',     desc: 'Marathon, triathlon, cyclosportive…',            color: '#8B5CF6' },
+  { id: 'performance', labelKey: 'authpage.objPerfLabel',   descKey: 'authpage.objPerfDesc',   color: '#06B6D4' },
+  { id: 'health',      labelKey: 'authpage.objHealthLabel', descKey: 'authpage.objHealthDesc', color: '#10B981' },
+  { id: 'weight',      labelKey: 'goal.perte_poids',        descKey: 'authpage.objWeightDesc', color: '#F59E0B' },
+  { id: 'endurance',   labelKey: 'authpage.objEventLabel',  descKey: 'authpage.objEventDesc',  color: '#8B5CF6' },
 ]
 
 const inputStyle: React.CSSProperties = {
@@ -38,6 +39,7 @@ const inputStyle: React.CSSProperties = {
 const BG = 'linear-gradient(160deg, #060614 0%, #0A0F1E 50%, #050B1A 100%)'
 
 export function ProfileCompletion({ onDone }: Props) {
+  const { t } = useI18n()
   const [step,          setStep]         = useState(1)
   const [firstName,     setFirstName]    = useState('')
   const [primarySport,  setPrimarySport] = useState('')
@@ -109,15 +111,15 @@ export function ProfileCompletion({ onDone }: Props) {
               {firstName ? firstName[0]?.toUpperCase() : '?'}
             </div>
             <h2 style={{ fontSize: 26, fontWeight: 800, color: 'white', margin: '0 0 8px', fontFamily: 'Syne, sans-serif' }}>
-              Comment tu t&apos;appelles ?
+              {t('welcome.t0')}
             </h2>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', margin: '0 0 32px', lineHeight: 1.5 }}>
-              Pour personnaliser ton expérience.
+              {t('authpage.step1Sub')}
             </p>
             <input
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
-              placeholder="Ton prénom"
+              placeholder={t('authpage.firstNamePh')}
               autoFocus
               style={inputStyle}
               onKeyDown={e => { if (e.key === 'Enter' && firstName.trim()) handleNext() }}
@@ -129,10 +131,10 @@ export function ProfileCompletion({ onDone }: Props) {
         {step === 2 && (
           <div>
             <h2 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: '0 0 8px', textAlign: 'center', fontFamily: 'Syne, sans-serif' }}>
-              Ton sport principal ?
+              {t('authpage.step2Title')}
             </h2>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', margin: '0 0 28px', textAlign: 'center', lineHeight: 1.5 }}>
-              L&apos;app adaptera les suggestions à ton sport.
+              {t('authpage.step2Sub')}
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {SPORTS.map(s => (
@@ -148,7 +150,7 @@ export function ProfileCompletion({ onDone }: Props) {
                     transition: 'all 200ms', fontFamily: 'DM Sans, sans-serif',
                   }}
                 >
-                  {s.label}
+                  {t(s.labelKey)}
                 </button>
               ))}
             </div>
@@ -159,10 +161,10 @@ export function ProfileCompletion({ onDone }: Props) {
         {step === 3 && (
           <div>
             <h2 style={{ fontSize: 24, fontWeight: 800, color: 'white', margin: '0 0 8px', textAlign: 'center', fontFamily: 'Syne, sans-serif' }}>
-              Ton objectif ?
+              {t('authpage.step3Title')}
             </h2>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', margin: '0 0 28px', textAlign: 'center', lineHeight: 1.5 }}>
-              Pour calibrer les recommandations IA.
+              {t('authpage.step3Sub')}
             </p>
             {OBJECTIVES.map(o => (
               <button
@@ -176,8 +178,8 @@ export function ProfileCompletion({ onDone }: Props) {
                   cursor: 'pointer', transition: 'all 200ms', fontFamily: 'DM Sans, sans-serif',
                 }}
               >
-                <p style={{ fontSize: 15, fontWeight: 600, margin: '0 0 3px', color: objective === o.id ? o.color : 'white' }}>{o.label}</p>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{o.desc}</p>
+                <p style={{ fontSize: 15, fontWeight: 600, margin: '0 0 3px', color: objective === o.id ? o.color : 'white' }}>{t(o.labelKey)}</p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{t(o.descKey)}</p>
               </button>
             ))}
           </div>
@@ -196,11 +198,11 @@ export function ProfileCompletion({ onDone }: Props) {
             transition: 'opacity 200ms', fontFamily: 'DM Sans, sans-serif',
           }}
         >
-          {saving ? 'Enregistrement…' : step < 3 ? 'Continuer →' : 'Terminer →'}
+          {saving ? t('common.saving') : step < 3 ? `${t('common.continue')} →` : `${t('common.finish')} →`}
         </button>
 
         <button onClick={handleSkip} style={{ display: 'block', margin: '12px auto 0', background: 'none', border: 'none', color: 'rgba(255,255,255,0.25)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-          Passer cette étape
+          {t('authpage.skipStep')}
         </button>
       </div>
     </div>

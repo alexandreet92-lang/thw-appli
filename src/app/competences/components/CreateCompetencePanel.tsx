@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Zap, ArrowUp } from 'lucide-react'
 import { useCreateCompetenceConversation } from '../hooks/useCreateCompetenceConversation'
 import { sportIcon, SPORT_LABELS, type SportFilter } from '../constants'
+import { useI18n } from '@/lib/i18n'
 import MicButton from '@/components/ai-coach/MicButton'
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function CreateCompetencePanel({ variant = 'desktop', limitReached, onCreated, onNotice }: Props) {
+  const { t } = useI18n()
   const conv = useCreateCompetenceConversation()
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
@@ -35,11 +37,11 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
     const res = await conv.saveCompetence(activate)
     setSaving(false)
     if (res.ok) {
-      onNotice(activate ? 'Compétence créée et activée' : 'Compétence créée mais non activée — limite atteinte')
+      onNotice(activate ? t('competences.createdActivated') : t('competences.createdNotActivated'))
       conv.resetConversation()
       onCreated()
     } else {
-      onNotice(res.error ?? 'Erreur de création')
+      onNotice(res.error ?? t('competences.createError'))
     }
   }
 
@@ -57,13 +59,15 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <div style={avatarStyle}><Zap size={12} color="#06B6D4" /></div>
             <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>
-              Décris la compétence que tu veux créer — une méthode d&apos;entraînement, une approche nutritionnelle, un principe de récupération… Je te poserai les bonnes questions pour générer un prompt sur mesure.
+              {t('competences.createIntro')}
             </p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingLeft: 38 }}>
-            {EXAMPLE_CHIPS.map(ex => (
+            {EXAMPLE_CHIP_KEYS.map(key => {
+              const ex = t(key)
+              return (
               <button
-                key={ex}
+                key={key}
                 onClick={() => insertExample(ex)}
                 style={{
                   background: 'var(--bg-alt)', border: '0.5px solid var(--border)', borderRadius: 16,
@@ -75,7 +79,8 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
               >
                 {ex}
               </button>
-            ))}
+              )
+            })}
           </div>
         </>
       )}
@@ -122,9 +127,9 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button onClick={() => inputRef.current?.focus()} style={{ fontSize: 12, background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>Affiner</button>
+            <button onClick={() => inputRef.current?.focus()} style={{ fontSize: 12, background: 'transparent', color: 'var(--text-mid)', border: '0.5px solid var(--border)', borderRadius: 8, padding: '7px 14px', cursor: 'pointer' }}>{t('competences.refine')}</button>
             <button onClick={() => void doSave()} disabled={saving} style={{ flex: 1, fontSize: 12, fontWeight: 500, background: '#06B6D4', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: saving ? 'wait' : 'pointer' }}>
-              {saving ? 'Enregistrement…' : 'Enregistrer cette compétence'}
+              {saving ? t('competences.saving') : t('competences.saveThisSkill')}
             </button>
           </div>
         </div>
@@ -144,7 +149,7 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
         onChange={e => setText(e.target.value)}
         onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 120) + 'px' }}
         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend() } }}
-        placeholder="Décris ton idée..."
+        placeholder={t('competences.placeholderIdea')}
         rows={1}
         style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', minHeight: 24, maxHeight: 120 }}
       />
@@ -152,7 +157,7 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
         <span style={agentBadge}>Athéna</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <MicButton onTranscript={setText} iconSize={16} boxSize={24} />
-          <button onClick={doSend} disabled={!text.trim() || conv.isStreaming} aria-label="Envoyer" style={sendBtn(!!text.trim() && !conv.isStreaming)}>
+          <button onClick={doSend} disabled={!text.trim() || conv.isStreaming} aria-label={t('competences.send')} style={sendBtn(!!text.trim() && !conv.isStreaming)}>
             <ArrowUp size={14} color="#fff" />
           </button>
         </div>
@@ -181,8 +186,8 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
   return (
     <div style={{ width: 320, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ padding: '14px 16px 10px', borderBottom: '0.5px solid var(--border)', flexShrink: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Créer une compétence</div>
-        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>Décris ton idée, l&apos;IA génère le prompt</div>
+        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{t('competences.createSkill')}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{t('competences.createSkillHint')}</div>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>{chat}</div>
       <div style={{ padding: '10px 12px', borderTop: '0.5px solid var(--border)', flexShrink: 0 }}>{inputBar}</div>
@@ -190,10 +195,10 @@ export default function CreateCompetencePanel({ variant = 'desktop', limitReache
   )
 }
 
-const EXAMPLE_CHIPS = [
-  'Méthode 16/8 nutrition',
-  'Endurance fondamentale spécifique trail',
-  'Récupération entre séances doubles',
+const EXAMPLE_CHIP_KEYS = [
+  'competences.example1',
+  'competences.example2',
+  'competences.example3',
 ]
 
 const avatarStyle: React.CSSProperties = {

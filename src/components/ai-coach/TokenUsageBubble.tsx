@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { CircleGauge, ShoppingBag, ChevronRight } from 'lucide-react'
 import { getModelMultiplier, getModelDisplayName } from '@/lib/tokens/multipliers'
 import { MobileSheet } from '@/components/ai/MobileSheet'
+import { useI18n } from '@/lib/i18n'
 
 interface TokenLimits {
   monthly:     { used: number; limit: number; resets_at: string }
@@ -63,6 +64,7 @@ function Gauge({ label, used, limit, resetLabel }: { label: string; used: number
 }
 
 export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena', isMobile = false }: { onBuyTokens: () => void; currentModel?: string; isMobile?: boolean }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [limits, setLimits] = useState<TokenLimits | null>(null)
   const ref = useRef<HTMLDivElement>(null)
@@ -90,7 +92,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
     <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
       <button
         onClick={() => setOpen(o => !o)}
-        title="Utilisation des tokens"
+        title={t('ai.tokenUsage')}
         className="aip-icon-btn"
         style={{ width: 28, height: 28, borderRadius: 6, color: open ? 'var(--ai-text)' : 'var(--ai-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
       >
@@ -102,14 +104,14 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
         const inner = (
         <>
           <div style={{ height: 1, background: 'var(--border)' }} />
-          <Gauge label="Limite hebdomadaire" used={limits.monthly.used} limit={limits.monthly.limit} resetLabel={`Réinit. dans ${untilDays(limits.monthly.resets_at)}`} />
+          <Gauge label={t('ai.weeklyLimit')} used={limits.monthly.used} limit={limits.monthly.limit} resetLabel={t('ai.resetsIn', { d: untilDays(limits.monthly.resets_at) })} />
           <div style={{ height: 1, background: 'var(--border)' }} />
-          <Gauge label="Limite de 6 heures" used={limits.rolling_6h.used} limit={limits.rolling_6h.limit} resetLabel={`Réinit. dans ${untilHours(limits.rolling_6h.resets_at)}`} />
+          <Gauge label={t('ai.sixHourLimit')} used={limits.rolling_6h.used} limit={limits.rolling_6h.limit} resetLabel={t('ai.resetsIn', { d: untilHours(limits.rolling_6h.resets_at) })} />
           {limits.bonus_tokens > 0 && (
             <>
               <div style={{ height: 1, background: 'var(--border)' }} />
               <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Tokens bonus</span>
+                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{t('ai.bonusTokens')}</span>
                 <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--primary)', fontFamily: 'DM Mono, monospace' }}>{fmt(limits.bonus_tokens)}</span>
               </div>
             </>
@@ -125,12 +127,12 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
             return (
               <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Modèle actuel</span>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{t('ai.currentModel')}</span>
                   <span style={{ padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 500, color: '#06B6D4', background: 'rgba(6,182,212,0.10)', border: '0.5px solid rgba(6,182,212,0.25)' }}>{name}</span>
                 </div>
                 {mult > 1 && (
                   <p style={{ fontSize: 11, color: 'var(--text-mid)', lineHeight: 1.5, margin: '6px 0 8px' }}>
-                    1 message {name} consomme environ {mult} fois plus vite ton quota qu&apos;un message Hermès.
+                    {t('ai.modelMultiplierNote', { name, mult })}
                   </p>
                 )}
                 <div style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.3px', display: 'flex', gap: 6 }}>
@@ -147,7 +149,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500 }}>
-              <ShoppingBag size={15} /> Acheter des tokens
+              <ShoppingBag size={15} /> {t('ai.buyTokens')}
             </span>
             <ChevronRight size={12} color="var(--text-mid)" />
           </button>
@@ -155,7 +157,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
         )
 
         if (isMobile) {
-          return <MobileSheet title="Utilisation des tokens" onClose={() => setOpen(false)}>{inner}</MobileSheet>
+          return <MobileSheet title={t('ai.tokenUsage')} onClose={() => setOpen(false)}>{inner}</MobileSheet>
         }
         return (
           <div style={{
@@ -165,7 +167,7 @@ export default function TokenUsageBubble({ onBuyTokens, currentModel = 'athena',
             boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: 4,
             animation: 'aip_menu_up 0.16s ease-out',
           }}>
-            <div style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Utilisation des tokens</div>
+            <div style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{t('ai.tokenUsage')}</div>
             {inner}
           </div>
         )

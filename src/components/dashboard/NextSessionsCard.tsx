@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { sportColor } from '@/components/recovery/helpers'
 import { Card, SectionTitle, SportDot, Skeleton } from './primitives'
@@ -15,7 +16,7 @@ import { FD, FB, NUM, iso, todayIso, weekStartIso, formatDuration } from './lib'
 interface Row { week_start: string; day_index: number; sport: string; title: string; duration_min: number | null; intensity: string | null; status: string }
 interface Next { key: string; date: string; sport: string; title: string; duration_min: number | null; intensity: string | null }
 
-const ZONE: Record<string, string> = { low: 'Facile', recovery: 'Récup', moderate: 'Modéré', mid: 'Modéré', high: 'Intense', hard: 'Intense', max: 'Max' }
+const ZONE_KEY: Record<string, string> = { low: 'dashboard.zoneEasy', recovery: 'dashboard.zoneRecovery', moderate: 'dashboard.zoneModerate', mid: 'dashboard.zoneModerate', high: 'dashboard.zoneIntense', hard: 'dashboard.zoneIntense', max: 'dashboard.zoneMax' }
 
 function sessionDate(weekStart: string, dayIndex: number): string {
   const d = new Date(weekStart + 'T00:00:00')
@@ -29,6 +30,7 @@ function dayShort(isoDate: string): string {
 }
 
 export function NextSessionsCard() {
+  const { t } = useI18n()
   const [loading, setLoading] = useState(true)
   const [items, setItems] = useState<Next[]>([])
 
@@ -63,10 +65,10 @@ export function NextSessionsCard() {
 
   return (
     <Card href="/planning">
-      <SectionTitle action={<span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>→</span>}>Prochaines séances</SectionTitle>
+      <SectionTitle action={<span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>→</span>}>{t('dashboard.nextSessions')}</SectionTitle>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {items.map(s => {
-          const zone = s.intensity ? (ZONE[s.intensity] ?? s.intensity) : null
+          const zone = s.intensity ? (ZONE_KEY[s.intensity] ? t(ZONE_KEY[s.intensity]) : s.intensity) : null
           const meta = [formatDuration(s.duration_min), zone].filter(v => v && v !== '—').join(' · ')
           return (
             <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>

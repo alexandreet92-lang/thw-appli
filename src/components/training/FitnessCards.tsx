@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
+import { useI18n } from '@/lib/i18n'
 
 interface FitnessCardsProps {
   ctl: number | null
@@ -9,6 +10,7 @@ interface FitnessCardsProps {
 }
 
 export function FitnessCards({ ctl, atl, tsb }: FitnessCardsProps) {
+  const { t } = useI18n()
   const [sheet, setSheet] = useState<'CTL'|'ATL'|'TSB'|null>(null)
   const fmt = (v: number | null) => v != null ? v.toFixed(1) : '—'
 
@@ -23,23 +25,23 @@ export function FitnessCards({ ctl, atl, tsb }: FitnessCardsProps) {
       value: fmt(ctl),
       pct: ctlPct,
       color: '#06B6D4',
-      subtitle: 'Charge chronique',
-      hint: '42 jours',
+      subtitle: t('shared.chronicLoad'),
+      hint: t('shared.days42'),
     },
     {
       key: 'ATL' as const,
       value: fmt(atl),
       pct: atlPct,
       color: '#F97316',
-      subtitle: 'Charge aiguë',
-      hint: '7 jours',
+      subtitle: t('shared.acuteLoad'),
+      hint: t('shared.days7'),
     },
     {
       key: 'TSB' as const,
       value: fmt(tsb),
       pct: tsbPct,
       color: (tsb ?? 0) < 0 ? '#EF4444' : '#10B981',
-      subtitle: 'Forme du moment',
+      subtitle: t('shared.currentForm'),
       hint: 'CTL – ATL',
     },
   ]
@@ -53,7 +55,7 @@ export function FitnessCards({ ctl, atl, tsb }: FitnessCardsProps) {
         color: 'var(--text-label)',
         marginBottom: 12, paddingLeft: 16,
       }}>
-        Fitness
+        {t('shared.fitness')}
       </p>
 
       {/* Bande des 3 métriques */}
@@ -149,18 +151,15 @@ export function FitnessCards({ ctl, atl, tsb }: FitnessCardsProps) {
         <BottomSheet key={k} isOpen={sheet===k}
                      onClose={() => setSheet(null)}
                      title={
-                       k==='CTL' ? 'CTL — Charge Chronique' :
-                       k==='ATL' ? 'ATL — Charge Aiguë' :
-                                   'TSB — Forme du Moment'
+                       k==='CTL' ? t('shared.ctlSheetTitle') :
+                       k==='ATL' ? t('shared.atlSheetTitle') :
+                                   t('shared.tsbSheetTitle')
                      }>
           <p style={{ fontSize:14, lineHeight:1.7,
                       color:'var(--text-body)' }}>
-            {k==='CTL' &&
-              'Charge chronique sur 42 jours. Mesure votre forme à long terme via la moyenne exponentielle de la charge quotidienne (SM/SN). Plus la valeur est haute, meilleure est votre condition de base.'}
-            {k==='ATL' &&
-              'Charge aiguë sur 7 jours. Mesure la fatigue récente. Plus la valeur est haute, plus vous êtes fatigué. Surveiller quand ATL dépasse largement CTL.'}
-            {k==='TSB' &&
-              'Balance de charge = CTL – ATL. Positif = forme fraîche. Négatif = fatigue accumulée. Zone idéale pour la compétition : entre +5 et +25.'}
+            {k==='CTL' && t('shared.ctlSheetBody')}
+            {k==='ATL' && t('shared.atlSheetBody')}
+            {k==='TSB' && t('shared.tsbSheetBody')}
           </p>
         </BottomSheet>
       ))}

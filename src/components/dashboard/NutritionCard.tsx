@@ -9,10 +9,12 @@
 
 import { useNutrition } from '@/hooks/useNutrition'
 import { useDailyMeals } from '@/hooks/useDailyMeals'
+import { useI18n } from '@/lib/i18n'
 import { Card, SectionTitle, Gauge, Skeleton } from './primitives'
 import { FB, NUM, todayIso } from './lib'
 
 export function NutritionCard() {
+  const { t } = useI18n()
   const { activePlan, loading } = useNutrition()
   const today = todayIso()
   const { totals } = useDailyMeals(today)
@@ -30,8 +32,8 @@ export function NutritionCard() {
 
   return (
     <Card>
-      <SectionTitle action={<a href="/nutrition" style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>Détail →</a>}>
-        Nutrition
+      <SectionTitle action={<a href="/nutrition" style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>{t('dashboard.detail')}</a>}>
+        {t('dashboard.nutrition')}
       </SectionTitle>
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
@@ -44,7 +46,7 @@ export function NutritionCard() {
       </div>
 
       <p style={{ margin: 0, ...NUM, fontSize: 13, color: 'var(--text-mid)' }}>
-        {remaining} kcal restantes
+        {t('dashboard.kcalRemaining', { n: remaining })}
       </p>
     </Card>
   )

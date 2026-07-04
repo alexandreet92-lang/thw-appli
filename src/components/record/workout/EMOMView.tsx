@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import type { WorkoutExercise, CompletedSet } from '@/types/workout'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   exercise: WorkoutExercise
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props) {
+  const { t } = useI18n()
   const totalMinutes = exercise.emomMinutes ?? 10
   // EMOM : 1 exercice par minute. S'il y a plusieurs exos dans le circuit, on
   // tourne dessus (minute 1 → exo 1, minute 2 → exo 2, …, puis on reboucle).
@@ -61,7 +63,7 @@ export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props)
   return (
     <div style={{ padding: '20px', fontFamily: 'DM Sans, sans-serif' }}>
       <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: dim, margin: '0 0 4px' }}>EMOM</p>
-      <p style={{ fontSize: 13, color: dim, margin: '0 0 20px' }}>Minute {currentMinute + 1} / {totalMinutes}</p>
+      <p style={{ fontSize: 13, color: dim, margin: '0 0 20px' }}>{t('record.emomMinuteProgress', { current: currentMinute + 1, total: totalMinutes })}</p>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 24, flexWrap: 'wrap' }}>
         {Array.from({ length: totalMinutes }).map((_, i) => (
@@ -75,14 +77,14 @@ export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props)
           <span style={{ fontSize: 11, color: dim }}>sec</span>
         </div>
         <p style={{ fontSize: 13, color: phaseColor, fontWeight: 600, margin: '10px 0 0', transition: 'color 0.3s' }}>
-          {isWork ? 'TRAVAIL' : 'REPOS'}
+          {isWork ? t('record.emomWork') : t('record.emomRest')}
         </p>
       </div>
 
       <div style={{ background: surface, borderRadius: 14, padding: '14px 16px', marginBottom: 20 }}>
-        <p style={{ fontSize: 13, color: dim, margin: '0 0 12px' }}>{activeExo.name}{exos.length > 1 ? ` · exo ${(currentMinute % exos.length) + 1}/${exos.length}` : ''}</p>
+        <p style={{ fontSize: 13, color: dim, margin: '0 0 12px' }}>{activeExo.name}{exos.length > 1 ? ` ${t('record.emomExoIndex', { current: (currentMinute % exos.length) + 1, total: exos.length })}` : ''}</p>
         <div style={{ display: 'flex', gap: 12 }}>
-          {([['Reps', 'reps', 1], ['Charge kg', 'weightKg', 2.5]] as const).map(([label, key, step]) => (
+          {([[t('record.emomReps'), 'reps', 1], [t('record.emomLoadKg'), 'weightKg', 2.5]] as const).map(([label, key, step]) => (
             <div key={key} style={{ flex: 1 }}>
               <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px', textAlign: 'center' }}>{label}</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -97,16 +99,16 @@ export default function EMOMView({ exercise, onSetDone, isDark, accent }: Props)
 
       {!done && !running && (
         <button onClick={() => setRunning(true)} style={{ width: '100%', height: 52, borderRadius: 16, background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
-          Démarrer EMOM
+          {t('record.emomStart')}
         </button>
       )}
       {running && (
         <button onClick={handleDone} disabled={completedThisMinuteRef.current} style={{ width: '100%', height: 52, borderRadius: 16, background: completedThisMinuteRef.current ? surface : `linear-gradient(135deg, ${accent}, ${accent}bb)`, border: 'none', color: completedThisMinuteRef.current ? dim : '#fff', fontSize: 16, fontWeight: 600, cursor: completedThisMinuteRef.current ? 'default' : 'pointer' }}>
-          {completedThisMinuteRef.current ? '✓ Fait' : 'Marquer fait'}
+          {completedThisMinuteRef.current ? t('record.emomDoneMark') : t('record.emomMarkDone')}
         </button>
       )}
       {done && (
-        <div style={{ textAlign: 'center', padding: '16px 0', color: accent, fontSize: 15, fontWeight: 600 }}>EMOM terminé ✓</div>
+        <div style={{ textAlign: 'center', padding: '16px 0', color: accent, fontSize: 15, fontWeight: 600 }}>{t('record.emomDone')}</div>
       )}
     </div>
   )

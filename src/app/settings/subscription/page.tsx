@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useI18n } from '@/lib/i18n'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
 import type { UsageType } from '@/lib/subscriptions/check-quota'
 
@@ -125,6 +126,7 @@ function UsageBar({ used, limit, label, resetAt }: {
   label:   string
   resetAt: string
 }) {
+  const { t }    = useI18n()
   const pct      = limit === Infinity ? 0 : Math.min(100, (used / limit) * 100)
   const isHigh   = pct >= 85
   const barColor = isHigh ? '#ef4444' : '#06B6D4'
@@ -149,7 +151,7 @@ function UsageBar({ used, limit, label, resetAt }: {
         }} />
       </div>
       <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
-        Remise à zéro le {resetStr}
+        {t('misc.resetOn', { date: resetStr })}
       </span>
     </div>
   )
@@ -158,9 +160,16 @@ function UsageBar({ used, limit, label, resetAt }: {
 // ── Feature row value ──────────────────────────────────────────
 
 function FeatureValue({ value }: { value: string | boolean }) {
+  const { t } = useI18n()
   if (value === true)  return <span style={{ color: '#06B6D4', fontSize: 14 }}>✓</span>
   if (value === false) return <span style={{ color: 'var(--text-dim)', fontSize: 14, opacity: 0.4 }}>–</span>
-  return <span style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif' }}>{value}</span>
+  const valueMap: Record<string, string> = {
+    'Illimité':        t('misc.unlimited'),
+    '7 (quotidien)':   t('misc.dailyValue'),
+    '6 mois':          t('misc.months6'),
+    '24 mois':         t('misc.months24'),
+  }
+  return <span style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans, sans-serif' }}>{valueMap[value] ?? value}</span>
 }
 
 // ── Main page ──────────────────────────────────────────────────
@@ -168,8 +177,34 @@ function FeatureValue({ value }: { value: string | boolean }) {
 export default function SubscriptionPage() {
   const router       = useRouter()
   const searchParams = useSearchParams()
+  const { t }        = useI18n()
   const success      = searchParams.get('success') === 'true'
   const canceled     = searchParams.get('canceled') === 'true'
+
+  const featureLabels: Record<string, string> = {
+    'Messages IA / mois':          t('misc.featMessages'),
+    'Plans d\'entraînement / mois': t('misc.featTrainingPlans'),
+    'Plans nutrition / mois':      t('misc.featNutritionPlans'),
+    'Briefings / semaine':         t('misc.featBriefings'),
+    'Web search dans briefing':    t('misc.featWebSearch'),
+    'Actions outils / mois':       t('misc.featToolActions'),
+    'Modèle IA':                   t('misc.featAiModel'),
+    'Historique':                  t('misc.featHistory'),
+    'Sync Strava / mois':          t('misc.featStravaSync'),
+    'Stockage':                    t('misc.featStorage'),
+  }
+  const usageLabels: Partial<Record<UsageType, string>> = {
+    message:         t('misc.usageMessages'),
+    plan_generation: t('misc.usageTrainingPlans'),
+    nutrition_plan:  t('misc.usageNutritionPlans'),
+    briefing:        t('misc.usageBriefings7d'),
+    tool_use:        t('misc.usageToolActions'),
+  }
+  const planSubtitles: Record<PurchasableTier, string> = {
+    premium: t('misc.planPremiumSubtitle'),
+    pro:     t('misc.planProSubtitle'),
+    expert:  t('misc.planExpertSubtitle'),
+  }
 
   const [data,        setData]        = useState<SummaryData | null>(null)
   const [loading,     setLoading]     = useState(true)
@@ -177,7 +212,7 @@ export default function SubscriptionPage() {
   const [ctaLoading,  setCtaLoading]  = useState<string | null>(null)  // tier en cours de checkout
   const [portalLoading, setPortalLoading] = useState(false)
   const [banner, setBanner] = useState<{ type: 'success' | 'error'; msg: string } | null>(
-    success ? { type: 'success', msg: '✓ Abonnement activé ! Bienvenue dans votre nouveau plan.' } : null,
+    success ? { type: 'success', msg: t('misc.subActivated') } : null,
   )
 
   // ── Fetch summary ─────────────────────────────────────────────
@@ -209,14 +244,14 @@ export default function SubscriptionPage() {
         body:    JSON.stringify({ tier, billingPeriod: billing }),
       })
       const json = await res.json() as { url?: string; error?: string }
-      if (!res.ok || !json.url) throw new Error(json.error ?? 'Erreur inconnue')
+      if (!res.ok || !json.url) throw new Error(json.error ?? t('misc.unknownError'))
       window.location.href = json.url
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      setBanner({ type: 'error', msg: `Erreur : ${msg}` })
+      setBanner({ type: 'error', msg: `${t('misc.error')} : ${msg}` })
       setCtaLoading(null)
     }
-  }, [billing])
+  }, [billing, t])
 
   // ── Portal ────────────────────────────────────────────────────
   const handlePortal = useCallback(async () => {
@@ -225,14 +260,14 @@ export default function SubscriptionPage() {
     try {
       const res  = await fetch('/api/stripe/portal', { method: 'POST' })
       const json = await res.json() as { url?: string; error?: string }
-      if (!res.ok || !json.url) throw new Error(json.error ?? 'Erreur inconnue')
+      if (!res.ok || !json.url) throw new Error(json.error ?? t('misc.unknownError'))
       window.location.href = json.url
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      setBanner({ type: 'error', msg: `Erreur portail : ${msg}` })
+      setBanner({ type: 'error', msg: `${t('misc.portalError')} : ${msg}` })
       setPortalLoading(false)
     }
-  }, [])
+  }, [t])
 
   const currentTier = data?.tier ?? 'premium'
   const isUnlimited = data?.unlimited === true
@@ -324,10 +359,10 @@ export default function SubscriptionPage() {
           margin:     '0 0 4px',
           color:      'var(--text)',
         }}>
-          Mon abonnement
+          {t('misc.mySubscription')}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', margin: '0 0 32px' }}>
-          Gérez votre plan et suivez votre utilisation mensuelle.
+          {t('misc.subIntro')}
         </p>
 
         {/* ── Banner success / error ────────────────────────────── */}
@@ -363,7 +398,7 @@ export default function SubscriptionPage() {
             fontFamily:   'DM Sans, sans-serif',
             fontSize:     14,
           }}>
-            Paiement annulé — vous restez sur votre plan actuel.
+            {t('misc.paymentCanceled')}
           </div>
         )}
 
@@ -392,7 +427,7 @@ export default function SubscriptionPage() {
                     fontWeight:  700,
                     color:       'var(--text)',
                   }}>
-                    {isUnlimited ? 'Compte créateur' : `Plan ${currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}`}
+                    {isUnlimited ? t('misc.creatorAccount') : `${t('misc.plan')} ${currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}`}
                   </span>
                   {isUnlimited && (
                     <span style={{
@@ -404,7 +439,7 @@ export default function SubscriptionPage() {
                       background:   'rgba(6,182,212,0.12)',
                       color:        '#06B6D4',
                     }}>
-                      Illimité
+                      {t('misc.unlimited')}
                     </span>
                   )}
                   {!isUnlimited && subStatus && (
@@ -419,10 +454,10 @@ export default function SubscriptionPage() {
                       color:        subStatus === 'active' || subStatus === 'trialing'
                         ? '#06B6D4' : '#ef4444',
                     }}>
-                      {subStatus === 'active'   ? 'Actif'
-                       : subStatus === 'trialing' ? 'Essai'
-                       : subStatus === 'past_due' ? 'Paiement en retard'
-                       : 'Annulé'}
+                      {subStatus === 'active'   ? t('misc.statusActive')
+                       : subStatus === 'trialing' ? t('misc.statusTrial')
+                       : subStatus === 'past_due' ? t('misc.statusPastDue')
+                       : t('misc.statusCanceled')}
                     </span>
                   )}
                 </>
@@ -432,15 +467,15 @@ export default function SubscriptionPage() {
               <Skeleton className="" style={{ width: 200, height: 16 }} />
             ) : isUnlimited ? (
               <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
-                Accès illimité à toutes les fonctionnalités
+                {t('misc.unlimitedAccess')}
               </span>
             ) : periodEnd ? (
               <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
-                Prochaine facturation le {periodEnd}
+                {t('misc.nextBilling', { date: periodEnd })}
               </span>
             ) : (
               <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
-                Aucun abonnement actif — plan gratuit
+                {t('misc.noActiveSub')}
               </span>
             )}
           </div>
@@ -452,7 +487,7 @@ export default function SubscriptionPage() {
               disabled={portalLoading}
               style={{ background: 'var(--bg-card2)', color: 'var(--text)', border: '1.5px solid var(--border)' }}
             >
-              {portalLoading ? 'Chargement…' : 'Gérer mon abonnement'}
+              {portalLoading ? t('misc.loading') : t('misc.manageSubscription')}
             </button>
           )}
         </section>
@@ -461,7 +496,7 @@ export default function SubscriptionPage() {
         {!isUnlimited && (
         <section style={{ marginBottom: 40 }}>
           <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: '0 0 16px', color: 'var(--text)' }}>
-            Utilisation en cours
+            {t('misc.currentUsage')}
           </h2>
           <div style={{
             display:             'grid',
@@ -482,7 +517,7 @@ export default function SubscriptionPage() {
                   return (
                     <div key={type} style={{ background: 'var(--bg-card)', borderRadius: 8, padding: 16 }}>
                       <UsageBar
-                        label={label}
+                        label={usageLabels[type] ?? label}
                         used={stat.used}
                         limit={stat.limit}
                         resetAt={stat.reset_at}
@@ -500,7 +535,7 @@ export default function SubscriptionPage() {
         <section>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text)' }}>
-              Changer de plan
+              {t('misc.changePlan')}
             </h2>
             {/* Toggle mensuel / annuel */}
             <div className="toggle-pill">
@@ -508,13 +543,13 @@ export default function SubscriptionPage() {
                 className={`toggle-option${billing === 'monthly' ? ' selected' : ''}`}
                 onClick={() => setBilling('monthly')}
               >
-                Mensuel
+                {t('misc.monthly')}
               </button>
               <button
                 className={`toggle-option${billing === 'yearly' ? ' selected' : ''}`}
                 onClick={() => setBilling('yearly')}
               >
-                Annuel <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.8 }}>−20%</span>
+                {t('misc.yearly')} <span style={{ fontSize: 11, marginLeft: 4, opacity: 0.8 }}>−20%</span>
               </button>
             </div>
           </div>
@@ -551,7 +586,7 @@ export default function SubscriptionPage() {
                           color:        '#06B6D4',
                           fontFamily:   'DM Sans, sans-serif',
                         }}>
-                          Plan actuel
+                          {t('misc.currentPlan')}
                         </span>
                       )}
                       {plan.tier === 'expert' && !isActive && (
@@ -564,12 +599,12 @@ export default function SubscriptionPage() {
                           color:        '#06B6D4',
                           fontFamily:   'DM Sans, sans-serif',
                         }}>
-                          Recommandé
+                          {t('misc.recommended')}
                         </span>
                       )}
                     </div>
                     <p style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', margin: 0 }}>
-                      {plan.subtitle}
+                      {planSubtitles[plan.tier] ?? plan.subtitle}
                     </p>
                   </div>
 
@@ -580,12 +615,12 @@ export default function SubscriptionPage() {
                         €{billing === 'yearly' ? monthlyEquiv.toFixed(0) : price}
                       </span>
                       <span style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif' }}>
-                        /mois
+                        {t('misc.perMonth')}
                       </span>
                     </div>
                     {billing === 'yearly' && (
                       <p style={{ fontSize: 12, color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', margin: '4px 0 0' }}>
-                        Facturé €{price}/an
+                        {t('misc.billedYearly', { price })}
                       </p>
                     )}
                   </div>
@@ -595,7 +630,7 @@ export default function SubscriptionPage() {
                     {FEATURES.map(f => (
                       <div key={f.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                         <span style={{ fontSize: 13, color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', flex: 1 }}>
-                          {f.label}
+                          {featureLabels[f.label] ?? f.label}
                         </span>
                         <FeatureValue value={f.values[plan.tier]} />
                       </div>
@@ -609,7 +644,7 @@ export default function SubscriptionPage() {
                       disabled
                       style={{ background: 'var(--bg-card2)', color: 'var(--text-mid)', width: '100%' }}
                     >
-                      Plan actuel
+                      {t('misc.currentPlan')}
                     </button>
                   ) : (
                     <button
@@ -622,7 +657,7 @@ export default function SubscriptionPage() {
                         width:      '100%',
                       }}
                     >
-                      {isCta ? 'Chargement…' : `Choisir ${plan.name}`}
+                      {isCta ? t('misc.loading') : t('misc.choosePlan', { name: plan.name })}
                     </button>
                   )}
                 </div>
@@ -642,7 +677,7 @@ export default function SubscriptionPage() {
             textAlign:  'center',
             lineHeight: 1.6,
           }}>
-            Paiement sécurisé par Stripe · Annulation à tout moment · Prix TTC en euros
+            {t('misc.subLegalNote')}
           </p>
         )}
       </div>

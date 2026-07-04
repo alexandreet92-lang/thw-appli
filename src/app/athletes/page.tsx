@@ -1,7 +1,10 @@
+'use client'
+
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/lib/i18n'
 
 const ATHLETES = [
   {
@@ -46,16 +49,17 @@ const ATHLETES = [
 ]
 
 export default function AthletesPage() {
+  const { t } = useI18n()
   return (
     <div className="p-8">
 
       {/* Header */}
       <div className="flex items-start justify-between mb-7">
         <div>
-          <h1 className="font-display text-[27px] font-bold tracking-[-0.03em]">Mes athlètes</h1>
-          <p className="text-[12.5px] text-[var(--text-dim)] mt-1">Suivi · Coaching · Planification</p>
+          <h1 className="font-display text-[27px] font-bold tracking-[-0.03em]">{t('misc.myAthletes')}</h1>
+          <p className="text-[12.5px] text-[var(--text-dim)] mt-1">{t('misc.athletesSubtitle')}</p>
         </div>
-        <Button variant="primary">+ Ajouter un athlète</Button>
+        <Button variant="primary">{t('misc.addAthlete')}</Button>
       </div>
 
       <div className="grid grid-cols-3 gap-3.5">
@@ -98,7 +102,7 @@ export default function AthletesPage() {
             </div>
 
             <p className="text-[11px] text-[var(--text-dim)]">
-              Prochaine : {a.next}
+              {t('misc.next')} {a.next}
             </p>
           </Card>
         ))}

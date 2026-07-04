@@ -3,11 +3,13 @@
 export const dynamic = 'force-dynamic'
 
 import { useTheme } from '@/hooks/useTheme'
+import { useI18n } from '@/lib/i18n'
 import { AlertCircle } from 'lucide-react'
 import { Header, Footer, TopupStyles, ArrowRight, APP_URL } from '../shared'
 
 export default function TopupExpiredPage() {
   useTheme()
+  const { t } = useI18n()
 
   return (
     <div className="topup-root" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -18,11 +20,11 @@ export default function TopupExpiredPage() {
           <div style={{ width: 74, height: 74, borderRadius: '50%', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(245,158,11,0.10)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)', boxShadow: '0 0 28px rgba(245,158,11,0.18)' }}>
             <AlertCircle size={36} />
           </div>
-          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(26px, 4vw, 32px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>Lien expiré</h1>
+          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(26px, 4vw, 32px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>{t('misc.linkExpiredTitle')}</h1>
           <p style={{ fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.6, marginBottom: 28 }}>
-            Ce lien d&apos;achat a expiré ou a déjà été utilisé. Retourne dans l&apos;app et demande un nouveau lien pour recharger en tokens.
+            {t('misc.linkExpiredBody')}
           </p>
-          <a href={APP_URL} className="btn-primary-lg" style={{ justifyContent: 'center' }}>Retour à l&apos;app <ArrowRight size={15} /></a>
+          <a href={APP_URL} className="btn-primary-lg" style={{ justifyContent: 'center' }}>{t('misc.backToApp')} <ArrowRight size={15} /></a>
         </div>
       </main>
       <Footer />

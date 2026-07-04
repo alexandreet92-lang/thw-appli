@@ -1,7 +1,11 @@
 'use client'
 // Loader de marque : logo shuriken THW (4 bras) qui tourne + message + 3 points
 // animés. Remplace les skeletons génériques au chargement des pages.
-export function BrandLoader({ label = 'Vos données sont en train de se charger' }: { label?: string }) {
+import { useI18n } from '@/lib/i18n'
+
+export function BrandLoader({ label }: { label?: string }) {
+  const { t } = useI18n()
+  const text = label ?? t('ui.loadingData')
   return (
     <div style={{ minHeight: '62vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: 32, boxSizing: 'border-box' }}>
       <style>{`
@@ -20,7 +24,7 @@ export function BrandLoader({ label = 'Vos données sont en train de se charger'
         <img src="/logos/logo_4bras.png" alt="" className="thwbl-logo" />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)' }}>{label}</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-mid)' }}>{text}</span>
         <span style={{ display: 'inline-flex', gap: 4 }}>
           <span className="thwbl-dot" style={{ animationDelay: '0s' }} />
           <span className="thwbl-dot" style={{ animationDelay: '0.15s' }} />

@@ -3,10 +3,12 @@
 export const dynamic = 'force-dynamic'
 
 import { useTheme } from '@/hooks/useTheme'
+import { useI18n } from '@/lib/i18n'
 import { Header, Footer, TopupStyles, ArrowRight, Receipt, APP_URL } from '../shared'
 
 export default function TopupSuccessPage() {
   useTheme()
+  const { t } = useI18n()
 
   return (
     <div className="topup-root" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -24,23 +26,23 @@ export default function TopupSuccessPage() {
               strokeDasharray="58" strokeDashoffset="58" style={{ animation: 'topupDrawCheck 0.4s 0.66s cubic-bezier(0.4,0,0.2,1) forwards' }} />
           </svg>
 
-          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>Paiement confirmé !</h1>
+          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>{t('misc.paymentConfirmed')}</h1>
           <p style={{ fontSize: 16, color: 'var(--text-mid)', marginBottom: 28, lineHeight: 1.5 }}>
-            Tes tokens ont été ajoutés à ton compte. Retourne dans l&apos;app, ton solde est à jour.
+            {t('misc.tokensAddedBody')}
           </p>
 
           <div className="topup-card" style={{ padding: '18px 22px', textAlign: 'left', marginBottom: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.6 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
-              Le crédit est instantané. Si ton solde n&apos;apparaît pas tout de suite, rafraîchis l&apos;app.
+              {t('misc.creditInstantNote')}
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-            <a href={APP_URL} className="btn-primary-lg" style={{ justifyContent: 'center', width: '100%' }}>Retourner à l&apos;app <ArrowRight size={15} /></a>
-            <a href="mailto:support@thwcoaching.com" className="btn-ghost-lg" style={{ justifyContent: 'center', width: '100%' }}><Receipt size={15} /> Besoin d&apos;un reçu ?</a>
+            <a href={APP_URL} className="btn-primary-lg" style={{ justifyContent: 'center', width: '100%' }}>{t('misc.returnToApp')} <ArrowRight size={15} /></a>
+            <a href="mailto:support@thwcoaching.com" className="btn-ghost-lg" style={{ justifyContent: 'center', width: '100%' }}><Receipt size={15} /> {t('misc.needReceipt')}</a>
           </div>
-          <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 18 }}>Un reçu a été envoyé à ton email par Stripe.</p>
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 18 }}>{t('misc.receiptSentNote')}</p>
         </div>
       </main>
       <Footer />

@@ -2,6 +2,7 @@
 
 import { useRef } from 'react'
 import type { CategorieCompetence } from '@/types/competences'
+import { useI18n } from '@/lib/i18n'
 import {
   SPORTS_ORDER, SPORT_LABELS, sportIcon,
   CATEGORIES_ORDER, CATEGORY_LABELS, categoryIcon,
@@ -42,14 +43,15 @@ function Item({ active, icon, label, onClick }: { active: boolean; icon?: React.
   )
 }
 
-const TABS: { id: CompetenceTab; label: string }[] = [
-  { id: 'toutes', label: 'Toutes' },
-  { id: 'actives', label: 'Actives' },
-  { id: 'miennes', label: 'Miennes' },
+const TABS: { id: CompetenceTab; labelKey: string }[] = [
+  { id: 'toutes', labelKey: 'competences.tabToutes' },
+  { id: 'actives', labelKey: 'competences.tabActives' },
+  { id: 'miennes', labelKey: 'competences.tabMiennes' },
 ]
 
 export default function MobileSidebar(props: Props) {
   const { open, onClose, activeSport, activeCategory, activeTab, onSelectSport, onSelectCategory, onSelectTab } = props
+  const { t } = useI18n()
   const touchStartX = useRef<number | null>(null)
 
   function handleTouchStart(e: React.TouchEvent) { touchStartX.current = e.touches[0].clientX }
@@ -88,24 +90,24 @@ export default function MobileSidebar(props: Props) {
           transition: 'transform 280ms cubic-bezier(0.4,0,0.2,1)',
         }}
       >
-        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', padding: '0 10px 6px' }}>Filtres</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', padding: '0 10px 6px' }}>{t('competences.filters')}</div>
 
-        <div style={labelStyle}>Sports</div>
+        <div style={labelStyle}>{t('competences.sports')}</div>
         {SPORTS_ORDER.map(s => (
           <Item key={s} active={activeSport === s} icon={sportIcon(s)} label={SPORT_LABELS[s]}
             onClick={() => { onSelectSport(s); onClose() }} />
         ))}
 
-        <div style={labelStyle}>Catégories</div>
+        <div style={labelStyle}>{t('competences.categories')}</div>
         {CATEGORIES_ORDER.map(c => (
           <Item key={c} active={activeCategory === c} icon={categoryIcon(c)} label={CATEGORY_LABELS[c]}
             onClick={() => { onSelectCategory(activeCategory === c ? null : c); onClose() }} />
         ))}
 
-        <div style={labelStyle}>Affichage</div>
-        {TABS.map(t => (
-          <Item key={t.id} active={activeTab === t.id} label={t.label}
-            onClick={() => { onSelectTab(t.id); onClose() }} />
+        <div style={labelStyle}>{t('competences.display')}</div>
+        {TABS.map(tab => (
+          <Item key={tab.id} active={activeTab === tab.id} label={t(tab.labelKey)}
+            onClick={() => { onSelectTab(tab.id); onClose() }} />
         ))}
       </div>
     </div>

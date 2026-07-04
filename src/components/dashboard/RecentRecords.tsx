@@ -7,11 +7,13 @@
 
 import { useMemo } from 'react'
 import { useRecords } from '@/hooks/useRecords'
+import { useI18n } from '@/lib/i18n'
 import { sportColor } from '@/components/recovery/helpers'
 import { Card, SectionTitle, SportDot, Skeleton } from './primitives'
 import { FD, FB, NUM, formatShortDate } from './lib'
 
 export function RecentRecords() {
+  const { t } = useI18n()
   const { records, loading } = useRecords()
 
   const recent = useMemo(() => {
@@ -25,7 +27,7 @@ export function RecentRecords() {
 
   return (
     <Card href="/performance">
-      <SectionTitle action={<span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>→</span>}>Records récents</SectionTitle>
+      <SectionTitle action={<span style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)' }}>→</span>}>{t('dashboard.recentRecords')}</SectionTitle>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {recent.map(r => (
           <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', paddingLeft: 'var(--space-3)', borderLeft: '2px solid var(--primary)' }}>

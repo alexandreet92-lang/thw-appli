@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { WelcomeVisual,       WELCOME_META }       from './global/slides/WelcomeSlide'
 import { AIModelsVisual,      AI_MODELS_META }     from './global/slides/AIModelsSlide'
 import { AgentsVisual,        AGENTS_META }        from './global/slides/AgentsSlide'
@@ -32,6 +33,7 @@ const SLIDES = [
 interface Props { onDone: () => void }
 
 export function GlobalOnboarding({ onDone }: Props) {
+  const { t } = useI18n()
   const [current, setCurrent]   = useState(0)
   const [exiting, setExiting]   = useState(false)
   const [mounted, setMounted]   = useState(false)
@@ -99,7 +101,7 @@ export function GlobalOnboarding({ onDone }: Props) {
 
       {/* Bouton Passer */}
       <button onClick={handleDismiss} style={{ position: 'absolute', top: 16, right: 20, padding: '5px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', fontSize: 12, cursor: 'pointer', zIndex: 10, fontFamily: 'DM Sans, sans-serif' }}>
-        Passer
+        {t('onboarding.skip')}
       </button>
 
       {/* Zone visuelle */}
@@ -114,15 +116,15 @@ export function GlobalOnboarding({ onDone }: Props) {
 
         {slide.meta.badge && (
           <div style={{ alignSelf: 'flex-start', padding: '3px 10px', borderRadius: 20, background: `rgba(${hexRgb(accent)},0.15)`, border: `1px solid rgba(${hexRgb(accent)},0.3)`, marginBottom: 10 }}>
-            <span style={{ fontSize: 10, color: accent, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>{slide.meta.badge}</span>
+            <span style={{ fontSize: 10, color: accent, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>{t(slide.meta.badge)}</span>
           </div>
         )}
 
         <h2 key={`t${current}`} style={{ fontSize: 22, fontWeight: 800, color: 'white', margin: '0 0 8px', lineHeight: 1.2, letterSpacing: '-0.3px', fontFamily: 'Syne, sans-serif', animation: 'gob-slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both' }}>
-          {slide.meta.title}
+          {t(slide.meta.title)}
         </h2>
         <p key={`d${current}`} style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, margin: 0, animation: 'gob-slide-up 0.4s 0.06s cubic-bezier(0.16,1,0.3,1) both' }}>
-          {slide.meta.description}
+          {t(slide.meta.description)}
         </p>
 
         {slide.meta.keyPoints && (
@@ -132,7 +134,7 @@ export function GlobalOnboarding({ onDone }: Props) {
                 <div style={{ width: 14, height: 14, borderRadius: '50%', background: `rgba(${hexRgb(accent)},0.2)`, border: `1px solid rgba(${hexRgb(accent)},0.5)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
                   <div style={{ width: 4, height: 4, borderRadius: '50%', background: accent }} />
                 </div>
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{pt}</span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{t(pt)}</span>
               </div>
             ))}
           </div>
@@ -153,11 +155,11 @@ export function GlobalOnboarding({ onDone }: Props) {
             )}
             {isLast ? (
               <button onClick={handleDismiss} style={{ padding: '10px 24px', borderRadius: 24, background: `linear-gradient(135deg, #8B5CF6, #06B6D4)`, border: 'none', color: 'white', fontSize: 15, fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.3px', fontFamily: 'DM Sans, sans-serif', animation: 'go-pulse-glow 2s ease-in-out infinite' }}>
-                Commencer l&apos;aventure →
+                {t('onboarding.startAdventure')} →
               </button>
             ) : (
               <button onClick={() => goTo(current + 1)} style={{ padding: '9px 20px', borderRadius: 24, background: `linear-gradient(135deg, ${accent}, ${accent}99)`, border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: `0 4px 16px ${accent}55`, fontFamily: 'DM Sans, sans-serif' }}>
-                Suivant →
+                {t('onboarding.next')} →
               </button>
             )}
           </div>

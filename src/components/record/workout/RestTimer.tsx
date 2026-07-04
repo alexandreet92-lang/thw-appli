@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   seconds: number
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function RestTimer({ seconds, onDone, isDark, accent = '#06B6D4' }: Props) {
+  const { t } = useI18n()
   const [remaining, setRemaining] = useState(seconds)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   // onDone via ref : sinon chaque re-render du parent (timer global qui tique
@@ -39,7 +41,7 @@ export default function RestTimer({ seconds, onDone, isDark, accent = '#06B6D4' 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 20px', gap: 24, background: 'var(--bg-card)' }}>
-      <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: dim, margin: 0 }}>Repos</p>
+      <p style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: dim, margin: 0 }}>{t('record.restTitle')}</p>
       <div style={{ position: 'relative', width: 110, height: 110 }}>
         <svg width="110" height="110" style={{ transform: 'rotate(-90deg)' }}>
           <circle cx="55" cy="55" r="44" fill="none" stroke={dim} strokeWidth="6" />
@@ -66,7 +68,7 @@ export default function RestTimer({ seconds, onDone, isDark, accent = '#06B6D4' 
         onClick={onDone}
         style={{ padding: '10px 28px', borderRadius: 12, background: accent, border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
       >
-        Passer
+        {t('record.restSkip')}
       </button>
     </div>
   )

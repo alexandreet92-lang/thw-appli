@@ -6667,55 +6667,49 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
     setMapBottomInset(insetForTy(ty))
   }, [sheetPos, winH, snapTy, insetForTy])
 
-  // Geste unifié sur TOUTE la feuille (pas seulement la poignée) :
-  //  • feuille pas en plein écran → glisser n'importe où la déplace (haut = ouvre).
-  //  • feuille plein écran :
-  //      – glisser vers le HAUT → défilement natif du contenu ;
-  //      – glisser vers le BAS depuis la moitié haute (contenu proche du sommet)
-  //        → la feuille redescend et dévoile la carte.
+  // Geste de la feuille via un listener natif qui NE casse jamais le défilement.
+  // Il ne prend la main (et n'appelle preventDefault) que dans 2 cas nets :
+  //   • feuille PAS en plein écran → glisser n'importe où la déplace (haut = ouvre) ;
+  //   • feuille EN plein écran + contenu tout en haut + vers le BAS → replie (dévoile la carte).
+  // Dans tous les autres cas (plein écran, on lit/défile) il ne fait rien → le
+  // scroll natif fonctionne normalement.
+  const snapNearest = useCallback((ty: number) => (['low', 'mid', 'full'] as const)
+    .map(p => ({ p, v: snapTy(p) }))
+    .reduce((b, c) => Math.abs(c.v - ty) < Math.abs(b.v - ty) ? c : b), [snapTy])
+
   useEffect(() => {
     const el = sheetRef.current
     if (!el) return
-    let startY = 0, startTy = 0, startScroll = 0
-    let mode: 'sheet' | 'scroll' | null = null
-    const snapNearest = (ty: number) => (['low', 'mid', 'full'] as const)
-      .map(p => ({ p, v: snapTy(p) }))
-      .reduce((b, c) => Math.abs(c.v - ty) < Math.abs(b.v - ty) ? c : b)
-
+    let sy = 0, sty = 0, active = false, decided = false
     const onStart = (e: TouchEvent) => {
-      startY = e.touches[0].clientY
-      startTy = currentTyRef.current
-      startScroll = el.scrollTop
-      mode = null
-      isDraggingRef.current = false
+      sy = e.touches[0].clientY; sty = currentTyRef.current; active = false; decided = false
     }
     const onMove = (e: TouchEvent) => {
-      const delta = e.touches[0].clientY - startY
-      if (mode === null) {
-        if (Math.abs(delta) < 6) return
-        if (startTy > 0.5) mode = 'sheet'                       // pas plein écran → déplacer la feuille
-        else if (delta > 0 && startScroll <= 0) mode = 'sheet'  // plein écran + contenu tout en haut + vers le bas → replier (dévoile la carte)
-        else mode = 'scroll'                                    // sinon : défilement natif du contenu
-        if (mode === 'sheet') { isDraggingRef.current = true; el.style.transition = 'none' }
+      const delta = e.touches[0].clientY - sy
+      if (!decided) {
+        if (Math.abs(delta) < 8) return
+        decided = true
+        const notFull = sty > 0.5
+        if (notFull) active = true                              // peek → déplacer la feuille
+        else if (el.scrollTop <= 0 && delta > 0) active = true  // plein écran + haut + bas → replier
+        else active = false                                     // sinon : défilement natif
+        if (active) { isDraggingRef.current = true; el.style.transition = 'none' }
       }
-      if (mode === 'sheet') {
-        e.preventDefault()
-        const ty = Math.max(snapTy('full'), Math.min(snapTy('low'), startTy + delta))
-        currentTyRef.current = ty
-        el.style.transform = `translateY(${ty}px)`
-      }
+      if (!active) return
+      e.preventDefault()
+      const ty = Math.max(snapTy('full'), Math.min(snapTy('low'), sty + delta))
+      currentTyRef.current = ty
+      el.style.transform = `translateY(${ty}px)`
     }
     const onEnd = () => {
-      if (mode === 'sheet' && isDraggingRef.current) {
-        isDraggingRef.current = false
-        const nearest = snapNearest(currentTyRef.current)
-        currentTyRef.current = nearest.v
-        el.style.transition = 'transform 0.34s cubic-bezier(0.2,0.8,0.2,1)'
-        el.style.transform = `translateY(${nearest.v}px)`
-        setSheetPos(nearest.p)
-        setMapBottomInset(insetForTy(nearest.v))
-      }
-      mode = null
+      if (!active) return
+      active = false; isDraggingRef.current = false
+      const nearest = snapNearest(currentTyRef.current)
+      currentTyRef.current = nearest.v
+      el.style.transition = 'transform 0.34s cubic-bezier(0.2,0.8,0.2,1)'
+      el.style.transform = `translateY(${nearest.v}px)`
+      setSheetPos(nearest.p)
+      setMapBottomInset(insetForTy(nearest.v))
     }
     el.addEventListener('touchstart', onStart, { passive: true })
     el.addEventListener('touchmove', onMove, { passive: false })
@@ -6727,7 +6721,7 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
       el.removeEventListener('touchend', onEnd)
       el.removeEventListener('touchcancel', onEnd)
     }
-  }, [snapTy, insetForTy, winH])
+  }, [snapTy, insetForTy, snapNearest])
 
   // Tracé GPS décodé (pour mapping curseur → point sur la carte)
   const polylinePoints = useMemo<LatLngPoint[] | null>(() => {

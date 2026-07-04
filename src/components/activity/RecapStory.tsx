@@ -281,18 +281,23 @@ export function RecapStory({ period, activities, refDate, onClose }: {
       if (!cancelled && data) setRecRows(data as unknown as RecordRow[])
       // 2) Backfill incrémental : calcule les courbes manquantes pour un petit lot.
       const { data: todo } = await sb.from('activities')
-        .select('id,sport_type,streams')
+        .select('id,started_at,sport_type,streams')
         .eq('user_id', user.id)
         .is('power_curve', null).is('pace_curve', null)
         .not('streams', 'is', null)
-        .limit(12)
+        .limit(30)
       if (cancelled || !todo || todo.length === 0) return
-      const fresh: RecordRow[] = []
-      for (const a of todo as Array<{ id: string; sport_type: string; streams: unknown }>) {
-        const { power_curve, pace_curve } = computeCurves(a.streams as never, a.sport_type)
-        await sb.from('activities').update({ power_curve: power_curve ?? {}, pace_curve: pace_curve ?? {} }).eq('id', a.id)
-        if (power_curve || pace_curve) fresh.push({ started_at: new Date().toISOString(), sport_type: a.sport_type, power_curve, pace_curve })
+      const rows = todo as Array<{ id: string; started_at: string; sport_type: string; streams: unknown }>
+      const computed = rows.map(a => ({ a, ...computeCurves(a.streams as never, a.sport_type) }))
+      // Écritures en parallèle (par lots pour ne pas saturer).
+      for (let i = 0; i < computed.length; i += 8) {
+        if (cancelled) return
+        await Promise.all(computed.slice(i, i + 8).map(c =>
+          sb.from('activities').update({ power_curve: c.power_curve ?? {}, pace_curve: c.pace_curve ?? {} }).eq('id', c.a.id)))
       }
+      const fresh: RecordRow[] = computed
+        .filter(c => c.power_curve || c.pace_curve)
+        .map(c => ({ started_at: c.a.started_at, sport_type: c.a.sport_type, power_curve: c.power_curve, pace_curve: c.pace_curve }))
       if (!cancelled && fresh.length) setRecRows(prev => [...prev, ...fresh])
     })()
     return () => { cancelled = true }

@@ -38,10 +38,34 @@ export function MonthlySummary({ activities }: { activities: RecapAct[] }) {
     return { count: acts.length, time, dist, sm, top, best, label }
   }, [activities, lang]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (now.getDate() > 3 || dismissed || data.count === 0) return null
+  if (data.count === 0) return null
 
   const topCfg = data.top && (data.top in SPORT_ICON) ? SPORT_ICON[data.top as keyof typeof SPORT_ICON] : null
   const accent = topCfg?.color ?? '#06B6D4'
+  // La grosse carte ne s'affiche que les 3 premiers jours du mois ; ensuite,
+  // un bouton compact reste disponible pour rouvrir le récap du mois écoulé.
+  const showBig = now.getDate() <= 3 && !dismissed
+
+  if (!showBig) {
+    return (
+      <>
+        {storyOpen && <RecapStory period="month" activities={activities} onClose={() => setStoryOpen(false)} />}
+        <button onClick={() => setStoryOpen(true)} style={{
+          display: 'flex', alignItems: 'center', gap: 11, width: '100%', marginBottom: 16, cursor: 'pointer',
+          padding: '12px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', textAlign: 'left',
+        }}>
+          <span style={{ width: 34, height: 34, borderRadius: '50%', background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="13" height="14" viewBox="0 0 15 16" aria-hidden><path d="M2 1.5v13l11-6.5z" fill="#fff" /></svg>
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>{t('activities.msTitle')}</span>
+            <span style={{ display: 'block', fontSize: 15, fontWeight: 800, color: 'var(--text)', textTransform: 'capitalize' }}>{data.label}</span>
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: accent, flexShrink: 0 }}>{data.count} · {fmtH(data.time)}</span>
+        </button>
+      </>
+    )
+  }
 
   function dismiss() { try { window.localStorage.setItem(`monthly-dismiss-${monthKey}`, '1') } catch { /* ignore */ } setDismissed(true) }
   function onShare() {

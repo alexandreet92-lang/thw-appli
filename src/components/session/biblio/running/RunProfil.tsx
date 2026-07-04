@@ -62,10 +62,15 @@ function blocBars(b: Bloc): Bar[] {
   const out: Bar[] = []
   for (let i = 0; i < reps; i++) {
     if (b.segments && b.segments.length) {
-      // Set composite : une barre par segment (intensités entrelacées).
+      // Set composite : une barre par segment (intensités entrelacées),
+      // + micro-récup intra-set le cas échéant (barre atténuée).
       for (const s of b.segments) {
         const d = blocDureeSec(s.zone, s.dureeSec, s.distanceM)
         if (d > 0) out.push({ zone: s.zone, durationSec: d, effort: true, vitesse: allureVitesse(s.allure, s.zone) })
+        if (s.recupSec && s.recupSec > 0) {
+          const rz = s.recupZone ?? 'Z1'
+          out.push({ zone: rz, durationSec: s.recupSec, effort: false, vitesse: allureVitesse('trot', rz) })
+        }
       }
     } else {
       const eff = blocDureeSec(b.zone, b.dureeSec, b.distanceM)

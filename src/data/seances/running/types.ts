@@ -25,12 +25,15 @@ export interface BlocRecup {
 
 // Segment d'un bloc COMPOSITE (set entrelacé à intensité variable),
 // ex. reps × (500 @105% + 1000 @10k + 500 @105%).
+// recupSec : micro-récup INTRA-set après ce segment (ex. 400@5k /30'' 300@3000).
 export interface BlocSegment {
   zone: Zone
   label?: string
   allure?: string
   distanceM?: number
   dureeSec?: number
+  recupSec?: number             // récup intra-set après ce segment (0/absent = enchaîné)
+  recupZone?: Zone              // zone de cette micro-récup (défaut Z1)
 }
 
 export interface Bloc {

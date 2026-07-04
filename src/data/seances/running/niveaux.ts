@@ -46,7 +46,7 @@ function segSec(zone: Zone, dureeSec?: number, distanceM?: number): number {
 // Durée d'effort d'un bloc (segments composites sommés le cas échéant).
 function effortSec(b: Bloc): number {
   if (b.segments && b.segments.length) {
-    return b.segments.reduce((a, s) => a + segSec(s.zone, s.dureeSec, s.distanceM), 0)
+    return b.segments.reduce((a, s) => a + segSec(s.zone, s.dureeSec, s.distanceM) + (s.recupSec ?? 0), 0)
   }
   return segSec(b.zone, b.dureeSec, b.distanceM)
 }

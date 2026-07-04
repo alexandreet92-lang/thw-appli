@@ -6692,10 +6692,10 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
     const onMove = (e: TouchEvent) => {
       const delta = e.touches[0].clientY - startY
       if (mode === null) {
-        if (Math.abs(delta) < 5) return
-        if (startTy > 0.5) mode = 'sheet'                                  // pas plein écran → déplacer la feuille
-        else if (delta > 0 && startScroll < winH * 0.5) { mode = 'sheet'; el.scrollTop = 0 } // plein écran, moitié haute, vers le bas → replier
-        else mode = 'scroll'                                               // sinon défilement natif du contenu
+        if (Math.abs(delta) < 6) return
+        if (startTy > 0.5) mode = 'sheet'                       // pas plein écran → déplacer la feuille
+        else if (delta > 0 && startScroll <= 0) mode = 'sheet'  // plein écran + contenu tout en haut + vers le bas → replier (dévoile la carte)
+        else mode = 'scroll'                                    // sinon : défilement natif du contenu
         if (mode === 'sheet') { isDraggingRef.current = true; el.style.transition = 'none' }
       }
       if (mode === 'sheet') {

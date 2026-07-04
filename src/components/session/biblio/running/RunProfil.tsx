@@ -36,7 +36,8 @@ function allureVitesse(allure: string | undefined, zone: Zone): number {
   if (t.includes('15k')) return 94
   if (t.includes('10k')) return 96
   if (t.includes('5k')) return 100
-  if (t.includes('seuil')) return 93
+  if (t.includes('seuil') || t.includes('sl2')) return 93
+  if (t.includes('sl1')) return 88
   if (t.includes('float')) return 85
   if (t.includes('trot')) return 62
   if (t.includes('marche')) return 50

@@ -11,9 +11,10 @@
 // ══════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { IconX, IconChevronLeft, IconChevronRight, IconShare2, IconDownload, IconTrophy, IconFlame, IconMountain, IconClock, IconBolt, IconRoad, IconGauge, IconMedal } from '@tabler/icons-react'
+import { IconX, IconChevronLeft, IconChevronRight, IconShare2, IconDownload, IconTrophy, IconFlame, IconMountain, IconClock, IconBolt, IconMedal } from '@tabler/icons-react'
 import { SPORT_ICON, sportKeyFromType, type SportKey } from '@/components/icons/SportIcon'
 import { shareCard, type ShareStat } from '@/lib/share/shareCard'
+import { computeCurves, aggregatePowerRecords, aggregatePaceRecords, fmtRecordTime, POWER_DURATIONS, POWER_LABELS, RUN_DISTANCES, RUN_LABELS, type RecordRow, type RecordSet } from '@/lib/records/curves'
 
 export interface RecapAct {
   started_at: string; sport_type: string
@@ -150,6 +151,45 @@ function DeltaBadge({ cur, prev }: { cur: number; prev: number; }) {
   )
 }
 
+// ── Liste de records (année + all-time), défilable verticalement ──
+function RecordsList({ title, records, keys, labels, accent, fmtVal, active, year }: {
+  title: string; records: RecordSet; keys: readonly number[]; labels: Record<number, string>
+  accent: string; fmtVal: (v: number) => string; active: boolean; year: number
+}) {
+  const at = new Map(records.allTime.map(e => [e.key, e]))
+  const yr = new Map(records.year.map(e => [e.key, e]))
+  const hasAny = records.allTime.length > 0
+  return (
+    <div style={{ padding: '64px 22px 24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>Records · {title}</div>
+      <div style={{ fontSize: 23, fontWeight: 800, color: '#fff', marginTop: 4, marginBottom: 12 }}>Année & all-time</div>
+      {!hasAny ? (
+        <div style={{ margin: 'auto', textAlign: 'center', color: 'rgba(255,255,255,0.7)' }}>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>Records en cours de calcul…</div>
+          <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.5)', marginTop: 6, lineHeight: 1.5 }}>Ils se remplissent automatiquement à mesure que les activités détaillées se synchronisent.</div>
+        </div>
+      ) : (
+        <div onPointerDown={e => e.stopPropagation()} style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.4)', padding: '0 12px 2px' }}>
+            <span style={{ flex: 1 }} /><span style={{ width: 96, textAlign: 'right' }}>All-time</span><span style={{ width: 74, textAlign: 'right' }}>{year}</span>
+          </div>
+          {keys.map((k, i) => {
+            const a = at.get(k); if (!a) return null
+            const y = yr.get(k)
+            return (
+              <div key={k} style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '9px 12px', opacity: active ? 1 : 0, transform: active ? 'none' : 'translateY(8px)', transition: `all .4s ${Math.min(i * 35, 500)}ms` }}>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#fff' }}>{labels[k]}</span>
+                <span style={{ width: 96, textAlign: 'right', fontSize: 15, fontWeight: 800, color: accent, fontFamily: '"DM Mono",monospace' }}>{fmtVal(a.value)}</span>
+                <span style={{ width: 74, textAlign: 'right', fontSize: 12, fontWeight: 700, color: y ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)', fontFamily: '"DM Mono",monospace' }}>{y ? fmtVal(y.value) : '—'}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Carrousel de cartes d'activités (map + data), défile toutes les ~2,6 s ──
 function MapCarousel({ acts, active, label }: { acts: RecapAct[]; active: boolean; label: string }) {
   const [i, setI] = useState(0)
@@ -223,6 +263,43 @@ export function RecapStory({ period, activities, refDate, onClose }: {
   // Accent global = sport dominant de la période.
   const heroSport = cur.bySport[0]?.key ?? 'run'
   const accent = sportColor(String(heroSport))
+
+  // ── Records (puissance/allure) : lecture des courbes stockées + backfill léger ──
+  const [recRows, setRecRows] = useState<RecordRow[]>([])
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { createClient } = await import('@/lib/supabase/client')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user || cancelled) return
+      // 1) Lecture des courbes déjà calculées (payload minuscule).
+      const { data } = await sb.from('activities')
+        .select('started_at,sport_type,power_curve,pace_curve')
+        .eq('user_id', user.id)
+        .or('power_curve.not.is.null,pace_curve.not.is.null')
+      if (!cancelled && data) setRecRows(data as unknown as RecordRow[])
+      // 2) Backfill incrémental : calcule les courbes manquantes pour un petit lot.
+      const { data: todo } = await sb.from('activities')
+        .select('id,sport_type,streams')
+        .eq('user_id', user.id)
+        .is('power_curve', null).is('pace_curve', null)
+        .not('streams', 'is', null)
+        .limit(12)
+      if (cancelled || !todo || todo.length === 0) return
+      const fresh: RecordRow[] = []
+      for (const a of todo as Array<{ id: string; sport_type: string; streams: unknown }>) {
+        const { power_curve, pace_curve } = computeCurves(a.streams as never, a.sport_type)
+        await sb.from('activities').update({ power_curve: power_curve ?? {}, pace_curve: pace_curve ?? {} }).eq('id', a.id)
+        if (power_curve || pace_curve) fresh.push({ started_at: new Date().toISOString(), sport_type: a.sport_type, power_curve, pace_curve })
+      }
+      if (!cancelled && fresh.length) setRecRows(prev => [...prev, ...fresh])
+    })()
+    return () => { cancelled = true }
+  }, [])
+  const recYear = ref.getFullYear()
+  const powerRec = useMemo(() => aggregatePowerRecords(recRows, recYear), [recRows, recYear])
+  const paceRec = useMemo(() => aggregatePaceRecords(recRows, recYear), [recRows, recYear])
 
   // ── Construction des pages ──
   const pages = useMemo(() => {
@@ -413,45 +490,20 @@ export function RecapStory({ period, activities, refDate, onClose }: {
       }
     }
 
-    // Records — bests toutes disciplines + plus grosse séance (durée) par sport
-    {
-      const recs: { icon: ReactNode; label: string; value: string; sub: string }[] = []
-      if (cur.longest) recs.push({ icon: <IconClock size={20} color="#fff" />, label: 'Plus longue séance', value: fmtH(cur.longest.moving_time_s ?? 0), sub: cur.longest.title || sportLabel(String(sportKeyFromType(cur.longest.sport_type) ?? cur.longest.sport_type)) })
-      if (cur.farthest && (cur.farthest.distance_m ?? 0) > 0) recs.push({ icon: <IconRoad size={20} color="#fff" />, label: 'Plus longue distance', value: `${fmtKm(cur.farthest.distance_m ?? 0)} km`, sub: cur.farthest.title || '' })
-      if (cur.mostClimb && (cur.mostClimb.elevation_gain_m ?? 0) > 0) recs.push({ icon: <IconMountain size={20} color="#fff" />, label: 'Plus gros dénivelé', value: `${Math.round(cur.mostClimb.elevation_gain_m ?? 0)} m`, sub: cur.mostClimb.title || '' })
-      if (cur.top) recs.push({ icon: <IconGauge size={20} color="#fff" />, label: 'Séance la plus intense', value: `SM ${Math.round(cur.top.tss ?? 0)}`, sub: cur.top.title || '' })
+    // Records puissance (vélo) — année + all-time
+    if (cur.bySport.some(s => s.key === 'bike') || powerRec.allTime.length > 0) {
       list.push({
-        id: 'records', bg: grad('#0f766e'), accent: '#14b8a6',
-        share: { title: `Records — ${per}`, subtitle: 'Tes meilleures perfs', stats: recs.slice(0, 4).map(r => ({ label: r.label, value: r.value })) },
-        render: (active) => (
-          <div style={{ padding: '64px 26px 30px', height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>Records</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', marginTop: 4, marginBottom: 18 }}>Tes meilleures perfs</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {recs.map((r, i) => (
-                <div key={i} style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 14, padding: '13px 13px', opacity: active ? 1 : 0, transform: active ? 'none' : 'scale(.95) translateY(8px)', transition: `all .5s cubic-bezier(.2,.8,.2,1) ${i * 90}ms` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(255,255,255,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{r.icon}</div>
-                    <span style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.15 }}>{r.label}</span>
-                  </div>
-                  <div style={{ fontSize: 21, fontWeight: 800, color: '#fff' }}>{r.value}</div>
-                  {r.sub && <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.sub}</div>}
-                </div>
-              ))}
-            </div>
-            {/* Plus grosse séance (durée) par sport */}
-            <div style={{ marginTop: 18, background: 'rgba(255,255,255,0.07)', borderRadius: 14, padding: '12px 14px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>Plus longue séance par sport</div>
-              {cur.bySport.filter(s => s.longAct).map((s, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: i < cur.bySport.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none', opacity: active ? 1 : 0, transition: `opacity .5s ${400 + i * 80}ms` }}>
-                  <span style={{ width: 9, height: 9, borderRadius: 3, background: sportColor(String(s.key)), flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', flex: 1 }}>{sportLabel(String(s.key))}</span>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,0.9)' }}>{fmtH(s.longAct?.moving_time_s ?? 0)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ),
+        id: 'rec-power', bg: grad('#0f766e'), accent: '#14b8a6',
+        share: { title: 'Records puissance', subtitle: 'Vélo · all-time', stats: powerRec.allTime.slice(0, 4).map(e => ({ label: e.label, value: `${e.value} W` })) },
+        render: (active) => <RecordsList title="Puissance" year={recYear} records={powerRec} keys={POWER_DURATIONS} labels={POWER_LABELS} accent="#5eead4" fmtVal={v => `${v} W`} active={active} />,
+      })
+    }
+    // Records allure (course) — année + all-time
+    if (cur.bySport.some(s => s.key === 'run') || paceRec.allTime.length > 0) {
+      list.push({
+        id: 'rec-pace', bg: grad('#6d28d9'), accent: '#a78bfa',
+        share: { title: 'Records course', subtitle: 'Allure · all-time', stats: paceRec.allTime.slice(0, 4).map(e => ({ label: e.label, value: fmtRecordTime(e.value) })) },
+        render: (active) => <RecordsList title="Course" year={recYear} records={paceRec} keys={RUN_DISTANCES} labels={RUN_LABELS} accent="#c4b5fd" fmtVal={fmtRecordTime} active={active} />,
       })
     }
 
@@ -542,7 +594,7 @@ export function RecapStory({ period, activities, refDate, onClose }: {
       },
     })
     return list
-  }, [cur, prev, trend, accent, period, curBounds])
+  }, [cur, prev, trend, accent, period, curBounds, powerRec, paceRec, recYear])
 
   const nPages = pages.length
   const [idx, setIdx] = useState(0)

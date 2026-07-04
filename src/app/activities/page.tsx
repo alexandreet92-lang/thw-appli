@@ -42,6 +42,7 @@ import { ActivityCard, type ActivityCardData } from '@/components/activity/Activ
 import { WeeklyGoals } from '@/components/activity/WeeklyGoals'
 import { MonthlySummary } from '@/components/activity/MonthlySummary'
 import { WeeklySummary } from '@/components/activity/WeeklySummary'
+import { ActivityMedia } from '@/components/activity/ActivityMedia'
 import { shareCard } from '@/lib/share/shareCard'
 import { useSmSn } from '@/hooks/useSmSn'
 import { smSnFromRow } from '@/lib/metrics/smSn'
@@ -130,6 +131,7 @@ interface Activity {
   laps:             LapData[] | null
   summary_polyline: string | null
   raw_data:         Record<string, unknown> | null
+  media:            Array<{ url: string; type: 'image' | 'video'; path: string }> | null
   [key: string]:    unknown
 }
 
@@ -339,7 +341,7 @@ const PAGE_SIZE = 50
 // power_curve, pace_curve) qui ne servent qu'au détail : un `select('*')` les
 // tirait pour chaque ligne → payload énorme → timeout (500). On garde tout le
 // reste (dont summary_polyline pour la mini-carte et laps).
-const LIST_COLUMNS = 'id,user_id,provider,provider_id,external_url,sport_type,is_race,race_name,title,description,notes,started_at,ended_at,timezone,moving_time_s,elapsed_time_s,distance_m,elevation_gain_m,elevation_loss_m,max_elevation_m,avg_speed_ms,max_speed_ms,avg_pace_s_km,avg_watts,max_watts,normalized_watts,kilojoules,ftp_at_time,intensity_factor,tss,avg_hr,max_hr,min_hr,avg_cadence,max_cadence,calories,suffer_score,perceived_effort,rpe,avg_temp_c,weather,gear_name,trainer,commute,flagged,laps,created_at,updated_at,total_descent_m,trimp,aerobic_decoupling,average_heartrate,max_heartrate,average_speed,cardiac_drift_pct,summary_polyline,strava_gear_id,records_processed,records_beaten,feeling,difficulty,ef_value,power_hr_ratio,decoupling_pct,ef_calculation_method,sm_score,sn_score'
+const LIST_COLUMNS = 'id,user_id,provider,provider_id,external_url,sport_type,is_race,race_name,title,description,notes,started_at,ended_at,timezone,moving_time_s,elapsed_time_s,distance_m,elevation_gain_m,elevation_loss_m,max_elevation_m,avg_speed_ms,max_speed_ms,avg_pace_s_km,avg_watts,max_watts,normalized_watts,kilojoules,ftp_at_time,intensity_factor,tss,avg_hr,max_hr,min_hr,avg_cadence,max_cadence,calories,suffer_score,perceived_effort,rpe,avg_temp_c,weather,gear_name,trainer,commute,flagged,laps,created_at,updated_at,total_descent_m,trimp,aerobic_decoupling,average_heartrate,max_heartrate,average_speed,cardiac_drift_pct,summary_polyline,strava_gear_id,records_processed,records_beaten,feeling,difficulty,ef_value,power_hr_ratio,decoupling_pct,ef_calculation_method,sm_score,sn_score,media'
 
 function useActivities() {
   const [activities, setActivities]   = useState<Activity[]>([])
@@ -6616,8 +6618,6 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
   const sheetRef       = useRef<HTMLDivElement>(null)
   const isDraggingRef  = useRef(false)
   const currentTyRef   = useRef(0)
-  const dragStartY     = useRef(0)
-  const dragStartTy    = useRef(0)
 
   const snapTy = useCallback((pos: 'low' | 'mid' | 'full'): number => {
     if (pos === 'low')  return winH * 0.80   // sheet en bas → carte ~80% visible
@@ -6646,36 +6646,67 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
     setMapBottomInset(insetForTy(ty))
   }, [sheetPos, winH, snapTy, insetForTy])
 
-  function onSheetTouchStart(e: React.TouchEvent) {
-    isDraggingRef.current = true
-    dragStartY.current  = e.touches[0].clientY
-    dragStartTy.current = currentTyRef.current
-    if (sheetRef.current) sheetRef.current.style.transition = 'none'
-  }
-
-  function onSheetTouchMove(e: React.TouchEvent) {
-    if (!isDraggingRef.current) return
-    const delta = e.touches[0].clientY - dragStartY.current
-    const ty = Math.max(snapTy('full'), Math.min(snapTy('low'), dragStartTy.current + delta))
-    currentTyRef.current = ty
-    if (sheetRef.current) sheetRef.current.style.transform = `translateY(${ty}px)`  // direct DOM, 60fps
-  }
-
-  function onSheetTouchEnd() {
-    if (!isDraggingRef.current) return
-    isDraggingRef.current = false
-    const ty = currentTyRef.current
-    const nearest = (['low', 'mid', 'full'] as const)
+  // Geste unifié sur TOUTE la feuille (pas seulement la poignée) :
+  //  • feuille pas en plein écran → glisser n'importe où la déplace (haut = ouvre).
+  //  • feuille plein écran :
+  //      – glisser vers le HAUT → défilement natif du contenu ;
+  //      – glisser vers le BAS depuis la moitié haute (contenu proche du sommet)
+  //        → la feuille redescend et dévoile la carte.
+  useEffect(() => {
+    const el = sheetRef.current
+    if (!el) return
+    let startY = 0, startTy = 0, startScroll = 0
+    let mode: 'sheet' | 'scroll' | null = null
+    const snapNearest = (ty: number) => (['low', 'mid', 'full'] as const)
       .map(p => ({ p, v: snapTy(p) }))
       .reduce((b, c) => Math.abs(c.v - ty) < Math.abs(b.v - ty) ? c : b)
-    currentTyRef.current = nearest.v
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = 'transform 0.34s cubic-bezier(0.2,0.8,0.2,1)'
-      sheetRef.current.style.transform  = `translateY(${nearest.v}px)`
+
+    const onStart = (e: TouchEvent) => {
+      startY = e.touches[0].clientY
+      startTy = currentTyRef.current
+      startScroll = el.scrollTop
+      mode = null
+      isDraggingRef.current = false
     }
-    setSheetPos(nearest.p)               // persiste le snap (recadre la carte via effet)
-    setMapBottomInset(insetForTy(nearest.v))
-  }
+    const onMove = (e: TouchEvent) => {
+      const delta = e.touches[0].clientY - startY
+      if (mode === null) {
+        if (Math.abs(delta) < 5) return
+        if (startTy > 0.5) mode = 'sheet'                                  // pas plein écran → déplacer la feuille
+        else if (delta > 0 && startScroll < winH * 0.5) { mode = 'sheet'; el.scrollTop = 0 } // plein écran, moitié haute, vers le bas → replier
+        else mode = 'scroll'                                               // sinon défilement natif du contenu
+        if (mode === 'sheet') { isDraggingRef.current = true; el.style.transition = 'none' }
+      }
+      if (mode === 'sheet') {
+        e.preventDefault()
+        const ty = Math.max(snapTy('full'), Math.min(snapTy('low'), startTy + delta))
+        currentTyRef.current = ty
+        el.style.transform = `translateY(${ty}px)`
+      }
+    }
+    const onEnd = () => {
+      if (mode === 'sheet' && isDraggingRef.current) {
+        isDraggingRef.current = false
+        const nearest = snapNearest(currentTyRef.current)
+        currentTyRef.current = nearest.v
+        el.style.transition = 'transform 0.34s cubic-bezier(0.2,0.8,0.2,1)'
+        el.style.transform = `translateY(${nearest.v}px)`
+        setSheetPos(nearest.p)
+        setMapBottomInset(insetForTy(nearest.v))
+      }
+      mode = null
+    }
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd)
+    el.addEventListener('touchcancel', onEnd)
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchend', onEnd)
+      el.removeEventListener('touchcancel', onEnd)
+    }
+  }, [snapTy, insetForTy, winH])
 
   // Tracé GPS décodé (pour mapping curseur → point sur la carte)
   const polylinePoints = useMemo<LatLngPoint[] | null>(() => {
@@ -7437,13 +7468,10 @@ conseil pour la prochaine séance similaire.`
             transform: `translateY(${snapTy(sheetPos)}px)`,
           }}
         >
-          {/* Handle (drag) — sticky en haut de la sheet */}
+          {/* Handle (drag) — sticky en haut de la sheet. Le geste est géré sur
+              toute la feuille (listener natif), plus seulement ici. */}
           <div
             className="thw-activity-sheet-handle"
-            onTouchStart={onSheetTouchStart}
-            onTouchMove={onSheetTouchMove}
-            onTouchEnd={onSheetTouchEnd}
-            onTouchCancel={onSheetTouchEnd}
             style={{ position: 'sticky', top: 0, zIndex: 3, background: 'var(--bg)', borderRadius: '20px 20px 0 0', display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}
           >
             <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'var(--info-border)' }} />
@@ -7492,6 +7520,11 @@ conseil pour la prochaine séance similaire.`
           {/* Jauges Ressenti / Difficulté (mobile) */}
           <div style={{ padding: '0 16px' }}>
             <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} />
+          </div>
+
+          {/* Photos & vidéos (mobile) */}
+          <div style={{ padding: '14px 16px 0' }}>
+            <ActivityMedia activityId={a.id} initialMedia={a.media} />
           </div>
 
           {/* Records battus — sous la carte (mobile) */}
@@ -7984,6 +8017,11 @@ conseil pour la prochaine séance similaire.`
 
         {/* ── Jauges Ressenti / Difficulté (desktop) ── */}
         <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} />
+
+        {/* ── Photos & vidéos (desktop) ── */}
+        <div style={{ marginBottom: 20 }}>
+          <ActivityMedia activityId={a.id} initialMedia={a.media} />
+        </div>
 
         {/* ── Records battus — sous la carte (desktop) ── */}
         <RecordsBeaten activityId={a.id} isBike={isBike} />

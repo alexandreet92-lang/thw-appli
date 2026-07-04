@@ -42,6 +42,19 @@ function block(lang) {
 
 let src = readFileSync(dictPath, 'utf8')
 
+// Clés déjà déclarées dans l'objet fr : on les ignore pour ne pas créer de
+// doublon de propriété (erreur TS) ni écraser une valeur existante.
+const frExisting = src.slice(src.indexOf('const fr: Dict'), src.indexOf('const en: Dict'))
+const existing = new Set([...frExisting.matchAll(/'([^']+)'\s*:/g)].map(m => m[1]))
+let skipped = 0
+for (const [ns, m] of byNs) {
+  for (const key of [...m.keys()]) {
+    if (existing.has(key)) { m.delete(key); skipped++; total-- }
+  }
+  if (m.size === 0) byNs.delete(ns)
+}
+if (skipped) console.log(`(${skipped} clés déjà présentes ignorées)`)
+
 // Insère avant la fermeture de chaque objet (fr / en). On repère `\nconst en:` et
 // `\nexport const DICTS` comme bornes de fin des objets fr et en respectivement.
 function injectInto(src, langVar, nextMarker, langKey) {

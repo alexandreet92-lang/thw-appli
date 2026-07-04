@@ -117,6 +117,49 @@ export function aggregatePaceRecords(rows: RecordRow[], year: number): RecordSet
   return { allTime: bestBy(runs, RUN_DISTANCES, RUN_LABELS, r => r.pace_curve, lt), year: bestBy(yearRows, RUN_DISTANCES, RUN_LABELS, r => r.pace_curve, lt) }
 }
 
+// ── Records DU MOIS : meilleure perf réalisée sur la période + badge PR ──
+export interface PeriodRecordEntry {
+  key: number; label: string
+  periodValue: number                 // meilleure perf réalisée sur la période
+  allTimeValue: number | null         // meilleur all-time (toutes activités)
+  yearValue: number | null            // meilleur de l'année
+  pr: 'all-time' | 'year' | null      // record battu par la perf de la période
+}
+
+function periodRecords(
+  rows: RecordRow[], keys: readonly number[], labels: Record<number, string>,
+  pick: (r: RecordRow) => Curve | null, sportRe: RegExp, better: (a: number, b: number) => boolean,
+  periodStart: Date, periodEnd: Date, year: number,
+): PeriodRecordEntry[] {
+  const relevant = rows.filter(r => pick(r) && sportRe.test(r.sport_type))
+  const out: PeriodRecordEntry[] = []
+  for (const k of keys) {
+    let allT: number | null = null, yr: number | null = null, per: number | null = null
+    for (const r of relevant) {
+      const v = pick(r)?.[String(k)]
+      if (v == null) continue
+      const d = new Date(r.started_at)
+      if (allT == null || better(v, allT)) allT = v
+      if (d.getFullYear() === year && (yr == null || better(v, yr))) yr = v
+      if (d >= periodStart && d < periodEnd && (per == null || better(v, per))) per = v
+    }
+    if (per == null) continue
+    // per est inclus dans allT/yr → si non strictement dépassé, c'est LE record.
+    const pr: 'all-time' | 'year' | null =
+      (allT != null && !better(allT, per)) ? 'all-time'
+      : (yr != null && !better(yr, per)) ? 'year' : null
+    out.push({ key: k, label: labels[k] ?? String(k), periodValue: per, allTimeValue: allT, yearValue: yr, pr })
+  }
+  return out
+}
+
+export function aggregatePeriodPowerRecords(rows: RecordRow[], start: Date, end: Date, year: number): PeriodRecordEntry[] {
+  return periodRecords(rows, POWER_DURATIONS, POWER_LABELS, r => r.power_curve, /bike|ride|cycl|vélo|velo/i, (a, b) => a > b, start, end, year)
+}
+export function aggregatePeriodPaceRecords(rows: RecordRow[], start: Date, end: Date, year: number): PeriodRecordEntry[] {
+  return periodRecords(rows, RUN_DISTANCES, RUN_LABELS, r => r.pace_curve, /run|course|trail/i, (a, b) => a < b, start, end, year)
+}
+
 export function fmtRecordTime(s: number): string {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.round(s % 60)
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`

@@ -14,7 +14,7 @@ import { createPortal } from 'react-dom'
 import { IconX, IconChevronLeft, IconChevronRight, IconShare2, IconDownload, IconTrophy, IconFlame, IconMountain, IconClock, IconBolt, IconMedal } from '@tabler/icons-react'
 import { SPORT_ICON, sportKeyFromType, type SportKey } from '@/components/icons/SportIcon'
 import { shareCard, type ShareStat } from '@/lib/share/shareCard'
-import { computeCurves, aggregatePowerRecords, aggregatePaceRecords, fmtRecordTime, POWER_DURATIONS, POWER_LABELS, RUN_DISTANCES, RUN_LABELS, type RecordRow, type RecordSet } from '@/lib/records/curves'
+import { computeCurves, aggregatePeriodPowerRecords, aggregatePeriodPaceRecords, fmtRecordTime, type RecordRow, type PeriodRecordEntry } from '@/lib/records/curves'
 
 export interface RecapAct {
   started_at: string; sport_type: string
@@ -32,8 +32,10 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 function mapUrl(poly: string, color: string, w: number, h: number): string | null {
   if (!MAPBOX_TOKEN || !poly) return null
   const c = color.replace('#', '')
-  const overlay = `path-4+${c}-1(${encodeURIComponent(poly)})`
-  return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${overlay}/auto/${w}x${h}@2x?access_token=${MAPBOX_TOKEN}`
+  const enc = encodeURIComponent(poly)
+  // Liseré blanc dessous + trait couleur du sport dessus → bien lisible sur la carte.
+  const overlay = `path-8+ffffff-1(${enc}),path-5+${c}-1(${enc})`
+  return `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/${overlay}/auto/${w}x${h}@2x?access_token=${MAPBOX_TOKEN}`
 }
 
 // ── format ────────────────────────────────────────────────────────
@@ -151,36 +153,34 @@ function DeltaBadge({ cur, prev }: { cur: number; prev: number; }) {
   )
 }
 
-// ── Liste de records (année + all-time), défilable verticalement ──
-function RecordsList({ title, records, keys, labels, accent, fmtVal, active, year }: {
-  title: string; records: RecordSet; keys: readonly number[]; labels: Record<number, string>
-  accent: string; fmtVal: (v: number) => string; active: boolean; year: number
+// ── Records du MOIS : perfs réalisées sur la période + badge si record battu ──
+function RecordsList({ title, entries, accent, fmtVal, active, periodLabel }: {
+  title: string; entries: PeriodRecordEntry[]; accent: string
+  fmtVal: (v: number) => string; active: boolean; periodLabel: string
 }) {
-  const at = new Map(records.allTime.map(e => [e.key, e]))
-  const yr = new Map(records.year.map(e => [e.key, e]))
-  const hasAny = records.allTime.length > 0
+  const prCount = entries.filter(e => e.pr).length
   return (
     <div style={{ padding: '64px 22px 24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>Records · {title}</div>
-      <div style={{ fontSize: 23, fontWeight: 800, color: '#fff', marginTop: 4, marginBottom: 12 }}>Année & all-time</div>
-      {!hasAny ? (
+      <div style={{ fontSize: 23, fontWeight: 800, color: '#fff', marginTop: 4 }}>Tes perfs {periodLabel}</div>
+      {prCount > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: accent, marginTop: 2, marginBottom: 10 }}>🏆 {prCount} record{prCount > 1 ? 's' : ''} battu{prCount > 1 ? 's' : ''} !</div>}
+      {entries.length === 0 ? (
         <div style={{ margin: 'auto', textAlign: 'center', color: 'rgba(255,255,255,0.7)' }}>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>Records en cours de calcul…</div>
-          <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.5)', marginTop: 6, lineHeight: 1.5 }}>Ils se remplissent automatiquement à mesure que les activités détaillées se synchronisent.</div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>Aucune perf détaillée {periodLabel}</div>
+          <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.5)', marginTop: 6, lineHeight: 1.5 }}>Les efforts se calculent depuis les données détaillées (puissance / GPS) à mesure qu'elles se synchronisent.</div>
         </div>
       ) : (
-        <div onPointerDown={e => e.stopPropagation()} style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.4)', padding: '0 12px 2px' }}>
-            <span style={{ flex: 1 }} /><span style={{ width: 96, textAlign: 'right' }}>All-time</span><span style={{ width: 74, textAlign: 'right' }}>{year}</span>
-          </div>
-          {keys.map((k, i) => {
-            const a = at.get(k); if (!a) return null
-            const y = yr.get(k)
+        <div onPointerDown={e => e.stopPropagation()} style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, marginTop: prCount > 0 ? 0 : 10 }}>
+          {entries.map((e, i) => {
+            const rec = e.pr === 'all-time' ? { txt: '🏆 Record', col: '#fbbf24' } : e.pr === 'year' ? { txt: '🥇 Année', col: '#a3e635' } : null
+            const beat = e.pr ? null : (e.allTimeValue != null ? `record ${fmtVal(e.allTimeValue)}` : null)
             return (
-              <div key={k} style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '9px 12px', opacity: active ? 1 : 0, transform: active ? 'none' : 'translateY(8px)', transition: `all .4s ${Math.min(i * 35, 500)}ms` }}>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#fff' }}>{labels[k]}</span>
-                <span style={{ width: 96, textAlign: 'right', fontSize: 15, fontWeight: 800, color: accent, fontFamily: '"DM Mono",monospace' }}>{fmtVal(a.value)}</span>
-                <span style={{ width: 74, textAlign: 'right', fontSize: 12, fontWeight: 700, color: y ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)', fontFamily: '"DM Mono",monospace' }}>{y ? fmtVal(y.value) : '—'}</span>
+              <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 8, background: e.pr ? `${rec!.col}1f` : 'rgba(255,255,255,0.08)', border: e.pr ? `1px solid ${rec!.col}66` : '1px solid transparent', borderRadius: 10, padding: '9px 12px', opacity: active ? 1 : 0, transform: active ? 'none' : 'translateY(8px)', transition: `all .4s ${Math.min(i * 35, 500)}ms` }}>
+                <span style={{ width: 74, fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{e.label}</span>
+                <span style={{ flex: 1, fontSize: 17, fontWeight: 800, color: accent, fontFamily: '"DM Mono",monospace' }}>{fmtVal(e.periodValue)}</span>
+                {rec
+                  ? <span style={{ fontSize: 11, fontWeight: 800, color: rec.col, flexShrink: 0 }}>{rec.txt}</span>
+                  : beat && <span style={{ fontSize: 10.5, fontWeight: 600, color: 'rgba(255,255,255,0.45)', fontFamily: '"DM Mono",monospace', flexShrink: 0 }}>{beat}</span>}
               </div>
             )
           })}
@@ -285,6 +285,7 @@ export function RecapStory({ period, activities, refDate, onClose }: {
         .eq('user_id', user.id)
         .is('power_curve', null).is('pace_curve', null)
         .not('streams', 'is', null)
+        .order('started_at', { ascending: false })
         .limit(30)
       if (cancelled || !todo || todo.length === 0) return
       const rows = todo as Array<{ id: string; started_at: string; sport_type: string; streams: unknown }>
@@ -303,8 +304,8 @@ export function RecapStory({ period, activities, refDate, onClose }: {
     return () => { cancelled = true }
   }, [])
   const recYear = ref.getFullYear()
-  const powerRec = useMemo(() => aggregatePowerRecords(recRows, recYear), [recRows, recYear])
-  const paceRec = useMemo(() => aggregatePaceRecords(recRows, recYear), [recRows, recYear])
+  const powerRec = useMemo(() => aggregatePeriodPowerRecords(recRows, curBounds.start, curBounds.end, recYear), [recRows, curBounds, recYear])
+  const paceRec = useMemo(() => aggregatePeriodPaceRecords(recRows, curBounds.start, curBounds.end, recYear), [recRows, curBounds, recYear])
 
   // ── Construction des pages ──
   const pages = useMemo(() => {
@@ -495,20 +496,21 @@ export function RecapStory({ period, activities, refDate, onClose }: {
       }
     }
 
-    // Records puissance (vélo) — année + all-time
-    if (cur.bySport.some(s => s.key === 'bike') || powerRec.allTime.length > 0) {
+    const perLabel = period === 'week' ? 'de la semaine' : 'du mois'
+    // Records puissance (vélo) — perfs du mois + badge PR
+    if (cur.bySport.some(s => s.key === 'bike') || powerRec.length > 0) {
       list.push({
         id: 'rec-power', bg: grad('#0f766e'), accent: '#14b8a6',
-        share: { title: 'Records puissance', subtitle: 'Vélo · all-time', stats: powerRec.allTime.slice(0, 4).map(e => ({ label: e.label, value: `${e.value} W` })) },
-        render: (active) => <RecordsList title="Puissance" year={recYear} records={powerRec} keys={POWER_DURATIONS} labels={POWER_LABELS} accent="#5eead4" fmtVal={v => `${v} W`} active={active} />,
+        share: { title: 'Records puissance', subtitle: `Vélo · ${perLabel}`, stats: powerRec.slice(0, 4).map(e => ({ label: `${e.label}${e.pr ? ' 🏆' : ''}`, value: `${e.periodValue} W` })) },
+        render: (active) => <RecordsList title="Puissance" entries={powerRec} accent="#5eead4" fmtVal={v => `${v} W`} active={active} periodLabel={perLabel} />,
       })
     }
-    // Records allure (course) — année + all-time
-    if (cur.bySport.some(s => s.key === 'run') || paceRec.allTime.length > 0) {
+    // Records allure (course) — perfs du mois + badge PR
+    if (cur.bySport.some(s => s.key === 'run') || paceRec.length > 0) {
       list.push({
         id: 'rec-pace', bg: grad('#6d28d9'), accent: '#a78bfa',
-        share: { title: 'Records course', subtitle: 'Allure · all-time', stats: paceRec.allTime.slice(0, 4).map(e => ({ label: e.label, value: fmtRecordTime(e.value) })) },
-        render: (active) => <RecordsList title="Course" year={recYear} records={paceRec} keys={RUN_DISTANCES} labels={RUN_LABELS} accent="#c4b5fd" fmtVal={fmtRecordTime} active={active} />,
+        share: { title: 'Records course', subtitle: `Allure · ${perLabel}`, stats: paceRec.slice(0, 4).map(e => ({ label: `${e.label}${e.pr ? ' 🏆' : ''}`, value: fmtRecordTime(e.periodValue) })) },
+        render: (active) => <RecordsList title="Course" entries={paceRec} accent="#c4b5fd" fmtVal={fmtRecordTime} active={active} periodLabel={perLabel} />,
       })
     }
 

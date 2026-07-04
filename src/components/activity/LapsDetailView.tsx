@@ -433,14 +433,14 @@ function LapDetailsSheet({ open, onClose, lap, lapIndex, streams, ftp, bikeZones
       <div
         onClick={doClose}
         style={{
-          position: 'fixed', inset: 0, zIndex: 1050,
+          position: 'fixed', inset: 0, zIndex: 14800,
           background: 'rgba(0,0,0,0.55)',
           animation: `${closing ? 'lapSheetFadeOut 0.28s ease-in forwards' : 'lapSheetFadeIn 0.3s ease-out'}`,
         }}
       />
       <div
         style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1100,
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 14900,
           background: 'var(--bg)',
           borderRadius: '20px 20px 0 0',
           maxHeight: '90vh', overflowY: 'auto',
@@ -907,8 +907,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
                   display: 'grid', gridTemplateColumns: '28px 1fr 1fr 1fr',
                   gap: 8,
                   width: '100%',
-                  padding: '14px 16px',
-                  borderBottom: isActive ? 'none' : '1px solid var(--border)',
+                  padding: '13px 16px',
                   background: isActive ? (isDark ? 'rgba(124,58,237,0.15)' : '#ede9fe') : 'transparent',
                   borderLeft: isActive ? `3px solid ${PURPLE_ACTIVE}` : '3px solid transparent',
                   borderRadius: isActive ? 8 : 0,

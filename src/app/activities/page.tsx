@@ -5707,6 +5707,19 @@ function SectionDonnees({ activities, zones, profile }: {
                     setPmcHoverIdx(Math.max(0, Math.min(pmcSeries.length - 1, idx)))
                   }}
                   onMouseLeave={() => setPmcHoverIdx(null)}
+                  onTouchStart={e => {
+                    const rect = pmcSvgRef.current?.getBoundingClientRect()
+                    if (!rect) return
+                    const pct = (e.touches[0].clientX - rect.left) / rect.width
+                    setPmcHoverIdx(Math.max(0, Math.min(pmcSeries.length - 1, Math.round(pct * (pmcSeries.length - 1)))))
+                  }}
+                  onTouchMove={e => {
+                    const rect = pmcSvgRef.current?.getBoundingClientRect()
+                    if (!rect) return
+                    const pct = (e.touches[0].clientX - rect.left) / rect.width
+                    setPmcHoverIdx(Math.max(0, Math.min(pmcSeries.length - 1, Math.round(pct * (pmcSeries.length - 1)))))
+                  }}
+                  onTouchEnd={() => setPmcHoverIdx(null)}
                 >
                   {/* Y gridlines */}
                   {[0, 25, 50, 75, 100].map(v => {
@@ -5762,29 +5775,37 @@ function SectionDonnees({ activities, zones, profile }: {
                         <circle cx={x} cy={pmcYOf(pt.ctl)} r="4" fill="#06B6D4" />
                         <circle cx={x} cy={pmcYOf(pt.atl)} r="3.5" fill="#F97316" />
                         <circle cx={x} cy={pmcYOf(pt.tsb)} r="3" fill="#EF4444" />
-                        {/* Tooltip box — agrandi pour lisibilité (TSS + CTL/ATL/TSB) */}
-                        {(() => {
-                          const TW = 168, TH = 132
-                          const tipX = pmcHoverIdx > pmcSeries.length * 0.6 ? x - (TW + 12) : x + 12
-                          const tipY = PMC_PT
-                          return (
-                            <g>
-                              <rect x={tipX} y={tipY} width={TW} height={TH} rx="10"
-                                fill="var(--bg)" stroke="var(--border)" strokeWidth="1.5" />
-                              <text x={tipX + 12} y={tipY + 22} fontSize="13" fontWeight="700" fill="var(--text)">
-                                {new Date(pt.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
-                              </text>
-                              <text x={tipX + 12} y={tipY + 46} fontSize="13" fill="var(--text-dim)" fontWeight="600">SM séance <tspan fill="var(--text)" fontWeight="700">{pt.tss}</tspan></text>
-                              <text x={tipX + 12} y={tipY + 72} fontSize="15" fill="#06B6D4" fontWeight="700">CTL {pt.ctl}</text>
-                              <text x={tipX + 12} y={tipY + 96} fontSize="15" fill="#F97316" fontWeight="700">ATL {pt.atl}</text>
-                              <text x={tipX + 12} y={tipY + 120} fontSize="15" fill="#EF4444" fontWeight="700">TSB {pt.tsb > 0 ? '+' : ''}{pt.tsb}</text>
-                            </g>
-                          )
-                        })()}
                       </>
                     )
                   })()}
                 </svg>
+                {/* Tooltip HTML (pixels réels) — l'SVG est étiré non-uniformément
+                    (preserveAspectRatio=none) donc le texte SVG serait écrasé sur mobile. */}
+                {pmcHoverIdx !== null && pmcSeries[pmcHoverIdx] && (() => {
+                  const pt = pmcSeries[pmcHoverIdx]
+                  const leftPct = (pmcXOf(pmcHoverIdx) / PMC_W) * 100
+                  const flip = pmcHoverIdx > pmcSeries.length * 0.55
+                  return (
+                    <div style={{
+                      position: 'absolute', top: PMC_PT, left: `${leftPct}%`, zIndex: 3, pointerEvents: 'none',
+                      transform: flip ? 'translateX(calc(-100% - 10px))' : 'translateX(10px)',
+                      minWidth: 150, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10,
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.18)', padding: '10px 13px',
+                    }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>
+                        {new Date(pt.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                      </div>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-dim)', fontWeight: 600, marginBottom: 7 }}>
+                        SM séance <span style={{ color: 'var(--text)', fontWeight: 800 }}>{pt.tss}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: '#06B6D4' }}>CTL {pt.ctl}</span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: '#F97316' }}>ATL {pt.atl}</span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: '#EF4444' }}>TSB {pt.tsb > 0 ? '+' : ''}{pt.tsb}</span>
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             ) : (
               <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 12 }}>
@@ -7806,20 +7827,19 @@ conseil pour la prochaine séance similaire.`
             )}
 
             {/* DELETE */}
-            <div style={{ marginTop: 32, paddingBottom: 8 }}>
+            <div style={{ marginTop: 28, paddingBottom: 8, display: 'flex', justifyContent: 'center' }}>
               <button
                 className="thw-delete-activity-btn"
                 onClick={() => setShowDeleteConfirm(true)}
                 style={{
-                  display: 'block', width: '100%',
-                  padding: '16px 20px', margin: '0 auto',
-                  background: 'transparent', color: '#ef4444',
-                  border: '2px solid #ef4444', borderRadius: 12,
-                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
-                  transition: 'background 0.15s ease, transform 0.1s ease',
-                  fontFamily: 'inherit',
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  padding: '9px 16px', background: 'rgba(239,68,68,0.07)', color: '#ef4444',
+                  border: '1px solid rgba(239,68,68,0.32)', borderRadius: 999,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  transition: 'background 0.15s ease', fontFamily: 'inherit',
                 }}
               >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"/></svg>
                 Supprimer l&apos;activité
               </button>
             </div>

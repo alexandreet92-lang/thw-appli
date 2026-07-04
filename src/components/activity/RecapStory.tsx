@@ -20,10 +20,20 @@ export interface RecapAct {
   moving_time_s: number | null; distance_m: number | null; elevation_gain_m: number | null
   avg_hr: number | null; avg_speed_ms: number | null; avg_pace_s_km: number | null; avg_watts: number | null
   tss: number | null; rpe: number | null; calories: number | null; title: string | null; is_race?: boolean | null
+  difficulty?: number | null; summary_polyline?: string | null
 }
 
 const STORY_MS = 15000
 const N_TREND = 6
+const CARD_MS = 2600
+
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
+function mapUrl(poly: string, color: string, w: number, h: number): string | null {
+  if (!MAPBOX_TOKEN || !poly) return null
+  const c = color.replace('#', '')
+  const overlay = `path-4+${c}-1(${encodeURIComponent(poly)})`
+  return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/${overlay}/auto/${w}x${h}@2x?access_token=${MAPBOX_TOKEN}`
+}
 
 // ── format ────────────────────────────────────────────────────────
 function fmtH(s: number): string { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m}min` }
@@ -137,6 +147,63 @@ function DeltaBadge({ cur, prev }: { cur: number; prev: number; }) {
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 800, color: c, background: `${c}22`, borderRadius: 999, padding: '3px 9px' }}>
       {up ? '▲' : '▼'} {Math.abs(pct)}%
     </span>
+  )
+}
+
+// ── Carrousel de cartes d'activités (map + data), défile toutes les ~2,6 s ──
+function MapCarousel({ acts, active, label }: { acts: RecapAct[]; active: boolean; label: string }) {
+  const [i, setI] = useState(0)
+  useEffect(() => {
+    if (!active || acts.length <= 1) return
+    const t = setInterval(() => setI(v => (v + 1) % acts.length), CARD_MS)
+    return () => clearInterval(t)
+  }, [active, acts.length])
+  useEffect(() => { if (!active) setI(0) }, [active])
+  if (acts.length === 0) return null
+  const idx = Math.min(i, acts.length - 1)
+  const a = acts[idx]
+  const k = sportKeyFromType(a.sport_type) ?? a.sport_type
+  const c = sportColor(String(k))
+  const Cfg = sportCfg(String(k))
+  const url = a.summary_polyline ? mapUrl(a.summary_polyline, c, 640, 420) : null
+  const stats: { v: string; l: string }[] = [{ v: fmtH(a.moving_time_s ?? 0), l: 'durée' }]
+  if ((a.distance_m ?? 0) > 0) stats.push({ v: `${fmtKm(a.distance_m ?? 0)}`, l: 'km' })
+  if ((a.elevation_gain_m ?? 0) > 0) stats.push({ v: `${Math.round(a.elevation_gain_m ?? 0)}`, l: 'm D+' })
+  if (a.tss != null) stats.push({ v: String(Math.round(a.tss)), l: 'SM' })
+  return (
+    <div style={{ padding: '64px 26px 30px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)' }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', marginTop: 4, marginBottom: 16 }}>Tes plus grosses séances</div>
+      <div key={a.started_at} style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRadius: 20, overflow: 'hidden', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', animation: 'storyFade .5s ease' }}>
+        <div style={{ position: 'relative', flex: 1, minHeight: 0, background: `linear-gradient(160deg, ${c}55, #0a0a0f)` }}>
+          {url
+            ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>Pas de tracé</div>}
+          <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)', borderRadius: 999, padding: '6px 12px 6px 8px' }}>
+            <div style={{ width: 26, height: 26, borderRadius: '50%', background: c, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{Cfg ? <Cfg.Icon size={15} color="#fff" stroke={2.3} /> : null}</div>
+            <span style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{sportLabel(String(k))}</span>
+          </div>
+        </div>
+        <div style={{ padding: '14px 16px' }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title || 'Séance'}</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginBottom: 10 }}>{new Date(a.started_at).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })}</div>
+          <div style={{ display: 'flex', gap: 18 }}>
+            {stats.map((s, j) => (
+              <div key={j}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', fontFamily: 'var(--font-display, sans-serif)' }}>{s.v}</div>
+                <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.5)' }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* Points de progression du carrousel */}
+      {acts.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 12 }}>
+          {acts.map((_, j) => <span key={j} style={{ width: j === idx ? 18 : 6, height: 6, borderRadius: 3, background: j === idx ? '#fff' : 'rgba(255,255,255,0.35)', transition: 'all .3s' }} />)}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -328,6 +395,23 @@ export function RecapStory({ period, activities, refDate, onClose }: {
         },
       })
     })
+
+    // Grosses séances (map + data, défilement auto) — plus longue par sport + plus intense
+    {
+      const notable: RecapAct[] = []
+      const seen = new Set<string>()
+      const add = (a: RecapAct | null | undefined) => { if (a && !seen.has(a.started_at)) { seen.add(a.started_at); notable.push(a) } }
+      cur.bySport.forEach(s => add(s.longAct))
+      add(cur.top)
+      const top = notable.slice(0, 5)
+      if (top.length > 0) {
+        list.push({
+          id: 'big-sessions', bg: grad(accent), accent,
+          share: { title: `Grosses séances — ${per}`, subtitle: 'Tes temps forts', stats: top.slice(0, 4).map(a => ({ label: (a.title || 'Séance').slice(0, 16), value: fmtH(a.moving_time_s ?? 0) })) },
+          render: (activePage) => <MapCarousel acts={top} active={activePage} label={period === 'week' ? 'Semaine' : 'Mois'} />,
+        })
+      }
+    }
 
     // Records — bests toutes disciplines + plus grosse séance (durée) par sport
     {

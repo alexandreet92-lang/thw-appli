@@ -6,6 +6,7 @@ import { IconArrowLeft } from '@tabler/icons-react'
 import type { Seance, Bloc, PhaseBloc, Niveau } from '@/data/seances/running'
 import { FILIERE_LABEL, BUCKET_SHORT, NIVEAUX, hasNiveaux, scaleSeance, volumePrefixe, volumeSignature } from '@/data/seances/running'
 import { RunProfil, ResumeBandeau, ZONE_TOKEN, ZONE_LABEL } from './RunProfil'
+import { AddToPlanning } from '../AddToPlanning'
 import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -119,6 +120,21 @@ export function SeanceDetail({ seance, onBack }: { seance: Seance; onBack: () =>
         <Tag>{FILIERE_LABEL[seance.filiere]}</Tag>
         <Tag>{seance.phase}</Tag>
         {(seance.distanceCible ?? [seance.bucket]).map(d => <Tag key={d}>{BUCKET_SHORT[d]}</Tag>)}
+      </div>
+
+      {/* Ajouter au planning : choix du jour + du niveau */}
+      <div style={{ marginBottom: 'var(--space-5)' }}>
+        <AddToPlanning
+          sport="run"
+          title={variante ? `${seance.nom} — ${variante.nom}` : seance.nom}
+          objectif={seance.objectif}
+          niveaux={showNiveaux ? NIVEAUX.map(n => ({ id: n.id, label: n.label })) : null}
+          defaultNiveau={niveau}
+          computeMeta={(nivId) => {
+            const s = showNiveaux && nivId ? scaleSeance(base, nivId as Niveau) : base
+            return { durationMin: s.dureeEstimeeMin, rpe: s.rpe }
+          }}
+        />
       </div>
 
       {/* Switcher de variantes (même intention, structure différente) */}

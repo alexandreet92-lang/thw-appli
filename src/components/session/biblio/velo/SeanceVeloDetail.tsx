@@ -7,6 +7,7 @@ import { useI18n } from '@/lib/i18n'
 import type { Seance, Bloc, PhaseBloc, Cadence, Niveau } from '@/data/seances/velo'
 import { VELO_BUCKET_LABEL, SUPPORT_LABEL, NIVEAUX, hasNiveaux, scaleSeance, volumePrefixe, volumeSignature } from '@/data/seances/velo'
 import { VeloProfil, ResumeBandeau, ZONE_TOKEN, ZONE_LABEL } from './VeloProfil'
+import { AddToPlanning } from '../AddToPlanning'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
@@ -105,6 +106,21 @@ export function SeanceVeloDetail({ seance, onBack }: { seance: Seance; onBack: (
         {seance.support.map(s => <Tag key={s}>{SUPPORT_LABEL[s]}</Tag>)}
         {seance.terrain && <Tag>{seance.terrain === 'cote' ? t('session.cote') : t('session.plat')}</Tag>}
         {seance.cadenceTag && <Tag>{t(CADENCE_KEY[seance.cadenceTag])}</Tag>}
+      </div>
+
+      {/* Ajouter au planning : choix du jour + du niveau */}
+      <div style={{ marginBottom: 'var(--space-5)' }}>
+        <AddToPlanning
+          sport="bike"
+          title={variante ? `${seance.nom} — ${variante.nom}` : seance.nom}
+          objectif={seance.objectif}
+          niveaux={showNiveaux ? NIVEAUX.map(n => ({ id: n.id, label: n.label })) : null}
+          defaultNiveau={niveau}
+          computeMeta={(nivId) => {
+            const s = showNiveaux && nivId ? scaleSeance(base, nivId as Niveau) : base
+            return { durationMin: Math.round((s.dureeMinMin + s.dureeMaxMin) / 2), rpe: s.rpe }
+          }}
+        />
       </div>
 
       {/* Switcher de variantes (même intention, structure différente) */}

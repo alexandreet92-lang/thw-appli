@@ -17,7 +17,23 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 
-const SILENCE_MS = 1400
+const SILENCE_MS = 1200
+const SPEECH_RMS = 0.014   // seuil VAD : au-dessus = on parle
+
+// Encode des blocs PCM Float32 en WAV 16 bits mono (pour /api/stt Whisper).
+function encodeWAV(chunks: Float32Array[], sampleRate: number): Blob {
+  const len = chunks.reduce((a, c) => a + c.length, 0)
+  const buffer = new ArrayBuffer(44 + len * 2)
+  const view = new DataView(buffer)
+  const w = (o: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)) }
+  w(0, 'RIFF'); view.setUint32(4, 36 + len * 2, true); w(8, 'WAVE')
+  w(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true)
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true)
+  w(36, 'data'); view.setUint32(40, len * 2, true)
+  let off = 44
+  for (const c of chunks) for (let i = 0; i < c.length; i++) { const s = Math.max(-1, Math.min(1, c[i])); view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true); off += 2 }
+  return new Blob([view], { type: 'audio/wav' })
+}
 // WAV silencieux minimal — sert à déverrouiller la lecture audio sur iOS.
 const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='
 
@@ -109,11 +125,18 @@ export function VoiceConversation({ onTurn, onClose }: {
   const pressingRef = useRef(false)
   const unlockedRef = useRef(false)
   const settingsRef = useRef<VoiceSettings>(DEFAULT_SETTINGS)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recRef = useRef<any>(null)
   const finalRef = useRef('')
   const silenceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const endedRef = useRef(false)
+  // Capture micro (pipeline fiable getUserMedia + PCM + Whisper, façon Claude)
+  const streamRef = useRef<MediaStream | null>(null)
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
+  const processorRef = useRef<ScriptProcessorNode | null>(null)
+  const gainCapRef = useRef<GainNode | null>(null)
+  const pcmRef = useRef<Float32Array[]>([])
+  const hadSpeechRef = useRef(false)
+  const transcribingRef = useRef(false)
+  const sampleRateRef = useRef(16000)
 
   // Audio serveur (lecture directe) + chaîne Web Audio (amplification + haut-parleur iOS)
   const audioElRef = useRef<HTMLAudioElement | null>(null)
@@ -147,78 +170,108 @@ export function VoiceConversation({ onTurn, onClose }: {
     setSettings(prev => {
       const next = { ...prev, ...patch }
       try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)) } catch { /* ignore */ }
-      if (patch.lang && recRef.current) { try { recRef.current.lang = patch.lang } catch { /* ignore */ } }
       return next
     })
   }
 
-  // ── Reconnaissance vocale ───────────────────────────────────
+  // ── Capture micro fiable : getUserMedia + PCM + VAD → Whisper (/api/stt) ──
+  // Remplace webkitSpeechRecognition (instable sur iOS). On accumule le son
+  // tant qu'on parle ; après un silence, on transcrit côté serveur.
   useEffect(() => {
     if (!mounted) return
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR) { setSupported(false); return }
-
     audioElRef.current = new Audio()
     audioElRef.current.crossOrigin = 'anonymous'
     audioElRef.current.volume = 1
+    endedRef.current = false
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rec: any = new SR()
-    rec.lang = settingsRef.current.lang
-    rec.continuous = true
-    rec.interimResults = true
-    rec.maxAlternatives = 1
-    recRef.current = rec
-
-    const armSilence = () => {
-      if (settingsRef.current.mode === 'push') return
-      if (silenceRef.current) clearTimeout(silenceRef.current)
-      silenceRef.current = setTimeout(() => {
-        if (phaseRef.current === 'listening' && !mutedRef.current && finalRef.current.trim()) void finalizeTurn()
-      }, SILENCE_MS)
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onresult = (e: any) => {
-      if (endedRef.current || mutedRef.current) return
-      if (phaseRef.current !== 'listening') return
-      let interim = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalRef.current += e.results[i][0].transcript + ' '
-        else interim += e.results[i][0].transcript
-      }
-      // Texte EN DIRECT : ce qui est déjà figé + ce qui est en cours.
-      setLiveUser((finalRef.current + interim).trim())
-      armSilence()
-    }
-    rec.onend = () => {
-      if (endedRef.current) return
-      if (phaseRef.current === 'speaking') return
-      if ((settingsRef.current.mode === 'hands' && !mutedRef.current) || pressingRef.current) {
-        setTimeout(() => { if (!endedRef.current && phaseRef.current !== 'speaking') { try { rec.start() } catch { /* déjà démarrée */ } } }, 120)
-      }
-    }
-    rec.onerror = () => { /* no-speech / aborted… */ }
-
-    if (settingsRef.current.mode === 'hands') {
-      try { rec.start() } catch { /* ignore */ }
-    }
-    setPhaseBoth('listening')
+    ;(async () => {
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+      } catch { setSupported(false); return }
+      if (endedRef.current) { stream.getTracks().forEach(tr => tr.stop()); return }
+      streamRef.current = stream
+      try {
+        let ctx = audioCtxRef.current
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (!ctx || ctx.state === 'closed') { const C = window.AudioContext || (window as any).webkitAudioContext; ctx = new C(); audioCtxRef.current = ctx }
+        await ctx.resume?.()
+        sampleRateRef.current = ctx.sampleRate
+        const source = ctx.createMediaStreamSource(stream); sourceRef.current = source
+        const processor = ctx.createScriptProcessor(4096, 1, 1); processorRef.current = processor
+        const gain = ctx.createGain(); gain.gain.value = 0; gainCapRef.current = gain
+        pcmRef.current = []; hadSpeechRef.current = false
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        processor.onaudioprocess = (e: any) => {
+          if (endedRef.current) return
+          const listening = phaseRef.current === 'listening' && !mutedRef.current && !transcribingRef.current
+            && (settingsRef.current.mode === 'hands' || pressingRef.current)
+          if (!listening) return
+          const ch: Float32Array = e.inputBuffer.getChannelData(0)
+          let sum = 0; for (let i = 0; i < ch.length; i++) sum += ch[i] * ch[i]
+          const rms = Math.sqrt(sum / ch.length)
+          const speaking = rms > SPEECH_RMS
+          if (speaking) { hadSpeechRef.current = true; if (silenceRef.current) { clearTimeout(silenceRef.current); silenceRef.current = null } }
+          if (hadSpeechRef.current) {
+            pcmRef.current.push(new Float32Array(ch))
+            // Sécurité : coupe à ~30 s d'un seul tenant.
+            if (pcmRef.current.length > (sampleRateRef.current / 4096) * 30) { void finalizeUtterance(); return }
+            if (!speaking && settingsRef.current.mode === 'hands' && !silenceRef.current) {
+              silenceRef.current = setTimeout(() => { void finalizeUtterance() }, SILENCE_MS)
+            }
+          }
+        }
+        source.connect(processor); processor.connect(gain); gain.connect(ctx.destination)
+        setPhaseBoth('listening')
+      } catch { setSupported(false) }
+    })()
 
     return () => {
       endedRef.current = true
       if (silenceRef.current) clearTimeout(silenceRef.current)
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
-      try { rec.stop() } catch { /* ignore */ }
+      try { processorRef.current && (processorRef.current.onaudioprocess = null) } catch { /* ignore */ }
+      try { sourceRef.current?.disconnect() } catch { /* ignore */ }
+      try { processorRef.current?.disconnect() } catch { /* ignore */ }
+      try { gainCapRef.current?.disconnect() } catch { /* ignore */ }
+      try { streamRef.current?.getTracks().forEach(tr => tr.stop()) } catch { /* ignore */ }
       try { audioElRef.current?.pause() } catch { /* ignore */ }
-      try { audioCtxRef.current?.close?.() } catch { /* ignore */ }
       try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted])
 
-  useEffect(() => { pressingRef.current = pressing }, [pressing])
+  // Fin d'un tour de parole → transcription Whisper → réponse du coach.
+  async function finalizeUtterance() {
+    if (transcribingRef.current || endedRef.current) return
+    if (silenceRef.current) { clearTimeout(silenceRef.current); silenceRef.current = null }
+    const chunks = pcmRef.current
+    pcmRef.current = []
+    hadSpeechRef.current = false
+    const total = chunks.reduce((a, c) => a + c.length, 0)
+    if (total < sampleRateRef.current * 0.35) return   // trop court → bruit, on ignore
+    transcribingRef.current = true
+    setPhaseBoth('thinking')
+    try {
+      const wav = encodeWAV(chunks, sampleRateRef.current)
+      const form = new FormData()
+      form.append('file', wav, 'audio.wav')
+      form.append('language', settingsRef.current.lang.slice(0, 2))
+      const res = await fetch('/api/stt', { method: 'POST', body: form })
+      const text = res.ok ? (((await res.json().catch(() => null)) as { text?: string } | null)?.text ?? '').trim() : ''
+      transcribingRef.current = false
+      if (endedRef.current) return
+      if (text) { finalRef.current = text; void finalizeTurn() }
+      else setPhaseBoth('listening')   // rien compris → on ré-écoute
+    } catch { transcribingRef.current = false; if (!endedRef.current) setPhaseBoth('listening') }
+  }
+
+  useEffect(() => {
+    const was = pressingRef.current
+    pressingRef.current = pressing
+    // Push-to-talk : au relâchement, on finalise le tour de parole.
+    if (was && !pressing && settingsRef.current.mode === 'push') void finalizeUtterance()
+  }, [pressing])
 
   async function finalizeTurn() {
     const userText = finalRef.current.trim()
@@ -235,7 +288,6 @@ export function VoiceConversation({ onTurn, onClose }: {
     streamDoneRef.current = false
     lastOralRef.current = ''
     nextAudioRef.current = null
-    try { recRef.current?.stop() } catch { /* ignore */ }
 
     let res = { speak: '', show: '' }
     try { res = await onTurn(userText, handleOralChunk) } catch { /* erreur réseau */ }
@@ -414,10 +466,9 @@ export function VoiceConversation({ onTurn, onClose }: {
     if (endedRef.current) return
     // Révèle tout le texte (le karaoké se cale sur la fin de lecture).
     if (displayRef.current) setSpokenBoth(displayRef.current.length)
+    // Repart en écoute : la capture PCM reprend automatiquement (gate sur la phase).
+    pcmRef.current = []; hadSpeechRef.current = false
     setPhaseBoth('listening')
-    if (settingsRef.current.mode === 'hands' && !mutedRef.current) {
-      try { recRef.current?.start() } catch { /* déjà démarrée */ }
-    }
   }
 
   function stopSpeaking() {
@@ -433,22 +484,19 @@ export function VoiceConversation({ onTurn, onClose }: {
     if (settingsRef.current.mode !== 'hands') return
     const next = !mutedRef.current
     setMutedBoth(next)
-    if (next) { setLiveUser(''); try { recRef.current?.stop() } catch { /* ignore */ } stopSpeaking() }
-    else { setPhaseBoth('listening'); try { recRef.current?.start() } catch { /* ignore */ } }
+    if (next) { setLiveUser(''); pcmRef.current = []; hadSpeechRef.current = false; stopSpeaking() }
+    else { pcmRef.current = []; hadSpeechRef.current = false; setPhaseBoth('listening') }
   }
   const pushStart = () => {
     if (settingsRef.current.mode !== 'push') return
-    setPressing(true)
     stopSpeaking()
-    finalRef.current = ''
+    pcmRef.current = []; hadSpeechRef.current = false
     setPhaseBoth('listening')
-    try { recRef.current?.start() } catch { /* ignore */ }
+    setPressing(true)   // déclenche la capture (gate onaudioprocess) ; le relâchement finalise
   }
   const pushEnd = () => {
     if (settingsRef.current.mode !== 'push') return
-    setPressing(false)
-    try { recRef.current?.stop() } catch { /* ignore */ }
-    setTimeout(() => { if (finalRef.current.trim()) void finalizeTurn() }, 150)
+    setPressing(false)  // l'effet [pressing] appelle finalizeUtterance()
   }
 
   if (!mounted) return null

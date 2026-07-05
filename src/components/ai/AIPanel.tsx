@@ -19990,6 +19990,20 @@ export default function AIPanel({
       const controller = new AbortController()
       abortRef.current = controller
 
+      // Mode vocal : le TON et la LANGUE choisis (Paramètres vocaux) pilotent
+      // réellement l'IA — injectés comme règles dans le prompt système.
+      let effectiveRules = aiRules
+      if (opts?.voice) {
+        try {
+          const vs = JSON.parse(localStorage.getItem('thw_voice_settings') || '{}') as { style?: string; lang?: string }
+          const langName = vs.lang === 'en-US' ? 'anglais (English)' : vs.lang === 'es-ES' ? 'espagnol (Español)' : 'français'
+          const tone = vs.style === 'energique' ? 'énergique, dynamique et motivant'
+            : vs.style === 'neutre' ? 'neutre, clair et posé'
+            : 'doux, calme et bienveillant'
+          effectiveRules = [...aiRules, { category: 'voice', rule_text: `Tu réponds à l'ORAL dans une conversation parlée. Réponds IMPÉRATIVEMENT en ${langName}. Adopte un ton ${tone}. Fais des phrases courtes et naturelles, comme si tu parlais à voix haute.` }]
+        } catch { /* ignore */ }
+      }
+
       const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -20001,7 +20015,7 @@ export default function AIPanel({
           voice:    opts?.voice ? true : undefined,
           convId:   cid,
           messages: apiMsgs,
-          aiRules:  aiRules.length > 0 ? aiRules : undefined,
+          aiRules:  effectiveRules.length > 0 ? effectiveRules : undefined,
           // Merge plan_context (session IDs) into the existing context so that
           // formatTrainingPlanContext can inject them into the system prompt.
           context: isPlanChat

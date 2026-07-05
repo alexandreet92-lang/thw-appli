@@ -6673,55 +6673,61 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
   //   • feuille EN plein écran + contenu tout en haut + vers le BAS → replie (dévoile la carte).
   // Dans tous les autres cas (plein écran, on lit/défile) il ne fait rien → le
   // scroll natif fonctionne normalement.
-  const snapNearest = useCallback((ty: number) => (['low', 'mid', 'full'] as const)
-    .map(p => ({ p, v: snapTy(p) }))
-    .reduce((b, c) => Math.abs(c.v - ty) < Math.abs(b.v - ty) ? c : b), [snapTy])
+  // Valeur live de winH pour les handlers attachés une seule fois.
+  const winHRef = useRef(winH)
+  winHRef.current = winH
+  const sheetCleanup = useRef<(() => void) | null>(null)
 
-  useEffect(() => {
-    const el = sheetRef.current
+  // Callback ref : attache les listeners tactiles DÈS que la feuille est montée
+  // (robuste vis-à-vis du timing mobile/desktop). Décision au 1er mouvement.
+  const attachSheet = useCallback((el: HTMLDivElement | null) => {
+    sheetCleanup.current?.(); sheetCleanup.current = null
+    sheetRef.current = el
     if (!el) return
+    const snap = (pos: 'low' | 'mid' | 'full') => pos === 'low' ? winHRef.current * 0.80 : pos === 'full' ? 0 : winHRef.current * 0.46
+    const nearest = (ty: number) => (['low', 'mid', 'full'] as const)
+      .map(p => ({ p, v: snap(p) })).reduce((b, c) => Math.abs(c.v - ty) < Math.abs(b.v - ty) ? c : b)
     let sy = 0, sty = 0, active = false, decided = false
-    const onStart = (e: TouchEvent) => {
-      sy = e.touches[0].clientY; sty = currentTyRef.current; active = false; decided = false
-    }
+    const onStart = (e: TouchEvent) => { sy = e.touches[0].clientY; sty = currentTyRef.current; active = false; decided = false }
     const onMove = (e: TouchEvent) => {
       const delta = e.touches[0].clientY - sy
+      // Décider AU 1ER mouvement : sinon iOS verrouille le geste en scroll et
+      // preventDefault arrive trop tard → la feuille ne bouge plus.
       if (!decided) {
-        if (Math.abs(delta) < 8) return
         decided = true
         const notFull = sty > 0.5
-        if (notFull) active = true                              // peek → déplacer la feuille
-        else if (el.scrollTop <= 0 && delta > 0) active = true  // plein écran + haut + bas → replier
-        else active = false                                     // sinon : défilement natif
+        if (notFull) active = true                              // peek → déplacer la feuille (n'importe où)
+        else if (el.scrollTop <= 0 && delta > 0) active = true  // plein écran + haut + vers le bas → replier (dévoile la carte)
+        else active = false                                     // sinon : défilement natif du contenu
         if (active) { isDraggingRef.current = true; el.style.transition = 'none' }
       }
       if (!active) return
       e.preventDefault()
-      const ty = Math.max(snapTy('full'), Math.min(snapTy('low'), sty + delta))
+      const ty = Math.max(0, Math.min(snap('low'), sty + delta))
       currentTyRef.current = ty
       el.style.transform = `translateY(${ty}px)`
     }
     const onEnd = () => {
       if (!active) return
       active = false; isDraggingRef.current = false
-      const nearest = snapNearest(currentTyRef.current)
-      currentTyRef.current = nearest.v
+      const n = nearest(currentTyRef.current)
+      currentTyRef.current = n.v
       el.style.transition = 'transform 0.34s cubic-bezier(0.2,0.8,0.2,1)'
-      el.style.transform = `translateY(${nearest.v}px)`
-      setSheetPos(nearest.p)
-      setMapBottomInset(insetForTy(nearest.v))
+      el.style.transform = `translateY(${n.v}px)`
+      setSheetPos(n.p)
+      setMapBottomInset(Math.max(0, winHRef.current - n.v))
     }
     el.addEventListener('touchstart', onStart, { passive: true })
     el.addEventListener('touchmove', onMove, { passive: false })
     el.addEventListener('touchend', onEnd)
     el.addEventListener('touchcancel', onEnd)
-    return () => {
+    sheetCleanup.current = () => {
       el.removeEventListener('touchstart', onStart)
       el.removeEventListener('touchmove', onMove)
       el.removeEventListener('touchend', onEnd)
       el.removeEventListener('touchcancel', onEnd)
     }
-  }, [snapTy, insetForTy, snapNearest])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tracé GPS décodé (pour mapping curseur → point sur la carte)
   const polylinePoints = useMemo<LatLngPoint[] | null>(() => {
@@ -7469,7 +7475,7 @@ conseil pour la prochaine séance similaire.`
 
         {/* ── SHEET draggable plein écran (transform via ref, 60fps) ── */}
         <div
-          ref={sheetRef}
+          ref={attachSheet}
           data-bottom-sheet=""
           className="thw-activity-sheet"
           style={{

@@ -1,5 +1,6 @@
 'use client'
 import type { SkiPhase } from '@/hooks/useSkiTracking'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   isDark: boolean
@@ -34,18 +35,19 @@ function Cell({ label, value, unit, big, isDark, font }: {
   )
 }
 
-const PHASE_LABELS: Record<SkiPhase, string> = { run: 'Descente', lift: 'Remontée', pause: 'Pause' }
+const PHASE_KEYS: Record<SkiPhase, string> = { run: 'record.skiPhaseRun', lift: 'record.skiPhaseLift', pause: 'record.skiPhasePause' }
 
 export default function SkiPage3({ isDark, maxSpeedKmh, avgSpeedRunKmh, runCount, totalRunDistanceM, elevationLossM, phase, dataFontFamily }: Props) {
+  const { t } = useI18n()
   const font = dataFontFamily ?? '-apple-system, sans-serif'
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', flex:1, alignContent:'start' }}>
-      <Cell big isDark={isDark} font={font} label="Vit. max" value={maxSpeedKmh.toFixed(1)} unit="km/h" />
-      <Cell isDark={isDark} font={font} label="Descentes" value={String(runCount)} />
-      <Cell isDark={isDark} font={font} label="Dist. desc." value={(totalRunDistanceM / 1000).toFixed(2)} unit="km" />
-      <Cell isDark={isDark} font={font} label="D-" value={String(Math.round(elevationLossM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="Vit. moy. desc." value={avgSpeedRunKmh.toFixed(1)} unit="km/h" />
-      <Cell isDark={isDark} font={font} label="Phase" value={PHASE_LABELS[phase]} />
+      <Cell big isDark={isDark} font={font} label={t('record.skiMaxSpeed')} value={maxSpeedKmh.toFixed(1)} unit="km/h" />
+      <Cell isDark={isDark} font={font} label={t('record.skiRuns')} value={String(runCount)} />
+      <Cell isDark={isDark} font={font} label={t('record.skiRunDistance')} value={(totalRunDistanceM / 1000).toFixed(2)} unit="km" />
+      <Cell isDark={isDark} font={font} label={t('record.skiElevLoss')} value={String(Math.round(elevationLossM))} unit="m" />
+      <Cell isDark={isDark} font={font} label={t('record.skiAvgRunSpeed')} value={avgSpeedRunKmh.toFixed(1)} unit="km/h" />
+      <Cell isDark={isDark} font={font} label={t('record.skiPhase')} value={t(PHASE_KEYS[phase])} />
     </div>
   )
 }

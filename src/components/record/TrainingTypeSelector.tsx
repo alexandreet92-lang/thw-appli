@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 export const CYCLING_TYPES: { id: string; label: string; desc: string }[] = [
   { id: 'ef',      label: 'EF',      desc: 'Endurance fondamentale' },
@@ -8,6 +9,15 @@ export const CYCLING_TYPES: { id: string; label: string; desc: string }[] = [
   { id: 'tempo',   label: 'Tempo',   desc: 'Allure soutenue' },
   { id: 'recup',   label: 'Récup',   desc: 'Récupération active' },
 ]
+
+const TYPE_I18N: Record<string, { label: string; desc: string }> = {
+  ef:      { label: 'record.trainingTypeEfLabel',      desc: 'record.trainingTypeEfDesc' },
+  pma:     { label: 'record.trainingTypePmaLabel',     desc: 'record.trainingTypePmaDesc' },
+  seuil:   { label: 'record.trainingTypeSeuilLabel',   desc: 'record.trainingTypeSeuilDesc' },
+  sprints: { label: 'record.trainingTypeSprintsLabel', desc: 'record.trainingTypeSprintsDesc' },
+  tempo:   { label: 'record.trainingTypeTempoLabel',   desc: 'record.trainingTypeTempoDesc' },
+  recup:   { label: 'record.trainingTypeRecupLabel',   desc: 'record.trainingTypeRecupDesc' },
+}
 
 export type TrainingType = { id: string; label: string; desc: string }
 
@@ -19,18 +29,20 @@ interface Props {
 }
 
 export default function TrainingTypeSelector({ selected, onChange, isDark = false, types = CYCLING_TYPES }: Props) {
+  const { t: tr } = useI18n()
   const toggle = (id: string) =>
     onChange(selected.includes(id) ? selected.filter(s => s !== id) : [...selected, id])
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-      {types.map(t => {
-        const active = selected.includes(t.id)
+      {types.map(type => {
+        const active = selected.includes(type.id)
+        const i18n = TYPE_I18N[type.id]
         return (
           <button
-            key={t.id}
-            onClick={() => toggle(t.id)}
-            title={t.desc}
+            key={type.id}
+            onClick={() => toggle(type.id)}
+            title={i18n ? tr(i18n.desc) : type.desc}
             style={{
               padding: '10px 16px', borderRadius: 9999,
               fontSize: 14, fontWeight: 500,
@@ -44,7 +56,7 @@ export default function TrainingTypeSelector({ selected, onChange, isDark = fals
               transition: 'all 150ms',
             }}
           >
-            {t.label}
+            {i18n ? tr(i18n.label) : type.label}
           </button>
         )
       })}

@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   routeName: string
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose, isDark }: Props) {
+  const { t } = useI18n()
   const [isPublic, setIsPublic] = useState(false)
   const [saving, setSaving] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -23,7 +25,7 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
   const handleSave = async () => {
     if (saving) return
     setSaving(true)
-    await onSave(routeName || 'Mon parcours', isPublic)
+    await onSave(routeName || t('record.routeSaveDefaultName'), isPublic)
     setSaving(false)
   }
 
@@ -34,15 +36,15 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
           <div style={{ width: 40, height: 4, borderRadius: 2, background: separator }} />
         </div>
-        <p style={{ fontSize: 16, fontWeight: 700, color: text, margin: '0 0 16px', fontFamily: 'Syne, sans-serif' }}>Enregistrer le parcours</p>
+        <p style={{ fontSize: 16, fontWeight: 700, color: text, margin: '0 0 16px', fontFamily: 'Syne, sans-serif' }}>{t('record.routeSaveTitle')}</p>
         <input
           value={routeName}
           onChange={e => onChangeName(e.target.value)}
-          placeholder="Nom du parcours"
+          placeholder={t('record.routeSaveNamePlaceholder')}
           style={{ width: '100%', boxSizing: 'border-box', background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: '12px 16px', fontSize: 15, color: text, outline: 'none', fontFamily: 'DM Sans, sans-serif', marginBottom: 12 }}
         />
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          {([{ value: false, label: '🔒 Privé' }, { value: true, label: '🌍 Public' }] as { value: boolean; label: string }[]).map(opt => (
+          {([{ value: false, label: t('record.routeSavePrivate') }, { value: true, label: t('record.routeSavePublic') }] as { value: boolean; label: string }[]).map(opt => (
             <button key={String(opt.value)} onClick={() => setIsPublic(opt.value)}
               style={{ flex: 1, padding: '10px', borderRadius: 10, background: isPublic === opt.value ? 'rgba(6,182,212,0.15)' : separator, border: `1.5px solid ${isPublic === opt.value ? '#06B6D4' : 'transparent'}`, color: isPublic === opt.value ? '#06B6D4' : text, cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>
               {opt.label}
@@ -51,7 +53,7 @@ export default function RouteSaveForm({ routeName, onChangeName, onSave, onClose
         </div>
         <button onClick={handleSave} disabled={saving}
           style={{ width: '100%', height: 52, borderRadius: 16, background: 'linear-gradient(135deg, #06B6D4, #2563EB)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'DM Sans, sans-serif' }}>
-          {saving ? 'Enregistrement…' : 'Enregistrer le parcours'}
+          {saving ? t('record.routeSaveSaving') : t('record.routeSaveTitle')}
         </button>
       </div>
     </div>

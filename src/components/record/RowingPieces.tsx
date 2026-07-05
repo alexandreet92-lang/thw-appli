@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { formatSplit, calcSplit500, calcWatts, type RowingPiece } from '@/types/rowing'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   pieces: RowingPiece[]
@@ -25,6 +26,7 @@ function fmtTotal(sec: number): string {
 }
 
 export default function RowingPieces({ pieces, onChange, practiceType, isDark }: Props) {
+  const { t } = useI18n()
   const text = isDark ? '#FFF' : '#0A0A0A'
   const dim = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
   const border = isDark ? 'rgba(255,255,255,0.10)' : '#E5E7EB'
@@ -63,7 +65,7 @@ export default function RowingPieces({ pieces, onChange, practiceType, isDark }:
     <div>
       {pieces.length === 0 && (
         <div style={{ marginBottom:12 }}>
-          <p style={{ fontSize:11, color:dim, margin:'0 0 8px', fontWeight:600 }}>SUGGESTIONS</p>
+          <p style={{ fontSize:11, color:dim, margin:'0 0 8px', fontWeight:600 }}>{t('record.rowingPiecesSuggestions')}</p>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
             {PRESETS.map(pr => (
               <button key={pr.label} onClick={() => applyPreset(pr.count, pr.dist)}
@@ -82,12 +84,12 @@ export default function RowingPieces({ pieces, onChange, practiceType, isDark }:
           return (
             <div key={p.id} style={{ background:cardBg, border:`1px solid ${border}`, borderRadius:12, padding:'12px 14px' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                <span style={{ fontSize:12, fontWeight:700, color:ACCENT }}>Série {idx+1}</span>
+                <span style={{ fontSize:12, fontWeight:700, color:ACCENT }}>{t('record.rowingPiecesSet', { n: idx+1 })}</span>
                 <button onClick={() => removePiece(p.id)} style={{ background:'none', border:'none', cursor:'pointer', color:dim, fontSize:18, lineHeight:1, padding:'0 4px' }}>×</button>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
                 <div>
-                  <p style={{ fontSize:11, color:dim, margin:'0 0 4px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Distance</p>
+                  <p style={{ fontSize:11, color:dim, margin:'0 0 4px', textTransform:'uppercase', letterSpacing:'0.08em' }}>{t('record.rowingPiecesDistance')}</p>
                   <div style={{ display:'flex', alignItems:'center', gap:4 }}>
                     <input type="number" value={p.distanceM} step={step} min={step}
                       onChange={e => updatePiece(p.id, { distanceM: parseInt(e.target.value) || step })}
@@ -96,23 +98,23 @@ export default function RowingPieces({ pieces, onChange, practiceType, isDark }:
                   </div>
                 </div>
                 <div>
-                  <p style={{ fontSize:11, color:dim, margin:'0 0 4px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Temps (MM:SS)</p>
+                  <p style={{ fontSize:11, color:dim, margin:'0 0 4px', textTransform:'uppercase', letterSpacing:'0.08em' }}>{t('record.rowingPiecesTime')}</p>
                   <input value={getDurStr(p)} placeholder="0:00"
                     onChange={e => setDurStrs(prev => ({ ...prev, [p.id]: e.target.value }))}
                     onBlur={e => commitDur(p.id, e.target.value)}
                     style={{ ...inputStyle(80) }} />
                 </div>
                 <div>
-                  <p style={{ fontSize:11, color:dim, margin:'0 0 4px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Split /500m</p>
+                  <p style={{ fontSize:11, color:dim, margin:'0 0 4px', textTransform:'uppercase', letterSpacing:'0.08em' }}>{t('record.rowingPiecesSplit')}</p>
                   <p style={{ fontSize:15, fontWeight:600, color:ACCENT, margin:0 }}>{formatSplit(split)}</p>
                 </div>
                 <div>
-                  <p style={{ fontSize:11, color:dim, margin:'0 0 4px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Puissance</p>
+                  <p style={{ fontSize:11, color:dim, margin:'0 0 4px', textTransform:'uppercase', letterSpacing:'0.08em' }}>{t('record.rowingPiecesPower')}</p>
                   <p style={{ fontSize:15, fontWeight:600, color:text, margin:0 }}>{watts > 0 ? `${watts} w` : '--'}</p>
                 </div>
               </div>
               <div style={{ marginTop:8 }}>
-                <p style={{ fontSize:11, color:dim, margin:'0 0 4px', textTransform:'uppercase', letterSpacing:'0.08em' }}>Repos (sec)</p>
+                <p style={{ fontSize:11, color:dim, margin:'0 0 4px', textTransform:'uppercase', letterSpacing:'0.08em' }}>{t('record.rowingPiecesRest')}</p>
                 <input type="number" value={p.restSec} step={10} min={0}
                   onChange={e => updatePiece(p.id, { restSec: parseInt(e.target.value) || 0 })}
                   style={{ ...inputStyle(70) }} />
@@ -123,15 +125,15 @@ export default function RowingPieces({ pieces, onChange, practiceType, isDark }:
       </div>
 
       <button onClick={addPiece} style={{ width:'100%', padding:'12px', borderRadius:12, background:'none', border:`1.5px dashed ${border}`, color:ACCENT, fontSize:14, fontWeight:600, cursor:'pointer', fontFamily:'DM Sans, sans-serif' }}>
-        + Ajouter une série
+        {t('record.rowingPiecesAddSet')}
       </button>
 
       {pieces.length > 0 && totalDur > 0 && (
         <div style={{ marginTop:12, padding:'10px 14px', background:`rgba(6,182,212,0.06)`, borderRadius:10, border:`1px solid rgba(6,182,212,0.15)` }}>
           <p style={{ margin:0, fontSize:13, color:text, fontWeight:500 }}>
-            Total : <span style={{ color:ACCENT, fontWeight:700 }}>{totalDist >= 1000 ? `${(totalDist/1000).toFixed(1)}km` : `${totalDist}m`}</span>
+            {t('record.rowingPiecesTotal')} <span style={{ color:ACCENT, fontWeight:700 }}>{totalDist >= 1000 ? `${(totalDist/1000).toFixed(1)}km` : `${totalDist}m`}</span>
             {' · '}{fmtTotal(totalDur)}
-            {avgWatts > 0 && <>{' · '}{avgWatts}w moy.</>}
+            {avgWatts > 0 && <>{' · '}{t('record.rowingPiecesAvg', { v: avgWatts })}</>}
           </p>
         </div>
       )}

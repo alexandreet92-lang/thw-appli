@@ -1,5 +1,6 @@
 'use client'
 import { useRef, useState, useCallback } from 'react'
+import { useI18n } from '@/lib/i18n'
 import type { ElevPoint, Surface } from '@/lib/openrouteservice'
 
 interface Props {
@@ -14,8 +15,8 @@ interface Props {
 const SURFACE_COLORS: Record<string, string> = {
   asphalt: '#3B82F6', unpaved: '#F59E0B', gravel: '#8B5CF6', path: '#10B981', unknown: '#8C8C8C',
 }
-const SURFACE_LABELS: Record<string, string> = {
-  asphalt: 'Goudron', unpaved: 'Chemin', gravel: 'Graviers', path: 'Sentier', unknown: 'Inconnu',
+const SURFACE_LABEL_KEYS: Record<string, string> = {
+  asphalt: 'record.surfaceAsphalt', unpaved: 'record.surfaceUnpaved', gravel: 'record.surfaceGravel', path: 'record.surfacePath', unknown: 'record.surfaceUnknown',
 }
 
 const W = 360
@@ -60,6 +61,7 @@ function buildSmoothPath(
 }
 
 export default function ElevationChart({ data, surfaces, height = 100, isDark = false, snappedPoints, onPositionChange }: Props) {
+  const { t } = useI18n()
   const svgRef = useRef<SVGSVGElement>(null)
   const [cursor, setCursor] = useState<{ svgX: number; point: ElevPoint } | null>(null)
   const dim = isDark ? 'rgba(255,255,255,0.35)' : '#9CA3AF'
@@ -104,7 +106,7 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
 
   if (pts.length < 2) return (
     <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ fontSize: 11, color: dim, margin: 0 }}>Tracez un parcours pour voir le profil</p>
+      <p style={{ fontSize: 11, color: dim, margin: 0 }}>{t('record.elevationChartEmpty')}</p>
     </div>
   )
 
@@ -147,7 +149,7 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
           {surfaces.filter(s => s.percent > 0).map(s => (
             <div key={s.type} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <div style={{ width: 16, height: 3, borderRadius: 2, background: SURFACE_COLORS[s.type] ?? '#8C8C8C' }} />
-              <span style={{ fontSize: 10, color: dim }}>{s.percent}% {SURFACE_LABELS[s.type] ?? s.type}</span>
+              <span style={{ fontSize: 10, color: dim }}>{s.percent}% {SURFACE_LABEL_KEYS[s.type] ? t(SURFACE_LABEL_KEYS[s.type]) : s.type}</span>
             </div>
           ))}
         </div>

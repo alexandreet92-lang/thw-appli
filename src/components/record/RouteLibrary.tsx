@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { SnappedPoint } from '@/lib/openrouteservice'
+import { useI18n } from '@/lib/i18n'
 
 interface Route {
   id: string; name: string; sport: string; is_public: boolean
@@ -25,8 +26,6 @@ interface Props {
   onCreate: () => void
   isDark: boolean
 }
-
-const SPORT_LABELS: Record<string, string> = { cycling: 'Vélo', mtb: 'VTT', trail: 'Trail', hiking: 'Randonnée' }
 
 // Vignette du parcours en SVG raw (aucune clé/API externe) : tracé normalisé
 // dans une box 100×70, ratio géographique respecté (longitude corrigée par
@@ -69,6 +68,8 @@ function RouteThumbnail({ route, accent, fallbackBg, fallbackStroke }: {
 }
 
 export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: Props) {
+  const { t } = useI18n()
+  const SPORT_LABELS: Record<string, string> = { cycling: t('record.routeLibrarySportCycling'), mtb: t('record.routeLibrarySportMtb'), trail: t('record.routeLibrarySportTrail'), hiking: t('record.routeLibrarySportHiking') }
   const [routes, setRoutes] = useState<Route[]>([])
   const [showPublic, setShowPublic] = useState(false)
   const [search, setSearch] = useState('')
@@ -102,9 +103,9 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: 
     <div style={{ position: 'fixed', inset: 0, zIndex: 10005, background: bg, display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans, sans-serif', paddingTop: 'env(safe-area-inset-top)' }}>
       {/* En-tête : Annuler · titre centré · crayon (créer) */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: `1px solid ${separator}` }}>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#06B6D4', fontSize: 16, fontWeight: 500, cursor: 'pointer', padding: 0, zIndex: 1 }}>Annuler</button>
-        <p style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 17, fontWeight: 700, color: text, margin: 0, fontFamily: 'var(--font-display)', pointerEvents: 'none' }}>Itinéraires</p>
-        <button onClick={onCreate} aria-label="Créer un parcours" style={{ background: 'none', border: 'none', color: text, cursor: 'pointer', padding: 0, zIndex: 1, display: 'flex' }}>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#06B6D4', fontSize: 16, fontWeight: 500, cursor: 'pointer', padding: 0, zIndex: 1 }}>{t('record.routeLibraryCancel')}</button>
+        <p style={{ position: 'absolute', left: 0, right: 0, textAlign: 'center', fontSize: 17, fontWeight: 700, color: text, margin: 0, fontFamily: 'var(--font-display)', pointerEvents: 'none' }}>{t('record.routeLibraryTitle')}</p>
+        <button onClick={onCreate} aria-label={t('record.routeLibraryCreate')} style={{ background: 'none', border: 'none', color: text, cursor: 'pointer', padding: 0, zIndex: 1, display: 'flex' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
         </button>
       </div>
@@ -113,10 +114,10 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: 
       <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 12px' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dim} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Chercher par mot-clé" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', color: text, fontSize: 15, fontFamily: 'DM Sans, sans-serif' }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('record.routeLibrarySearchPlaceholder')} style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', color: text, fontSize: 15, fontFamily: 'DM Sans, sans-serif' }} />
         </div>
         <div style={{ display: 'flex', background: surface, borderRadius: 10, padding: 3, gap: 2, alignSelf: 'flex-start' }}>
-          {['Mes parcours', 'Publics'].map((label, i) => (
+          {[t('record.routeLibraryMine'), t('record.routeLibraryPublic')].map((label, i) => (
             <button key={i} onClick={() => setShowPublic(i === 1)}
               style={{ padding: '6px 14px', borderRadius: 8, background: showPublic === (i === 1) ? '#06B6D4' : 'transparent', border: 'none', color: showPublic === (i === 1) ? '#fff' : dim, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
               {label}
@@ -128,7 +129,11 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
         {filtered.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: dim }}>
-            <p style={{ fontSize: 14 }}>Aucun parcours{showPublic ? ' public' : ''}{search ? ' trouvé' : ''}</p>
+            <p style={{ fontSize: 14 }}>{
+              showPublic
+                ? (search ? t('record.routeLibraryEmptyPublicSearch') : t('record.routeLibraryEmptyPublic'))
+                : (search ? t('record.routeLibraryEmptySearch') : t('record.routeLibraryEmpty'))
+            }</p>
           </div>
         )}
         {filtered.map(route => (
@@ -146,9 +151,9 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: 
             </div>
             <div style={{ display: 'flex', borderTop: `1px solid ${separator}` }}>
               <button onClick={() => onUseRoute({ snapped_points: (route.snapped_points ?? route.waypoints).map(p => ({ lat: p.lat, lng: p.lng })), elevation_profile: route.elevation_profile ?? [], waypoints: route.waypoints?.map(p => ({ lat: p.lat, lng: p.lng })), sport: route.sport })}
-                style={{ flex: 1, padding: '10px', background: 'none', border: 'none', color: '#06B6D4', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Utiliser</button>
+                style={{ flex: 1, padding: '10px', background: 'none', border: 'none', color: '#06B6D4', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('record.routeLibraryUse')}</button>
               <button onClick={() => handleDelete(route.id)}
-                style={{ padding: '10px 16px', background: 'none', border: 'none', borderLeft: `1px solid ${separator}`, color: dim, fontSize: 13, cursor: 'pointer' }}>Supprimer</button>
+                style={{ padding: '10px 16px', background: 'none', border: 'none', borderLeft: `1px solid ${separator}`, color: dim, fontSize: 13, cursor: 'pointer' }}>{t('record.routeLibraryDelete')}</button>
             </div>
           </div>
         ))}

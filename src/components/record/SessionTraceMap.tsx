@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef } from 'react'
 import type { GPSPoint } from '@/hooks/useGPSTracking'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   points: GPSPoint[]
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function SessionTraceMap({ points, isDark = false }: Props) {
+  const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<unknown>(null)
 
@@ -60,7 +62,7 @@ export default function SessionTraceMap({ points, isDark = false }: Props) {
   if (points.length < 2) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: isDark ? '#111' : '#f0f0f0' }}>
-        <span style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.3)' : '#aaa' }}>Pas de tracé GPS</span>
+        <span style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.3)' : '#aaa' }}>{t('record.sessionTraceNoGps')}</span>
       </div>
     )
   }

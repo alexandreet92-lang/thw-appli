@@ -8,6 +8,7 @@ import CyclingSettingsNav from './CyclingSettingsNav'
 import CyclingSettingsTraining from './CyclingSettingsTraining'
 import CyclingSettingsParams from './CyclingSettingsParams'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   open: boolean
@@ -96,16 +97,16 @@ function getTheme(isDark: boolean) {
 }
 
 const SECTIONS = [
-  { id: 'pages',      label: 'Pages de données',  desc: 'Configurer les champs affichés' },
-  { id: 'navigation', label: 'Navigation',         desc: 'GPS, carte, détection montées' },
-  { id: 'training',   label: 'Entraînement',       desc: 'Lier une séance au planning' },
-  { id: 'alerts',     label: 'Notifications',      desc: 'Alertes et rappels' },
-  { id: 'sensors',    label: 'Capteurs',           desc: 'FC, puissance, cadence' },
-  { id: 'display',    label: 'Affichage',          desc: 'Thème, police, taille' },
-  { id: 'athlete',    label: 'Profil athlète',     desc: 'FTP, FC max, zones' },
-  { id: 'recording',  label: 'Enregistrement',     desc: 'GPS, auto-pause, auto-lap' },
-  { id: 'units',      label: 'Unités & Mesures',   desc: 'km/miles, °C/°F' },
-  { id: 'postride',   label: 'Après la séance',    desc: 'Upload Strava, résumé' },
+  { id: 'pages',      labelKey: 'record.sectionPages',      descKey: 'record.sectionPagesDesc' },
+  { id: 'navigation', labelKey: 'record.sectionNavigation', descKey: 'record.sectionNavigationDesc' },
+  { id: 'training',   labelKey: 'record.sectionTraining',   descKey: 'record.sectionTrainingDesc' },
+  { id: 'alerts',     labelKey: 'record.sectionAlerts',     descKey: 'record.sectionAlertsDesc' },
+  { id: 'sensors',    labelKey: 'record.sectionSensors',    descKey: 'record.cyclingSectionSensorsDesc' },
+  { id: 'display',    labelKey: 'record.sectionDisplay',    descKey: 'record.sectionDisplayDesc' },
+  { id: 'athlete',    labelKey: 'record.sectionAthlete',    descKey: 'record.cyclingSectionAthleteDesc' },
+  { id: 'recording',  labelKey: 'record.sectionRecording',  descKey: 'record.sectionRecordingDesc' },
+  { id: 'units',      labelKey: 'record.sectionUnits',      descKey: 'record.cyclingSectionUnitsDesc' },
+  { id: 'postride',   labelKey: 'record.sectionPostride',   descKey: 'record.sectionPostrideDesc' },
 ]
 
 export default function CyclingSettings(props: Props) {
@@ -119,11 +120,12 @@ export default function CyclingSettings(props: Props) {
 
 function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: updateSetting_prop }: Props) {
   const { showToast } = useToast()
+  const { t: tr } = useI18n()
   const t = getTheme(isDark)
   const { pages, setPages, savePages } = useCyclingConfig()
   const updateSetting = useCallback((path: string, value: unknown) => {
     updateSetting_prop(path, value)
-    showToast('Modification enregistrée')
+    showToast(tr('record.commonSettingsSaved'))
   }, [updateSetting_prop, showToast])
   const [closing, setClosing] = useState(false)
   const [editing, setEditing] = useState<DataPage | null>(null)
@@ -187,18 +189,18 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
   const renderPagesSection = () => (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 8px' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: t.dim, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Pages de données</span>
-        <button onClick={addNewPage} style={{ fontSize: 12, color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>+ Ajouter</button>
+        <span style={{ fontSize: 11, fontWeight: 700, color: t.dim, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{tr('record.commonPagesData')}</span>
+        <button onClick={addNewPage} style={{ fontSize: 12, color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>{tr('record.commonAdd')}</button>
       </div>
       {pages.map((page, idx) => (
         <div key={page.id} style={{ position: 'relative' }}>
           <div onClick={() => setEditing(page)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: `1px solid ${t.separator}` }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <button onClick={e => { e.stopPropagation(); movePage(idx, idx - 1) }} disabled={idx === 0} aria-label="Monter"
+              <button onClick={e => { e.stopPropagation(); movePage(idx, idx - 1) }} disabled={idx === 0} aria-label={tr('record.commonMoveUp')}
                 style={{ background: 'none', border: 'none', cursor: idx===0?'default':'pointer', opacity: idx===0?0.2:0.55, color: t.text, padding: '2px 4px' }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 9l5-5 5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
-              <button onClick={e => { e.stopPropagation(); movePage(idx, idx + 1) }} disabled={idx === pages.length - 1} aria-label="Descendre"
+              <button onClick={e => { e.stopPropagation(); movePage(idx, idx + 1) }} disabled={idx === pages.length - 1} aria-label={tr('record.commonMoveDown')}
                 style={{ background: 'none', border: 'none', cursor: idx===pages.length-1?'default':'pointer', opacity: idx===pages.length-1?0.2:0.55, color: t.text, padding: '2px 4px' }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 5l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
@@ -215,7 +217,7 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
                 <p style={{ fontSize: 15, fontWeight: 600, color: t.text, margin: 0 }}>{page.name}</p>
               )}
               <p style={{ fontSize: 11, color: t.dim, margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {page.type === 'map' ? 'Carte + ' : ''}
+                {page.type === 'map' ? tr('record.commonMapPlus') : ''}
                 {page.fields.map(id => fieldById(id)?.label).filter(Boolean).join(' · ')}
               </p>
             </div>
@@ -226,21 +228,21 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
           {menuOpenId === page.id && (
             <div ref={menuRef} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', zIndex: 100, background: t.bg, border: `1px solid ${t.separator}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', minWidth: 150 }}>
               <button onClick={e => { e.stopPropagation(); startRename(page); setMenuOpenId(null) }}
-                style={{ width: '100%', padding: '13px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 15, color: t.text, cursor: 'pointer' }}>Renommer</button>
+                style={{ width: '100%', padding: '13px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 15, color: t.text, cursor: 'pointer' }}>{tr('record.commonRename')}</button>
               <div style={{ height: 1, background: t.separator }} />
               <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(page.id); setMenuOpenId(null) }}
-                style={{ width: '100%', padding: '13px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 15, color: '#EF4444', cursor: 'pointer' }}>Supprimer</button>
+                style={{ width: '100%', padding: '13px 16px', background: 'none', border: 'none', textAlign: 'left', fontSize: 15, color: '#EF4444', cursor: 'pointer' }}>{tr('record.commonDelete')}</button>
             </div>
           )}
 
           {confirmDeleteId === page.id && (
             <div style={{ padding: '10px 16px', background: 'rgba(239,68,68,0.08)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 4 }}>
-              <span style={{ fontSize: 13, color: '#EF4444' }}>Supprimer cette page ?</span>
+              <span style={{ fontSize: 13, color: '#EF4444' }}>{tr('record.commonDeletePageConfirm')}</span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => { deletePage(page.id); setConfirmDeleteId(null) }}
-                  style={{ padding: '5px 14px', borderRadius: 8, background: '#EF4444', border: 'none', color: 'white', fontSize: 13, cursor: 'pointer' }}>Oui</button>
+                  style={{ padding: '5px 14px', borderRadius: 8, background: '#EF4444', border: 'none', color: 'white', fontSize: 13, cursor: 'pointer' }}>{tr('record.commonYes')}</button>
                 <button onClick={() => setConfirmDeleteId(null)}
-                  style={{ padding: '5px 14px', borderRadius: 8, background: t.separator, border: 'none', color: t.text, fontSize: 13, cursor: 'pointer' }}>Non</button>
+                  style={{ padding: '5px 14px', borderRadius: 8, background: t.separator, border: 'none', color: t.text, fontSize: 13, cursor: 'pointer' }}>{tr('record.commonNo')}</button>
               </div>
             </div>
           )}
@@ -282,8 +284,8 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px', flexShrink: 0 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: t.text, margin: 0, fontFamily: 'Syne, sans-serif' }}>Réglages vélo</h2>
-          <button onClick={handleClose} aria-label="Fermer"
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: t.text, margin: 0, fontFamily: 'Syne, sans-serif' }}>{tr('record.cyclingSettingsTitle')}</h2>
+          <button onClick={handleClose} aria-label={tr('record.commonClose')}
             style={{ color: t.dim, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '4px 8px' }}>×</button>
         </div>
 
@@ -312,8 +314,8 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
                   {SECTION_ICONS[sec.id]}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 15, fontWeight: 500, color: t.text, margin: 0 }}>{sec.label}</p>
-                  <p style={{ fontSize: 12, color: '#8C8C8C', margin: '2px 0 0' }}>{sec.desc}</p>
+                  <p style={{ fontSize: 15, fontWeight: 500, color: t.text, margin: 0 }}>{tr(sec.labelKey)}</p>
+                  <p style={{ fontSize: 12, color: '#8C8C8C', margin: '2px 0 0' }}>{tr(sec.descKey)}</p>
                 </div>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M5 3l4 4-4 4" stroke="#8C8C8C" strokeWidth="1.4" strokeLinecap="round"/>
@@ -347,7 +349,7 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
                   </svg>
                 </button>
                 <h3 style={{ fontSize: 17, fontWeight: 700, color: t.text, margin: 0, flex: 1, fontFamily: 'Syne, sans-serif' }}>
-                  {SECTIONS.find(s => s.id === activeSection)?.label}
+                  {(() => { const s = SECTIONS.find(s => s.id === activeSection); return s ? tr(s.labelKey) : '' })()}
                 </h3>
               </div>
 

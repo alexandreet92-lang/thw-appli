@@ -1,5 +1,6 @@
 'use client'
 import { formatPace, speedToMinKm, calculateVAP } from '@/types/trail'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   isDark: boolean
@@ -40,18 +41,19 @@ function Cell({ label, value, unit, big, isDark, font }: {
 }
 
 export default function TrailPage4({ isDark, currentLapSec, currentLapDistanceM, gradientPercent, lapElevGainM, lapElevLossM, dataFontFamily }: Props) {
+  const { t } = useI18n()
   const font = dataFontFamily ?? '-apple-system, sans-serif'
   const lapSpeedKmh = currentLapSec > 0 ? (currentLapDistanceM / currentLapSec) * 3.6 : 0
   const lapPace = speedToMinKm(lapSpeedKmh)
   const vap = lapPace != null ? calculateVAP(lapPace, gradientPercent) : null
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', flex:1, alignContent:'start' }}>
-      <Cell big isDark={isDark} font={font} label="Allure lap" value={lapPace != null ? formatPace(lapPace) : '--'} unit="min/km" />
-      <Cell isDark={isDark} font={font} label="Durée lap" value={fmt(currentLapSec)} />
-      <Cell isDark={isDark} font={font} label="Distance lap" value={(currentLapDistanceM/1000).toFixed(2)} unit="km" />
-      <Cell isDark={isDark} font={font} label="D+ lap" value={String(Math.round(lapElevGainM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="D- lap" value={String(Math.round(lapElevLossM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="VAP" value={vap != null ? formatPace(vap) : '--'} unit="min/km" />
+      <Cell big isDark={isDark} font={font} label={t('record.trailLapPace')} value={lapPace != null ? formatPace(lapPace) : '--'} unit="min/km" />
+      <Cell isDark={isDark} font={font} label={t('record.trailLapDuration')} value={fmt(currentLapSec)} />
+      <Cell isDark={isDark} font={font} label={t('record.trailLapDistance')} value={(currentLapDistanceM/1000).toFixed(2)} unit="km" />
+      <Cell isDark={isDark} font={font} label={t('record.trailLapElevGain')} value={String(Math.round(lapElevGainM))} unit="m" />
+      <Cell isDark={isDark} font={font} label={t('record.trailLapElevLoss')} value={String(Math.round(lapElevLossM))} unit="m" />
+      <Cell isDark={isDark} font={font} label={t('record.trailVap')} value={vap != null ? formatPace(vap) : '--'} unit="min/km" />
     </div>
   )
 }

@@ -5,8 +5,9 @@ import type { WorkoutExercise } from '@/types/workout'
 import { DEFAULT_GYM_EXERCISES, DEFAULT_HYROX_EXERCISES } from '@/types/workout'
 import type { Block } from '@/app/planning/page'
 import { blocksToWorkoutExercises } from '@/components/planning/mobile/strength'
+import { useI18n } from '@/lib/i18n'
 
-const DAY = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+const DAY_KEYS = ['record.workoutDayMon', 'record.workoutDayTue', 'record.workoutDayWed', 'record.workoutDayThu', 'record.workoutDayFri', 'record.workoutDaySat', 'record.workoutDaySun']
 
 function getMondayStr() {
   const now = new Date()
@@ -34,13 +35,14 @@ interface Props {
 }
 
 export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeMode, isDark }: Props) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [closing, setClosing] = useState(false)
   const [thisWeek, setThisWeek] = useState<PlannedSession[]>([])
   const [allSessions, setAllSessions] = useState<PlannedSession[]>([])
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const accent = sport === 'gym' ? '#06B6D4' : '#EF4444'
-  const label = sport === 'gym' ? 'Muscu' : 'Hyrox'
+  const label = sport === 'gym' ? t('record.workoutMuscu') : 'Hyrox'
 
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => { return () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current) } }, [])
@@ -74,8 +76,8 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
       <div style={{ flex: 1 }}>
         <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{s.title}</p>
         <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: '3px 0 0' }}>
-          {s.day_index != null ? DAY[s.day_index] : ''}
-          {s.blocks.length > 0 ? ` · ${s.blocks.length} exercice${s.blocks.length !== 1 ? 's' : ''}` : ''}
+          {s.day_index != null ? t(DAY_KEYS[s.day_index]) : ''}
+          {s.blocks.length > 0 ? ` · ${s.blocks.length} ${t(s.blocks.length !== 1 ? 'record.workoutExercisesPlural' : 'record.workoutExerciseSingular')}` : ''}
         </p>
       </div>
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -106,7 +108,7 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
           <div style={{ marginBottom: 20 }}>
             {sectionLabel('Training Planning')}
             {thisWeek.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0, padding: '8px 0' }}>Aucune séance planifiée cette semaine</p>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0, padding: '8px 0' }}>{t('record.workoutNoPlannedSession')}</p>
             ) : (
               thisWeek.map(s => <SessionRow key={s.id} s={s} />)
             )}
@@ -135,8 +137,8 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
                     <path d="M9 2v14M2 9h14" stroke="#06B6D4" strokeWidth="1.8" strokeLinecap="round"/>
                   </svg>
                 </div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Créer une séance</p>
-                <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '3px 0 0' }}>Définir les exercices</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('record.workoutCreateSession')}</p>
+                <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '3px 0 0' }}>{t('record.workoutDefineExercises')}</p>
               </button>
 
               {/* Lancer sans programme */}
@@ -148,8 +150,8 @@ export default function WorkoutLauncher({ sport, open, onClose, onStart, onFreeM
                     <path d="M9 5v4l3 2" stroke="#06B6D4" strokeWidth="1.4" strokeLinecap="round"/>
                   </svg>
                 </div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Lancer</p>
-                <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '3px 0 0' }}>Sans programme</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t('record.workoutLaunch')}</p>
+                <p style={{ fontSize: 11, color: 'var(--text-mid)', margin: '3px 0 0' }}>{t('record.workoutNoProgram')}</p>
               </button>
 
             </div>

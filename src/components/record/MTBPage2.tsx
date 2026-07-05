@@ -1,6 +1,7 @@
 'use client'
 import dynamic from 'next/dynamic'
 import { detectTrailType } from '@/types/mtb'
+import { useI18n } from '@/lib/i18n'
 
 const MapBackground = dynamic(() => import('./MapBackground'), { ssr: false })
 
@@ -24,6 +25,7 @@ function getTheme(isDark: boolean) {
 }
 
 export default function MTBPage2({ isDark, distanceM, speedKmh, gradientPercent, elevationGainM, trackPoints, currentPosition }: Props) {
+  const { t: tr } = useI18n()
   const t = getTheme(isDark)
   const terrainType = detectTrailType(speedKmh, gradientPercent, elevationGainM)
   const distanceKm = (distanceM / 1000).toFixed(2)
@@ -38,16 +40,16 @@ export default function MTBPage2({ isDark, distanceM, speedKmh, gradientPercent,
 
       <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'1fr 1fr', borderTop:`1px solid ${t.separator}` }}>
         <div style={{ padding:'16px 12px', borderRight:`1px solid ${t.separator}` }}>
-          <p style={{ margin:0, fontSize:10, fontWeight:700, color:t.label, textTransform:'uppercase', letterSpacing:'0.15em' }}>Distance</p>
+          <p style={{ margin:0, fontSize:10, fontWeight:700, color:t.label, textTransform:'uppercase', letterSpacing:'0.15em' }}>{tr('record.commonDistance')}</p>
           <p style={{ margin:'6px 0 0', fontSize:40, fontWeight:700, lineHeight:1, color:t.text, fontFamily:'DM Mono, monospace' }}>{distanceKm}</p>
           <p style={{ margin:'4px 0 0', fontSize:12, color:t.label }}>km</p>
         </div>
         <div style={{ padding:'12px', display:'flex', flexDirection:'column', justifyContent:'center', gap:6 }}>
-          <p style={{ margin:0, fontSize:10, fontWeight:700, color:t.label, textTransform:'uppercase', letterSpacing:'0.12em' }}>Terrain estimé</p>
+          <p style={{ margin:0, fontSize:10, fontWeight:700, color:t.label, textTransform:'uppercase', letterSpacing:'0.12em' }}>{tr('record.mtbPage2EstimatedTerrain')}</p>
           <div style={{ display:'inline-flex', alignSelf:'flex-start', background:'rgba(249,115,22,0.12)', borderRadius:20, padding:'4px 10px' }}>
             <span style={{ fontSize:13, fontWeight:600, color:'#F97316' }}>{terrainType}</span>
           </div>
-          <p style={{ margin:0, fontSize:10, color:t.label, fontStyle:'italic' }}>(estimation vitesse + pente)</p>
+          <p style={{ margin:0, fontSize:10, color:t.label, fontStyle:'italic' }}>{tr('record.mtbPage2TerrainHint')}</p>
         </div>
       </div>
     </div>

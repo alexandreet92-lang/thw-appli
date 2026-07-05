@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MapContainer, TileLayer, Polyline, CircleMarker, useMap } from 'react-leaflet'
 import { navigationRoute, type NavStep } from '@/lib/openrouteservice'
+import { useI18n } from '@/lib/i18n'
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 const ATTR = '© Mapbox © OpenStreetMap'
@@ -98,6 +99,7 @@ function ManeuverIcon({ type, size = 24 }: { type: number; size?: number }) {
 }
 
 export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, watts, elapsedSec = 0, distanceDoneM = 0, gainDoneM = 0, onClose }: Props) {
+  const { t } = useI18n()
   const [pos, setPos] = useState<LatLng | null>(null)
   const [speedKmh, setSpeedKmh] = useState(0)
   const [steps, setSteps] = useState<NavStep[]>([])
@@ -225,7 +227,7 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
       </MapContainer>
 
       {/* Fermer */}
-      <button onClick={onClose} aria-label="Fermer" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', left: 12, zIndex: 1200, width: 44, height: 44, borderRadius: '50%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.25)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <button onClick={onClose} aria-label={t('record.routeNavClose')} style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', left: 12, zIndex: 1200, width: 44, height: 44, borderRadius: '50%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.25)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>
       </button>
 
@@ -262,9 +264,9 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
               {nextStep
                 ? <>
                     <p style={{ fontSize: bannerOpen ? 21 : 16, fontWeight: 800, color: 'var(--text)', margin: 0, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: bannerOpen ? 'normal' : 'nowrap' }}>{nextStep.instruction}</p>
-                    <p style={{ fontSize: bannerOpen ? 15 : 13, color: 'var(--primary)', fontWeight: 700, margin: '3px 0 0' }}>{distToTurn != null ? (distToTurn >= 1000 ? `dans ${(distToTurn / 1000).toFixed(1)} km` : `dans ${Math.round(distToTurn / 10) * 10} m`) : ''}</p>
+                    <p style={{ fontSize: bannerOpen ? 15 : 13, color: 'var(--primary)', fontWeight: 700, margin: '3px 0 0' }}>{distToTurn != null ? (distToTurn >= 1000 ? t('record.routeNavInKm', { d: (distToTurn / 1000).toFixed(1) }) : t('record.routeNavInM', { d: Math.round(distToTurn / 10) * 10 })) : ''}</p>
                   </>
-                : <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-mid)', margin: 0 }}>{steps.length ? 'Suivez l’itinéraire' : (route?.waypoints ? 'Guidage indisponible' : 'Pas de guidage (parcours sans points)')}</p>}
+                : <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-mid)', margin: 0 }}>{steps.length ? t('record.routeNavFollowRoute') : (route?.waypoints ? t('record.routeNavGuidanceUnavailable') : t('record.routeNavNoGuidance'))}</p>}
             </div>
           </div>
 
@@ -351,8 +353,8 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
                 <span style={{ position: 'absolute', bottom: 1, right: 4, fontSize: 9.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{Math.round(aMin)} m</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>Réalisé {fmtKm(traveledM)} km</span>
-                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Total {fmtKm(totalM)} km · D+ {Math.round(totalGain)} m</span>
+                <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>{t('record.routeNavDone', { km: fmtKm(traveledM) })}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t('record.routeNavTotal', { km: fmtKm(totalM), gain: Math.round(totalGain) })}</span>
               </div>
             </div>
           )}
@@ -360,11 +362,11 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
 
         {/* Données restant / réalisé */}
         <div style={{ display: 'flex', alignItems: 'center', padding: '8px 4px 6px' }}>
-          <Metric label="D+ restant" big={`${Math.round(remainingGain)} m`} small={`fait ${Math.round(gainDoneM)} m`} />
+          <Metric label={t('record.routeNavGainRemaining')} big={`${Math.round(remainingGain)} m`} small={t('record.routeNavDoneM', { v: Math.round(gainDoneM) })} />
           <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)' }} />
-          <Metric label="Restant" big={`${fmtKm(remainingM)} km`} small={`fait ${fmtKm(distanceDoneM)} km`} />
+          <Metric label={t('record.routeNavRemaining')} big={`${fmtKm(remainingM)} km`} small={t('record.routeNavDoneKm', { v: fmtKm(distanceDoneM) })} />
           <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)' }} />
-          <Metric label="Temps est." big={fmtTime(remainMin * 60)} small={`écoulé ${fmtTime(elapsedSec)}`} />
+          <Metric label={t('record.routeNavEstTime')} big={fmtTime(remainMin * 60)} small={t('record.routeNavElapsed', { v: fmtTime(elapsedSec) })} />
         </div>
       </div>
       )}

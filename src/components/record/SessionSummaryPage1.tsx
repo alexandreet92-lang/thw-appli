@@ -2,6 +2,7 @@
 import dynamic from 'next/dynamic'
 import type { FinishedSession } from '@/types/session'
 import ElevationProfile from './ElevationProfile'
+import { useI18n } from '@/lib/i18n'
 
 const SessionTraceMap = dynamic(() => import('./SessionTraceMap'), { ssr: false })
 
@@ -23,25 +24,26 @@ interface Props {
 }
 
 export default function SessionSummaryPage1({ session, theme, isDark, dataFontFamily }: Props) {
+  const { t } = useI18n()
   const isNoGps = session.sport === 'gym' || session.sport === 'hyrox'
   const isTrail = session.sport === 'trail' || session.sport === 'hiking' || session.sport === 'mtb'
   const stats = isNoGps
     ? [
-        { label: 'DURÉE',     value: formatDuration(session.duration_seconds), unit: '' },
-        { label: 'CALORIES',  value: String(Math.round(session.calories ?? 0)), unit: 'kcal' },
+        { label: t('record.sessionP1Duration'),     value: formatDuration(session.duration_seconds), unit: '' },
+        { label: t('record.sessionP1Calories'),  value: String(Math.round(session.calories ?? 0)), unit: 'kcal' },
       ]
     : isTrail
     ? [
-        { label: 'DISTANCE', value: (session.distance_m / 1000).toFixed(2), unit: 'km' },
-        { label: 'DURÉE',    value: formatDuration(session.duration_seconds), unit: '' },
+        { label: t('record.sessionP1Distance'), value: (session.distance_m / 1000).toFixed(2), unit: 'km' },
+        { label: t('record.sessionP1Duration'),    value: formatDuration(session.duration_seconds), unit: '' },
         { label: 'D+',       value: String(Math.round(session.elevation_gain_m)), unit: 'm' },
         { label: 'D-',       value: String(Math.round(session.elevation_loss_m ?? 0)), unit: 'm' },
       ]
     : [
-        { label: 'DISTANCE',     value: (session.distance_m / 1000).toFixed(2), unit: 'km' },
-        { label: 'DURÉE',        value: formatDuration(session.duration_seconds), unit: '' },
+        { label: t('record.sessionP1Distance'),     value: (session.distance_m / 1000).toFixed(2), unit: 'km' },
+        { label: t('record.sessionP1Duration'),        value: formatDuration(session.duration_seconds), unit: '' },
         { label: 'D+',           value: String(Math.round(session.elevation_gain_m)), unit: 'm' },
-        { label: 'VITESSE MOY.', value: session.avg_speed_kmh.toFixed(1), unit: 'km/h' },
+        { label: t('record.sessionP1AvgSpeed'), value: session.avg_speed_kmh.toFixed(1), unit: 'km/h' },
       ]
 
   return (
@@ -88,7 +90,7 @@ export default function SessionSummaryPage1({ session, theme, isDark, dataFontFa
           }}>
             <div style={{ padding: '8px 12px 4px' }}>
               <p style={{ margin: 0, fontSize: 10, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
-                Profil d&apos;altitude
+                {t('record.sessionP1ElevationProfile')}
               </p>
             </div>
             <ElevationProfile points={session.gps_points} isDark={isDark} height={90} />

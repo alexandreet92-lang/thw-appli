@@ -1,5 +1,6 @@
 'use client'
 import { useRef } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   value: number
@@ -14,16 +15,17 @@ function getRpeColor(v: number): string {
   return '#EF4444'
 }
 
-function getRpeLabel(v: number): string {
-  if (v <= 1) return 'Très facile'
-  if (v <= 3) return 'Facile'
-  if (v <= 5) return 'Modéré'
-  if (v <= 7) return 'Difficile'
-  if (v <= 8.5) return 'Très difficile'
-  return 'Effort maximal'
+function getRpeLabel(v: number, t: (key: string) => string): string {
+  if (v <= 1) return t('record.rpeVeryEasy')
+  if (v <= 3) return t('record.rpeEasy')
+  if (v <= 5) return t('record.rpeModerate')
+  if (v <= 7) return t('record.rpeHard')
+  if (v <= 8.5) return t('record.rpeVeryHard')
+  return t('record.rpeMaxEffort')
 }
 
 export default function RPESlider({ value, onChange, isDark = false }: Props) {
+  const { t } = useI18n()
   const trackRef = useRef<HTMLDivElement>(null)
 
   const handleMove = (clientX: number) => {
@@ -34,7 +36,7 @@ export default function RPESlider({ value, onChange, isDark = false }: Props) {
   }
 
   const color = getRpeColor(value)
-  const label = getRpeLabel(value)
+  const label = getRpeLabel(value, t)
   const fillPct = (value / 10) * 100
   const displayValue = value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)
 

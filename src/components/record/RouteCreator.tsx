@@ -10,6 +10,7 @@ import { parseGPX } from '@/lib/gpxParser'
 import ElevationChart from './ElevationChart'
 import RouteSaveForm from './RouteSaveForm'
 import RouteLibrary from './RouteLibrary'
+import { useI18n } from '@/lib/i18n'
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 const ATTR = '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -60,9 +61,9 @@ interface ActiveRoute {
 
 interface Props { onClose: () => void; onLoadRoute: (route: ActiveRoute) => void; isDark: boolean; initialView?: 'creating' | 'library' }
 
-const LAYER_LABEL: Record<Layer, string> = { std: 'Plan', sat: 'Satellite', hyb: 'Hybride' }
-
 export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView = 'creating' }: Props) {
+  const { t } = useI18n()
+  const LAYER_LABEL: Record<Layer, string> = { std: t('record.routeCreatorLayerPlan'), sat: t('record.routeCreatorLayerSatellite'), hyb: t('record.routeCreatorLayerHybrid') }
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
   const [snappedPoints, setSnappedPoints] = useState<SnappedPoint[]>([])
   const [distanceM, setDistanceM] = useState(0)
@@ -208,19 +209,19 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
       </MapContainer>
 
       {/* Croix — sortir (haut gauche) */}
-      <button onClick={exitCreate} aria-label="Fermer" style={{ ...fb, position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', left: 12, zIndex: 1000 }}>
+      <button onClick={exitCreate} aria-label={t('record.routeCreatorClose')} style={{ ...fb, position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', left: 12, zIndex: 1000 }}>
         <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>
       </button>
 
       {/* Pile latérale droite : recherche · styles de carte · boussole */}
       <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', right: 12, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <button onClick={() => setSearchOpen(true)} aria-label="Rechercher" style={fb}>
+        <button onClick={() => setSearchOpen(true)} aria-label={t('record.routeCreatorSearch')} style={fb}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         </button>
-        <button onClick={() => setLayersOpen(o => !o)} aria-label="Styles de carte" style={fb}>
+        <button onClick={() => setLayersOpen(o => !o)} aria-label={t('record.routeCreatorMapStyles')} style={fb}>
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 12l10 5 10-5"/><path d="M2 17l10 5 10-5"/></svg>
         </button>
-        <button onClick={recenter} aria-label="Boussole" style={fb}>
+        <button onClick={recenter} aria-label={t('record.routeCreatorCompass')} style={fb}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6"/><path d="M12 5l2.4 6.6L21 14l-6.6-1.4z" fill="#EF4444"/><path d="M12 19l-2.4-6.6L3 10l6.6 1.4z" fill="currentColor" opacity="0.55"/></svg>
         </button>
       </div>
@@ -248,13 +249,13 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: '9px 12px' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
               <input autoFocus value={searchQ} onChange={e => setSearchQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void geocode() }}
-                placeholder="Chercher une ville, une rue…" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', color: 'var(--text)', fontSize: 15, fontFamily: 'var(--font-body)' }} />
+                placeholder={t('record.routeCreatorSearchPlaceholder')} style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', color: 'var(--text)', fontSize: 15, fontFamily: 'var(--font-body)' }} />
             </div>
-            <button onClick={() => { setSearchOpen(false); setSearchResults([]); setSearchQ('') }} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '4px 6px' }}>Annuler</button>
+            <button onClick={() => { setSearchOpen(false); setSearchResults([]); setSearchQ('') }} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '4px 6px' }}>{t('record.routeCreatorCancel')}</button>
           </div>
           {(searching || searchResults.length > 0) && (
             <div style={{ marginTop: 8, maxHeight: 260, overflowY: 'auto' }}>
-              {searching && <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: '8px 4px', margin: 0 }}>Recherche…</p>}
+              {searching && <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: '8px 4px', margin: 0 }}>{t('record.routeCreatorSearching')}</p>}
               {searchResults.map((res, i) => (
                 <button key={i} onClick={() => { mapRef.current?.setView([res.lat, res.lng], 14); setSearchOpen(false); setSearchResults([]); setSearchQ('') }}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '11px 8px', background: 'none', border: 'none', borderTop: i > 0 ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}>
@@ -274,18 +275,18 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
         {/* Sport + édition (annuler / refaire / import GPX) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px 6px' }}>
           <select value={sport} onChange={e => setSport(e.target.value)} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 999, color: 'var(--text)', fontSize: 13, fontWeight: 600, padding: '7px 12px', cursor: 'pointer', outline: 'none', fontFamily: 'var(--font-body)' }}>
-            <option value="cycling">Vélo</option><option value="mtb">VTT</option>
-            <option value="trail">Trail</option><option value="hiking">Randonnée</option>
+            <option value="cycling">{t('record.routeCreatorSportCycling')}</option><option value="mtb">{t('record.routeCreatorSportMtb')}</option>
+            <option value="trail">{t('record.routeCreatorSportTrail')}</option><option value="hiking">{t('record.routeCreatorSportHiking')}</option>
           </select>
-          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{snapping ? 'Calcul…' : `${waypoints.length} point${waypoints.length !== 1 ? 's' : ''}`}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{snapping ? t('record.routeCreatorCalculating') : `${waypoints.length} point${waypoints.length !== 1 ? 's' : ''}`}</span>
           <div style={{ flex: 1 }} />
-          <button onClick={undo} disabled={!waypoints.length} aria-label="Annuler" style={{ ...editBtn, opacity: waypoints.length ? 1 : 0.4 }}>
+          <button onClick={undo} disabled={!waypoints.length} aria-label={t('record.routeCreatorUndo')} style={{ ...editBtn, opacity: waypoints.length ? 1 : 0.4 }}>
             <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M3 9a6 6 0 1 1 1.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M3 5v4h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
-          <button onClick={redo} disabled={!redoStack.length} aria-label="Refaire" style={{ ...editBtn, opacity: redoStack.length ? 1 : 0.4 }}>
+          <button onClick={redo} disabled={!redoStack.length} aria-label={t('record.routeCreatorRedo')} style={{ ...editBtn, opacity: redoStack.length ? 1 : 0.4 }}>
             <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M15 9a6 6 0 1 0-1.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M15 5v4h-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
-          <label style={editBtn} aria-label="Importer un GPX">
+          <label style={editBtn} aria-label={t('record.routeCreatorImportGpx')}>
             <input type="file" accept=".gpx" onChange={handleGPX} style={{ display: 'none' }} />
             <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M9 2v10M5 8l4-4 4 4M3 15h12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </label>
@@ -294,9 +295,9 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
         {/* Stats */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '4px 16px 6px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
           {[
-            { label: 'Distance', value: distanceM >= 1000 ? `${(distanceM / 1000).toFixed(2)}` : `${Math.round(distanceM)}`, unit: distanceM >= 1000 ? 'km' : 'm' },
+            { label: t('record.routeCreatorDistance'), value: distanceM >= 1000 ? `${(distanceM / 1000).toFixed(2)}` : `${Math.round(distanceM)}`, unit: distanceM >= 1000 ? 'km' : 'm' },
             { label: 'D+', value: `${Math.round(elevGain)}`, unit: 'm' },
-            { label: 'Pente', value: distanceM > 0 ? (elevGain / distanceM * 100).toFixed(1) : '--', unit: '%' },
+            { label: t('record.routeCreatorGrade'), value: distanceM > 0 ? (elevGain / distanceM * 100).toFixed(1) : '--', unit: '%' },
           ].map((s, i) => (
             <div key={i} style={{ textAlign: 'center', padding: '8px 10px', flex: 1, borderLeft: i > 0 ? '1px solid var(--border)' : 'none' }}>
               <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</p>
@@ -313,7 +314,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
         <div style={{ padding: '8px 16px 10px' }}>
           <button onClick={() => setShowSave(true)} disabled={waypoints.length < 2}
             style={{ width: '100%', height: 48, borderRadius: 14, background: waypoints.length < 2 ? 'var(--bg-card2)' : 'var(--primary)', border: 'none', color: waypoints.length < 2 ? 'var(--text-dim)' : 'var(--on-primary)', fontSize: 15, fontWeight: 600, cursor: waypoints.length < 2 ? 'default' : 'pointer', fontFamily: 'var(--font-body)' }}>
-            Enregistrer
+            {t('record.routeCreatorSave')}
           </button>
         </div>
       </div>

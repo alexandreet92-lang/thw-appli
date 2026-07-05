@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   isDark: boolean
@@ -40,17 +41,18 @@ function Cell({ label, value, unit, big, isDark, font }: {
 }
 
 export default function TrailPage3({ isDark, gradientPercent, elevationGainM, elevationLossM, altitudeM, lapElevGainM, lapElevLossM, dataFontFamily }: Props) {
+  const { t } = useI18n()
   const font = dataFontFamily ?? '-apple-system, sans-serif'
   const dim  = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
   const sep  = isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', flex:1, alignContent:'start' }}>
-      <Cell big isDark={isDark} font={font} label="Pente actuelle" value={gradientPercent.toFixed(1)} unit="%" />
-      <Cell isDark={isDark} font={font} label="D+" value={String(Math.round(elevationGainM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="D-" value={String(Math.round(elevationLossM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="Altitude" value={String(Math.round(altitudeM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="D+ lap" value={String(Math.round(lapElevGainM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="D- lap" value={String(Math.round(lapElevLossM))} unit="m" />
+      <Cell big isDark={isDark} font={font} label={t('record.trailGradient')} value={gradientPercent.toFixed(1)} unit="%" />
+      <Cell isDark={isDark} font={font} label={t('record.trailElevGain')} value={String(Math.round(elevationGainM))} unit="m" />
+      <Cell isDark={isDark} font={font} label={t('record.trailElevLoss')} value={String(Math.round(elevationLossM))} unit="m" />
+      <Cell isDark={isDark} font={font} label={t('record.trailAltitude')} value={String(Math.round(altitudeM))} unit="m" />
+      <Cell isDark={isDark} font={font} label={t('record.trailLapElevGain')} value={String(Math.round(lapElevGainM))} unit="m" />
+      <Cell isDark={isDark} font={font} label={t('record.trailLapElevLoss')} value={String(Math.round(lapElevLossM))} unit="m" />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   isDark: boolean
@@ -41,15 +42,16 @@ function Cell({ label, value, unit, big, isDark, font }: {
 }
 
 export default function SkiPage1({ isDark, durationSec, speedKmh, maxSpeedKmh, distanceM, elevationLossM, altitudeM, runCount, dataFontFamily }: Props) {
+  const { t } = useI18n()
   const font = dataFontFamily ?? '-apple-system, sans-serif'
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', flex:1, alignContent:'start' }}>
-      <Cell big isDark={isDark} font={font} label="Vitesse" value={speedKmh.toFixed(1)} unit="km/h" />
-      <Cell isDark={isDark} font={font} label="Durée" value={fmt(durationSec)} />
-      <Cell isDark={isDark} font={font} label="Descentes" value={String(runCount)} />
+      <Cell big isDark={isDark} font={font} label={t('record.skiSpeed')} value={speedKmh.toFixed(1)} unit="km/h" />
+      <Cell isDark={isDark} font={font} label={t('record.skiDuration')} value={fmt(durationSec)} />
+      <Cell isDark={isDark} font={font} label={t('record.skiRuns')} value={String(runCount)} />
       <Cell isDark={isDark} font={font} label="D-" value={String(Math.round(elevationLossM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="Altitude" value={String(Math.round(altitudeM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="Vit. max" value={maxSpeedKmh.toFixed(1)} unit="km/h" />
+      <Cell isDark={isDark} font={font} label={t('record.skiAltitude')} value={String(Math.round(altitudeM))} unit="m" />
+      <Cell isDark={isDark} font={font} label={t('record.skiMaxSpeed')} value={maxSpeedKmh.toFixed(1)} unit="km/h" />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 export const POOL_SIZES = [
   { id: '20',   label: '20 m' },
@@ -8,6 +9,8 @@ export const POOL_SIZES = [
   { id: 'sea',  label: 'Mer / Océan' },
 ]
 
+const POOL_LABEL_KEY: Record<string, string> = { lake: 'record.swimPoolLake', sea: 'record.swimPoolSea' }
+
 interface Props {
   value: string
   onChange: (id: string) => void
@@ -15,6 +18,7 @@ interface Props {
 }
 
 export default function SwimmingPoolSelector({ value, onChange, isDark = false }: Props) {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
       {POOL_SIZES.map(p => {
@@ -33,7 +37,7 @@ export default function SwimmingPoolSelector({ value, onChange, isDark = false }
               cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'all 150ms',
             }}
           >
-            {p.label}
+            {POOL_LABEL_KEY[p.id] ? t(POOL_LABEL_KEY[p.id]) : p.label}
           </button>
         )
       })}

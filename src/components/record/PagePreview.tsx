@@ -2,6 +2,7 @@
 import { ALL_FIELDS, FONT_OPTIONS, type DataPage } from '@/types/cycling'
 import { useRef } from 'react'
 import { useCyclingSettings } from '@/hooks/useCyclingSettings'
+import { useI18n } from '@/lib/i18n'
 
 interface ThemeColors { bg: string; text: string; dim: string; separator: string; cardBg: string }
 
@@ -30,6 +31,7 @@ const getMockValue = (fieldId: string): string => {
 }
 
 export default function PagePreview({ page, theme, selectedField, onFieldClick, onFieldDoubleClick, dataFontFamily }: Props) {
+  const { t } = useI18n()
   const { settings } = useCyclingSettings()
   const settingsFont = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
   const fontFamily = dataFontFamily ?? settingsFont
@@ -57,7 +59,7 @@ export default function PagePreview({ page, theme, selectedField, onFieldClick, 
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: theme.dim, fontSize: 12,
         }}>
-          🗺  Carte
+          🗺  {t('record.pagePreviewMap')}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: `1px solid ${theme.separator}` }}>
           {page.fields.slice(0, 2).map((id, i, arr) => (

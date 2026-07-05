@@ -1,5 +1,6 @@
 'use client'
 import { formatSeconds } from '@/hooks/useStopwatch'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   isDark: boolean
@@ -49,6 +50,7 @@ function formatLap(sec: number): string {
 }
 
 export default function CyclingPage3({ isDark, currentLapSec, altitudeM }: Props) {
+  const { t: tr } = useI18n()
   const t = getTheme(isDark)
 
   return (
@@ -67,7 +69,7 @@ export default function CyclingPage3({ isDark, currentLapSec, altitudeM }: Props
           margin: 0, fontSize: 10, fontWeight: 700,
           color: t.label,
           textTransform: 'uppercase', letterSpacing: '0.15em',
-        }}>Watts</p>
+        }}>{tr('record.commonWatts')}</p>
         <p style={{
           margin: '12px 0 4px',
           fontSize: 80, fontWeight: 700, lineHeight: 1,
@@ -84,22 +86,22 @@ export default function CyclingPage3({ isDark, currentLapSec, altitudeM }: Props
         gridTemplateRows: '1fr 1fr',
       }}>
         <div style={{ borderRight: `1px solid ${t.separator}`, borderBottom: `1px solid ${t.separator}` }}>
-          <Cell label="Durée lap" value={formatLap(currentLapSec)} t={t} />
+          <Cell label={tr('record.commonLapDuration')} value={formatLap(currentLapSec)} t={t} />
         </div>
         <div style={{ borderRight: `1px solid ${t.separator}`, borderBottom: `1px solid ${t.separator}` }}>
-          <Cell label="Watts moy lap" value="--" unit="w" t={t} />
+          <Cell label={tr('record.cyclingPage3WattsAvgLap')} value="--" unit="w" t={t} />
         </div>
         <div style={{ borderBottom: `1px solid ${t.separator}` }}>
-          <Cell label="FC moy lap" value="--" unit="bpm" t={t} />
+          <Cell label={tr('record.cyclingPage3HrAvgLap')} value="--" unit="bpm" t={t} />
         </div>
         <div style={{ borderRight: `1px solid ${t.separator}` }}>
-          <Cell label="Cadence" value="--" unit="rpm" t={t} />
+          <Cell label={tr('record.commonCadence')} value="--" unit="rpm" t={t} />
         </div>
         <div style={{ borderRight: `1px solid ${t.separator}` }}>
-          <Cell label="Altitude" value={altitudeM != null ? `${Math.round(altitudeM)}` : '--'} unit="m" t={t} />
+          <Cell label={tr('record.commonAltitude')} value={altitudeM != null ? `${Math.round(altitudeM)}` : '--'} unit="m" t={t} />
         </div>
         <div>
-          <Cell label="Watts nor." value="--" unit="w" t={t} />
+          <Cell label={tr('record.cyclingPage3WattsNorm')} value="--" unit="w" t={t} />
         </div>
       </div>
     </div>

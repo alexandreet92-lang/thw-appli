@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_FIELDS, type DataPage } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import FieldPicker from './FieldPicker'
 import PagePreview from './PagePreview'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
@@ -35,7 +36,9 @@ export default function PageEditor(props: Props) {
 }
 
 function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDark }: Props) {
-  const t = getTheme(isDark)
+  const theme = getTheme(isDark)
+  const t = theme
+  const { t: tr } = useI18n()
   const { showToast } = useToast()
   const [closing, setClosing] = useState(false)
   const [page, setPage] = useState<DataPage>(initial!)
@@ -68,14 +71,14 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
           { user_id: user.id, sport: 'cycling', pages: newPages },
           { onConflict: 'user_id,sport' }
         )
-        showToast('Modifications enregistrées')
+        showToast(tr('record.pageEditorToastSaved'))
       } catch (e) {
         console.error('[PageEditor] autoSave error:', e)
       } finally {
         setSaving(false)
       }
     }, 600)
-  }, [onPageUpdated, showToast])
+  }, [onPageUpdated, showToast, tr])
 
   const applyUpdate = useCallback((updated: DataPage) => {
     setPage(updated)
@@ -96,7 +99,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
     const next = { ...page, fields: page.fields.slice(0, -1) }
     if (page.bigFieldId === last) next.bigFieldId = next.fields[0]
     applyUpdate(next)
-    showToast('Champ supprimé')
+    showToast(tr('record.pageEditorFieldRemoved'))
   }
 
   const handleFieldClick = (fid: string) => {
@@ -112,7 +115,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
     else if (page.bigFieldId === fid) newBig = selectedField
     applyUpdate({ ...page, fields: newFields, bigFieldId: newBig })
     setSelectedField(null)
-    showToast('Positions échangées')
+    showToast(tr('record.pageEditorPositionsSwapped'))
   }
   const handleFieldDoubleClick = (fid: string) => {
     setReplacingFieldId(fid)
@@ -125,11 +128,11 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
       const newFields = page.fields.map(f => f === replacingFieldId ? newFid : f)
       const newBig = page.bigFieldId === replacingFieldId ? newFid : page.bigFieldId
       applyUpdate({ ...page, fields: newFields, bigFieldId: newBig })
-      showToast('Champ remplacé')
+      showToast(tr('record.pageEditorFieldReplaced'))
     } else {
       if (page.fields.length >= maxForPage) return
       applyUpdate({ ...page, fields: [...page.fields, newFid] })
-      showToast('Champ ajouté')
+      showToast(tr('record.pageEditorFieldAdded'))
     }
     setPickerOpen(false)
     setReplacingFieldId(null)
@@ -149,7 +152,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
     >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: `1px solid ${t.separator}`, flexShrink: 0 }}>
-        <button onClick={handleClose} aria-label="Retour"
+        <button onClick={handleClose} aria-label={tr('record.pageEditorBack')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.text, padding: 4, flexShrink: 0 }}>
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M12 5l-5 5 5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
@@ -228,7 +231,7 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
                   color: active ? '#06B6D4' : t.dim, cursor: 'pointer',
                   fontFamily: 'DM Sans, sans-serif',
                 }}>
-                {pos === 'top' ? 'Grand champ en haut' : 'Grand champ au centre'}
+                {pos === 'top' ? tr('record.pageEditorBigFieldTop') : tr('record.pageEditorBigFieldMiddle')}
               </button>
             )
           })}
@@ -250,13 +253,13 @@ function PageEditorInner({ page: initial, allPages, onPageUpdated, onClose, isDa
           position: 'absolute', top: 8, right: 8,
           background: 'rgba(0,0,0,0.50)', borderRadius: 6,
           padding: '2px 8px', fontSize: 10, color: '#fff', letterSpacing: '0.04em',
-        }}>Aperçu</div>
+        }}>{tr('record.pageEditorPreview')}</div>
       </div>
 
       <p style={{ textAlign: 'center', fontSize: 12, color: t.dim, padding: '10px 16px', margin: 0 }}>
         {selectedField
-          ? 'Appuyez sur un autre champ pour échanger les positions'
-          : 'Appuyez pour sélectionner · Double-tap pour remplacer'}
+          ? tr('record.pageEditorHintSwap')
+          : tr('record.pageEditorHintSelect')}
       </p>
 
       <div style={{ flex: 1, minHeight: 0 }} />

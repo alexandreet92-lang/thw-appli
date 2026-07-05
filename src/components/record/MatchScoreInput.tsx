@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 export interface MatchSet { me: number; opp: number }
 
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function MatchScoreInput({ sets, onChange, isDark }: Props) {
+  const { t } = useI18n()
   const text  = isDark ? '#FFF' : '#0A0A0A'
   const dim   = isDark ? 'rgba(255,255,255,0.45)' : '#8C8C8C'
   const surf  = isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB'
@@ -28,7 +30,7 @@ export default function MatchScoreInput({ sets, onChange, isDark }: Props) {
     <div>
       {sets.map((set, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-          <span style={{ fontSize: 12, color: dim, width: 44, flexShrink: 0 }}>Set {i + 1}</span>
+          <span style={{ fontSize: 12, color: dim, width: 44, flexShrink: 0 }}>{t('record.matchScoreSet', { n: i + 1 })}</span>
           <input type="number" value={set.me  || ''} placeholder="0" onChange={e => update(i, 'me',  parseInt(e.target.value) || 0)} style={numStyle} />
           <span style={{ fontSize: 16, color: dim, fontWeight: 700 }}>—</span>
           <input type="number" value={set.opp || ''} placeholder="0" onChange={e => update(i, 'opp', parseInt(e.target.value) || 0)} style={numStyle} />
@@ -37,12 +39,12 @@ export default function MatchScoreInput({ sets, onChange, isDark }: Props) {
       ))}
       {sets.length < 5 && (
         <button onClick={() => onChange([...sets, { me: 0, opp: 0 }])} style={{ width: '100%', padding: '10px', background: 'none', border: `1px dashed ${bord}`, borderRadius: 10, color: '#06B6D4', fontSize: 14, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', marginBottom: sets.length > 0 ? 10 : 0 }}>
-          + Ajouter un set
+          {t('record.matchScoreAddSet')}
         </button>
       )}
       {sets.length > 0 && (
         <p style={{ fontSize: 16, fontWeight: 600, color: '#06B6D4', textAlign: 'center', margin: '10px 0 0' }}>
-          {setsWonMe} sets à {setsWonOpp}
+          {t('record.matchScoreSetsTo', { me: setsWonMe, opp: setsWonOpp })}
         </p>
       )}
     </div>

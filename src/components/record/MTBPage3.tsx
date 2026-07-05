@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   isDark: boolean
@@ -40,11 +41,12 @@ function Cell({ label, value, unit, big, isDark, font }: {
 }
 
 export default function MTBPage3({ isDark, gradientPercent, maxGradient, elevationGainM, elevationLossM, lapElevGainM, lapElevLossM, dataFontFamily }: Props) {
+  const { t } = useI18n()
   const font = dataFontFamily ?? '-apple-system, sans-serif'
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', flex:1, alignContent:'start' }}>
-      <Cell big isDark={isDark} font={font} label="Pente actuelle" value={gradientPercent.toFixed(1)} unit="%" />
-      <Cell isDark={isDark} font={font} label="Pente max" value={maxGradient.toFixed(1)} unit="%" />
+      <Cell big isDark={isDark} font={font} label={t('record.commonCurrentGradient')} value={gradientPercent.toFixed(1)} unit="%" />
+      <Cell isDark={isDark} font={font} label={t('record.mtbPage3MaxGradient')} value={maxGradient.toFixed(1)} unit="%" />
       <Cell isDark={isDark} font={font} label="D+" value={String(Math.round(elevationGainM))} unit="m" />
       <Cell isDark={isDark} font={font} label="D-" value={String(Math.round(elevationLossM))} unit="m" />
       <Cell isDark={isDark} font={font} label="D+ lap" value={String(Math.round(lapElevGainM))} unit="m" />

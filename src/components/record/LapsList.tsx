@@ -1,5 +1,6 @@
 'use client'
 import { formatSeconds } from '@/hooks/useStopwatch'
+import { useI18n } from '@/lib/i18n'
 
 export interface Lap {
   number: number
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function LapsList({ laps, isDark = false }: Props) {
+  const { t } = useI18n()
   const text       = isDark ? '#FFFFFF' : '#0A0A0A'
   const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
   const separator  = isDark ? 'rgba(255,255,255,0.08)' : '#EFEFEF'
@@ -22,7 +24,7 @@ export default function LapsList({ laps, isDark = false }: Props) {
   if (laps.length === 0) {
     return (
       <p style={{ textAlign: 'center', fontSize: 12, color: labelColor, marginTop: 24 }}>
-        Aucun lap enregistré
+        {t('record.lapsListEmpty')}
       </p>
     )
   }
@@ -34,7 +36,7 @@ export default function LapsList({ laps, isDark = false }: Props) {
         fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.15em',
         color: labelColor, fontWeight: 700,
       }}>
-        <span>Lap</span><span>Temps</span><span>Distance</span><span>Vit. moy.</span>
+        <span>{t('record.lapsListLap')}</span><span>{t('record.lapsListTime')}</span><span>{t('record.commonDistance')}</span><span>{t('record.commonAvgSpeedShort')}</span>
       </div>
       {[...laps].reverse().map(lap => (
         <div

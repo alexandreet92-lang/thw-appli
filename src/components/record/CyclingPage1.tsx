@@ -1,6 +1,7 @@
 'use client'
 import { formatSeconds } from '@/hooks/useStopwatch'
 import { useCyclingSettings } from '@/hooks/useCyclingSettings'
+import { useI18n } from '@/lib/i18n'
 import { FONT_OPTIONS } from '@/types/cycling'
 
 interface Props {
@@ -33,6 +34,7 @@ function Cell({ label, value, unit, t, fontFamily }: {
 }
 
 export default function CyclingPage1({ isDark, durationSec, speedKmh, distanceM, elevationGainM }: Props) {
+  const { t: tr } = useI18n()
   const t = getTheme(isDark)
   const { settings } = useCyclingSettings()
   const fontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
@@ -41,29 +43,29 @@ export default function CyclingPage1({ isDark, durationSec, speedKmh, distanceM,
   return (
     <div className="cycling-page-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ flexBasis: '40%', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, borderBottom: `1px solid ${t.separator}` }}>
-        <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: t.label, textTransform: 'uppercase', letterSpacing: '0.15em' }}>Durée</p>
+        <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: t.label, textTransform: 'uppercase', letterSpacing: '0.15em' }}>{tr('record.commonDuration')}</p>
         <p style={{ margin: '14px 0 0', fontSize: 72, fontWeight: 700, lineHeight: 1, color: t.text, fontFamily }}>
           {formatSeconds(durationSec)}
         </p>
       </div>
       <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: '1fr 1fr' }}>
         <div style={{ borderRight: `1px solid ${t.separator}`, borderBottom: `1px solid ${t.separator}` }}>
-          <Cell label="Distance" value={distanceKm} unit="km" t={t} fontFamily={fontFamily} />
+          <Cell label={tr('record.commonDistance')} value={distanceKm} unit="km" t={t} fontFamily={fontFamily} />
         </div>
         <div style={{ borderRight: `1px solid ${t.separator}`, borderBottom: `1px solid ${t.separator}` }}>
-          <Cell label="Vitesse" value={speedKmh.toFixed(1)} unit="km/h" t={t} fontFamily={fontFamily} />
+          <Cell label={tr('record.commonSpeed')} value={speedKmh.toFixed(1)} unit="km/h" t={t} fontFamily={fontFamily} />
         </div>
         <div style={{ borderBottom: `1px solid ${t.separator}` }}>
           <Cell label="D+" value={`${Math.round(elevationGainM)}`} unit="m" t={t} fontFamily={fontFamily} />
         </div>
         <div style={{ borderRight: `1px solid ${t.separator}` }}>
-          <Cell label="Watts" value="--" unit="w" t={t} fontFamily={fontFamily} />
+          <Cell label={tr('record.commonWatts')} value="--" unit="w" t={t} fontFamily={fontFamily} />
         </div>
         <div style={{ borderRight: `1px solid ${t.separator}` }}>
-          <Cell label="FC" value="--" unit="bpm" t={t} fontFamily={fontFamily} />
+          <Cell label={tr('record.commonHr')} value="--" unit="bpm" t={t} fontFamily={fontFamily} />
         </div>
         <div>
-          <Cell label="Watts moy" value="--" unit="w" t={t} fontFamily={fontFamily} />
+          <Cell label={tr('record.cyclingPage1WattsAvg')} value="--" unit="w" t={t} fontFamily={fontFamily} />
         </div>
       </div>
     </div>

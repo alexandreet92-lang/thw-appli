@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import SessionTraceMap from './SessionTraceMap'
 import type { GPSPoint } from '@/hooks/useGPSTracking'
 
@@ -34,6 +35,7 @@ function StatBox({ label, value, unit, isDark }: { label: string; value: string;
 }
 
 export default function SkiSummary({ snap, isDark, onClose }: Props) {
+  const { t } = useI18n()
   const [page, setPage] = useState(0)
   const bg   = isDark ? '#0A0A0A' : '#FFFFFF'
   const text = isDark ? '#FFFFFF' : '#0A0A0A'
@@ -45,10 +47,10 @@ export default function SkiSummary({ snap, isDark, onClose }: Props) {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', padding:'12px 16px', borderBottom:`1px solid ${sep}`, flexShrink:0 }}>
         <div style={{ flex:1 }}>
-          <p style={{ fontSize:18, fontWeight:700, color:text, margin:0, fontFamily:'Syne, sans-serif' }}>Séance terminée</p>
+          <p style={{ fontSize:18, fontWeight:700, color:text, margin:0, fontFamily:'Syne, sans-serif' }}>{t('record.skiSummaryTitle')}</p>
           <p style={{ fontSize:13, color:dim, margin:'2px 0 0' }}>{snap.skiType === 'ski' ? 'Ski' : 'Snowboard'} · {new Date(snap.startedAtISO).toLocaleDateString('fr-FR')}</p>
         </div>
-        <button onClick={onClose} style={{ padding:'8px 20px', background:'linear-gradient(135deg,#06B6D4,#2563EB)', border:'none', borderRadius:12, color:'white', fontSize:14, fontWeight:600, cursor:'pointer' }}>Terminer</button>
+        <button onClick={onClose} style={{ padding:'8px 20px', background:'linear-gradient(135deg,#06B6D4,#2563EB)', border:'none', borderRadius:12, color:'white', fontSize:14, fontWeight:600, cursor:'pointer' }}>{t('record.skiSummaryFinish')}</button>
       </div>
 
       {/* Page dots */}
@@ -64,10 +66,10 @@ export default function SkiSummary({ snap, isDark, onClose }: Props) {
               <SessionTraceMap points={snap.gpsPts} isDark={isDark} />
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', flexShrink:0 }}>
-              <StatBox isDark={isDark} label="Distance" value={(snap.distM/1000).toFixed(2)} unit="km" />
-              <StatBox isDark={isDark} label="Durée" value={fmt(snap.durationSec)} />
-              <StatBox isDark={isDark} label="D-" value={String(Math.round(snap.elevLossM))} unit="m" />
-              <StatBox isDark={isDark} label="Descentes" value={String(snap.runCount)} />
+              <StatBox isDark={isDark} label={t('record.skiDistance')} value={(snap.distM/1000).toFixed(2)} unit="km" />
+              <StatBox isDark={isDark} label={t('record.skiDuration')} value={fmt(snap.durationSec)} />
+              <StatBox isDark={isDark} label={t('record.skiElevLoss')} value={String(Math.round(snap.elevLossM))} unit="m" />
+              <StatBox isDark={isDark} label={t('record.skiRuns')} value={String(snap.runCount)} />
             </div>
           </div>
         )}
@@ -76,14 +78,14 @@ export default function SkiSummary({ snap, isDark, onClose }: Props) {
         {page === 1 && (
           <div style={{ overflowY:'auto', height:'100%' }}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr' }}>
-              <StatBox isDark={isDark} label="Vitesse max" value={snap.maxSpeedRunKmh.toFixed(1)} unit="km/h" />
-              <StatBox isDark={isDark} label="Vit. moy. desc." value={snap.avgSpeedRunKmh.toFixed(1)} unit="km/h" />
-              <StatBox isDark={isDark} label="D- total" value={String(Math.round(snap.elevLossM))} unit="m" />
-              <StatBox isDark={isDark} label="Altitude max" value={String(snap.maxAltM)} unit="m" />
-              <StatBox isDark={isDark} label="Temps descente" value={fmt(snap.totalRunSec)} />
-              <StatBox isDark={isDark} label="Temps remontée" value={fmt(snap.totalLiftSec)} />
-              <StatBox isDark={isDark} label="Calories" value={String(snap.calories)} unit="kcal" />
-              <StatBox isDark={isDark} label="D+" value={String(snap.elevGainM)} unit="m" />
+              <StatBox isDark={isDark} label={t('record.skiMaxSpeedFull')} value={snap.maxSpeedRunKmh.toFixed(1)} unit="km/h" />
+              <StatBox isDark={isDark} label={t('record.skiAvgRunSpeed')} value={snap.avgSpeedRunKmh.toFixed(1)} unit="km/h" />
+              <StatBox isDark={isDark} label={t('record.skiElevLossTotal')} value={String(Math.round(snap.elevLossM))} unit="m" />
+              <StatBox isDark={isDark} label={t('record.skiMaxAltitude')} value={String(snap.maxAltM)} unit="m" />
+              <StatBox isDark={isDark} label={t('record.skiRunTime')} value={fmt(snap.totalRunSec)} />
+              <StatBox isDark={isDark} label={t('record.skiLiftTime')} value={fmt(snap.totalLiftSec)} />
+              <StatBox isDark={isDark} label={t('record.skiCalories')} value={String(snap.calories)} unit="kcal" />
+              <StatBox isDark={isDark} label={t('record.skiElevGain')} value={String(snap.elevGainM)} unit="m" />
             </div>
           </div>
         )}

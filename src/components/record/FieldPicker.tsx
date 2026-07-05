@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 import { ALL_FIELDS, FIELD_CATEGORIES, type DataField, type FieldCategory } from '@/types/cycling'
 
 interface ThemeColors { bg: string; text: string; dim: string; separator: string; cardBg: string }
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme }: Props) {
+  const { t } = useI18n()
   const [closing, setClosing] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<FieldCategory | null>(null)
@@ -46,7 +48,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
                 {catLabel}
               </p>
               <p style={{ fontSize: 12, color: '#8C8C8C', margin: '3px 0 0' }}>
-                {available.length} champ{available.length > 1 ? 's' : ''} disponible{available.length > 1 ? 's' : ''}
+                {t('record.fieldPickerAvailable', { n: available.length })}
               </p>
             </div>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -85,7 +87,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
         ))}
         {matched.length === 0 && (
           <p style={{ textAlign: 'center', color: theme.dim, fontSize: 14, padding: '32px 20px' }}>
-            Aucun champ correspondant
+            {t('record.fieldPickerNoMatch')}
           </p>
         )}
       </div>
@@ -134,7 +136,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
             </button>
           )}
           <h2 style={{ fontSize: 18, fontWeight: 700, color: theme.text, margin: 0, flex: 1, fontFamily: 'Syne, sans-serif' }}>
-            {selectedCategory ? FIELD_CATEGORIES[selectedCategory] : 'Choisir un champ'}
+            {selectedCategory ? FIELD_CATEGORIES[selectedCategory] : t('record.fieldPickerTitle')}
           </h2>
           <button onClick={handleClose}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8C8C8C', fontSize: 22, lineHeight: 1, padding: '4px 8px' }}>
@@ -153,7 +155,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
               <path d="M11 11l3 3" stroke={theme.dim} strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
             <input
-              placeholder="Rechercher"
+              placeholder={t('record.fieldPickerSearch')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{ background: 'none', border: 'none', outline: 'none', color: theme.text, fontSize: 15, flex: 1, fontFamily: 'DM Sans, sans-serif' }}
@@ -176,6 +178,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
 function FieldRow({ field, theme, onClick, categoryLabel }: {
   field: DataField; theme: ThemeColors; onClick: () => void; categoryLabel?: string
 }) {
+  const { t } = useI18n()
   return (
     <button
       onClick={onClick}
@@ -201,12 +204,12 @@ function FieldRow({ field, theme, onClick, categoryLabel }: {
           {field.type === 'chart' && (
             <span style={{ fontSize: 10, color: '#06B6D4',
                            border: '1px solid rgba(6,182,212,0.4)',
-                           borderRadius: 4, padding: '1px 5px' }}>GRAPHIQUE</span>
+                           borderRadius: 4, padding: '1px 5px' }}>{t('record.fieldPickerBadgeChart')}</span>
           )}
           {field.type === 'climb_profile' && (
             <span style={{ fontSize: 10, color: '#06B6D4',
                            border: '1px solid rgba(139,92,246,0.4)',
-                           borderRadius: 4, padding: '1px 5px' }}>VISUEL</span>
+                           borderRadius: 4, padding: '1px 5px' }}>{t('record.fieldPickerBadgeVisual')}</span>
           )}
         </div>
       </div>
@@ -214,12 +217,12 @@ function FieldRow({ field, theme, onClick, categoryLabel }: {
         {field.requiresSensor && (
           <span style={{ fontSize: 10, color: 'rgba(239,68,68,0.7)',
                          border: '1px solid rgba(239,68,68,0.3)',
-                         borderRadius: 4, padding: '2px 6px' }}>capteur</span>
+                         borderRadius: 4, padding: '2px 6px' }}>{t('record.fieldPickerBadgeSensor')}</span>
         )}
         {field.requiresRoute && (
           <span style={{ fontSize: 10, color: 'rgba(234,179,8,0.8)',
                          border: '1px solid rgba(234,179,8,0.3)',
-                         borderRadius: 4, padding: '2px 6px' }}>parcours</span>
+                         borderRadius: 4, padding: '2px 6px' }}>{t('record.fieldPickerBadgeRoute')}</span>
         )}
       </div>
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">

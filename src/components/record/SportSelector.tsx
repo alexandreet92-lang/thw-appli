@@ -1,6 +1,22 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { IconBike, IconRun, IconMountain, IconWalk, IconBarbell, IconStretching2, IconKayak, IconSwimming, IconSnowboarding, IconYoga, IconBallTennis, IconKarate } from '@tabler/icons-react'
+import { useI18n } from '@/lib/i18n'
+
+const SPORT_LABEL_KEY: Record<SportId, string> = {
+  cycling: 'record.sportLabelCycling', mtb: 'record.sportLabelMtb', running: 'record.sportLabelRunning',
+  trail: 'record.sportLabelTrail', hiking: 'record.sportLabelHiking', strength: 'record.sportLabelStrength',
+  hyrox: 'record.sportLabelHyrox', rowing: 'record.sportLabelRowing', swim: 'record.sportLabelSwim',
+  ski: 'record.sportLabelSki', yoga: 'record.sportLabelYoga', padel: 'record.sportLabelPadel',
+  openwater: 'record.sportLabelOpenwater', hometrainer: 'record.sportLabelHometrainer', boxe: 'record.sportLabelBoxe',
+}
+const SPORT_CAT_KEY: Record<string, string> = {
+  'Sports sur roues': 'record.sportCatWheels', 'Sports à pied': 'record.sportCatFoot',
+  'Musculation & fitness': 'record.sportCatStrength', 'Sports de combat': 'record.sportCatCombat',
+  'Sports nautiques': 'record.sportCatWater', 'Sports de glisse': 'record.sportCatSnow',
+  'Bien-être': 'record.sportCatWellness', 'Raquettes': 'record.sportCatRackets',
+  'Natation': 'record.sportCatSwimming', 'Cyclisme indoor': 'record.sportCatIndoorCycling',
+}
 
 export type SportId =
   | 'cycling' | 'mtb'
@@ -127,6 +143,7 @@ interface Props {
 }
 
 export default function SportSelector({ open, onClose, selectedSport, onSelect }: Props) {
+  const { t } = useI18n()
   const [closing, setClosing] = useState(false)
   const [search, setSearch] = useState('')
   useEffect(() => {
@@ -137,9 +154,11 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
 
   const ACCENT = '#06B6D4'
   const handleClose = () => { setClosing(true); setTimeout(onClose, 230) }
+  const sportLabelText = (s: Sport) => t(SPORT_LABEL_KEY[s.id] ?? '') || s.label
+  const catNameText = (name: string) => t(SPORT_CAT_KEY[name] ?? '') || name
   const filteredCats = SPORT_CATEGORIES.map(c => ({
     ...c,
-    sports: c.sports.filter(s => s.label.toLowerCase().includes(search.toLowerCase())),
+    sports: c.sports.filter(s => sportLabelText(s).toLowerCase().includes(search.toLowerCase())),
   })).filter(c => c.sports.length > 0)
 
   return (
@@ -178,11 +197,11 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px' }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', margin: 0, fontFamily: 'Syne, sans-serif' }}>
-            Choisir un sport
+            {t('record.sportSelectorTitle')}
           </h2>
           <button
             onClick={handleClose}
-            aria-label="Fermer"
+            aria-label={t('record.sportSelectorClose')}
             style={{
               color: 'var(--text-dim)', background: 'none', border: 'none',
               fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '4px 8px',
@@ -204,7 +223,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
               <path d="M11 11l3 3" stroke="#8C8C8C" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
             <input
-              placeholder="Rechercher"
+              placeholder={t('record.sportSelectorSearch')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
@@ -247,7 +266,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
                     fontSize: 11, lineHeight: 1.2, textAlign: 'center',
                     color: active ? ACCENT : 'var(--text-mid)',
                   }}>
-                    {sport.label}
+                    {sportLabelText(sport)}
                   </span>
                 </button>
               )
@@ -264,7 +283,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
                 padding: '10px 12px 4px', margin: 0,
                 textTransform: 'uppercase', letterSpacing: '0.06em',
               }}>
-                {category.name}
+                {catNameText(category.name)}
               </p>
               {category.sports.map(sport => {
                 const active = selectedSport === sport.id
@@ -292,7 +311,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
                       {sport.icon}
                     </span>
                     <span style={{ fontSize: 16, color: 'var(--text)', fontWeight: 400, fontFamily: 'DM Sans, sans-serif' }}>
-                      {sport.label}
+                      {sportLabelText(sport)}
                     </span>
                     {active && (
                       <svg style={{ marginLeft: 'auto' }} width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -309,7 +328,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
               textAlign: 'center', color: '#8C8C8C',
               padding: '24px 16px', fontSize: 14,
             }}>
-              Aucun sport trouvé
+              {t('record.sportSelectorEmpty')}
             </p>
           )}
         </div>

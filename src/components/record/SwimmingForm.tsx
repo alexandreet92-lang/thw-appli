@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import RPESlider from './RPESlider'
 import SwimmingPoolSelector from './SwimmingPoolSelector'
 import SwimmingStrokeSelector from './SwimmingStrokeSelector'
@@ -36,6 +37,7 @@ const NUM_SM = {
 }
 
 export default function SwimmingForm({ onClose }: Props) {
+  const { t } = useI18n()
   const [isDark, setIsDark] = useState(false)
   useEffect(() => { setIsDark(document.documentElement.classList.contains('dark')) }, [])
 
@@ -108,28 +110,28 @@ export default function SwimmingForm({ onClose }: Props) {
       {/* Header */}
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
         <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>×</button>
-        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>Nouvelle séance natation</span>
+        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>{t('record.swimFormTitle')}</span>
         <button onClick={handleSave} disabled={saving} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#06B6D4', fontSize: 15, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.5 : 1 }}>
-          {saving ? '…' : 'Enregistrer'}
+          {saving ? '…' : t('record.swimSave')}
         </button>
       </div>
 
       {/* Body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', paddingBottom: 120 }}>
         <div style={{ marginBottom: 24 }}>
-          <label style={LABEL}>Titre</label>
+          <label style={LABEL}>{t('record.swimLabelTitle')}</label>
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder={autoTitle()} style={INPUT} />
         </div>
         <div style={{ marginBottom: 24 }}>
-          <label style={LABEL}>Taille du bassin</label>
+          <label style={LABEL}>{t('record.swimLabelPoolSize')}</label>
           <SwimmingPoolSelector value={poolSize} onChange={setPoolSize} isDark={isDark} />
         </div>
         <div style={{ marginBottom: 24 }}>
-          <label style={LABEL}>Type de nage</label>
+          <label style={LABEL}>{t('record.swimLabelStroke')}</label>
           <SwimmingStrokeSelector value={stroke} onChange={setStroke} isDark={isDark} />
         </div>
         <div style={{ marginBottom: 24 }}>
-          <label style={LABEL}>Durée</label>
+          <label style={LABEL}>{t('record.swimLabelDuration')}</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
             <NumInput val={hours} set={setHours} max={23} label="h" />
             <NumInput val={mins}  set={setMins}  max={59} label="min" />
@@ -138,7 +140,7 @@ export default function SwimmingForm({ onClose }: Props) {
           <p style={{ margin: '10px 0 0', fontSize: 24, fontWeight: 700, color: '#06B6D4', textAlign: 'center' as const }}>{fmtDur}</p>
         </div>
         <div style={{ marginBottom: 24 }}>
-          <label style={LABEL}>Distance</label>
+          <label style={LABEL}>{t('record.swimLabelDistance')}</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <input
               type="number" value={distM || ''} placeholder="0" min={0}
@@ -152,23 +154,23 @@ export default function SwimmingForm({ onClose }: Props) {
               ))}
             </div>
           </div>
-          {lengths != null && <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-dim)' }}>{totalDistM}m → {lengths} longueurs</p>}
+          {lengths != null && <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-dim)' }}>{totalDistM}m → {lengths} {t('record.swimLengths')}</p>}
         </div>
         <div style={{ marginBottom: 24 }}>
-          <label style={LABEL}>Intervalles</label>
-          <p style={{ margin: '-6px 0 12px', fontSize: 12, color: 'var(--text-dim)' }}>Détaille les séries de ta séance</p>
+          <label style={LABEL}>{t('record.swimLabelIntervals')}</label>
+          <p style={{ margin: '-6px 0 12px', fontSize: 12, color: 'var(--text-dim)' }}>{t('record.swimIntervalsHint')}</p>
           <SwimmingIntervals intervals={intervals} onChange={setIntervals} poolSizeM={isNaN(poolNum) ? 0 : poolNum} isDark={isDark} />
         </div>
         <div style={{ marginBottom: 24 }}>
-          <label style={LABEL}>Ressenti (RPE)</label>
-          <p style={{ margin: '-6px 0 16px', fontSize: 12, color: 'var(--text-dim)' }}>Comment tu t&apos;es senti pendant l&apos;effort&nbsp;?</p>
+          <label style={LABEL}>{t('record.swimLabelRpe')}</label>
+          <p style={{ margin: '-6px 0 16px', fontSize: 12, color: 'var(--text-dim)' }}>{t('record.swimRpeHint')}</p>
           <RPESlider value={rpe} onChange={setRpe} isDark={isDark} />
         </div>
         <div style={{ marginBottom: 12 }}>
-          <label style={LABEL}>Commentaire</label>
+          <label style={LABEL}>{t('record.swimLabelComment')}</label>
           <textarea
             value={comment} onChange={e => setComment(e.target.value)} rows={4}
-            placeholder="Décris ta séance, tes sensations, la qualité de l'eau..."
+            placeholder={t('record.swimCommentPlaceholder')}
             style={{ ...INPUT, resize: 'none' as const }}
           />
         </div>
@@ -180,7 +182,7 @@ export default function SwimmingForm({ onClose }: Props) {
           onClick={handleSave} disabled={saving}
           style={{ width: '100%', height: 52, borderRadius: 16, background: 'linear-gradient(135deg, #06B6D4, #2563EB)', border: 'none', color: '#fff', fontSize: 16, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'DM Sans, sans-serif', boxShadow: '0 4px 20px rgba(6,182,212,0.35)' }}
         >
-          {saving ? 'Enregistrement…' : "Enregistrer l'activité"}
+          {saving ? t('record.swimSaving') : t('record.swimSaveActivity')}
         </button>
       </div>
     </div>

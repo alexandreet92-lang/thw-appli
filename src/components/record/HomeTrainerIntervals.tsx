@@ -1,6 +1,7 @@
 'use client'
 import type { HTProgram } from '@/types/hometrainer'
 import { getZoneColor, getZoneLabel } from '@/types/hometrainer'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   program: HTProgram
@@ -15,6 +16,7 @@ function fmt(s: number) {
 }
 
 export default function HomeTrainerIntervals({ program, elapsedSec, ftp, isDark }: Props) {
+  const { t } = useI18n()
   const text  = isDark ? '#FFF' : '#0A0A0A'
   const dim   = isDark ? 'rgba(255,255,255,0.45)' : '#8C8C8C'
   const surf  = isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6'
@@ -64,13 +66,13 @@ export default function HomeTrainerIntervals({ program, elapsedSec, ftp, isDark 
         <p style={{ fontSize: 13, fontWeight: 500, color: text, margin: '0 0 10px' }}>{cur.name}</p>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
-            <p style={{ fontSize: 11, color: dim, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Cible</p>
+            <p style={{ fontSize: 11, color: dim, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('record.homeTrainerTarget')}</p>
             <p style={{ fontSize: 28, fontWeight: 700, color: getZoneColor(cur.ftpPercent), margin: 0, lineHeight: 1 }}>
               {targetWatts}w <span style={{ fontSize: 14, color: dim, fontWeight: 400 }}>({cur.ftpPercent}% FTP)</span>
             </p>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: 11, color: dim, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Restant</p>
+            <p style={{ fontSize: 11, color: dim, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('record.homeTrainerRemaining')}</p>
             <p style={{ fontSize: 22, fontWeight: 700, color: text, margin: 0, fontVariantNumeric: 'tabular-nums' }}>{fmt(remainingInCur)}</p>
           </div>
         </div>
@@ -80,7 +82,7 @@ export default function HomeTrainerIntervals({ program, elapsedSec, ftp, isDark 
       {next && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: surf, borderRadius: 12, opacity: 0.7 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: getZoneColor(next.ftpPercent), flexShrink: 0 }} />
-          <p style={{ fontSize: 13, color: text, margin: 0 }}>Suivant : {next.name}</p>
+          <p style={{ fontSize: 13, color: text, margin: 0 }}>{t('record.homeTrainerNext')} {next.name}</p>
           <p style={{ fontSize: 13, color: dim, margin: '0 0 0 auto' }}>{Math.round(ftp * next.ftpPercent / 100)}w · {fmt(next.duration)}</p>
         </div>
       )}

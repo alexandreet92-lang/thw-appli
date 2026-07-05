@@ -23,6 +23,7 @@ import { useCyclingConfig } from '@/hooks/useCyclingConfig'
 import { useCyclingSettings } from '@/hooks/useCyclingSettings'
 import { FONT_OPTIONS } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import type { FinishedSession, SessionLap } from '@/types/session'
 import type { GPSPoint } from '@/hooks/useGPSTracking'
 
@@ -46,6 +47,7 @@ interface SessionSnap {
 }
 
 export default function CyclingScreen({ onExit, onFinished, route }: Props) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const [gpsEnabled, setGpsEnabled] = useState(false)
@@ -290,7 +292,7 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
         display: 'flex', alignItems: 'center', padding: '0 12px',
         position: 'relative',
       }}>
-        <button onClick={onExit} aria-label="Quitter" style={{
+        <button onClick={onExit} aria-label={t('record.commonQuit')} style={{
           width: 36, height: 36, borderRadius: '50%',
           background: btnBg, color: text, border: 'none', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -303,9 +305,9 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
           position: 'absolute', left: '50%', transform: 'translateX(-50%)',
           fontSize: 13, color: labelColor, fontFamily: 'DM Sans, sans-serif',
         }}>
-          Vélo
+          {t('record.cyclingScreenTitle')}
         </span>
-        <button onClick={() => setSettingsOpen(true)} aria-label="Réglages" style={{
+        <button onClick={() => setSettingsOpen(true)} aria-label={t('record.commonSettings')} style={{
           marginLeft: 'auto',
           width: 36, height: 36, borderRadius: '50%',
           background: btnBg, color: text, border: 'none', cursor: 'pointer',

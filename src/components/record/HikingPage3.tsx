@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   isDark: boolean
@@ -38,15 +39,16 @@ function Cell({ label, value, unit, big, isDark, font }: {
 }
 
 export default function HikingPage3({ isDark, gradientPercent, elevationGainM, elevationLossM, altitudeM, distanceM, dataFontFamily }: Props) {
+  const { t } = useI18n()
   const font = dataFontFamily ?? '-apple-system, sans-serif'
   const avgGradient = distanceM > 0 ? (elevationGainM / distanceM) * 100 : 0
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', flex:1, alignContent:'start' }}>
-      <Cell big isDark={isDark} font={font} label="Pente actuelle" value={gradientPercent.toFixed(1)} unit="%" />
+      <Cell big isDark={isDark} font={font} label={t('record.commonCurrentGradient')} value={gradientPercent.toFixed(1)} unit="%" />
       <Cell isDark={isDark} font={font} label="D+" value={String(Math.round(elevationGainM))} unit="m" />
       <Cell isDark={isDark} font={font} label="D-" value={String(Math.round(elevationLossM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="Altitude" value={String(Math.round(altitudeM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="Pente moy." value={avgGradient.toFixed(1)} unit="%" />
+      <Cell isDark={isDark} font={font} label={t('record.commonAltitude')} value={String(Math.round(altitudeM))} unit="m" />
+      <Cell isDark={isDark} font={font} label={t('record.hikingPage3AvgGradient')} value={avgGradient.toFixed(1)} unit="%" />
     </div>
   )
 }

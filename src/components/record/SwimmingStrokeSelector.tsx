@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 const s = {
   stroke: 'currentColor', strokeWidth: 1.6, fill: 'none' as const,
@@ -71,6 +72,12 @@ const SWIM_STROKES = [
 
 export { SWIM_STROKES }
 
+export const SWIM_STROKE_KEY: Record<string, string> = {
+  freestyle: 'record.swimStrokeFreestyle', backstroke: 'record.swimStrokeBackstroke',
+  breaststroke: 'record.swimStrokeBreaststroke', butterfly: 'record.swimStrokeButterfly',
+  mixed: 'record.swimStrokeMixed', '': 'record.swimStrokeNone',
+}
+
 interface Props {
   value: string
   onChange: (id: string) => void
@@ -78,6 +85,7 @@ interface Props {
 }
 
 export default function SwimmingStrokeSelector({ value, onChange, isDark = false }: Props) {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
       {SWIM_STROKES.map(({ id, label, Icon }) => {
@@ -98,7 +106,7 @@ export default function SwimmingStrokeSelector({ value, onChange, isDark = false
             }}
           >
             <Icon />
-            {label}
+            {SWIM_STROKE_KEY[id] ? t(SWIM_STROKE_KEY[id]) : label}
           </button>
         )
       })}

@@ -1,9 +1,11 @@
 'use client'
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props { open: boolean; onClose: () => void; isDark: boolean; aiTipsEnabled: boolean; onToggleAI: (v: boolean) => void }
 
 export default function YogaSettings({ open, onClose, isDark, aiTipsEnabled, onToggleAI }: Props) {
+  const { t } = useI18n()
   const [closing, setClosing] = useState(false)
   if (!open) return null
   const bg   = isDark ? '#111' : '#FFF'
@@ -40,15 +42,15 @@ export default function YogaSettings({ open, onClose, isDark, aiTipsEnabled, onT
           <div style={{ width: 36, height: 4, borderRadius: 2, background: dim }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 20px 12px' }}>
-          <p style={{ fontSize: 18, fontWeight: 700, color: text, margin: 0, fontFamily: 'Syne, sans-serif' }}>Réglages</p>
+          <p style={{ fontSize: 18, fontWeight: 700, color: text, margin: 0, fontFamily: 'Syne, sans-serif' }}>{t('record.yogaSettingsTitle')}</p>
           <button onClick={handleClose} style={{ background: 'none', border: 'none', color: dim, fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: '4px 8px' }}>×</button>
         </div>
-        <p style={{ fontSize: 11, fontWeight: 700, color: dim, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 20px 6px', margin: 0 }}>Conseils IA</p>
-        <Row label="Conseils pendant la séance" sub="Générés par Claude pour chaque exercice">
+        <p style={{ fontSize: 11, fontWeight: 700, color: dim, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 20px 6px', margin: 0 }}>{t('record.yogaSettingsAiTips')}</p>
+        <Row label={t('record.yogaSettingsAiDuring')} sub={t('record.yogaSettingsAiDuringSub')}>
           <Toggle value={aiTipsEnabled} onChange={onToggleAI} />
         </Row>
-        <p style={{ fontSize: 11, fontWeight: 700, color: dim, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '12px 20px 6px', margin: 0 }}>Après séance</p>
-        <Row label="Afficher le résumé" sub="Récapitulatif à la fin de chaque séance">
+        <p style={{ fontSize: 11, fontWeight: 700, color: dim, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '12px 20px 6px', margin: 0 }}>{t('record.yogaSettingsPostSession')}</p>
+        <Row label={t('record.yogaSettingsShowSummary')} sub={t('record.yogaSettingsShowSummarySub')}>
           <Toggle value={true} onChange={() => {}} />
         </Row>
         <div style={{ height: 20 }} />

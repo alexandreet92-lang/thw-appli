@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
 import HRMiniChart from './workout/HRMiniChart'
@@ -19,6 +20,7 @@ function fmt(sec: number) {
 }
 
 export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [running, setRunning] = useState(false)
@@ -52,7 +54,7 @@ export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
 
   const calories = Math.round(elapsed / 60 * 7)
   const hr = hrSamples.length > 0 ? hrSamples[hrSamples.length - 1] : null
-  const label = sport === 'gym' ? 'Muscu' : 'Hyrox'
+  const label = sport === 'gym' ? t('record.freeModeGym') : 'Hyrox'
 
   const handleClose = () => {
     if (elapsed > 0 && running) { setConfirmClose(true); return }
@@ -93,7 +95,7 @@ export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
 
         {/* Chrono */}
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 11, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '1.5px', margin: '0 0 6px' }}>Durée</p>
+          <p style={{ fontSize: 11, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '1.5px', margin: '0 0 6px' }}>{t('record.commonDuration')}</p>
           <p style={{ fontSize: 72, fontWeight: 700, color: 'var(--text)', margin: 0, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fmt(elapsed)}</p>
         </div>
 
@@ -114,7 +116,7 @@ export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
 
         {/* Calories */}
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 11, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '1.5px', margin: '0 0 4px' }}>Calories est.</p>
+          <p style={{ fontSize: 11, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '1.5px', margin: '0 0 4px' }}>{t('record.freeModeCaloriesEst')}</p>
           <p style={{ fontSize: 36, fontWeight: 700, color: 'var(--text)', margin: 0 }}>
             {calories}<span style={{ fontSize: 14, color: 'var(--text-mid)', marginLeft: 4 }}>kcal</span>
           </p>
@@ -126,12 +128,12 @@ export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
       <div style={{ padding: '16px 24px', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)', display: 'flex', gap: 12, flexShrink: 0 }}>
         <button onClick={() => setRunning(r => !r)}
           style={{ flex: 1, height: 52, borderRadius: 16, background: running ? 'var(--bg-card2)' : 'linear-gradient(135deg, #06B6D4, #2563EB)', border: '1px solid var(--border)', color: running ? 'var(--text)' : '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
-          {running ? 'Pause' : elapsed === 0 ? 'Démarrer' : 'Reprendre'}
+          {running ? t('record.commonPause') : elapsed === 0 ? t('record.commonStart') : t('record.commonResume')}
         </button>
         {elapsed > 0 && (
           <button onClick={() => { setRunning(false); setShowSave(true) }}
             style={{ flex: 1, height: 52, borderRadius: 16, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
-            Terminer
+            {t('record.commonFinish')}
           </button>
         )}
       </div>
@@ -140,11 +142,11 @@ export default function FreeModeScreen({ sport, onClose, isDark }: Props) {
       {confirmClose && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 20, padding: 24, width: '100%', maxWidth: 320 }}>
-            <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>Quitter la séance ?</p>
-            <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '0 0 20px' }}>La session en cours sera perdue.</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>{t('record.freeModeQuitConfirm')}</p>
+            <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '0 0 20px' }}>{t('record.freeModeQuitWarning')}</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setConfirmClose(false)} style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 12, background: '#EF4444', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Quitter</button>
+              <button onClick={() => setConfirmClose(false)} style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonCancel')}</button>
+              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 12, background: '#EF4444', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.commonQuit')}</button>
             </div>
           </div>
         </div>

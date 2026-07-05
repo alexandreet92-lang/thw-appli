@@ -1,6 +1,7 @@
 'use client'
 import type { FinishedSession } from '@/types/session'
 import { formatPace, speedToMinKm } from '@/types/running'
+import { useI18n } from '@/lib/i18n'
 
 interface ThemeColors { bg: string; text: string; dim: string; separator: string }
 
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function SessionSummaryPage2({ session, theme, dataFontFamily }: Props) {
+  const { t } = useI18n()
   const maxAlt = session.gps_points.length
     ? Math.max(...session.gps_points.map(p => p.altitude ?? -Infinity).filter(a => a !== -Infinity))
     : null
@@ -35,33 +37,33 @@ export default function SessionSummaryPage2({ session, theme, dataFontFamily }: 
   const maxPaceVal  = speedToMinKm(session.max_speed_kmh)
 
   const runningStats: { label: string; value: string; unit: string; dim?: boolean }[] = [
-    { label: 'ALLURE MOY.',   value: avgPaceVal != null ? formatPace(avgPaceVal) : '--',   unit: 'min/km' },
-    { label: 'ALLURE MAX',    value: maxPaceVal != null ? formatPace(maxPaceVal) : '--',   unit: 'min/km' },
-    { label: 'VAP MOYENNE',   value: '--',                                                  unit: 'min/km', dim: true },
-    { label: 'FC MOYENNE',    value: '--',                                                  unit: 'bpm',    dim: true },
-    { label: 'CADENCE MOY.',  value: '--',                                                  unit: 'spm',    dim: true },
-    { label: 'VO2MAX EST.',   value: '--',                                                  unit: 'ml/kg',  dim: true },
-    { label: 'CALORIES',      value: String(session.calories),                             unit: 'kcal' },
-    { label: 'VITESSE MAX',   value: session.max_speed_kmh.toFixed(1),                    unit: 'km/h' },
-    { label: 'ALT. MAX',      value: maxAlt != null && isFinite(maxAlt) ? String(Math.round(maxAlt)) : '--', unit: 'm' },
-    { label: 'ALT. MIN',      value: minAlt != null && isFinite(minAlt) ? String(Math.round(minAlt)) : '--', unit: 'm' },
-    { label: 'TEMPS MOV.',    value: formatDuration(session.duration_seconds),             unit: '' },
-    { label: 'FOULÉE',        value: '--',                                                  unit: 'm',      dim: true },
+    { label: t('record.sessionP2PaceAvg'),   value: avgPaceVal != null ? formatPace(avgPaceVal) : '--',   unit: 'min/km' },
+    { label: t('record.sessionP2PaceMax'),    value: maxPaceVal != null ? formatPace(maxPaceVal) : '--',   unit: 'min/km' },
+    { label: t('record.sessionP2VapAvg'),   value: '--',                                                  unit: 'min/km', dim: true },
+    { label: t('record.sessionP2HrAvg'),    value: '--',                                                  unit: 'bpm',    dim: true },
+    { label: t('record.sessionP2CadenceAvg'),  value: '--',                                                  unit: 'spm',    dim: true },
+    { label: t('record.sessionP2Vo2max'),   value: '--',                                                  unit: 'ml/kg',  dim: true },
+    { label: t('record.sessionP2Calories'),      value: String(session.calories),                             unit: 'kcal' },
+    { label: t('record.sessionP2SpeedMax'),   value: session.max_speed_kmh.toFixed(1),                    unit: 'km/h' },
+    { label: t('record.sessionP2AltMax'),      value: maxAlt != null && isFinite(maxAlt) ? String(Math.round(maxAlt)) : '--', unit: 'm' },
+    { label: t('record.sessionP2AltMin'),      value: minAlt != null && isFinite(minAlt) ? String(Math.round(minAlt)) : '--', unit: 'm' },
+    { label: t('record.sessionP2MovingTime'),    value: formatDuration(session.duration_seconds),             unit: '' },
+    { label: t('record.sessionP2Stride'),        value: '--',                                                  unit: 'm',      dim: true },
   ]
 
   const cyclingStats: { label: string; value: string; unit: string; dim?: boolean }[] = [
-    { label: 'WATTS MOY.',   value: '--',                                          unit: 'w',    dim: true },
-    { label: 'WATTS NOR.',   value: '--',                                          unit: 'w',    dim: true },
-    { label: 'FC MOYENNE',   value: '--',                                          unit: 'bpm',  dim: true },
-    { label: 'FC MAX',       value: '--',                                          unit: 'bpm',  dim: true },
+    { label: t('record.sessionP2WattsAvg'),   value: '--',                                          unit: 'w',    dim: true },
+    { label: t('record.sessionP2WattsNorm'),   value: '--',                                          unit: 'w',    dim: true },
+    { label: t('record.sessionP2HrAvg'),   value: '--',                                          unit: 'bpm',  dim: true },
+    { label: t('record.sessionP2HrMax'),       value: '--',                                          unit: 'bpm',  dim: true },
     { label: 'SM',           value: '--',                                          unit: '',     dim: true },
     { label: 'IF',           value: '--',                                          unit: '',     dim: true },
-    { label: 'VITESSE MAX',  value: session.max_speed_kmh.toFixed(1),             unit: 'km/h' },
-    { label: 'CALORIES',     value: String(session.calories),                     unit: 'kcal' },
-    { label: 'ALT. MAX',     value: maxAlt != null && isFinite(maxAlt) ? String(Math.round(maxAlt)) : '--', unit: 'm' },
-    { label: 'ALT. MIN',     value: minAlt != null && isFinite(minAlt) ? String(Math.round(minAlt)) : '--', unit: 'm' },
-    { label: 'TEMPS MOV.',   value: formatDuration(session.duration_seconds),     unit: '' },
-    { label: 'CADENCE',      value: '--',                                          unit: 'rpm',  dim: true },
+    { label: t('record.sessionP2SpeedMax'),  value: session.max_speed_kmh.toFixed(1),             unit: 'km/h' },
+    { label: t('record.sessionP2Calories'),     value: String(session.calories),                     unit: 'kcal' },
+    { label: t('record.sessionP2AltMax'),     value: maxAlt != null && isFinite(maxAlt) ? String(Math.round(maxAlt)) : '--', unit: 'm' },
+    { label: t('record.sessionP2AltMin'),     value: minAlt != null && isFinite(minAlt) ? String(Math.round(minAlt)) : '--', unit: 'm' },
+    { label: t('record.sessionP2MovingTime'),   value: formatDuration(session.duration_seconds),     unit: '' },
+    { label: t('record.sessionP2Cadence'),      value: '--',                                          unit: 'rpm',  dim: true },
   ]
 
   // Trail-specific uphill/downhill pace from GPS points
@@ -89,18 +91,18 @@ export default function SessionSummaryPage2({ session, theme, dataFontFamily }: 
   }
 
   const trailStats: { label: string; value: string; unit: string; dim?: boolean }[] = [
-    { label: 'ALLURE MOY.',    value: avgPaceVal != null ? formatPace(avgPaceVal) : '--',          unit: 'min/km' },
-    { label: 'VAP MOYENNE',    value: '--',                                                         unit: 'min/km', dim: true },
-    { label: 'ALLURE MONTÉE',  value: uphillPaceVal != null ? formatPace(uphillPaceVal) : '--',    unit: 'min/km' },
-    { label: 'ALLURE DESCENTE',value: downhillPaceVal != null ? formatPace(downhillPaceVal) : '--', unit: 'min/km' },
-    { label: 'FC MOYENNE',     value: '--',                                                         unit: 'bpm',    dim: true },
-    { label: 'FC MAX',         value: '--',                                                         unit: 'bpm',    dim: true },
-    { label: 'ALT. MAX',       value: maxAlt != null && isFinite(maxAlt) ? String(Math.round(maxAlt)) : '--', unit: 'm' },
-    { label: 'CALORIES',       value: String(session.calories),                                    unit: 'kcal' },
-    { label: 'D+ TOTAL',       value: String(Math.round(session.elevation_gain_m)),                unit: 'm' },
-    { label: 'D- TOTAL',       value: String(Math.round(session.elevation_loss_m ?? 0)),           unit: 'm' },
-    { label: 'TEMPS MOV.',     value: formatDuration(session.duration_seconds),                    unit: '' },
-    { label: 'VITESSE MAX',    value: session.max_speed_kmh.toFixed(1),                           unit: 'km/h' },
+    { label: t('record.sessionP2PaceAvg'),    value: avgPaceVal != null ? formatPace(avgPaceVal) : '--',          unit: 'min/km' },
+    { label: t('record.sessionP2VapAvg'),    value: '--',                                                         unit: 'min/km', dim: true },
+    { label: t('record.sessionP2PaceUphill'),  value: uphillPaceVal != null ? formatPace(uphillPaceVal) : '--',    unit: 'min/km' },
+    { label: t('record.sessionP2PaceDownhill'),value: downhillPaceVal != null ? formatPace(downhillPaceVal) : '--', unit: 'min/km' },
+    { label: t('record.sessionP2HrAvg'),     value: '--',                                                         unit: 'bpm',    dim: true },
+    { label: t('record.sessionP2HrMax'),         value: '--',                                                         unit: 'bpm',    dim: true },
+    { label: t('record.sessionP2AltMax'),       value: maxAlt != null && isFinite(maxAlt) ? String(Math.round(maxAlt)) : '--', unit: 'm' },
+    { label: t('record.sessionP2Calories'),       value: String(session.calories),                                    unit: 'kcal' },
+    { label: t('record.sessionP2GainTotal'),       value: String(Math.round(session.elevation_gain_m)),                unit: 'm' },
+    { label: t('record.sessionP2LossTotal'),       value: String(Math.round(session.elevation_loss_m ?? 0)),           unit: 'm' },
+    { label: t('record.sessionP2MovingTime'),     value: formatDuration(session.duration_seconds),                    unit: '' },
+    { label: t('record.sessionP2SpeedMax'),    value: session.max_speed_kmh.toFixed(1),                           unit: 'km/h' },
   ]
 
   const stats = isTrail ? trailStats : isRunning ? runningStats : cyclingStats
@@ -135,7 +137,7 @@ export default function SessionSummaryPage2({ session, theme, dataFontFamily }: 
 
       {hasDimStats && (
         <p style={{ margin: '16px 16px 0', fontSize: 12, color: theme.dim, lineHeight: 1.5, textAlign: 'center' }}>
-          ⚡ Données capteur non disponibles — connecte tes capteurs pour voir ces métriques.
+          {t('record.sessionP2SensorUnavailable')}
         </p>
       )}
     </div>

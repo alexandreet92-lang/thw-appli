@@ -4,6 +4,7 @@ import { SettingsSection } from './settings/SettingsSection'
 import { SettingsRow } from './settings/SettingsRow'
 import { Toggle } from './settings/Toggle'
 import { Select } from './settings/Select'
+import { useI18n } from '@/lib/i18n'
 
 interface Props { open: boolean; onClose: () => void; isDark: boolean; sport: 'gym' | 'hyrox' }
 
@@ -12,6 +13,7 @@ function getTheme(isDark: boolean) {
 }
 
 export default function WorkoutSettings({ open, onClose, isDark, sport }: Props) {
+  const { t: tr } = useI18n()
   const t = getTheme(isDark)
   const [closing, setClosing] = useState(false)
   const [theme, setTheme] = useState<'auto'|'light'|'dark'>('auto')
@@ -23,7 +25,7 @@ export default function WorkoutSettings({ open, onClose, isDark, sport }: Props)
 
   if (!open) return null
   const handleClose = () => { setClosing(true); setTimeout(onClose, 230) }
-  const title = sport === 'gym' ? 'Réglages muscu' : 'Réglages Hyrox'
+  const title = sport === 'gym' ? tr('record.workoutSettingsTitleGym') : tr('record.workoutSettingsTitleHyrox')
 
   return (
     <div style={{ position:'fixed', inset:0, zIndex:10000, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
@@ -35,24 +37,24 @@ export default function WorkoutSettings({ open, onClose, isDark, sport }: Props)
           <button onClick={handleClose} style={{ color:t.dim, background:'none', border:'none', fontSize:22, cursor:'pointer', lineHeight:1, padding:'4px 8px' }}>×</button>
         </div>
         <div style={{ flex:1, overflowY:'auto', paddingBottom:24 }}>
-          <SettingsSection title="AFFICHAGE" theme={t}>
-            <SettingsRow theme={t} label="Thème" last
-              right={<Select theme={t} value={theme} options={[{value:'auto',label:'Auto (jour/nuit)'},{value:'light',label:'Toujours jour'},{value:'dark',label:'Toujours nuit'}]} onChange={v => setTheme(v as 'auto'|'light'|'dark')} />} />
+          <SettingsSection title={tr('record.settingsSec_display')} theme={t}>
+            <SettingsRow theme={t} label={tr('record.workoutSettingsTheme')} last
+              right={<Select theme={t} value={theme} options={[{value:'auto',label:tr('record.workoutThemeAuto')},{value:'light',label:tr('record.workoutThemeAlwaysLight')},{value:'dark',label:tr('record.workoutThemeAlwaysDark')}]} onChange={v => setTheme(v as 'auto'|'light'|'dark')} />} />
           </SettingsSection>
-          <SettingsSection title="UNITÉS" theme={t}>
-            <SettingsRow theme={t} label="Poids" last
+          <SettingsSection title={tr('record.settingsSec_units')} theme={t}>
+            <SettingsRow theme={t} label={tr('record.workoutSettingsWeight')} last
               right={<Select theme={t} value={weightUnit} options={[{value:'kg',label:'kg'},{value:'lbs',label:'lbs'}]} onChange={v => setWeightUnit(v as 'kg'|'lbs')} />} />
           </SettingsSection>
-          <SettingsSection title="COMPORTEMENT" theme={t}>
-            <SettingsRow theme={t} label="Repos automatique entre séries"
+          <SettingsSection title={tr('record.workoutSettingsBehavior')} theme={t}>
+            <SettingsRow theme={t} label={tr('record.workoutSettingsAutoRest')}
               right={<Toggle theme={t} value={autoRest} onChange={setAutoRest} />} />
-            <SettingsRow theme={t} label="Vibration fin de repos"
+            <SettingsRow theme={t} label={tr('record.workoutSettingsVibration')}
               right={<Toggle theme={t} value={vibration} onChange={setVibration} />} />
-            <SettingsRow theme={t} label="Bip décompte (3…2…1)" last
+            <SettingsRow theme={t} label={tr('record.workoutSettingsCountdownBeep')} last
               right={<Toggle theme={t} value={countdownBeep} onChange={setCountdownBeep} />} />
           </SettingsSection>
-          <SettingsSection title="APRÈS LA SÉANCE" theme={t}>
-            <SettingsRow theme={t} label="Résumé en fin de séance" last
+          <SettingsSection title={tr('record.settingsSec_postrun')} theme={t}>
+            <SettingsRow theme={t} label={tr('record.workoutSettingsShowSummary')} last
               right={<Toggle theme={t} value={showSummary} onChange={setShowSummary} />} />
           </SettingsSection>
         </div>

@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useYogaSession } from '@/hooks/useYogaSession'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import type { YogaSessionExercise } from '@/types/yoga'
 import AICoachingTip from './AICoachingTip'
 import SessionSaveForm from './SessionSaveForm'
@@ -23,6 +24,7 @@ function fmt(s: number) {
 }
 
 export default function YogaSession({ exercises, title, isDark, onClose }: Props) {
+  const { t } = useI18n()
   const [mounted, setMounted]       = useState(false)
   const [startedAt]                 = useState(() => new Date().toISOString())
   const [aiEnabled, setAiEnabled]   = useState(true)
@@ -82,14 +84,14 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
         {session.phase === 'rest' ? (
           /* Rest screen */
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 14, color: dim, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px' }}>REPOS</p>
+            <p style={{ fontSize: 14, color: dim, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px' }}>{t('record.yogaRest')}</p>
             <p style={{ fontSize: 80, fontWeight: 700, color: text, margin: '0 0 12px', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{session.restRemaining}</p>
-            {next && <p style={{ fontSize: 16, color: '#06B6D4', fontWeight: 600, margin: 0 }}>Prochain : {next.name}</p>}
+            {next && <p style={{ fontSize: 16, color: '#06B6D4', fontWeight: 600, margin: 0 }}>{t('record.yogaNext', { name: next.name })}</p>}
           </div>
         ) : (
           <>
             <p style={{ fontSize: 12, color: dim, margin: 0, textTransform: 'uppercase', letterSpacing: 1 }}>
-              EXERCICE {session.currentIdx + 1} / {exercises.length}
+              {t('record.yogaExerciseProgress', { current: session.currentIdx + 1, total: exercises.length })}
             </p>
             <h2 style={{ fontSize: 28, fontWeight: 700, color: text, textAlign: 'center', margin: 0 }}>{cur?.name}</h2>
 
@@ -101,18 +103,18 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
             </div>
 
             {session.phase === 'idle' && (
-              <button onClick={session.start} style={{ padding: '14px 40px', borderRadius: 16, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>Démarrer</button>
+              <button onClick={session.start} style={{ padding: '14px 40px', borderRadius: 16, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaStart')}</button>
             )}
 
             {cur && <AICoachingTip exercise={cur} enabled={aiEnabled && session.phase === 'exercise'} isDark={isDark} />}
 
             {next && session.phase === 'exercise' && session.remaining <= 5 && (
               <p style={{ fontSize: 13, color: '#8C8C8C', textAlign: 'center', margin: 0, animation: 'fadein 300ms' }}>
-                Suivant : {next.name} · {next.duration_seconds}s
+                {t('record.yogaUpNext', { name: next.name, s: next.duration_seconds })}
               </p>
             )}
             {next && session.phase !== 'idle' && session.remaining > 5 && (
-              <p style={{ fontSize: 13, color: dim, textAlign: 'center', margin: 0 }}>Suivant : {next.name} · {next.duration_seconds}s</p>
+              <p style={{ fontSize: 13, color: dim, textAlign: 'center', margin: 0 }}>{t('record.yogaUpNext', { name: next.name, s: next.duration_seconds })}</p>
             )}
           </>
         )}
@@ -121,9 +123,9 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
       {/* Controls */}
       {session.phase !== 'idle' && session.phase !== 'finished' && (
         <div style={{ padding: '12px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),16px)', display: 'flex', gap: 10, flexShrink: 0 }}>
-          <button onClick={session.skip} style={{ flex: 1, height: 48, borderRadius: 14, background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Passer</button>
+          <button onClick={session.skip} style={{ flex: 1, height: 48, borderRadius: 14, background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaSkip')}</button>
           <button onClick={isRunning ? session.pause : session.resume} style={{ flex: 2, height: 48, borderRadius: 14, background: isRunning ? 'rgba(6,182,212,0.15)' : 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: isRunning ? '#06B6D4' : '#FFF', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
-            {isRunning ? 'Pause' : 'Reprendre'}
+            {isRunning ? t('record.yogaPause') : t('record.yogaResume')}
           </button>
           {session.phase === 'exercise' && (
             <button onClick={() => session.addTime(30)} style={{ flex: 1, height: 48, borderRadius: 14, background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>+30s</button>
@@ -135,11 +137,11 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
       {confirmClose && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ background: isDark ? '#1A1A1A' : '#FFF', borderRadius: 20, padding: 24, width: '100%', maxWidth: 320 }}>
-            <p style={{ fontSize: 16, fontWeight: 700, color: text, margin: '0 0 8px' }}>Quitter la séance ?</p>
-            <p style={{ fontSize: 14, color: dim, margin: '0 0 20px' }}>La progression sera perdue.</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: text, margin: '0 0 8px' }}>{t('record.yogaQuitConfirm')}</p>
+            <p style={{ fontSize: 14, color: dim, margin: '0 0 20px' }}>{t('record.yogaQuitWarning')}</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => { setConfirmClose(false); session.resume() }} style={{ flex: 1, height: 44, borderRadius: 12, background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 12, background: '#EF4444', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Quitter</button>
+              <button onClick={() => { setConfirmClose(false); session.resume() }} style={{ flex: 1, height: 44, borderRadius: 12, background: btnBg, border: 'none', color: text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaCancel')}</button>
+              <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 12, background: '#EF4444', border: 'none', color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.yogaQuit')}</button>
             </div>
           </div>
         </div>

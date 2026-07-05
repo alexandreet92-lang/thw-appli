@@ -9,6 +9,7 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import SessionSummaryPage1 from './SessionSummaryPage1'
 import SessionSummaryPage2 from './SessionSummaryPage2'
 import ActivityPhotos from '@/components/summary/ActivityPhotos'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   session: FinishedSession
@@ -48,6 +49,7 @@ function fmtDur(s: number) {
 
 function SessionSummaryInner({ session, isDark, onClose, completedEfforts }: Props) {
   const t = getTheme(isDark)
+  const { t: tr } = useI18n()
   const { showToast } = useToast()
   const { stravaConnected } = useStravaConnection()
   const { settings } = useCyclingSettings()
@@ -71,7 +73,7 @@ function SessionSummaryInner({ session, isDark, onClose, completedEfforts }: Pro
   }
 
   const uploadToStrava = async () => {
-    if (!session.id) { showToast('Session non sauvegardée'); return }
+    if (!session.id) { showToast(tr('record.sessionSummarySessionNotSaved')); return }
     setUploadingStrava(true)
     try {
       const res = await fetch('/api/strava/upload-activity', {
@@ -83,17 +85,17 @@ function SessionSummaryInner({ session, isDark, onClose, completedEfforts }: Pro
           duration: session.duration_seconds,
           distance: session.distance_m,
           sport: 'Ride',
-          name: `Sortie vélo · ${formatDate(session.started_at)}`,
+          name: `${tr('record.sessionSummaryDefaultTitle')} · ${formatDate(session.started_at)}`,
         }),
       })
       if (res.ok) {
-        showToast('Activité uploadée sur Strava ✓')
+        showToast(tr('record.sessionSummaryUploaded'))
       } else {
         const err = await res.json().catch(() => ({}))
-        showToast(err.error ?? 'Erreur upload Strava')
+        showToast(err.error ?? tr('record.sessionSummaryUploadError'))
       }
     } catch {
-      showToast('Erreur réseau')
+      showToast(tr('record.sessionSummaryNetworkError'))
     } finally {
       setUploadingStrava(false)
     }
@@ -117,7 +119,7 @@ function SessionSummaryInner({ session, isDark, onClose, completedEfforts }: Pro
             {formatDate(session.started_at)} · {formatTime(session.started_at)}
           </p>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: t.text, margin: '2px 0 0', fontFamily: 'Syne, sans-serif' }}>
-            {session.title ?? 'Sortie vélo'}
+            {session.title ?? tr('record.sessionSummaryDefaultTitle')}
           </h2>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -203,7 +205,7 @@ function SessionSummaryInner({ session, isDark, onClose, completedEfforts }: Pro
       {/* Segments */}
       {completedEfforts && completedEfforts.length > 0 && (
         <div style={{ flexShrink: 0, borderTop: `1px solid ${t.separator}`, padding: '14px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),16px)' }}>
-          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: t.dim, margin: '0 0 10px' }}>Segments</p>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: t.dim, margin: '0 0 10px' }}>{tr('record.sessionSummarySegments')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {completedEfforts.map((e, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6', borderRadius: 10, padding: '10px 14px' }}>

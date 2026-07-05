@@ -1,14 +1,15 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   onAuthorize: () => void
   onDismiss: () => void
 }
 
-const FEATURES = [
-  'Tracé GPS précis de ta sortie',
-  'Calcul distance, vitesse, altitude',
-  'Carte en temps réel pendant l\'effort',
+const FEATURE_KEYS = [
+  'record.gpsPrePermFeature1',
+  'record.gpsPrePermFeature2',
+  'record.gpsPrePermFeature3',
 ]
 
 function CheckIcon() {
@@ -21,6 +22,8 @@ function CheckIcon() {
 }
 
 export default function GPSPrePermissionScreen({ onAuthorize, onDismiss }: Props) {
+  const { t } = useI18n()
+  const FEATURES = FEATURE_KEYS.map(k => t(k))
   const handleAuthorize = () => {
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(() => {}, () => {}, { timeout: 1 })
@@ -56,7 +59,7 @@ export default function GPSPrePermissionScreen({ onAuthorize, onDismiss }: Props
         margin: '0 0 12px', fontSize: 24, fontWeight: 700,
         fontFamily: 'Syne, sans-serif', color: '#0A0A0A',
       }}>
-        Autoriser la localisation
+        {t('record.gpsPrePermTitle')}
       </h2>
 
       {/* Description */}
@@ -64,9 +67,7 @@ export default function GPSPrePermissionScreen({ onAuthorize, onDismiss }: Props
         margin: '0 0 28px', fontSize: 14, color: '#666',
         lineHeight: 1.6, maxWidth: 320,
       }}>
-        Pour enregistrer tes sorties et calculer distance, vitesse, dénivelé et tracé GPS,
-        l&apos;app a besoin d&apos;accéder à ta position.
-        Ta localisation n&apos;est jamais partagée.
+        {t('record.gpsPrePermDesc')}
       </p>
 
       {/* Feature list */}
@@ -96,7 +97,7 @@ export default function GPSPrePermissionScreen({ onAuthorize, onDismiss }: Props
         onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.98)' }}
         onMouseUp={e   => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
       >
-        Autoriser la localisation
+        {t('record.gpsPrePermTitle')}
       </button>
 
       {/* Secondary button */}
@@ -108,7 +109,7 @@ export default function GPSPrePermissionScreen({ onAuthorize, onDismiss }: Props
           fontFamily: 'DM Sans, sans-serif', padding: '6px 16px',
         }}
       >
-        Pas maintenant
+        {t('record.gpsPrePermNotNow')}
       </button>
     </div>
   )

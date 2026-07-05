@@ -2,6 +2,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/imageCompression'
+import { useI18n } from '@/lib/i18n'
 
 export interface PhotoButtonHandle {
   flushToSession: (sessionId: string, lat?: number, lng?: number) => Promise<void>
@@ -14,6 +15,7 @@ interface Props {
 }
 
 const PhotoButton = forwardRef<PhotoButtonHandle, Props>(function PhotoButton({ onPreview, currentLat, currentLng }, ref) {
+  const { t } = useI18n()
   const pendingFiles = useRef<Array<{ file: File; lat?: number; lng?: number; takenAt: string }>>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -81,7 +83,7 @@ const PhotoButton = forwardRef<PhotoButtonHandle, Props>(function PhotoButton({ 
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', flexShrink: 0,
         }}
-        title="Prendre une photo"
+        title={t('record.photoButtonTitle')}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>

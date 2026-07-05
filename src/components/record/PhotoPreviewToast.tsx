@@ -1,5 +1,6 @@
 'use client'
 import { useEffect } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   url: string
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export default function PhotoPreviewToast({ url, onDismiss }: Props) {
+  const { t } = useI18n()
   useEffect(() => {
     const t = setTimeout(onDismiss, 3000)
     return () => clearTimeout(t)
@@ -26,8 +28,8 @@ export default function PhotoPreviewToast({ url, onDismiss }: Props) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={url} alt="" style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover' }} />
       <div>
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#fff', margin: 0, fontFamily: 'DM Sans, sans-serif' }}>Photo ajoutée</p>
-        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.50)', margin: '2px 0 0', fontFamily: 'DM Sans, sans-serif' }}>Sauvegardée à la fin</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#fff', margin: 0, fontFamily: 'DM Sans, sans-serif' }}>{t('record.photoToastAdded')}</p>
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.50)', margin: '2px 0 0', fontFamily: 'DM Sans, sans-serif' }}>{t('record.photoToastSavedAtEnd')}</p>
       </div>
     </div>
   )

@@ -5,15 +5,16 @@ import { SettingsSection } from './settings/SettingsSection'
 import { SettingsRow } from './settings/SettingsRow'
 import { Toggle } from './settings/Toggle'
 import type { ThemeColors } from './settings/types'
+import { useI18n } from '@/lib/i18n'
 
 interface Session { id: string; title: string; sport: string; duration_min: number; day_index: number }
 interface LinkedSession { id: string; name: string; day: string; duration: string }
 
 interface Props { theme: ThemeColors }
 
-const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-
 export default function CyclingSettingsTraining({ theme }: Props) {
+  const { t } = useI18n()
+  const DAYS = [t('record.dayMon'), t('record.dayTue'), t('record.dayWed'), t('record.dayThu'), t('record.dayFri'), t('record.daySat'), t('record.daySun')]
   const [linked, setLinked] = useState<LinkedSession | null>(null)
   const [showZones, setShowZones] = useState(false)
   const [outOfZone, setOutOfZone] = useState(false)
@@ -43,9 +44,9 @@ export default function CyclingSettingsTraining({ theme }: Props) {
 
   return (
     <>
-      <SettingsSection title="ENTRAÎNEMENT" theme={theme}>
-        <SettingsRow theme={theme} label="Lier une séance"
-          description="Associe cette sortie à une séance de ton planning"
+      <SettingsSection title={t('record.sectionTrainingUpper')} theme={theme}>
+        <SettingsRow theme={theme} label={t('record.cyclingTrainingLinkSession')}
+          description={t('record.cyclingTrainingLinkSessionDesc')}
           onClick={openPicker}
           right={
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -59,17 +60,17 @@ export default function CyclingSettingsTraining({ theme }: Props) {
             <p style={{ fontSize: 12, color: '#8C8C8C', margin: '3px 0 0' }}>{linked.day} · {linked.duration}</p>
             <button onClick={() => setLinked(null)}
               style={{ fontSize: 12, color: '#EF4444', background: 'none', border: 'none', padding: 0, marginTop: 6, cursor: 'pointer' }}>
-              Dissocier
+              {t('record.cyclingTrainingUnlink')}
             </button>
           </div>
         )}
-        <SettingsRow theme={theme} label="Afficher les zones cibles"
-          description="Affiche les zones FC et puissance pendant l'effort"
+        <SettingsRow theme={theme} label={t('record.cyclingTrainingShowZones')}
+          description={t('record.cyclingTrainingShowZonesDesc')}
           disabled={!linked}
           right={<Toggle theme={theme} value={showZones} onChange={setShowZones} disabled={!linked} />}
         />
-        <SettingsRow theme={theme} label="Alerte hors zone" last
-          description="Notifie quand tu sors des zones cibles"
+        <SettingsRow theme={theme} label={t('record.cyclingTrainingOutOfZone')} last
+          description={t('record.cyclingTrainingOutOfZoneDesc')}
           disabled={!linked || !showZones}
           right={<Toggle theme={theme} value={outOfZone} onChange={setOutOfZone} disabled={!linked || !showZones} />}
         />
@@ -84,12 +85,12 @@ export default function CyclingSettingsTraining({ theme }: Props) {
               <div style={{ width: 40, height: 4, borderRadius: 2, background: theme.separator }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 8px' }}>
-              <h3 style={{ fontSize: 17, fontWeight: 700, color: theme.text, margin: 0, fontFamily: 'Syne, sans-serif' }}>Choisir une séance</h3>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: theme.text, margin: 0, fontFamily: 'Syne, sans-serif' }}>{t('record.cyclingTrainingPickSession')}</h3>
               <button onClick={closePicker} style={{ background: 'none', border: 'none', fontSize: 22, color: theme.dim, cursor: 'pointer' }}>×</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {sessions.length === 0
-                ? <p style={{ textAlign: 'center', color: theme.dim, fontSize: 14, padding: '32px 20px' }}>Aucune séance planifiée cette semaine</p>
+                ? <p style={{ textAlign: 'center', color: theme.dim, fontSize: 14, padding: '32px 20px' }}>{t('record.cyclingTrainingNoSession')}</p>
                 : sessions.map(s => (
                   <button key={s.id}
                     onClick={() => { setLinked({ id: s.id, name: s.title, day: DAYS[s.day_index] ?? '', duration: `${s.duration_min} min` }); closePicker() }}

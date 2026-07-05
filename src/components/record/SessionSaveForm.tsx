@@ -13,6 +13,7 @@ import { YOGA_TYPES } from '@/types/yoga'
 import { PADEL_TYPES } from '@/types/padel'
 import { OPEN_WATER_TYPES } from '@/types/openwater'
 import { HT_TYPES } from '@/types/hometrainer'
+import { useI18n } from '@/lib/i18n'
 
 export interface SessionFormData {
   title: string
@@ -35,22 +36,17 @@ interface Props {
   circuitTypes?: string[]   // types de circuit utilisés dans la séance (pré-cochés)
 }
 
-// Libellés des types de circuit (pour les tags pré-cochés du formulaire).
-const CIRCUIT_TYPE_LABEL: Record<string, string> = {
-  series: 'Séries', circuit: 'Lap', superset: 'Superset', emom: 'EMOM', tabata: 'Tabata',
-}
-
 function fmtDur(s: number): string {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60)
   return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`
 }
 
-function getAutoTitle(sport: string, startedAt: string): string {
+function getAutoTitle(sport: string, startedAt: string, t: (key: string) => string): string {
   const d = new Date(startedAt)
   const day = d.toLocaleDateString('fr-FR', { weekday: 'short' })
   const num = d.getDate()
   const month = d.toLocaleDateString('fr-FR', { month: 'long' })
-  const label = sport === 'running' ? 'Sortie running' : sport === 'trail' ? 'Sortie trail' : sport === 'hiking' ? 'Randonnée' : sport === 'mtb' ? 'Sortie VTT' : sport === 'rowing' ? 'Aviron' : sport === 'gym' ? 'Séance muscu' : sport === 'hyrox' ? 'Séance Hyrox' : sport === 'yoga' ? 'Séance yoga' : sport === 'padel' ? 'Séance padel' : sport === 'openwater' ? 'Natation eau libre' : sport === 'hometrainer' ? 'Séance home trainer' : 'Sortie vélo'
+  const label = sport === 'running' ? t('record.sessionSaveTitleRunning') : sport === 'trail' ? t('record.sessionSaveTitleTrail') : sport === 'hiking' ? t('record.sessionSaveTitleHiking') : sport === 'mtb' ? t('record.sessionSaveTitleMtb') : sport === 'rowing' ? t('record.sessionSaveTitleRowing') : sport === 'gym' ? t('record.sessionSaveTitleGym') : sport === 'hyrox' ? t('record.sessionSaveTitleHyrox') : sport === 'yoga' ? t('record.sessionSaveTitleYoga') : sport === 'padel' ? t('record.sessionSaveTitlePadel') : sport === 'openwater' ? t('record.sessionSaveTitleOpenWater') : sport === 'hometrainer' ? t('record.sessionSaveTitleHomeTrainer') : t('record.sessionSaveTitleCycling')
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
   return `${label} · ${cap(day)} ${num} ${month}`
 }
@@ -73,8 +69,12 @@ const LABEL_STYLE: React.CSSProperties = {
 }
 
 export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDark, summary, hr, circuitTypes }: Props) {
+  const { t: tr } = useI18n()
   const t = getTheme(isDark)
-  const autoTitle = getAutoTitle(sport, startedAt)
+  const CIRCUIT_TYPE_LABEL: Record<string, string> = {
+    series: tr('record.sessionSaveSets'), circuit: 'Lap', superset: 'Superset', emom: 'EMOM', tabata: 'Tabata',
+  }
+  const autoTitle = getAutoTitle(sport, startedAt, tr)
   const [title, setTitle]               = useState(autoTitle)
   const [trainingTypes, setTrainingTypes] = useState<string[]>([])
   const [circuits, setCircuits]         = useState<string[]>(() => circuitTypes ?? [])
@@ -128,14 +128,14 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
           </svg>
         </button>
         <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>
-          Enregistrer l'activité
+          {tr('record.sessionSaveHeader')}
         </span>
         <button
           onClick={handleSave}
           disabled={saving}
           style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 10, background: 'none', border: 'none', color: '#06B6D4', fontSize: 15, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.5 : 1 }}
         >
-          {saving ? '…' : 'Enregistrer'}
+          {saving ? '…' : tr('record.sessionSaveSave')}
         </button>
       </div>
 
@@ -145,25 +145,25 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
         {/* Résumé de séance */}
         {summary && (
           <div style={{ display: 'flex', gap: 4, padding: '14px 12px', background: t.surface, border: `1px solid ${t.border}`, borderRadius: 16, marginBottom: 18 }}>
-            {stat('Exercices', String(summary.exos))}
-            {stat('Séries', String(summary.sets))}
-            {stat('Volume', summary.volumeKg ? `${Math.round(summary.volumeKg)} kg` : '—')}
-            {stat('Durée', fmtDur(summary.durationSec))}
+            {stat(tr('record.sessionSaveExercises'), String(summary.exos))}
+            {stat(tr('record.sessionSaveSets'), String(summary.sets))}
+            {stat(tr('record.sessionSaveVolume'), summary.volumeKg ? `${Math.round(summary.volumeKg)} kg` : '—')}
+            {stat(tr('record.sessionSaveDuration'), fmtDur(summary.durationSec))}
           </div>
         )}
 
         {/* Fréquence cardiaque */}
         {hr && (hr.avg != null || hr.max != null || hr.min != null) && (
           <div style={{ display: 'flex', gap: 4, padding: '14px 12px', background: t.surface, border: `1px solid ${t.border}`, borderRadius: 16, marginBottom: 18 }}>
-            {stat('FC moy', hr.avg != null ? `${hr.avg}` : '—')}
-            {stat('FC min', hr.min != null ? `${hr.min}` : '—')}
-            {stat('FC max', hr.max != null ? `${hr.max}` : '—')}
+            {stat(tr('record.sessionSaveHrAvg'), hr.avg != null ? `${hr.avg}` : '—')}
+            {stat(tr('record.sessionSaveHrMin'), hr.min != null ? `${hr.min}` : '—')}
+            {stat(tr('record.sessionSaveHrMax'), hr.max != null ? `${hr.max}` : '—')}
           </div>
         )}
 
         {/* Photos de séance */}
         <div style={{ marginBottom: 24 }}>
-          <p style={{ ...LABEL_STYLE, color: t.muted }}>Photos</p>
+          <p style={{ ...LABEL_STYLE, color: t.muted }}>{tr('record.sessionSavePhotos')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {photos.map((f, i) => (
               // eslint-disable-next-line @next/next/no-img-element
@@ -182,7 +182,7 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
 
         {/* Titre */}
         <div style={{ marginBottom: 28 }}>
-          <p style={{ ...LABEL_STYLE, color: t.muted }}>Titre</p>
+          <p style={{ ...LABEL_STYLE, color: t.muted }}>{tr('record.sessionSaveTitleLabel')}</p>
           <input
             value={title}
             onChange={e => setTitle(e.target.value)}
@@ -199,14 +199,14 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
 
         {/* Type d'entraînement */}
         <div style={{ marginBottom: 28 }}>
-          <p style={{ ...LABEL_STYLE, color: t.muted }}>Type d'entraînement</p>
+          <p style={{ ...LABEL_STYLE, color: t.muted }}>{tr('record.sessionSaveTrainingType')}</p>
           <TrainingTypeSelector selected={trainingTypes} onChange={setTrainingTypes} isDark={isDark} types={sport === 'running' ? RUNNING_TYPES : sport === 'trail' ? TRAIL_TYPES : sport === 'hiking' ? HIKING_TYPES : sport === 'mtb' ? MTB_TYPES : sport === 'rowing' ? ROWING_TYPES : sport === 'gym' ? STRENGTH_TYPES : sport === 'hyrox' ? HYROX_TYPES : sport === 'yoga' ? YOGA_TYPES : sport === 'padel' ? PADEL_TYPES : sport === 'openwater' ? OPEN_WATER_TYPES : sport === 'hometrainer' ? HT_TYPES : CYCLING_TYPES} />
         </div>
 
         {/* Type de circuit (muscu/hyrox) — pré-coché avec ceux utilisés */}
         {showCircuits && (
           <div style={{ marginBottom: 28 }}>
-            <p style={{ ...LABEL_STYLE, color: t.muted }}>Type de circuit</p>
+            <p style={{ ...LABEL_STYLE, color: t.muted }}>{tr('record.sessionSaveCircuitType')}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {['series', 'circuit', 'superset', 'emom', 'tabata'].map(id => {
                 const on = circuits.includes(id)
@@ -224,19 +224,19 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
 
         {/* RPE */}
         <div style={{ marginBottom: 28 }}>
-          <p style={{ ...LABEL_STYLE, color: t.muted }}>Ressenti (RPE)</p>
-          <p style={{ fontSize: 12, color: t.muted, margin: '-6px 0 16px' }}>Comment tu t'es senti pendant l'effort ?</p>
+          <p style={{ ...LABEL_STYLE, color: t.muted }}>{tr('record.sessionSaveFeeling')}</p>
+          <p style={{ fontSize: 12, color: t.muted, margin: '-6px 0 16px' }}>{tr('record.sessionSaveFeelingHint')}</p>
           <RPESlider value={rpe} onChange={setRpe} isDark={isDark} />
         </div>
 
         {/* Commentaire */}
         <div style={{ marginBottom: 12 }}>
-          <p style={{ ...LABEL_STYLE, color: t.muted }}>Commentaire</p>
+          <p style={{ ...LABEL_STYLE, color: t.muted }}>{tr('record.sessionSaveComment')}</p>
           <textarea
             value={comment}
             onChange={e => setComment(e.target.value)}
             rows={4}
-            placeholder="Décris ta séance, tes sensations…"
+            placeholder={tr('record.sessionSaveCommentPlaceholder')}
             style={{
               width: '100%', boxSizing: 'border-box',
               background: t.surface, border: `1px solid ${t.border}`,
@@ -268,7 +268,7 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
             boxShadow: '0 4px 20px rgba(6,182,212,0.35)',
           }}
         >
-          {saving ? 'Enregistrement…' : "Enregistrer l'activité"}
+          {saving ? tr('record.sessionSaveSaving') : tr('record.sessionSaveHeader')}
         </button>
       </div>
     </div>

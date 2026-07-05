@@ -1,5 +1,6 @@
 'use client'
 import { GPSStatus } from '@/hooks/useGPSTracking'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   status: GPSStatus
@@ -7,25 +8,26 @@ interface Props {
   isDark?: boolean
 }
 
-const STATUS_CONFIG: Record<GPSStatus, { color: string; label: string; blink: boolean }> = {
-  [GPSStatus.idle]:        { color: '#8C8C8C', label: 'GPS inactif',          blink: false },
-  [GPSStatus.requesting]:  { color: '#06B6D4', label: 'Connexion…',           blink: true  },
-  [GPSStatus.acquiring]:   { color: '#06B6D4', label: 'Acquisition…',         blink: true  },
-  [GPSStatus.good]:        { color: '#10B981', label: 'Bon signal',            blink: false },
-  [GPSStatus.approximate]: { color: '#F59E0B', label: 'Signal approximatif',  blink: false },
-  [GPSStatus.poor]:        { color: '#EF4444', label: 'Signal faible',        blink: false },
-  [GPSStatus.denied]:      { color: '#EF4444', label: 'GPS refusé',           blink: false },
-  [GPSStatus.unavailable]: { color: '#8C8C8C', label: 'GPS indisponible',     blink: false },
-  [GPSStatus.error]:       { color: '#EF4444', label: 'Erreur GPS',           blink: false },
+const STATUS_CONFIG: Record<GPSStatus, { color: string; labelKey: string; blink: boolean }> = {
+  [GPSStatus.idle]:        { color: '#8C8C8C', labelKey: 'record.gpsStatusIdle',        blink: false },
+  [GPSStatus.requesting]:  { color: '#06B6D4', labelKey: 'record.gpsStatusRequesting',  blink: true  },
+  [GPSStatus.acquiring]:   { color: '#06B6D4', labelKey: 'record.gpsStatusAcquiring',   blink: true  },
+  [GPSStatus.good]:        { color: '#10B981', labelKey: 'record.gpsStatusGood',        blink: false },
+  [GPSStatus.approximate]: { color: '#F59E0B', labelKey: 'record.gpsStatusApproximate', blink: false },
+  [GPSStatus.poor]:        { color: '#EF4444', labelKey: 'record.gpsStatusPoor',        blink: false },
+  [GPSStatus.denied]:      { color: '#EF4444', labelKey: 'record.gpsStatusDenied',      blink: false },
+  [GPSStatus.unavailable]: { color: '#8C8C8C', labelKey: 'record.gpsStatusUnavailable', blink: false },
+  [GPSStatus.error]:       { color: '#EF4444', labelKey: 'record.gpsStatusError',       blink: false },
 }
 
 export default function GPSIndicator({ status, accuracy, isDark = false }: Props) {
+  const { t } = useI18n()
   const cfg = STATUS_CONFIG[status]
   const dim = isDark ? 'rgba(255,255,255,0.45)' : '#8C8C8C'
 
   const label = accuracy != null && (status === GPSStatus.good || status === GPSStatus.approximate || status === GPSStatus.poor)
-    ? `${cfg.label} (±${Math.round(accuracy)}m)`
-    : cfg.label
+    ? `${t(cfg.labelKey)} (±${Math.round(accuracy)}m)`
+    : t(cfg.labelKey)
 
   return (
     <div style={{

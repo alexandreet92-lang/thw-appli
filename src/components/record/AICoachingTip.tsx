@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useI18n } from '@/lib/i18n'
 import type { YogaSessionExercise } from '@/types/yoga'
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function AICoachingTip({ exercise, enabled, isDark }: Props) {
+  const { t } = useI18n()
   const [tip, setTip]         = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const text = isDark ? '#FFFFFF' : '#0A0A0A'
@@ -48,7 +50,7 @@ export default function AICoachingTip({ exercise, enabled, isDark }: Props) {
               borderTopColor: '#06B6D4',
               animation: 'spin 0.8s linear infinite',
             }} />
-            <span style={{ fontSize: 13, color: '#8C8C8C' }}>Conseil en cours…</span>
+            <span style={{ fontSize: 13, color: '#8C8C8C' }}>{t('record.aiCoachingTipLoading')}</span>
           </div>
         ) : tip ? (
           <p style={{ fontSize: 14, color: text, lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>

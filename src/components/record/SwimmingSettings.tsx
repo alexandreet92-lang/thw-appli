@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   open: boolean
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export default function SwimmingSettings({ open, onClose }: Props) {
+  const { t } = useI18n()
   const [unit, setUnit] = useState<'m' | 'yd'>('m')
   const [autoStrava, setAutoStrava] = useState(false)
   const [showSummary, setShowSummary] = useState(true)
@@ -43,12 +45,12 @@ export default function SwimmingSettings({ open, onClose }: Props) {
           <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 16px' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>Réglages natation</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{t('record.swimSettingsTitle')}</h2>
           <button onClick={handleClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
         <div style={{ padding: '0 20px 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div>
-            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 10px' }}>Unités</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 10px' }}>{t('record.swimSettingsUnits')}</p>
             <div style={{ display: 'flex', gap: 8 }}>
               {(['m', 'yd'] as const).map(u => (
                 <button key={u} onClick={() => setUnit(u)} style={{ padding: '8px 20px', borderRadius: 9999, border: unit === u ? 'none' : '1px solid var(--border)', background: unit === u ? 'linear-gradient(135deg, #06B6D4, #2563EB)' : 'transparent', color: unit === u ? '#fff' : 'var(--text)', cursor: 'pointer', fontSize: 14, fontFamily: 'DM Sans, sans-serif' }}>{u}</button>
@@ -56,9 +58,9 @@ export default function SwimmingSettings({ open, onClose }: Props) {
             </div>
           </div>
           <div>
-            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 4px' }}>Après la séance</p>
-            <Row label="Upload Strava" value={autoStrava} onToggle={() => setAutoStrava(v => !v)} />
-            <Row label="Afficher le résumé" value={showSummary} onToggle={() => setShowSummary(v => !v)} />
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 4px' }}>{t('record.swimSettingsPostSession')}</p>
+            <Row label={t('record.swimSettingsUploadStrava')} value={autoStrava} onToggle={() => setAutoStrava(v => !v)} />
+            <Row label={t('record.settingsShowSummary')} value={showSummary} onToggle={() => setShowSummary(v => !v)} />
           </div>
         </div>
       </div>

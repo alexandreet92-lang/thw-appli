@@ -1,5 +1,7 @@
 'use client'
 import { useState } from 'react'
+import { useI18n } from '@/lib/i18n'
+import { SWIM_STROKE_KEY } from './SwimmingStrokeSelector'
 
 export interface SwimInterval {
   id: string
@@ -50,6 +52,7 @@ const numStyle = {
 }
 
 export default function SwimmingIntervals({ intervals, onChange, poolSizeM, isDark }: Props) {
+  const { t } = useI18n()
   const [durStrs, setDurStrs] = useState<Record<string, string>>({})
 
   const update = (id: string, patch: Partial<SwimInterval>) =>
@@ -87,12 +90,12 @@ export default function SwimmingIntervals({ intervals, onChange, poolSizeM, isDa
       {intervals.map((iv, idx) => (
         <div key={iv.id} style={{ background: 'var(--bg-card2)', borderRadius: 12, padding: '14px', border: `1px solid ${sep}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#06B6D4' }}>Série {idx + 1}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#06B6D4' }}>{t('record.swimSet', { n: idx + 1 })}</span>
             <button onClick={() => remove(iv.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: dim, fontSize: 20, lineHeight: 1, padding: '0 4px' }}>×</button>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <span style={{ fontSize: 10, color: dim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Distance (m)</span>
+              <span style={{ fontSize: 10, color: dim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t('record.swimIntervalDistance')}</span>
               <input
                 type="number" value={iv.distanceM || ''} min={0} step={stepDist} placeholder="0"
                 onChange={e => update(iv.id, { distanceM: parseInt(e.target.value) || 0 })}
@@ -100,7 +103,7 @@ export default function SwimmingIntervals({ intervals, onChange, poolSizeM, isDa
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <span style={{ fontSize: 10, color: dim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Durée MM:SS</span>
+              <span style={{ fontSize: 10, color: dim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t('record.swimIntervalDuration')}</span>
               <input
                 type="text" value={getDurStr(iv)} placeholder="0:00"
                 onChange={e => setDurStrs(prev => ({ ...prev, [iv.id]: e.target.value }))}
@@ -109,17 +112,17 @@ export default function SwimmingIntervals({ intervals, onChange, poolSizeM, isDa
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <span style={{ fontSize: 10, color: dim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Nage</span>
+              <span style={{ fontSize: 10, color: dim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t('record.swimIntervalStroke')}</span>
               <select
                 value={iv.stroke}
                 onChange={e => update(iv.id, { stroke: e.target.value })}
                 style={{ ...numStyle, width: 110, cursor: 'pointer' }}
               >
-                {STROKES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                {STROKES.map(s => <option key={s.id} value={s.id}>{SWIM_STROKE_KEY[s.id] ? t(SWIM_STROKE_KEY[s.id]) : s.label}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <span style={{ fontSize: 10, color: dim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Repos (s)</span>
+              <span style={{ fontSize: 10, color: dim, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t('record.swimIntervalRest')}</span>
               <input
                 type="number" value={iv.restSec || ''} min={0} step={15} placeholder="0"
                 onChange={e => update(iv.id, { restSec: parseInt(e.target.value) || 0 })}
@@ -142,12 +145,12 @@ export default function SwimmingIntervals({ intervals, onChange, poolSizeM, isDa
           cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
         }}
       >
-        + Ajouter un intervalle
+        {t('record.swimAddInterval')}
       </button>
 
       {intervals.length > 0 && (
         <p style={{ margin: 0, fontSize: 13, color: dim, textAlign: 'right' as const }}>
-          Total intervalles : <strong style={{ color: 'var(--text)' }}>{totalDist}m · {fmtTotal(totalDur)}</strong>
+          {t('record.swimIntervalsTotal')} <strong style={{ color: 'var(--text)' }}>{totalDist}m · {fmtTotal(totalDur)}</strong>
         </p>
       )}
     </div>

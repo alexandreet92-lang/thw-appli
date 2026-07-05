@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   isDark: boolean
@@ -40,16 +41,17 @@ function Cell({ label, value, unit, big, isDark, font }: {
 }
 
 export default function MTBPage4({ isDark, currentLapSec, currentLapDistanceM, lapElevGainM, lapElevLossM, dataFontFamily }: Props) {
+  const { t } = useI18n()
   const font = dataFontFamily ?? '-apple-system, sans-serif'
   const lapSpeedKmh = currentLapSec > 0 ? (currentLapDistanceM / currentLapSec) * 3.6 : 0
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', flex:1, alignContent:'start' }}>
-      <Cell big isDark={isDark} font={font} label="Durée lap" value={fmt(currentLapSec)} />
-      <Cell isDark={isDark} font={font} label="Distance lap" value={(currentLapDistanceM/1000).toFixed(2)} unit="km" />
-      <Cell isDark={isDark} font={font} label="Vit. lap" value={lapSpeedKmh.toFixed(1)} unit="km/h" />
+      <Cell big isDark={isDark} font={font} label={t('record.commonLapDuration')} value={fmt(currentLapSec)} />
+      <Cell isDark={isDark} font={font} label={t('record.mtbPage4LapDistance')} value={(currentLapDistanceM/1000).toFixed(2)} unit="km" />
+      <Cell isDark={isDark} font={font} label={t('record.mtbPage4LapSpeed')} value={lapSpeedKmh.toFixed(1)} unit="km/h" />
       <Cell isDark={isDark} font={font} label="D+ lap" value={String(Math.round(lapElevGainM))} unit="m" />
       <Cell isDark={isDark} font={font} label="D- lap" value={String(Math.round(lapElevLossM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="FC" value="--" unit="bpm" />
+      <Cell isDark={isDark} font={font} label={t('record.commonHr')} value="--" unit="bpm" />
     </div>
   )
 }

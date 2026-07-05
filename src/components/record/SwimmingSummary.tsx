@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import type { SwimInterval } from './SwimmingIntervals'
 
 export interface SwimSavedData {
@@ -29,17 +30,18 @@ interface Props {
 }
 
 export default function SwimmingSummary({ session, onClose }: Props) {
+  const { t } = useI18n()
   const poolNum = parseInt(session.poolSize)
   const lengths = !isNaN(poolNum) && poolNum > 0 && session.distanceM > 0
     ? Math.round(session.distanceM / poolNum)
     : null
 
   const stats: { label: string; value: string; unit: string }[] = [
-    { label: 'Distance',   value: String(session.distanceM), unit: 'm' },
-    { label: 'Durée',      value: fmtDur(session.durationSec), unit: '' },
-    ...(lengths != null ? [{ label: 'Longueurs', value: String(lengths), unit: 'lng' }] : []),
-    { label: 'Vit. moy.',  value: pace100m(session.distanceM, session.durationSec), unit: '' },
-    { label: 'Calories',   value: String(session.calories), unit: 'kcal' },
+    { label: t('record.swimStatDistance'),   value: String(session.distanceM), unit: 'm' },
+    { label: t('record.swimStatDuration'),      value: fmtDur(session.durationSec), unit: '' },
+    ...(lengths != null ? [{ label: t('record.swimStatLengths'), value: String(lengths), unit: 'lng' }] : []),
+    { label: t('record.swimStatAvgPace'),  value: pace100m(session.distanceM, session.durationSec), unit: '' },
+    { label: t('record.swimStatCalories'),   value: String(session.calories), unit: 'kcal' },
     { label: 'RPE',        value: String(session.rpe), unit: '/ 10' },
   ]
 
@@ -54,13 +56,13 @@ export default function SwimmingSummary({ session, onClose }: Props) {
 
       <div style={{ height: 52, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
         <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600 }}>
-          Séance enregistrée
+          {t('record.swimSummaryTitle')}
         </span>
         <button
           onClick={onClose}
           style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#06B6D4', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
         >
-          Fermer
+          {t('record.swimSummaryClose')}
         </button>
       </div>
 
@@ -82,11 +84,11 @@ export default function SwimmingSummary({ session, onClose }: Props) {
         {session.intervals.length > 0 && (
           <div>
             <p style={{ margin: '0 0 10px', fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>
-              Séries
+              {t('record.swimSets')}
             </p>
             {session.intervals.map((iv, idx) => (
               <div key={iv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--bg-card)', borderRadius: 10, marginBottom: 6, border: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 14, fontWeight: 500 }}>Série {idx + 1} — {iv.distanceM}m</span>
+                <span style={{ fontSize: 14, fontWeight: 500 }}>{t('record.swimSet', { n: idx + 1 })} — {iv.distanceM}m</span>
                 <span style={{ fontSize: 13, color: '#06B6D4', fontWeight: 600 }}>{pace100m(iv.distanceM, iv.durationSec)}</span>
               </div>
             ))}

@@ -1,5 +1,6 @@
 'use client'
 import { GPSStatus } from '@/hooks/useGPSTracking'
+import { useI18n } from '@/lib/i18n'
 import GPSIndicator from './GPSIndicator'
 
 export type CyclingPhase = 'ready' | 'running' | 'paused' | 'confirming_stop'
@@ -32,6 +33,7 @@ function getTheme(isDark: boolean) {
 export default function CyclingControls({
   phase, gpsStatus, gpsAccuracy, onStart, onPause, onResume, onLap, onFinish, onConfirmFinish, isDark = false,
 }: Props) {
+  const { t: tr } = useI18n()
   const t = getTheme(isDark)
   const canStart   = gpsStatus === GPSStatus.good || gpsStatus === GPSStatus.approximate
   const gpsLoading = gpsStatus === GPSStatus.requesting || gpsStatus === GPSStatus.acquiring
@@ -56,7 +58,7 @@ export default function CyclingControls({
             <button
               onClick={canStart ? onStart : undefined}
               disabled={!canStart && !gpsLoading}
-              aria-label="Démarrer"
+              aria-label={tr('record.commonStart')}
               style={{
                 width: 72, height: 72, borderRadius: '50%',
                 border: 'none', cursor: canStart ? 'pointer' : 'not-allowed',
@@ -86,7 +88,7 @@ export default function CyclingControls({
               margin: 0, fontSize: 11, fontWeight: 700,
               color: canStart ? '#06B6D4' : t.label, letterSpacing: '0.06em',
             }}>
-              {canStart ? 'DÉMARRER' : gpsLoading ? 'ACQUISITION…' : 'GPS REQUIS'}
+              {canStart ? tr('record.cyclingControlsStartCap') : gpsLoading ? tr('record.cyclingControlsAcquiring') : tr('record.cyclingControlsGpsRequired')}
             </p>
           </div>
         </>
@@ -95,7 +97,7 @@ export default function CyclingControls({
       {phase === 'running' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, width: '100%' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <button onClick={onLap} aria-label="Lap" style={{
+            <button onClick={onLap} aria-label={tr('record.cyclingControlsLap')} style={{
               width: 52, height: 52, borderRadius: '50%',
               background: t.btnBg, color: t.text, border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -104,9 +106,9 @@ export default function CyclingControls({
                 <path d="M3 12h18M14 5l7 7-7 7"/>
               </svg>
             </button>
-            <p style={{ margin: 0, fontSize: 10, color: t.label, letterSpacing: '0.06em' }}>LAP</p>
+            <p style={{ margin: 0, fontSize: 10, color: t.label, letterSpacing: '0.06em' }}>{tr('record.cyclingControlsLapCap')}</p>
           </div>
-          <button onClick={onPause} aria-label="Pause" style={{
+          <button onClick={onPause} aria-label={tr('record.commonPause')} style={{
             width: 68, height: 68, borderRadius: '50%',
             background: t.pauseBg, color: t.pauseText, border: 'none', cursor: 'pointer',
             boxShadow: '0 4px 18px rgba(0,0,0,0.20)',
@@ -124,7 +126,7 @@ export default function CyclingControls({
       {phase === 'paused' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, width: '100%' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <button onClick={onFinish} aria-label="Stop" style={{
+            <button onClick={onFinish} aria-label={tr('record.cyclingControlsStop')} style={{
               width: 52, height: 52, borderRadius: '50%',
               background: 'rgba(239,68,68,0.15)', color: '#ef4444',
               border: 'none', cursor: 'pointer',
@@ -134,9 +136,9 @@ export default function CyclingControls({
                 <rect x="3" y="3" width="12" height="12" rx="1.5"/>
               </svg>
             </button>
-            <p style={{ margin: 0, fontSize: 10, color: t.label, letterSpacing: '0.06em' }}>STOP</p>
+            <p style={{ margin: 0, fontSize: 10, color: t.label, letterSpacing: '0.06em' }}>{tr('record.cyclingControlsStopCap')}</p>
           </div>
-          <button onClick={onResume} aria-label="Reprendre" style={{
+          <button onClick={onResume} aria-label={tr('record.commonResume')} style={{
             width: 68, height: 68, borderRadius: '50%',
             background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
             color: '#fff', border: 'none', cursor: 'pointer',
@@ -169,7 +171,7 @@ export default function CyclingControls({
               </svg>
             </button>
             <span style={{ fontSize: 11, fontWeight: 600, color: '#06B6D4', letterSpacing: 0.5 }}>
-              REPRENDRE
+              {tr('record.cyclingControlsResumeCap')}
             </span>
           </div>
 
@@ -189,7 +191,7 @@ export default function CyclingControls({
               </svg>
             </button>
             <span style={{ fontSize: 11, fontWeight: 600, color: '#EF4444', letterSpacing: 0.5 }}>
-              TERMINER
+              {tr('record.cyclingControlsFinishCap')}
             </span>
           </div>
         </div>

@@ -7,25 +7,27 @@ import RowingPieces from './RowingPieces'
 import RowingSummary from './RowingSummary'
 import TrainingTypeSelector from './TrainingTypeSelector'
 import { ROWING_TYPES, calcSplit500, calcWatts, formatSplit, type RowingPiece } from '@/types/rowing'
+import { useI18n } from '@/lib/i18n'
 
 interface Props { onClose: () => void }
 
-function autoTitle(): string {
+function autoTitle(t: (key: string) => string): string {
   const d = new Date()
   const day = d.toLocaleDateString('fr-FR', { weekday: 'short' })
   const num = d.getDate()
   const month = d.toLocaleDateString('fr-FR', { month: 'long' })
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-  return `Aviron · ${cap(day)} ${num} ${month}`
+  return `${t('record.rowingAutoTitlePrefix')} · ${cap(day)} ${num} ${month}`
 }
 
 type SavedData = { id: string | null; durationSec: number; distanceM: number; split500Sec: number; avgWatts: number; calories: number; rpe: number; pieces: RowingPiece[] }
 
 export default function RowingForm({ onClose }: Props) {
+  const { t } = useI18n()
   const [isDark, setIsDark] = useState(false)
   useEffect(() => { setIsDark(document.documentElement.classList.contains('dark')) }, [])
 
-  const [title, setTitle]             = useState(autoTitle())
+  const [title, setTitle]             = useState(autoTitle(t))
   const [practiceType, setPracticeType] = useState('indoor')
   const [hours, setHours]             = useState(0)
   const [mins, setMins]               = useState(0)
@@ -74,7 +76,7 @@ export default function RowingForm({ onClose }: Props) {
         const { data } = await sb.from('workout_sessions').insert({
           user_id: user.id, sport: 'rowing',
           duration_seconds: effectiveDur, distance_m: effectiveDist,
-          title: title.trim() || autoTitle(),
+          title: title.trim() || autoTitle(t),
           rpe, comment,
           rowing_type: practiceType,
           split_500m_seconds: split500 > 0 ? split500 : null,
@@ -98,25 +100,25 @@ export default function RowingForm({ onClose }: Props) {
         <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, border:'none', color:text, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         </button>
-        <span style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', fontSize:15, fontWeight:600 }}>Nouvelle séance aviron</span>
+        <span style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', fontSize:15, fontWeight:600 }}>{t('record.rowingNewSession')}</span>
         <button onClick={handleSave} disabled={saving} style={{ marginLeft:'auto', padding:'7px 14px', borderRadius:10, background:'none', border:'none', color:ACCENT, fontSize:15, fontWeight:600, cursor:saving?'default':'pointer', opacity:saving?0.5:1 }}>
-          {saving ? '…' : 'Enregistrer'}
+          {saving ? '…' : t('record.rowingSave')}
         </button>
       </div>
 
       <div style={{ flex:1, overflowY:'auto', padding:'24px 20px', paddingBottom:120 }}>
         <div style={{ marginBottom:24 }}>
-          <span style={LABEL}>Titre</span>
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder={autoTitle()} style={INPUT} />
+          <span style={LABEL}>{t('record.rowingTitle')}</span>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder={autoTitle(t)} style={INPUT} />
         </div>
 
         <div style={{ marginBottom:24 }}>
-          <span style={LABEL}>Type de pratique</span>
+          <span style={LABEL}>{t('record.rowingPracticeType')}</span>
           <RowingTypeSelector selected={practiceType} onChange={setPracticeType} isDark={isDark} />
         </div>
 
         <div style={{ marginBottom:24 }}>
-          <span style={LABEL}>Durée totale</span>
+          <span style={LABEL}>{t('record.rowingTotalDuration')}</span>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
               <input type="number" min={0} max={23} value={hours} onChange={e => setHours(Math.max(0, parseInt(e.target.value)||0))} style={NUM_SM} />
@@ -134,7 +136,7 @@ export default function RowingForm({ onClose }: Props) {
         </div>
 
         <div style={{ marginBottom:24 }}>
-          <span style={LABEL}>Distance totale</span>
+          <span style={LABEL}>{t('record.rowingTotalDistance')}</span>
           <div style={{ display:'flex', gap:10, alignItems:'center', marginBottom:10 }}>
             <input type="number" min={0} step={distUnit==='km'?0.1:100} value={distVal||''} onChange={e => setDistVal(parseFloat(e.target.value)||0)} placeholder="0" style={{ ...INPUT, width:120 }} />
             <div style={{ display:'flex', gap:0, borderRadius:10, overflow:'hidden', border:`1px solid ${border}` }}>
@@ -144,43 +146,43 @@ export default function RowingForm({ onClose }: Props) {
             </div>
           </div>
           {split500 > 0 && (
-            <p style={{ margin:0, fontSize:15, fontWeight:600, color:ACCENT }}>Split /500m : {formatSplit(split500)}</p>
+            <p style={{ margin:0, fontSize:15, fontWeight:600, color:ACCENT }}>{t('record.rowingSplit500Label')} {formatSplit(split500)}</p>
           )}
         </div>
 
         {split500 > 0 && watts > 0 && (
           <div style={{ marginBottom:24, padding:'14px 16px', background:surface, borderRadius:12, border:`1px solid ${border}` }}>
-            <p style={{ margin:'0 0 4px', fontSize:15, fontWeight:600, color:text }}>Puissance estimée : {watts} w</p>
-            <p style={{ margin:0, fontSize:11, color:muted, fontStyle:'italic' }}>(basé sur la vitesse aux 500m)</p>
+            <p style={{ margin:'0 0 4px', fontSize:15, fontWeight:600, color:text }}>{t('record.rowingEstPower')} {watts} w</p>
+            <p style={{ margin:0, fontSize:11, color:muted, fontStyle:'italic' }}>{t('record.rowingEstPowerNote')}</p>
           </div>
         )}
 
         <div style={{ marginBottom:24 }}>
-          <span style={LABEL}>Détails du circuit</span>
-          <p style={{ fontSize:12, color:muted, margin:'-6px 0 12px' }}>Ajoute les séries ou répétitions</p>
+          <span style={LABEL}>{t('record.rowingCircuitDetails')}</span>
+          <p style={{ fontSize:12, color:muted, margin:'-6px 0 12px' }}>{t('record.rowingCircuitHint')}</p>
           <RowingPieces pieces={pieces} onChange={setPieces} practiceType={practiceType} isDark={isDark} />
         </div>
 
         <div style={{ marginBottom:24 }}>
-          <span style={LABEL}>Type d&apos;entraînement</span>
+          <span style={LABEL}>{t('record.rowingTrainingType')}</span>
           <TrainingTypeSelector selected={trainingTypes} onChange={setTrainingTypes} isDark={isDark} types={ROWING_TYPES} />
         </div>
 
         <div style={{ marginBottom:24 }}>
-          <span style={LABEL}>Ressenti (RPE)</span>
+          <span style={LABEL}>{t('record.rowingFeeling')}</span>
           <RPESlider value={rpe} onChange={setRpe} isDark={isDark} />
         </div>
 
         <div style={{ marginBottom:12 }}>
-          <span style={LABEL}>Commentaire</span>
-          <textarea value={comment} onChange={e => setComment(e.target.value)} rows={4} placeholder="Décris ta séance, tes sensations…"
+          <span style={LABEL}>{t('record.rowingComment')}</span>
+          <textarea value={comment} onChange={e => setComment(e.target.value)} rows={4} placeholder={t('record.rowingCommentPlaceholder')}
             style={{ ...INPUT, resize:'none' }} />
         </div>
       </div>
 
       <div style={{ position:'absolute', bottom:0, left:0, right:0, padding:'16px 20px', paddingBottom:'max(env(safe-area-inset-bottom),20px)', background: isDark?'linear-gradient(transparent,#0A0A0A 40%)':'linear-gradient(transparent,#FFFFFF 40%)' }}>
         <button onClick={handleSave} disabled={saving} style={{ width:'100%', height:52, borderRadius:16, background:`linear-gradient(135deg,${ACCENT},#2563EB)`, border:'none', color:'#fff', fontSize:16, fontWeight:600, cursor:saving?'default':'pointer', opacity:saving?0.7:1, boxShadow:`0 4px 20px rgba(6,182,212,0.35)` }}>
-          {saving ? 'Enregistrement…' : "Enregistrer l'activité"}
+          {saving ? t('record.rowingSaving') : t('record.rowingSaveActivity')}
         </button>
       </div>
     </div>

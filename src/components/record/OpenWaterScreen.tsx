@@ -13,6 +13,7 @@ import SessionTraceMap from './SessionTraceMap'
 import { createClient } from '@/lib/supabase/client'
 import type { GPSPoint } from '@/hooks/useGPSTracking'
 import { OPEN_WATER_BODIES } from '@/types/openwater'
+import { useI18n } from '@/lib/i18n'
 
 interface Props { onExit: () => void; onFinished: () => void }
 
@@ -23,6 +24,7 @@ function fmtPace(distM: number, sec: number) {
 }
 
 export default function OpenWaterScreen({ onExit, onFinished }: Props) {
+  const { t } = useI18n()
   const [mounted, setMounted]   = useState(false)
   const [gpsEnabled, setGpsEnabled] = useState(false)
   const [showPrePerm, setShowPrePerm] = useState(false)
@@ -96,16 +98,16 @@ export default function OpenWaterScreen({ onExit, onFinished }: Props) {
       {showSummary && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: bg, display: 'flex', flexDirection: 'column', paddingTop: 'env(safe-area-inset-top)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
-            <p style={{ fontSize: 18, fontWeight: 700, margin: 0, fontFamily: 'Syne, sans-serif' }}>Séance terminée</p>
-            <button onClick={onFinished} style={{ padding: '8px 20px', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', borderRadius: 12, color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Terminer</button>
+            <p style={{ fontSize: 18, fontWeight: 700, margin: 0, fontFamily: 'Syne, sans-serif' }}>{t('record.openWaterSessionDone')}</p>
+            <button onClick={onFinished} style={{ padding: '8px 20px', background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', borderRadius: 12, color: '#FFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('record.openWaterFinish')}</button>
           </div>
           <div style={{ flex: 1, minHeight: 0 }}><SessionTraceMap points={summaryPts} isDark={isDark} /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flexShrink: 0, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             {[
-              { l: 'Distance', v: `${(snapRef.current?.distM ?? 0) / 1000 < 1 ? snapRef.current?.distM + 'm' : ((snapRef.current?.distM ?? 0) / 1000).toFixed(2) + 'km'}` },
-              { l: 'Durée',    v: `${String(Math.floor(stopwatch.seconds/60)).padStart(2,'0')}:${String(stopwatch.seconds%60).padStart(2,'0')}` },
-              { l: 'Allure /100m', v: fmtPace(snapRef.current?.distM ?? 0, snapRef.current?.durationSec ?? 0) },
-              { l: 'Eau', v: `${waterTemp}°C — ${OPEN_WATER_BODIES.find(b => b.id === waterBody)?.label}` },
+              { l: t('record.openWaterDistance'), v: `${(snapRef.current?.distM ?? 0) / 1000 < 1 ? snapRef.current?.distM + 'm' : ((snapRef.current?.distM ?? 0) / 1000).toFixed(2) + 'km'}` },
+              { l: t('record.openWaterDuration'),    v: `${String(Math.floor(stopwatch.seconds/60)).padStart(2,'0')}:${String(stopwatch.seconds%60).padStart(2,'0')}` },
+              { l: t('record.openWaterPace100'), v: fmtPace(snapRef.current?.distM ?? 0, snapRef.current?.durationSec ?? 0) },
+              { l: t('record.openWaterWaterShort'), v: `${waterTemp}°C — ${OPEN_WATER_BODIES.find(b => b.id === waterBody)?.label}` },
             ].map(({ l, v }) => (
               <div key={l} style={{ padding: '14px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                 <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 4px' }}>{l}</p>
@@ -137,15 +139,15 @@ export default function OpenWaterScreen({ onExit, onFinished }: Props) {
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: '0 24px' }}>
             <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: 11, color: dim, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 4px' }}>Distance</p>
+              <p style={{ fontSize: 11, color: dim, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 4px' }}>{t('record.openWaterDistance')}</p>
               <p style={{ fontSize: 64, fontWeight: 700, margin: 0, lineHeight: 1 }}>{gps.distance < 1000 ? `${Math.round(gps.distance)}m` : `${(gps.distance/1000).toFixed(2)}km`}</p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, width: '100%', maxWidth: 300 }}>
               {[
-                { l: 'Durée',       v: stopwatch.formatted },
-                { l: 'Allure /100m', v: fmtPace(gps.distance, stopwatch.seconds) },
-                { l: 'Temp. eau',   v: `${waterTemp}°C` },
-                { l: 'Calories',    v: `${Math.round(stopwatch.seconds / 60 * 7)} kcal` },
+                { l: t('record.openWaterDuration'),       v: stopwatch.formatted },
+                { l: t('record.openWaterPace100'), v: fmtPace(gps.distance, stopwatch.seconds) },
+                { l: t('record.openWaterWaterTemp'),   v: `${waterTemp}°C` },
+                { l: t('record.openWaterCalories'),    v: `${Math.round(stopwatch.seconds / 60 * 7)} kcal` },
               ].map(({ l, v }) => (
                 <div key={l} style={{ textAlign: 'center' }}>
                   <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 4px' }}>{l}</p>
@@ -155,7 +157,7 @@ export default function OpenWaterScreen({ onExit, onFinished }: Props) {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <button onClick={() => setWaterTemp(t => Math.max(0, t - 0.5))} style={{ width: 36, height: 36, borderRadius: '50%', background: btnBg, border: 'none', color: text, cursor: 'pointer', fontSize: 18 }}>−</button>
-              <span style={{ fontSize: 14, color: dim }}>Eau {waterTemp}°C</span>
+              <span style={{ fontSize: 14, color: dim }}>{t('record.openWaterWaterShort')} {waterTemp}°C</span>
               <button onClick={() => setWaterTemp(t => Math.min(40, t + 0.5))} style={{ width: 36, height: 36, borderRadius: '50%', background: btnBg, border: 'none', color: text, cursor: 'pointer', fontSize: 18 }}>+</button>
             </div>
           </div>

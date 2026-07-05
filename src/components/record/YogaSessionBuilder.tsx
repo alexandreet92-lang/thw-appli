@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import type { YogaSessionExercise } from '@/types/yoga'
 import YogaExercisePicker from './YogaExercisePicker'
 
@@ -19,6 +20,7 @@ function fmt(sec: number) {
 const DURATIONS = [15, 30, 45, 60, 90]
 
 export default function YogaSessionBuilder({ isDark, onClose, onStart }: Props) {
+  const { t } = useI18n()
   const [title, setTitle]         = useState('')
   const [targetMin, setTargetMin] = useState(30)
   const [exercises, setExercises] = useState<YogaSessionExercise[]>([])
@@ -47,7 +49,7 @@ export default function YogaSessionBuilder({ isDark, onClose, onStart }: Props) 
     setSaving(true)
     const sb = createClient()
     const { data: { user } } = await sb.auth.getUser()
-    const finalTitle = title.trim() || 'Séance yoga'
+    const finalTitle = title.trim() || t('record.yogaBuilderDefaultTitle')
     if (user) {
       await sb.from('planned_sessions').insert({
         user_id: user.id, sport: 'yoga',
@@ -68,19 +70,19 @@ export default function YogaSessionBuilder({ isDark, onClose, onStart }: Props) 
         <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: surf, border: 'none', color: text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
-        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600, color: text }}>Nouvelle séance</span>
+        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 15, fontWeight: 600, color: text }}>{t('record.yogaBuilderNewSession')}</span>
         <button onClick={handleSave} disabled={saving || !exercises.length} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 10, background: 'none', border: 'none', color: exercises.length ? '#06B6D4' : dim, fontSize: 15, fontWeight: 600, cursor: exercises.length ? 'pointer' : 'default' }}>
-          {saving ? '…' : 'Sauvegarder'}
+          {saving ? '…' : t('record.yogaBuilderSave')}
         </button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px', paddingBottom: 120 }}>
         {/* Nom */}
-        <p style={{ fontSize: 10, fontWeight: 700, color: dim, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>Nom de la séance</p>
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Mobilité matin" style={{ width: '100%', boxSizing: 'border-box', background: surf, border: `1px solid ${bord}`, borderRadius: 12, padding: '12px 16px', fontSize: 16, color: text, outline: 'none', fontFamily: 'DM Sans, sans-serif', marginBottom: 24 }} />
+        <p style={{ fontSize: 10, fontWeight: 700, color: dim, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>{t('record.yogaBuilderSessionName')}</p>
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('record.yogaBuilderNamePlaceholder')} style={{ width: '100%', boxSizing: 'border-box', background: surf, border: `1px solid ${bord}`, borderRadius: 12, padding: '12px 16px', fontSize: 16, color: text, outline: 'none', fontFamily: 'DM Sans, sans-serif', marginBottom: 24 }} />
 
         {/* Durée cible */}
-        <p style={{ fontSize: 10, fontWeight: 700, color: dim, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Durée cible</p>
+        <p style={{ fontSize: 10, fontWeight: 700, color: dim, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>{t('record.yogaBuilderTargetDuration')}</p>
         <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
           {DURATIONS.map(d => (
             <button key={d} onClick={() => setTargetMin(d)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: targetMin === d ? '#06B6D4' : surf, color: targetMin === d ? '#FFF' : text, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{d} min</button>
@@ -89,13 +91,13 @@ export default function YogaSessionBuilder({ isDark, onClose, onStart }: Props) 
 
         {/* Exercices */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: dim, textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Exercices ({exercises.length})</p>
-          <button onClick={() => setPickerOpen(true)} style={{ padding: '6px 14px', borderRadius: 20, background: 'rgba(6,182,212,0.12)', border: 'none', color: '#06B6D4', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Ajouter</button>
+          <p style={{ fontSize: 10, fontWeight: 700, color: dim, textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>{t('record.yogaBuilderExercises', { n: exercises.length })}</p>
+          <button onClick={() => setPickerOpen(true)} style={{ padding: '6px 14px', borderRadius: 20, background: 'rgba(6,182,212,0.12)', border: 'none', color: '#06B6D4', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('record.settingsAdd')}</button>
         </div>
 
         {exercises.length === 0 && (
           <div style={{ textAlign: 'center', padding: '32px 0', color: dim }}>
-            <p style={{ fontSize: 14, margin: 0 }}>Aucun exercice — appuie sur + Ajouter</p>
+            <p style={{ fontSize: 14, margin: 0 }}>{t('record.yogaBuilderNoExercise')}</p>
           </div>
         )}
 
@@ -113,14 +115,14 @@ export default function YogaSessionBuilder({ isDark, onClose, onStart }: Props) 
         ))}
 
         {exercises.length > 0 && (
-          <p style={{ fontSize: 13, color: dim, textAlign: 'right', marginTop: 8 }}>Durée totale : {fmt(totalSec)}</p>
+          <p style={{ fontSize: 13, color: dim, textAlign: 'right', marginTop: 8 }}>{t('record.yogaBuilderTotalDuration')} {fmt(totalSec)}</p>
         )}
       </div>
 
       {exercises.length > 0 && (
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 20px', paddingBottom: 'max(env(safe-area-inset-bottom),20px)', background: isDark ? 'linear-gradient(transparent,#0A0A0A 40%)' : 'linear-gradient(transparent,#FFF 40%)' }}>
-          <button onClick={() => onStart(exercises, title.trim() || 'Séance yoga')} style={{ width: '100%', height: 52, borderRadius: 16, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', boxShadow: '0 4px 20px rgba(6,182,212,0.35)' }}>
-            Lancer la séance
+          <button onClick={() => onStart(exercises, title.trim() || t('record.yogaBuilderDefaultTitle'))} style={{ width: '100%', height: 52, borderRadius: 16, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', boxShadow: '0 4px 20px rgba(6,182,212,0.35)' }}>
+            {t('record.yogaBuilderLaunch')}
           </button>
         </div>
       )}

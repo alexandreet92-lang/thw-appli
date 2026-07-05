@@ -1,18 +1,21 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   isDark?: boolean
 }
 
-const IOS_STEPS = [
-  'Ouvre l\'app Réglages sur ton iPhone',
-  'Appuie sur "Confidentialité et sécurité"',
-  'Appuie sur "Service de localisation"',
-  'Descends jusqu\'à Safari (ou ton navigateur)',
-  'Sélectionne "Lors de l\'utilisation"',
+const IOS_STEP_KEYS = [
+  'record.gpsPermStep1',
+  'record.gpsPermStep2',
+  'record.gpsPermStep3',
+  'record.gpsPermStep4',
+  'record.gpsPermStep5',
 ]
 
 export default function GPSPermissionScreen({ isDark = false }: Props) {
+  const { t } = useI18n()
+  const IOS_STEPS = IOS_STEP_KEYS.map(k => t(k))
   const bg   = isDark ? '#0A0A0A' : '#FFFFFF'
   const text = isDark ? '#FFFFFF' : '#0A0A0A'
   const dim  = isDark ? 'rgba(255,255,255,0.55)' : '#666'
@@ -42,10 +45,10 @@ export default function GPSPermissionScreen({ isDark = false }: Props) {
       </div>
 
       <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>
-        Localisation désactivée
+        {t('record.gpsPermTitle')}
       </h2>
       <p style={{ margin: '0 0 24px', fontSize: 14, color: dim, lineHeight: 1.5, maxWidth: 300 }}>
-        Pour activer le GPS, suis ces étapes :
+        {t('record.gpsPermIntro')}
       </p>
 
       <div style={{
@@ -78,11 +81,11 @@ export default function GPSPermissionScreen({ isDark = false }: Props) {
           boxShadow: '0 4px 20px rgba(6,182,212,0.35)',
         }}
       >
-        J&apos;ai activé la localisation
+        {t('record.gpsPermActivated')}
       </button>
 
       <p style={{ marginTop: 14, fontSize: 12, color: dim, maxWidth: 300, lineHeight: 1.5 }}>
-        Sur Android : Réglages → Applications → Chrome → Autorisations → Position
+        {t('record.gpsPermAndroid')}
       </p>
     </div>
   )

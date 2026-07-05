@@ -1,5 +1,6 @@
 'use client'
 import { formatSeconds } from '@/hooks/useStopwatch'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   isDark: boolean
@@ -33,6 +34,7 @@ function Cell({ label, value, unit, t, fontFamily }: {
 }
 
 export default function MTBPage1({ isDark, durationSec, speedKmh, distanceM, elevationGainM, elevationLossM, dataFontFamily }: Props) {
+  const { t: tr } = useI18n()
   const t = getTheme(isDark)
   const fontFamily = dataFontFamily ?? '-apple-system, sans-serif'
   const distanceKm = (distanceM / 1000).toFixed(2)
@@ -40,16 +42,16 @@ export default function MTBPage1({ isDark, durationSec, speedKmh, distanceM, ele
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0 }}>
       <div style={{ flexBasis:'40%', flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:20, borderBottom:`1px solid ${t.separator}` }}>
-        <p style={{ margin:0, fontSize:10, fontWeight:700, color:t.label, textTransform:'uppercase', letterSpacing:'0.15em' }}>Vitesse</p>
+        <p style={{ margin:0, fontSize:10, fontWeight:700, color:t.label, textTransform:'uppercase', letterSpacing:'0.15em' }}>{tr('record.commonSpeed')}</p>
         <p style={{ margin:'14px 0 0', fontSize:72, fontWeight:700, lineHeight:1, color:t.text, fontFamily }}>{speedKmh.toFixed(1)}</p>
         <p style={{ margin:'4px 0 0', fontSize:14, color:t.label }}>km/h</p>
       </div>
       <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gridTemplateRows:'1fr 1fr' }}>
         <div style={{ borderRight:`1px solid ${t.separator}`, borderBottom:`1px solid ${t.separator}` }}>
-          <Cell label="Durée" value={formatSeconds(durationSec)} t={t} fontFamily={fontFamily} />
+          <Cell label={tr('record.commonDuration')} value={formatSeconds(durationSec)} t={t} fontFamily={fontFamily} />
         </div>
         <div style={{ borderRight:`1px solid ${t.separator}`, borderBottom:`1px solid ${t.separator}` }}>
-          <Cell label="Distance" value={distanceKm} unit="km" t={t} fontFamily={fontFamily} />
+          <Cell label={tr('record.commonDistance')} value={distanceKm} unit="km" t={t} fontFamily={fontFamily} />
         </div>
         <div style={{ borderBottom:`1px solid ${t.separator}` }}>
           <Cell label="D+" value={`${Math.round(elevationGainM)}`} unit="m" t={t} fontFamily={fontFamily} />
@@ -58,10 +60,10 @@ export default function MTBPage1({ isDark, durationSec, speedKmh, distanceM, ele
           <Cell label="D-" value={`${Math.round(elevationLossM)}`} unit="m" t={t} fontFamily={fontFamily} />
         </div>
         <div style={{ borderRight:`1px solid ${t.separator}` }}>
-          <Cell label="FC" value="--" unit="bpm" t={t} fontFamily={fontFamily} />
+          <Cell label={tr('record.commonHr')} value="--" unit="bpm" t={t} fontFamily={fontFamily} />
         </div>
         <div>
-          <Cell label="Vit. moy." value={durationSec > 0 ? ((distanceM/1000)/(durationSec/3600)).toFixed(1) : '--'} unit="km/h" t={t} fontFamily={fontFamily} />
+          <Cell label={tr('record.commonAvgSpeedShort')} value={durationSec > 0 ? ((distanceM/1000)/(durationSec/3600)).toFixed(1) : '--'} unit="km/h" t={t} fontFamily={fontFamily} />
         </div>
       </div>
     </div>

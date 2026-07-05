@@ -18,6 +18,7 @@ import { useSkiSettings } from '@/hooks/useSkiSettings'
 import { useSkiTracking } from '@/hooks/useSkiTracking'
 import { FONT_OPTIONS } from '@/types/cycling'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 import PhotoButton, { type PhotoButtonHandle } from './PhotoButton'
 import PhotoPreviewToast from './PhotoPreviewToast'
 
@@ -25,6 +26,7 @@ const PAGE_COUNT = 3
 interface Props { onExit: () => void; onFinished: () => void }
 
 export default function SkiScreen({ onExit, onFinished }: Props) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [gpsEnabled, setGpsEnabled] = useState(false)
   const [showPrePermission, setShowPrePermission] = useState(false)
@@ -135,7 +137,7 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
     <div style={{ position:'fixed', inset:0, zIndex:9999, backgroundColor:bg, color:text, display:'flex', flexDirection:'column', width:'100vw', height:'100dvh', paddingTop:'env(safe-area-inset-top)' }}>
       {/* Header */}
       <div style={{ height:48, flexShrink:0, display:'flex', alignItems:'center', padding:'0 12px', gap:8 }}>
-        <button onClick={onExit} aria-label="Quitter" style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <button onClick={onExit} aria-label={t('record.skiExit')} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         </button>
         <div style={{ display:'flex', gap:6, flex:1, justifyContent:'center' }}>
@@ -145,7 +147,7 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
             </button>
           ))}
         </div>
-        <button onClick={() => setSettingsOpen(true)} aria-label="Réglages" style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <button onClick={() => setSettingsOpen(true)} aria-label={t('record.skiSettingsAria')} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
       </div>

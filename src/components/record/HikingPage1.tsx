@@ -1,5 +1,6 @@
 'use client'
 import { formatPace, speedToMinKm } from '@/types/trail'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   isDark: boolean
@@ -41,17 +42,18 @@ function Cell({ label, value, unit, big, isDark, font }: {
 }
 
 export default function HikingPage1({ isDark, durationSec, distanceM, elevationGainM, elevationLossM, altitudeM, dataFontFamily }: Props) {
+  const { t } = useI18n()
   const font = dataFontFamily ?? '-apple-system, sans-serif'
   const avgSpeedKmh = durationSec > 0 ? (distanceM / durationSec) * 3.6 : 0
   const avgPace = speedToMinKm(avgSpeedKmh)
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', flex:1, alignContent:'start' }}>
-      <Cell big isDark={isDark} font={font} label="Durée" value={fmt(durationSec)} />
-      <Cell isDark={isDark} font={font} label="Distance" value={(distanceM/1000).toFixed(2)} unit="km" />
+      <Cell big isDark={isDark} font={font} label={t('record.commonDuration')} value={fmt(durationSec)} />
+      <Cell isDark={isDark} font={font} label={t('record.commonDistance')} value={(distanceM/1000).toFixed(2)} unit="km" />
       <Cell isDark={isDark} font={font} label="D+" value={String(Math.round(elevationGainM))} unit="m" />
       <Cell isDark={isDark} font={font} label="D-" value={String(Math.round(elevationLossM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="Altitude" value={String(Math.round(altitudeM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="Allure marche" value={avgPace != null ? formatPace(avgPace) : '--'} unit="min/km" />
+      <Cell isDark={isDark} font={font} label={t('record.commonAltitude')} value={String(Math.round(altitudeM))} unit="m" />
+      <Cell isDark={isDark} font={font} label={t('record.hikingPage1WalkPace')} value={avgPace != null ? formatPace(avgPace) : '--'} unit="min/km" />
     </div>
   )
 }

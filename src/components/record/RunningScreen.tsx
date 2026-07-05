@@ -24,6 +24,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { FinishedSession, SessionLap } from '@/types/session'
 import type { GPSPoint } from '@/hooks/useGPSTracking'
 import type { NavRouteInput } from './RouteNavScreen'
+import { useI18n } from '@/lib/i18n'
 const RouteNavScreen = dynamic(() => import('./RouteNavScreen'), { ssr: false })
 
 interface Props { onExit: () => void; onFinished: () => void; route?: NavRouteInput | null }
@@ -35,6 +36,7 @@ interface SessionSnap {
 }
 
 export default function RunningScreen({ onExit, onFinished, route }: Props) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const [gpsEnabled, setGpsEnabled] = useState(false)
@@ -176,11 +178,11 @@ export default function RunningScreen({ onExit, onFinished, route }: Props) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: bg, color: text, display: 'flex', flexDirection: 'column', width: '100vw', height: '100dvh', paddingTop: 'env(safe-area-inset-top)' }}>
       {/* Header */}
       <div style={{ height: 48, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 12px', position: 'relative' }}>
-        <button onClick={onExit} aria-label="Quitter" style={{ width: 36, height: 36, borderRadius: '50%', background: btnBg, color: text, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={onExit} aria-label={t('record.runningExit')} style={{ width: 36, height: 36, borderRadius: '50%', background: btnBg, color: text, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         </button>
-        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 13, color: labelColor, fontFamily: 'DM Sans, sans-serif' }}>Running</span>
-        <button onClick={() => setSettingsOpen(true)} aria-label="Réglages" style={{ marginLeft: 'auto', width: 36, height: 36, borderRadius: '50%', background: btnBg, color: text, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: 13, color: labelColor, fontFamily: 'DM Sans, sans-serif' }}>{t('record.runningTitle')}</span>
+        <button onClick={() => setSettingsOpen(true)} aria-label={t('record.runningSettings')} style={{ marginLeft: 'auto', width: 36, height: 36, borderRadius: '50%', background: btnBg, color: text, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
       </div>

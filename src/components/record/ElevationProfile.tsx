@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import type { GPSPoint } from '@/hooks/useGPSTracking'
 
 function haversineM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
@@ -16,11 +17,12 @@ interface Props {
 }
 
 export default function ElevationProfile({ points, isDark = false, height = 100 }: Props) {
+  const { t } = useI18n()
   const pts = points.filter(p => p.altitude != null) as (GPSPoint & { altitude: number })[]
   if (pts.length < 3) {
     return (
       <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.3)' : '#aaa' }}>Pas de données d&apos;altitude</span>
+        <span style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.3)' : '#aaa' }}>{t('record.elevationProfileNoData')}</span>
       </div>
     )
   }

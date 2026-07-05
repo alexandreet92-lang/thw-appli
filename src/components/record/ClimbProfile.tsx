@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 
 interface ThemeColors { bg: string; text: string; dim: string; separator: string; cardBg: string }
 
@@ -30,13 +31,14 @@ function getElevationAtProgress(profile: number[], progress: number): number {
 interface Props { data: ClimbData | null; theme: ThemeColors }
 
 export function ClimbProfile({ data, theme }: Props) {
+  const { t } = useI18n()
   if (!data) {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         height: '100%', color: theme.dim, fontSize: 12, textAlign: 'center', padding: 8,
       }}>
-        Aucune montée détectée
+        {t('record.climbProfileNoClimb')}
       </div>
     )
   }
@@ -63,9 +65,9 @@ export function ClimbProfile({ data, theme }: Props) {
         </svg>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6 }}>
-        <ClimbStat label="Restant"   value={remainingKm}   unit="km" t={theme}/>
-        <ClimbStat label="D+ rest."  value={`${remainingElev}`} unit="m"  t={theme}/>
-        <ClimbStat label="Pente"     value={data.currentGradient.toFixed(1)} unit="%" t={theme}/>
+        <ClimbStat label={t('record.climbProfileRemaining')}   value={remainingKm}   unit="km" t={theme}/>
+        <ClimbStat label={t('record.climbProfileRemainingElev')}  value={`${remainingElev}`} unit="m"  t={theme}/>
+        <ClimbStat label={t('record.climbProfileGradient')}     value={data.currentGradient.toFixed(1)} unit="%" t={theme}/>
       </div>
     </div>
   )

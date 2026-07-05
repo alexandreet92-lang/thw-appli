@@ -16,6 +16,7 @@ import { useHeartRate } from '@/lib/record/useHeartRate'
 import WorkoutSettings from './WorkoutSettings'
 import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   sport: 'gym' | 'hyrox'
@@ -32,6 +33,7 @@ function formatDuration(sec: number) {
 }
 
 export default function WorkoutSession({ sport, exercises: initialExercises, planTitle, onClose, isDark }: Props) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [exercises, setExercises] = useState<WorkoutExercise[]>(initialExercises)
   const [currentIdx, setCurrentIdx] = useState(0)
@@ -130,7 +132,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
         <div style={{ flex:1, textAlign:'center' }}>
-          <p style={{ fontSize:14, fontWeight:600, color:'var(--text)', margin:0, maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{planTitle || (sport === 'gym' ? 'Muscu' : 'Hyrox')}</p>
+          <p style={{ fontSize:14, fontWeight:600, color:'var(--text)', margin:0, maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{planTitle || (sport === 'gym' ? t('record.workoutMuscu') : 'Hyrox')}</p>
           <p style={{ fontSize:12, color:accent, margin:0, fontWeight:600 }}>{formatDuration(elapsed)}</p>
         </div>
         <button onClick={() => setShowSettings(true)} style={{ width:36, height:36, borderRadius:'50%', background:'var(--bg-card2)', border:'none', color:'var(--text-mid)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -148,7 +150,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
         ))}
         <button onClick={() => setShowSearch(true)} style={{ flexShrink:0, padding:'10px 14px', background:'none', border:'none', cursor:'pointer', color:'var(--text-mid)', fontSize:20, lineHeight:1 }}>+</button>
         {exercises.length > 0 && (
-          <button onClick={() => setShowManage(true)} aria-label="Réorganiser" style={{ flexShrink:0, padding:'10px 12px', background:'none', border:'none', cursor:'pointer', color:'var(--text-mid)', display:'flex', alignItems:'center' }}>
+          <button onClick={() => setShowManage(true)} aria-label={t('record.workoutReorder')} style={{ flexShrink:0, padding:'10px 12px', background:'none', border:'none', cursor:'pointer', color:'var(--text-mid)', display:'flex', alignItems:'center' }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
           </button>
         )}
@@ -158,15 +160,15 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
       <div style={{ flex:1, overflowY:'auto' }}>
         {exercises.length === 0 && (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:16, padding:32 }}>
-            <p style={{ fontSize:15, color:'var(--text-mid)', textAlign:'center' }}>Aucun exercice — appuie sur + pour en ajouter</p>
+            <p style={{ fontSize:15, color:'var(--text-mid)', textAlign:'center' }}>{t('record.workoutNoExercise')}</p>
             <button onClick={() => setShowSearch(true)} style={{ padding:'12px 28px', borderRadius:14, background:`linear-gradient(135deg, ${accent}, ${accent}cc)`, border:'none', color:'#fff', fontSize:15, fontWeight:600, cursor:'pointer' }}>
-              Ajouter un exercice
+              {t('record.workoutAddExercise')}
             </button>
           </div>
         )}
         {betweenRest != null && (
           <div style={{ padding:'8px 0' }}>
-            <p style={{ textAlign:'center', fontSize:12, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--text-dim)', margin:'8px 0 0' }}>Récup entre circuits</p>
+            <p style={{ textAlign:'center', fontSize:12, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--text-dim)', margin:'8px 0 0' }}>{t('record.workoutRestBetweenCircuits')}</p>
             <RestTimer seconds={betweenRest} onDone={finishRest} isDark={isDark} accent={accent} />
           </div>
         )}
@@ -188,14 +190,14 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
       <div style={{ flexShrink:0, padding:'12px 20px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'space-around', paddingBottom:'max(env(safe-area-inset-bottom), 12px)' }}>
         <div style={{ textAlign:'center' }}>
           <p style={{ fontSize:18, fontWeight:700, color:'var(--text)', margin:0 }}>{completedSets.length}</p>
-          <p style={{ fontSize:10, color:'var(--text-mid)', textTransform:'uppercase', margin:'2px 0 0', letterSpacing:'0.08em' }}>Séries</p>
+          <p style={{ fontSize:10, color:'var(--text-mid)', textTransform:'uppercase', margin:'2px 0 0', letterSpacing:'0.08em' }}>{t('record.workoutSets')}</p>
         </div>
         <div style={{ textAlign:'center' }}>
           <p style={{ fontSize:18, fontWeight:700, color:'var(--text)', margin:0 }}>{Math.round(totalVolumeKg)}</p>
-          <p style={{ fontSize:10, color:'var(--text-mid)', textTransform:'uppercase', margin:'2px 0 0', letterSpacing:'0.08em' }}>Vol. kg</p>
+          <p style={{ fontSize:10, color:'var(--text-mid)', textTransform:'uppercase', margin:'2px 0 0', letterSpacing:'0.08em' }}>{t('record.workoutVolKg')}</p>
         </div>
         <button onClick={() => setShowSave(true)} style={{ padding:'8px 20px', borderRadius:12, background:`linear-gradient(135deg, ${accent}, ${accent}cc)`, border:'none', color:'#fff', fontSize:14, fontWeight:600, cursor:'pointer' }}>
-          Terminer
+          {t('record.workoutFinish')}
         </button>
       </div>
 
@@ -206,18 +208,18 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
         <div onClick={() => setShowManage(false)} style={{ position:'fixed', inset:0, zIndex:10006, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
           <div onClick={e => e.stopPropagation()} style={{ width:'100%', maxWidth:520, maxHeight:'80vh', overflowY:'auto', background:'var(--bg)', borderRadius:'18px 18px 0 0', padding:20, paddingBottom:'max(env(safe-area-inset-bottom), 20px)' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-              <h3 style={{ fontSize:17, fontWeight:700, color:'var(--text)', margin:0 }}>Organiser la séance</h3>
+              <h3 style={{ fontSize:17, fontWeight:700, color:'var(--text)', margin:0 }}>{t('record.workoutOrganizeSession')}</h3>
               <button onClick={() => setShowManage(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-dim)', fontSize:20, padding:4 }}>✕</button>
             </div>
             {exercises.map((ex, i) => (
               <div key={ex.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, marginBottom:8 }}>
                 <span style={{ flex:1, minWidth:0, fontSize:14, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{i + 1}. {ex.name}</span>
-                <button onClick={() => moveBlock(i, -1)} disabled={i === 0} aria-label="Monter" style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, color:'var(--text-mid)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.4 : 1, padding:'4px 9px', fontSize:14 }}>↑</button>
-                <button onClick={() => moveBlock(i, 1)} disabled={i === exercises.length - 1} aria-label="Descendre" style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, color:'var(--text-mid)', cursor: i === exercises.length - 1 ? 'default' : 'pointer', opacity: i === exercises.length - 1 ? 0.4 : 1, padding:'4px 9px', fontSize:14 }}>↓</button>
-                <button onClick={() => removeBlock(i)} aria-label="Supprimer" style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, color:'#ef4444', cursor:'pointer', padding:'4px 9px', fontSize:14 }}>×</button>
+                <button onClick={() => moveBlock(i, -1)} disabled={i === 0} aria-label={t('record.settingsMoveUp')} style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, color:'var(--text-mid)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.4 : 1, padding:'4px 9px', fontSize:14 }}>↑</button>
+                <button onClick={() => moveBlock(i, 1)} disabled={i === exercises.length - 1} aria-label={t('record.settingsMoveDown')} style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, color:'var(--text-mid)', cursor: i === exercises.length - 1 ? 'default' : 'pointer', opacity: i === exercises.length - 1 ? 0.4 : 1, padding:'4px 9px', fontSize:14 }}>↓</button>
+                <button onClick={() => removeBlock(i)} aria-label={t('record.settingsDelete')} style={{ background:'none', border:'1px solid var(--border)', borderRadius:8, color:'#ef4444', cursor:'pointer', padding:'4px 9px', fontSize:14 }}>×</button>
               </div>
             ))}
-            <button onClick={() => { setShowManage(false); setShowSearch(true) }} style={{ width:'100%', padding:'11px', borderRadius:10, border:'1px dashed var(--border)', background:'transparent', color:accent, fontWeight:600, fontSize:14, cursor:'pointer', marginTop:4 }}>+ Ajouter un exercice</button>
+            <button onClick={() => { setShowManage(false); setShowSearch(true) }} style={{ width:'100%', padding:'11px', borderRadius:10, border:'1px dashed var(--border)', background:'transparent', color:accent, fontWeight:600, fontSize:14, cursor:'pointer', marginTop:4 }}>{t('record.workoutAddExercisePlus')}</button>
           </div>
         </div>
       )}
@@ -231,10 +233,10 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
 
   // ── Récap avant lancement ──────────────────────────────────────
   function exoLine(ex: WorkoutExercise): string {
-    if (ex.mode === 'circuit') return `${ex.circuitRounds ?? 1} tours · ${(ex.circuitExercises ?? []).length} exos`
+    if (ex.mode === 'circuit') return t('record.workoutCircuitLine', { r: ex.circuitRounds ?? 1, n: (ex.circuitExercises ?? []).length })
     if (ex.mode === 'emom') return `EMOM ${ex.emomMinutes ?? 0} min`
     if (ex.mode === 'tabata') return `Tabata ${ex.tabataRounds ?? 8}×`
-    if (ex.mode === 'superset') return `Superset · ${ex.sets} tours`
+    if (ex.mode === 'superset') return t('record.workoutSupersetLine', { n: ex.sets })
     return `${ex.sets} × ${ex.reps}${ex.weightKg ? ` · ${ex.weightKg} kg` : ''}`
   }
   const recap = (
@@ -243,12 +245,12 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
         <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:'var(--bg-card2)', border:'none', color:'var(--text)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
-        <span style={{ flex:1, textAlign:'center', fontSize:14, fontWeight:600, color:'var(--text)' }}>{planTitle || (sport === 'gym' ? 'Muscu' : 'Hyrox')}</span>
+        <span style={{ flex:1, textAlign:'center', fontSize:14, fontWeight:600, color:'var(--text)' }}>{planTitle || (sport === 'gym' ? t('record.workoutMuscu') : 'Hyrox')}</span>
         <div style={{ width:36 }} />
       </div>
       <div style={{ flex:1, overflowY:'auto', padding:'20px 16px' }}>
-        <p style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--text-dim)', margin:'0 0 14px' }}>Récapitulatif · {exercises.length} bloc{exercises.length > 1 ? 's' : ''}</p>
-        {exercises.length === 0 && <p style={{ fontSize:14, color:'var(--text-mid)' }}>Séance vide — tu pourras ajouter des exercices avec le bouton +.</p>}
+        <p style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--text-dim)', margin:'0 0 14px' }}>{t('record.workoutRecap')} · {exercises.length} {t(exercises.length > 1 ? 'record.workoutBlocksPlural' : 'record.workoutBlockSingular')}</p>
+        {exercises.length === 0 && <p style={{ fontSize:14, color:'var(--text-mid)' }}>{t('record.workoutEmptySession')}</p>}
         {exercises.map((ex, i) => (
           <div key={ex.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, marginBottom:8 }}>
             <span style={{ fontSize:12, fontWeight:700, color:accent, width:18, flexShrink:0 }}>{i + 1}</span>
@@ -261,7 +263,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
       </div>
       <div style={{ flexShrink:0, padding:'12px 16px', borderTop:'1px solid var(--border)', paddingBottom:'max(env(safe-area-inset-bottom), 12px)' }}>
         <button onClick={beginSession} style={{ width:'100%', padding:'15px', borderRadius:14, background:`linear-gradient(135deg, ${accent}, #5b6fff)`, border:'none', color:'#fff', fontSize:16, fontWeight:700, cursor:'pointer' }}>
-          Commencer l&apos;entraînement
+          {t('record.workoutStartTraining')}
         </button>
       </div>
     </div>

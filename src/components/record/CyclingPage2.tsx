@@ -1,5 +1,6 @@
 'use client'
 import dynamic from 'next/dynamic'
+import { useI18n } from '@/lib/i18n'
 
 const MapBackground = dynamic(() => import('./MapBackground'), { ssr: false })
 
@@ -47,6 +48,7 @@ function BigCell({ label, value, unit, t }: {
 }
 
 export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPosition, onExpand, paused }: Props) {
+  const { t: tr } = useI18n()
   const t = getTheme(isDark)
   const distanceKm = (distanceM / 1000).toFixed(2)
 
@@ -78,13 +80,13 @@ export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPo
               <svg width="13" height="13" viewBox="0 0 24 24" fill="var(--primary)" aria-hidden>
                 <rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>
               </svg>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>En pause</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{tr('record.cyclingPage2Paused')}</span>
             </div>
           )}
           {onExpand && (
             <button
               onClick={onExpand}
-              aria-label="Carte plein écran"
+              aria-label={tr('record.cyclingPage2FullscreenMap')}
               style={{
                 position: 'absolute', top: 10, right: 10, zIndex: 1000,
                 width: 40, height: 40, borderRadius: '50%',
@@ -110,9 +112,9 @@ export default function CyclingPage2({ isDark, distanceM, trackPoints, currentPo
         borderTop: `1px solid ${t.separator}`,
       }}>
         <div style={{ borderRight: `1px solid ${t.separator}` }}>
-          <BigCell label="Watts" value="--" unit="w" t={t} />
+          <BigCell label={tr('record.commonWatts')} value="--" unit="w" t={t} />
         </div>
-        <BigCell label="Distance" value={distanceKm} unit="km" t={t} />
+        <BigCell label={tr('record.commonDistance')} value={distanceKm} unit="km" t={t} />
       </div>
     </div>
   )

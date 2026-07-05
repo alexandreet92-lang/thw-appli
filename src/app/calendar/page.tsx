@@ -44,7 +44,7 @@ import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { CALENDAR_ONBOARDING } from '@/onboarding/configs/calendar.config'
 import { Trophy, Briefcase, Heart, LayoutGrid, CalendarDays } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
-import { useI18n } from '@/lib/i18n'
+import { useI18n, currentLocale } from '@/lib/i18n'
 type CalView       = 'year' | 'month'
 type TimelineMode  = 'vertical' | 'horizontal'
 type RaceLevel     = 'secondary' | 'important' | 'main' | 'gty'
@@ -490,6 +490,7 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
   month: number; day?: number; year: number; onClose: () => void
   onSave: (r: Omit<Race, 'id' | 'validated' | 'validationData'>) => void
 }) {
+  const { t } = useI18n()
   const dd = `${year}-${String(month + 1).padStart(2, '0')}-${String(day || 1).padStart(2, '0')}`
   const [sport, setSport] = useState<RaceSport>('run')
   const [name, setName]   = useState('')
@@ -505,25 +506,25 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
   const [goalBike, setGoalBike] = useState('')
   const [goalRun,  setGoalRun]  = useState('')
   const RACE_SPORTS: RaceSport[] = ['run','trail','bike','swim','hyrox','triathlon','rowing']
-  const RSL: Record<RaceSport, string> = { run:'Running',trail:'Trail',bike:'Cyclisme',swim:'Natation',hyrox:'Hyrox',triathlon:'Triathlon',rowing:'Aviron' }
+  const RSL: Record<RaceSport, string> = { run:'sport.running',trail:'sport.trail',bike:'sport.cycling',swim:'q.sport.natation',hyrox:'sport.hyrox',triathlon:'sport.triathlon',rowing:'sport.aviron' }
 
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
       <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:500,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>Ajouter une course</h3>
+          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{t('calendar.addRace')}</h3>
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
-        <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>Sport</p>
+        <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('calendar.sport')}</p>
         <div style={{ display:'flex',gap:5,flexWrap:'wrap',marginBottom:14 }}>
           {RACE_SPORTS.map(s => (
             <button key={s} onClick={() => { setSport(s); setHyroxCat(''); setHyroxLvl(''); setHyroxGen('') }}
               style={{ padding:'5px 9px',borderRadius:8,border:'1px solid',borderColor:sport===s?SPORT_BORDER[s as SportType]:'var(--border)',background:sport===s?SPORT_BG[s as SportType]:'var(--bg-card2)',color:sport===s?SPORT_BORDER[s as SportType]:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
-              {RSL[s]}
+              {t(RSL[s])}
             </button>
           ))}
         </div>
-        <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>Niveau</p>
+        <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('calendar.level')}</p>
         <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:14 }}>
           {(['gty','main','important','secondary'] as RaceLevel[]).map(l => {
             const cfg = RACE_CONFIG[l]
@@ -537,44 +538,44 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
         </div>
         <div style={{ display:'grid',gridTemplateColumns:'2fr 1fr',gap:9,marginBottom:12 }}>
           <div>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Nom</p>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Ironman Nice"
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.name')}</p>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder={t('calendar.namePhIronman')}
               style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
           </div>
           <div>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Date</p>
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.date')}</p>
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
               style={{ width:'100%',padding:'7px 9px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
           </div>
         </div>
         {sport === 'run' && (
           <div style={{ marginBottom:12 }}>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>Distance</p>
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('calendar.distance')}</p>
             <div style={{ display:'flex',gap:5,flexWrap:'wrap',marginBottom:8 }}>
               {RUN_DISTANCES.map(d => (
                 <button key={d} onClick={() => setRunDist(d)} style={{ padding:'5px 10px',borderRadius:8,border:'1px solid',borderColor:runDist===d?'#22c55e':'var(--border)',background:runDist===d?'rgba(34,197,94,0.10)':'var(--bg-card2)',color:runDist===d?'#22c55e':'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{d}</button>
               ))}
             </div>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Objectif de temps</p>
-            <input value={goalTime} onChange={e => setGoalTime(e.target.value)} placeholder="Ex: 1h25:00"
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.goalTime')}</p>
+            <input value={goalTime} onChange={e => setGoalTime(e.target.value)} placeholder={t('calendar.goalTimePh')}
               style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:12,outline:'none' }}/>
           </div>
         )}
         {sport === 'triathlon' && (
           <div style={{ marginBottom:12 }}>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>Distance</p>
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:7 }}>{t('calendar.distance')}</p>
             <div style={{ display:'flex',flexDirection:'column',gap:5,marginBottom:10 }}>
               {TRI_DISTANCES.map(d => (
                 <button key={d} onClick={() => setTriDist(d)} style={{ padding:'8px 12px',borderRadius:9,border:'1px solid',borderColor:triDist===d?'#a855f7':'var(--border)',background:triDist===d?'rgba(168,85,247,0.10)':'var(--bg-card2)',cursor:'pointer',textAlign:'left' }}>
                   <p style={{ fontSize:12,fontWeight:600,margin:0,color:triDist===d?'#a855f7':'var(--text)' }}>{d}</p>
-                  <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>Nat {TRI_SWIM[d]} · Vélo {TRI_BIKE[d]} · Run {TRI_RUN[d]}</p>
+                  <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{t('calendar.abbrNat')} {TRI_SWIM[d]} · {t('calendar.triBike')} {TRI_BIKE[d]} · {t('calendar.triRun')} {TRI_RUN[d]}</p>
                 </button>
               ))}
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>
-              {[{l:'Natation',v:goalSwim,s:setGoalSwim,p:'32:00'},{l:'Vélo',v:goalBike,s:setGoalBike,p:'2h25'},{l:'Run',v:goalRun,s:setGoalRun,p:'1h35'},{l:'Total',v:goalTime,s:setGoalTime,p:'4h40'}].map(x => (
+              {[{l:'q.sport.natation',v:goalSwim,s:setGoalSwim,p:'32:00'},{l:'calendar.triBike',v:goalBike,s:setGoalBike,p:'2h25'},{l:'calendar.triRun',v:goalRun,s:setGoalRun,p:'1h35'},{l:'calendar.triTotal',v:goalTime,s:setGoalTime,p:'4h40'}].map(x => (
                 <div key={x.l}>
-                  <p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{x.l}</p>
+                  <p style={{ fontSize:10,color:'var(--text-dim)',marginBottom:3 }}>{t(x.l)}</p>
                   <input value={x.v} onChange={e => x.s(e.target.value)} placeholder={x.p}
                     style={{ width:'100%',padding:'6px 8px',borderRadius:7,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,outline:'none' }}/>
                 </div>
@@ -584,16 +585,16 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
         )}
         {!['run','triathlon','hyrox'].includes(sport) && (
           <div style={{ marginBottom:12 }}>
-            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Objectif</p>
-            <input value={goalTime} onChange={e => setGoalTime(e.target.value)} placeholder="Ex: Podium"
+            <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.objective')}</p>
+            <input value={goalTime} onChange={e => setGoalTime(e.target.value)} placeholder={t('calendar.goalPhPodium')}
               style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
           </div>
         )}
         <div style={{ display:'flex',gap:8 }}>
-          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
+          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('calendar.cancel')}</button>
           <button onClick={() => onSave({ name:name||'Course',sport,date,level,goal:goalTime||undefined,runDistance:sport==='run'?runDist:undefined,triDistance:sport==='triathlon'?triDist:undefined,hyroxCategory:hyroxCat||undefined,hyroxLevel:hyroxLvl||undefined,hyroxGender:hyroxGen||undefined,goalTime:goalTime||undefined,goalSwimTime:goalSwim||undefined,goalBikeTime:goalBike||undefined,goalRunTime:goalRun||undefined })}
             style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
-            + Ajouter
+            {t('calendar.addPlus')}
           </button>
         </div>
       </div>
@@ -602,26 +603,27 @@ function RaceAddModal({ month, day, year, onClose, onSave }: {
 }
 
 function RaceEditModal({ race, onClose, onSave }: { race: Race; onClose: () => void; onSave: (r: Race) => void }) {
+  const { t } = useI18n()
   const [form, setForm] = useState<Race>({ ...race })
   return (
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:440,width:'100%',maxHeight:'92vh',overflowY:'auto' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>Modifier la course</h3>
+          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{t('calendar.editRace')}</h3>
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
         <div style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Nom</p>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.name')}</p>
           <input value={form.name} onChange={e => setForm({ ...form, name:e.target.value })}
             style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
         <div style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Date</p>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.date')}</p>
           <input type="date" value={form.date} onChange={e => setForm({ ...form, date:e.target.value })}
             style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
         <div style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:6 }}>Niveau</p>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:6 }}>{t('calendar.level')}</p>
           <div style={{ display:'flex',gap:5,flexWrap:'wrap' }}>
             {(['secondary','important','main','gty'] as RaceLevel[]).map(l => {
               const cfg = RACE_CONFIG[l]
@@ -635,20 +637,20 @@ function RaceEditModal({ race, onClose, onSave }: { race: Race; onClose: () => v
           </div>
         </div>
         <div style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Objectif</p>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.objective')}</p>
           <input value={form.goal ?? ''} onChange={e => setForm({ ...form, goal:e.target.value })}
             style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
         <div style={{ marginBottom:14 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Stratégie</p>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.strategy')}</p>
           <textarea value={form.strategy ?? ''} onChange={e => setForm({ ...form, strategy:e.target.value })} rows={2}
             style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' }}/>
         </div>
         <div style={{ display:'flex',gap:8 }}>
-          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
+          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('calendar.cancel')}</button>
           <button onClick={() => onSave(form)}
             style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#06B6D4,#5b6fff)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
-            Sauvegarder
+            {t('calendar.saveRace')}
           </button>
         </div>
       </div>
@@ -659,6 +661,7 @@ function RaceEditModal({ race, onClose, onSave }: { race: Race; onClose: () => v
 function RaceDetailModal({ race, onClose, onDelete, onEdit }: {
   race: Race; onClose: () => void; onDelete: (id: string) => void; onEdit: () => void
 }) {
+  const { t } = useI18n()
   const cfg  = RACE_CONFIG[race.level]
   const days = daysUntil(race.date)
   return (
@@ -668,7 +671,7 @@ function RaceDetailModal({ race, onClose, onDelete, onEdit }: {
           <div>
             <span style={{ padding:'2px 8px',borderRadius:20,background:cfg.bg,border:`1px solid ${cfg.border}`,color:race.level==='gty'?'var(--gty-text)':cfg.color,fontSize:9,fontWeight:700 }}>{cfg.label}</span>
             <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:'6px 0 2px' }}>{race.name}</h3>
-            <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{race.sport} · {new Date(race.date).toLocaleDateString('fr-FR',{ weekday:'long',day:'numeric',month:'long',year:'numeric' })}</p>
+            <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>{race.sport} · {new Date(race.date).toLocaleDateString(currentLocale(),{ weekday:'long',day:'numeric',month:'long',year:'numeric' })}</p>
             {race.runDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'3px 0 0' }}>{race.runDistance}</p>}
             {race.triDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'3px 0 0' }}>{race.triDistance}</p>}
           </div>
@@ -677,29 +680,29 @@ function RaceDetailModal({ race, onClose, onDelete, onEdit }: {
         <div style={{ display:'flex',alignItems:'center',gap:14,padding:'12px 14px',borderRadius:11,background:days > 0 ? cfg.bg : 'var(--bg-card2)',border:`1px solid ${days > 0 ? cfg.border + '44' : 'var(--border)'}`,marginBottom:12 }}>
           <div style={{ textAlign:'center',minWidth:44 }}>
             <p style={{ fontFamily:'Syne,sans-serif',fontSize:days > 0 ? 26 : 16,fontWeight:800,color:days > 0 ? race.level==='gty'?'var(--gty-text)':cfg.color : 'var(--text-dim)',margin:0,lineHeight:1 }}>{days > 0 ? days : '✓'}</p>
-            <p style={{ fontSize:9,color:'var(--text-dim)',margin:'2px 0 0' }}>{days > 0 ? 'jours' : 'Passée'}</p>
+            <p style={{ fontSize:9,color:'var(--text-dim)',margin:'2px 0 0' }}>{days > 0 ? t('calendar.days') : t('calendar.past')}</p>
           </div>
           {race.goal && (
             <div>
-              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px' }}>Objectif</p>
+              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 2px' }}>{t('calendar.objective')}</p>
               <p style={{ fontSize:13,fontWeight:600,margin:0 }}>{race.goal}</p>
             </div>
           )}
         </div>
         {race.strategy && (
           <div style={{ padding:'10px 12px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)',marginBottom:12 }}>
-            <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 4px' }}>Stratégie</p>
+            <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 4px' }}>{t('calendar.strategy')}</p>
             <p style={{ fontSize:12,margin:0,color:'var(--text-mid)',lineHeight:1.5 }}>{race.strategy}</p>
           </div>
         )}
         <div style={{ display:'flex',gap:7 }}>
           <button onClick={() => { onDelete(race.id); onClose() }}
             style={{ padding:'8px 12px',borderRadius:9,background:'rgba(239,68,68,0.10)',border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',fontSize:11,cursor:'pointer' }}>
-            Supprimer
+            {t('calendar.delete')}
           </button>
           <button onClick={onEdit}
             style={{ flex:1,padding:'8px 12px',borderRadius:9,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>
-            Modifier
+            {t('calendar.edit')}
           </button>
         </div>
       </div>
@@ -712,6 +715,7 @@ function RaceEventModal({ month, day, year, onClose, onSave }: {
   month: number; day?: number; year: number; onClose: () => void
   onSave: (e: Omit<CalEvent, 'id'>) => void
 }) {
+  const { t } = useI18n()
   const dd = `${year}-${String(month + 1).padStart(2, '0')}-${String(day || 1).padStart(2, '0')}`
   const [title, setTitle]       = useState('')
   const [date, setDate]         = useState(dd)
@@ -720,29 +724,29 @@ function RaceEventModal({ month, day, year, onClose, onSave }: {
     <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:22,maxWidth:420,width:'100%' }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16 }}>
-          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>Ajouter un événement</h3>
+          <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{t('calendar.addEvent')}</h3>
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 8px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>
         <div style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Titre</p>
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Stage de préparation"
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.eventTitle')}</p>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('calendar.eventTitlePh')}
             style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
         <div style={{ marginBottom:10 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Date</p>
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.date')}</p>
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
             style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none' }}/>
         </div>
         <div style={{ marginBottom:14 }}>
-          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>Description</p>
-          <textarea value={description} onChange={e => setDesc(e.target.value)} rows={2} placeholder="Optionnel…"
+          <p style={{ fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em',color:'var(--text-dim)',marginBottom:4 }}>{t('calendar.description')}</p>
+          <textarea value={description} onChange={e => setDesc(e.target.value)} rows={2} placeholder={t('calendar.optionalPh')}
             style={{ width:'100%',padding:'7px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--input-bg)',color:'var(--text)',fontSize:12,outline:'none',resize:'none' }}/>
         </div>
         <div style={{ display:'flex',gap:8 }}>
-          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>Annuler</button>
+          <button onClick={onClose} style={{ flex:1,padding:10,borderRadius:10,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:12,cursor:'pointer' }}>{t('calendar.cancel')}</button>
           <button onClick={() => { if (title && date) { onSave({ category:'race',date,title,description:description||undefined,color:'#9ca3af' }); onClose() } }}
             style={{ flex:2,padding:10,borderRadius:10,background:'linear-gradient(135deg,#6b7280,#9ca3af)',border:'none',color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12,cursor:'pointer' }}>
-            + Ajouter
+            {t('calendar.addPlus')}
           </button>
         </div>
       </div>

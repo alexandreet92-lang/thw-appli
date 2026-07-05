@@ -3484,6 +3484,17 @@ const fr: Dict = {
   'lo.shareMyMonth': 'Partager mon mois', 'lo.noActivityWeek': 'Aucune activité sur cette semaine.',
   'lo.noActivityMonth': 'Aucune activité sur ce mois.', 'lo.downloadSharePage': 'Télécharger / partager cette page',
   'lo.share': 'Partager', 'lo.previous': 'Précédent', 'lo.next': 'Suivant',
+  // ===== i18n wave (auto) =====
+  // calendar
+  'calendar.objective': 'Objectif', 'calendar.saveRace': 'Sauvegarder', 'calendar.past': 'Passée',
+  'calendar.addEvent': 'Ajouter un événement', 'calendar.eventTitle': 'Titre',
+  'calendar.eventTitlePh': 'Ex: Stage de préparation', 'calendar.optionalPh': 'Optionnel…',
+  'calendar.addPlus': '+ Ajouter',
+  // ===== i18n wave (auto) =====
+  // calendar
+  'calendar.goalTime': 'Objectif de temps', 'calendar.namePhIronman': 'Ex: Ironman Nice',
+  'calendar.goalTimePh': 'Ex: 1h25:00', 'calendar.goalPhPodium': 'Ex: Podium', 'calendar.triBike': 'Vélo',
+  'calendar.triRun': 'Run', 'calendar.triTotal': 'Total', 'calendar.abbrNat': 'Nat',
 }
 
 const en: Dict = {
@@ -6782,6 +6793,16 @@ const en: Dict = {
   'lo.shareMyMonth': 'Share my month', 'lo.noActivityWeek': 'No activity this week.',
   'lo.noActivityMonth': 'No activity this month.', 'lo.downloadSharePage': 'Download / share this page',
   'lo.share': 'Share', 'lo.previous': 'Previous', 'lo.next': 'Next',
+  // ===== i18n wave (auto) =====
+  // calendar
+  'calendar.objective': 'Goal', 'calendar.saveRace': 'Save', 'calendar.past': 'Past',
+  'calendar.addEvent': 'Add an event', 'calendar.eventTitle': 'Title', 'calendar.eventTitlePh': 'e.g. Training camp',
+  'calendar.optionalPh': 'Optional…', 'calendar.addPlus': '+ Add',
+  // ===== i18n wave (auto) =====
+  // calendar
+  'calendar.goalTime': 'Target time', 'calendar.namePhIronman': 'e.g. Ironman Nice',
+  'calendar.goalTimePh': 'e.g. 1h25:00', 'calendar.goalPhPodium': 'e.g. Podium', 'calendar.triBike': 'Bike',
+  'calendar.triRun': 'Run', 'calendar.triTotal': 'Total', 'calendar.abbrNat': 'Swim',
 }
 
 const es: Dict = {

@@ -61,7 +61,7 @@ export function FiltreSheet(p: Props) {
         {p.open && (
           <motion.div key="bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }} onClick={p.onClose}
-            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
+            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }} />
         )}
         {p.open && (
       <motion.div key="panel"
@@ -70,7 +70,7 @@ export function FiltreSheet(p: Props) {
         exit={reduce ? { opacity: 0 } : { y: '100%' }}
         transition={{ duration: reduce ? 0.12 : 0.34, ease: [0.32, 0.72, 0, 1] }}
         style={{ position: 'relative', background: 'var(--bg-card)', borderRadius: 'var(--r-lg) var(--r-lg) 0 0',
-        maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow)' }}>
+        maxHeight: 'calc(100dvh - 72px)', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow)' }}>
         <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border)' }} />
         </div>

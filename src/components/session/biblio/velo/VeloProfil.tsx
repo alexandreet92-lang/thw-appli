@@ -15,14 +15,41 @@ export const ZONE_LABEL: Record<Zone, string> = {
 }
 const ZONE_HEIGHT: Record<Zone, number> = { Z1: 14, Z2: 26, Z3: 44, Z4: 58, Z5: 74, Z6: 86, Z7: 96 }
 
-interface Bar { zone: Zone; durationSec: number; effort: boolean }
+// PUISSANCE relative (% FTP) — pilote la HAUTEUR de la barre. Deux blocs de
+// MÊME zone mais de puissance différente (ex. 88% vs 94% FTP, tous deux Z3)
+// n'ont PAS la même hauteur : la hauteur suit la PUISSANCE, la couleur suit la zone.
+const ZONE_FTP: Record<Zone, number> = { Z1: 50, Z2: 68, Z3: 84, Z4: 100, Z5: 113, Z6: 140, Z7: 190 }
+function puissancePct(puissance: string | undefined, zone: Zone): number {
+  const t = (puissance ?? '').toLowerCase().replace(/\s/g, '')
+  if (!t) return ZONE_FTP[zone]
+  if (t.includes('max')) return 190
+  // fourchette "95-105%" → moyenne ; sinon premier nombre suivi de %
+  const rng = t.match(/(\d+)-(\d+)%/); if (rng) return (parseInt(rng[1], 10) + parseInt(rng[2], 10)) / 2
+  const one = t.match(/(\d+)%/);      if (one) return parseInt(one[1], 10)
+  return ZONE_FTP[zone]   // "z2", "z2-z3", "pma-sprint"… → défaut de zone
+}
+function pctHauteur(pct: number, H: number): number {
+  const lo = 45, hi = 195
+  const frac = Math.max(0.10, Math.min(1, (pct - lo) / (hi - lo)))
+  return frac * (H - 2)
+}
+
+interface Bar { zone: Zone; durationSec: number; effort: boolean; pct: number }
 
 function blocBars(b: Bloc): Bar[] {
   const reps = b.reps ?? 1
   const out: Bar[] = []
   for (let i = 0; i < reps; i++) {
-    if (b.dureeSec > 0) out.push({ zone: b.zone, durationSec: b.dureeSec, effort: true })
-    if (b.recup && b.recup.dureeSec > 0) out.push({ zone: b.recup.zone, durationSec: b.recup.dureeSec, effort: false })
+    if (b.segments && b.segments.length) {
+      // Set composite : une barre par segment (intensités entrelacées).
+      for (const s of b.segments) {
+        if (s.dureeSec > 0) out.push({ zone: s.zone, durationSec: s.dureeSec, effort: true, pct: puissancePct(s.puissance, s.zone) })
+        if (s.recupSec && s.recupSec > 0) out.push({ zone: s.recupZone ?? 'Z1', durationSec: s.recupSec, effort: false, pct: ZONE_FTP[s.recupZone ?? 'Z1'] })
+      }
+    } else if ((b.dureeSec ?? 0) > 0) {
+      out.push({ zone: b.zone, durationSec: b.dureeSec!, effort: true, pct: puissancePct(b.puissance, b.zone) })
+    }
+    if (b.recup && b.recup.dureeSec > 0) out.push({ zone: b.recup.zone, durationSec: b.recup.dureeSec, effort: false, pct: ZONE_FTP[b.recup.zone] })
   }
   return out
 }
@@ -32,7 +59,12 @@ export function zoneDominante(s: Seance): Zone {
   const acc = {} as Record<Zone, number>
   for (const b of s.blocs) {
     if (b.phase !== 'corps') continue
-    acc[b.zone] = (acc[b.zone] ?? 0) + b.dureeSec * (b.reps ?? 1)
+    const reps = b.reps ?? 1
+    if (b.segments && b.segments.length) {
+      for (const seg of b.segments) acc[seg.zone] = (acc[seg.zone] ?? 0) + seg.dureeSec * reps
+    } else {
+      acc[b.zone] = (acc[b.zone] ?? 0) + (b.dureeSec ?? 0) * reps
+    }
   }
   const entries = Object.entries(acc) as [Zone, number][]
   if (!entries.length) return 'Z2'
@@ -53,7 +85,7 @@ export function VeloProfil({ seance, full = false }: { seance: Seance; full?: bo
       <svg width="100%" height={H} viewBox={`0 0 100 ${H}`} preserveAspectRatio="none" style={{ display: 'block' }}>
         {bars.map((bar, i) => {
           const w = (bar.durationSec / total) * 100
-          const h = (ZONE_HEIGHT[bar.zone] / 100) * (H - 2)
+          const h = pctHauteur(bar.pct, H)
           const rect = (
             <rect key={i} x={x} y={H - h} width={Math.max(w - GAP, 0.4)} height={h} rx={1.2}
               fill={ZONE_TOKEN[bar.zone]} opacity={bar.effort ? 0.9 : 0.4} />

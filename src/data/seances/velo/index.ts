@@ -44,3 +44,4 @@ export const SUPPORT_LABEL: Record<Support, string> = {
 export const VELO_PHASE_ORDER = ['Base', 'Build', 'Spé'] as const
 
 export * from './types'
+export * from './niveaux'

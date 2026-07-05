@@ -1,5 +1,6 @@
 'use client'
 import { ALL_FIELDS, type DataPage } from '@/types/cycling'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   page: DataPage
@@ -47,6 +48,7 @@ function getLiveValue(fieldId: string, p: Props): string {
 }
 
 export default function CyclingPageData({ page, isDark, dataFontFamily, ...liveProps }: Props) {
+  const { t } = useI18n()
   const text       = isDark ? '#FFFFFF' : '#0A0A0A'
   const dim        = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
   const separator  = isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'
@@ -74,7 +76,7 @@ export default function CyclingPageData({ page, isDark, dataFontFamily, ...liveP
         }}
       >
         <p style={{ fontSize: 11, color: dim, textTransform: 'uppercase', letterSpacing: '1.5px', margin: 0 }}>
-          {field?.label}
+          {field?.labelKey ? t(field.labelKey) : field?.label}
         </p>
         <p style={{ fontSize: 56, fontWeight: 700, color: text, margin: 0, lineHeight: 1, fontFamily }}>
           {getLiveValue(fieldId, allProps)}
@@ -102,7 +104,7 @@ export default function CyclingPageData({ page, isDark, dataFontFamily, ...liveP
         }}
       >
         <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 }}>
-          {field?.label}
+          {field?.labelKey ? t(field.labelKey) : field?.label}
         </p>
         <p style={{ fontSize: 30, fontWeight: 700, color: text, margin: 0, lineHeight: 1, fontFamily }}>
           {getLiveValue(fieldId, allProps)}

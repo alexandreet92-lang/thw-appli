@@ -107,3 +107,9 @@ export function totalDistance(blocks: MBlock[]): number {
 export const BLOCK_NAME: Record<string, string> = {
   warmup: 'Échauffement', effort: 'Bloc', recovery: 'Récupération', cooldown: 'Retour au calme',
 }
+// Clés i18n parallèles (résolues via t() au site d'affichage). Le libellé FR
+// ci-dessus est conservé pour rétro-compat / fallback.
+export const BLOCK_NAME_KEY: Record<string, string> = {
+  warmup: 'plandata.blockWarmup', effort: 'plandata.blockEffort',
+  recovery: 'plandata.blockRecovery', cooldown: 'plandata.blockCooldown',
+}

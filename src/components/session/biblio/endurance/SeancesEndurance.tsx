@@ -84,7 +84,7 @@ export function SeancesEndurance({ cfg }: { cfg: EnduranceConfig }) {
       ) : view === 'buckets' ? (
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
-            <SearchBar value={query} onChange={v => { setQuery(v); if (v.trim()) openTransversal() }} placeholder={cfg.searchPlaceholder} />
+            <SearchBar value={query} onChange={v => { setQuery(v); if (v.trim()) openTransversal() }} placeholder={t(cfg.searchPlaceholderKey)} />
             <FiltreBtn n={ef.nbActifs} onClick={() => setSheet(true)} />
           </div>
           <CategoryPanel>
@@ -98,13 +98,13 @@ export function SeancesEndurance({ cfg }: { cfg: EnduranceConfig }) {
       ) : (
         <>
           <button onClick={backToBuckets} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontFamily: FB, fontSize: 13, padding: '4px 0', marginBottom: 'var(--space-4)' }}>
-            <IconArrowLeft size={16} /> {cfg.backLabel}
+            <IconArrowLeft size={16} /> {t(cfg.backLabelKey)}
           </button>
           <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-4)' }}>
             {lock ? (cfg.bucketLabel[lock] ?? lock) : t('session.toutesLesSeances')}
           </h2>
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
-            <SearchBar value={query} onChange={setQuery} placeholder={cfg.searchPlaceholder} />
+            <SearchBar value={query} onChange={setQuery} placeholder={t(cfg.searchPlaceholderKey)} />
             <FiltreBtn n={ef.nbActifs} onClick={() => setSheet(true)} />
           </div>
           {(ef.nbActifs > 0 || query.trim()) && (

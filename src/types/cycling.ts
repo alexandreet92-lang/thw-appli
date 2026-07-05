@@ -11,6 +11,7 @@ export type SensorKind = 'hr' | 'power' | 'cadence'
 export interface DataField {
   id: string
   label: string
+  labelKey?: string
   unit?: string
   category: FieldCategory
   type: FieldType
@@ -42,67 +43,81 @@ export const FIELD_CATEGORIES: Record<FieldCategory, string> = {
   environnement: 'Environnement',
 }
 
+// Clés i18n parallèles pour les catégories (rétro-compat : FIELD_CATEGORIES reste FR)
+export const FIELD_CATEGORY_KEYS: Record<FieldCategory, string> = {
+  temps:         'rectypes.catTemps',
+  vitesse:       'rectypes.catVitesse',
+  distance:      'rectypes.catDistance',
+  denivele:      'rectypes.catDenivele',
+  puissance:     'rectypes.catPuissance',
+  fc:            'rectypes.catFc',
+  cadence:       'rectypes.catCadence',
+  energie:       'rectypes.catEnergie',
+  navigation:    'rectypes.catNavigation',
+  environnement: 'rectypes.catEnvironnement',
+}
+
 export const ALL_FIELDS: DataField[] = [
   // TEMPS
-  { id: 'duration',          label: 'Durée totale',          category: 'temps', type: 'numeric' },
-  { id: 'moving_time',       label: 'Temps en mouvement',    category: 'temps', type: 'numeric' },
-  { id: 'lap_duration',      label: 'Durée lap actuel',      category: 'temps', type: 'numeric' },
-  { id: 'prev_lap_duration', label: 'Durée lap précédent',   category: 'temps', type: 'numeric' },
-  { id: 'eta',               label: 'Heure arrivée est.',    category: 'temps', type: 'numeric', requiresRoute: true },
+  { id: 'duration',          label: 'Durée totale',          labelKey: 'rectypes.fieldDurationTotal',   category: 'temps', type: 'numeric' },
+  { id: 'moving_time',       label: 'Temps en mouvement',    labelKey: 'rectypes.fieldMovingTime',       category: 'temps', type: 'numeric' },
+  { id: 'lap_duration',      label: 'Durée lap actuel',      labelKey: 'rectypes.fieldLapDurationCurrent', category: 'temps', type: 'numeric' },
+  { id: 'prev_lap_duration', label: 'Durée lap précédent',   labelKey: 'rectypes.fieldLapDurationPrev',   category: 'temps', type: 'numeric' },
+  { id: 'eta',               label: 'Heure arrivée est.',    labelKey: 'rectypes.fieldEta',              category: 'temps', type: 'numeric', requiresRoute: true },
   // VITESSE
-  { id: 'speed',             label: 'Vitesse',               unit: 'km/h', category: 'vitesse', type: 'numeric' },
-  { id: 'avg_speed',         label: 'Vitesse moyenne',       unit: 'km/h', category: 'vitesse', type: 'numeric' },
-  { id: 'max_speed',         label: 'Vitesse max',           unit: 'km/h', category: 'vitesse', type: 'numeric' },
-  { id: 'lap_speed',         label: 'Vitesse lap',           unit: 'km/h', category: 'vitesse', type: 'numeric' },
-  { id: 'prev_lap_speed',    label: 'Vitesse lap préc.',     unit: 'km/h', category: 'vitesse', type: 'numeric' },
+  { id: 'speed',             label: 'Vitesse',               labelKey: 'rectypes.catVitesse',            unit: 'km/h', category: 'vitesse', type: 'numeric' },
+  { id: 'avg_speed',         label: 'Vitesse moyenne',       labelKey: 'rectypes.fieldAvgSpeed',         unit: 'km/h', category: 'vitesse', type: 'numeric' },
+  { id: 'max_speed',         label: 'Vitesse max',           labelKey: 'rectypes.fieldMaxSpeed',         unit: 'km/h', category: 'vitesse', type: 'numeric' },
+  { id: 'lap_speed',         label: 'Vitesse lap',           labelKey: 'rectypes.fieldLapSpeed',         unit: 'km/h', category: 'vitesse', type: 'numeric' },
+  { id: 'prev_lap_speed',    label: 'Vitesse lap préc.',     labelKey: 'rectypes.fieldPrevLapSpeed',     unit: 'km/h', category: 'vitesse', type: 'numeric' },
   // DISTANCE
-  { id: 'distance',          label: 'Distance',              unit: 'km', category: 'distance', type: 'numeric' },
-  { id: 'lap_distance',      label: 'Distance lap',          unit: 'km', category: 'distance', type: 'numeric' },
-  { id: 'prev_lap_distance', label: 'Distance lap préc.',    unit: 'km', category: 'distance', type: 'numeric' },
-  { id: 'remaining_dist',    label: 'Distance restante',     unit: 'km', category: 'distance', type: 'numeric', requiresRoute: true },
+  { id: 'distance',          label: 'Distance',              labelKey: 'rectypes.catDistance',           unit: 'km', category: 'distance', type: 'numeric' },
+  { id: 'lap_distance',      label: 'Distance lap',          labelKey: 'rectypes.fieldLapDistance',      unit: 'km', category: 'distance', type: 'numeric' },
+  { id: 'prev_lap_distance', label: 'Distance lap préc.',    labelKey: 'rectypes.fieldPrevLapDistance',  unit: 'km', category: 'distance', type: 'numeric' },
+  { id: 'remaining_dist',    label: 'Distance restante',     labelKey: 'rectypes.fieldRemainingDist',    unit: 'km', category: 'distance', type: 'numeric', requiresRoute: true },
   // DÉNIVELÉ
-  { id: 'elevation_gain',    label: 'D+',                    unit: 'm', category: 'denivele', type: 'numeric' },
-  { id: 'elevation_loss',    label: 'D-',                    unit: 'm', category: 'denivele', type: 'numeric' },
-  { id: 'altitude',          label: 'Altitude',              unit: 'm', category: 'denivele', type: 'numeric' },
-  { id: 'gradient',          label: 'Pente actuelle',        unit: '%', category: 'denivele', type: 'numeric' },
-  { id: 'avg_gradient',      label: 'Pente moyenne',         unit: '%', category: 'denivele', type: 'numeric' },
+  { id: 'elevation_gain',    label: 'D+',                    labelKey: 'rectypes.fieldElevGain',         unit: 'm', category: 'denivele', type: 'numeric' },
+  { id: 'elevation_loss',    label: 'D-',                    labelKey: 'rectypes.fieldElevLoss',         unit: 'm', category: 'denivele', type: 'numeric' },
+  { id: 'altitude',          label: 'Altitude',              labelKey: 'rectypes.fieldAltitude',         unit: 'm', category: 'denivele', type: 'numeric' },
+  { id: 'gradient',          label: 'Pente actuelle',        labelKey: 'rectypes.fieldGradientCurrent',  unit: '%', category: 'denivele', type: 'numeric' },
+  { id: 'avg_gradient',      label: 'Pente moyenne',         labelKey: 'rectypes.fieldGradientAvg',      unit: '%', category: 'denivele', type: 'numeric' },
   // PUISSANCE
-  { id: 'power',             label: 'Watts',                 unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
-  { id: 'avg_power',         label: 'Watts moyens',          unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
-  { id: 'norm_power',        label: 'Watts normalisés',      unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
-  { id: 'max_power',         label: 'Watts max',             unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
-  { id: 'lap_power',         label: 'Watts lap',             unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
-  { id: 'prev_lap_power',    label: 'Watts lap préc.',       unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
-  { id: 'ftp_percent',       label: '% FTP',                 unit: '%', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
-  { id: 'tss',               label: 'SM',                               category: 'puissance', type: 'numeric', requiresSensor: 'power' },
-  { id: 'if',                label: 'IF',                               category: 'puissance', type: 'numeric', requiresSensor: 'power' },
-  { id: 'lr_balance',        label: 'Équilibre G/D',         unit: '%', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
-  { id: 'power_chart',       label: 'Courbe de puissance',              category: 'puissance', type: 'chart',   requiresSensor: 'power' },
+  { id: 'power',             label: 'Watts',                 labelKey: 'rectypes.fieldWatts',            unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
+  { id: 'avg_power',         label: 'Watts moyens',          labelKey: 'rectypes.fieldAvgWatts',         unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
+  { id: 'norm_power',        label: 'Watts normalisés',      labelKey: 'rectypes.fieldNormWatts',        unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
+  { id: 'max_power',         label: 'Watts max',             labelKey: 'rectypes.fieldMaxWatts',         unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
+  { id: 'lap_power',         label: 'Watts lap',             labelKey: 'rectypes.fieldLapWatts',         unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
+  { id: 'prev_lap_power',    label: 'Watts lap préc.',       labelKey: 'rectypes.fieldPrevLapWatts',     unit: 'w', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
+  { id: 'ftp_percent',       label: '% FTP',                 labelKey: 'rectypes.fieldFtpPercent',       unit: '%', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
+  { id: 'tss',               label: 'SM',                    labelKey: 'rectypes.fieldTss',                         category: 'puissance', type: 'numeric', requiresSensor: 'power' },
+  { id: 'if',                label: 'IF',                    labelKey: 'rectypes.fieldIf',                          category: 'puissance', type: 'numeric', requiresSensor: 'power' },
+  { id: 'lr_balance',        label: 'Équilibre G/D',         labelKey: 'rectypes.fieldLrBalance',        unit: '%', category: 'puissance', type: 'numeric', requiresSensor: 'power' },
+  { id: 'power_chart',       label: 'Courbe de puissance',   labelKey: 'rectypes.fieldPowerCurve',                  category: 'puissance', type: 'chart',   requiresSensor: 'power' },
   // FC
-  { id: 'hr',                label: 'FC',                    unit: 'bpm', category: 'fc', type: 'numeric', requiresSensor: 'hr' },
-  { id: 'avg_hr',            label: 'FC moyenne',            unit: 'bpm', category: 'fc', type: 'numeric', requiresSensor: 'hr' },
-  { id: 'max_hr',            label: 'FC max',                unit: 'bpm', category: 'fc', type: 'numeric', requiresSensor: 'hr' },
-  { id: 'lap_hr',            label: 'FC lap',                unit: 'bpm', category: 'fc', type: 'numeric', requiresSensor: 'hr' },
-  { id: 'prev_lap_hr',       label: 'FC lap préc.',          unit: 'bpm', category: 'fc', type: 'numeric', requiresSensor: 'hr' },
-  { id: 'hr_zone',           label: 'Zone FC',                            category: 'fc', type: 'numeric', requiresSensor: 'hr' },
-  { id: 'hr_percent',        label: '% FC max',              unit: '%',   category: 'fc', type: 'numeric', requiresSensor: 'hr' },
-  { id: 'hr_chart',          label: 'Courbe de FC',                       category: 'fc', type: 'chart',   requiresSensor: 'hr' },
+  { id: 'hr',                label: 'FC',                    labelKey: 'rectypes.fieldHr',               unit: 'bpm', category: 'fc', type: 'numeric', requiresSensor: 'hr' },
+  { id: 'avg_hr',            label: 'FC moyenne',            labelKey: 'rectypes.fieldAvgHr',            unit: 'bpm', category: 'fc', type: 'numeric', requiresSensor: 'hr' },
+  { id: 'max_hr',            label: 'FC max',                labelKey: 'rectypes.fieldMaxHr',            unit: 'bpm', category: 'fc', type: 'numeric', requiresSensor: 'hr' },
+  { id: 'lap_hr',            label: 'FC lap',                labelKey: 'rectypes.fieldLapHr',            unit: 'bpm', category: 'fc', type: 'numeric', requiresSensor: 'hr' },
+  { id: 'prev_lap_hr',       label: 'FC lap préc.',          labelKey: 'rectypes.fieldPrevLapHr',        unit: 'bpm', category: 'fc', type: 'numeric', requiresSensor: 'hr' },
+  { id: 'hr_zone',           label: 'Zone FC',               labelKey: 'rectypes.fieldHrZone',                        category: 'fc', type: 'numeric', requiresSensor: 'hr' },
+  { id: 'hr_percent',        label: '% FC max',              labelKey: 'rectypes.fieldHrPercent',        unit: '%',   category: 'fc', type: 'numeric', requiresSensor: 'hr' },
+  { id: 'hr_chart',          label: 'Courbe de FC',          labelKey: 'rectypes.fieldHrCurve',                       category: 'fc', type: 'chart',   requiresSensor: 'hr' },
   // CADENCE
-  { id: 'cadence',           label: 'Cadence',               unit: 'rpm', category: 'cadence', type: 'numeric', requiresSensor: 'cadence' },
-  { id: 'avg_cadence',       label: 'Cadence moyenne',       unit: 'rpm', category: 'cadence', type: 'numeric', requiresSensor: 'cadence' },
-  { id: 'lap_cadence',       label: 'Cadence lap',           unit: 'rpm', category: 'cadence', type: 'numeric', requiresSensor: 'cadence' },
+  { id: 'cadence',           label: 'Cadence',               labelKey: 'rectypes.catCadence',            unit: 'rpm', category: 'cadence', type: 'numeric', requiresSensor: 'cadence' },
+  { id: 'avg_cadence',       label: 'Cadence moyenne',       labelKey: 'rectypes.fieldAvgCadence',       unit: 'rpm', category: 'cadence', type: 'numeric', requiresSensor: 'cadence' },
+  { id: 'lap_cadence',       label: 'Cadence lap',           labelKey: 'rectypes.fieldLapCadence',       unit: 'rpm', category: 'cadence', type: 'numeric', requiresSensor: 'cadence' },
   // ÉNERGIE
-  { id: 'calories',          label: 'Calories',              unit: 'kcal', category: 'energie', type: 'numeric' },
-  { id: 'carbs',             label: 'Glucides brûlés',       unit: 'g',    category: 'energie', type: 'numeric' },
-  { id: 'fat',               label: 'Lipides brûlés',        unit: 'g',    category: 'energie', type: 'numeric' },
+  { id: 'calories',          label: 'Calories',              labelKey: 'rectypes.fieldCalories',         unit: 'kcal', category: 'energie', type: 'numeric' },
+  { id: 'carbs',             label: 'Glucides brûlés',       labelKey: 'rectypes.fieldCarbs',            unit: 'g',    category: 'energie', type: 'numeric' },
+  { id: 'fat',               label: 'Lipides brûlés',        labelKey: 'rectypes.fieldFat',              unit: 'g',    category: 'energie', type: 'numeric' },
   // NAVIGATION
-  { id: 'next_turn_dist',    label: 'Distance virage',       unit: 'm', category: 'navigation', type: 'numeric',      requiresRoute: true },
-  { id: 'next_turn_dir',     label: 'Direction virage',                 category: 'navigation', type: 'numeric',      requiresRoute: true },
-  { id: 'remaining_elev',    label: 'Dénivelé restant',      unit: 'm', category: 'navigation', type: 'numeric',      requiresRoute: true },
-  { id: 'climb_profile',     label: 'Profil montée',                    category: 'navigation', type: 'climb_profile', requiresRoute: true },
+  { id: 'next_turn_dist',    label: 'Distance virage',       labelKey: 'rectypes.fieldNextTurnDist',     unit: 'm', category: 'navigation', type: 'numeric',      requiresRoute: true },
+  { id: 'next_turn_dir',     label: 'Direction virage',      labelKey: 'rectypes.fieldNextTurnDir',                 category: 'navigation', type: 'numeric',      requiresRoute: true },
+  { id: 'remaining_elev',    label: 'Dénivelé restant',      labelKey: 'rectypes.fieldRemainingElev',    unit: 'm', category: 'navigation', type: 'numeric',      requiresRoute: true },
+  { id: 'climb_profile',     label: 'Profil montée',         labelKey: 'rectypes.fieldClimbProfile',                category: 'navigation', type: 'climb_profile', requiresRoute: true },
   // ENVIRONNEMENT
-  { id: 'temperature',       label: 'Température',           unit: '°C',   category: 'environnement', type: 'numeric' },
-  { id: 'wind',              label: 'Vent',                  unit: 'km/h', category: 'environnement', type: 'numeric' },
+  { id: 'temperature',       label: 'Température',            labelKey: 'rectypes.fieldTemperature',      unit: '°C',   category: 'environnement', type: 'numeric' },
+  { id: 'wind',              label: 'Vent',                  labelKey: 'rectypes.fieldWind',             unit: 'km/h', category: 'environnement', type: 'numeric' },
 ]
 
 export const MAX_FIELDS = 12
@@ -127,10 +142,10 @@ export function fieldById(id: string): DataField | undefined {
 
 export type DataFont = 'system' | 'mono' | 'rounded' | 'condensed' | 'sport'
 
-export const FONT_OPTIONS: { id: DataFont; label: string; fontFamily: string }[] = [
-  { id: 'system',    label: 'Système',    fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
-  { id: 'mono',      label: 'Monospace',  fontFamily: '"SF Mono", "Roboto Mono", "Courier New", monospace' },
-  { id: 'rounded',   label: 'Arrondie',   fontFamily: '"Nunito", "Varela Round", system-ui, sans-serif' },
-  { id: 'condensed', label: 'Condensée',  fontFamily: '"Barlow Condensed", "Arial Narrow", sans-serif' },
-  { id: 'sport',     label: 'Sport',      fontFamily: '"Bebas Neue", "Impact", "Arial Black", sans-serif' },
+export const FONT_OPTIONS: { id: DataFont; label: string; labelKey: string; fontFamily: string }[] = [
+  { id: 'system',    label: 'Système',    labelKey: 'rectypes.fontSystem',    fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
+  { id: 'mono',      label: 'Monospace',  labelKey: 'rectypes.fontMono',      fontFamily: '"SF Mono", "Roboto Mono", "Courier New", monospace' },
+  { id: 'rounded',   label: 'Arrondie',   labelKey: 'rectypes.fontRounded',   fontFamily: '"Nunito", "Varela Round", system-ui, sans-serif' },
+  { id: 'condensed', label: 'Condensée',  labelKey: 'rectypes.fontCondensed', fontFamily: '"Barlow Condensed", "Arial Narrow", sans-serif' },
+  { id: 'sport',     label: 'Sport',      labelKey: 'rectypes.fontSport',     fontFamily: '"Bebas Neue", "Impact", "Arial Black", sans-serif' },
 ]

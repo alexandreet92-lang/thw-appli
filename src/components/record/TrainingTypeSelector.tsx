@@ -19,7 +19,7 @@ const TYPE_I18N: Record<string, { label: string; desc: string }> = {
   recup:   { label: 'record.trainingTypeRecupLabel',   desc: 'record.trainingTypeRecupDesc' },
 }
 
-export type TrainingType = { id: string; label: string; desc: string }
+export type TrainingType = { id: string; label: string; desc: string; labelKey?: string; descKey?: string }
 
 interface Props {
   selected: string[]
@@ -38,11 +38,13 @@ export default function TrainingTypeSelector({ selected, onChange, isDark = fals
       {types.map(type => {
         const active = selected.includes(type.id)
         const i18n = TYPE_I18N[type.id]
+        const labelText = type.labelKey ? tr(type.labelKey) : (i18n ? tr(i18n.label) : type.label)
+        const descText  = type.descKey  ? tr(type.descKey)  : (i18n ? tr(i18n.desc)  : type.desc)
         return (
           <button
             key={type.id}
             onClick={() => toggle(type.id)}
-            title={i18n ? tr(i18n.desc) : type.desc}
+            title={descText}
             style={{
               padding: '10px 16px', borderRadius: 9999,
               fontSize: 14, fontWeight: 500,
@@ -56,7 +58,7 @@ export default function TrainingTypeSelector({ selected, onChange, isDark = fals
               transition: 'all 150ms',
             }}
           >
-            {i18n ? tr(i18n.label) : type.label}
+            {labelText}
           </button>
         )
       })}

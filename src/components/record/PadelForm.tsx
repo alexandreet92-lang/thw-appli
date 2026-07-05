@@ -18,11 +18,12 @@ function autoTitle(sport: string) {
 const LABEL: React.CSSProperties = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '0 0 10px', display: 'block' }
 const INPUT: React.CSSProperties = { width: '100%', boxSizing: 'border-box', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', fontSize: 15, color: 'var(--text)', outline: 'none', fontFamily: 'DM Sans, sans-serif' }
 const NUM_SM: React.CSSProperties = { ...INPUT, width: 72, padding: '12px 8px', textAlign: 'center' }
-function Chips<T extends string>({ items, value, onChange }: { items: { id: T; label: string }[]; value: T; onChange: (v: T) => void }) {
+function Chips<T extends string>({ items, value, onChange }: { items: { id: T; label: string; labelKey?: string }[]; value: T; onChange: (v: T) => void }) {
+  const { t } = useI18n()
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
       {items.map(it => (
-        <button key={it.id} onClick={() => onChange(it.id)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: value === it.id ? '#06B6D4' : 'var(--bg-card2)', color: value === it.id ? '#FFF' : 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{it.label}</button>
+        <button key={it.id} onClick={() => onChange(it.id)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: value === it.id ? '#06B6D4' : 'var(--bg-card2)', color: value === it.id ? '#FFF' : 'var(--text)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>{it.labelKey ? t(it.labelKey) : it.label}</button>
       ))}
     </div>
   )
@@ -91,7 +92,7 @@ export default function PadelForm({ onClose }: Props) {
         <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 14, lineHeight: 2 }}>
           <p style={{ margin: 0 }}>{t('record.padelSummaryDuration')} {fmtDur}</p>
           {saved.opponent && <p style={{ margin: 0 }}>{t('record.padelSummaryOpponent')} {saved.opponent}</p>}
-          <p style={{ margin: 0 }}>{t('record.padelSummarySurface')} {PADEL_SURFACES.find(s => s.id === saved.surface)?.label}</p>
+          <p style={{ margin: 0 }}>{t('record.padelSummarySurface')} {(() => { const s = PADEL_SURFACES.find(s => s.id === saved.surface); return s?.labelKey ? t(s.labelKey) : s?.label })()}</p>
           <p style={{ margin: 0 }}>{t('record.padelSummaryRpe')} {saved.rpe}/10</p>
         </div>
         <button onClick={onClose} style={{ padding: '14px 40px', borderRadius: 16, background: 'linear-gradient(135deg,#06B6D4,#2563EB)', border: 'none', color: '#FFF', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>{t('record.padelFinish')}</button>

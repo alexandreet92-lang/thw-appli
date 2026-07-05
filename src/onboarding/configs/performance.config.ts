@@ -7,13 +7,22 @@ export const PERFORMANCE_ONBOARDING: PageOnboardingConfig = {
     {
       id: 'perf_metrics',
       badge: 'Métriques clés',
+      badgeKey: 'onbcfg.perfMetricsBadge',
       title: 'CTL, ATL, TSB — comprendre sa forme',
+      titleKey: 'onbcfg.perfMetricsTitle',
       description: "Ces trois métriques issues du modèle de Banister définissent ton état physique objectif. CTL = charge chronique (forme long terme). ATL = charge aiguë (fatigue récente). TSB = fraîcheur = CTL - ATL.",
+      descriptionKey: 'onbcfg.perfMetricsDesc',
       keyPoints: [
         'CTL évolue lentement : représente ta forme de fond',
         'ATL réagit vite : la fatigue des derniers jours',
         'TSB positif = reposé et frais pour performer',
         'TSB très négatif = surentraînement potentiel',
+      ],
+      keyPointsKeys: [
+        'onbcfg.perfMetricsKp1',
+        'onbcfg.perfMetricsKp2',
+        'onbcfg.perfMetricsKp3',
+        'onbcfg.perfMetricsKp4',
       ],
       visual: 'chart',
       visualConfig: {
@@ -33,13 +42,22 @@ export const PERFORMANCE_ONBOARDING: PageOnboardingConfig = {
     {
       id: 'perf_zones',
       badge: 'Zones',
+      badgeKey: 'onbcfg.perfZonesBadge',
       title: 'Zones de puissance et FC',
+      titleKey: 'onbcfg.perfZonesTitle',
       description: "Configure tes zones à partir de ton FTP (vélo) ou de ta VMA (running). La répartition du temps dans chaque zone te montre si tu t'entraînes dans les bonnes proportions.",
+      descriptionKey: 'onbcfg.perfZonesDesc',
       keyPoints: [
         '6 zones de puissance basées sur le FTP',
         '5 zones de fréquence cardiaque',
         'Distribution du temps en zones sur N semaines',
         'Synchronisées avec le profil athlète',
+      ],
+      keyPointsKeys: [
+        'onbcfg.perfZonesKp1',
+        'onbcfg.perfZonesKp2',
+        'onbcfg.perfZonesKp3',
+        'onbcfg.perfZonesKp4',
       ],
       visual: 'mockup',
       visualConfig: { type: 'zone_distribution' },
@@ -48,20 +66,29 @@ export const PERFORMANCE_ONBOARDING: PageOnboardingConfig = {
     {
       id: 'perf_records',
       badge: 'Records',
+      badgeKey: 'onbcfg.perfRecordsBadge',
       title: 'Tes records personnels',
+      titleKey: 'onbcfg.perfRecordsTitle',
       description: "L'app détecte automatiquement tes meilleurs efforts sur des durées standard (1min, 5min, 20min, 1h) et les compare à tes valeurs passées. Chaque PR est notifié en temps réel.",
+      descriptionKey: 'onbcfg.perfRecordsDesc',
       keyPoints: [
         'Meilleure puissance sur 1s, 5s, 1min, 5min, 20min, 1h',
         'Vitesse max, meilleur 5km, 10km, semi, marathon',
         'Courbe de puissance (Power Curve)',
         'Évolution des records dans le temps',
       ],
+      keyPointsKeys: [
+        'onbcfg.perfRecordsKp1',
+        'onbcfg.perfRecordsKp2',
+        'onbcfg.perfRecordsKp3',
+        'onbcfg.perfRecordsKp4',
+      ],
       visual: 'stats',
       visualConfig: {
         stats: [
-          { label: 'FTP estimé', value: 248, suffix: 'w', color: '#06B6D4' },
-          { label: '20min max', value: 268, suffix: 'w', color: '#F59E0B' },
-          { label: '5min max', value: 315, suffix: 'w', color: '#EF4444' },
+          { label: 'FTP estimé', labelKey: 'onbcfg.statFtpEstime', value: 248, suffix: 'w', color: '#06B6D4' },
+          { label: '20min max', labelKey: 'onbcfg.stat20minMax', value: 268, suffix: 'w', color: '#F59E0B' },
+          { label: '5min max', labelKey: 'onbcfg.stat5minMax', value: 315, suffix: 'w', color: '#EF4444' },
         ],
       },
       features: ['personal_records', 'power_curve', 'pr_notification'],
@@ -69,12 +96,20 @@ export const PERFORMANCE_ONBOARDING: PageOnboardingConfig = {
     {
       id: 'perf_trends',
       badge: 'Progression',
+      badgeKey: 'onbcfg.perfTrendsBadge',
       title: 'Ta progression sur le long terme',
+      titleKey: 'onbcfg.perfTrendsTitle',
       description: "Visualise l'évolution de tes indicateurs clés semaine après semaine. Identifie les périodes de progression, de stagnation ou de régression pour ajuster ton programme.",
+      descriptionKey: 'onbcfg.perfTrendsDesc',
       keyPoints: [
         'FTP, VMA, FC max sur N mois',
         'Comparaison avec les objectifs fixés',
         'Tendance linéaire calculée automatiquement',
+      ],
+      keyPointsKeys: [
+        'onbcfg.perfTrendsKp1',
+        'onbcfg.perfTrendsKp2',
+        'onbcfg.perfTrendsKp3',
       ],
       visual: 'chart',
       visualConfig: {
@@ -82,6 +117,7 @@ export const PERFORMANCE_ONBOARDING: PageOnboardingConfig = {
         data: [225, 230, 228, 235, 232, 240, 238, 245, 242, 248],
         color: '#06B6D4',
         label: 'FTP (w)',
+        labelKey: 'onbcfg.chartFtpW',
       },
       features: ['ftp_progression', 'vma_progression', 'trend_analysis'],
     },

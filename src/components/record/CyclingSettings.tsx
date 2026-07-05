@@ -218,7 +218,7 @@ function CyclingSettingsInner({ open, onClose, isDark, settings, updateSetting: 
               )}
               <p style={{ fontSize: 11, color: t.dim, margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {page.type === 'map' ? tr('record.commonMapPlus') : ''}
-                {page.fields.map(id => fieldById(id)?.label).filter(Boolean).join(' · ')}
+                {page.fields.map(id => { const f = fieldById(id); return f?.labelKey ? tr(f.labelKey) : f?.label }).filter(Boolean).join(' · ')}
               </p>
             </div>
             <button onClick={e => { e.stopPropagation(); setMenuOpenId(prev => prev === page.id ? null : page.id) }}

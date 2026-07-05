@@ -1,18 +1,18 @@
 export const ROWING_TYPES = [
-  { id: 'ef',       label: 'EF',          desc: 'Endurance fondamentale' },
-  { id: 'seuil',    label: 'Seuil',       desc: 'Effort au seuil' },
-  { id: 'fraction', label: 'Fractionné',  desc: 'Séries courtes intenses' },
-  { id: 'longue',   label: 'Longue dist', desc: '2000m et plus' },
-  { id: 'piste',    label: 'Ergomètre',   desc: 'Séance en salle' },
-  { id: 'recup',    label: 'Récup',       desc: 'Récupération active' },
+  { id: 'ef',       label: 'EF',          labelKey: 'rectypes.typeEfLabel',         desc: 'Endurance fondamentale', descKey: 'rectypes.typeEnduranceFondaDesc' },
+  { id: 'seuil',    label: 'Seuil',       labelKey: 'rectypes.typeSeuilLabel',      desc: 'Effort au seuil',        descKey: 'rectypes.typeEffortSeuilDesc' },
+  { id: 'fraction', label: 'Fractionné',  labelKey: 'rectypes.typeFractionneLabel', desc: 'Séries courtes intenses', descKey: 'rectypes.typeSeriesCourtesIntensesDesc' },
+  { id: 'longue',   label: 'Longue dist', labelKey: 'rectypes.typeLongueDistLabel', desc: '2000m et plus',          descKey: 'rectypes.type2000PlusDesc' },
+  { id: 'piste',    label: 'Ergomètre',   labelKey: 'rectypes.typeErgometreLabel',  desc: 'Séance en salle',        descKey: 'rectypes.typeSeanceSalleDesc' },
+  { id: 'recup',    label: 'Récup',       labelKey: 'rectypes.typeRecupLabel',      desc: 'Récupération active',    descKey: 'rectypes.typeRecupActiveDesc' },
 ]
 
 export const ROWING_PRACTICE_TYPES = [
-  { id: 'indoor',   label: 'Ergomètre',  desc: 'Rameur en salle' },
-  { id: 'sculling', label: 'Skiff / 2x', desc: 'Aviron de couple' },
-  { id: 'sweep',    label: 'Pointe',     desc: 'Aviron de pointe' },
-  { id: 'kayak',    label: 'Kayak',      desc: 'Pagaie double' },
-  { id: 'canoe',    label: 'Canoë',      desc: 'Pagaie simple' },
+  { id: 'indoor',   label: 'Ergomètre',  labelKey: 'rectypes.typeErgometreLabel',  desc: 'Rameur en salle',  descKey: 'rectypes.practiceRameurSalleDesc' },
+  { id: 'sculling', label: 'Skiff / 2x', labelKey: 'rectypes.practiceSkiffLabel',  desc: 'Aviron de couple', descKey: 'rectypes.practiceAvironCoupleDesc' },
+  { id: 'sweep',    label: 'Pointe',     labelKey: 'rectypes.practicePointeLabel', desc: 'Aviron de pointe', descKey: 'rectypes.practiceAvironPointeDesc' },
+  { id: 'kayak',    label: 'Kayak',      labelKey: 'rectypes.practiceKayakLabel',  desc: 'Pagaie double',    descKey: 'rectypes.practicePagaieDoubleDesc' },
+  { id: 'canoe',    label: 'Canoë',      labelKey: 'rectypes.practiceCanoeLabel',  desc: 'Pagaie simple',    descKey: 'rectypes.practicePagaieSimpleDesc' },
 ]
 
 export interface RowingPiece {

@@ -14,7 +14,9 @@ export interface EnduranceConfig {
   dotColor: string
   refPace: RefPace
   backLabel: string         // libellé du retour vers les bulles
+  backLabelKey: string      // clé i18n du libellé de retour
   searchPlaceholder: string
+  searchPlaceholderKey: string
 }
 
 // Allures de référence (s/km) par zone — schématique, pilote la largeur du profil.
@@ -25,15 +27,15 @@ const REF_TRAIL: Record<Zone, number> = { Z1: 480, Z2: 420, Z3: 380, Z4: 340, Z5
 export const AVIRON_CONFIG: EnduranceConfig = {
   sport: 'aviron', seances: SEANCES_AVIRON,
   bucketOrder: AVIRON_BUCKET_ORDER, bucketLabel: AVIRON_BUCKET_LABEL, bucketSub: AVIRON_BUCKET_SUB,
-  dotColor: 'var(--sport-rowing)', refPace: REF_AVIRON, backLabel: 'Intentions', searchPlaceholder: 'Rechercher une séance…',
+  dotColor: 'var(--sport-rowing)', refPace: REF_AVIRON, backLabel: 'Intentions', backLabelKey: 'sessbiblio.enduBackIntentions', searchPlaceholder: 'Rechercher une séance…', searchPlaceholderKey: 'sessbiblio.searchSeance',
 }
 export const NATATION_CONFIG: EnduranceConfig = {
   sport: 'natation', seances: SEANCES_NATATION,
   bucketOrder: NATATION_BUCKET_ORDER, bucketLabel: NATATION_BUCKET_LABEL, bucketSub: NATATION_BUCKET_SUB,
-  dotColor: 'var(--sport-swim)', refPace: REF_NATATION, backLabel: 'Filières', searchPlaceholder: 'Rechercher une séance…',
+  dotColor: 'var(--sport-swim)', refPace: REF_NATATION, backLabel: 'Filières', backLabelKey: 'sessbiblio.enduBackFilieres', searchPlaceholder: 'Rechercher une séance…', searchPlaceholderKey: 'sessbiblio.searchSeance',
 }
 export const TRAIL_CONFIG: EnduranceConfig = {
   sport: 'trail', seances: SEANCES_TRAIL,
   bucketOrder: TRAIL_BUCKET_ORDER, bucketLabel: TRAIL_BUCKET_LABEL, bucketSub: TRAIL_BUCKET_SUB,
-  dotColor: 'var(--sport-run)', refPace: REF_TRAIL, backLabel: 'Qualités', searchPlaceholder: 'Rechercher une séance…',
+  dotColor: 'var(--sport-run)', refPace: REF_TRAIL, backLabel: 'Qualités', backLabelKey: 'sessbiblio.enduBackQualites', searchPlaceholder: 'Rechercher une séance…', searchPlaceholderKey: 'sessbiblio.searchSeance',
 }

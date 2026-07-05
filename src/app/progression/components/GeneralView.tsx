@@ -53,7 +53,7 @@ export function GeneralView({ sport }: { sport: string }) {
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 18 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
           <div>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{hero.label}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{t(hero.labelKey)}</div>
             <div style={{ fontSize: 30, fontWeight: 800, color: cfg.color, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{hero.value}</div>
             {hero.sub && <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{hero.sub}</div>}
           </div>
@@ -72,7 +72,7 @@ export function GeneralView({ sport }: { sport: string }) {
           const dc = r.delta.direction === 'up' ? '#22c55e' : r.delta.direction === 'down' ? '#ef4444' : 'var(--text-dim)'
           return (
             <div key={st.label} style={{ background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 12px' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{st.label}</div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t(st.labelKey)}</div>
               <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginTop: 3 }}>{r.value}</div>
               <div style={{ fontSize: 10, color: dc, fontVariantNumeric: 'tabular-nums' }}>{r.delta.value}</div>
             </div>
@@ -89,12 +89,12 @@ export function GeneralView({ sport }: { sport: string }) {
           {visible.map((s, i) => (
             <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '64px 1fr auto auto', gap: 10, alignItems: 'center', padding: '8px 10px', background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: 10 }}>
               <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{fmtRelDate(s.started_at)}</span>
-              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12.5, color: 'var(--text)' }}>{s.title || cfg.label}</span>
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12.5, color: 'var(--text)' }}>{s.title || t(cfg.labelKey)}</span>
               <span style={{ display: 'flex', gap: 10 }}>
                 {gen.columns.map(c => (
                   <span key={c.label} style={{ textAlign: 'right' }}>
                     <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: c.color ?? 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{c.value(s)}</span>
-                    <span style={{ display: 'block', fontSize: 8.5, color: 'var(--text-dim)', textTransform: 'uppercase' }}>{c.label}</span>
+                    <span style={{ display: 'block', fontSize: 8.5, color: 'var(--text-dim)', textTransform: 'uppercase' }}>{t(c.labelKey)}</span>
                   </span>
                 ))}
               </span>
@@ -122,7 +122,7 @@ export function GeneralView({ sport }: { sport: string }) {
                   <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase' }}>{lbl} · {fmtRelDate(s.started_at)}</div>
                   {gen.columns.map(c => (
                     <div key={c.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12, borderBottom: '0.5px solid var(--border)' }}>
-                      <span style={{ color: 'var(--text-dim)' }}>{c.label}</span>
+                      <span style={{ color: 'var(--text-dim)' }}>{t(c.labelKey)}</span>
                       <span style={{ fontWeight: 600, color: typeof col === 'string' && col.startsWith('#') ? col : 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{c.value(s)}</span>
                     </div>
                   ))}

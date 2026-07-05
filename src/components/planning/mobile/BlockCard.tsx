@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { IconDotsVertical, IconCopy, IconTrash } from '@tabler/icons-react'
 import type { SportType } from '@/app/planning/page'
 import { zColor, fmtMMSS, mmssToMin, bumpPaceOrWatts, pctFtp, pctOfThreshold, pctOfCss, type AthleteRefs } from './editorial'
-import { recalc, BLOCK_NAME, type MBlock } from './blocks'
+import { recalc, BLOCK_NAME_KEY, type MBlock } from './blocks'
 import { Stepper, Segmented, FieldLabel } from './ui'
 import { useI18n } from '@/lib/i18n'
 
@@ -28,7 +28,7 @@ export function BlockCard({ block: b, sport, accent, refs, expanded, onToggle, o
   const isIv = b.mode === 'interval'
   const set = (patch: Partial<MBlock>) => onChange(recalc(sport, { ...b, ...patch }))
 
-  const name = b.label || BLOCK_NAME[b.type] || (isIv ? tr('planning.interval') : tr('planning.bloc'))
+  const name = b.label || (BLOCK_NAME_KEY[b.type] ? tr(BLOCK_NAME_KEY[b.type]) : '') || (isIv ? tr('planning.interval') : tr('planning.bloc'))
   const z = b.zone
   // Cible affichée (détail discret)
   const target = sport === 'bike'
@@ -115,7 +115,7 @@ export function BlockCard({ block: b, sport, accent, refs, expanded, onToggle, o
         <div style={{ borderTop: '1px solid var(--se-rule-soft)', padding: '14px 14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Nom + presets de type */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <input value={b.label} placeholder={BLOCK_NAME[b.type] ?? tr('planning.blocName')} onChange={e => set({ label: e.target.value })}
+            <input value={b.label} placeholder={BLOCK_NAME_KEY[b.type] ? tr(BLOCK_NAME_KEY[b.type]) : tr('planning.blocName')} onChange={e => set({ label: e.target.value })}
               className="se-fr" style={{ flex: 1, minWidth: 120, background: 'transparent', border: 'none', borderBottom: '1px solid var(--se-rule)', outline: 'none', color: 'var(--se-text)', fontSize: 15, fontWeight: 600, padding: '2px 0' }} />
             <div style={{ display: 'flex', gap: 4 }}>
               {(['warmup', 'effort', 'recovery'] as const).map(t => (

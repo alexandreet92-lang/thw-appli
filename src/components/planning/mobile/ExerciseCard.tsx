@@ -2,7 +2,7 @@
 // Carte d'exercice (Muscu / Hyrox) — éditorial clair. Filet gauche coloré
 // (pattern muscu ou rouge hyrox), tag, champs adaptatifs. Mute l'ExerciseItem.
 import { IconX } from '@tabler/icons-react'
-import { type ExerciseItem, type ExoCategory, MUSCU_PATTERNS, PATTERN_VAR, PATTERN_LABEL, fmtSec } from './strength'
+import { type ExerciseItem, type ExoCategory, MUSCU_PATTERNS, PATTERN_VAR, PATTERN_LABEL_KEY, fmtSec } from './strength'
 import { secToPace, paceToSec } from './editorial'
 import { Stepper, FieldLabel } from './ui'
 import { useI18n } from '@/lib/i18n'
@@ -46,7 +46,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, onChan
         <input value={item.name} onChange={e => set({ name: e.target.value })} placeholder={t('planning.exerciseNamePlaceholder')}
           className="se-fr" style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--se-text)', fontSize: 15, fontWeight: 600, padding: 0 }} />
         <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--se-dim)', border: '1px solid var(--se-rule)', borderRadius: 6, padding: '2px 7px' }}>
-          {variant === 'muscu' ? PATTERN_LABEL[item.category] : isStation ? t('planning.station') : t('planning.free')}
+          {variant === 'muscu' ? t(PATTERN_LABEL_KEY[item.category]) : isStation ? t('planning.station') : t('planning.free')}
         </span>
         <button type="button" onClick={onRemove} aria-label={t('planning.remove')} style={{ flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={16} /></button>
       </div>
@@ -65,7 +65,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, onChan
             {MUSCU_PATTERNS.map(p => {
               const on = item.category === p
               return <button key={p} type="button" onClick={() => set({ category: p })}
-                style={{ border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: on ? accent : 'transparent', color: on ? '#fff' : 'var(--se-dim)', borderRadius: 999, padding: '4px 11px', fontSize: 10.5, fontWeight: 600, cursor: 'pointer' }}>{PATTERN_LABEL[p]}</button>
+                style={{ border: `1px solid ${on ? accent : 'var(--se-rule)'}`, background: on ? accent : 'transparent', color: on ? '#fff' : 'var(--se-dim)', borderRadius: 999, padding: '4px 11px', fontSize: 10.5, fontWeight: 600, cursor: 'pointer' }}>{t(PATTERN_LABEL_KEY[p])}</button>
             })}
           </div>
         </>

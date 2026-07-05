@@ -1,6 +1,6 @@
 'use client'
 
-import { sportColor, sportLabel } from './helpers'
+import { sportColor, sportLabelKey } from './helpers'
 import type { TrainingLoadData } from './types'
 import { useI18n } from '@/lib/i18n'
 
@@ -50,7 +50,7 @@ export default function SectionTrainingLoad({ data }: Props) {
               return (
                 <div key={s.sport}>
                   <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4 }}>
-                    <span style={{ fontSize:11,color:'var(--text-mid)',fontWeight:500 }}>{sportLabel(s.sport)}</span>
+                    <span style={{ fontSize:11,color:'var(--text-mid)',fontWeight:500 }}>{t(sportLabelKey(s.sport))}</span>
                     <span style={{ fontSize:11,fontFamily:'DM Mono,monospace',color:'var(--text-dim)' }}>{s.hours.toFixed(1)}h</span>
                   </div>
                   <div style={{ height:5,borderRadius:99,background:'var(--border)',overflow:'hidden' }}>

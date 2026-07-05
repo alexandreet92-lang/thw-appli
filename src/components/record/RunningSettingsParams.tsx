@@ -101,7 +101,7 @@ export default function RunningSettingsParams({ settings, updateSetting, theme, 
                   border: `1.5px solid ${active ? '#06B6D4' : theme.separator}`,
                   cursor: 'pointer', transition: 'all 150ms',
                 }}>
-                <span style={{ fontSize: 14, color: theme.text, fontWeight: 500 }}>{font.label}</span>
+                <span style={{ fontSize: 14, color: theme.text, fontWeight: 500 }}>{t(font.labelKey)}</span>
                 <span style={{ fontSize: 24, fontWeight: 700, color: active ? '#06B6D4' : theme.text, fontFamily: font.fontFamily, letterSpacing: '-0.5px' }}>4:32</span>
               </button>
             )

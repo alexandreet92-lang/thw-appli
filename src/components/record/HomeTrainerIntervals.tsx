@@ -1,6 +1,6 @@
 'use client'
 import type { HTProgram } from '@/types/hometrainer'
-import { getZoneColor, getZoneLabel } from '@/types/hometrainer'
+import { getZoneColor, getZoneLabelKey } from '@/types/hometrainer'
 import { useI18n } from '@/lib/i18n'
 
 interface Props {
@@ -61,9 +61,9 @@ export default function HomeTrainerIntervals({ program, elapsedSec, ftp, isDark 
       <div style={{ background: surf, borderRadius: 16, padding: '16px 20px', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: getZoneColor(cur.ftpPercent), flexShrink: 0 }} />
-          <p style={{ fontSize: 12, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>{getZoneLabel(cur.ftpPercent)}</p>
+          <p style={{ fontSize: 12, color: dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>{t(getZoneLabelKey(cur.ftpPercent))}</p>
         </div>
-        <p style={{ fontSize: 13, fontWeight: 500, color: text, margin: '0 0 10px' }}>{cur.name}</p>
+        <p style={{ fontSize: 13, fontWeight: 500, color: text, margin: '0 0 10px' }}>{cur.nameKey ? t(cur.nameKey) : cur.name}</p>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
             <p style={{ fontSize: 11, color: dim, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('record.homeTrainerTarget')}</p>
@@ -82,7 +82,7 @@ export default function HomeTrainerIntervals({ program, elapsedSec, ftp, isDark 
       {next && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: surf, borderRadius: 12, opacity: 0.7 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: getZoneColor(next.ftpPercent), flexShrink: 0 }} />
-          <p style={{ fontSize: 13, color: text, margin: 0 }}>{t('record.homeTrainerNext')} {next.name}</p>
+          <p style={{ fontSize: 13, color: text, margin: 0 }}>{t('record.homeTrainerNext')} {next.nameKey ? t(next.nameKey) : next.name}</p>
           <p style={{ fontSize: 13, color: dim, margin: '0 0 0 auto' }}>{Math.round(ftp * next.ftpPercent / 100)}w · {fmt(next.duration)}</p>
         </div>
       )}

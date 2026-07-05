@@ -242,7 +242,7 @@ export function BuilderReserve() {
               flexWrap: 'wrap', marginBottom: 'var(--space-5)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: theme.accent, flexShrink: 0 }} />
-                <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{theme.label}</h2>
+                <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t(theme.labelKey)}</h2>
               </div>
               <button onClick={() => setEditor({ mode: 'create', sport: theme.planning })}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 'var(--r-sm)',
@@ -276,7 +276,7 @@ export function BuilderReserve() {
               <div style={{ textAlign: 'center', padding: '48px 20px' }}>
                 <p style={{ fontFamily: FB, fontSize: 14, color: 'var(--text-dim)', marginBottom: 16 }}>
                   {sportFavs.length === 0
-                    ? t('session.aucuneSeanceReserve', { sport: theme.label.toLowerCase() })
+                    ? t('session.aucuneSeanceReserve', { sport: t(theme.labelKey).toLowerCase() })
                     : t('session.aucuneSeanceFiltres')}
                 </p>
                 {sportFavs.length === 0 ? (

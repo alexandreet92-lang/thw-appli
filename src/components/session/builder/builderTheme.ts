@@ -16,7 +16,9 @@ export type BuilderSportId = 'muscu' | 'running' | 'velo' | 'natation' | 'aviron
 export interface BuilderSportTheme {
   id: BuilderSportId
   label: string
+  labelKey: string
   tagline: string
+  taglineKey: string
   icon: Icon
   accent: string          // var(--lib-<sport>)
   soft: string            // var(--lib-<sport>-soft)
@@ -26,12 +28,12 @@ export interface BuilderSportTheme {
 }
 
 export const BUILDER_THEME: Record<BuilderSportId, BuilderSportTheme> = {
-  muscu:    { id: 'muscu',    label: 'Muscu / Renfo', tagline: 'Circuits, séries, reps',     icon: IconBarbell,  accent: 'var(--lib-muscu)',    soft: 'var(--lib-muscu-soft)',    planning: 'gym' },
-  running:  { id: 'running',  label: 'Running',       tagline: 'Blocs, intervalles, allure', icon: IconRun,      accent: 'var(--lib-running)',  soft: 'var(--lib-running-soft)',  planning: 'run' },
-  velo:     { id: 'velo',     label: 'Vélo',          tagline: 'Watts, zones, blocs',        icon: IconBike,     accent: 'var(--lib-velo)',     soft: 'var(--lib-velo-soft)',     planning: 'bike', also: ['elliptique'] },
-  natation: { id: 'natation', label: 'Natation',      tagline: 'Séries, distances, zones',   icon: IconSwimming, accent: 'var(--lib-natation)', soft: 'var(--lib-natation-soft)', planning: 'swim' },
-  aviron:   { id: 'aviron',   label: 'Aviron',        tagline: 'Blocs, seuil, distance',     icon: IconKayak,    accent: 'var(--lib-aviron)',   soft: 'var(--lib-aviron-soft)',   planning: 'rowing' },
-  hyrox:    { id: 'hyrox',    label: 'Hyrox',         tagline: 'Ateliers, circuits, runs',   icon: IconFlame,    accent: 'var(--lib-hyrox)',    soft: 'var(--lib-hyrox-soft)',    planning: 'hyrox' },
+  muscu:    { id: 'muscu',    label: 'Muscu / Renfo', labelKey: 'sessbiblio.sportMuscu',    tagline: 'Circuits, séries, reps',     taglineKey: 'sessbiblio.builderTaglineMuscu',    icon: IconBarbell,  accent: 'var(--lib-muscu)',    soft: 'var(--lib-muscu-soft)',    planning: 'gym' },
+  running:  { id: 'running',  label: 'Running',       labelKey: 'sessbiblio.sportRunning',  tagline: 'Blocs, intervalles, allure', taglineKey: 'sessbiblio.builderTaglineRunning',  icon: IconRun,      accent: 'var(--lib-running)',  soft: 'var(--lib-running-soft)',  planning: 'run' },
+  velo:     { id: 'velo',     label: 'Vélo',          labelKey: 'sessbiblio.sportVelo',     tagline: 'Watts, zones, blocs',        taglineKey: 'sessbiblio.builderTaglineVelo',     icon: IconBike,     accent: 'var(--lib-velo)',     soft: 'var(--lib-velo-soft)',     planning: 'bike', also: ['elliptique'] },
+  natation: { id: 'natation', label: 'Natation',      labelKey: 'sessbiblio.sportNatation', tagline: 'Séries, distances, zones',   taglineKey: 'sessbiblio.builderTaglineNatation', icon: IconSwimming, accent: 'var(--lib-natation)', soft: 'var(--lib-natation-soft)', planning: 'swim' },
+  aviron:   { id: 'aviron',   label: 'Aviron',        labelKey: 'sessbiblio.sportAviron',   tagline: 'Blocs, seuil, distance',     taglineKey: 'sessbiblio.builderTaglineAviron',   icon: IconKayak,    accent: 'var(--lib-aviron)',   soft: 'var(--lib-aviron-soft)',   planning: 'rowing' },
+  hyrox:    { id: 'hyrox',    label: 'Hyrox',         labelKey: 'sessbiblio.sportHyrox',    tagline: 'Ateliers, circuits, runs',   taglineKey: 'sessbiblio.builderTaglineHyrox',    icon: IconFlame,    accent: 'var(--lib-hyrox)',    soft: 'var(--lib-hyrox-soft)',    planning: 'hyrox' },
 }
 
 export const BUILDER_ORDER: BuilderSportId[] = [

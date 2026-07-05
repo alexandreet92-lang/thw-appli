@@ -98,7 +98,7 @@ export default function TrailSettingsParams({ settings, updateSetting, theme, se
             return (
               <button key={font.id} onClick={() => updateSetting('display.dataFont', font.id)}
                 style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderRadius:10, background: active ? 'rgba(245,158,11,0.08)' : 'transparent', border:`1.5px solid ${active ? '#F59E0B' : theme.separator}`, cursor:'pointer' }}>
-                <span style={{ fontSize:14, color:theme.text, fontWeight:500 }}>{font.label}</span>
+                <span style={{ fontSize:14, color:theme.text, fontWeight:500 }}>{t(font.labelKey)}</span>
                 <span style={{ fontSize:24, fontWeight:700, color: active ? '#F59E0B' : theme.text, fontFamily:font.fontFamily }}>4:32</span>
               </button>
             )

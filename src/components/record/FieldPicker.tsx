@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
-import { ALL_FIELDS, FIELD_CATEGORIES, type DataField, type FieldCategory } from '@/types/cycling'
+import { ALL_FIELDS, FIELD_CATEGORIES, FIELD_CATEGORY_KEYS, type DataField, type FieldCategory } from '@/types/cycling'
 
 interface ThemeColors { bg: string; text: string; dim: string; separator: string; cardBg: string }
 
@@ -29,7 +29,8 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
 
   const CategoryList = () => (
     <div style={{ flex: 1, overflowY: 'auto' }}>
-      {(Object.entries(FIELD_CATEGORIES) as [FieldCategory, string][]).map(([catId, catLabel]) => {
+      {(Object.keys(FIELD_CATEGORIES) as FieldCategory[]).map((catId) => {
+        const catLabel = t(FIELD_CATEGORY_KEYS[catId])
         const available = ALL_FIELDS.filter(f => f.category === catId && !excludeIds.includes(f.id))
         if (available.length === 0) return null
         return (
@@ -74,7 +75,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
   const SearchResults = ({ query }: { query: string }) => {
     const q = query.toLowerCase()
     const matched = ALL_FIELDS.filter(f =>
-      f.label.toLowerCase().includes(q) && !excludeIds.includes(f.id)
+      ((f.labelKey ? t(f.labelKey) : f.label).toLowerCase().includes(q) || f.label.toLowerCase().includes(q)) && !excludeIds.includes(f.id)
     )
     return (
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -82,7 +83,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
           <FieldRow
             key={field.id} field={field} theme={theme}
             onClick={() => selectField(field.id)}
-            categoryLabel={FIELD_CATEGORIES[field.category as FieldCategory]}
+            categoryLabel={t(FIELD_CATEGORY_KEYS[field.category as FieldCategory])}
           />
         ))}
         {matched.length === 0 && (
@@ -136,7 +137,7 @@ export default function FieldPicker({ open, excludeIds, onClose, onSelect, theme
             </button>
           )}
           <h2 style={{ fontSize: 18, fontWeight: 700, color: theme.text, margin: 0, flex: 1, fontFamily: 'Syne, sans-serif' }}>
-            {selectedCategory ? FIELD_CATEGORIES[selectedCategory] : t('record.fieldPickerTitle')}
+            {selectedCategory ? t(FIELD_CATEGORY_KEYS[selectedCategory]) : t('record.fieldPickerTitle')}
           </h2>
           <button onClick={handleClose}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8C8C8C', fontSize: 22, lineHeight: 1, padding: '4px 8px' }}>
@@ -198,7 +199,7 @@ function FieldRow({ field, theme, onClick, categoryLabel }: {
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 15, color: theme.text, fontWeight: 400 }}>
-            {field.label}
+            {field.labelKey ? t(field.labelKey) : field.label}
           </span>
           {field.unit && <span style={{ fontSize: 12, color: '#8C8C8C' }}>{field.unit}</span>}
           {field.type === 'chart' && (

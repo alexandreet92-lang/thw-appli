@@ -115,7 +115,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
             marginBottom: 10,
           }}>
             <span style={{ fontSize: 10, color: '#06B6D4', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>
-              {slide.badge}
+              {slide.badgeKey ? t(slide.badgeKey) : slide.badge}
             </span>
           </div>
         )}
@@ -130,7 +130,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
             animation: 'ob-slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both',
           }}
         >
-          {slide.title}
+          {slide.titleKey ? t(slide.titleKey) : slide.title}
         </h2>
 
         {/* Description */}
@@ -142,7 +142,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
             animation: 'ob-slide-up 0.4s 0.06s cubic-bezier(0.16,1,0.3,1) both',
           }}
         >
-          {slide.description}
+          {slide.descriptionKey ? t(slide.descriptionKey) : slide.description}
         </p>
 
         {/* Key points */}
@@ -163,7 +163,7 @@ export function OnboardingOverlay({ config, onDismiss }: Props) {
                   <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#06B6D4' }} />
                 </div>
                 <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
-                  {point}
+                  {slide.keyPointsKeys?.[i] ? t(slide.keyPointsKeys[i]) : point}
                 </span>
               </div>
             ))}

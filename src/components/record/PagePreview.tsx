@@ -75,7 +75,7 @@ export default function PagePreview({ page, theme, selectedField, onFieldClick, 
               }}
             >
               <p style={{ fontSize: 9, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 }}>
-                {ALL_FIELDS.find(f => f.id === id)?.label}
+                {(() => { const f = ALL_FIELDS.find(f => f.id === id); return f?.labelKey ? t(f.labelKey) : f?.label })()}
               </p>
               <p style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily }}>
                 {getMockValue(id)}
@@ -118,7 +118,7 @@ export default function PagePreview({ page, theme, selectedField, onFieldClick, 
         }}
       >
         <p style={{ fontSize: 10, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.5px', margin: 0 }}>
-          {field?.label}
+          {field?.labelKey ? t(field.labelKey) : field?.label}
         </p>
         <p style={{ fontSize: 48, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily }}>
           {getMockValue(fieldId)}
@@ -148,7 +148,7 @@ export default function PagePreview({ page, theme, selectedField, onFieldClick, 
         }}
       >
         <p style={{ fontSize: 9, color: theme.dim, textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 }}>
-          {field?.label}
+          {field?.labelKey ? t(field.labelKey) : field?.label}
         </p>
         <p style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, lineHeight: 1, fontFamily }}>
           {getMockValue(fieldId)}

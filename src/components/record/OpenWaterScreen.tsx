@@ -107,7 +107,7 @@ export default function OpenWaterScreen({ onExit, onFinished }: Props) {
               { l: t('record.openWaterDistance'), v: `${(snapRef.current?.distM ?? 0) / 1000 < 1 ? snapRef.current?.distM + 'm' : ((snapRef.current?.distM ?? 0) / 1000).toFixed(2) + 'km'}` },
               { l: t('record.openWaterDuration'),    v: `${String(Math.floor(stopwatch.seconds/60)).padStart(2,'0')}:${String(stopwatch.seconds%60).padStart(2,'0')}` },
               { l: t('record.openWaterPace100'), v: fmtPace(snapRef.current?.distM ?? 0, snapRef.current?.durationSec ?? 0) },
-              { l: t('record.openWaterWaterShort'), v: `${waterTemp}°C — ${OPEN_WATER_BODIES.find(b => b.id === waterBody)?.label}` },
+              { l: t('record.openWaterWaterShort'), v: `${waterTemp}°C — ${(() => { const b = OPEN_WATER_BODIES.find(b => b.id === waterBody); return b?.labelKey ? t(b.labelKey) : b?.label })()}` },
             ].map(({ l, v }) => (
               <div key={l} style={{ padding: '14px 8px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                 <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 4px' }}>{l}</p>
@@ -125,7 +125,7 @@ export default function OpenWaterScreen({ onExit, onFinished }: Props) {
         </button>
         <div style={{ flex: 1, display: 'flex', gap: 6, justifyContent: 'center' }}>
           {OPEN_WATER_BODIES.map(b => (
-            <button key={b.id} onClick={() => setWaterBody(b.id)} style={{ padding: '4px 12px', borderRadius: 8, background: waterBody === b.id ? 'rgba(6,182,212,0.15)' : btnBg, border: `1.5px solid ${waterBody === b.id ? '#06B6D4' : 'transparent'}`, color: waterBody === b.id ? '#06B6D4' : dim, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>{b.label}</button>
+            <button key={b.id} onClick={() => setWaterBody(b.id)} style={{ padding: '4px 12px', borderRadius: 8, background: waterBody === b.id ? 'rgba(6,182,212,0.15)' : btnBg, border: `1.5px solid ${waterBody === b.id ? '#06B6D4' : 'transparent'}`, color: waterBody === b.id ? '#06B6D4' : dim, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>{b.labelKey ? t(b.labelKey) : b.label}</button>
           ))}
         </div>
       </div>

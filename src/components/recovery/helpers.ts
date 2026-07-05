@@ -21,15 +21,15 @@ export function calcRecoveryScore(c: Pick<CheckInRow,
 }
 
 export interface ScoreStatus {
-  label: string; color: string; bg: string; desc: string
+  label: string; labelKey: string; color: string; bg: string; desc: string; descKey: string
 }
 
 export function scoreStatus(score: number): ScoreStatus {
-  if (score >= 91) return { label:'Excellent', color:'#16a34a', bg:'rgba(22,163,74,0.12)',   desc:'Forme optimale. Séance intensive possible.' }
-  if (score >= 81) return { label:'Bon',       color:'#22c55e', bg:'rgba(34,197,94,0.12)',   desc:'Bonne récupération. Entraîne-toi pleinement.' }
-  if (score >= 61) return { label:'Correct',   color:'#06B6D4', bg:'rgba(6,182,212,0.12)',   desc:'Récupération correcte. Intensité modérée.' }
-  if (score >= 41) return { label:'Moyen',     color:'#f97316', bg:'rgba(249,115,22,0.12)',  desc:'Récupération partielle. Préfère une séance légère.' }
-  return              { label:'Faible',    color:'#ef4444', bg:'rgba(239,68,68,0.12)',   desc:'Corps fatigué. Repos actif recommandé.' }
+  if (score >= 91) return { label:'Excellent', labelKey:'divers.scoreExcellent', color:'#16a34a', bg:'rgba(22,163,74,0.12)',   desc:'Forme optimale. Séance intensive possible.', descKey:'divers.scoreExcellentDesc' }
+  if (score >= 81) return { label:'Bon',       labelKey:'divers.scoreGood',      color:'#22c55e', bg:'rgba(34,197,94,0.12)',   desc:'Bonne récupération. Entraîne-toi pleinement.', descKey:'divers.scoreGoodDesc' }
+  if (score >= 61) return { label:'Correct',   labelKey:'divers.scoreOk',        color:'#06B6D4', bg:'rgba(6,182,212,0.12)',   desc:'Récupération correcte. Intensité modérée.', descKey:'divers.scoreOkDesc' }
+  if (score >= 41) return { label:'Moyen',     labelKey:'divers.scoreAverage',   color:'#f97316', bg:'rgba(249,115,22,0.12)',  desc:'Récupération partielle. Préfère une séance légère.', descKey:'divers.scoreAverageDesc' }
+  return              { label:'Faible',    labelKey:'divers.scoreLow',       color:'#ef4444', bg:'rgba(239,68,68,0.12)',   desc:'Corps fatigué. Repos actif recommandé.', descKey:'divers.scoreLowDesc' }
 }
 
 export function metricColor(v: number, inverted = false): string {
@@ -72,6 +72,19 @@ export function sportLabel(s: string): string {
     run:'Running', running:'Running', ride:'Cyclisme', cycling:'Cyclisme', bike:'Cyclisme',
     swim:'Natation', swimming:'Natation', gym:'Gym', weighttraining:'Gym',
     hyrox:'Hyrox', rowing:'Aviron', elliptique:'Elliptique',
+  }
+  return map[s.toLowerCase()] ?? s
+}
+
+// Clé i18n (namespace divers.*) pour un sport — résolue au site d'affichage via t().
+// Repli sur le libellé brut si le sport n'est pas connu (t() renverra alors la valeur telle quelle).
+export function sportLabelKey(s: string): string {
+  const map: Record<string,string> = {
+    run:'divers.sportRunning', running:'divers.sportRunning',
+    ride:'divers.sportCycling', cycling:'divers.sportCycling', bike:'divers.sportCycling',
+    swim:'divers.sportSwimming', swimming:'divers.sportSwimming',
+    gym:'divers.sportGym', weighttraining:'divers.sportGym',
+    hyrox:'divers.sportHyrox', rowing:'divers.sportRowing', elliptique:'divers.sportElliptical',
   }
   return map[s.toLowerCase()] ?? s
 }

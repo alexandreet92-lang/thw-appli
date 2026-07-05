@@ -42,6 +42,16 @@ export const EXO_CATEGORY_LABEL: Record<ExoCategory, string> = {
   abdos: 'Abdos',
   hyrox: 'Hyrox',
 }
+// Clés i18n parallèles (résolues via t() au site d'affichage). Le libellé FR
+// ci-dessus est conservé pour rétro-compat / fallback.
+export const EXO_CATEGORY_LABEL_KEY: Record<ExoCategory, string> = {
+  push:  'plandata.categoryPush',
+  pull:  'plandata.categoryPull',
+  legs:  'plandata.categoryLegs',
+  mixte: 'plandata.categoryMixte',
+  abdos: 'plandata.categoryAbdos',
+  hyrox: 'plandata.categoryHyrox',
+}
 
 export const EXERCISE_DATABASE: ExoDefinition[] = [
   // PUSH

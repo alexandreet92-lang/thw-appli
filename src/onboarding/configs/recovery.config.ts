@@ -7,19 +7,27 @@ export const RECOVERY_ONBOARDING: PageOnboardingConfig = {
     {
       id: 'recovery_status',
       badge: 'État du jour',
+      badgeKey: 'onbcfg.recoveryStatusBadge',
       title: 'Ton état de forme en temps réel',
+      titleKey: 'onbcfg.recoveryStatusTitle',
       description: "La page Récupération analyse ta charge d'entraînement des derniers jours pour estimer si ton corps est prêt pour un effort intense, modéré ou s'il a besoin de repos.",
+      descriptionKey: 'onbcfg.recoveryStatusDesc',
       keyPoints: [
         'Score de forme basé sur CTL, ATL et TSB',
         'Recommandation du jour : Intensif / Modéré / Repos',
         'Tendance sur 7 jours',
       ],
+      keyPointsKeys: [
+        'onbcfg.recoveryStatusKp1',
+        'onbcfg.recoveryStatusKp2',
+        'onbcfg.recoveryStatusKp3',
+      ],
       visual: 'stats',
       visualConfig: {
         stats: [
-          { label: 'Forme (CTL)', value: 71, suffix: '', color: '#10B981' },
-          { label: 'Fatigue (ATL)', value: 88, suffix: '', color: '#EF4444' },
-          { label: 'Fraîcheur', value: -17, suffix: '', color: '#F59E0B' },
+          { label: 'Forme (CTL)', labelKey: 'onbcfg.statFormeCtl', value: 71, suffix: '', color: '#10B981' },
+          { label: 'Fatigue (ATL)', labelKey: 'onbcfg.statFatigueAtl', value: 88, suffix: '', color: '#EF4444' },
+          { label: 'Fraîcheur', labelKey: 'onbcfg.statFraicheur', value: -17, suffix: '', color: '#F59E0B' },
         ],
       },
       features: ['recovery_status', 'ctl_atl_tsb', 'daily_recommendation'],
@@ -27,21 +35,30 @@ export const RECOVERY_ONBOARDING: PageOnboardingConfig = {
     {
       id: 'recovery_wellness',
       badge: 'Bien-être',
+      badgeKey: 'onbcfg.recoveryWellnessBadge',
       title: 'Saisis tes données de bien-être',
+      titleKey: 'onbcfg.recoveryWellnessTitle',
       description: "Chaque matin, note ton sommeil, ton HRV, ta fatigue musculaire et ton humeur. Ces données enrichissent l'analyse et personnalisent les recommandations.",
+      descriptionKey: 'onbcfg.recoveryWellnessDesc',
       keyPoints: [
         'Durée et qualité de sommeil',
         'HRV (variabilité cardiaque)',
         'Fatigue musculaire de 1 à 10',
         'Humeur et motivation',
       ],
+      keyPointsKeys: [
+        'onbcfg.recoveryWellnessKp1',
+        'onbcfg.recoveryWellnessKp2',
+        'onbcfg.recoveryWellnessKp3',
+        'onbcfg.recoveryWellnessKp4',
+      ],
       visual: 'icon_grid',
       visualConfig: {
         icons: [
-          { label: 'Sommeil', color: '#8B5CF6' },
+          { label: 'Sommeil', labelKey: 'onbcfg.iconSommeil', color: '#8B5CF6' },
           { label: 'HRV', color: '#EF4444' },
           { label: 'Muscles', color: '#F59E0B' },
-          { label: 'Humeur', color: '#10B981' },
+          { label: 'Humeur', labelKey: 'onbcfg.iconHumeur', color: '#10B981' },
         ],
       },
       features: ['sleep_tracking', 'hrv_input', 'muscle_fatigue', 'mood'],
@@ -49,13 +66,22 @@ export const RECOVERY_ONBOARDING: PageOnboardingConfig = {
     {
       id: 'recovery_trends',
       badge: 'Tendances',
+      badgeKey: 'onbcfg.recoveryTrendsBadge',
       title: 'Évolution sur 4 semaines',
+      titleKey: 'onbcfg.recoveryTrendsTitle',
       description: "Le graphique CTL/ATL/TSB te montre comment évolue ta forme, ta fatigue et ta fraîcheur sur le long terme. Identifie les pics de fatigue et anticipe les phases de super-compensation.",
+      descriptionKey: 'onbcfg.recoveryTrendsDesc',
       keyPoints: [
         'CTL (Forme) : charge chronique, évolue lentement',
         'ATL (Fatigue) : charge aiguë, réagit vite',
         'TSB (Fraîcheur) : différence CTL - ATL',
         'Optimal pour compétition : TSB positif',
+      ],
+      keyPointsKeys: [
+        'onbcfg.recoveryTrendsKp1',
+        'onbcfg.recoveryTrendsKp2',
+        'onbcfg.recoveryTrendsKp3',
+        'onbcfg.recoveryTrendsKp4',
       ],
       visual: 'chart',
       visualConfig: {
@@ -75,20 +101,28 @@ export const RECOVERY_ONBOARDING: PageOnboardingConfig = {
     {
       id: 'recovery_protocol',
       badge: 'Protocoles',
+      badgeKey: 'onbcfg.recoveryProtocolBadge',
       title: 'Protocoles de récupération',
+      titleKey: 'onbcfg.recoveryProtocolTitle',
       description: "Accède à des protocoles guidés : étirements post-séance, bains froids, massages, nutrition de récupération. Chaque protocole est adapté au sport pratiqué.",
+      descriptionKey: 'onbcfg.recoveryProtocolDesc',
       keyPoints: [
         'Étirements guidés par groupe musculaire',
         'Nutrition post-effort recommandée',
         "Durée de récupération estimée selon l'effort",
       ],
+      keyPointsKeys: [
+        'onbcfg.recoveryProtocolKp1',
+        'onbcfg.recoveryProtocolKp2',
+        'onbcfg.recoveryProtocolKp3',
+      ],
       visual: 'icon_grid',
       visualConfig: {
         icons: [
-          { label: 'Étirements', color: '#06B6D4' },
+          { label: 'Étirements', labelKey: 'onbcfg.iconEtirements', color: '#06B6D4' },
           { label: 'Nutrition', color: '#10B981' },
-          { label: 'Bain froid', color: '#3B82F6' },
-          { label: 'Sommeil', color: '#8B5CF6' },
+          { label: 'Bain froid', labelKey: 'onbcfg.iconBainFroid', color: '#3B82F6' },
+          { label: 'Sommeil', labelKey: 'onbcfg.iconSommeil', color: '#8B5CF6' },
         ],
       },
       features: ['recovery_protocols', 'stretching_guide', 'nutrition_recovery'],

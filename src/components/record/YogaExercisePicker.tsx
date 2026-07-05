@@ -12,7 +12,7 @@ interface Props {
   isDark: boolean
 }
 
-const CAT_TABS = [{ id: 'all', label: 'Tout' }, ...YOGA_CATEGORIES.map(c => ({ id: c.id, label: c.label }))]
+const CAT_TABS = [{ id: 'all', label: 'Tout', labelKey: 'record.yogaCatAll' }, ...YOGA_CATEGORIES.map(c => ({ id: c.id, label: c.label, labelKey: c.labelKey }))]
 
 async function seedIfEmpty(sb: ReturnType<typeof createClient>) {
   const { data } = await sb.from('yoga_exercises').select('id').limit(1)
@@ -95,7 +95,7 @@ export default function YogaExercisePicker({ open, onClose, onAdd, isDark }: Pro
         </div>
         <div style={{ display: 'flex', gap: 6, padding: '0 16px 10px', overflowX: 'auto', flexShrink: 0 }}>
           {CAT_TABS.map(c => (
-            <button key={c.id} onClick={() => setTab(c.id as 'all' | YogaCategory)} style={{ padding: '6px 14px', borderRadius: 20, border: 'none', background: tab === c.id ? '#06B6D4' : surf, color: tab === c.id ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.id === 'all' ? t('record.yogaCatAll') : c.label}</button>
+            <button key={c.id} onClick={() => setTab(c.id as 'all' | YogaCategory)} style={{ padding: '6px 14px', borderRadius: 20, border: 'none', background: tab === c.id ? '#06B6D4' : surf, color: tab === c.id ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{c.labelKey ? t(c.labelKey) : c.label}</button>
           ))}
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
@@ -115,7 +115,7 @@ export default function YogaExercisePicker({ open, onClose, onAdd, isDark }: Pro
               <input placeholder={t('record.yogaPickerNamePlaceholder')} value={newName} onChange={e => setNewName(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', background: surf, border: `1px solid ${bord}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: text, outline: 'none', marginBottom: 10, fontFamily: 'DM Sans, sans-serif' }} />
               <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                 <select value={newCat} onChange={e => setNewCat(e.target.value as YogaCategory)} style={{ flex: 1, background: surf, border: `1px solid ${bord}`, borderRadius: 10, padding: '10px 12px', fontSize: 14, color: text, outline: 'none' }}>
-                  {YOGA_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                  {YOGA_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.labelKey ? t(c.labelKey) : c.label}</option>)}
                 </select>
                 <input type="number" value={newDur} onChange={e => setNewDur(Number(e.target.value))} min={5} style={{ width: 80, background: surf, border: `1px solid ${bord}`, borderRadius: 10, padding: '10px 12px', fontSize: 14, color: text, outline: 'none', textAlign: 'center' }} />
               </div>

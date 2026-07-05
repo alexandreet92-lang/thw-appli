@@ -102,7 +102,7 @@ function TrailSettingsInner({ open, onClose, isDark, settings, updateSetting: up
                 : <p style={{ fontSize:15, fontWeight:600, color:t.text, margin:0 }}>{page.name}</p>
               }
               <p style={{ fontSize:11, color:t.dim, margin:'2px 0 0', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                {page.type==='map' ? tr('record.settingsMapPrefix') : ''}{page.fields.map((id: string) => trailFieldById(id)?.label).filter(Boolean).join(' · ')}
+                {page.type==='map' ? tr('record.settingsMapPrefix') : ''}{page.fields.map((id: string) => { const f = trailFieldById(id); return f?.labelKey ? tr(f.labelKey) : f?.label }).filter(Boolean).join(' · ')}
               </p>
             </div>
             <button onClick={e => { e.stopPropagation(); setMenuOpenId(prev => prev===page.id ? null : page.id) }} style={{ background:'none', border:'none', padding:'8px', color:'#8C8C8C', cursor:'pointer', fontSize:20, lineHeight:1 }}>⋯</button>

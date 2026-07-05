@@ -33,8 +33,8 @@ function Card({ theme, count, onSelect }: { theme: BuilderSportTheme; count: num
         background: theme.soft, color: theme.accent, flexShrink: 0 }}>
         <Ic size={24} />
       </div>
-      <h3 style={{ fontFamily: FD, fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: '12px 0 2px' }}>{theme.label}</h3>
-      <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0, lineHeight: 1.4 }}>{theme.tagline}</p>
+      <h3 style={{ fontFamily: FD, fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: '12px 0 2px' }}>{t(theme.labelKey)}</h3>
+      <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0, lineHeight: 1.4 }}>{t(theme.taglineKey)}</p>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 'auto', paddingTop: 'var(--space-4)',
         fontFamily: FB, fontSize: 12.5, fontWeight: 600, color: count > 0 ? theme.accent : 'var(--text-dim)' }}>
         {count > 0 ? t('session.nSeances', { n: count, s: count > 1 ? 's' : '' }) : t('session.aucuneSeance')}

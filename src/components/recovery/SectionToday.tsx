@@ -40,9 +40,9 @@ export default function SectionToday({ checkin, onCheckIn }: Props) {
           {status
             ? <div style={{ textAlign:'center' as const }}>
                 <span style={{ display:'inline-block',padding:'4px 14px',borderRadius:99,background:status.bg,border:`1px solid ${status.color}44`,color:status.color,fontSize:11,fontWeight:700,letterSpacing:'0.04em' }}>
-                  {status.label}
+                  {t(status.labelKey)}
                 </span>
-                <p style={{ fontSize:10,color:'var(--text-dim)',margin:'6px 0 0',lineHeight:1.5,maxWidth:140,textAlign:'center' as const }}>{status.desc}</p>
+                <p style={{ fontSize:10,color:'var(--text-dim)',margin:'6px 0 0',lineHeight:1.5,maxWidth:140,textAlign:'center' as const }}>{t(status.descKey)}</p>
               </div>
             : <p style={{ fontSize:11,color:'var(--text-dim)',textAlign:'center' as const,maxWidth:130,lineHeight:1.5,margin:0 }}>{t('recovery.today.empty')}</p>
           }

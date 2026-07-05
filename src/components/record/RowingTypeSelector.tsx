@@ -1,5 +1,6 @@
 'use client'
 import { ROWING_PRACTICE_TYPES } from '@/types/rowing'
+import { useI18n } from '@/lib/i18n'
 
 interface Props {
   selected: string
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function RowingTypeSelector({ selected, onChange, isDark }: Props) {
+  const { t: tr } = useI18n()
   const text = isDark ? '#FFF' : '#0A0A0A'
   const border = isDark ? 'rgba(255,255,255,0.12)' : '#E5E7EB'
   const surfaceMuted = isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
@@ -28,7 +30,7 @@ export default function RowingTypeSelector({ selected, onChange, isDark }: Props
               cursor:'pointer', fontFamily:'DM Sans, sans-serif',
               transition:'all 120ms',
             }}>
-            {t.label}
+            {t.labelKey ? tr(t.labelKey) : t.label}
           </button>
         )
       })}

@@ -2,10 +2,10 @@ import type { DataPage, DataField } from './cycling'
 import { ALL_FIELDS } from './cycling'
 
 export const MTB_SPECIFIC_FIELDS: DataField[] = [
-  { id: 'trail_type',         label: 'Type terrain', category: 'denivele', type: 'numeric' },
-  { id: 'elevation_gain_lap', label: 'D+ lap',    unit: 'm', category: 'denivele', type: 'numeric' },
-  { id: 'elevation_loss_lap', label: 'D- lap',    unit: 'm', category: 'denivele', type: 'numeric' },
-  { id: 'max_gradient',       label: 'Pente max', unit: '%', category: 'denivele', type: 'numeric' },
+  { id: 'trail_type',         label: 'Type terrain', labelKey: 'rectypes.fieldTrailType',   category: 'denivele', type: 'numeric' },
+  { id: 'elevation_gain_lap', label: 'D+ lap',    labelKey: 'rectypes.fieldElevGainLap', unit: 'm', category: 'denivele', type: 'numeric' },
+  { id: 'elevation_loss_lap', label: 'D- lap',    labelKey: 'rectypes.fieldElevLossLap', unit: 'm', category: 'denivele', type: 'numeric' },
+  { id: 'max_gradient',       label: 'Pente max', labelKey: 'rectypes.fieldMaxGradient', unit: '%', category: 'denivele', type: 'numeric' },
 ]
 
 export const ALL_MTB_FIELDS: DataField[] = [...ALL_FIELDS, ...MTB_SPECIFIC_FIELDS]
@@ -34,13 +34,13 @@ export const DEFAULT_MTB_PAGES: DataPage[] = [
 ]
 
 export const MTB_TYPES = [
-  { id: 'enduro',   label: 'Enduro',        desc: 'Descentes techniques' },
-  { id: 'xco',      label: 'XCO',           desc: 'Cross-country olympique' },
-  { id: 'ef',       label: 'EF',            desc: 'Endurance fondamentale' },
-  { id: 'montee',   label: 'Montées',       desc: 'Répétitions en montée' },
-  { id: 'descente', label: 'Descente',      desc: 'Technique de descente' },
-  { id: 'long',     label: 'Sortie longue', desc: 'Longue distance' },
-  { id: 'recup',    label: 'Récup',         desc: 'Récupération' },
+  { id: 'enduro',   label: 'Enduro',        labelKey: 'rectypes.typeEnduroLabel',       desc: 'Descentes techniques',   descKey: 'rectypes.typeDescentesTechDesc' },
+  { id: 'xco',      label: 'XCO',           labelKey: 'rectypes.typeXcoLabel',          desc: 'Cross-country olympique', descKey: 'rectypes.typeXcoDesc' },
+  { id: 'ef',       label: 'EF',            labelKey: 'rectypes.typeEfLabel',           desc: 'Endurance fondamentale', descKey: 'rectypes.typeEnduranceFondaDesc' },
+  { id: 'montee',   label: 'Montées',       labelKey: 'rectypes.typeMonteesLabel',      desc: 'Répétitions en montée',  descKey: 'rectypes.typeRepMonteeDesc' },
+  { id: 'descente', label: 'Descente',      labelKey: 'rectypes.typeDescenteLabel',     desc: 'Technique de descente',  descKey: 'rectypes.typeTechDescenteDesc' },
+  { id: 'long',     label: 'Sortie longue', labelKey: 'rectypes.typeSortieLongueLabel', desc: 'Longue distance',        descKey: 'rectypes.typeLongueDistanceDesc' },
+  { id: 'recup',    label: 'Récup',         labelKey: 'rectypes.typeRecupLabel',        desc: 'Récupération',           descKey: 'rectypes.typeRecuperationDesc' },
 ]
 
 export function detectTrailType(speedKmh: number, gradientPct: number, elevationGain: number): string {

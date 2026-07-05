@@ -22,6 +22,12 @@ export const PATTERN_VAR: Record<ExoCategory, string> = {
 export const PATTERN_LABEL: Record<ExoCategory, string> = {
   push: 'Push', pull: 'Pull', legs: 'Jambes', abdos: 'Core', mixte: 'Full body', hyrox: 'Hyrox',
 }
+// Clés i18n parallèles (résolues via t() au site d'affichage). Le libellé FR
+// ci-dessus est conservé pour rétro-compat / fallback.
+export const PATTERN_LABEL_KEY: Record<ExoCategory, string> = {
+  push: 'plandata.patternPush', pull: 'plandata.patternPull', legs: 'plandata.patternLegs',
+  abdos: 'plandata.patternCore', mixte: 'plandata.patternFullBody', hyrox: 'plandata.patternHyrox',
+}
 
 // 8 stations Hyrox officielles (ids de EXERCISE_DATABASE) + leur ordre.
 export const HYROX_STATION_IDS = [

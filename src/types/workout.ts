@@ -45,18 +45,18 @@ export interface WorkoutSummaryData {
 }
 
 export const STRENGTH_TYPES = [
-  { id: 'strength',         label: 'Strength',          desc: 'Force, charges lourdes' },
-  { id: 'endurance-strength', label: 'Endurance Strength', desc: 'Séries longues' },
-  { id: 'hypertrophie',     label: 'Hypertrophie',      desc: 'Masse musculaire' },
-  { id: 'explosivite',      label: 'Explosivité',       desc: 'Puissance, vitesse' },
+  { id: 'strength',         label: 'Strength',          labelKey: 'rectypes.typeStrengthLabel',          desc: 'Force, charges lourdes', descKey: 'rectypes.typeForceChargesDesc' },
+  { id: 'endurance-strength', label: 'Endurance Strength', labelKey: 'rectypes.typeEnduranceStrengthLabel', desc: 'Séries longues',     descKey: 'rectypes.typeSeriesLonguesDesc' },
+  { id: 'hypertrophie',     label: 'Hypertrophie',      labelKey: 'rectypes.typeHypertrophieLabel',      desc: 'Masse musculaire',    descKey: 'rectypes.typeMasseMusculaireDesc' },
+  { id: 'explosivite',      label: 'Explosivité',       labelKey: 'rectypes.typeExplosiviteLabel',       desc: 'Puissance, vitesse',  descKey: 'rectypes.typePuissanceVitesseDesc' },
 ]
 
 export const HYROX_TYPES = [
-  { id: 'competition', label: 'Compétition', desc: 'Format course officiel' },
-  { id: 'simulation',  label: 'Simulation',  desc: 'Simulation complète' },
-  { id: 'fractions',   label: 'Fractionné',  desc: 'Stations isolées' },
-  { id: 'endurance',   label: 'Endurance',   desc: 'Volume et cardio' },
-  { id: 'force',       label: 'Force',       desc: 'Focus stations de force' },
+  { id: 'competition', label: 'Compétition', labelKey: 'rectypes.typeCompetitionLabel', desc: 'Format course officiel', descKey: 'rectypes.typeFormatCourseOfficielDesc' },
+  { id: 'simulation',  label: 'Simulation',  labelKey: 'rectypes.typeSimulationLabel',  desc: 'Simulation complète',    descKey: 'rectypes.typeSimulationCompleteDesc' },
+  { id: 'fractions',   label: 'Fractionné',  labelKey: 'rectypes.typeFractionneLabel',  desc: 'Stations isolées',       descKey: 'rectypes.typeStationsIsoleesDesc' },
+  { id: 'endurance',   label: 'Endurance',   labelKey: 'rectypes.typeEnduranceLabel',   desc: 'Volume et cardio',       descKey: 'rectypes.typeVolumeCardioDesc' },
+  { id: 'force',       label: 'Force',       labelKey: 'rectypes.typeForceLabel',       desc: 'Focus stations de force', descKey: 'rectypes.typeFocusStationsForceDesc' },
 ]
 
 export const DEFAULT_GYM_EXERCISES: WorkoutExercise[] = [

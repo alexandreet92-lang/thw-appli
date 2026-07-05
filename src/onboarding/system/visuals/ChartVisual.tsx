@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef } from 'react'
+import { useI18n } from '@/lib/i18n'
 
 interface Props { config: Record<string, unknown> }
 
@@ -31,10 +32,12 @@ function AnimatedPath({ d, color, delay = 0, strokeWidth = 2 }: { d: string; col
 }
 
 export function ChartVisual({ config }: Props) {
+  const { t } = useI18n()
   const type = config.type as string
   const data = config.data as number[] | undefined
   const color = (config.color as string) ?? '#06B6D4'
-  const label = config.label as string | undefined
+  const labelKey = config.labelKey as string | undefined
+  const label = labelKey ? t(labelKey) : (config.label as string | undefined)
 
   if (type === 'bar_chart') {
     const bars = data ?? []

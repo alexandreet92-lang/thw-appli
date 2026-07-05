@@ -24,21 +24,21 @@ export interface YogaPlannedSession {
   exercises: YogaSessionExercise[]
 }
 
-export const YOGA_CATEGORIES: { id: YogaCategory; label: string }[] = [
-  { id: 'flexibility', label: 'Flexibilité' },
-  { id: 'mobility',    label: 'Mobilité' },
-  { id: 'strength',    label: 'Force' },
-  { id: 'breathing',   label: 'Respiration' },
-  { id: 'balance',     label: 'Équilibre' },
+export const YOGA_CATEGORIES: { id: YogaCategory; label: string; labelKey: string }[] = [
+  { id: 'flexibility', label: 'Flexibilité', labelKey: 'rectypes.yogaCatFlexibility' },
+  { id: 'mobility',    label: 'Mobilité',    labelKey: 'rectypes.yogaCatMobility' },
+  { id: 'strength',    label: 'Force',       labelKey: 'rectypes.yogaCatStrength' },
+  { id: 'breathing',   label: 'Respiration', labelKey: 'rectypes.yogaCatBreathing' },
+  { id: 'balance',     label: 'Équilibre',   labelKey: 'rectypes.yogaCatBalance' },
 ]
 
 export const YOGA_TYPES = [
-  { id: 'yoga',       label: 'Yoga',        desc: 'Postures et flux' },
-  { id: 'mobility',   label: 'Mobilité',    desc: 'Mobilité articulaire' },
-  { id: 'stretch',    label: 'Étirements',  desc: 'Récupération musculaire' },
-  { id: 'breathing',  label: 'Respiration', desc: 'Exercices respiratoires' },
-  { id: 'balance',    label: 'Équilibre',   desc: 'Proprioception' },
-  { id: 'meditation', label: 'Méditation',  desc: 'Pleine conscience' },
+  { id: 'yoga',       label: 'Yoga',        labelKey: 'rectypes.typeYogaLabel',       desc: 'Postures et flux',      descKey: 'rectypes.typePosturesFluxDesc' },
+  { id: 'mobility',   label: 'Mobilité',    labelKey: 'rectypes.yogaCatMobility',     desc: 'Mobilité articulaire',  descKey: 'rectypes.typeMobiliteArticulaireDesc' },
+  { id: 'stretch',    label: 'Étirements',  labelKey: 'rectypes.typeEtirementsLabel', desc: 'Récupération musculaire', descKey: 'rectypes.typeRecupMusculaireDesc' },
+  { id: 'breathing',  label: 'Respiration', labelKey: 'rectypes.yogaCatBreathing',    desc: 'Exercices respiratoires', descKey: 'rectypes.typeExercicesRespiDesc' },
+  { id: 'balance',    label: 'Équilibre',   labelKey: 'rectypes.yogaCatBalance',      desc: 'Proprioception',        descKey: 'rectypes.typeProprioceptionDesc' },
+  { id: 'meditation', label: 'Méditation',  labelKey: 'rectypes.typeMeditationLabel', desc: 'Pleine conscience',     descKey: 'rectypes.typePleineConscienceDesc' },
 ]
 
 export const DEFAULT_YOGA_EXERCISES: Omit<YogaExercise, 'id' | 'user_id'>[] = [

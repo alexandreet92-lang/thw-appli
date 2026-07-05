@@ -19,10 +19,10 @@ export function SportCard({ theme, onSelect }: { theme: SportTheme; onSelect: (i
     </div>
   )
   const title = (
-    <h3 style={{ fontFamily: FD, fontSize: 16, fontWeight: 600, color: soon ? 'var(--text-mid)' : 'var(--text)', margin: '12px 0 2px' }}>{theme.label}</h3>
+    <h3 style={{ fontFamily: FD, fontSize: 16, fontWeight: 600, color: soon ? 'var(--text-mid)' : 'var(--text)', margin: '12px 0 2px' }}>{t(theme.labelKey)}</h3>
   )
   const tagline = (
-    <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0, lineHeight: 1.4 }}>{theme.tagline}</p>
+    <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0, lineHeight: 1.4 }}>{t(theme.taglineKey)}</p>
   )
 
   if (soon) {

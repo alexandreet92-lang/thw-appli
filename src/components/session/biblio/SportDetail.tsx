@@ -55,7 +55,7 @@ function Contenu({ theme, tab }: { theme: SportTheme; tab: 'exos' | 'seances' })
     case 'trail':    return <SeancesEndurance cfg={TRAIL_CONFIG} />
     default:
       return <EnPreparation titre={t('session.seancesPrepTitre')}
-        texte={t('session.seancesPrepTexte', { sport: theme.label.toLowerCase() })} />
+        texte={t('session.seancesPrepTexte', { sport: t(theme.labelKey).toLowerCase() })} />
   }
 }
 
@@ -74,7 +74,7 @@ export function SportDetail({ theme, onBack }: { theme: SportTheme; onBack: () =
       </button>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
         <span style={{ width: 10, height: 10, borderRadius: '50%', background: theme.accent, flexShrink: 0 }} />
-        <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{theme.label}</h2>
+        <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{t(theme.labelKey)}</h2>
       </div>
 
       {hasExos && <SousOnglets theme={theme} value={tab} onChange={changeTab} />}

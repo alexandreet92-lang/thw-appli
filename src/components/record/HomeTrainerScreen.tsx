@@ -122,7 +122,7 @@ export default function HomeTrainerScreen({ onExit, onFinished }: Props) {
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
             <button onClick={() => setProgram(null)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: !program ? '#06B6D4' : btnBg, color: !program ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('record.homeTrainerFree')}</button>
             {HT_PROGRAMS.map(p => (
-              <button key={p.name} onClick={() => setProgram(p)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: program?.name === p.name ? '#06B6D4' : btnBg, color: program?.name === p.name ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{p.name}</button>
+              <button key={p.name} onClick={() => setProgram(p)} style={{ padding: '8px 16px', borderRadius: 20, border: 'none', background: program?.name === p.name ? '#06B6D4' : btnBg, color: program?.name === p.name ? '#FFF' : text, fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>{p.nameKey ? t(p.nameKey) : p.name}</button>
             ))}
           </div>
         </div>

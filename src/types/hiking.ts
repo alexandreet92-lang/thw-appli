@@ -2,8 +2,8 @@ import type { DataPage, DataField } from './cycling'
 import { ALL_FIELDS } from './cycling'
 
 export const HIKING_SPECIFIC_FIELDS: DataField[] = [
-  { id: 'avg_walk_pace', label: 'Allure marche', unit: 'min/km', category: 'vitesse', type: 'numeric' },
-  { id: 'steps',         label: 'Pas',                           category: 'temps',   type: 'numeric' },
+  { id: 'avg_walk_pace', label: 'Allure marche', labelKey: 'rectypes.fieldWalkPace', unit: 'min/km', category: 'vitesse', type: 'numeric' },
+  { id: 'steps',         label: 'Pas',           labelKey: 'rectypes.fieldSteps',                   category: 'temps',   type: 'numeric' },
 ]
 
 export const ALL_HIKING_FIELDS: DataField[] = [...ALL_FIELDS, ...HIKING_SPECIFIC_FIELDS]
@@ -27,9 +27,9 @@ export const DEFAULT_HIKING_PAGES: DataPage[] = [
 ]
 
 export const HIKING_TYPES = [
-  { id: 'balade',  label: 'Balade',       desc: 'Sortie tranquille' },
-  { id: 'rando',   label: 'Randonnée',    desc: 'Journée en montagne' },
-  { id: 'trek',    label: 'Trek',         desc: 'Plusieurs jours' },
-  { id: 'nordic',  label: 'Marche nord.', desc: 'Avec bâtons nordiques' },
-  { id: 'recup',   label: 'Récup',        desc: 'Récupération active' },
+  { id: 'balade',  label: 'Balade',       labelKey: 'rectypes.typeBaladeLabel',     desc: 'Sortie tranquille',    descKey: 'rectypes.typeSortieTranquilleDesc' },
+  { id: 'rando',   label: 'Randonnée',    labelKey: 'rectypes.typeRandoLabel',      desc: 'Journée en montagne',  descKey: 'rectypes.typeJourneeMontagneDesc' },
+  { id: 'trek',    label: 'Trek',         labelKey: 'rectypes.typeTrekLabel',       desc: 'Plusieurs jours',      descKey: 'rectypes.typePlusieursJoursDesc' },
+  { id: 'nordic',  label: 'Marche nord.', labelKey: 'rectypes.typeMarcheNordLabel', desc: 'Avec bâtons nordiques', descKey: 'rectypes.typeBatonsNordiquesDesc' },
+  { id: 'recup',   label: 'Récup',        labelKey: 'rectypes.typeRecupLabel',      desc: 'Récupération active',  descKey: 'rectypes.typeRecupActiveDesc' },
 ]

@@ -8503,7 +8503,7 @@ function TrainingPlanFlow({
 
         {/* ── DATE DE DÉBUT ─────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'var(--ai-mid)' }}>Début du programme :</span>
+          <span style={{ fontSize: 12, color: 'var(--ai-mid)' }}>{t('aip.q.progStart')}</span>
           <input
             type="date"
             value={startDate}
@@ -9093,7 +9093,7 @@ function TrainingPlanFlow({
 
           {/* Sport principal */}
           <div>
-            <span style={tpLabelStyle()}>Sport principal</span>
+            <span style={tpLabelStyle()}>{t('aip.q.mainSport')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {['Running', 'Trail', 'Cyclisme', 'Natation', 'Aviron', 'Hyrox', 'Triathlon', 'Hybride'].map(s => (
                 <button key={s} onClick={() => setField('sport_principal', s)} style={tpPillStyle(form.sport_principal === s)}>{s}</button>
@@ -9133,7 +9133,7 @@ function TrainingPlanFlow({
               <button
                 onClick={() => setField('goal_races', [...form.goal_races, { nom: '', date: '', sport: 'Running', level: 'important', goal_libre: '' }])}
                 style={{ fontSize: 11, color: '#8b5cf6', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 700 }}
-              >+ Course</button>
+              >{t('aip.q.addRace')}</button>
             </div>
 
             {/* Chargement */}
@@ -9212,7 +9212,7 @@ function TrainingPlanFlow({
                         <button key={d} onClick={() => updateGoalRace(idx, { run_distance: d })} style={tpPillStyle(race.run_distance === d)}>{d}</button>
                       ))}
                     </div>
-                    <input type="text" placeholder="Dénivelé positif (ex: 3 500 m)" value={race.trail_elevation ?? ''}
+                    <input type="text" placeholder={t('aip.q.elevPosPh')} value={race.trail_elevation ?? ''}
                       onChange={e => updateGoalRace(idx, { trail_elevation: e.target.value })}
                       style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11, width: '100%' }} />
                   </div>
@@ -9285,7 +9285,7 @@ function TrainingPlanFlow({
                       <input type="text" placeholder="Distance (ex: 170 km)" value={race.velo_distance ?? ''}
                         onChange={e => updateGoalRace(idx, { velo_distance: e.target.value })}
                         style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
-                      <input type="text" placeholder="Dénivelé (ex: 4 200 m)" value={race.velo_elevation ?? ''}
+                      <input type="text" placeholder={t('aip.q.elevPh')} value={race.velo_elevation ?? ''}
                         onChange={e => updateGoalRace(idx, { velo_elevation: e.target.value })}
                         style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
                       <input type="text" placeholder="Altitude max (ex: 2 642 m)" value={race.velo_altitude_max ?? ''}
@@ -9334,13 +9334,13 @@ function TrainingPlanFlow({
 
                 {/* ─ Temps cible (Running, Trail, Aviron, Natation) ─ */}
                 {(race.sport === 'Running' || race.sport === 'Trail' || race.sport === 'Aviron' || race.sport === 'Natation' || race.sport === 'Cyclisme') && (
-                  <input type="text" placeholder="Temps cible (ex: 3:30:00)" value={race.goal_time ?? ''}
+                  <input type="text" placeholder={t('aip.q.timeTargetPh')} value={race.goal_time ?? ''}
                     onChange={e => updateGoalRace(idx, { goal_time: e.target.value })}
                     style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11, marginBottom: 6, width: '100%' }} />
                 )}
 
                 {/* ─ Objectif libre ─ */}
-                <input type="text" placeholder="Objectif personnel (finir, podium, chrono, sensations…)" value={race.goal_libre}
+                <input type="text" placeholder={t('aip.q.personalGoalPh')} value={race.goal_libre}
                   onChange={e => updateGoalRace(idx, { goal_libre: e.target.value })}
                   style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11, width: '100%' }} />
               </div>
@@ -9349,7 +9349,7 @@ function TrainingPlanFlow({
 
           {/* Niveau visé */}
           <div>
-            <span style={tpLabelStyle()}>Niveau visé</span>
+            <span style={tpLabelStyle()}>{t('aip.q.targetLevel')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
               {([['finisher', 'Finisher'], ['chrono', 'Chrono cible'], ['perf', 'Performance maximale']] as const).map(([val, label]) => (
                 <button key={val} onClick={() => setField('niveau_vise', val)} style={tpPillStyle(form.niveau_vise === val)}>{label}</button>
@@ -9368,9 +9368,9 @@ function TrainingPlanFlow({
 
           {/* Précision */}
           <div>
-            <span style={tpLabelStyle()}>Précisions supplémentaires <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <span style={tpLabelStyle()}>{t('aip.q.moreDetails')}<span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>{t('aip.q.optional')}</span></span>
             <textarea value={form.precision_objectif} onChange={e => setField('precision_objectif', e.target.value)}
-              placeholder="Contexte supplémentaire sur vos objectifs..." rows={2}
+              placeholder={t('aip.q.goalsContextPh')} rows={2}
               style={{ ...tpInputStyle(), resize: 'vertical' }} />
           </div>
         </div>
@@ -9384,7 +9384,7 @@ function TrainingPlanFlow({
           </p>
 
           <div>
-            <span style={tpLabelStyle()}>Expérience sportive</span>
+            <span style={tpLabelStyle()}>{t('aip.q.sportExp')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {(['< 1 an', '1-3 ans', '3-5 ans', '> 5 ans'] as const).map(e => (
                 <button key={e} onClick={() => setField('experience', e)} style={tpPillStyle(form.experience === e)}>{e}</button>
@@ -9458,13 +9458,13 @@ function TrainingPlanFlow({
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Programme précédent suivi</span>
+            <span style={tpLabelStyle()}>{t('aip.q.prevProgram')}</span>
             <div style={{ display: 'flex', gap: 6, marginBottom: form.programme_precedent ? 8 : 0 }}>
-              <button onClick={() => setField('programme_precedent', true)} style={tpPillStyle(form.programme_precedent)}>Oui</button>
-              <button onClick={() => setField('programme_precedent', false)} style={tpPillStyle(!form.programme_precedent)}>Non</button>
+              <button onClick={() => setField('programme_precedent', true)} style={tpPillStyle(form.programme_precedent)}>{t('aip.q.yes')}</button>
+              <button onClick={() => setField('programme_precedent', false)} style={tpPillStyle(!form.programme_precedent)}>{t('aip.q.no')}</button>
             </div>
             {form.programme_precedent && (
-              <input type="text" placeholder="Quel programme ? Durée ? Résultats ?" value={form.programme_precedent_detail}
+              <input type="text" placeholder={t('aip.q.prevProgramPh')} value={form.programme_precedent_detail}
                 onChange={e => setField('programme_precedent_detail', e.target.value)} style={tpInputStyle()} />
             )}
           </div>
@@ -9479,7 +9479,7 @@ function TrainingPlanFlow({
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <span style={tpLabelStyle()}>{t('aip.q.details')}<span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>{t('aip.q.optional')}</span></span>
             <textarea value={form.precision_profil} onChange={e => setField('precision_profil', e.target.value)}
               rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
           </div>
@@ -9592,8 +9592,8 @@ function TrainingPlanFlow({
             <div>
               <span style={tpLabelStyle()}>Inclure la musculation</span>
               <div style={{ display: 'flex', gap: 6, marginBottom: form.include_muscu ? 8 : 0 }}>
-                <button onClick={() => setField('include_muscu', true)}  style={tpPillStyle(form.include_muscu)}>Oui</button>
-                <button onClick={() => setField('include_muscu', false)} style={tpPillStyle(!form.include_muscu)}>Non</button>
+                <button onClick={() => setField('include_muscu', true)}  style={tpPillStyle(form.include_muscu)}>{t('aip.q.yes')}</button>
+                <button onClick={() => setField('include_muscu', false)} style={tpPillStyle(!form.include_muscu)}>{t('aip.q.no')}</button>
               </div>
               {form.include_muscu && (
                 <div>
@@ -9639,7 +9639,7 @@ function TrainingPlanFlow({
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <span style={tpLabelStyle()}>{t('aip.q.details')}<span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>{t('aip.q.optional')}</span></span>
             <textarea value={form.precision_dispo} onChange={e => setField('precision_dispo', e.target.value)}
               rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
           </div>
@@ -9655,7 +9655,7 @@ function TrainingPlanFlow({
           </p>
 
           <div>
-            <span style={tpLabelStyle()}>Équipements disponibles</span>
+            <span style={tpLabelStyle()}>{t('aip.q.equipment')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {['Piscine', 'Home trainer', 'Tapis de course', 'Salle de musculation', 'Capteur de puissance vélo', 'Capteur de fréquence cardiaque', 'Montre GPS', 'Ergomètre aviron', 'Piste d\'athlétisme', 'Matériel Hyrox'].map(eq => (
                 <button key={eq} onClick={() => setField('equipements', toggleArr(form.equipements, eq))} style={tpPillStyle(form.equipements.includes(eq))}>{eq}</button>
@@ -9664,7 +9664,7 @@ function TrainingPlanFlow({
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <span style={tpLabelStyle()}>{t('aip.q.details')}<span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>{t('aip.q.optional')}</span></span>
             <textarea value={form.precision_equipement} onChange={e => setField('precision_equipement', e.target.value)}
               rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
           </div>
@@ -9686,10 +9686,10 @@ function TrainingPlanFlow({
 
           {/* Blessures passées */}
           <div>
-            <span style={tpLabelStyle()}>Blessures passées importantes</span>
+            <span style={tpLabelStyle()}>{t('aip.q.pastInjuries')}</span>
             <div style={{ display: 'flex', gap: 6, marginBottom: form.blessures_passees ? 10 : 0 }}>
-              <button onClick={() => setField('blessures_passees', true)}  style={tpPillStyle(form.blessures_passees)}>Oui</button>
-              <button onClick={() => setField('blessures_passees', false)} style={tpPillStyle(!form.blessures_passees)}>Non</button>
+              <button onClick={() => setField('blessures_passees', true)}  style={tpPillStyle(form.blessures_passees)}>{t('aip.q.yes')}</button>
+              <button onClick={() => setField('blessures_passees', false)} style={tpPillStyle(!form.blessures_passees)}>{t('aip.q.no')}</button>
             </div>
             {form.blessures_passees && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -9699,7 +9699,7 @@ function TrainingPlanFlow({
                       style={tpPillStyle(form.blessures_zones.includes(z))}>{z}</button>
                   ))}
                 </div>
-                <input type="text" placeholder="Mois/année (ex: 03/2023)" value={form.blessures_date}
+                <input type="text" placeholder={t('aip.q.monthYearPh')} value={form.blessures_date}
                   onChange={e => setField('blessures_date', e.target.value)}
                   style={{ ...tpInputStyle(), padding: '6px 10px' }} />
                 <textarea placeholder="Description de la blessure..." value={form.blessures_detail}
@@ -9711,10 +9711,10 @@ function TrainingPlanFlow({
 
           {/* Gêne ou douleur récente */}
           <div>
-            <span style={tpLabelStyle()}>Gêne ou douleur récente</span>
+            <span style={tpLabelStyle()}>{t('aip.q.recentPain')}</span>
             <div style={{ display: 'flex', gap: 6, marginBottom: form.gene_recente ? 10 : 0 }}>
-              <button onClick={() => setField('gene_recente', true)}  style={tpPillStyle(form.gene_recente)}>Oui</button>
-              <button onClick={() => setField('gene_recente', false)} style={tpPillStyle(!form.gene_recente)}>Non</button>
+              <button onClick={() => setField('gene_recente', true)}  style={tpPillStyle(form.gene_recente)}>{t('aip.q.yes')}</button>
+              <button onClick={() => setField('gene_recente', false)} style={tpPillStyle(!form.gene_recente)}>{t('aip.q.no')}</button>
             </div>
             {form.gene_recente && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -9724,7 +9724,7 @@ function TrainingPlanFlow({
                       style={tpPillStyle(form.gene_zones.includes(z))}>{z}</button>
                   ))}
                 </div>
-                <textarea placeholder="Décrivez la gêne actuelle..." value={form.gene_detail}
+                <textarea placeholder={t('aip.q.describePainPh')} value={form.gene_detail}
                   onChange={e => setField('gene_detail', e.target.value)}
                   rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
               </div>
@@ -9735,8 +9735,8 @@ function TrainingPlanFlow({
           <div>
             <span style={tpLabelStyle()}>Contraintes permanentes</span>
             <div style={{ display: 'flex', gap: 6, marginBottom: form.contraintes_permanentes ? 10 : 0 }}>
-              <button onClick={() => setField('contraintes_permanentes', true)}  style={tpPillStyle(form.contraintes_permanentes)}>Oui</button>
-              <button onClick={() => setField('contraintes_permanentes', false)} style={tpPillStyle(!form.contraintes_permanentes)}>Non</button>
+              <button onClick={() => setField('contraintes_permanentes', true)}  style={tpPillStyle(form.contraintes_permanentes)}>{t('aip.q.yes')}</button>
+              <button onClick={() => setField('contraintes_permanentes', false)} style={tpPillStyle(!form.contraintes_permanentes)}>{t('aip.q.no')}</button>
             </div>
             {form.contraintes_permanentes && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -9755,19 +9755,19 @@ function TrainingPlanFlow({
 
           {/* Antécédents médicaux — inchangé */}
           <div>
-            <span style={tpLabelStyle()}>Antécédents médicaux</span>
+            <span style={tpLabelStyle()}>{t('aip.q.medicalHistory')}</span>
             <div style={{ display: 'flex', gap: 6, marginBottom: form.antecedents ? 8 : 0 }}>
-              <button onClick={() => setField('antecedents', true)}  style={tpPillStyle(form.antecedents)}>Oui</button>
-              <button onClick={() => setField('antecedents', false)} style={tpPillStyle(!form.antecedents)}>Non</button>
+              <button onClick={() => setField('antecedents', true)}  style={tpPillStyle(form.antecedents)}>{t('aip.q.yes')}</button>
+              <button onClick={() => setField('antecedents', false)} style={tpPillStyle(!form.antecedents)}>{t('aip.q.no')}</button>
             </div>
             {form.antecedents && (
               <textarea value={form.antecedents_detail} onChange={e => setField('antecedents_detail', e.target.value)}
-                placeholder="Antécédents cardiaques, pathologies..." rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+                placeholder={t('aip.q.medicalHistoryPh')} rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
             )}
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <span style={tpLabelStyle()}>{t('aip.q.details')}<span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>{t('aip.q.optional')}</span></span>
             <textarea value={form.precision_sante} onChange={e => setField('precision_sante', e.target.value)}
               rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
           </div>
@@ -9795,8 +9795,8 @@ function TrainingPlanFlow({
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 12, color: 'var(--text)' }}>{label}</span>
             <div style={{ display: 'flex', gap: 4 }}>
-              <button onClick={() => onToggle(true)}  style={tpPillStyle(on)}>Oui</button>
-              <button onClick={() => onToggle(false)} style={tpPillStyle(!on)}>Non</button>
+              <button onClick={() => onToggle(true)}  style={tpPillStyle(on)}>{t('aip.q.yes')}</button>
+              <button onClick={() => onToggle(false)} style={tpPillStyle(!on)}>{t('aip.q.no')}</button>
             </div>
           </div>
         )
@@ -9811,8 +9811,8 @@ function TrainingPlanFlow({
           <div>
             <span style={tpLabelStyle()}>Blocs custom</span>
             <div style={{ display: 'flex', gap: 6, marginBottom: form.blocs_custom ? 10 : 0 }}>
-              <button onClick={() => setField('blocs_custom', false)} style={tpPillStyle(!form.blocs_custom)}>Laisser l&apos;IA décider</button>
-              <button onClick={() => setField('blocs_custom', true)}  style={tpPillStyle(form.blocs_custom)}>Définir mes blocs</button>
+              <button onClick={() => setField('blocs_custom', false)} style={tpPillStyle(!form.blocs_custom)}>{t('aip.q.letAiDecide')}</button>
+              <button onClick={() => setField('blocs_custom', true)}  style={tpPillStyle(form.blocs_custom)}>{t('aip.q.defineBlocks')}</button>
             </div>
             {form.blocs_custom && (
               <div>
@@ -9863,7 +9863,7 @@ function TrainingPlanFlow({
 
           {/* ── Entraînements spéciaux ─────────────────────────── */}
           <div>
-            <span style={tpLabelStyle()}>Entraînements spéciaux</span>
+            <span style={tpLabelStyle()}>{t('aip.q.specialTraining')}</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px' }}>
 
               {/* Heat training */}
@@ -9871,8 +9871,8 @@ function TrainingPlanFlow({
                 <SpToggle label="Heat training" on={form.heat_training} onToggle={v => setField('heat_training', v)} />
                 {form.heat_training && (
                   <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-                    <button onClick={() => setField('heat_training_freq', '1')} style={tpPillStyle(form.heat_training_freq === '1')}>1 fois/semaine</button>
-                    <button onClick={() => setField('heat_training_freq', '2')} style={tpPillStyle(form.heat_training_freq === '2')}>2 fois/semaine</button>
+                    <button onClick={() => setField('heat_training_freq', '1')} style={tpPillStyle(form.heat_training_freq === '1')}>{t('aip.q.oncePerWeek')}</button>
+                    <button onClick={() => setField('heat_training_freq', '2')} style={tpPillStyle(form.heat_training_freq === '2')}>{t('aip.q.twicePerWeek')}</button>
                   </div>
                 )}
               </div>
@@ -9900,8 +9900,8 @@ function TrainingPlanFlow({
                 <SpToggle label="Jeûne entraîné" on={form.jeune_entraine} onToggle={v => setField('jeune_entraine', v)} />
                 {form.jeune_entraine && (
                   <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-                    <button onClick={() => setField('jeune_entraine_freq', '1')} style={tpPillStyle(form.jeune_entraine_freq === '1')}>1 fois/semaine</button>
-                    <button onClick={() => setField('jeune_entraine_freq', '2')} style={tpPillStyle(form.jeune_entraine_freq === '2')}>2 fois/semaine</button>
+                    <button onClick={() => setField('jeune_entraine_freq', '1')} style={tpPillStyle(form.jeune_entraine_freq === '1')}>{t('aip.q.oncePerWeek')}</button>
+                    <button onClick={() => setField('jeune_entraine_freq', '2')} style={tpPillStyle(form.jeune_entraine_freq === '2')}>{t('aip.q.twicePerWeek')}</button>
                   </div>
                 )}
               </div>
@@ -9927,7 +9927,7 @@ function TrainingPlanFlow({
                 <div>
                   <SpToggle label="Brick training" on={form.brick_training} onToggle={v => setField('brick_training', v)} />
                   {form.brick_training && (
-                    <input type="text" placeholder="Fréquence (ex : 1 fois/semaine)" value={form.brick_training_freq}
+                    <input type="text" placeholder={t('aip.q.freqPh')} value={form.brick_training_freq}
                       onChange={e => setField('brick_training_freq', e.target.value)}
                       style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11, marginTop: 6 }} />
                   )}
@@ -9943,27 +9943,27 @@ function TrainingPlanFlow({
 
           {/* ── Reste du bloc 5 ────────────────────────────────── */}
           <div>
-            <span style={tpLabelStyle()}>Entrée dans le programme</span>
+            <span style={tpLabelStyle()}>{t('aip.q.programEntry')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              <button onClick={() => setField('entree_programme', 'prudent')} style={tpPillStyle(form.entree_programme === 'prudent')}>Progressif — montée en charge douce</button>
-              <button onClick={() => setField('entree_programme', 'intense')} style={tpPillStyle(form.entree_programme === 'intense')}>Direct — je suis prêt à charger</button>
+              <button onClick={() => setField('entree_programme', 'prudent')} style={tpPillStyle(form.entree_programme === 'prudent')}>{t('aip.q.entryProg')}</button>
+              <button onClick={() => setField('entree_programme', 'intense')} style={tpPillStyle(form.entree_programme === 'intense')}>{t('aip.q.entryDirect')}</button>
             </div>
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Réaction au volume</span>
+            <span style={tpLabelStyle()}>{t('aip.q.volumeReaction')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              <button onClick={() => setField('reaction_volume', 'tres_bien')} style={tpPillStyle(form.reaction_volume === 'tres_bien')}>Très bien — je récupère vite</button>
-              <button onClick={() => setField('reaction_volume', 'bien')}      style={tpPillStyle(form.reaction_volume === 'bien')}>Bien — récupération normale</button>
+              <button onClick={() => setField('reaction_volume', 'tres_bien')} style={tpPillStyle(form.reaction_volume === 'tres_bien')}>{t('aip.q.volVeryGood')}</button>
+              <button onClick={() => setField('reaction_volume', 'bien')}      style={tpPillStyle(form.reaction_volume === 'bien')}>{t('aip.q.volGood')}</button>
               <button onClick={() => setField('reaction_volume', 'mal')}       style={tpPillStyle(form.reaction_volume === 'mal')}>Mal — je sature vite</button>
             </div>
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Réaction à l&apos;intensité</span>
+            <span style={tpLabelStyle()}>{t('aip.q.intensityReaction')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               <button onClick={() => setField('reaction_intensite', 'rapide')}     style={tpPillStyle(form.reaction_intensite === 'rapide')}>Progressions rapides</button>
-              <button onClick={() => setField('reaction_intensite', '48h')}        style={tpPillStyle(form.reaction_intensite === '48h')}>48h pour récupérer</button>
+              <button onClick={() => setField('reaction_intensite', '48h')}        style={tpPillStyle(form.reaction_intensite === '48h')}>{t('aip.q.recover48h')}</button>
               <button onClick={() => setField('reaction_intensite', 'saturation')} style={tpPillStyle(form.reaction_intensite === 'saturation')}>Saturation rapide</button>
             </div>
           </div>
@@ -10000,7 +10000,7 @@ function TrainingPlanFlow({
                         ))}
                       </div>
                     </div>
-                    <input type="text" placeholder="Précisions (optionnel)…" value={form.points_forts_detail}
+                    <input type="text" placeholder={t('aip.q.detailsOptPh')} value={form.points_forts_detail}
                       onChange={e => setField('points_forts_detail', e.target.value)}
                       style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
                   </div>
@@ -10008,7 +10008,7 @@ function TrainingPlanFlow({
 
                 {/* 2 — Difficultés habituelles */}
                 <div>
-                  <span style={tpLabelStyle()}>Difficultés habituelles</span>
+                  <span style={tpLabelStyle()}>{t('aip.q.usualDifficulties')}</span>
                   <div style={{ background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                       {DIFFICUL.map(d => (
@@ -10016,7 +10016,7 @@ function TrainingPlanFlow({
                           style={tpPillStyle(form.difficultes.includes(d))}>{d}</button>
                       ))}
                     </div>
-                    <input type="text" placeholder="Précisions (optionnel)…" value={form.difficultes_detail}
+                    <input type="text" placeholder={t('aip.q.detailsOptPh')} value={form.difficultes_detail}
                       onChange={e => setField('difficultes_detail', e.target.value)}
                       style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
                   </div>
@@ -10044,7 +10044,7 @@ function TrainingPlanFlow({
                         ))}
                       </div>
                     </div>
-                    <input type="text" placeholder="Précisions (optionnel)…" value={form.efforts_detail}
+                    <input type="text" placeholder={t('aip.q.detailsOptPh')} value={form.efforts_detail}
                       onChange={e => setField('efforts_detail', e.target.value)}
                       style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 11 }} />
                   </div>
@@ -10052,7 +10052,7 @@ function TrainingPlanFlow({
 
                 {/* 4 — Niveau de connaissance */}
                 <div>
-                  <span style={tpLabelStyle()}>Niveau de connaissance en entraînement</span>
+                  <span style={tpLabelStyle()}>{t('aip.q.trainingKnowledge')}</span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {([
                       ['debutant',  'Aucune ou peu (débutant)'],
@@ -10071,10 +10071,10 @@ function TrainingPlanFlow({
 
           {/* ── Type de journée ────────────────────────────────── */}
           <div>
-            <span style={tpLabelStyle()}>Définir le type de journée</span>
+            <span style={tpLabelStyle()}>{t('aip.q.defineDayType')}</span>
             <div style={{ display: 'flex', gap: 6, marginBottom: form.journees_type_actif ? 10 : 0 }}>
-              <button onClick={() => setField('journees_type_actif', true)}  style={tpPillStyle(form.journees_type_actif)}>Oui</button>
-              <button onClick={() => setField('journees_type_actif', false)} style={tpPillStyle(!form.journees_type_actif)}>Non</button>
+              <button onClick={() => setField('journees_type_actif', true)}  style={tpPillStyle(form.journees_type_actif)}>{t('aip.q.yes')}</button>
+              <button onClick={() => setField('journees_type_actif', false)} style={tpPillStyle(!form.journees_type_actif)}>{t('aip.q.no')}</button>
             </div>
             {form.journees_type_actif && (() => {
               const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
@@ -10120,7 +10120,7 @@ function TrainingPlanFlow({
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <span style={tpLabelStyle()}>{t('aip.q.details')}<span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>{t('aip.q.optional')}</span></span>
             <textarea value={form.precision_methode} onChange={e => setField('precision_methode', e.target.value)}
               rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
           </div>
@@ -10154,7 +10154,7 @@ function TrainingPlanFlow({
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Périodes de stress dans l&apos;année</span>
+            <span style={tpLabelStyle()}>{t('aip.q.stressPeriods')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: form.stress_annee !== 'aucun' && form.stress_annee !== '' ? 8 : 0 }}>
               {([['aucun', 'Aucune'], ['quelques_semaines', 'Quelques semaines'], ['recurrent', 'Récurrent']] as const).map(([val, label]) => (
                 <button key={val} onClick={() => setField('stress_annee', val)} style={tpPillStyle(form.stress_annee === val)}>{label}</button>
@@ -10162,12 +10162,12 @@ function TrainingPlanFlow({
             </div>
             {form.stress_annee !== 'aucun' && form.stress_annee !== '' && (
               <textarea value={form.stress_detail} onChange={e => setField('stress_detail', e.target.value)}
-                placeholder="Quand ? Durée estimée ?" rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
+                placeholder={t('aip.q.whenDurationPh')} rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
             )}
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Outils de récupération utilisés</span>
+            <span style={tpLabelStyle()}>{t('aip.q.recoveryTools')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {['Massage', 'Bain froid', 'Compression', 'Sommeil optimisé', 'Aucun', 'Autres'].map(t => (
                 <button key={t} onClick={() => setField('outils_recuperation', toggleArr(form.outils_recuperation, t))} style={tpPillStyle(form.outils_recuperation.includes(t))}>{t}</button>
@@ -10177,21 +10177,21 @@ function TrainingPlanFlow({
 
           {/* ── Habitudes d'entraînement ─────────────────────── */}
           <div>
-            <span style={tpLabelStyle()}>Habitudes d&apos;entraînement</span>
+            <span style={tpLabelStyle()}>{t('aip.q.trainingHabits')}</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px' }}>
 
               {/* Easy lundi */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 12, color: 'var(--text)' }}>Easy lundi</span>
                 <div style={{ display: 'flex', gap: 4 }}>
-                  <button onClick={() => setField('easy_lundi', true)}  style={tpPillStyle(form.easy_lundi)}>Oui</button>
-                  <button onClick={() => setField('easy_lundi', false)} style={tpPillStyle(!form.easy_lundi)}>Non</button>
+                  <button onClick={() => setField('easy_lundi', true)}  style={tpPillStyle(form.easy_lundi)}>{t('aip.q.yes')}</button>
+                  <button onClick={() => setField('easy_lundi', false)} style={tpPillStyle(!form.easy_lundi)}>{t('aip.q.no')}</button>
                 </div>
               </div>
 
               {/* Double entraînement */}
               <div>
-                <span style={{ fontSize: 12, color: 'var(--text)', display: 'block', marginBottom: 6 }}>Double entraînement — jours</span>
+                <span style={{ fontSize: 12, color: 'var(--text)', display: 'block', marginBottom: 6 }}>{t('aip.q.doubleTraining')}</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(j => (
                     <button key={j} onClick={() => setField('habitude_double_jours', toggleArr(form.habitude_double_jours, j))}
@@ -10202,7 +10202,7 @@ function TrainingPlanFlow({
 
               {/* Repos fixe */}
               <div>
-                <span style={{ fontSize: 12, color: 'var(--text)', display: 'block', marginBottom: 6 }}>Repos fixe — jours</span>
+                <span style={{ fontSize: 12, color: 'var(--text)', display: 'block', marginBottom: 6 }}>{t('aip.q.fixedRestDays')}</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(j => (
                     <button key={j} onClick={() => setField('repos_fixe_jours', toggleArr(form.repos_fixe_jours, j))}
@@ -10213,7 +10213,7 @@ function TrainingPlanFlow({
 
               {/* Séance longue */}
               <div>
-                <span style={{ fontSize: 12, color: 'var(--text)', display: 'block', marginBottom: 6 }}>Séance longue — jour préféré</span>
+                <span style={{ fontSize: 12, color: 'var(--text)', display: 'block', marginBottom: 6 }}>{t('aip.q.longSession')}</span>
                 <div style={{ display: 'flex', gap: 4 }}>
                   {(['Samedi', 'Dimanche', 'Flexible'] as const).map(j => (
                     <button key={j} onClick={() => setField('seance_longue_jour', j)} style={tpPillStyle(form.seance_longue_jour === j)}>{j}</button>
@@ -10223,7 +10223,7 @@ function TrainingPlanFlow({
 
               {/* Séance clé */}
               <div>
-                <span style={{ fontSize: 12, color: 'var(--text)', display: 'block', marginBottom: 6 }}>Séance clé (intensité) — jour préféré</span>
+                <span style={{ fontSize: 12, color: 'var(--text)', display: 'block', marginBottom: 6 }}>{t('aip.q.keySession')}</span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map(j => (
                     <button key={j} onClick={() => setField('seance_cle_jour', form.seance_cle_jour === j ? '' : j)}
@@ -10235,16 +10235,16 @@ function TrainingPlanFlow({
               {/* Entraînement à jeun */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: form.entrainement_a_jeun ? 6 : 0 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text)' }}>Entraînement à jeun</span>
+                  <span style={{ fontSize: 12, color: 'var(--text)' }}>{t('aip.q.fasted')}</span>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    <button onClick={() => setField('entrainement_a_jeun', true)}  style={tpPillStyle(form.entrainement_a_jeun)}>Oui</button>
-                    <button onClick={() => setField('entrainement_a_jeun', false)} style={tpPillStyle(!form.entrainement_a_jeun)}>Non</button>
+                    <button onClick={() => setField('entrainement_a_jeun', true)}  style={tpPillStyle(form.entrainement_a_jeun)}>{t('aip.q.yes')}</button>
+                    <button onClick={() => setField('entrainement_a_jeun', false)} style={tpPillStyle(!form.entrainement_a_jeun)}>{t('aip.q.no')}</button>
                   </div>
                 </div>
                 {form.entrainement_a_jeun && (
                   <div style={{ display: 'flex', gap: 4 }}>
-                    <button onClick={() => setField('entrainement_a_jeun_freq', '1')} style={tpPillStyle(form.entrainement_a_jeun_freq === '1')}>1 fois/semaine</button>
-                    <button onClick={() => setField('entrainement_a_jeun_freq', '2')} style={tpPillStyle(form.entrainement_a_jeun_freq === '2')}>2 fois/semaine</button>
+                    <button onClick={() => setField('entrainement_a_jeun_freq', '1')} style={tpPillStyle(form.entrainement_a_jeun_freq === '1')}>{t('aip.q.oncePerWeek')}</button>
+                    <button onClick={() => setField('entrainement_a_jeun_freq', '2')} style={tpPillStyle(form.entrainement_a_jeun_freq === '2')}>{t('aip.q.twicePerWeek')}</button>
                   </div>
                 )}
               </div>
@@ -10253,16 +10253,16 @@ function TrainingPlanFlow({
 
           {/* ── Suivi et récupération ─────────────────────────── */}
           <div>
-            <span style={tpLabelStyle()}>Suivi et récupération</span>
+            <span style={tpLabelStyle()}>{t('aip.q.tracking')}</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bg-card2)', borderRadius: 8, padding: '10px 12px' }}>
 
               {/* HRV */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: form.hrv_mesure ? 6 : 0 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text)' }}>HRV mesuré</span>
+                  <span style={{ fontSize: 12, color: 'var(--text)' }}>{t('aip.q.hrvMeasured')}</span>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    <button onClick={() => setField('hrv_mesure', true)}  style={tpPillStyle(form.hrv_mesure)}>Oui</button>
-                    <button onClick={() => setField('hrv_mesure', false)} style={tpPillStyle(!form.hrv_mesure)}>Non</button>
+                    <button onClick={() => setField('hrv_mesure', true)}  style={tpPillStyle(form.hrv_mesure)}>{t('aip.q.yes')}</button>
+                    <button onClick={() => setField('hrv_mesure', false)} style={tpPillStyle(!form.hrv_mesure)}>{t('aip.q.no')}</button>
                   </div>
                 </div>
                 {form.hrv_mesure && (
@@ -10279,8 +10279,8 @@ function TrainingPlanFlow({
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: form.suivi_sommeil ? 6 : 0 }}>
                   <span style={{ fontSize: 12, color: 'var(--text)' }}>Suivi du sommeil</span>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    <button onClick={() => setField('suivi_sommeil', true)}  style={tpPillStyle(form.suivi_sommeil)}>Oui</button>
-                    <button onClick={() => setField('suivi_sommeil', false)} style={tpPillStyle(!form.suivi_sommeil)}>Non</button>
+                    <button onClick={() => setField('suivi_sommeil', true)}  style={tpPillStyle(form.suivi_sommeil)}>{t('aip.q.yes')}</button>
+                    <button onClick={() => setField('suivi_sommeil', false)} style={tpPillStyle(!form.suivi_sommeil)}>{t('aip.q.no')}</button>
                   </div>
                 </div>
                 {form.suivi_sommeil && (
@@ -10294,26 +10294,26 @@ function TrainingPlanFlow({
 
               {/* Alcool */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, color: 'var(--text)' }}>Consommation d&apos;alcool régulière</span>
+                <span style={{ fontSize: 12, color: 'var(--text)' }}>{t('aip.q.alcohol')}</span>
                 <div style={{ display: 'flex', gap: 4 }}>
-                  <button onClick={() => setField('alcool_regulier', true)}  style={tpPillStyle(form.alcool_regulier)}>Oui</button>
-                  <button onClick={() => setField('alcool_regulier', false)} style={tpPillStyle(!form.alcool_regulier)}>Non</button>
+                  <button onClick={() => setField('alcool_regulier', true)}  style={tpPillStyle(form.alcool_regulier)}>{t('aip.q.yes')}</button>
+                  <button onClick={() => setField('alcool_regulier', false)} style={tpPillStyle(!form.alcool_regulier)}>{t('aip.q.no')}</button>
                 </div>
               </div>
 
               {/* Caféine */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: form.cafeine_regulier ? 6 : 0 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text)' }}>Consommateur régulier de caféine</span>
+                  <span style={{ fontSize: 12, color: 'var(--text)' }}>{t('aip.q.caffeine')}</span>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    <button onClick={() => setField('cafeine_regulier', true)}  style={tpPillStyle(form.cafeine_regulier)}>Oui</button>
-                    <button onClick={() => setField('cafeine_regulier', false)} style={tpPillStyle(!form.cafeine_regulier)}>Non</button>
+                    <button onClick={() => setField('cafeine_regulier', true)}  style={tpPillStyle(form.cafeine_regulier)}>{t('aip.q.yes')}</button>
+                    <button onClick={() => setField('cafeine_regulier', false)} style={tpPillStyle(!form.cafeine_regulier)}>{t('aip.q.no')}</button>
                   </div>
                 </div>
                 {form.cafeine_regulier && (
                   <div style={{ display: 'flex', gap: 4 }}>
                     <button onClick={() => setField('cafeine_timing', 'matin')}   style={tpPillStyle(form.cafeine_timing === 'matin')}>Matin uniquement</button>
-                    <button onClick={() => setField('cafeine_timing', 'journee')} style={tpPillStyle(form.cafeine_timing === 'journee')}>Toute la journée</button>
+                    <button onClick={() => setField('cafeine_timing', 'journee')} style={tpPillStyle(form.cafeine_timing === 'journee')}>{t('aip.q.allDay')}</button>
                   </div>
                 )}
               </div>
@@ -10321,7 +10321,7 @@ function TrainingPlanFlow({
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <span style={tpLabelStyle()}>{t('aip.q.details')}<span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>{t('aip.q.optional')}</span></span>
             <textarea value={form.precision_recup} onChange={e => setField('precision_recup', e.target.value)}
               rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
           </div>
@@ -10354,7 +10354,7 @@ function TrainingPlanFlow({
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Compléments utilisés</span>
+            <span style={tpLabelStyle()}>{t('aip.q.supplements')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {['Caféine', 'Protéines', 'Électrolytes', 'Créatine', 'Aucun', 'Autres'].map(c => (
                 <button key={c} onClick={() => setField('complements', toggleArr(form.complements, c))} style={tpPillStyle(form.complements.includes(c))}>{c}</button>
@@ -10363,7 +10363,7 @@ function TrainingPlanFlow({
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Mange-tu avant l&apos;entraînement ?</span>
+            <span style={tpLabelStyle()}>{t('aip.q.eatBefore')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {([['toujours', 'Oui toujours'], ['selon_heure', 'Selon l\'heure'], ['jeun', 'Non — à jeun']] as const).map(([val, label]) => (
                 <button key={val} onClick={() => setField('timing_nutrition', val)} style={tpPillStyle(form.timing_nutrition === val)}>{label}</button>
@@ -10372,7 +10372,7 @@ function TrainingPlanFlow({
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Tu t&apos;entraînes à te ravitailler pendant les sorties longues ?</span>
+            <span style={tpLabelStyle()}>{t('aip.q.fuelLong')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {([['oui', 'Oui régulièrement'], ['parfois', 'Parfois'], ['non', 'Non']] as const).map(([val, label]) => (
                 <button key={val} onClick={() => setField('ravitaillement', val)} style={tpPillStyle(form.ravitaillement === val)}>{label}</button>
@@ -10381,7 +10381,7 @@ function TrainingPlanFlow({
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Objectif corporel</span>
+            <span style={tpLabelStyle()}>{t('aip.q.bodyGoal')}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {([['perdre', 'Perdre du poids'], ['maintenir', 'Maintenir'], ['prendre', 'Prendre du poids'], ['non_concerne', 'Non concerné']] as const).map(([val, label]) => (
                 <button key={val} onClick={() => setField('objectif_poids', val)} style={tpPillStyle(form.objectif_poids === val)}>{label}</button>
@@ -10390,7 +10390,7 @@ function TrainingPlanFlow({
           </div>
 
           <div>
-            <span style={tpLabelStyle()}>Précisions <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>(optionnel)</span></span>
+            <span style={tpLabelStyle()}>{t('aip.q.details')}<span style={{ fontSize: 11, fontWeight: 400, color: 'var(--ai-dim)' }}>{t('aip.q.optional')}</span></span>
             <textarea value={form.precision_nutrition} onChange={e => setField('precision_nutrition', e.target.value)}
               rows={2} style={{ ...tpInputStyle(), resize: 'vertical' }} />
           </div>
@@ -10580,6 +10580,7 @@ function SBIntensityChart({ blocs, sport, onClickEffortBloc }: {
   sport: string
   onClickEffortBloc?: (bloc: SBBloc) => void
 }) {
+  const { t } = useI18n()
   const [hovIdx, setHovIdx] = useState<number | null>(null)
   const H = 64
   const GAP = 0.5
@@ -10676,10 +10677,10 @@ function SBIntensityChart({ blocs, sport, onClickEffortBloc }: {
               <span style={{ color: 'var(--ai-mid)' }}>FC max : <strong style={{ color: 'var(--ai-text)' }}>{hovBar.bloc.fc_max} bpm</strong></span>
             )}
             {!hovBar.isRecup && isRun && hovBar.bloc.allure_cible != null && (
-              <span style={{ color: 'var(--ai-mid)' }}>Allure : <strong style={{ color: 'var(--ai-text)' }}>{hovBar.bloc.allure_cible}</strong></span>
+              <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.paceColon')} <strong style={{ color: 'var(--ai-text)' }}>{hovBar.bloc.allure_cible}</strong></span>
             )}
             {!hovBar.isRecup && isCycle && hovBar.bloc.watts != null && (
-              <span style={{ color: 'var(--ai-mid)' }}>Puissance : <strong style={{ color: 'var(--ai-text)' }}>{hovBar.bloc.watts} W</strong></span>
+              <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.powerColon')} <strong style={{ color: 'var(--ai-text)' }}>{hovBar.bloc.watts} W</strong></span>
             )}
             {!hovBar.isRecup && hovBar.bloc.cadence != null && (
               <span style={{ color: 'var(--ai-mid)' }}>Cadence : <strong style={{ color: 'var(--ai-text)' }}>{hovBar.bloc.cadence}</strong></span>
@@ -10865,6 +10866,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
   onCancel: () => void
   onRecordConv?: (userMsg: string, aiMsg: string, sessionData?: SBSession) => void
 }) {
+  const { t } = useI18n()
   type Phase = 'sport' | 'type' | 'generating' | 'result' | 'modify' | 'saved'
 
   const [phase,        setPhase]        = useState<Phase>('sport')
@@ -11096,7 +11098,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
           padding: '8px 16px', borderRadius: 9, border: '1px solid var(--ai-border)',
           background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
           cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-        }}>Annuler</button>
+        }}>{t('aip.ui.cancel')}</button>
       </div>
     )
   }
@@ -11172,7 +11174,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
         <textarea
           value={freeText}
           onChange={e => setFreeText(e.target.value)}
-          placeholder="Ex : séance marathon spécifique montagne avec 3×2km en côte à allure SL2"
+          placeholder={t('aip.q.sessionExamplePh')}
           rows={2}
           style={{
             width: '100%', padding: '8px 10px', borderRadius: 9,
@@ -11190,7 +11192,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)',
             background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
             cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-          }}>Annuler</button>
+          }}>{t('aip.ui.cancel')}</button>
           <button
             onClick={() => void generate()}
             disabled={typesSeance.length === 0}
@@ -11237,7 +11239,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             padding: '8px 16px', borderRadius: 9, border: '1px solid var(--ai-border)',
             background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
             cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-          }}>Fermer</button>
+          }}>{t('aip.ui.close')}</button>
           <a href="/session" style={{
             display: 'inline-flex', alignItems: 'center',
             padding: '8px 16px', borderRadius: 9, border: 'none',
@@ -11287,7 +11289,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
             padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)',
             background: 'transparent', color: 'var(--ai-mid)', fontSize: 12,
             cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
-          }}>Annuler</button>
+          }}>{t('aip.ui.cancel')}</button>
           <button
             onClick={() => void generate(modifyText)}
             disabled={modifyText.trim().length < 10}
@@ -11661,6 +11663,7 @@ function PlusMenu({
   onWebSearch:  () => void
   isMobile?:    boolean
 }) {
+  const { t } = useI18n()
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const [activeScreen, setActiveScreen] = useState<MenuScreen>('main')
@@ -11872,7 +11875,7 @@ function PlusMenu({
               }}>
                 <div style={{ position: 'absolute', top: 2, right: 2, width: 11, height: 11, borderRadius: '50%', background: '#fff' }} />
               </div>
-              <span style={{ fontSize: 10, color: '#06B6D4', fontWeight: 500, flexShrink: 0 }}>Connecté</span>
+              <span style={{ fontSize: 10, color: '#06B6D4', fontWeight: 500, flexShrink: 0 }}>{t('aip.ui.connected')}</span>
             </>
           ) : (
             <>
@@ -11936,13 +11939,13 @@ function PlusMenu({
             <div style={{ display: 'flex', gap: 8, padding: '2px 4px 12px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <button onClick={() => { onClose(); setTimeout(onCamera, 80) }} style={photoTileStyle}>
                 <Camera size={22} color="var(--text)" />
-                <span style={photoTileLabel}>Caméra</span>
+                <span style={photoTileLabel}>{t('aip.ui.camera')}</span>
               </button>
               <button onClick={() => { onClose(); setTimeout(onPhotos, 80) }} style={photoTileStyle}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8.5" cy="8.5" r="1.6" /><path d="M21 15l-5-5L5 21" />
                 </svg>
-                <span style={photoTileLabel}>Photothèque</span>
+                <span style={photoTileLabel}>{t('aip.ui.photoLibrary')}</span>
               </button>
             </div>
           )}
@@ -11988,7 +11991,7 @@ function PlusMenu({
           >
             <Brain size={16} color="var(--text-mid)" style={{ flexShrink: 0, marginTop: 2 }} />
             <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <span>Compétences</span>
+              <span>{t('aip.ui.skills')}</span>
               <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
                 {compCount === null
                   ? 'Personnaliser le coach'
@@ -12003,10 +12006,10 @@ function PlusMenu({
           <div style={sepStyle} />
 
           {/* 8. Recherche — inactif (bientôt) */}
-          <div style={{ ...rowStyle, opacity: 0.45, cursor: 'not-allowed' }} title="Bientôt disponible">
+          <div style={{ ...rowStyle, opacity: 0.45, cursor: 'not-allowed' }} title={t('aip.ui.comingSoon')}>
             <Search size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
             <span style={{ flex: 1 }}>Recherche</span>
-            <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>Bientôt</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>{t('aip.ui.soon')}</span>
           </div>
 
           {/* 9. Recherche Web — active le mode recherche internet */}
@@ -12108,12 +12111,12 @@ function PlusMenu({
             <button onClick={goBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
               <ArrowLeft size={14} color="var(--text-mid)" />
             </button>
-            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Compétences</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{t('aip.ui.skills')}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
             <Brain size={28} color="var(--text-dim)" />
-            <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '12px 0 2px' }}>Aucune compétence ajoutée</p>
-            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Bientôt disponible</p>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '12px 0 2px' }}>{t('aip.ui.noSkills')}</p>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{t('aip.ui.comingSoon')}</p>
           </div>
         </div>
       )}
@@ -12121,7 +12124,7 @@ function PlusMenu({
   )
 
   if (isMobile) {
-    return <MobileSheet title="Ajouter à la discussion" onClose={onClose}>{body}</MobileSheet>
+    return <MobileSheet title={t('aip.ui.addToChat')} onClose={onClose}>{body}</MobileSheet>
   }
   return (
     <div ref={ref} className="aip-plus-menu" style={{
@@ -12318,7 +12321,7 @@ function HistoryDrawer({
           Training
         </button>
         <div
-          title="Bientôt disponible"
+          title={t('aip.ui.comingSoon')}
           style={{
             display: 'flex', alignItems: 'center', gap: 10,
             width: '100%', padding: '9px 9px', borderRadius: 9,
@@ -12450,7 +12453,7 @@ function HistoryDrawer({
                       >Renommer</button>
                       {confirmId === conv.id ? (
                         <div style={{ padding: '8px 12px', borderTop: '1px solid var(--ai-border)' }}>
-                          <p style={{ margin: '0 0 7px', fontSize: 11, color: 'var(--ai-mid)' }}>Supprimer cette conversation ?</p>
+                          <p style={{ margin: '0 0 7px', fontSize: 11, color: 'var(--ai-mid)' }}>{t('aip.ui.deleteConvConfirm')}</p>
                           <div style={{ display: 'flex', gap: 5 }}>
                             <button
                               onClick={() => { setConfirmId(null); setMenuId(null) }}
@@ -12469,7 +12472,7 @@ function HistoryDrawer({
                           style={{ display: 'block', width: '100%', padding: '8px 12px', border: 'none', borderTop: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer', color: '#ef4444', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
                           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}
                           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                        >Supprimer…</button>
+                        >{t('aip.ui.deleteEllipsis')}</button>
                       )}
                     </div>
                   )}
@@ -13211,6 +13214,7 @@ function AppGuideFlow({ onPrepare, onCancel }: {
   onPrepare: (apiPrompt: string, label: string) => void
   onCancel: () => void
 }) {
+  const { t } = useI18n()
   const [phase, setPhase] = useState<'loading' | 'select'>('loading')
   const [selected, setSelected] = useState<string[]>([])
   const [health, setHealth] = useState<AppHealthState | null>(null)
@@ -13408,7 +13412,7 @@ Sports : ${sports} | Objectif : ${goal}`
                 <span style={{ flex: 1, fontSize: 12.5, color: c.ok ? 'var(--ai-text)' : 'var(--ai-dim)' }}>
                   {c.label}{c.detail ? ` — ${c.detail}` : ''}
                 </span>
-                {!c.ok && <span style={{ fontSize: 11, color: 'var(--ai-dim)', flexShrink: 0 }}>à configurer</span>}
+                {!c.ok && <span style={{ fontSize: 11, color: 'var(--ai-dim)', flexShrink: 0 }}>{t('aip.ui.toConfigure')}</span>}
               </div>
             ))}
           </div>
@@ -13737,6 +13741,7 @@ function RuleHelperFlow({ category, onPrepare, onCancel }: {
   onPrepare: (prompt: string, label: string) => void
   onCancel: () => void
 }) {
+  const { t } = useI18n()
   const [description, setDescription] = useState('')
 
   const CAT_LABELS: Record<string, string> = {
@@ -13780,7 +13785,7 @@ function RuleHelperFlow({ category, onPrepare, onCancel }: {
         <button
           onClick={onCancel}
           style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
-        >Annuler</button>
+        >{t('aip.ui.cancel')}</button>
         <button
           onClick={generate}
           disabled={description.trim().length < 5}
@@ -13792,7 +13797,7 @@ function RuleHelperFlow({ category, onPrepare, onCancel }: {
             cursor: description.trim().length >= 5 ? 'pointer' : 'not-allowed',
             fontFamily: 'DM Sans,sans-serif',
           }}
-        >Formuler la règle</button>
+        >{t('aip.ui.formulateRule')}</button>
       </div>
     </div>
   )
@@ -14180,8 +14185,8 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
     if (!gateData) {
       return (
         <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 12px' }}>Erreur de chargement des données.</p>
-          <button onClick={() => setPhase('sport')} style={{ fontSize: 12, color: 'var(--ai-accent)', background: 'none', border: 'none', cursor: 'pointer' }}>Retour</button>
+          <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 12px' }}>{t('aip.ui.loadError')}</p>
+          <button onClick={() => setPhase('sport')} style={{ fontSize: 12, color: 'var(--ai-accent)', background: 'none', border: 'none', cursor: 'pointer' }}>{t('aip.ui.back')}</button>
         </div>
       )
     }
@@ -14205,15 +14210,15 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span style={{ color: 'var(--ai-mid)' }}>Activités (3 mois)</span>
+                  <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.activities3mo')}</span>
                   <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{gateData.activitiesCount}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span style={{ color: 'var(--ai-mid)' }}>Tests récents (6 mois)</span>
+                  <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.recentTests6mo')}</span>
                   <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{gateData.testsCount}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span style={{ color: 'var(--ai-mid)' }}>Zones actuelles</span>
+                  <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.currentZones')}</span>
                   <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>
                     {gateData.currentZonesDate
                       ? `configurées le ${new Date(gateData.currentZonesDate).toLocaleDateString(currentLocale())}`
@@ -14391,6 +14396,7 @@ function AnalyserProgressionFlow({ onCancel, onRecordConv }: {
   onCancel: () => void
   onRecordConv?: (userMsg: string, aiMsg: string) => void
 }) {
+  const { t } = useI18n()
   const [phase, setPhase] = useState<'config' | 'generating' | 'result'>('config')
   const [period, setPeriod] = useState<3 | 6 | 12>(3)
   const [userSports, setUserSports] = useState<string[]>([])
@@ -14581,7 +14587,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
         </p>
 
         {/* Period */}
-        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 8px', fontWeight: 600 }}>Période</p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 8px', fontWeight: 600 }}>{t('aip.ui.period')}</p>
         <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
           {PERIODS.map(p => (
             <button key={p.v} onClick={() => setPeriod(p.v)} style={{
@@ -14625,7 +14631,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
 
         {/* Gate check */}
         {checkingGate && (
-          <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px' }}>Vérification des données…</p>
+          <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px' }}>{t('aip.ui.checkingData')}</p>
         )}
         {isGateBlocked && !checkingGate && (
           <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 12 }}>
@@ -14719,7 +14725,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
           </div>
           {sa.progressions_visibles.length > 0 && (
             <div style={{ marginBottom: 6 }}>
-              <p style={{ fontSize: 10, color: 'var(--ai-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>Progrès visibles</p>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>{t('aip.ui.visibleProgress')}</p>
               {sa.progressions_visibles.map((pv, j) => (
                 <p key={j} style={{ fontSize: 11, color: '#22c55e', margin: '0 0 2px' }}>
                   {pv.metrique} : {pv.debut} → {pv.fin} ({pv.delta_pct > 0 ? '+' : ''}{pv.delta_pct}%)
@@ -14729,7 +14735,7 @@ FORMAT OBLIGATOIRE (JSON uniquement) :
           )}
           {sa.progressions_invisibles.length > 0 && (
             <div style={{ marginBottom: 6 }}>
-              <p style={{ fontSize: 10, color: 'var(--ai-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>Progrès invisibles</p>
+              <p style={{ fontSize: 10, color: 'var(--ai-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 4px' }}>{t('aip.ui.invisibleProgress')}</p>
               {sa.progressions_invisibles.map((pi, j) => (
                 <p key={j} style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px', lineHeight: 1.4 }}>
                   {pi.metrique} — {pi.detail} <span style={{ color: pi.significance === 'élevée' ? '#22c55e' : pi.significance === 'modérée' ? '#f97316' : 'var(--ai-dim)', fontWeight: 600 }}>({pi.significance})</span>
@@ -14793,6 +14799,7 @@ function SleepAdviceFlow({ onCancel, onRecordConv, onFollowUp }: {
   onRecordConv?: (userMsg: string, aiMsg: string) => void
   onFollowUp?: (displayLabel: string, fullPrompt: string) => void
 }) {
+  const { t } = useI18n()
   type Phase = 'gate' | 'loading' | 'result'
   const [phase, setPhase] = useState<Phase>('gate')
   const [error, setError] = useState<string | null>(null)
@@ -15125,7 +15132,7 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
       <div style={{ padding: '30px 0', textAlign: 'center' }}>
         <Dots />
         <p style={{ fontSize: 12, color: 'var(--ai-mid)', marginTop: 12 }}>Analyse de ton sommeil...</p>
-        <p style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 4 }}>Durée · Qualité · Corrélations entraînement · Recommandations</p>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 4 }}>{t('aip.ui.sleepMetricsSub')}</p>
       </div>
     )
   }
@@ -15144,13 +15151,13 @@ Activités 60j: ${activities60d.length} · Séances soirée avec données sommei
         {d && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5, marginBottom: 10 }}>
             <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>DURÉE MOY</p>
+              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>{t('aip.ui.avgDuration')}</p>
               <p style={{ fontSize: 14, fontWeight: 700, color: d.avgDuration == null ? 'var(--ai-dim)' : d.avgDuration >= 7.5 ? '#22c55e' : d.avgDuration >= 6.5 ? '#f97316' : '#ef4444', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>
                 {d.avgDuration != null ? `${d.avgDuration}h` : '—'}
               </p>
             </div>
             <div style={{ padding: '7px 4px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>QUALITÉ</p>
+              <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0 }}>{t('aip.ui.quality')}</p>
               <p style={{ fontSize: 14, fontWeight: 700, color: d.avgQuality == null ? 'var(--ai-dim)' : d.avgQuality >= 70 ? '#22c55e' : '#f97316', margin: '2px 0 0', fontFamily: 'DM Mono,monospace' }}>
                 {d.avgQuality ?? '—'}
               </p>
@@ -15253,6 +15260,7 @@ function RecoveryAnalysisFlow({ onCancel, onRecordConv, onFollowUp }: {
   onRecordConv?: (userMsg: string, aiMsg: string) => void
   onFollowUp?: (displayLabel: string, fullPrompt: string) => void
 }) {
+  const { t } = useI18n()
   type Phase = 'gate' | 'loading' | 'result'
   const [phase, setPhase] = useState<Phase>('gate')
   const [error, setError] = useState<string | null>(null)
@@ -15597,7 +15605,7 @@ Séances 48h: ${next48h.map((p: any) => `${p.sport} ${p.title ?? ''} ${p.duratio
         {/* Prochaine séance */}
         {gateData?.nextSession && (
           <div style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 12 }}>
-            <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Prochaine séance : </span>
+            <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>{t('aip.ui.nextSession')}</span>
             <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-text)' }}>
               {gateData.nextSession.sport} · {gateData.nextSession.title ?? ''} · {gateData.nextSession.duration_min}min · {gateData.nextSession.intensite}
             </span>
@@ -15625,8 +15633,8 @@ Séances 48h: ${next48h.map((p: any) => `${p.sport} ${p.title ?? ''} ${p.duratio
     return (
       <div style={{ padding: '30px 0', textAlign: 'center' }}>
         <Dots />
-        <p style={{ fontSize: 12, color: 'var(--ai-mid)', marginTop: 12 }}>Analyse de ta récupération...</p>
-        <p style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 4 }}>HRV · Sommeil · Charge · Recommandations</p>
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', marginTop: 12 }}>{t('aip.ui.analyzingRecovery')}</p>
+        <p style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 4 }}>{t('aip.ui.recoveryMetricsSub')}</p>
       </div>
     )
   }
@@ -15722,6 +15730,7 @@ function WeekAnalysisFlow({ onCancel, onRecordConv, onFollowUp }: {
   onRecordConv?: (userMsg: string, aiMsg: string, weekData?: AIMsg['weekAnalysis']) => void
   onFollowUp?: (displayLabel: string, fullPrompt: string) => void
 }) {
+  const { t } = useI18n()
   type Phase = 'gate' | 'options' | 'loading' | 'result'
   const [phase, setPhase] = useState<Phase>('gate')
   const [error, setError] = useState<string | null>(null)
@@ -16276,7 +16285,7 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
     return (
       <div style={{ padding: '30px 0', textAlign: 'center' }}>
         <Dots />
-        <p style={{ fontSize: 12, color: 'var(--ai-mid)', marginTop: 12 }}>Chargement des données...</p>
+        <p style={{ fontSize: 12, color: 'var(--ai-mid)', marginTop: 12 }}>{t('aip.ui.loadingData')}</p>
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 4 }}>CTL/ATL/TSB · Score de risque · Compliance · Adaptations</p>
       </div>
     )
@@ -16349,7 +16358,7 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
 
         {generating && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, color: 'var(--ai-dim)', fontSize: 11 }}>
-            <Dots /><span>Génération en cours...</span>
+            <Dots /><span>{t('aip.ui.generating')}</span>
           </div>
         )}
 
@@ -16968,6 +16977,7 @@ function ElevationProfileChart({ profile, height = 140, climbs: climbsOverride }
   height?: number
   climbs?: ClimbWithFlag[]
 }) {
+  const { t } = useI18n()
   const [cursorPct, setCursorPct] = useState<number | null>(null)
 
   const ep = profile.elevation_profile
@@ -17127,7 +17137,7 @@ function ElevationProfileChart({ profile, height = 140, climbs: climbsOverride }
           lineHeight: 1.8,
           boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
         }}>
-          <div>Distance <strong>{cursorData.dist_km.toFixed(1)}km</strong></div>
+          <div>{t('aip.ui.distance')} <strong>{cursorData.dist_km.toFixed(1)}km</strong></div>
           <div>Altitude <strong>{cursorData.ele}m</strong></div>
           {cursorPente !== null && (
             <div>Pente <strong style={{ color: cursorPente > 5 ? '#ef4444' : cursorPente > 2 ? '#f97316' : 'var(--ai-text)' }}>
@@ -17145,6 +17155,7 @@ function StrategieCourseFlow({ onCancel, onRecordConv, onFollowUp }: {
   onRecordConv?: (userMsg: string, aiMsg: string, strategyData?: RaceStrategyData) => void
   onFollowUp?: (displayLabel: string, fullPrompt: string) => void
 }) {
+  const { t } = useI18n()
   const [phase, setPhase] = useState<'race' | 'questions' | 'context' | 'generating' | 'result'>('race')
   const [races, setRaces] = useState<PlannedRaceOption2[]>([])
   const [loadingRaces, setLoadingRaces] = useState(true)
@@ -17808,11 +17819,11 @@ FORMAT JSON STRICT :
                 </div>
                 <input type="number" placeholder="Distance (km)" value={manualDistance} onChange={e => setManualDistance(e.target.value)}
                   style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
-                <input type="number" placeholder="Dénivelé positif (m) — optionnel" value={manualDenivele} onChange={e => setManualDenivele(e.target.value)}
+                <input type="number" placeholder={t('aip.ui.elevPosOptPh')} value={manualDenivele} onChange={e => setManualDenivele(e.target.value)}
                   style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
                 <input type="date" value={manualDate} onChange={e => setManualDate(e.target.value)}
                   style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
-                <input type="text" placeholder="Objectif de temps — optionnel (ex: 3h30)" value={manualGoalTime} onChange={e => setManualGoalTime(e.target.value)}
+                <input type="text" placeholder={t('aip.ui.timeGoalPh')} value={manualGoalTime} onChange={e => setManualGoalTime(e.target.value)}
                   style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
                 <button onClick={() => setManualMode(false)} style={{ fontSize: 11, color: 'var(--ai-accent)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
                   ← Utiliser une course planifiée
@@ -17960,7 +17971,7 @@ FORMAT JSON STRICT :
                 </button>
               ) : (
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', padding: '6px 8px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
-                  <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Début km</span>
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>{t('aip.ui.startKm')}</span>
                   <input type="number" step="0.1" placeholder="ex: 115" value={newClimbStart} onChange={e => setNewClimbStart(e.target.value)}
                     style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-text)', fontSize: 11, fontFamily: 'DM Mono,monospace', outline: 'none' }} />
                   <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Fin km</span>
@@ -18009,7 +18020,7 @@ FORMAT JSON STRICT :
         {/* Altitude max — trail uniquement */}
         {isTrailQ && (
           <div style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Altitude maximale du parcours (m) — optionnel</p>
+            <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>{t('aip.ui.maxAltitudePh')}</p>
             <input type="number" placeholder="Ex: 2500" value={altitudeMax} onChange={e => setAltitudeMax(e.target.value)}
               style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif', boxSizing: 'border-box' }} />
           </div>
@@ -18036,11 +18047,11 @@ FORMAT JSON STRICT :
               </div>
             </div>
             <div style={{ marginBottom: 14 }}>
-              <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Objectifs par discipline (optionnel)</p>
+              <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>{t('aip.ui.goalsByDiscipline')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input type="text" placeholder="Natation (ex: 30min)" value={triSwimGoal} onChange={e => setTriSwimGoal(e.target.value)}
                   style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
-                <input type="text" placeholder="Vélo (ex: 2h15)" value={triBikeGoal} onChange={e => setTriBikeGoal(e.target.value)}
+                <input type="text" placeholder={t('aip.ui.bikePh')} value={triBikeGoal} onChange={e => setTriBikeGoal(e.target.value)}
                   style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
                 <input type="text" placeholder="CAP (ex: 45min)" value={triRunGoal} onChange={e => setTriRunGoal(e.target.value)}
                   style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
@@ -18062,7 +18073,7 @@ FORMAT JSON STRICT :
                 <span style={{ color: 'var(--ai-mid)' }}>FTP <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{athletePreview.profile.ftp_watts}W</strong></span>
               )}
               {athletePreview.profile?.weight_kg && (
-                <span style={{ color: 'var(--ai-mid)' }}>Poids <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{athletePreview.profile.weight_kg}kg</strong></span>
+                <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.weight')} <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{athletePreview.profile.weight_kg}kg</strong></span>
               )}
               {athletePreview.profile?.ftp_watts && athletePreview.profile?.weight_kg && (
                 <span style={{ color: 'var(--ai-mid)' }}>W/kg <strong style={{ color: 'var(--ai-text)', fontFamily: 'DM Mono,monospace' }}>{(athletePreview.profile.ftp_watts / athletePreview.profile.weight_kg).toFixed(2)}</strong></span>
@@ -18079,7 +18090,7 @@ FORMAT JSON STRICT :
             {athletePreview.zones ? (
               <div style={{ marginBottom: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>✓ Zones configurées</span>
+                  <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>{t('aip.ui.zonesConfiguredCheck')}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 10, fontFamily: 'DM Mono,monospace', color: 'var(--ai-dim)' }}>
                   {athletePreview.zones.z1_value && <span>Z1: {athletePreview.zones.z1_value}</span>}
@@ -18090,7 +18101,7 @@ FORMAT JSON STRICT :
                 </div>
               </div>
             ) : (
-              <p style={{ fontSize: 10, color: '#f97316', marginBottom: 6 }}>⚠ Zones non configurées — stratégie basée sur le RPE</p>
+              <p style={{ fontSize: 10, color: '#f97316', marginBottom: 6 }}>{t('aip.ui.zonesNotConfigured')}</p>
             )}
 
             {/* Tests */}
@@ -18142,7 +18153,7 @@ FORMAT JSON STRICT :
           </div>
         ) : (
           <div style={{ marginBottom: 16, padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
-            <p style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Chargement des données...</p>
+            <p style={{ fontSize: 10, color: 'var(--ai-dim)' }}>{t('aip.ui.loadingData')}</p>
           </div>
         )}
 
@@ -18164,7 +18175,7 @@ FORMAT JSON STRICT :
             ))}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-            <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Très fatigué</span>
+            <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>{t('aip.ui.veryTired')}</span>
             <span style={{ fontSize: 10, color: 'var(--ai-dim)' }}>Excellent</span>
           </div>
         </div>
@@ -18180,7 +18191,7 @@ FORMAT JSON STRICT :
 
         {/* Météo prévue */}
         <div style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Météo prévue (optionnel)</p>
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>{t('aip.ui.forecastWeather')}</p>
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
             {(['idéal', 'chaud', 'froid', 'vent', 'pluie'] as const).map(m => (
               <button key={m} onClick={() => setMeteoScenario(meteoScenario === m ? null : m)} style={{
@@ -18199,8 +18210,8 @@ FORMAT JSON STRICT :
 
         {/* Notes libres */}
         <div style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>Informations complémentaires (optionnel)</p>
-          <textarea placeholder="Ex: premiere fois sur cette distance, douleur au genou, adversaires ciblés…" value={notesLibres} onChange={e => setNotesLibres(e.target.value)}
+          <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px' }}>{t('aip.ui.additionalInfo')}</p>
+          <textarea placeholder={t('aip.ui.notesPh')} value={notesLibres} onChange={e => setNotesLibres(e.target.value)}
             style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', fontFamily: 'DM Sans,sans-serif', boxSizing: 'border-box', resize: 'none', minHeight: 60, lineHeight: 1.5 }} />
         </div>
 
@@ -18269,19 +18280,19 @@ FORMAT JSON STRICT :
         <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 14 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-              <span style={{ color: 'var(--ai-mid)' }}>Zones configurées</span>
+              <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.zonesConfigured')}</span>
               <span style={{ color: contextData.zones ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{contextData.zones ? 'Oui' : 'Non'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-              <span style={{ color: 'var(--ai-mid)' }}>Tests récents</span>
+              <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.recentTests')}</span>
               <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{contextData.tests.length}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-              <span style={{ color: 'var(--ai-mid)' }}>Activités (3 mois)</span>
+              <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.activities3mo')}</span>
               <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{contextData.recentActivities.length}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-              <span style={{ color: 'var(--ai-mid)' }}>TSB actuel (estimé)</span>
+              <span style={{ color: 'var(--ai-mid)' }}>{t('aip.ui.currentTsb')}</span>
               <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>{contextData.tsbActuel ?? 'N/A'}</span>
             </div>
           </div>
@@ -18364,7 +18375,7 @@ FORMAT JSON STRICT :
           )}
           {result.forme_au_jour_j.tsb_projete != null && (
             <div>
-              <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>TSB jour J</p>
+              <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('aip.ui.tsbRaceDay')}</p>
               <p style={{ fontSize: 14, fontWeight: 700, color: result.forme_au_jour_j.tsb_projete >= 0 ? '#22c55e' : '#f97316', margin: 0 }}>{result.forme_au_jour_j.tsb_projete}</p>
             </div>
           )}
@@ -18483,7 +18494,7 @@ FORMAT JSON STRICT :
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>
                   Gestion de l&apos;effort
                 </p>
-                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 3px' }}><strong style={{ color: 'var(--ai-text)' }}>Départ :</strong> {currentScenario.gestion_effort.depart}</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 3px' }}><strong style={{ color: 'var(--ai-text)' }}>{t('aip.ui.startColon')}</strong> {currentScenario.gestion_effort.depart}</p>
                 <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 3px' }}><strong style={{ color: 'var(--ai-text)' }}>Milieu :</strong> {currentScenario.gestion_effort.milieu}</p>
                 <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}><strong style={{ color: 'var(--ai-text)' }}>Dernier 20% :</strong> {currentScenario.gestion_effort.final_20pct}</p>
               </div>
@@ -18491,15 +18502,15 @@ FORMAT JSON STRICT :
               {/* Plan B */}
               <div style={{ padding: '8px 10px', borderRadius: 7, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 12 }}>
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#ef4444', margin: '0 0 5px' }}>Plan B</p>
-                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}><strong style={{ color: 'var(--ai-text)' }}>Déclencheur :</strong> {currentScenario.plan_b.declencheur}</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}><strong style={{ color: 'var(--ai-text)' }}>{t('aip.ui.triggerColon')}</strong> {currentScenario.plan_b.declencheur}</p>
                 <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}><strong style={{ color: 'var(--ai-text)' }}>Action :</strong> {currentScenario.plan_b.action}</p>
-                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}><strong style={{ color: 'var(--ai-text)' }}>Objectif fallback :</strong> {currentScenario.plan_b.objectif_fallback}</p>
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}><strong style={{ color: 'var(--ai-text)' }}>{t('aip.ui.fallbackGoalColon')}</strong> {currentScenario.plan_b.objectif_fallback}</p>
               </div>
 
               {/* Points clés */}
               {currentScenario.points_cles.length > 0 && (
                 <div>
-                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>Points clés</p>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>{t('aip.ui.keyPoints')}</p>
                   {currentScenario.points_cles.map((p, i) => (
                     <p key={i} style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 3px', paddingLeft: 10 }}>• {p}</p>
                   ))}
@@ -18629,6 +18640,7 @@ FORMAT JSON STRICT :
 // ── RaceStrategyView ─────────────────────────────────────────
 // Persisted view rendered from msg.raceStrategy in conversation history
 function RaceStrategyView({ data }: { data: RaceStrategyData }) {
+  const { t } = useI18n()
   const [activeScenario, setActiveScenario] = useState<'conservateur' | 'optimal' | 'agressif'>('optimal')
   const { result, raceName } = data
   const vc = result.verdict_objectif.status === 'realiste' ? '#22c55e' : result.verdict_objectif.status === 'ambitieux' ? '#f97316' : '#ef4444'
@@ -18654,7 +18666,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
       {/* Forme au jour J */}
       {(result.forme_au_jour_j.tsb_actuel != null || result.forme_au_jour_j.verdict) && (
         <div style={{ padding: '8px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 12 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>Forme au jour J</p>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>{t('aip.ui.formRaceDay')}</p>
           <div style={{ display: 'flex', gap: 12, marginBottom: 4 }}>
             {result.forme_au_jour_j.tsb_actuel != null && (
               <div>
@@ -18664,7 +18676,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
             )}
             {result.forme_au_jour_j.tsb_projete != null && (
               <div>
-                <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 1px', textTransform: 'uppercase' }}>TSB jour J</p>
+                <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 1px', textTransform: 'uppercase' }}>{t('aip.ui.tsbRaceDay')}</p>
                 <p style={{ fontSize: 14, fontWeight: 700, color: result.forme_au_jour_j.tsb_projete >= 0 ? '#22c55e' : '#f97316', margin: 0 }}>{result.forme_au_jour_j.tsb_projete}</p>
               </div>
             )}
@@ -18695,7 +18707,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
             <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: `1px solid ${scenarioColor(currentScenario.nom)}30`, marginBottom: 12 }}>
               {currentScenario.strategie_sections.length > 0 && (
                 <div style={{ marginBottom: 10 }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>Stratégie par section</p>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>{t('aip.ui.strategyBySection')}</p>
                   {currentScenario.strategie_sections.map((s, i) => (
                     <div key={i} style={{ padding: '6px 8px', borderRadius: 7, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', marginBottom: 3 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
@@ -18712,7 +18724,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
                   ))}
                 </div>
               )}
-              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}><strong style={{ color: 'var(--ai-text)' }}>Départ :</strong> {currentScenario.gestion_effort.depart}</p>
+              <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}><strong style={{ color: 'var(--ai-text)' }}>{t('aip.ui.startColon')}</strong> {currentScenario.gestion_effort.depart}</p>
               <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '0 0 2px' }}><strong style={{ color: 'var(--ai-text)' }}>Milieu :</strong> {currentScenario.gestion_effort.milieu}</p>
               <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0 }}><strong style={{ color: 'var(--ai-text)' }}>Dernier 20% :</strong> {currentScenario.gestion_effort.final_20pct}</p>
             </div>
@@ -18723,7 +18735,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
       {/* Météo impacts */}
       {result.meteo_impacts && result.meteo_impacts.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>Impacts météo</p>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 5px' }}>{t('aip.ui.weatherImpacts')}</p>
           {result.meteo_impacts.map((m, i) => (
             <div key={i} style={{ padding: '7px 10px', borderRadius: 7, background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.18)', marginBottom: 4 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: '#f97316', margin: '0 0 2px', textTransform: 'capitalize' }}>{m.condition}{m.ajustement_allure ? ` · ${m.ajustement_allure}` : ''}</p>
@@ -18736,7 +18748,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
       {/* Triathlon repartition */}
       {result.triathlon_repartition && (
         <div style={{ padding: '8px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 12 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>Répartition triathlon</p>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 6px' }}>{t('aip.ui.triathlonSplit')}</p>
           {(['natation', 'velo', 'cap'] as const).map(disc => {
             const d = result.triathlon_repartition![disc]
             if (!d) return null
@@ -20817,7 +20829,7 @@ export default function AIPanel({
               {/* Fermer */}
               <button
                 onClick={onClose}
-                title="Fermer"
+                title={t('aip.ui.close')}
                 style={{
                   width: 26, height: 26, borderRadius: 8,
                   border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
@@ -21495,7 +21507,7 @@ export default function AIPanel({
                             </button>
                             {/* Regenerate */}
                             <button
-                              title="Régénérer la réponse"
+                              title={t('aip.ui.regenerate')}
                               onClick={() => {
                                 // Find last user message before this AI message and resend
                                 const prevUser = active.msgs.slice(0, idx).reverse().find(m => m.role === 'user')
@@ -21514,7 +21526,7 @@ export default function AIPanel({
                               return (
                                 <>
                                   <button
-                                    title="Bonne réponse"
+                                    title={t('aip.ui.goodResponse')}
                                     onClick={() => sendCoachFeedback(msg, prevUser?.content, active.id, 1)}
                                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: fb === 1 ? '#22c55e' : '#6B7280', display: 'flex', alignItems: 'center' }}
                                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
@@ -21524,7 +21536,7 @@ export default function AIPanel({
                                   </button>
                                   {/* Thumbs down */}
                                   <button
-                                    title="Mauvaise réponse"
+                                    title={t('aip.ui.badResponse')}
                                     onClick={() => sendCoachFeedback(msg, prevUser?.content, active.id, -1)}
                                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: fb === -1 ? '#ef4444' : '#6B7280', display: 'flex', alignItems: 'center' }}
                                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6' }}
@@ -21682,7 +21694,7 @@ export default function AIPanel({
                   </span>
                   <button
                     onClick={() => setActiveQA(null)}
-                    title="Annuler"
+                    title={t('aip.ui.cancel')}
                     style={{
                       width: 18, height: 18, borderRadius: '50%', border: 'none',
                       background: 'rgba(6,182,212,0.15)', color: '#06B6D4',
@@ -21819,7 +21831,7 @@ export default function AIPanel({
                 {loading ? (
                   <button
                     onClick={stopGeneration}
-                    title="Arrêter la génération"
+                    title={t('aip.ui.stopGeneration')}
                     style={{
                       width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                       border: 'none',
@@ -21847,8 +21859,8 @@ export default function AIPanel({
                             } catch { /* ignore */ }
                             setVoiceConvOpen(true)
                           }}
-                          title="Discussion vocale"
-                          aria-label="Démarrer une discussion vocale"
+                          title={t('aip.ui.voiceChat')}
+                          aria-label={t('aip.ui.startVoice')}
                           style={{
                             width: 32, height: 32, borderRadius: '50%', flexShrink: 0, border: 'none',
                             background: 'var(--ai-text)', color: 'var(--ai-bg)', cursor: 'pointer',
@@ -21904,8 +21916,8 @@ export default function AIPanel({
                   </span>
                   <button
                     onClick={() => setWebSearchMode(false)}
-                    title="Désactiver"
-                    aria-label="Désactiver la recherche web"
+                    title={t('aip.ui.disable')}
+                    aria-label={t('aip.ui.disableWebSearch')}
                     style={{
                       width: 20, height: 20, borderRadius: '50%', border: 'none',
                       background: 'var(--ai-accent-dim, rgba(6,182,212,0.15))', color: 'var(--ai-accent, #06B6D4)',
@@ -21946,7 +21958,7 @@ export default function AIPanel({
               @keyframes rsheet_side { from { transform: translateX(100%) } to { transform: translateX(0) } }
             `}</style>
             <div
-              role="dialog" aria-modal="true" aria-label="Processus de réflexion"
+              role="dialog" aria-modal="true" aria-label={t('aip.ui.thinkingProcess')}
               onClick={close}
               style={{
                 position: 'fixed', inset: 0, zIndex: 1600,
@@ -21978,9 +21990,9 @@ export default function AIPanel({
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ai-mid)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                     <path d="M9.5 2a6.5 6.5 0 0 0-3.8 11.8c.5.4.8.9.8 1.5v.7h6v-.7c0-.6.3-1.1.8-1.5A6.5 6.5 0 0 0 9.5 2z" /><path d="M7 19h5M8 22h3" />
                   </svg>
-                  <span style={{ flex: 1, fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-display)' }}>Processus de réflexion</span>
+                  <span style={{ flex: 1, fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-display)' }}>{t('aip.ui.thinkingProcess')}</span>
                   <button
-                    onClick={close} aria-label="Fermer"
+                    onClick={close} aria-label={t('aip.ui.close')}
                     style={{
                       width: 30, height: 30, borderRadius: '50%', border: 'none', flexShrink: 0,
                       background: 'var(--ai-bg2)', color: 'var(--ai-text)', cursor: 'pointer',
@@ -22004,7 +22016,7 @@ export default function AIPanel({
                       )}
                     </p>
                   ) : (
-                    <p style={{ margin: 0, color: 'var(--ai-dim)', fontSize: 14 }}>Le coach n&apos;a pas exposé de raisonnement pour cette réponse.</p>
+                    <p style={{ margin: 0, color: 'var(--ai-dim)', fontSize: 14 }}>{t('aip.ui.noReasoning')}</p>
                   )}
                 </div>
               </div>

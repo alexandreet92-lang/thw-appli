@@ -599,7 +599,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Reposé 48h sans effort intense", "À jeun depuis 2h minimum", "Piste ou tapis de course calibré", "Capteur cardiaque thoracique recommandé"],
     echauffement: ["10 min à 50–60% FCmax", "2 × 30s d'accélération progressive", "5 min de marche récupération"],
     etapes: ["Palier 1 : allure facile (60–70% FCmax), 3 min", "Augmenter l'allure de 0,5 km/h toutes les 1–2 min", "Continuer jusqu'à épuisement volontaire ou FC plateau", "Enregistrer la vitesse et la FC à l'arrêt"],
-    interpretation: ["VO2max estimé : 15 × FCmax / FCrepos (formule Uth)", "Excellent H : > 60 ml/kg/min · Bon : 50–60 · Moyen : 40–50", "Excellent F : > 55 ml/kg/min · Bon : 45–55 · Moyen : 35–45"],
+    interpretation: ['lo2.p_vo2max_run_interp0', 'lo2.p_vo2max_run_interp1', 'lo2.p_vo2max_run_interp2'],
     erreurs: ["Partir trop vite sur les premiers paliers", "Arrêter avant l'épuisement réel", "Mauvaise calibration du tapis ou de la piste"],
     frequence: "1–2 fois/an — test exigeant, non reproductible à court terme",
     fields: [
@@ -615,7 +615,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Piste 400m plate", "Vent nul ou faible", "Reposé 48h", "Chaussures légères de compétition"],
     echauffement: ["15 min à allure très facile", "3 × 100m progressifs", "5 min marche"],
     etapes: ["Option VAMEVAL : départ à 8 km/h, +0,5 km/h toutes les 1 min (balise sonore)", "Option Brue court : paliers de 2 min, +1 km/h à chaque palier", "Option 6 min all-out : VMA ≈ distance (m) / 100", "Arrêt quand impossible de tenir l'allure 2 paliers consécutifs"],
-    interpretation: ["VMA = vitesse du dernier palier tenu complet", "Elite : > 22 km/h · Bon : 18–22 · Moyen : 15–18 · Débutant : < 15", "Z1 < 60% VMA · Z2 : 60–75% · Z3 : 75–85% · Z4 : 85–95% · Z5 : 95–105%"],
+    interpretation: ['lo2.p_vma_interp0', 'lo2.p_vma_interp1', 'lo2.p_vma_interp2'],
     erreurs: ["Partir trop fort sur l'option 6 min", "Courir en dehors de la piste (vent, virages)", "Ne pas respecter les balises sonores VAMEVAL"],
     frequence: "2–3 fois/an (début, mi et fin de saison)",
     fields: [
@@ -630,7 +630,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Repos 48h", "À jeun depuis 3h (pas de glucides rapides)", "Piste ou tapis calibré", "Lactomètre + bandelettes + lancettes + alcool + gants"],
     echauffement: ["10 min à 55% FCmax", "Mesure lactate de base (au repos)"],
     etapes: ["Palier 1 : 3 min @ 60% FCmax → mesure lactate à la fin", "Palier 2 : 3 min @ 65% FCmax → mesure", "Paliers suivants : +5% FCmax toutes les 3 min → mesure", "Continuer jusqu'à > 8 mmol/L ou épuisement", "Tracer la courbe lactate/allure — SL1 ≈ 2 mmol/L, SL2 ≈ 4 mmol/L"],
-    interpretation: ["SL1 (seuil aérobie) : rupture de pente à ~2 mmol/L", "SL2 (seuil anaérobie) : ~4 mmol/L", "Zone 2 = entre SL1 et SL2 · Intervalles = au-dessus de SL2"],
+    interpretation: ['lo2.p_lactate_run_interp0', 'lo2.p_lactate_run_interp1', 'lo2.p_lactate_run_interp2'],
     erreurs: ["Mauvaise prise de sang (doigt froid, hémolise)", "Paliers trop courts (< 3 min = pas de stabilisation)", "FC non stabilisée entre deux paliers"],
     frequence: "1 fois/an minimum — idéalement début et fin de bloc d'entraînement",
     fields: [
@@ -647,7 +647,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Piste 400m (ou GPS de précision)", "Météo clémente — sans vent fort", "Reposé 48h"],
     echauffement: ["10 min à allure très facile", "2 × 100m en accélération progressive", "5 min marche active"],
     etapes: ["Départ au signal, effort maximal soutenu pendant exactement 12 min", "Réguler l'allure : trop essoufflé à la 3e min = trop rapide", "Viser une allure légèrement inférieure à ton allure de compétition 5km", "Marquer la distance exacte à l'arrêt du chrono (en mètres)"],
-    interpretation: ["VO2max ≈ (distance en m − 504,9) / 44,73", "Distance > 3200m : excellent · 2800–3200m : bon · 2400–2800m : moyen · < 2400m : à améliorer", "Répéter dans les mêmes conditions pour suivre la progression"],
+    interpretation: ['lo2.p_cooper_interp0', 'lo2.p_cooper_interp1', 'lo2.p_cooper_interp2'],
     erreurs: ["Partir trop vite → marche forcée en fin de test", "Test par vent fort (fausse les mesures)", "Mesure GPS imprécise en milieu urbain ou avec virages"],
     frequence: "Toutes les 8–12 semaines",
     fields: [
@@ -661,7 +661,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Connaître son allure SL2 ou LTHR au préalable", "Piste ou route plate", "Capteur FC thoracique", "Reposé 48h"],
     echauffement: ["15 min progressif", "3 × 2 min à l'allure seuil avec 2 min récup"],
     etapes: ["Courir exactement 30 min à l'allure SL2 (87–92% FCmax)", "Enregistrer FC, allure et RPE toutes les 5 min", "Mesurer la dérive cardiaque : ∆FC entre min 5 et min 30", "Si dérive > 5 bpm → allure surestimée, recalibrer"],
-    interpretation: ["Dérive FC < 3 bpm = excellente capacité aérobie", "Dérive 3–8 bpm = zone de travail correcte", "Dérive > 10 bpm = allure trop élevée ou fatigue cumulée", "Allure tenue 30 min ≈ allure marathon cible"],
+    interpretation: ['lo2.p_tmi_interp0', 'lo2.p_tmi_interp1', 'lo2.p_tmi_interp2', 'lo2.p_tmi_interp3'],
     erreurs: ["Partir trop vite et accumuler de la fatigue prématurément", "Oublier de noter la FC toutes les 5 min", "Dénivelé ou vent qui biaise l'allure réelle"],
     frequence: "Toutes les 6–8 semaines en période de construction aérobie",
     fields: [
@@ -678,7 +678,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Capteur de puissance (wattmètre) indispensable", "Vélo en parfait état ou ergocycle calibré", "Reposé 48–72h", "Température < 25°C"],
     echauffement: ["20 min à 55–65% FTP", "3 × 1 min @ 105% FTP avec 1 min récup", "5 min récup légère avant le départ test"],
     etapes: ["20 min all-out en cherchant à maintenir la puissance la plus haute possible", "Première minute : ne pas dépasser +5% au-dessus de l'objectif", "Maintenir constant — variations > 20W dégradent la puissance moyenne", "Enregistrer la puissance moyenne exacte sur les 20 min"],
-    interpretation: ["FTP estimée = puissance moyenne × 0,95", "W/kg > 5,0 : niveau World Tour · 4,0–5,0 : élite amateur · 3,5–4,0 : compétiteur · < 3,5 : loisir", "Recalculer toutes les zones Z1–Z6 avec la nouvelle FTP"],
+    interpretation: ['lo2.p_cp20_interp0', 'lo2.p_cp20_interp1', 'lo2.p_cp20_interp2'],
     erreurs: ["Départ trop fort → effondrement en fin de test", "Test sur route avec arrêts (signaux, trafic)", "Warm-up insuffisant — garantit une sous-performance"],
     frequence: "Toutes les 4–8 semaines selon la période d'entraînement",
     fields: [
@@ -693,7 +693,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Capteur de puissance indispensable", "2 séances séparées de 48h minimum", "Ergocycle ou home trainer calibré"],
     echauffement: ["20 min progressif + 2 × 1 min à haute intensité", "Repos 10 min avant chaque effort test"],
     etapes: ["Effort 1 : 3 min all-out — puissance max maintenable (séance A)", "Effort 2 : 12 min all-out — puissance max maintenable (séance B)", "Calcul CP = (P12 × 12 − P3 × 3) / (12 − 3)", "Calcul W' = (P3 − CP) × 3 × 60 en joules"],
-    interpretation: ["CP ≈ puissance seuil critique (proche de la FTP)", "W' = réserve anaérobie — typiquement 15–25 kJ", "W' élevé = capacité à produire des efforts courts intenses répétés", "Le modèle CP prédit la performance sur toute durée d'effort"],
+    interpretation: ['lo2.p_critical_power_interp0', 'lo2.p_critical_power_interp1', 'lo2.p_critical_power_interp2', 'lo2.p_critical_power_interp3'],
     erreurs: ["Efforts non maximaux (sous-estime CP et W')", "Pas assez de repos entre les 2 séances (48h minimum)", "Capteur de puissance non calibré = résultats non fiables"],
     frequence: "2 fois/an (début et milieu de saison)",
     fields: [
@@ -709,7 +709,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Ergocycle calibré (Wahoo Kickr, Tacx Neo ou similaire)", "Lactomètre + bandelettes + lancettes", "Reposé 72h", "À jeun depuis 3h (pas de glucides rapides)"],
     echauffement: ["10 min @ 100W ou 50% FTP", "Mesure lactate de base au repos"],
     etapes: ["Palier 1 : 5 min @ 40% FTP → mesure lactate + FC", "Palier 2 : 5 min @ 50% FTP → mesure", "Paliers suivants : +10% FTP toutes les 5 min → mesure", "Continuer jusqu'à > 8 mmol/L ou épuisement", "Tracer la courbe lactate/puissance — SL1 ≈ 2 mmol/L, SL2 ≈ 4 mmol/L"],
-    interpretation: ["SL1 (seuil aérobie) : rupture de pente à ~2 mmol/L", "SL2 (seuil anaérobie) : 4 mmol/L", "Zone 2 cible = puissance entre SL1 et SL2", "Permet de valider ou corriger la FTP estimée au CP20"],
+    interpretation: ['lo2.p_lactate_cycling_interp0', 'lo2.p_lactate_cycling_interp1', 'lo2.p_lactate_cycling_interp2', 'lo2.p_lactate_cycling_interp3'],
     erreurs: ["Paliers trop courts (< 4 min = pas de stabilisation FC)", "Mauvaise prise de sang (doigt froid ou insuffisant)", "Ergocycle non calibré = puissance erronée"],
     frequence: "1 fois/an minimum — test de référence annuel",
     fields: [
@@ -725,7 +725,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Capteur de puissance", "FTP connue au préalable", "Parcours plat ou home trainer", "Eau disponible en permanence"],
     echauffement: ["10 min léger puis directement à la puissance cible — l'intensité est modérée"],
     etapes: ["Rouler 120 min à 60–65% FTP (zone 2 basse)", "Enregistrer FC toutes les 15 min", "Mesurer la dérive cardiaque (∆FC entre min 15 et min 105)", "Ne pas dépasser la puissance cible — discipline stricte", "Noter les sensations et RPE toutes les 30 min"],
-    interpretation: ["Dérive FC < 5 bpm = zone 2 bien calibrée, bonne capacité lipidique", "Dérive 5–10 bpm = limite zone 2, intensité légèrement haute", "Dérive > 10 bpm = trop intense, baisser la puissance cible", "Test idéal pour valider les adaptations après un bloc d'endurance"],
+    interpretation: ['lo2.p_endurance_cycling_interp0', 'lo2.p_endurance_cycling_interp1', 'lo2.p_endurance_cycling_interp2', 'lo2.p_endurance_cycling_interp3'],
     erreurs: ["Intensité trop élevée dès le départ", "Pause ou arrêt qui casse la continuité", "Pas d'enregistrement FC continu"],
     frequence: "Toutes les 6–8 semaines",
     fields: [
@@ -741,7 +741,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Ergocycle calibré ou home trainer de précision", "Capteur de puissance", "Reposé 48h"],
     echauffement: ["15 min progressif à 50–65% FTP", "1 × 1 min effort vif, puis 3 min récup"],
     etapes: ["Départ à 100W ou 50% FTP estimée", "Augmenter de 20W toutes les 60 secondes", "Maintenir la cadence > 80 rpm à chaque palier", "Arrêt quand impossible de maintenir la cadence cible", "PMA = puissance du dernier palier tenu complet"],
-    interpretation: ["PMA/poids > 5 W/kg : élite · 4–5 : bon · 3–4 : moyen · < 3 : débutant", "FTP ≈ 72–80% de la PMA selon profil", "Intervalles VO2max recommandés à 90–110% PMA", "VO2max ≈ PMA (W) × 10,8 / poids (kg) + 7"],
+    interpretation: ['lo2.p_vo2max_cycling_interp0', 'lo2.p_vo2max_cycling_interp1', 'lo2.p_vo2max_cycling_interp2', 'lo2.p_vo2max_cycling_interp3'],
     erreurs: ["Cadence trop basse (< 80 rpm) → sous-estime la PMA", "Démarrage à une puissance trop élevée", "Home trainer non calibré = résultats non fiables"],
     frequence: "2–3 fois/an",
     fields: [
@@ -757,7 +757,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Ergocycle Wingate ou ergomètre à résistance fixe (Monark, Technogym)", "Résistance : 7,5% du poids corporel", "Pas de home trainer standard — résistance physique requise"],
     echauffement: ["15 min progressif", "3 × 5s sprint à ~60% de la résistance Wingate", "10 min récup facile"],
     etapes: ["Partir depuis la vitesse nulle (pas de départ lancé)", "Signal → sprint MAXIMAL pendant 30 secondes sans ralentir", "Mesure automatique : puissance de crête (Ppeak), puissance moyenne (Pmoy), Pmin", "Indice de fatigue (IF) = (Ppeak − Pmin) / Ppeak × 100"],
-    interpretation: ["Ppeak H : 700–1200W · Élite : > 1200W", "Ppeak F : 450–800W · Élite : > 800W", "IF < 30% : bonne résistance à la fatigue · IF > 50% : profil explosif, faible endurance anaérobie", "Ppeak/kg > 12 W/kg = sprinter élite"],
+    interpretation: ['lo2.p_wingate_interp0', 'lo2.p_wingate_interp1', 'lo2.p_wingate_interp2', 'lo2.p_wingate_interp3'],
     erreurs: ["Départ trop lent → perd la puissance de crête", "Résistance mal calculée (sous ou sur-estimée)", "Ergomètre inadapté (home trainer = résultats non fiables)"],
     frequence: "4–6 fois/an hors phase de récupération",
     fields: [
@@ -774,7 +774,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Piscine 25m ou 50m (noter la longueur)", "Reposé 48h", "Chronomètre ou touchpad électronique", "Départ depuis le mur (pas de plongeon)"],
     echauffement: ["400m progressif en nages variées", "6 × 50m @ 80% avec 20s récup", "5 min repos complet avant le test"],
     etapes: ["400m all-out — noter le temps exact en secondes (T400)", "Repos actif léger 10 min", "200m all-out — noter le temps exact en secondes (T200)", "CSS = (400 − 200) / (T400 − T200) en m/s", "Allure CSS : 100 / CSS = secondes pour 100m"],
-    interpretation: ["CSS < 1:20/100m : élite · 1:20–1:35 : compétiteur · 1:35–1:50 : loisir amélioré", "Zone 2 nage ≈ CSS + 10–15 s/100m", "CSS est ton allure seuil — base de tous les intervals en natation"],
+    interpretation: ['lo2.p_css_interp0', 'lo2.p_css_interp1', 'lo2.p_css_interp2'],
     erreurs: ["Pause trop courte entre 400m et 200m", "Virage sans toucher le mur (perd des mètres)", "Piscine de longueur inconnue ou virages lents"],
     frequence: "Toutes les 6–8 semaines",
     fields: [
@@ -788,7 +788,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Piscine 25m ou 50m", "Départ depuis le mur (ou bloc si disponible)", "Récupération complète entre les efforts (5–8 min)"],
     echauffement: ["600m progressif en nages variées", "4 × 25m de plus en plus vite avec 1 min récup chacun"],
     etapes: ["3 × 25m all-out avec 5 min récup entre chaque", "Ou 2 × 50m all-out avec 8 min récup", "Conserver le meilleur temps de la série", "Calculer la vitesse : Vmax = distance / temps (m/s)"],
-    interpretation: ["25m H < 12s : sprinter élite · 12–14s : bon · > 16s : à travailler", "25m F < 13,5s : élite · 13,5–15,5s : bon · > 17s : à travailler", "Écart 50m vs 25m × 2 > 4s = forte fatigue explosive → travail anaérobie recommandé"],
+    interpretation: ['lo2.p_vmax_swim_interp0', 'lo2.p_vmax_swim_interp1', 'lo2.p_vmax_swim_interp2'],
     erreurs: ["Pas assez de récupération entre les sprints", "Virage compté dans la distance sur 50m en bassin 25m", "Nage parasitée par d'autres nageurs dans le couloir"],
     frequence: "1 fois/mois en période compétitive",
     fields: [
@@ -803,7 +803,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Ergomètre Concept2 Model D/E ou Dynamic", "Damper réglé à 4–5", "Reposé 72h", "Salle < 20°C de préférence"],
     echauffement: ["10 min léger @ split cible +30s/500m", "4 × 20s puissance élevée avec 40s repos", "5 min récup facile"],
     etapes: ["Départ explosif — puissance max sur les 5 premières secondes", "Réguler rapidement sur les 500m suivants (ne pas s'effondrer)", "Maintenir un split constant sur les 500–1500m intermédiaires", "Dernier 500m : tout donner progressivement"],
-    interpretation: ["Niveau Recreational : H > 7:00 · F > 8:00", "Niveau Competitive : H 6:30–7:00 · F 7:30–8:00", "Niveau Performance : H < 6:30 · F < 7:30", "Split moyen → puissance : P = 2,80 / (split/500)³"],
+    interpretation: ['lo2.p_2000m_row_interp0', 'lo2.p_2000m_row_interp1', 'lo2.p_2000m_row_interp2', 'lo2.p_2000m_row_interp3'],
     erreurs: ["Départ trop violent → effondrement à 1000m", "Damper trop élevé (> 6) → s'épuise plus vite", "Pas de stratégie de split préparée"],
     frequence: "2–3 fois/an — jamais deux fois en moins de 6 semaines",
     fields: [
@@ -819,7 +819,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Concept2 ou ergomètre calibré", "Eau à portée", "Reposé 48h"],
     echauffement: ["5 min @ split cible +30s/500m — l'intensité étant modérée, pas de warm-up long nécessaire"],
     etapes: ["Départ à split cible (2000m split + 15–20s/500m)", "Maintenir cadence et split de façon régulière", "Mesurer la dérive FC : noter toutes les 2000m", "Dernier 1000m : légère accélération si les réserves le permettent"],
-    interpretation: ["Dérive FC < 8 bpm sur l'ensemble = bonne capacité aérobie", "Split stable (± 2s) = excellente gestion d'allure", "Écart normal split 10000m/2000m = +15–25s/500m"],
+    interpretation: ['lo2.p_10000m_row_interp0', 'lo2.p_10000m_row_interp1', 'lo2.p_10000m_row_interp2'],
     erreurs: ["Partir trop vite surtout si réalisé après le 2000m", "Omettre de noter les FC intermédiaires", "Cadence trop élevée (> 24 spm sur longue durée = inefficient)"],
     frequence: "1 fois/mois en période de construction aérobie",
     fields: [
@@ -834,7 +834,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Concept2 en mode chrono (ne pas afficher Distance Remaining)", "Damper 4–5", "Reposé 48h"],
     echauffement: ["10 min progressif", "2 × 30s puissance élevée avec 2 min récup"],
     etapes: ["Lancer le chrono, ramer 30 min en effort soutenu constant", "Viser un split constant tout au long (± 3s/500m max)", "Dernières 5 min : accélération progressive si les réserves le permettent", "Relever la distance totale exacte à l'arrêt du chrono"],
-    interpretation: ["Split moyen /500m du 30 min ≈ FTP aviron", "FTP aviron (puissance) : P = 2,80 / (split/500)³", "Comparer aux classements Concept2 en ligne dans ta catégorie"],
+    interpretation: ['lo2.p_30min_row_interp0', 'lo2.p_30min_row_interp1', 'lo2.p_30min_row_interp2'],
     erreurs: ["Départ trop fort → résultat sous-estimé sur la 2e moitié", "Regarder le temps restant trop souvent (pression mentale)", "Cadence inconstante qui fragmente l'effort"],
     frequence: "Toutes les 4–6 semaines",
     fields: [
@@ -849,7 +849,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Concept2 ou Rowerg en mode sprint", "Reposé 48h", "Échauffement obligatoire"],
     echauffement: ["10 min progressif", "3 × 5s accélération progressive avec 2 min récup"],
     etapes: ["3 tentatives × 10s sprint all-out avec 5 min récup entre chaque", "Départ depuis l'immobilité complète (vitesse zéro)", "Sprint maximal — puissance de crête enregistrée par le PM5", "Conserver le meilleur résultat des 3 tentatives"],
-    interpretation: ["H : > 900W exceptionnel · 700–900W très bon · 500–700W bon", "F : > 650W exceptionnel · 500–650W très bon · 350–500W bon", "Puissance/poids > 10 W/kg = profil sprint de haut niveau"],
+    interpretation: ['lo2.p_power_row_interp0', 'lo2.p_power_row_interp1', 'lo2.p_power_row_interp2'],
     erreurs: ["Départ trop précipité — perd le placement initial", "Récupération insuffisante entre les tentatives", "Damper trop élevé (n'améliore pas la puissance réelle mesurée)"],
     frequence: "1 fois/mois en phase de développement de puissance",
     fields: [
@@ -863,7 +863,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Concept2 ou ergomètre calibré", "Damper 4–5", "Reposé 48h"],
     echauffement: ["10 min @ split cible +40s/500m", "2 × 30s puissance élevée avec 3 min récup"],
     etapes: ["Départ @ 2000m split + 30s/500m", "Baisser le split de 2s (ou augmenter de ~10W) toutes les 60 secondes", "Continuer jusqu'à incapacité à maintenir la cadence cible (> 18 spm)", "PMA = puissance du dernier palier complet tenu"],
-    interpretation: ["PMA/poids > 5 W/kg : élite", "VO2max ≈ (PMA × 10,8 / poids) + 7 (estimation)", "FTP aviron ≈ 75–80% de la PMA"],
+    interpretation: ['lo2.p_vo2max_row_interp0', 'lo2.p_vo2max_row_interp1', 'lo2.p_vo2max_row_interp2'],
     erreurs: ["Paliers trop longs → fatigue prématurée qui sous-estime la PMA", "Cadence trop haute dès le début → inefficacité technique", "Pas d'échauffement → sous-performance garantie"],
     frequence: "2–3 fois/an",
     fields: [
@@ -879,7 +879,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Espace > 25m linéaire pour le sled", "Matériel standardisé Hyrox (SkiErg, Sled, Sandbag, Wall Ball…)", "Partenaire pour chrono et sécurité", "Reposé 72h"],
     echauffement: ["15 min progressif en course", "1 série légère de chaque station à ~40% de l'effort"],
     etapes: ["Run 1km + SkiErg 1000m", "Run 1km + Sled Push 4×25m", "Run 1km + Sled Pull 4×25m", "Run 1km + Burpee Broad Jumps 80m", "Run 1km + Rowing 1000m", "Run 1km + Farmer Carry 200m", "Run 1km + Sandbag Lunges 100m", "Run 1km + Wall Balls 100 reps"],
-    interpretation: ["< 1h : niveau élite · 1h–1h15 : compétiteur · 1h15–1h30 : performance · > 1h30 : progression", "Analyser split Run vs Stations pour identifier les maillons faibles", "Roxzone = temps total stations / temps total course × 100"],
+    interpretation: ['lo2.p_pft_interp0', 'lo2.p_pft_interp1', 'lo2.p_pft_interp2'],
     erreurs: ["Partir trop vite sur les runs du début", "Négliger la technique sur Sled Push (perte d'énergie)", "Mauvaise hydratation en cours d'effort"],
     frequence: "2–3 fois/an — jamais < 3 semaines avant une compétition",
     fields: [
@@ -894,7 +894,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Matériel standardisé pour la station choisie", "Poids officiels Hyrox selon catégorie H / F", "Reposé 48h"],
     echauffement: ["10 min cardio léger", "2–3 séries légères de la station @ 40% effort"],
     etapes: ["Choisir la station à tester (SkiErg, Sled Push, Sled Pull, BBJ, Rowing, FC, SBL, Wall Ball)", "Distances et répétitions officielles Hyrox strictement respectées", "Chrono lancé au signal, arrêté à la fin de la dernière rep / distance", "Comparer au split obtenu en compétition ou lors du PFT"],
-    interpretation: ["Comparer au split de référence de ta catégorie d'âge", "Un split > +20% par rapport à tes meilleures stations = point faible prioritaire", "Calculer l'impact théorique sur le temps total PFT"],
+    interpretation: ['lo2.p_station_interp0', 'lo2.p_station_interp1', 'lo2.p_station_interp2'],
     erreurs: ["Ne pas respecter les poids ou distances officiels", "Mauvaise technique sous fatigue (risque blessure + perte de temps)", "Absence de warm-up spécifique avant la station"],
     frequence: "1 fois/semaine par station en période de spécialisation Hyrox",
     fields: [
@@ -908,7 +908,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Sol plat non glissant", "Distance officielle Hyrox : 80m (4 allers-retours de 20m)", "Poids corporel uniquement"],
     echauffement: ["10 min cardio léger", "3 BBJ lents puis 3 BBJ @ 60%"],
     etapes: ["20 BBJ consécutifs à effort maximal", "Chrono démarré au premier mouvement, arrêté au retour sur la ligne de départ", "Technique : planche — saut pieds joints — maximum en longueur — ramener les pieds", "Ne pas poser les genoux au sol pendant la planche (pénalité)"],
-    interpretation: ["< 2:30 : élite · 2:30–3:00 : très bon · 3:00–3:45 : moyen · > 3:45 : à améliorer", "Rythme régulier préférable à un sprint-pause-sprint", "Comparer au split BBJ en compétition Hyrox (station 4 = 80m)"],
+    interpretation: ['lo2.p_bbj_interp0', 'lo2.p_bbj_interp1', 'lo2.p_bbj_interp2'],
     erreurs: ["Sauts trop courts — économise les forces mais augmente le temps", "Genoux au sol pendant la planche (hors règle Hyrox)", "Départ trop explosif → cassure à mi-parcours"],
     frequence: "1 fois/semaine en phase de préparation Hyrox",
     fields: [
@@ -921,7 +921,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["2 kettlebells ou barres : 32 kg H / 24 kg F (poids officiels Hyrox)", "Couloir 25m minimum (4 allers-retours)", "Sol plat"],
     echauffement: ["5 min marche active", "1 × 50m @ 50% de la charge", "3 min récup"],
     etapes: ["Prendre les charges, partir au signal", "Marcher sur 200m aller-retour (4 × 25m + demi-tours)", "Pose des charges autorisée uniquement à la ligne de demi-tour", "Chrono arrêté au franchissement de la ligne d'arrivée"],
-    interpretation: ["< 1:20 : élite · 1:20–1:45 : bon · 1:45–2:15 : moyen · > 2:15 : à améliorer", "Lâcher les charges entre les plots = pénalité 5s en compétition", "Si > 2 min → prioriser travail grip + gainage"],
+    interpretation: ['lo2.p_farmer_carry_interp0', 'lo2.p_farmer_carry_interp1', 'lo2.p_farmer_carry_interp2'],
     erreurs: ["Courber le dos sous la charge (risque lombaire)", "Lâcher les charges hors des zones autorisées", "Pas assez de récup avant le test"],
     frequence: "1 fois/semaine en phase de force-endurance",
     fields: [
@@ -935,7 +935,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Wall Ball 9 kg H / 6 kg F (poids officiels Hyrox)", "Mur plat avec cible à 3m de hauteur", "Sol antidérapant"],
     echauffement: ["10 min cardio", "20 reps @ 50–60%", "3 min récup"],
     etapes: ["100 Wall Balls — poses de la balle autorisées (comptabilisées dans le temps)", "Fléchir en dessous du parallèle à chaque rep (genoux au niveau des hanches)", "Balle au-dessus de la cible (3m) à chaque rep valide", "Chrono arrêté à la 100e répétition valide"],
-    interpretation: ["< 4:00 : élite · 4:00–5:00 : bon · 5:00–6:30 : moyen · > 6:30 : à améliorer", "Stratégie en séries courtes (15–20 reps + pause 5s) souvent plus rapide que le continu", "Douleur avant-bras → travail grip · Douleur quads → force spécifique Wall Ball"],
+    interpretation: ['lo2.p_wall_ball_interp0', 'lo2.p_wall_ball_interp1', 'lo2.p_wall_ball_interp2'],
     erreurs: ["Squat pas assez profond (rep non valide)", "Balle en dessous de la cible (rep invalide)", "Tenir trop longtemps sans poser → effondrement technique"],
     frequence: "1 fois/semaine en période de spécialisation Hyrox",
     fields: [
@@ -949,7 +949,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Sled Hyrox standard : +100 kg H / +60 kg F", "Surface synthétique ou tartan (pas sur béton brut)", "4 passages de 25m = 100m total"],
     echauffement: ["10 min cardio", "1 × 25m @ ~50% de la charge officielle"],
     etapes: ["Dos à la ligne de départ, sled en face", "Pousser le sled sur 25m, demi-tour, repousser (4 passages)", "Puissance générée par poussée basse, cadence de pas rapide", "Chrono arrêté après le 4e franchissement de ligne"],
-    interpretation: ["< 1:30 : élite · 1:30–2:00 : bon · 2:00–2:45 : moyen · > 2:45 : à améliorer", "Sled Push est la station la plus énergivore → point faible à prioriser", "Force quadriceps + position basse = facteurs clés de performance"],
+    interpretation: ['lo2.p_sled_push_interp0', 'lo2.p_sled_push_interp1', 'lo2.p_sled_push_interp2'],
     erreurs: ["Position trop haute → perd de la puissance de transmission", "Pousser avec les bras seuls sans engagement des jambes", "Mauvaise inclinaison des mains (doit être dans l'axe du sled)"],
     frequence: "1 fois/semaine en phase de développement de force",
     fields: [
@@ -962,7 +962,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Sled Hyrox : +100 kg H / +60 kg F", "Corde de 15m minimum", "Surface adaptée (synthétique)"],
     echauffement: ["10 min cardio", "1 × 25m @ ~50% de la charge"],
     etapes: ["Faire face au sled, corde tendue", "Tirer le sled vers soi main par main en reculant", "Ligne d'arrivée → demi-tour, tirer le sled dans l'autre sens (4 passages)", "Chrono arrêté au franchissement de la 4e ligne"],
-    interpretation: ["< 2:00 : élite · 2:00–2:45 : bon · 2:45–3:30 : moyen · > 3:30 : à améliorer", "Endurance de grip souvent le facteur limitant", "Forte sollicitation dorsale → prévoir récupération musculaire active"],
+    interpretation: ['lo2.p_sled_pull_interp0', 'lo2.p_sled_pull_interp1', 'lo2.p_sled_pull_interp2'],
     erreurs: ["Lâcher la corde sans contrôle (risque de chute)", "Tirer avec le dos voûté (risque lombaire)", "Demi-tour trop lent entre les passages"],
     frequence: "1 fois/semaine en phase de force-endurance",
     fields: [
@@ -976,7 +976,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Capteur de puissance", "FTP connue", "Home trainer ou route plate", "Hydratation et nutrition prévues (60g glucides/h)", "Reposé 48h"],
     echauffement: ["15 min léger puis directement à la puissance cible"],
     etapes: ["Rouler 240 min à 60–65% FTP (zone 2)", "Enregistrer FC toutes les 30 min", "Mesurer la dérive cardiaque (∆FC entre min 15 et min 210)", "Maintenir la puissance constante", "Gérer la nutrition : ~60g glucides/h recommandés"],
-    interpretation: ["Dérive FC < 5 bpm sur 4h = zone 2 excellente, forte capacité aérobie de base", "Dérive 5–12 bpm = adaptations nécessaires en endurance longue durée", "Dérive > 15 bpm = intensité trop haute ou déficit nutritionnel", "Si puissance chute de > 5% après 3h → glycogène insuffisant ou intensité surestimée"],
+    interpretation: ['lo2.p_endurance_4h_interp0', 'lo2.p_endurance_4h_interp1', 'lo2.p_endurance_4h_interp2', 'lo2.p_endurance_4h_interp3'],
     erreurs: ["Partir trop fort en début de séance", "Négliger la nutrition — chute de puissance à 2h–3h = déficit glucidique", "Arrêts qui cassent la continuité aérobie"],
     frequence: "1 fois / 6–8 semaines en bloc de construction aérobie longue",
     fields: [
@@ -992,7 +992,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Capteur de puissance et FC thoracique", "Home trainer ou route plate", "Hydratation disponible", "FTP connue"],
     echauffement: ["10 min léger puis directement au bloc 1"],
     etapes: ["Bloc 1 (2h) @ 55–60% FTP — enregistrer FC toutes les 30 min", "Bloc 2 (2h) @ 62–68% FTP — noter l'élévation FC entre les blocs", "Bloc 3 (1h) @ 68–75% FTP — mesurer FC finale", "Ne pas dépasser les zones cibles", "Calculer les dérives FC dans chaque bloc et entre les blocs"],
-    interpretation: ["FC stable dans chaque bloc = bonne capacité aérobie dans cette zone", "Élévation FC > 10 bpm en passant au bloc suivant = seuil de fatigue identifié", "Si FC s'emballe au bloc 3 → EF haute dépasse le seuil réel"],
+    interpretation: ['lo2.p_endurance_drift_interp0', 'lo2.p_endurance_drift_interp1', 'lo2.p_endurance_drift_interp2'],
     erreurs: ["Transitions de blocs trop abruptes — monter en 5 min", "Oublier de noter les FC à chaque demi-heure", "Mauvaise nutrition sur test de 5h"],
     frequence: "1 fois / bloc de 8–12 semaines",
     fields: [
@@ -1011,7 +1011,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Capteur de puissance", "FTP connue et récente", "Ravitaillement pour toute la durée", "Reposé 72h — test très exigeant"],
     echauffement: ["Directement dans le bloc endurance — l'intensité est modérée par définition"],
     etapes: ["Phase 1 (3h30–5h30) : rouler à 55–65% FTP — endurance fondamentale", "Phase 2 (20 min) : sans pause, passer à 95–105% FTP — maintenir la puissance malgré la fatigue", "Phase 3 (10 min) : récupération @ 40–50% FTP — noter la FC de récupération", "Comparer la puissance FTP obtenue ici à la puissance CP20 à frais"],
-    interpretation: ["Puissance FTP post-endurance > 90% CP20 = très bonne résistance à la fatigue", "80–90% = fatigue normale — continuer à construire la base", "< 80% = base aérobie insuffisante ou volume trop élevé", "FC récup doit descendre de > 30 bpm en 5 min"],
+    interpretation: ['lo2.p_endurance_long_ftp_interp0', 'lo2.p_endurance_long_ftp_interp1', 'lo2.p_endurance_long_ftp_interp2', 'lo2.p_endurance_long_ftp_interp3'],
     erreurs: ["Partir trop fort en phase FTP par envie de compenser la fatigue", "Négliger la nutrition sur la phase endurance", "Ne pas noter les puissances intermédiaires"],
     frequence: "1 fois / 8 semaines — test de spécificité longue distance",
     fields: [
@@ -1030,7 +1030,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Piscine avec couloir dédié", "Maître-nageur ou partenaire obligatoire (sécurité)", "Reposé 48h", "Ne jamais faire ce test seul — risque vital"],
     echauffement: ["600m nage à allure très facile", "5 min de respiration ventrale profonde (ne pas hyperventiler — contre-productif et dangereux)"],
     etapes: ["Prendre une dernière grande inspiration sur le bord", "Pousser sur le mur, nager au crawl à allure modérée-soutenue", "Nager sans respirer aussi loin que possible", "Sortir de l'eau ou s'arrêter dès que l'envie de respirer devient irrésistible", "Mesurer la distance exacte parcourue en mètres"],
-    interpretation: ["< 25m : niveau de base · 25–50m : intermédiaire · 50–75m : bon · > 75m : excellent", "Progression de +5m en 4 semaines = adaptation hypoxique efficace", "Utiliser pour calibrer les exercices d'apnée fractionnée (3 × 25m récup complète)"],
+    interpretation: ['lo2.p_hypoxie_interp0', 'lo2.p_hypoxie_interp1', 'lo2.p_hypoxie_interp2'],
     erreurs: ["Hyperventiler avant le départ — interdit (risque de syncope hypoxique)", "Nager trop vite — augmente la consommation d'O₂ et réduit la distance", "Réaliser ce test sans surveillance"],
     frequence: "1 fois / 3–4 semaines",
     fields: [
@@ -1044,7 +1044,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Sol plat non glissant", "200m continus (8 allers-retours de 25m ou 4 allers de 50m)", "Poids corporel uniquement"],
     echauffement: ["10 min cardio léger", "5 BBJ lents + 5 BBJ à 80%"],
     etapes: ["200m de BBJ consécutifs à effort maximal — rythme constant recommandé", "Chrono démarré au 1er mouvement, arrêté au franchissement de la ligne d'arrivée", "Technique officielle : planche — saut pieds joints — maximum longueur — ramener les pieds", "Genoux au sol = +5s de pénalité"],
-    interpretation: ["< 5:30 : élite · 5:30–7:00 : bon · 7:00–8:30 : moyen · > 8:30 : à améliorer", "Ratio temps 200m / (2 × temps 80m) > 2.4 → endurance BBJ à travailler"],
+    interpretation: ['lo2.p_bbj_200m_interp0', 'lo2.p_bbj_200m_interp1'],
     erreurs: ["Partir trop vite sur les 5 premiers mètres → effondrement à mi-parcours", "Réduction de la longueur de saut sous fatigue", "Mauvaise technique sur les 100 derniers mètres"],
     frequence: "1 fois / 2 semaines en préparation Hyrox spécifique",
     fields: [
@@ -1057,7 +1057,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Sol plat", "400m continus (piste ou couloir)", "Poids corporel uniquement", "Eau disponible — test de 10–18 min"],
     echauffement: ["10 min cardio", "10 BBJ lents + 5 BBJ rapides", "5 min marche récup"],
     etapes: ["400m de BBJ à effort modéré-soutenu — gestion d'allure obligatoire", "Stratégie recommandée : 200m @ 80% + 200m all-out, ou rythme constant", "Chrono global arrêté à la ligne d'arrivée"],
-    interpretation: ["< 13 min : élite · 13–16 min : bon · > 18 min : à travailler", "Index de dégradation : (temps 400m / 2 × temps 200m) − 1 → objectif < 15%"],
+    interpretation: ['lo2.p_bbj_400m_interp0', 'lo2.p_bbj_400m_interp1'],
     erreurs: ["Départ trop explosif — cassure à 150m garantie", "Mauvaise gestion du carrefour technique-physique", "Oublier la nutrition si > 15 min"],
     frequence: "1 fois / mois en cycle de préparation Hyrox",
     fields: [
@@ -1070,7 +1070,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["2 kettlebells : 32 kg H / 24 kg F (poids officiels Hyrox)", "Couloir 25m minimum", "Sol plat", "Partenaire de sécurité"],
     echauffement: ["5 min marche", "100m @ 40% de la charge", "3 min récup complète"],
     etapes: ["Prendre les charges, partir au signal", "Marcher sans poser les charges le plus loin possible (allers-retours de 25m)", "Les demi-tours sont autorisés aux bornes", "Arrêt et mesure de la distance dès que les charges doivent être posées"],
-    interpretation: ["< 100m : grip et endurance à prioriser · 100–200m : intermédiaire · > 300m : bon · > 500m : excellent", "Si distance < 200m → prioriser travail grip (dead hang, farmer carry progressif)"],
+    interpretation: ['lo2.p_farmer_carry_max_interp0', 'lo2.p_farmer_carry_max_interp1'],
     erreurs: ["Courber le dos sous la charge (risque lombaire)", "Prise trop serrée dès le départ (épuise le grip prématurément)", "Essayer de courir → réduit la distance"],
     frequence: "1 fois / 2 semaines",
     fields: [
@@ -1084,7 +1084,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Wall Ball 9kg H / 6kg F", "Mur plat avec cible à 3m", "Sol antidérapant"],
     echauffement: ["10 min cardio", "20 reps @ 50%", "5 min récup"],
     etapes: ["Commencer la série, continuer sans s'arrêter tant que la technique est maintenue", "Arrêt volontaire ou arrêt technique (balle sous la cible, squat insuffisant)", "Compter toutes les répétitions valides"],
-    interpretation: ["< 40 reps : à travailler · 40–80 : intermédiaire · 80–120 : bon · > 120 : élite", "Si < 100 reps → la station Wall Ball peut limiter ton PFT"],
+    interpretation: ['lo2.p_wall_ball_max_reps_interp0', 'lo2.p_wall_ball_max_reps_interp1'],
     erreurs: ["Continuer avec mauvaise technique (ne compte pas, risque blessure)", "Pas assez de récupération avant le test", "Poids de balle incorrect"],
     frequence: "1 fois / 3 semaines",
     fields: [
@@ -1098,7 +1098,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Wall Ball 9kg H / 6kg F", "Mur plat cible à 3m", "Sol antidérapant", "Chrono visible ou assistant"],
     echauffement: ["10 min cardio", "2 séries de 5 reps + 10s pause à 50%"],
     etapes: ["Faire 10 reps Wall Ball", "Tenir la balle à hauteur de poitrine ou au-dessus de la tête pendant 10s", "Reprendre immédiatement 10 nouvelles reps dès la fin des 10s", "Répéter jusqu'à épuisement complet ou arrêt technique", "Compter le total de reps valides — y compris les reps d'une série incomplète"],
-    interpretation: ["10 séries (100 reps) = bon niveau · 15 séries (150 reps) = excellent", "Test qui révèle l'endurance spécifique aux pauses imposées en compétition"],
+    interpretation: ['lo2.p_wall_ball_tabata_interp0', 'lo2.p_wall_ball_tabata_interp1'],
     erreurs: ["Balle posée au sol pendant la pause (doit être maintenue)", "Pause > 10s — arrêter le test, protocole non respecté", "Mauvaise technique sur les reps finales"],
     frequence: "1 fois / 2–3 semaines",
     fields: [
@@ -1113,7 +1113,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Lors d'une vraie course Hyrox ou d'un test complet en salle", "Enregistrement Garmin / Supabase avec splits par km"],
     echauffement: ["Échauffement complet Hyrox standard 15 min"],
     etapes: ["Réaliser une course Hyrox complète (ou test intégral PFT)", "Relever le temps cumulé de running : somme des 8 × 1 km", "Comparer avec les courses précédentes pour suivre la progression"],
-    interpretation: ["Analysé automatiquement depuis vos courses Hyrox enregistrées", "Ou saisir manuellement le temps total running en mm:ss"],
+    interpretation: ['lo2.p_run_compromised_interp0', 'lo2.p_run_compromised_interp1'],
     erreurs: ["Confondre le temps total et le temps running seul", "Ne pas inclure les 8 fractions complètes"],
     frequence: "À chaque course Hyrox",
     fields: [
@@ -1127,7 +1127,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Reposé 48h", "Échauffement spécifique à la force", "Barres olympiques + capteur de charge ou cage de squat"],
     echauffement: ["10 min cardio léger", "2–3 séries montantes par mouvement avant le 1RM"],
     etapes: ["Deadlift 1RM : charges progressives, repos 3–5 min entre essais", "Squat barre 1RM : même protocole", "Bench Press 1RM puis max reps au poids du corps (PDC)", "Calculer les ratios charge / poids du corps pour chaque exercice"],
-    interpretation: ["Score Force = moyenne des 3 sous-scores (DL + SQ + Bench)", "Bench = moyenne (1RM ratio + max reps PDC)", "Un ratio DL > 2.5× est optimal pour les stations sled"],
+    interpretation: ['lo2.p_hyrox_force_interp0', 'lo2.p_hyrox_force_interp1', 'lo2.p_hyrox_force_interp2'],
     erreurs: ["Ne pas forcer le 1RM sans spotters", "Confondre poids barre totale et charge ajoutée"],
     frequence: "1 fois par mois en préparation, 1 fois par bloc en compétition",
     fields: [
@@ -1145,7 +1145,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Barre de traction fixe + espace sol plat", "Chronomètre visible", "Reposé 48h"],
     echauffement: ["10 min mobilité", "1 série légère à 50% de chaque mouvement"],
     etapes: ["5 rounds pour le temps : 20 tractions / 40 pompes / 60 squats", "Pas de repos imposé entre exercices ni entre rounds", "Chronométrer dès le départ de la 1ère traction jusqu'à la dernière squat"],
-    interpretation: ["< 12' (H) / < 16' (F) : niveau Alien", "Résultat directement comparé aux niveaux de référence ci-dessous"],
+    interpretation: ['lo2.p_hyrox_endurance_wod_interp0', 'lo2.p_hyrox_endurance_wod_interp1'],
     erreurs: ["Tractions incomplètes (menton sous la barre = invalide)", "Squats peu profonds (hanche sous genou requis)", "Pompes sans contact de la poitrine au sol"],
     frequence: "1 fois par mois",
     fields: [
@@ -1159,7 +1159,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Sol plat antidérapant", "Ruban de mesure au sol", "Chronométrage électronique ou assistant pour le sprint"],
     echauffement: ["15 min cardio léger", "3 × 3 squats sautés progressifs", "Lignes hautes 2 × 20m"],
     etapes: ["3 tentatives pour chaque exercice — retenir le meilleur", "Saut avant : pieds joints, propulsion maximale vers l'avant, mesurer de la pointe des pieds jusqu'au talon d'atterrissage", "Triple saut : 3 sauts enchaînés sans repositionnement, mesurer la distance totale", "Sprint 20m : départ lancé, chrono déclenché au premier mouvement"],
-    interpretation: ["Score Explosivité = moyenne des 3 sous-scores", "Le saut avant est le meilleur prédicteur de la puissance de BBJ"],
+    interpretation: ['lo2.p_hyrox_explosivite_interp0', 'lo2.p_hyrox_explosivite_interp1'],
     erreurs: ["Pas de préparation balistique = résultat sous-estimé", "Mal mesurer le triple saut (compter à partir du pied de départ)", "Sprint sur surface glissante (chaussures adaptées requis)"],
     frequence: "1 fois par mois en préparation",
     fields: [
@@ -1174,7 +1174,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Ergocycle ou home trainer avec capteur de puissance", "FTP connu et à jour", "Reposé 48h"],
     echauffement: ["20 min montée progressive", "3 × 1 min à 100% FTP avec 2 min récup"],
     etapes: ["Partir à 100% FTP et maintenir autant que possible", "Arrêter dès que la puissance chute > 5% pendant 30s consécutives", "Enregistrer la durée exacte"],
-    interpretation: ["Mesuré depuis vos meilleures sorties enregistrées ou manuellement", "> 55 min : profil Élite seuil / < 20 min : endurance seuil à développer"],
+    interpretation: ['lo2.p_cycling_z4_interp0', 'lo2.p_cycling_z4_interp1'],
     erreurs: ["Partir trop fort (dépasser 105% FTP détruit la durée)", "FTP pas à jour (fausse l'intensité cible)"],
     frequence: "1 fois par cycle de 6 semaines",
     fields: [
@@ -1187,7 +1187,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Montée de 20-40 min (Col ou segment Strava/Garmin)", "Capteur de puissance", "Conditions météo favorables"],
     echauffement: ["30 min à allure endurance sur le plat", "3 × 2 min à FTP avant attaque de la montée"],
     etapes: ["Attaquer la montée cible à effort maximal soutenu (20–40 min)", "Enregistrer la puissance normalisée et le poids du corps", "Calculer le ratio W/kg"],
-    interpretation: ["Calculé automatiquement depuis vos meilleures montées (filtrer segments > 4% de pente, durée 20-40 min)", "Ou saisir manuellement après analyse de votre fichier .fit"],
+    interpretation: ['lo2.p_cycling_grimpeur_interp0', 'lo2.p_cycling_grimpeur_interp1'],
     erreurs: ["Vent de face (sous-estime la puissance)", "Ne pas utiliser un segment court (< 15 min) qui sur-estime la capacité longue"],
     frequence: "Début et fin de saison, ou à chaque nouveau col clé",
     fields: [
@@ -1200,7 +1200,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["VMA connue et récente (< 3 mois)", "Meilleur temps marathon officiel ou enregistré"],
     echauffement: ["N/A — basé sur des performances existantes"],
     etapes: ["Convertir le temps marathon en vitesse (km/h)", "Diviser par la VMA × 100 pour obtenir le %", "Ex : marathon 3h30 (12 km/h) / VMA 16 km/h = 75%"],
-    interpretation: ["> 80% : profil marathonien efficace", "Un bon ratio indique que votre endurance est très développée par rapport à votre vitesse maximale"],
+    interpretation: ['lo2.p_running_endurance_pct_interp0', 'lo2.p_running_endurance_pct_interp1'],
     erreurs: ["VMA datée de plus de 6 mois (résultat peu fiable)", "Utiliser un temps marathon estimé plutôt que mesuré"],
     frequence: "À chaque nouveau marathon / nouvelle VMA",
     fields: [
@@ -1216,7 +1216,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Piste ou route plate (<20m dénivelé)", "GPS de précision", "Conditions météo neutres (< 20°C, vent < 15 km/h)"],
     echauffement: ["20 min à allure facile", "4 × 100m progressifs", "5 min marche"],
     etapes: ["Courir 10 km à l'effort le plus soutenu possible", "Enregistrer le temps final (mm:ss)"],
-    interpretation: ["Référence mondiale : 26:24 (H, Joshua Cheptegei) / 29:01 (F, Beatrice Chebet)", "Bon niveau amateur H : < 40 min / F : < 46 min"],
+    interpretation: ['lo2.p_running_10km_interp0', 'lo2.p_running_10km_interp1'],
     erreurs: ["Partir trop vite sur le premier km", "Parcours non validé (dénivelé ou distance imprécise)"],
     frequence: "1 fois par mois en préparation, 2-3 fois par saison",
     fields: [
@@ -1229,7 +1229,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Capteur FC thoracique", "Piste ou route plate", "Conditions thermoneutres (15-20°C)"],
     echauffement: ["15 min à allure très facile jusqu'à FC stable"],
     etapes: ["Courir à FC stable de 145-155 bpm pendant 20-30 min", "Relever l'allure moyenne (s/km) pendant la période stable", "Calculé automatiquement depuis vos sorties avec capteur FC"],
-    interpretation: ["Plus l'allure est rapide à FC 150, meilleure est l'économie de course", "Amélioration typique : 10-20 s/km en 3-6 mois d'entraînement"],
+    interpretation: ['lo2.p_running_economie_fc_interp0', 'lo2.p_running_economie_fc_interp1'],
     erreurs: ["FC instable (vent, chaleur, caféine)", "Capteur optique au poignet (FC moins précise)"],
     frequence: "1 fois par mois — mesure de progression à long terme",
     fields: [
@@ -1242,7 +1242,7 @@ const PROTOCOLS: Record<string, TestProtocol> = {
     conditions: ["Capteur FC thoracique", "Effort maximal soutenu 3-5 min juste avant", "Arrêt complet (assis ou couché)"],
     echauffement: ["20 min montée progressive", "2 × 2 min à 95% FCmax"],
     etapes: ["Réaliser un effort à > 90% FCmax pendant 3-5 min", "S'arrêter complètement en notant la FC max atteinte", "Relever la FC exactement 60s après l'arrêt", "Calculer la chute : FC_max − FC_60s"],
-    interpretation: ["Calculé automatiquement depuis vos activités avec FC enregistrées", "Une baisse > 30 bpm indique un très bon niveau de condition"],
+    interpretation: ['lo2.p_running_recup_fc_interp0', 'lo2.p_running_recup_fc_interp1'],
     erreurs: ["Continuer à marcher pendant la mesure (fausse la baisse)", "Utiliser la FC sur montre sans capteur thoracique"],
     frequence: "1 fois par mois — évolue lentement",
     fields: [
@@ -1545,7 +1545,7 @@ function TestProtocolPanel({ open: ot, onClose, onFtpUpdate }: { open: OpenTest 
                 {proto.interpretation.map((r, i) => (
                   <div key={i} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
                     <span style={{ color:'#22c55e', fontSize:12, flexShrink:0, paddingTop:1 }}>→</span>
-                    <p style={{ fontSize:12.5, color:'var(--text-mid)', margin:0, lineHeight:1.55 }}>{r}</p>
+                    <p style={{ fontSize:12.5, color:'var(--text-mid)', margin:0, lineHeight:1.55 }}>{t(r)}</p>
                   </div>
                 ))}
               </div>

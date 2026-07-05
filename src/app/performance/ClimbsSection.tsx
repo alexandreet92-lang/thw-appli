@@ -316,7 +316,7 @@ function ScatterSVG({ climbs, allYears, onPointClick, highlightIds }: {
         <line x1={PL} y1={PT+CH} x2={PL+CW} y2={PT+CH} stroke={axisColor} strokeWidth={1}/>
         {/* Labels axe X */}
         {xTicks.map(v => <text key={`xl${v}`} x={xPos(v)} y={PT+CH+14} textAnchor="middle" fontSize={9} fontFamily="DM Mono,monospace" fill={labelColor}>{v}</text>)}
-        <text x={PL+CW/2} y={H-2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill={axisLblColor}>Durée (min)</text>
+        <text x={PL+CW/2} y={H-2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill={axisLblColor}>{t('lo2.durationMinAxis')}</text>
         {/* Labels axe Y */}
         {yTicks.map(v => <text key={`yl${v}`} x={PL-7} y={yPos(v)+3} textAnchor="end" fontSize={9} fontFamily="DM Mono,monospace" fill={labelColor}>{v.toFixed(1)}</text>)}
         <text x={11} y={PT+CH/2} textAnchor="middle" fontSize={9} fontFamily="DM Sans,sans-serif" fill={axisLblColor} transform={`rotate(-90,11,${PT+CH/2})`}>W/kg</text>
@@ -1034,104 +1034,85 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
 
           {/* ── Accordion : Méthode ── */}
           <Accordion title={t('perf2.calcMethod')}>
-            <p style={{ fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily:'Syne,sans-serif' }}>Comment est calculé le score ?</p>
+            <p style={{ fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily:'Syne,sans-serif' }}>{t('lo2.scoreHowTitle')}</p>
             <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 10px' }}>
-              Chaque ascension reçoit un score sur 100. La référence absolue est le niveau <strong style={{ color:'var(--text)' }}>Alien</strong> — elle n'est pas fixe : elle dépend de la durée de l'effort <em>et</em> du niveau de pré-fatigue.
+              {t('lo2.scoreP1a')}<strong style={{ color:'var(--text)' }}>Alien</strong>{t('lo2.scoreP1b')}<em>{t('lo2.scoreP1et')}</em>{t('lo2.scoreP1c')}
             </p>
             <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 12px' }}>
-              À 60 min frais, la référence Alien est <strong style={{ color:'var(--text)' }}>6.4 W/kg</strong> (Pogacar TdF). À 10 min frais elle monte à <strong style={{ color:'var(--text)' }}>7.8 W/kg</strong> (sprint long), à 120 min elle descend à <strong style={{ color:'var(--text)' }}>5.6 W/kg</strong> (col marathon).
+              {t('lo2.scoreP2a')}<strong style={{ color:'var(--text)' }}>6.4 W/kg</strong>{t('lo2.scoreP2b')}<strong style={{ color:'var(--text)' }}>7.8 W/kg</strong>{t('lo2.scoreP2c')}<strong style={{ color:'var(--text)' }}>5.6 W/kg</strong>{t('lo2.scoreP2d')}
             </p>
 
             {/* Formule */}
             <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius:8, padding:'10px 14px', margin:'0 0 6px', fontFamily:'DM Mono,monospace', fontSize:12, color:BIKE_COLOR }}>
-              score_brut = (W/kg ÷ Réf. Alien) × 100
+              {t('lo2.scoreFormula1')}
             </div>
             <div style={{ background:'var(--bg-card2)', border:`1px solid ${BIKE_COLOR}30`, borderRadius:8, padding:'10px 14px', margin:'0 0 14px', fontFamily:'DM Mono,monospace', fontSize:12, color:BIKE_COLOR }}>
-              score_final = min(100, score_brut × cTemp × cAlt × cRessenti)
+              {t('lo2.scoreFormula2')}
             </div>
             <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 14px' }}>
-              La <strong style={{ color:'var(--text)' }}>pré-fatigue</strong> est déjà encodée dans la sélection de la table de référence — un effort à 5 W/kg avec grosse fatigue vaut plus qu'à 5 W/kg frais. Seuls 3 coefficients ajustent encore : température, altitude et ressenti subjectif.
+              {t('lo2.scoreP3a')}<strong style={{ color:'var(--text)' }}>{t('lo2.scoreP3strong')}</strong>{t('lo2.scoreP3b')}
             </p>
 
             {/* Exemples */}
             {[
               {
-                title: 'Exemple 1 — Bon amateur, 12 min, conditions standard',
-                lines: [
-                  'W/kg : 3.2 · Durée : 12 min · Frais · 15°C · 900 m · Ressenti 4',
-                  'Réf. Alien 12 min (interp. standard) ≈ 8.4 W/kg',
-                  'score_brut = 3.2 / 8.4 × 100 = 38',
-                  'cTemp = ×1.00 · cAlt = ×1.01 · cRessenti = ×1.02 → ×1.03',
-                ],
-                result: 'Score = min(100, 38 × 1.03) = 39/100 — Amateur',
+                title: 'lo2.scoreEx1Title',
+                lines: ['lo2.scoreEx1L0','lo2.scoreEx1L1','lo2.scoreEx1L2','lo2.scoreEx1L3'],
+                result: 'lo2.scoreEx1Result',
               },
               {
-                title: 'Exemple 2 — 50 min, grosse fatigue, chaleur, 1800 m',
-                lines: [
-                  'W/kg : 3.6 · Durée : 50 min · Grosse pré-fatigue · 32°C · 1800 m · Ressenti 3',
-                  'Réf. Alien 50 min (interp. heavy) ≈ 6.2 W/kg',
-                  'score_brut = 3.6 / 6.2 × 100 = 58',
-                  'cTemp = ×1.04 · cAlt = ×1.03 · cRessenti = ×1.04 → ×1.11',
-                ],
-                result: 'Score = min(100, 58 × 1.11) = 64/100 — Bon amateur',
-                note: 'Grosse fatigue + chaleur + altitude : la table heavy + les coefficients reflètent la vraie difficulté.',
+                title: 'lo2.scoreEx2Title',
+                lines: ['lo2.scoreEx2L0','lo2.scoreEx2L1','lo2.scoreEx2L2','lo2.scoreEx2L3'],
+                result: 'lo2.scoreEx2Result',
+                note: 'lo2.scoreEx2Note',
               },
               {
-                title: 'Exemple 3 — Pogacar, 40 min, grosse fatigue',
-                lines: [
-                  'W/kg : 6.8 · Durée : 40 min · Grosse fatigue · 30°C+ · 2000 m+',
-                  'Réf. Alien 40 min (interp. heavy) ≈ 6.2 W/kg',
-                  'score_brut = 6.8 / 6.2 × 100 = 110 → plafonné à 100',
-                  'cTemp = ×1.04 · cAlt = ×1.03 · cRessenti = ×1.00 → ×1.07',
-                ],
-                result: 'Score = min(100, 100) = 100/100 — Alien',
-                note: 'Dépasser la référence Alien plafonne le score à 100. Seuls quelques athlètes au monde peuvent y prétendre.',
+                title: 'lo2.scoreEx3Title',
+                lines: ['lo2.scoreEx3L0','lo2.scoreEx3L1','lo2.scoreEx3L2','lo2.scoreEx3L3'],
+                result: 'lo2.scoreEx3Result',
+                note: 'lo2.scoreEx3Note',
               },
               {
-                title: 'Exemple 4 — Ressenti facile = marge restante',
-                lines: [
-                  'Deux montées à 3.8 W/kg, 45 min standard, conditions identiques :',
-                  'Ressenti 5 (à fond) → score_brut = 54 × 1.00 = 54/100 — Bon amateur',
-                  'Ressenti 2 (facile) → score_brut = 54 × 1.06 = 57/100 — Bon amateur',
-                ],
-                note: 'Produire la même puissance sans se mettre dans le rouge indique une capacité supérieure. Le score le récompense.',
+                title: 'lo2.scoreEx4Title',
+                lines: ['lo2.scoreEx4L0','lo2.scoreEx4L1','lo2.scoreEx4L2'],
+                note: 'lo2.scoreEx4Note',
               },
             ].map(ex => (
               <div key={ex.title} style={{ marginBottom:14, padding:'10px 12px', background:'var(--bg-card2)', borderRadius:8, border:'1px solid var(--border)' }}>
-                <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily:'Syne,sans-serif' }}>{ex.title}</p>
+                <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily:'Syne,sans-serif' }}>{t(ex.title)}</p>
                 {ex.lines.map(l => (
-                  <p key={l} style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 3px', fontFamily:'DM Mono,monospace' }}>{l}</p>
+                  <p key={l} style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 3px', fontFamily:'DM Mono,monospace' }}>{t(l)}</p>
                 ))}
                 {ex.result && (
-                  <p style={{ fontSize:11, fontWeight:700, color:BIKE_COLOR, margin:'6px 0 0', fontFamily:'DM Mono,monospace' }}>{ex.result}</p>
+                  <p style={{ fontSize:11, fontWeight:700, color:BIKE_COLOR, margin:'6px 0 0', fontFamily:'DM Mono,monospace' }}>{t(ex.result)}</p>
                 )}
                 {ex.note && (
-                  <p style={{ fontSize:11, color:'var(--text-mid)', margin:'6px 0 0', lineHeight:1.5, fontStyle:'italic' }}>→ {ex.note}</p>
+                  <p style={{ fontSize:11, color:'var(--text-mid)', margin:'6px 0 0', lineHeight:1.5, fontStyle:'italic' }}>→ {t(ex.note)}</p>
                 )}
               </div>
             ))}
 
             {/* Tableau des 3 facteurs */}
-            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'4px 0 8px', fontFamily:'Syne,sans-serif', textTransform:'uppercase', letterSpacing:'0.05em' }}>Les 3 facteurs de conditions</p>
+            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'4px 0 8px', fontFamily:'Syne,sans-serif', textTransform:'uppercase', letterSpacing:'0.05em' }}>{t('lo2.score3Factors')}</p>
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
                 <thead>
                   <tr>
-                    {['Facteur','Impact max','Ce qu\'il mesure'].map(h => (
-                      <th key={h} style={{ textAlign:'left', padding:'4px 8px', color:'var(--text-dim)', fontWeight:600, borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>{h}</th>
+                    {['lo2.scoreFactorHead','lo2.scoreImpactHead','lo2.scoreMeasuresHead'].map(h => (
+                      <th key={h} style={{ textAlign:'left', padding:'4px 8px', color:'var(--text-dim)', fontWeight:600, borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>{t(h)}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    ['Ressenti',    '+6%', 'Puissance produite avec de la marge'],
-                    ['Altitude',    '+5%', 'Raréfaction de l\'air au sommet'],
-                    ['Température', '+4%', 'Chaleur ou froid extrême'],
+                    ['lo2.scoreFactorPerceived', '+6%', 'lo2.scoreFactorPerceivedDesc'],
+                    ['lo2.scoreFactorAltitude',  '+5%', 'lo2.scoreFactorAltitudeDesc'],
+                    ['lo2.scoreFactorTemp',      '+4%', 'lo2.scoreFactorTempDesc'],
                   ].map(([f, imp, desc], i) => (
                     <tr key={f} style={{ background: i%2===0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                      <td style={{ padding:'5px 8px', color:'var(--text)', fontWeight:600 }}>{f}</td>
+                      <td style={{ padding:'5px 8px', color:'var(--text)', fontWeight:600 }}>{t(f)}</td>
                       <td style={{ padding:'5px 8px', fontFamily:'DM Mono,monospace', color:BIKE_COLOR, fontWeight:700 }}>{imp}</td>
-                      <td style={{ padding:'5px 8px', color:'var(--text-dim)' }}>{desc}</td>
+                      <td style={{ padding:'5px 8px', color:'var(--text-dim)' }}>{t(desc)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1139,18 +1120,18 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
             </div>
 
             {/* Valeurs détaillées */}
-            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'14px 0 8px', fontFamily:'Syne,sans-serif', textTransform:'uppercase', letterSpacing:'0.05em' }}>Valeurs des coefficients</p>
+            <p style={{ fontSize:11, fontWeight:700, color:'var(--text)', margin:'14px 0 8px', fontFamily:'Syne,sans-serif', textTransform:'uppercase', letterSpacing:'0.05em' }}>{t('lo2.scoreCoeffValues')}</p>
             {[
-              { label:'Température', rows:[['10–18°C (confort)','×1.00'],['18–25°C (chaude)','×1.01'],['5–10°C (fraîche)','×1.02'],['25–30°C (très chaude)','×1.03'],['< 5°C (froide)','×1.04'],['>30°C (extrême)','×1.04']] },
-              { label:'Altitude sommet', rows:[['< 500 m','×1.00'],['500–1000 m','×1.01'],['1000–1500 m','×1.02'],['1500–2000 m','×1.03'],['2000–2500 m','×1.04'],['> 2500 m','×1.05']] },
-              { label:'Ressenti inversé', rows:[['À fond (5)','×1.00'],['Très dur (4)','×1.02'],['Contrôle (3)','×1.04'],['Facile (1–2)','×1.06']] },
+              { label:'lo2.scoreCoeffTemp', rows:[['lo2.scoreTemp0','×1.00'],['lo2.scoreTemp1','×1.01'],['lo2.scoreTemp2','×1.02'],['lo2.scoreTemp3','×1.03'],['lo2.scoreTemp4','×1.04'],['lo2.scoreTemp5','×1.04']] },
+              { label:'lo2.scoreCoeffAltitude', rows:[['lo2.scoreAlt0','×1.00'],['lo2.scoreAlt1','×1.01'],['lo2.scoreAlt2','×1.02'],['lo2.scoreAlt3','×1.03'],['lo2.scoreAlt4','×1.04'],['lo2.scoreAlt5','×1.05']] },
+              { label:'lo2.scoreCoeffPerceived', rows:[['lo2.scorePerc0','×1.00'],['lo2.scorePerc1','×1.02'],['lo2.scorePerc2','×1.04'],['lo2.scorePerc3','×1.06']] },
             ].map(({ label, rows }) => (
               <div key={label} style={{ marginBottom:10 }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'var(--text-mid)', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>{label}</div>
+                <div style={{ fontSize:10, fontWeight:700, color:'var(--text-mid)', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.05em' }}>{t(label)}</div>
                 <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
                   {rows.map(([cat, coeff]) => (
                     <div key={cat} style={{ display:'flex', justifyContent:'space-between', fontSize:11 }}>
-                      <span style={{ color:'var(--text-dim)' }}>{cat}</span>
+                      <span style={{ color:'var(--text-dim)' }}>{t(cat)}</span>
                       <span style={{ fontFamily:'DM Mono,monospace', color:BIKE_COLOR, fontWeight:700 }}>{coeff}</span>
                     </div>
                   ))}

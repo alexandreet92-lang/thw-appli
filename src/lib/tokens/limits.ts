@@ -23,6 +23,7 @@ interface PlanLimitsRow {
 }
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
 // Doit rester aligné avec la migration tokens_limits_rebalance.sql (source de
 // vérité = table token_plan_limits). Calibré pour ~70 % de marge en usage
@@ -45,13 +46,16 @@ export async function getUserTokenLimits(userId: string): Promise<TokenLimits> {
   const unlimited = await isCreatorAccount(userId)
   const plan = unlimited ? 'expert' : await getUserTier(userId) // premium | pro | expert
 
-  // Date de début de période (= début d'abonnement, sinon NOW)
+  // Date de début de période. Avec abonnement → début de période. SANS abonnement
+  // (cas fréquent) → fenêtre glissante de 7 jours (avant : NOW → la jauge hebdo
+  // restait à 0 car la fenêtre démarrait « maintenant » et ne capturait rien).
   const { data: sub } = await sb
     .from('user_subscriptions')
     .select('current_period_start')
     .eq('user_id', userId)
     .single()
-  const periodStart = sub?.current_period_start ? new Date(sub.current_period_start) : new Date()
+  const hasSub = !!sub?.current_period_start
+  const periodStart = hasSub ? new Date(sub!.current_period_start) : new Date(Date.now() - WEEK_MS)
 
   // Limites du plan
   const { data: limitsRow } = await sb
@@ -87,9 +91,25 @@ export async function getUserTokenLimits(userId: string): Promise<TokenLimits> {
     .gte('created_at', sixHoursAgo.toISOString())
   const rolling6hUsed = sumTokens(recentRows as { tokens_used: number }[] | null)
 
-  // Reset hebdo = periodStart + 7j
-  const nextReset = new Date(periodStart)
-  nextReset.setDate(nextReset.getDate() + 7)
+  // Reset hebdo : avec abonnement = periodStart + 7j ; sinon (fenêtre glissante)
+  // = plus ancienne conso de la fenêtre + 7j.
+  let weekResetsAt: string
+  if (hasSub) {
+    const nr = new Date(periodStart); nr.setDate(nr.getDate() + 7); weekResetsAt = nr.toISOString()
+  } else {
+    const { data: oldestWeek } = await sb
+      .from('token_usage')
+      .select('created_at')
+      .eq('user_id', userId)
+      .eq('source', 'plan')
+      .gte('created_at', periodStart.toISOString())
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    weekResetsAt = oldestWeek?.created_at
+      ? new Date(new Date(oldestWeek.created_at).getTime() + WEEK_MS).toISOString()
+      : new Date(Date.now() + WEEK_MS).toISOString()
+  }
 
   // Reset 6h = plus ancienne conso récente + 6h
   const { data: oldest } = await sb
@@ -105,7 +125,7 @@ export async function getUserTokenLimits(userId: string): Promise<TokenLimits> {
     : new Date(Date.now() + SIX_HOURS_MS).toISOString()
 
   return {
-    monthly:     { used: monthlyUsed, limit: limits.monthly_tokens, resets_at: nextReset.toISOString() },
+    monthly:     { used: monthlyUsed, limit: limits.monthly_tokens, resets_at: weekResetsAt },
     rolling_6h:  { used: rolling6hUsed, limit: limits.rolling_6h_tokens, resets_at: rolling6hResetsAt },
     per_request: limits.per_request_tokens,
     bonus_tokens: bonusTokens,

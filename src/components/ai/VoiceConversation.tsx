@@ -40,9 +40,10 @@ const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAAC
 // Halos ambiants façon Claude (chaud quand l'IA répond, froid à l'écoute,
 // rosé micro coupé). Couleurs décoratives volontairement en dur pour coller à
 // l'esthétique Claude — annotées design-allow-color (hors gate enforce).
-const AMBIENT_COOL = 'radial-gradient(125% 80% at 50% 118%, rgba(150,172,210,0.34) 0%, rgba(150,172,210,0) 62%)' // design-allow-color
+const AMBIENT_COOL = 'radial-gradient(125% 80% at 50% 118%, rgba(96,140,225,0.42) 0%, rgba(96,140,225,0) 62%)' // design-allow-color — bleu (écoute)
 const AMBIENT_WARM = 'radial-gradient(125% 82% at 50% 118%, rgba(232,176,142,0.40) 0%, rgba(232,176,142,0) 64%)' // design-allow-color
-const AMBIENT_MUTE = 'radial-gradient(125% 80% at 50% 118%, rgba(220,120,108,0.34) 0%, rgba(220,120,108,0) 60%)' // design-allow-color
+const AMBIENT_MUTE = 'radial-gradient(125% 80% at 50% 118%, rgba(232,84,80,0.42) 0%, rgba(232,84,80,0) 60%)'    // design-allow-color — rouge (micro coupé)
+const AMBIENT_SENT = 'radial-gradient(125% 80% at 50% 118%, rgba(52,199,120,0.46) 0%, rgba(52,199,120,0) 62%)'  // design-allow-color — vert (message envoyé)
 const MUTE_RED = '#E0654F' // design-allow-color
 
 type Phase = 'listening' | 'thinking' | 'speaking'
@@ -119,6 +120,8 @@ export function VoiceConversation({ onTurn, onClose }: {
   const [displayText, setDisplayText] = useState('')    // réponse du coach (texte)
   const [spokenChars, setSpokenChars] = useState(0)     // karaoké : nb de caractères « lus »
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null)
+  const [sentFlash, setSentFlash] = useState(false)   // flash vert quand un message part
+  const bargeCountRef = useRef(0)                       // frames de voix pendant que l'IA parle (barge-in)
 
   const phaseRef = useRef<Phase>('listening')
   const mutedRef = useRef(false)
@@ -137,6 +140,8 @@ export function VoiceConversation({ onTurn, onClose }: {
   const hadSpeechRef = useRef(false)
   const transcribingRef = useRef(false)
   const sampleRateRef = useRef(16000)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const srLiveRef = useRef<any>(null)   // reco navigateur — APERÇU EN DIRECT seulement
 
   // Audio serveur (lecture directe) + chaîne Web Audio (amplification + haut-parleur iOS)
   const audioElRef = useRef<HTMLAudioElement | null>(null)
@@ -204,10 +209,27 @@ export function VoiceConversation({ onTurn, onClose }: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         processor.onaudioprocess = (e: any) => {
           if (endedRef.current) return
+          const ch0: Float32Array = e.inputBuffer.getChannelData(0)
+          // ── Barge-in : si l'IA PARLE et que je parle par-dessus → elle se tait et écoute ──
+          if (phaseRef.current === 'speaking' && !mutedRef.current && settingsRef.current.mode === 'hands') {
+            let s0 = 0; for (let i = 0; i < ch0.length; i++) s0 += ch0[i] * ch0[i]
+            if (Math.sqrt(s0 / ch0.length) > SPEECH_RMS * 1.7) {   // seuil + haut (évite l'écho du TTS)
+              bargeCountRef.current++
+              if (bargeCountRef.current >= 3) {
+                bargeCountRef.current = 0
+                stopSpeaking()
+                pcmRef.current = [new Float32Array(ch0)]
+                hadSpeechRef.current = true
+                setPhaseBoth('listening')
+              }
+            } else bargeCountRef.current = 0
+            return
+          }
+          bargeCountRef.current = 0
           const listening = phaseRef.current === 'listening' && !mutedRef.current && !transcribingRef.current
             && (settingsRef.current.mode === 'hands' || pressingRef.current)
           if (!listening) return
-          const ch: Float32Array = e.inputBuffer.getChannelData(0)
+          const ch: Float32Array = ch0
           let sum = 0; for (let i = 0; i < ch.length; i++) sum += ch[i] * ch[i]
           const rms = Math.sqrt(sum / ch.length)
           const speaking = rms > SPEECH_RMS
@@ -241,6 +263,33 @@ export function VoiceConversation({ onTurn, onClose }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted])
 
+  // Aperçu EN DIRECT de ce que je dis (reco navigateur, best-effort). La
+  // transcription FINALE reste Whisper — ceci ne sert qu'à afficher les mots.
+  useEffect(() => {
+    if (!mounted) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SR) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rec: any = new SR()
+    rec.lang = settingsRef.current.lang
+    rec.continuous = true
+    rec.interimResults = true
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      if (endedRef.current || phaseRef.current !== 'listening' || mutedRef.current) return
+      let txt = ''
+      for (let i = e.resultIndex; i < e.results.length; i++) txt += e.results[i][0].transcript
+      if (txt.trim()) setLiveUser(txt.trim())
+    }
+    rec.onend = () => { if (!endedRef.current) { try { rec.start() } catch { /* ignore */ } } }
+    rec.onerror = () => { /* best-effort */ }
+    srLiveRef.current = rec
+    try { rec.start() } catch { /* ignore */ }
+    return () => { try { rec.stop() } catch { /* ignore */ } }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted])
+
   // Fin d'un tour de parole → transcription Whisper → réponse du coach.
   async function finalizeUtterance() {
     if (transcribingRef.current || endedRef.current) return
@@ -261,7 +310,10 @@ export function VoiceConversation({ onTurn, onClose }: {
       const text = res.ok ? (((await res.json().catch(() => null)) as { text?: string } | null)?.text ?? '').trim() : ''
       transcribingRef.current = false
       if (endedRef.current) return
-      if (text) { finalRef.current = text; void finalizeTurn() }
+      if (text) {
+        setSentFlash(true); setTimeout(() => setSentFlash(false), 850)   // flash vert : message envoyé
+        finalRef.current = text; void finalizeTurn()
+      }
       else setPhaseBoth('listening')   // rien compris → on ré-écoute
     } catch { transcribingRef.current = false; if (!endedRef.current) setPhaseBoth('listening') }
   }
@@ -501,7 +553,8 @@ export function VoiceConversation({ onTurn, onClose }: {
 
   if (!mounted) return null
 
-  const ambient = muted ? AMBIENT_MUTE
+  const ambient = sentFlash ? AMBIENT_SENT
+    : muted ? AMBIENT_MUTE
     : (phase === 'thinking' || phase === 'speaking') ? AMBIENT_WARM
     : AMBIENT_COOL
 
@@ -526,6 +579,7 @@ export function VoiceConversation({ onTurn, onClose }: {
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: AMBIENT_COOL, opacity: ambient === AMBIENT_COOL ? 1 : 0, transition: 'opacity 0.9s ease' }} />
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: AMBIENT_WARM, opacity: ambient === AMBIENT_WARM ? 1 : 0, transition: 'opacity 0.9s ease' }} />
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: AMBIENT_MUTE, opacity: ambient === AMBIENT_MUTE ? 1 : 0, transition: 'opacity 0.9s ease' }} />
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: AMBIENT_SENT, opacity: ambient === AMBIENT_SENT ? 1 : 0, transition: 'opacity 0.4s ease' }} />
 
       {/* ── Bandeau d'état haut (micro coupé / non supporté) ── */}
       <div style={{ position: 'relative', flexShrink: 0, height: 'calc(20px + env(safe-area-inset-top,0px))' }} />

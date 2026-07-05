@@ -547,7 +547,6 @@ function ProfilIdentityBloc() {
   const STATS: { label:string; val:string; key:string; unit:string; ph:string; readonly?:boolean }[] = [
     { label:t('profile.height'),     val:profileData.height_cm,      key:'height_cm',      unit:'cm', ph:'178' },
     { label:t('profile.weight'),     val:profileData.weight_kg,      key:'weight_kg',      unit:'kg', ph:'72' },
-    { label:t('profile.bikeWeight'), val:profileData.bike_weight_kg, key:'bike_weight_kg', unit:'kg', ph:'8' },
     { label:t('profile.imc'),        val:imc,                        key:'',               unit:'',   ph:'', readonly:true },
   ]
 
@@ -559,17 +558,22 @@ function ProfilIdentityBloc() {
       <Section>
         <Group>
           <div style={{ display:'flex', alignItems:'center', gap:14, padding:'16px' }}>
-            <div onClick={()=>fileRef.current?.click()} style={{ width:60, height:60, borderRadius:'50%', background:'var(--bg-card2)', border:'1px dashed var(--border-mid)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, overflow:'hidden', position:'relative' }}>
-              {photo
-                ? <img src={photo} alt={t('profile.profileAlt')} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                : <span style={{ fontSize:20 }}>📷</span>
-              }
-              {uploading && (
-                <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <div style={{ width:18, height:18, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'#fff', animation:'spin 0.7s linear infinite' }}/>
-                </div>
-              )}
-              <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto}/>
+            <div style={{ position:'relative', flexShrink:0 }}>
+              <div onClick={()=>fileRef.current?.click()} style={{ width:66, height:66, borderRadius:'50%', background:'linear-gradient(140deg,var(--bg-card2),var(--bg-card))', border:'2px solid var(--border)', boxShadow:'0 4px 16px rgba(0,0,0,0.08)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', overflow:'hidden', position:'relative' }}>
+                {photo
+                  ? <img src={photo} alt={t('profile.profileAlt')} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                  : <span style={{ fontSize:22, opacity:0.45 }}>📷</span>
+                }
+                {uploading && (
+                  <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <div style={{ width:18, height:18, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'#fff', animation:'spin 0.7s linear infinite' }}/>
+                  </div>
+                )}
+                <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto}/>
+              </div>
+              <div onClick={()=>fileRef.current?.click()} aria-hidden style={{ position:'absolute', right:-2, bottom:-2, width:24, height:24, borderRadius:'50%', background:'var(--primary)', border:'2px solid var(--bg-card)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'0 2px 6px rgba(0,0,0,0.22)' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--on-primary,#fff)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <input value={profileData.full_name} onChange={e=>setProfileData(p=>({...p,full_name:e.target.value}))} placeholder={t('profile.namePlaceholder')} style={{ fontFamily:'var(--font-display)', fontSize:18, fontWeight:700, background:'transparent', border:'none', padding:0, color:'var(--text)', outline:'none', width:'100%', marginBottom:3, boxSizing:'border-box' as const }}/>
@@ -1648,6 +1652,19 @@ const TIER_META: Record<string, { label: string; color: string; bg: string; bord
   expert:  { label: 'Expert',         color: '#8b5cf6', bg: 'rgba(139,92,246,0.07)',   border: 'rgba(139,92,246,0.25)' },
 }
 
+// Libellé affiché à l'utilisateur, détecté depuis le tier réel de l'abonnement.
+// premium→Premium · pro→Pro · expert→Expert · trial→« Essai Premium ».
+function tierBadgeLabel(tier: string): string {
+  if (tier === 'trial')  return 'Essai Premium'
+  if (tier === 'pro')    return 'Pro'
+  if (tier === 'expert') return 'Expert'
+  return 'Premium'
+}
+// Nom du plan sous-jacent (l'essai donne un accès de niveau Premium).
+function tierPlanName(tier: string): string {
+  return tier === 'trial' ? 'Premium' : tierBadgeLabel(tier)
+}
+
 function fmtTokens(v: number): string {
   return v.toLocaleString(currentLocale())
 }
@@ -1703,7 +1720,8 @@ function AbonnementContent() {
 
   const tier = details?.tier ?? 'trial'
   const meta = TIER_META[tier] ?? TIER_META.trial
-  const tierLabel = TIER_META[tier] ? t('profile.tier.'+tier) : meta.label
+  const tierLabel = tierBadgeLabel(tier)
+  const planName  = tierPlanName(tier)
   const hasStripe = !!(details?.stripe?.nextBillingDate)
   const isCancelling = details?.cancel_at_period_end || details?.stripe?.cancelAtPeriodEnd
 
@@ -1717,14 +1735,22 @@ function AbonnementContent() {
         <div style={{ padding: '8px 0 24px', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* ── 1. Carte plan ───────────────────────────── */}
-          <div style={{ padding: '18px 20px', borderRadius: 16, background: meta.bg, border: `1px solid ${meta.border}` }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div>
-                <span style={{ padding: '3px 10px', borderRadius: 20, background: `${meta.color}22`, border: `1px solid ${meta.color}55`, color: meta.color, fontSize: 11, fontWeight: 700 }}>
+          <div style={{ position: 'relative', overflow: 'hidden', padding: '20px', borderRadius: 20,
+            background: `linear-gradient(155deg, ${meta.color}1f, ${meta.color}0a 55%, transparent)`,
+            border: `1px solid ${meta.color}33`, boxShadow: `0 14px 34px -22px ${meta.color}` }}>
+            <div aria-hidden style={{ position: 'absolute', top: -70, right: -50, width: 180, height: 180, borderRadius: '50%', background: `radial-gradient(circle, ${meta.color}26, transparent 70%)`, pointerEvents: 'none' }} />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ display: 'flex', gap: 13, minWidth: 0 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: `linear-gradient(140deg, ${meta.color}, ${meta.color}bb)`, boxShadow: `0 8px 18px -8px ${meta.color}` }}>
+                  <Sparkles size={21} color="#fff" strokeWidth={2} />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 20, background: `${meta.color}1f`, border: `1px solid ${meta.color}55`, color: meta.color, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase' }}>
                   {tierLabel}
                 </span>
-                <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, margin: '8px 0 2px', color: 'var(--text)' }}>
-                  THW Coach {tierLabel}
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, margin: '8px 0 2px', color: 'var(--text)' }}>
+                  THW Coach {planName}
                 </p>
                 {isCancelling ? (
                   <p style={{ fontSize: 11, color: '#ef4444', margin: 0, fontWeight: 600 }}>
@@ -1744,6 +1770,7 @@ function AbonnementContent() {
                 ) : (
                   <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{t('profile.fullAccess')}</p>
                 )}
+                </div>
               </div>
               {!isCancelling && (
                 <div style={{ flexShrink: 0, paddingTop: 4 }}>
@@ -2367,6 +2394,17 @@ export function ProfileContent() {
   const [active, setActive] = useState<string | null>(null)
   const [dir, setDir] = useState(1)
   const [signingOut, setSigningOut] = useState(false)
+  const [planLabel, setPlanLabel] = useState<string | null>(null)
+
+  // Libellé d'abonnement affiché dans le menu : détecté depuis le tier réel.
+  useEffect(() => {
+    let alive = true
+    fetch('/api/subscription/details')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (alive && d?.tier) setPlanLabel(tierBadgeLabel(d.tier)) })
+      .catch(() => { /* silencieux */ })
+    return () => { alive = false }
+  }, [])
 
   function open(id: string) { setDir(1); setActive(id); window.scrollTo({ top: 0 }) }
   function back() { setDir(-1); setActive(null); window.scrollTo({ top: 0 }) }
@@ -2397,7 +2435,7 @@ export function ProfileContent() {
   const GROUPS: { title: string; rows: { id: string; label: string; Icon: typeof User; value?: string }[] }[] = [
     { title: t('profile.groupAccount'), rows: [
       { id: 'profil',          label: t('profile.navProfil'),          Icon: User },
-      { id: 'abonnement',      label: t('profile.subscription'),      Icon: CreditCard, value: t('profile.planMax') },
+      { id: 'abonnement',      label: t('profile.subscription'),      Icon: CreditCard, value: planLabel ?? undefined },
       { id: 'utilisation',     label: t('profile.navUtilisation'),     Icon: BarChart3 },
       { id: 'notifications',   label: t('profile.navNotifications'),   Icon: Bell },
       { id: 'confidentialite', label: t('profile.navConfidentialite'), Icon: Shield },

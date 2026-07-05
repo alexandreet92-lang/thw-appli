@@ -51,6 +51,7 @@ import { AerobicEfficiency } from '@/components/activity/AerobicEfficiency'
 import { MmpTable, MMP_TABLE_DURATIONS, MMP_TABLE_LABELS } from '@/components/activity/MmpTable'
 import { AIBubble } from '@/components/activity/AIBubble'
 import { useAIAnalysis } from '@/hooks/useAIAnalysis'
+import { currentLocale } from '@/lib/i18n'
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS — CSS variables (auto light/dark via html.light / html.dark)
@@ -240,11 +241,11 @@ function fmtPace(sKm: number | null | undefined): string {
 }
 
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+  return new Date(iso).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 function fmtDateShort(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+  return new Date(iso).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })
 }
 
 function getWeekStart(d: Date): Date {
@@ -4913,8 +4914,8 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     { label: t('actp.vo2_anaerobic'),  sub: 'Z4–Z5', time: bikeTimesZ[3] + bikeTimesZ[4], color: '#EF4444' },
   ] : null
 
-  const dateLabel = weekStart.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) +
-    ' – ' + weekEnd.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+  const dateLabel = weekStart.toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' }) +
+    ' – ' + weekEnd.toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })
 
   const sortedActs = useMemo(() =>
     [...weekActs].sort((a,b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime()),
@@ -5112,7 +5113,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
                 {act.title}
               </div>
               <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>
-                {new Date(act.started_at).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}
+                {new Date(act.started_at).toLocaleDateString(currentLocale(), { weekday: 'short', day: '2-digit', month: 'short' })}
               </div>
             </div>
             <span className="stat-number" style={{ fontSize: 13, fontWeight: 700, color: T.text, flexShrink: 0 }}>{stat}</span>
@@ -5774,7 +5775,7 @@ function SectionDonnees({ activities, zones, profile }: {
                     const d = new Date(pt.date)
                     return (
                       <text key={pt.date} x={x} y={PMC_H - 4} textAnchor="middle" fontSize="9" fill="var(--text-dim)">
-                        {d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                        {d.toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })}
                       </text>
                     )
                   })}
@@ -5807,7 +5808,7 @@ function SectionDonnees({ activities, zones, profile }: {
                       boxShadow: '0 8px 24px rgba(0,0,0,0.18)', padding: '10px 13px',
                     }}>
                       <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>
-                        {new Date(pt.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                        {new Date(pt.date).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })}
                       </div>
                       <div style={{ fontSize: 12.5, color: 'var(--text-dim)', fontWeight: 600, marginBottom: 7 }}>
                         {t('actp.sm_session')} <span style={{ color: 'var(--text)', fontWeight: 800 }}>{pt.tss}</span>
@@ -5923,9 +5924,9 @@ function SectionDonnees({ activities, zones, profile }: {
                         </button>
                         {weekSlice.length > 0 && (
                           <span style={{ fontSize: 10, color: T.textMuted, whiteSpace: 'nowrap' }}>
-                            {new Date(weekSlice[0].week).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                            {new Date(weekSlice[0].week).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })}
                             {' – '}
-                            {new Date(weekSlice[weekSlice.length - 1].week).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                            {new Date(weekSlice[weekSlice.length - 1].week).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })}
                           </span>
                         )}
                         <button
@@ -5954,7 +5955,7 @@ function SectionDonnees({ activities, zones, profile }: {
                       const bx    = i * SLOT_W + (SLOT_W - BAR_W) / 2
                       const sportEntries = Array.from(w.sports.entries()).sort((a, b) => b[1] - a[1])
                       const durLabel = w.time >= 60 ? fmtDur(w.time) : ''
-                      const dateLabel = new Date(w.week).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+                      const dateLabel = new Date(w.week).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })
                       const labelY = Math.max(VH_T + 11, BASE_Y - barH - 4)
 
                       // Stack segments bottom → top
@@ -6115,7 +6116,7 @@ function SectionDonnees({ activities, zones, profile }: {
               for (const d of days) {
                 const dt = new Date(d.date)
                 if (dt.getDate() <= 7) {
-                  monthLabels.set(d.col, dt.toLocaleDateString('fr-FR', { month: 'short' }))
+                  monthLabels.set(d.col, dt.toLocaleDateString(currentLocale(), { month: 'short' }))
                 }
               }
               return (
@@ -6154,7 +6155,7 @@ function SectionDonnees({ activities, zones, profile }: {
                       boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10,
                     }}>
                       <div style={{ color: 'var(--text-dim)', fontSize: 10, marginBottom: 2 }}>
-                        {new Date(heatHover.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        {new Date(heatHover.date).toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}
                       </div>
                       <div style={{ fontWeight: 600, color: 'var(--text)' }}>SM {heatHover.tss}</div>
                       {heatHover.title && <div style={{ color: 'var(--text-dim)', fontSize: 11, marginTop: 2 }}>{heatHover.title}</div>}
@@ -8765,7 +8766,7 @@ function DayPanel({ date, acts, isMobile, onClose, onSelect }: {
   const { t } = useI18n()
   const d   = new Date(date + 'T00:00:00')
   const cap = (() => {
-    const s = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+    const s = d.toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
     return s.charAt(0).toUpperCase() + s.slice(1)
   })()
 

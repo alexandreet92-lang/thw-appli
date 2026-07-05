@@ -17,6 +17,7 @@ import { HyroxRecords } from './HyroxRecords'
 import { GymRecords } from './GymRecords'
 import { ClimbsSection } from './ClimbsSection'
 import { RacesSection } from './RacesSection'
+import { currentLocale } from '@/lib/i18n'
 
 // ── Types ────────────────────────────────────────────────────────
 type RecordSport = 'bike' | 'run' | 'swim' | 'rowing' | 'triathlon' | 'hyrox' | 'gym'
@@ -370,7 +371,7 @@ function TimeBarChart({ records, chartDists, onBarClick }: {
   const [sortMode, setSortMode] = useState<'chrono' | 'best'>('chrono')
   const [yearFilter, setYearFilter] = useState<string>('all')
 
-  const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+  const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })
 
   const distRecs = records.filter(r => r.distance_label === selDist && r.performance !== '—')
   const years = Array.from(new Set(distRecs.map(r => r.achieved_at.slice(0, 4)))).sort((a, b) => b.localeCompare(a))
@@ -3722,7 +3723,7 @@ function YearDatasSubTab() {
   // Formatage date lisible pour tooltip
   const fmtDate = (d: string) => {
     const dt = new Date(d)
-    return dt.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+    return dt.toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' })
   }
 
   // ── Chart 3: global all-sport stats per year — merged sources ─

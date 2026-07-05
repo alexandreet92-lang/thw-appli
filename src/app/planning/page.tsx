@@ -28,6 +28,7 @@ import { SportIcon, SPORT_ICON, sportKeyFromType } from '@/components/icons/Spor
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import type { NutritionItem, ParcoursData } from '@/components/planning/SessionEditor'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 // ── Types ─────────────────────────────────────────
 export type PlanVariant   = 'A' | 'B'
@@ -874,7 +875,7 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
   const { t } = useI18n()
   const sp = normalizeSportType(activity.sport)
   const dateObj = new Date(activity.startedAt)
-  const dateStr = dateObj.toLocaleDateString('fr-FR',{ weekday:'long', day:'numeric', month:'long' })
+  const dateStr = dateObj.toLocaleDateString(currentLocale(),{ weekday:'long', day:'numeric', month:'long' })
   const durationMin = Math.round(activity.elapsedTime/60)
   const distKm = activity.distance ? (activity.distance/1000).toFixed(1) : null
   const col = SPORT_BORDER[sp]
@@ -1273,7 +1274,7 @@ function sportColor(sport: string): string {
 function fmtFrenchDate(iso: string): string {
   try {
     const d = new Date(iso + 'T00:00:00')
-    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    return d.toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
   } catch { return iso }
 }
 
@@ -1533,7 +1534,7 @@ function exportPlanToPDF(plan: AiTrainingPlan, t: (k: string, v?: Record<string,
   </div>
   <div style="text-align:right;font-size:10px;color:#9ca3af;white-space:nowrap">
     ${t('plnp.pdf.planTitle')}<br>
-    ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+    ${new Date().toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long', year: 'numeric' })}
   </div>
 </div>
 
@@ -1707,7 +1708,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
                 )}
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2, maxWidth: 110, textAlign: 'right' as const }}>{nextRace.name}</span>
                 <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>
-                  {new Date(nextRace.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                  {new Date(nextRace.date).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })}
                 </span>
               </div>
             </div>
@@ -2789,7 +2790,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 {/* rail semaine */}
                 <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: 1, borderRight: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
                   <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>S{isoWeekNum(ws)}</span>
-                  <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>{new Date(ws + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                  <span style={{ fontSize: 8, color: 'var(--text-dim)' }}>{new Date(ws + 'T00:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })}</span>
                 </div>
                 {/* jours */}
                 {w.map((d, i) => {
@@ -2875,7 +2876,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               <div key={ws} style={{ borderBottom:'1px solid var(--border)', padding:'8px 0' }}>
                 {/* En-tête semaine : S## + volume réalisé / prévu à droite */}
                 <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:6, margin:'0 8px 6px' }}>
-                  <span style={{ fontSize:11, fontWeight:800, color:'var(--text)', fontFamily:'Syne,sans-serif' }}>S{isoWeekNum(ws)}<span style={{ fontWeight:500, color:'var(--text-dim)', marginLeft:5 }}>{new Date(ws+'T00:00:00').toLocaleDateString('fr-FR',{ day:'numeric', month:'short' })}</span></span>
+                  <span style={{ fontSize:11, fontWeight:800, color:'var(--text)', fontFamily:'Syne,sans-serif' }}>S{isoWeekNum(ws)}<span style={{ fontWeight:500, color:'var(--text-dim)', marginLeft:5 }}>{new Date(ws+'T00:00:00').toLocaleDateString(currentLocale(),{ day:'numeric', month:'short' })}</span></span>
                   <span className="tnum" style={{ fontSize:11, fontWeight:700, color:'var(--text-dim)' }}><span style={{ color:'var(--text)' }}>{formatHM(mDoneTot)}</span> / {formatHM(mPlanTot)}</span>
                 </div>
                 {/* Carrousel coulissant : page 1 = jours · page 2 = volume/cycle + Datas */}
@@ -2959,7 +2960,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, width: 'min(640px,96vw)', maxHeight: '88vh', overflowY: 'auto', padding: '22px 24px', boxShadow: 'var(--shadow)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 19, color: 'var(--text)' }}>{t('plnp.week')} S{isoWeekNum(datasWeek)} <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500 }}>· {new Date(datasWeek + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span></span>
+            <span style={{ fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 19, color: 'var(--text)' }}>{t('plnp.week')} S{isoWeekNum(datasWeek)} <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 500 }}>· {new Date(datasWeek + 'T00:00:00').toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })}</span></span>
             <button onClick={() => setDatasWeek(null)} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg-card2)', border: 'none', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 14 }}>✕</button>
           </div>
           {/* Totaux */}
@@ -3352,7 +3353,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               {upcomingPlan.name}
             </p>
             <p style={{ fontSize:11,color:'var(--text-dim)',margin:0 }}>
-              {t('plnp.upcoming.startsOn', { date: new Date(upcomingPlan.startDate + 'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}) })}
+              {t('plnp.upcoming.startsOn', { date: new Date(upcomingPlan.startDate + 'T00:00:00').toLocaleDateString(currentLocale(),{weekday:'long',day:'numeric',month:'long'}) })}
             </p>
           </div>
           <button
@@ -4640,7 +4641,7 @@ function RaceYearTab() {
             </div>
             <div style={{ flex:1 }}>
               <p style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{nextRace.name}</p>
-              <p style={{ fontSize:11,color:'var(--text-dim)',margin:'2px 0 4px' }}>{new Date(nextRace.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p>
+              <p style={{ fontSize:11,color:'var(--text-dim)',margin:'2px 0 4px' }}>{new Date(nextRace.date).toLocaleDateString(currentLocale(),{weekday:'long',day:'numeric',month:'long'})}</p>
               {nextRace.goal && <p style={{ fontSize:11,color:'var(--text-mid)',margin:0 }}>{nextRace.goal}</p>}
             </div>
             <button onClick={()=>setEditModal(nextRace)} style={{ padding:'5px 10px',borderRadius:8,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',fontSize:11,cursor:'pointer' }}>{t('plnp.edit')}</button>
@@ -4663,7 +4664,7 @@ function RaceYearTab() {
                   </div>
                   <div style={{ flex:1,minWidth:0,cursor:'pointer' }} onClick={()=>setDetailModal(r)}>
                     <p style={{ fontSize:12,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{r.name}</p>
-                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{new Date(r.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})} · {SPORT_LABEL[r.sport as SportType]}</p>
+                    <p style={{ fontSize:10,color:'var(--text-dim)',margin:'2px 0 0' }}>{new Date(r.date).toLocaleDateString(currentLocale(),{day:'numeric',month:'long'})} · {SPORT_LABEL[r.sport as SportType]}</p>
                     {r.goal && <p style={{ fontSize:9,color:'var(--text-mid)',margin:'1px 0 0' }}>{r.goal}</p>}
                   </div>
                   <button onClick={()=>setEditModal(r)} style={{ padding:'4px 8px',borderRadius:7,background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-dim)',fontSize:10,cursor:'pointer' }}>{t('plnp.edit')}</button>
@@ -4790,7 +4791,7 @@ function RaceDetailModal({ race, onClose, onDelete, onValidate, onEdit }:{ race:
               {race.hyroxCategory && <span style={{ fontSize:9,color:'var(--text-dim)' }}>{race.hyroxCategory} · {race.hyroxLevel} · {race.hyroxGender}</span>}
             </div>
             <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0 }}>{race.name}</h3>
-            <p style={{ fontSize:11,color:'var(--text-dim)',margin:'3px 0 0' }}>{SPORT_LABEL[race.sport as SportType] ?? race.sport} · {new Date(race.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+            <p style={{ fontSize:11,color:'var(--text-dim)',margin:'3px 0 0' }}>{SPORT_LABEL[race.sport as SportType] ?? race.sport} · {new Date(race.date).toLocaleDateString(currentLocale(),{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
             {race.runDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'2px 0 0' }}>{race.runDistance} — {RUN_KM[race.runDistance]}km</p>}
             {race.triDistance && <p style={{ fontSize:11,color:'var(--text-mid)',margin:'2px 0 0' }}>{race.triDistance} · {t('plnp.tri.swimAbbr')} {TRI_SWIM[race.triDistance]} · {t('plnp.tri.bike')} {TRI_BIKE[race.triDistance]} · {t('plnp.tri.run')} {TRI_RUN[race.triDistance]}</p>}
           </div>

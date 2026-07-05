@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 export interface SleepNightPhases {
   date: string
@@ -52,7 +53,7 @@ export default function SleepPhasesStack({ nights }: { nights: SleepNightPhases[
       <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {sorted.map((n, i) => {
           const show = i < vis
-          const d = new Date(n.date + 'T12:00:00').toLocaleDateString('fr-FR', {
+          const d = new Date(n.date + 'T12:00:00').toLocaleDateString(currentLocale(), {
             weekday: 'short', day: 'numeric', month: 'short',
           })
           const segs = [

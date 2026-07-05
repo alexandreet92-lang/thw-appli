@@ -1,3 +1,4 @@
+import { currentLocale } from '@/lib/i18n/locale'
 // ══════════════════════════════════════════════════════════════
 // Actions rapides : couleurs de badge par modèle + estimation
 // (indicative) de tokens pondérés par action (clé = flow).
@@ -35,5 +36,5 @@ export function quickActionEstimate(flow?: string | null): number {
 }
 
 export function fmtEstimate(tokens: number): string {
-  return `~${tokens.toLocaleString('fr-FR')} tokens`
+  return `~${tokens.toLocaleString(currentLocale())} tokens`
 }

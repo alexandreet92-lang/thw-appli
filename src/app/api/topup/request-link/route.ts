@@ -5,6 +5,7 @@ import { getUserTokenLimits } from '@/lib/tokens/limits'
 import { isCreatorAccount } from '@/lib/subscriptions/check-quota'
 import { Resend } from 'resend'
 import crypto from 'crypto'
+import { currentLocale } from '@/lib/i18n/locale'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
 
       const monthlyRemaining = Math.max(0, limits.monthly.limit - limits.monthly.used)
       const totalAvailable = monthlyRemaining + limits.bonus_tokens
-      formattedRemaining = totalAvailable.toLocaleString('fr-FR')
+      formattedRemaining = totalAvailable.toLocaleString(currentLocale())
     } catch (e) {
       console.error('[topup/request-link] perso data error (fallback):', e)
     }

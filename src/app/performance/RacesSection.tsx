@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { currentLocale } from '@/lib/i18n'
 
 // ─── useDarkMode ──────────────────────────────────────────────────────────────
 function useDarkMode() {
@@ -516,7 +517,7 @@ function ScatterRaceSVG({ races, allYears, onPointClick, highlightIds }: {
             minWidth:160, boxShadow:'0 4px 20px rgba(0,0,0,0.3)',
           }}>
             <p style={{ fontFamily:'var(--font-display)', fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px' }}>{r.name}</p>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 4px' }}>{new Date(r.date).toLocaleDateString('fr-FR',{ day:'2-digit', month:'short', year:'numeric' })}</p>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 4px' }}>{new Date(r.date).toLocaleDateString(currentLocale(),{ day:'2-digit', month:'short', year:'numeric' })}</p>
             {r.wpkg_np && <p style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, color:RACE_COLOR, margin:'0 0 3px', fontWeight:700 }}>{r.wpkg_np.toFixed(2)} W/kg NP</p>}
             {r.watts_np && <p style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:11, color:'var(--text-mid)', margin:'0 0 3px' }}>{r.watts_np} W NP</p>}
             {r.distance_km && <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 3px' }}>{r.distance_km.toFixed(1)} km</p>}
@@ -714,7 +715,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
           {activities.map(a => {
             const durSec = a.elapsed_time_s ?? a.moving_time_s ?? 0
             const distKm = a.distance_m ? (a.distance_m / 1000).toFixed(1) : '—'
-            const dateStr = a.started_at ? new Date(a.started_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' }) : '—'
+            const dateStr = a.started_at ? new Date(a.started_at).toLocaleDateString(currentLocale(), { day:'2-digit', month:'short', year:'numeric' }) : '—'
             return (
               <div key={a.id} style={{
                 background:'var(--bg-card2)', border:'1px solid var(--border)',
@@ -1297,7 +1298,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
                 }}><span style={{ width:6, height:6, borderRadius:'50%', background:RACE_COLOR }}/>{t(RACE_TYPE_KEY[raceType] ?? '') || RACE_TYPES.find(rt => rt.value === raceType)?.label || raceType}</span>
               </div>
               <p style={{ fontSize:12, color:'var(--text-dim)', margin:'0 0 8px' }}>
-                {new Date(race.date).toLocaleDateString('fr-FR',{ weekday:'long', day:'2-digit', month:'long', year:'numeric' })}
+                {new Date(race.date).toLocaleDateString(currentLocale(),{ weekday:'long', day:'2-digit', month:'long', year:'numeric' })}
               </p>
               <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
                 {distKm && <span style={{ fontSize:12, color:'var(--text-mid)' }}>{distKm.toFixed(1)} km</span>}
@@ -1694,7 +1695,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
                       {rank === 1 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>⭐ {t('perf2.bestPerf')}</span>}
                     </div>
                     <div style={{ display:'flex', gap:8, marginTop:2, flexWrap:'wrap' }}>
-                      <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(r.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</span>
+                      <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(r.date).toLocaleDateString(currentLocale(),{day:'2-digit',month:'short',year:'numeric'})}</span>
                       {r.wpkg_np && <span style={{ fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:11, color:RACE_COLOR }}>{r.wpkg_np.toFixed(2)} W/kg NP</span>}
                       {r.duration_seconds && <span style={{ fontSize:11, color:'var(--text-dim)' }}>{secToHMS(r.duration_seconds)}</span>}
                     </div>

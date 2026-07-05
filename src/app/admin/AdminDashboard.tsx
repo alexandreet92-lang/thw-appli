@@ -8,13 +8,14 @@ import { LayoutDashboard, Euro, Cpu, MousePointerClick, Activity, Plug } from 'l
 import { SectionLayout, type SectionDef } from '@/components/navigation/SectionLayout'
 import type { AdminMetrics } from '@/lib/admin/types'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const TIER_COLOR: Record<string, string> = {
   premium: 'var(--charge-low)', pro: 'var(--primary)', expert: 'var(--ai-accent)', trial: 'var(--charge-mid)', inconnu: 'var(--text-dim)',
 }
-const fmt = (n: number) => n.toLocaleString('fr-FR')
-const eur = (n: number) => `${n.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`
+const fmt = (n: number) => n.toLocaleString(currentLocale())
+const eur = (n: number) => `${n.toLocaleString(currentLocale(), { maximumFractionDigits: 2 })} €`
 
 // ── Primitives ────────────────────────────────────────────────────
 function Card({ children }: { children: React.ReactNode }) {
@@ -266,7 +267,7 @@ export function AdminDashboard({ metrics, adminEmail }: { metrics: AdminMetrics;
       <div style={{ minWidth: 0, flex: 1 }}>
         <h1 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Cockpit</h1>
         <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: '3px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {adminEmail} · {new Date(metrics.generatedAt).toLocaleString('fr-FR')}
+          {adminEmail} · {new Date(metrics.generatedAt).toLocaleString(currentLocale())}
         </p>
       </div>
       {/* Aperçu de la page de connexion (admin only) — nouvel onglet, session conservée */}

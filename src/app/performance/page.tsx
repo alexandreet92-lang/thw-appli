@@ -27,6 +27,7 @@ import { User, Database, FlaskConical } from 'lucide-react'
 import { ProfilSpecific } from '@/app/performance/components/profil/ProfilSpecific'
 import { LevelBars } from '@/app/performance/components/profil/LevelBars'
 import { BenchmarkSheet } from '@/app/performance/components/profil/BenchmarkSheet'
+import { currentLocale } from '@/lib/i18n'
 
 // ── Types ───────────────────────────────────────────────────────
 type PerfTab = 'profil' | 'datas' | 'tests'
@@ -1793,7 +1794,7 @@ function HistoriqueTestsPanel({ onClose }: { onClose: () => void }) {
 
   if (typeof document === 'undefined') return null
 
-  const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' })
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString(currentLocale(), { day:'2-digit', month:'short', year:'numeric' })
 
   return createPortal(
     <>

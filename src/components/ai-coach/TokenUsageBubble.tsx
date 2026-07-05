@@ -10,6 +10,7 @@ import { CircleGauge, ShoppingBag, ChevronRight } from 'lucide-react'
 import { getModelMultiplier, getModelDisplayName } from '@/lib/tokens/multipliers'
 import { MobileSheet } from '@/components/ai/MobileSheet'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 interface TokenLimits {
   monthly:     { used: number; limit: number; resets_at: string }
@@ -44,7 +45,7 @@ function untilHours(iso: string): string {
   return `${h}h`
 }
 function fmt(n: number): string {
-  return n.toLocaleString('fr-FR')
+  return n.toLocaleString(currentLocale())
 }
 
 function Gauge({ label, used, limit, resetLabel }: { label: string; used: number; limit: number; resetLabel: string }) {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 // SVG icons monochromes
 const IcoPulse = () => (
@@ -31,7 +32,7 @@ interface PhysicalPoint { date: string; resting_hr: number | null; max_hr: numbe
 function fmtDate(iso: string | null): string {
   if (!iso) return ''
   const d = new Date(iso)
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  return d.toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })
 }
 
 // Resting HR line chart

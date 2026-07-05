@@ -17,6 +17,7 @@ import {
   type InstaMediaItem,
 } from "@/lib/marketing/insta-api";
 import type { InstaTopPost } from "@/lib/marketing/types";
+import { currentLocale } from '@/lib/i18n/locale'
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -118,9 +119,9 @@ export async function POST() {
     // ── 6. Build insights_summary ────────────────────────────────
     const followerCount = profile?.followers_count ?? accountInsights?.follower_count ?? null;
     const summary = [
-      profile    ? `@${profile.username} · ${profile.followers_count.toLocaleString("fr-FR")} followers` : null,
-      accountInsights?.reach       != null ? `Reach (28j) : ${accountInsights.reach.toLocaleString("fr-FR")}` : null,
-      accountInsights?.impressions != null ? `Impressions (28j) : ${accountInsights.impressions.toLocaleString("fr-FR")}` : null,
+      profile    ? `@${profile.username} · ${profile.followers_count.toLocaleString(currentLocale())} followers` : null,
+      accountInsights?.reach       != null ? `Reach (28j) : ${accountInsights.reach.toLocaleString(currentLocale())}` : null,
+      accountInsights?.impressions != null ? `Impressions (28j) : ${accountInsights.impressions.toLocaleString(currentLocale())}` : null,
       bestFormat ? `Meilleur format : ${bestFormat}` : null,
     ]
       .filter(Boolean)

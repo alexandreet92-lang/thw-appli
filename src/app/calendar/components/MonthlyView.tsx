@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Race, RaceStage, RACE_CFG, MONTHS, getDaysInMonth, getFirstDayISO } from './types'
 import GpxRouteMap from '@/components/gpx/GpxRouteMap'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 // ── Stage day popover ─────────────────────────────────────────
 interface PopoverState { stage: RaceStage; date: string; x: number; y: number }
@@ -16,7 +17,7 @@ function StageDayPopover({ stage, date, x, y, onClose, onMouseEnter, onMouseLeav
   const [fetched,  setFetched]  = useState(false)
 
   const program  = stage.dailyProgram.find(p => p.date === date)?.content ?? ''
-  const dayLabel = new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const dayLabel = new Date(date + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
 
   useEffect(() => {
     supabase

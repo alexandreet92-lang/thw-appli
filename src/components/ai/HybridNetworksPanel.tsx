@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
 import type { InstaSnapshot, DailyBrief, BriefIdea } from '@/lib/marketing/types'
 import type { PerformanceAnalysis } from '@/app/api/marketing/analyze-performance/route'
+import { currentLocale } from '@/lib/i18n'
 
 // ── Shared types (mirror AIPanel's AIConv / AIMsg) ─────────────
 // Must be structurally assignable to AIConv / AIMsg in AIPanel.tsx
@@ -553,7 +554,7 @@ export default function HybridNetworksPanel({
           </div>
           <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 0 42px' }}>
             {snapshot
-              ? `${t('ai.lastSync')} : ${snapshot.snapshot_date}${snapshot.followers_count != null ? ` · ${t('ai.followersCount', { count: snapshot.followers_count.toLocaleString('fr-FR') })}` : ''}`
+              ? `${t('ai.lastSync')} : ${snapshot.snapshot_date}${snapshot.followers_count != null ? ` · ${t('ai.followersCount', { count: snapshot.followers_count.toLocaleString(currentLocale()) })}` : ''}`
               : t('ai.hnConnectedTagline')
             }
           </p>
@@ -612,17 +613,17 @@ export default function HybridNetworksPanel({
               {snapshot.followers_count != null && (
                 <KpiCard
                   label={t('ai.followers')}
-                  value={snapshot.followers_count.toLocaleString('fr-FR')}
+                  value={snapshot.followers_count.toLocaleString(currentLocale())}
                   sub={snapshot.followers_delta_7d != null
                     ? t('ai.thisWeekDelta', { delta: `${snapshot.followers_delta_7d > 0 ? '+' : ''}${snapshot.followers_delta_7d}` })
                     : undefined}
                 />
               )}
               {snapshot.reach_total != null && (
-                <KpiCard label={t('ai.reach28d')} value={snapshot.reach_total.toLocaleString('fr-FR')} />
+                <KpiCard label={t('ai.reach28d')} value={snapshot.reach_total.toLocaleString(currentLocale())} />
               )}
               {snapshot.impressions_total != null && (
-                <KpiCard label={t('ai.impressions28d')} value={snapshot.impressions_total.toLocaleString('fr-FR')} />
+                <KpiCard label={t('ai.impressions28d')} value={snapshot.impressions_total.toLocaleString(currentLocale())} />
               )}
               {snapshot.best_format && (
                 <KpiCard
@@ -655,9 +656,9 @@ export default function HybridNetworksPanel({
                       {post.caption_excerpt || t('ai.noCaption')}
                     </p>
                     <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--ai-dim)' }}>
-                      <span>♥ {post.likes.toLocaleString('fr-FR')}</span>
-                      <span>⬇ {post.saves.toLocaleString('fr-FR')}</span>
-                      <span>◎ {post.reach.toLocaleString('fr-FR')}</span>
+                      <span>♥ {post.likes.toLocaleString(currentLocale())}</span>
+                      <span>⬇ {post.saves.toLocaleString(currentLocale())}</span>
+                      <span>◎ {post.reach.toLocaleString(currentLocale())}</span>
                       {post.comments != null && <span>✦ {post.comments}</span>}
                     </div>
                   </div>
@@ -775,11 +776,11 @@ export default function HybridNetworksPanel({
                 <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--ai-dim)', margin: '0 0 6px' }}>{t('ai.projectionEnd2026')}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
                   <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'Syne,sans-serif', color: 'var(--ai-text)' }}>
-                    {analysis.growth_projection.current_followers.toLocaleString('fr-FR')}
+                    {analysis.growth_projection.current_followers.toLocaleString(currentLocale())}
                   </span>
                   <span style={{ fontSize: 12, color: 'var(--ai-dim)' }}>→</span>
                   <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'Syne,sans-serif', color: analysis.growth_projection.on_track ? '#22c55e' : '#f59e0b' }}>
-                    {analysis.growth_projection.projected_dec_2026.toLocaleString('fr-FR')}
+                    {analysis.growth_projection.projected_dec_2026.toLocaleString(currentLocale())}
                   </span>
                   <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: analysis.growth_projection.on_track ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)', color: analysis.growth_projection.on_track ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
                     {analysis.growth_projection.on_track ? t('ai.onTrack') : t('ai.toAccelerate')}

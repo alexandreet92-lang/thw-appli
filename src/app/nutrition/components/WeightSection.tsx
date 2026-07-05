@@ -5,6 +5,7 @@ import type { BodyMeasurement } from '@/hooks/useBodyMetrics'
 import { useProfile } from '@/hooks/useProfile'
 import WeightChart from './WeightChart'
 import type { ToastType } from '@/hooks/useToast'
+import { currentLocale } from '@/lib/i18n'
 
 // ── Stepper config ────────────────────────────────────────────────
 type StepKey = 'weight_kg' | 'fat_mass_percent' | 'muscle_mass_kg' | 'metabolic_age'
@@ -315,7 +316,7 @@ export default function WeightSection({ showToast }: WeightSectionProps) {
             </span>
           )}
           <div style={{ fontSize: 10, color: 'var(--text-dim)', alignSelf: 'center', marginLeft: 2 }}>
-            Derniere mesure : {new Date(last.measured_at + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            Derniere mesure : {new Date(last.measured_at + 'T00:00:00').toLocaleDateString(currentLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' })}
           </div>
         </div>
       )}

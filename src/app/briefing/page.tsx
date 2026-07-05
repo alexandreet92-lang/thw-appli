@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
 import type { DailyBrief, BriefIdea, RawIdea, InstaSnapshot } from '@/lib/marketing/types'
 import { PageLoader } from '@/components/ui/PageLoader'
+import { currentLocale } from '@/lib/i18n'
 
 // ── Marketing constants ────────────────────────────────────────
 const MKT_PILLAR_COLORS: Record<string, string> = {
@@ -183,7 +184,7 @@ function currentDayIndex(): number {
 function formatFrenchDate(isoDate: string): string {
   try {
     const d = new Date(isoDate + 'T00:00:00')
-    const s = d.toLocaleDateString('fr-FR', {
+    const s = d.toLocaleDateString(currentLocale(), {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     })
     return s.charAt(0).toUpperCase() + s.slice(1)
@@ -1115,7 +1116,7 @@ export default function BriefingPage() {
               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
                 {t('briefing.instaLastSync', { date: instaApiSnapshot.snapshot_date })}
                 {instaApiSnapshot.followers_count != null && (
-                  <> · {t('briefing.followersCount', { n: instaApiSnapshot.followers_count.toLocaleString('fr-FR') })}</>
+                  <> · {t('briefing.followersCount', { n: instaApiSnapshot.followers_count.toLocaleString(currentLocale()) })}</>
                 )}
               </span>
             )}
@@ -1453,8 +1454,8 @@ function InstaSnapshotCard({ snapshot, compact = false }: { snapshot: InstaSnaps
       <div style={{ ...cardStyle, padding: '10px 14px', opacity: 0.7 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{snapshot.snapshot_date}</span>
-          {snapshot.reach_total != null && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Reach {snapshot.reach_total.toLocaleString('fr-FR')}</span>}
-          {snapshot.followers_count != null && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Followers {snapshot.followers_count.toLocaleString('fr-FR')}</span>}
+          {snapshot.reach_total != null && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Reach {snapshot.reach_total.toLocaleString(currentLocale())}</span>}
+          {snapshot.followers_count != null && <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Followers {snapshot.followers_count.toLocaleString(currentLocale())}</span>}
           {snapshot.best_format && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: 'rgba(245,158,11,0.1)', color: '#f59e0b', fontWeight: 600 }}>{snapshot.best_format}</span>}
         </div>
       </div>
@@ -1487,20 +1488,20 @@ function InstaSnapshotCard({ snapshot, compact = false }: { snapshot: InstaSnaps
         {snapshot.reach_total != null && (
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Reach</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{snapshot.reach_total.toLocaleString('fr-FR')}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{snapshot.reach_total.toLocaleString(currentLocale())}</div>
           </div>
         )}
         {snapshot.impressions_total != null && (
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Impressions</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{snapshot.impressions_total.toLocaleString('fr-FR')}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{snapshot.impressions_total.toLocaleString(currentLocale())}</div>
           </div>
         )}
         {snapshot.followers_count != null && (
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', letterSpacing: '0.08em' }}>Followers</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'center', gap: 6 }}>
-              {snapshot.followers_count.toLocaleString('fr-FR')}
+              {snapshot.followers_count.toLocaleString(currentLocale())}
               {delta != null && (
                 <span style={{ fontSize: 13, color: delta >= 0 ? '#10b981' : '#ef4444', fontWeight: 600 }}>
                   {delta >= 0 ? '+' : ''}{delta}
@@ -1552,9 +1553,9 @@ function InstaSnapshotCard({ snapshot, compact = false }: { snapshot: InstaSnaps
                     {p.caption_excerpt}
                   </div>
                   <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
-                    <span>❤ {p.likes.toLocaleString('fr-FR')}</span>
-                    <span>🔖 {p.saves.toLocaleString('fr-FR')}</span>
-                    <span>👁 {p.reach.toLocaleString('fr-FR')}</span>
+                    <span>❤ {p.likes.toLocaleString(currentLocale())}</span>
+                    <span>🔖 {p.saves.toLocaleString(currentLocale())}</span>
+                    <span>👁 {p.reach.toLocaleString(currentLocale())}</span>
                     {p.comments != null && <span>💬 {p.comments}</span>}
                   </div>
                 </div>

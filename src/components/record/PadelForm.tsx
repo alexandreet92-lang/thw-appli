@@ -5,13 +5,14 @@ import { useI18n } from '@/lib/i18n'
 import RPESlider from './RPESlider'
 import MatchScoreInput, { type MatchSet } from './MatchScoreInput'
 import { PADEL_SPORTS, PADEL_SURFACES } from '@/types/padel'
+import { currentLocale } from '@/lib/i18n'
 
 interface Props { onClose: () => void }
 
 function autoTitle(sport: string) {
   const d = new Date()
   const label = PADEL_SPORTS.find(s => s.id === sport)?.label ?? 'Padel'
-  const day = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })
+  const day = d.toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'long' })
   return `${label} · ${day.charAt(0).toUpperCase() + day.slice(1)}`
 }
 

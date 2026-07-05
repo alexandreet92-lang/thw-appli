@@ -16,6 +16,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { currentLocale } from '@/lib/i18n/locale'
 
 const ACT_SELECT =
   'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,is_race,avg_watts'
@@ -243,7 +244,7 @@ export async function buildAthleteContext(
     const recent = activities56.slice(-14).reverse()
     L.push(`\nACTIVITÉS RÉCENTES (${activities56.length} sur 8 sem., ${recent.length} affichées) :`)
     for (const a of recent) {
-      const d = a.started_at ? new Date(a.started_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : '?'
+      const d = a.started_at ? new Date(a.started_at).toLocaleDateString(currentLocale(), { day: '2-digit', month: '2-digit' }) : '?'
       const dur = a.moving_time_s ? `${Math.round(a.moving_time_s / 60)}min` : ''
       const dist = a.distance_m ? `${(a.distance_m / 1000).toFixed(1)}km` : ''
       const seg = [d, a.sport_type ?? '', dur, dist, a.tss != null ? `TSS ${a.tss}` : '', a.average_heartrate ? `${a.average_heartrate}bpm` : '', a.avg_watts ? `${a.avg_watts}W` : '', a.is_race ? '🏁course' : ''].filter(Boolean)

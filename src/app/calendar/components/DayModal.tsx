@@ -5,6 +5,7 @@ import { RaceStage } from './types'
 import GpxFullView from '@/components/gpx/GpxFullView'
 import { sanitizeFileName } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 interface DayFile { id: string; file_url: string; file_name: string }
 
@@ -22,7 +23,7 @@ const LBL = { fontSize:10,fontWeight:600 as const,textTransform:'uppercase' as c
 function isGpxName(n: string) { return n.toLowerCase().endsWith('.gpx') }
 
 function labelDay(d: string) {
-  return new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return new Date(d + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 type SaveStatus = 'idle' | 'saving' | 'success' | 'error'

@@ -12,6 +12,7 @@ import { SmSnStat } from '@/components/metrics/SmSnStat'
 import { workoutTypeDefs } from '@/components/activity/WorkoutTypeBadges'
 import { useI18n } from '@/lib/i18n'
 import { reverseGeocode } from '@/lib/geo/reverseGeocode'
+import { currentLocale } from '@/lib/i18n'
 
 // ── Couleurs sémantiques fixes ─────────────────────────────────────────
 const GOLD = '#eab308'
@@ -76,8 +77,8 @@ function fmtElev(m: number | null | undefined): string {
 
 function fmtSubline(sportLabel: string, iso: string): string {
   const d = new Date(iso)
-  const date = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const date = d.toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
+  const time = d.toLocaleTimeString(currentLocale(), { hour: '2-digit', minute: '2-digit' })
   return `${sportLabel} · ${date} · ${time}`
 }
 

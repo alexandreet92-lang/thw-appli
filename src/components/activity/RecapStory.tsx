@@ -16,6 +16,7 @@ import { SPORT_ICON, sportKeyFromType, type SportKey } from '@/components/icons/
 import { shareCard, type ShareStat } from '@/lib/share/shareCard'
 import { computeCurves, aggregatePeriodPowerRecords, aggregatePeriodPaceRecords, fmtRecordTime, type RecordRow, type PeriodRecordEntry } from '@/lib/records/curves'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
 
@@ -53,12 +54,12 @@ function periodBounds(period: 'week' | 'month', offset: number, ref: Date, t: TF
   if (period === 'month') {
     const start = new Date(ref.getFullYear(), ref.getMonth() - 1 - offset, 1)
     const end = new Date(ref.getFullYear(), ref.getMonth() - offset, 1)
-    return { start, end, label: cap(start.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })), short: start.toLocaleDateString('fr-FR', { month: 'short' }) }
+    return { start, end, label: cap(start.toLocaleDateString(currentLocale(), { month: 'long', year: 'numeric' })), short: start.toLocaleDateString(currentLocale(), { month: 'short' }) }
   }
   const mon = getMonday(ref)
   const start = new Date(mon); start.setDate(start.getDate() - 7 * (offset + 1))
   const end = new Date(start); end.setDate(end.getDate() + 7)
-  return { start, end, label: t('lo.weekOf', { d: start.getDate(), m: start.toLocaleDateString('fr-FR', { month: 'long' }) }), short: `${start.getDate()}/${start.getMonth() + 1}` }
+  return { start, end, label: t('lo.weekOf', { d: start.getDate(), m: start.toLocaleDateString(currentLocale(), { month: 'long' }) }), short: `${start.getDate()}/${start.getMonth() + 1}` }
 }
 
 interface SportStat { key: SportKey | string; time: number; dist: number; count: number; sm: number; elev: number; hrSum: number; hrN: number; speedSum: number; speedN: number; paceSum: number; paceN: number; wattSum: number; wattN: number; bestPace: number | null; maxWatt: number | null; best: RecapAct | null; longAct: RecapAct | null }
@@ -231,7 +232,7 @@ function MapCarousel({ acts, active, label }: { acts: RecapAct[]; active: boolea
         </div>
         <div style={{ padding: '14px 16px' }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title || t('lo.session')}</div>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginBottom: 10 }}>{new Date(a.started_at).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })}</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginBottom: 10 }}>{new Date(a.started_at).toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'long' })}</div>
           <div style={{ display: 'flex', gap: 18 }}>
             {stats.map((s, j) => (
               <div key={j}>
@@ -544,7 +545,7 @@ export function RecapStory({ period, activities, refDate, onClose }: {
                     <div style={{ width: 42, height: 42, borderRadius: 12, background: sportColor(String(k)), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{Cfg ? <Cfg.Icon size={22} color="#fff" stroke={2.2} /> : <IconMedal size={20} color="#fff" />}</div>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title || t('lo.raceFallback')}</div>
-                      <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.6)' }}>{new Date(r.started_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · {sportLabel(String(k))}</div>
+                      <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.6)' }}>{new Date(r.started_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })} · {sportLabel(String(k))}</div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{r.distance_m ? `${fmtKm(r.distance_m)} km` : fmtH(r.moving_time_s ?? 0)}</div>

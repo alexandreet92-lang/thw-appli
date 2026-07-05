@@ -10,6 +10,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SlideView } from '@/components/ui/SlideView'
 import { useI18n } from '@/lib/i18n'
 import { LanguageSelector } from '@/components/i18n/LanguageSelector'
+import { currentLocale } from '@/lib/i18n'
 
 // ══════════════════════════════════════════════════
 // TYPES
@@ -348,7 +349,7 @@ interface GearStatsT { total_sessions: number; total_km: number; total_hours: nu
 interface BikeT { id: string; name: string; brand: string | null; model: string | null; weight_kg: number | null; stats?: GearStatsT }
 interface ShoeT { id: string; name: string; brand: string | null; stats?: GearStatsT }
 
-const fmtFR = (n: number) => n.toLocaleString('fr-FR')
+const fmtFR = (n: number) => n.toLocaleString(currentLocale())
 const ZERO_STATS: GearStatsT = { total_sessions: 0, total_km: 0, total_hours: 0 }
 
 function GearBloc() {
@@ -1648,15 +1649,15 @@ const TIER_META: Record<string, { label: string; color: string; bg: string; bord
 }
 
 function fmtTokens(v: number): string {
-  return v.toLocaleString('fr-FR')
+  return v.toLocaleString(currentLocale())
 }
 
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  return new Date(iso).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function fmtAmount(amount: number, currency: string): string {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: currency.toUpperCase(), maximumFractionDigits: 0 }).format(amount / 100)
+  return new Intl.NumberFormat(currentLocale(), { style: 'currency', currency: currency.toUpperCase(), maximumFractionDigits: 0 }).format(amount / 100)
 }
 
 function AbonnementContent() {

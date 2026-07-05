@@ -1,3 +1,4 @@
+import { currentLocale } from '@/lib/i18n/locale'
 // ══════════════════════════════════════════════════════════════════
 // Progression — helpers de données (lecture seule des activités).
 // Colonnes réelles : started_at, distance_m, moving_time_s, avg_hr,
@@ -76,5 +77,5 @@ export function fmtRelDate(iso: string): string {
   if (days === 1) return 'hier'
   if (days < 7) return `il y a ${days} j`
   if (days < 35) return `il y a ${Math.round(days / 7)} sem.`
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+  return d.toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short' })
 }

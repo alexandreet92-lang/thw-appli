@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { currentLocale } from '@/lib/i18n'
 
 export interface ClockEvent {
   id: string
@@ -102,7 +103,7 @@ export default function ClockView({ events, year }: Props) {
   const baseRight   = polar(todayAngle + 90, 3)
 
   // Formatted strings
-  const dayStr  = `${now.getDate()} ${now.toLocaleDateString('fr-FR', { month: 'long' }).replace(/^\w/, c => c.toUpperCase())}`
+  const dayStr  = `${now.getDate()} ${now.toLocaleDateString(currentLocale(), { month: 'long' }).replace(/^\w/, c => c.toUpperCase())}`
   const timeStr = now.toTimeString().slice(0, 8)
 
   return (
@@ -204,7 +205,7 @@ export default function ClockView({ events, year }: Props) {
                     x: e.clientX, y: e.clientY,
                     text: [
                       dot.title,
-                      d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
+                      d.toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' }),
                       dot.categoryLabel + (dot.isGty ? ' · GTY' : ''),
                     ].join('\n'),
                   })

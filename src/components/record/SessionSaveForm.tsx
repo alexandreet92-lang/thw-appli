@@ -14,6 +14,7 @@ import { PADEL_TYPES } from '@/types/padel'
 import { OPEN_WATER_TYPES } from '@/types/openwater'
 import { HT_TYPES } from '@/types/hometrainer'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 export interface SessionFormData {
   title: string
@@ -43,9 +44,9 @@ function fmtDur(s: number): string {
 
 function getAutoTitle(sport: string, startedAt: string, t: (key: string) => string): string {
   const d = new Date(startedAt)
-  const day = d.toLocaleDateString('fr-FR', { weekday: 'short' })
+  const day = d.toLocaleDateString(currentLocale(), { weekday: 'short' })
   const num = d.getDate()
-  const month = d.toLocaleDateString('fr-FR', { month: 'long' })
+  const month = d.toLocaleDateString(currentLocale(), { month: 'long' })
   const label = sport === 'running' ? t('record.sessionSaveTitleRunning') : sport === 'trail' ? t('record.sessionSaveTitleTrail') : sport === 'hiking' ? t('record.sessionSaveTitleHiking') : sport === 'mtb' ? t('record.sessionSaveTitleMtb') : sport === 'rowing' ? t('record.sessionSaveTitleRowing') : sport === 'gym' ? t('record.sessionSaveTitleGym') : sport === 'hyrox' ? t('record.sessionSaveTitleHyrox') : sport === 'yoga' ? t('record.sessionSaveTitleYoga') : sport === 'padel' ? t('record.sessionSaveTitlePadel') : sport === 'openwater' ? t('record.sessionSaveTitleOpenWater') : sport === 'hometrainer' ? t('record.sessionSaveTitleHomeTrainer') : t('record.sessionSaveTitleCycling')
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
   return `${label} · ${cap(day)} ${num} ${month}`

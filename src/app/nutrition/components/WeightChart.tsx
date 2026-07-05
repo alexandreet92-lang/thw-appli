@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { BodyMeasurement, WeightMetric } from '@/hooks/useBodyMetrics'
 import { getMetricValue, computeTrendPerWeek } from '@/hooks/useBodyMetrics'
+import { currentLocale } from '@/lib/i18n'
 
 // ── Config ────────────────────────────────────────────────────────
 const METRIC_CONFIG: Record<WeightMetric, { label: string; unit: string; color: string; dec: number }> = {
@@ -208,7 +209,7 @@ export default function WeightChart({ measurements, heightCm, targetWeight }: Pr
             boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
           }}>
             <div style={{ fontWeight: 700, color: 'var(--text)', marginBottom: 3 }}>
-              {new Date(hRow.measured_at + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              {new Date(hRow.measured_at + 'T00:00:00').toLocaleDateString(currentLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' })}
             </div>
             <div style={{ color: cfg.color, fontWeight: 600 }}>
               {hVal.toFixed(cfg.dec)}{cfg.unit ? ' ' + cfg.unit : ''}

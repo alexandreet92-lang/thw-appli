@@ -1,3 +1,4 @@
+import { currentLocale } from '@/lib/i18n/locale'
 // ══════════════════════════════════════════════════════════════
 // Dashboard — helpers dates partagés + tokens de style réutilisés.
 // Tout passe par var(--token) ; aucune couleur en dur ici.
@@ -45,7 +46,7 @@ export const DAY_LETTERS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'] as const
 
 /** « mercredi 11 juin » capitalisé. */
 export function formatLongDate(d = new Date()): string {
-  const s = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const s = d.toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
@@ -53,7 +54,7 @@ export function formatLongDate(d = new Date()): string {
 export function formatShortDate(isoDate: string): string {
   try {
     const d = new Date(isoDate + (isoDate.length === 10 ? 'T00:00:00' : ''))
-    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    return d.toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })
   } catch {
     return isoDate
   }

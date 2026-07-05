@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { currentLocale } from '@/lib/i18n'
 
 export type MacroEntry = {
   date: string
@@ -144,7 +145,7 @@ export default function MacrosLineChart({
           whiteSpace: 'nowrap',
         }}>
           <div style={{ fontWeight: 700, color: 'var(--text)', marginBottom: 5 }}>
-            {new Date(hEntry.date + 'T00:00:00').toLocaleDateString('fr-FR', {
+            {new Date(hEntry.date + 'T00:00:00').toLocaleDateString(currentLocale(), {
               weekday: 'short', day: '2-digit', month: '2-digit',
             })}
           </div>

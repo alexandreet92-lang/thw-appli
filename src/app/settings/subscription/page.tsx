@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
 import type { UsageType } from '@/lib/subscriptions/check-quota'
+import { currentLocale } from '@/lib/i18n'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -131,7 +132,7 @@ function UsageBar({ used, limit, label, resetAt }: {
   const isHigh   = pct >= 85
   const barColor = isHigh ? '#ef4444' : '#06B6D4'
   const limitStr = limit === Infinity ? '∞' : String(limit)
-  const resetStr = new Date(resetAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  const resetStr = new Date(resetAt).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -276,7 +277,7 @@ export default function SubscriptionPage() {
   // stripe_subscription_id qui confirme un vrai abonnement actif ou passé.
   const hasBilling  = Boolean(data?.subscription?.stripe_subscription_id) && !isUnlimited
   const periodEnd   = data?.subscription?.current_period_end
-    ? new Date(data.subscription.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    ? new Date(data.subscription.current_period_end).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
     : null
   const subStatus   = data?.subscription?.status ?? null
 

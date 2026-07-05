@@ -5,10 +5,11 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { HYROX_STATIONS, toSec, hmsTotal, mmss, type HyroxRace } from './hyroxShared'
+import { currentLocale } from '@/lib/i18n'
 
 const HYROX = '#ec4899' // design-allow-color — teinte sport hyrox sanctionnée
 
-function fmtDate(iso: string) { return new Date(iso).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }) }
+function fmtDate(iso: string) { return new Date(iso).toLocaleDateString(currentLocale(), { month: 'short', year: '2-digit' }) }
 function mean(xs: number[]) { const v = xs.filter(x => x > 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0 }
 
 export function HyroxCompare({ races, onSelect }: { races: HyroxRace[]; onSelect?: (label: string, value: string) => void }) {

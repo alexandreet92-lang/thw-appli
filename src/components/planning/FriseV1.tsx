@@ -12,10 +12,11 @@ import type { TrainingBlocData } from '@/types/trainingBloc'
 import { buildFriseWindow, LABEL_WIDTH, COLS, TODAY_INDEX } from './friseModel'
 import { usePlannedRaces, type RaceData } from './usePlannedRaces'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 const RED = '#ef4444', CY = '#22d3ee' // race/today = couleurs fonctionnelles assumées
 const GRID = `${LABEL_WIDTH}px repeat(${COLS},1fr)`
-const fmt = (d: Date) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+const fmt = (d: Date) => d.toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })
 
 // Décalage vertical alterné des badges course pour éviter les chevauchements (< 2 colonnes).
 function assignRaceLevels(races: RaceData[], indexOf: (s: string) => number) {

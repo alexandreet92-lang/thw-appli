@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 interface Effort {
   started_at: string
@@ -126,7 +127,7 @@ export default function SegmentHistory({ segmentId, isDark }: Props) {
           {/* X axis dates */}
           {efforts.length <= 8 && efforts.map((e, i) => (
             <text key={i} x={xScale(i)} y={H - 4} textAnchor="middle" fill={dim} fontSize={8}>
-              {new Date(e.started_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'numeric' })}
+              {new Date(e.started_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'numeric' })}
             </text>
           ))}
         </svg>
@@ -139,7 +140,7 @@ export default function SegmentHistory({ segmentId, isDark }: Props) {
           return (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: `1px solid ${gridLine}` }}>
               <p style={{ fontSize: 13, color: dim, margin: 0 }}>
-                {new Date(e.started_at).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                {new Date(e.started_at).toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'short' })}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {isBest && <span style={{ fontSize: 12, color: '#F59E0B', fontWeight: 600 }}>PR</span>}

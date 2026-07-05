@@ -1,3 +1,4 @@
+import { currentLocale } from '@/lib/i18n/locale'
 // Dates de semaine ISO pour les blocs d'entraînement. RÈGLE UI : on n'affiche JAMAIS un
 // numéro de semaine ISO (« S22 »), uniquement des plages de dates réelles (lundi→dimanche).
 
@@ -20,7 +21,7 @@ export function getWeekEnd(year: number, week: number): Date {
   return end
 }
 
-const fmtDM = (d: Date) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+const fmtDM = (d: Date) => d.toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })
 
 // « 25 mai »
 export function formatWeekStart(year: number, week: number): string {
@@ -81,6 +82,6 @@ export function weekStartOptions(count = 12, startOffset = -1): WeekOption[] {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i * 7)
     const { year, week } = isoWeekYear(d)
-    return { year, week, day: String(d.getDate()), month: d.toLocaleDateString('fr-FR', { month: 'short' }), key: `${year}-${week}` }
+    return { year, week, day: String(d.getDate()), month: d.toLocaleDateString(currentLocale(), { month: 'short' }), key: `${year}-${week}` }
   })
 }

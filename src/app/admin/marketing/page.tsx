@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import type { DailyBrief, BriefIdea, RawIdea, InstaSnapshot } from "@/lib/marketing/types";
+import { currentLocale } from '@/lib/i18n'
 
 // ── Admin email check (client-side, UI only) ───────────────────
 function isAdminEmail(email: string | undefined | null): boolean {
@@ -271,7 +272,7 @@ export default function MarketingAdminPage() {
           <span style={{ fontSize: 12, color: "#9ca3af" }}>
             {t("admin.marketing.lastSync")} {instaApiSnapshot.snapshot_date}
             {instaApiSnapshot.followers_count != null && (
-              <> {t("admin.marketing.followersSuffix", { n: instaApiSnapshot.followers_count.toLocaleString("fr-FR") })}</>
+              <> {t("admin.marketing.followersSuffix", { n: instaApiSnapshot.followers_count.toLocaleString(currentLocale()) })}</>
             )}
           </span>
         )}
@@ -355,19 +356,19 @@ export default function MarketingAdminPage() {
               {instaApiSnapshot.followers_count != null && (
                 <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Followers</div>
-                  <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.followers_count.toLocaleString("fr-FR")}</div>
+                  <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.followers_count.toLocaleString(currentLocale())}</div>
                 </div>
               )}
               {instaApiSnapshot.reach_total != null && (
                 <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{t("admin.marketing.reach28")}</div>
-                  <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.reach_total.toLocaleString("fr-FR")}</div>
+                  <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.reach_total.toLocaleString(currentLocale())}</div>
                 </div>
               )}
               {instaApiSnapshot.impressions_total != null && (
                 <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: "14px 20px", minWidth: 120 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{t("admin.marketing.impressions28")}</div>
-                  <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.impressions_total.toLocaleString("fr-FR")}</div>
+                  <div style={{ fontSize: 24, fontWeight: 700 }}>{instaApiSnapshot.impressions_total.toLocaleString(currentLocale())}</div>
                 </div>
               )}
               {instaApiSnapshot.best_format && (
@@ -395,9 +396,9 @@ export default function MarketingAdminPage() {
                           {p.caption_excerpt || t("admin.marketing.noCaption")}
                         </div>
                         <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#666" }}>
-                          <span>❤ {p.likes.toLocaleString("fr-FR")}</span>
-                          <span>🔖 {p.saves.toLocaleString("fr-FR")}</span>
-                          <span>👁 {p.reach.toLocaleString("fr-FR")}</span>
+                          <span>❤ {p.likes.toLocaleString(currentLocale())}</span>
+                          <span>🔖 {p.saves.toLocaleString(currentLocale())}</span>
+                          <span>👁 {p.reach.toLocaleString(currentLocale())}</span>
                           {p.comments != null && <span>💬 {p.comments}</span>}
                         </div>
                       </div>
@@ -771,10 +772,10 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
     >
       <summary style={{ cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <strong>{snapshot.snapshot_date}</strong>
-        {snapshot.reach_total != null && <span style={{ color: "#666" }}>Reach {snapshot.reach_total.toLocaleString("fr-FR")}</span>}
+        {snapshot.reach_total != null && <span style={{ color: "#666" }}>Reach {snapshot.reach_total.toLocaleString(currentLocale())}</span>}
         {snapshot.followers_count != null && (
           <span style={{ color: "#666" }}>
-            Followers {snapshot.followers_count.toLocaleString("fr-FR")}
+            Followers {snapshot.followers_count.toLocaleString(currentLocale())}
             {delta != null && (
               <span style={{ color: delta >= 0 ? "#10b981" : "#ef4444", marginLeft: 4 }}>
                 ({delta >= 0 ? "+" : ""}{delta})
@@ -795,20 +796,20 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
           {snapshot.impressions_total != null && (
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1 }}>Impressions</div>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>{snapshot.impressions_total.toLocaleString("fr-FR")}</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{snapshot.impressions_total.toLocaleString(currentLocale())}</div>
             </div>
           )}
           {snapshot.reach_total != null && (
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1 }}>Reach</div>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>{snapshot.reach_total.toLocaleString("fr-FR")}</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{snapshot.reach_total.toLocaleString(currentLocale())}</div>
             </div>
           )}
           {snapshot.followers_count != null && (
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 1 }}>Followers</div>
               <div style={{ fontSize: 20, fontWeight: 700 }}>
-                {snapshot.followers_count.toLocaleString("fr-FR")}
+                {snapshot.followers_count.toLocaleString(currentLocale())}
                 {delta != null && (
                   <span style={{ fontSize: 14, color: delta >= 0 ? "#10b981" : "#ef4444", marginLeft: 6 }}>
                     {delta >= 0 ? "+" : ""}{delta}
@@ -852,9 +853,9 @@ function AdminInstaCard({ snapshot, defaultOpen }: { snapshot: InstaSnapshot; de
                       {p.caption_excerpt}
                     </div>
                     <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#666" }}>
-                      <span>❤ {p.likes.toLocaleString("fr-FR")}</span>
-                      <span>🔖 {p.saves.toLocaleString("fr-FR")}</span>
-                      <span>👁 {p.reach.toLocaleString("fr-FR")}</span>
+                      <span>❤ {p.likes.toLocaleString(currentLocale())}</span>
+                      <span>🔖 {p.saves.toLocaleString(currentLocale())}</span>
+                      <span>👁 {p.reach.toLocaleString(currentLocale())}</span>
                       {p.comments != null && <span>💬 {p.comments}</span>}
                     </div>
                   </div>

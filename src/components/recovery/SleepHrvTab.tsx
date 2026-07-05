@@ -10,12 +10,13 @@
 import { Moon, Hourglass } from 'lucide-react'
 import type { HrvRow } from './useRecoveryData'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 const NUM = { fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' as const, fontFeatureSettings: "'zero' 0" }
 
 function fmtDate(d: string): string {
   const dt = new Date(`${d}T12:00:00`)
-  return Number.isNaN(dt.getTime()) ? d : dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+  return Number.isNaN(dt.getTime()) ? d : dt.toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long' })
 }
 
 function Spark({ vals }: { vals: number[] }) {

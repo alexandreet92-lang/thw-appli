@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { sportColor } from '@/components/recovery/helpers'
 import { Card, SectionTitle, SportDot, Skeleton } from './primitives'
 import { FD, FB, NUM, iso, todayIso, weekStartIso, formatDuration } from './lib'
+import { currentLocale } from '@/lib/i18n'
 
 interface Row { week_start: string; day_index: number; sport: string; title: string; duration_min: number | null; intensity: string | null; status: string }
 interface Next { key: string; date: string; sport: string; title: string; duration_min: number | null; intensity: string | null }
@@ -25,7 +26,7 @@ function sessionDate(weekStart: string, dayIndex: number): string {
 }
 
 function dayShort(isoDate: string): string {
-  const s = new Date(isoDate + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })
+  const s = new Date(isoDate + 'T00:00:00').toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric' })
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 

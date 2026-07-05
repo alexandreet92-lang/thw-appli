@@ -2,6 +2,7 @@
 // Couche données « Lier une activité » pour la saisie Triathlon. N'expose QUE des
 // colonnes réellement présentes dans la table `activities` (aucune donnée inventée).
 import { createClient } from '@/lib/supabase/client'
+import { currentLocale } from '@/lib/i18n'
 
 export type Segment = 'swim' | 'bike' | 'run'
 
@@ -65,7 +66,7 @@ export function hms(sec: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`
 }
 export function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' })
+  return new Date(iso).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: '2-digit' })
 }
 function km(m: number | null): string | null { return m && m > 0 ? `${(m / 1000).toFixed(m < 10000 ? 2 : 1)} km` : null }
 function meters(m: number | null): string | null { return m && m > 0 ? `${r0(m)} m` : null }

@@ -8,6 +8,7 @@ import SleepPhasesStack, { type SleepNightPhases } from './sleep/SleepPhasesStac
 import SleepTrends, { type TrendNight } from './sleep/SleepTrends'
 import SleepDebt from './sleep/SleepDebt'
 import CircadianClock, { type SleepWindow } from './sleep/CircadianClock'
+import { currentLocale } from '@/lib/i18n'
 
 interface PolarRow {
   date: string | null
@@ -119,7 +120,7 @@ export default function SleepSection({ checkin, history }: Props) {
         </div>
         {latest?.date && (
           <span style={{ fontSize:10, color:'var(--text-dim)', fontStyle:'italic', paddingTop:4 }}>
-            {t('recovery.sleep.lastNight')} {new Date(latest.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}
+            {t('recovery.sleep.lastNight')} {new Date(latest.date+'T12:00:00').toLocaleDateString(currentLocale(),{day:'numeric',month:'long'})}
           </span>
         )}
       </div>

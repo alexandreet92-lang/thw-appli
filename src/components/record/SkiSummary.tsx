@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import SessionTraceMap from './SessionTraceMap'
 import type { GPSPoint } from '@/hooks/useGPSTracking'
+import { currentLocale } from '@/lib/i18n'
 
 export interface SkiSnap {
   startedAtISO: string; endedAtISO: string; durationSec: number
@@ -48,7 +49,7 @@ export default function SkiSummary({ snap, isDark, onClose }: Props) {
       <div style={{ display:'flex', alignItems:'center', padding:'12px 16px', borderBottom:`1px solid ${sep}`, flexShrink:0 }}>
         <div style={{ flex:1 }}>
           <p style={{ fontSize:18, fontWeight:700, color:text, margin:0, fontFamily:'Syne, sans-serif' }}>{t('record.skiSummaryTitle')}</p>
-          <p style={{ fontSize:13, color:dim, margin:'2px 0 0' }}>{snap.skiType === 'ski' ? 'Ski' : 'Snowboard'} · {new Date(snap.startedAtISO).toLocaleDateString('fr-FR')}</p>
+          <p style={{ fontSize:13, color:dim, margin:'2px 0 0' }}>{snap.skiType === 'ski' ? 'Ski' : 'Snowboard'} · {new Date(snap.startedAtISO).toLocaleDateString(currentLocale())}</p>
         </div>
         <button onClick={onClose} style={{ padding:'8px 20px', background:'linear-gradient(135deg,#06B6D4,#2563EB)', border:'none', borderRadius:12, color:'white', fontSize:14, fontWeight:600, cursor:'pointer' }}>{t('record.skiSummaryFinish')}</button>
       </div>

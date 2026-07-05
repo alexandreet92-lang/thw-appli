@@ -6,6 +6,7 @@ import { metricColor, localToday } from './helpers'
 import type { CheckInDraft, CheckInRow } from './types'
 import { BLANK_DRAFT } from './types'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 interface Props {
   existing: CheckInRow | null
@@ -65,7 +66,7 @@ export default function CheckInModal({ existing, onClose, onSaved }: Props) {
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20 }}>
           <div>
             <h3 style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0 }}>{t('recovery.checkinMorning')}</h3>
-            <p style={{ fontSize:11,color:'var(--text-dim)',margin:'3px 0 0' }}>{new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p>
+            <p style={{ fontSize:11,color:'var(--text-dim)',margin:'3px 0 0' }}>{new Date().toLocaleDateString(currentLocale(),{weekday:'long',day:'numeric',month:'long'})}</p>
           </div>
           <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 9px',cursor:'pointer',color:'var(--text-dim)',fontSize:14 }}>✕</button>
         </div>

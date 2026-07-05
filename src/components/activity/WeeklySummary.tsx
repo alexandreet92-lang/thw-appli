@@ -10,6 +10,7 @@ import { SPORT_ICON, sportKeyFromType } from '@/components/icons/SportIcon'
 import { shareCard } from '@/lib/share/shareCard'
 import { RecapStory, type RecapAct } from './RecapStory'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 function fmtH(s: number): string { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min` }
 function getMonday(d: Date): Date { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); const dow = (x.getDay() + 6) % 7; x.setDate(x.getDate() - dow); return x }
@@ -35,7 +36,7 @@ export function WeeklySummary({ activities }: { activities: RecapAct[] }) {
     acts.forEach(a => { const k = sportKeyFromType(a.sport_type) ?? a.sport_type; bySport.set(k, (bySport.get(k) ?? 0) + (a.moving_time_s ?? 0)) })
     const top = [...bySport.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
     const best = acts.slice().sort((a, b) => (b.tss ?? 0) - (a.tss ?? 0))[0] ?? null
-    const label = `${start.getDate()} – ${new Date(end.getTime() - 86400000).getDate()} ${new Date(end.getTime() - 86400000).toLocaleDateString('fr-FR', { month: 'long' })}`
+    const label = `${start.getDate()} – ${new Date(end.getTime() - 86400000).getDate()} ${new Date(end.getTime() - 86400000).toLocaleDateString(currentLocale(), { month: 'long' })}`
     return { count: acts.length, time, dist, sm, top, best, label }
   }, [activities]) // eslint-disable-line react-hooks/exhaustive-deps
 

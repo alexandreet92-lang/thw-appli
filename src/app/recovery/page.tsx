@@ -19,6 +19,7 @@ import SourcesTab from '@/components/recovery/SourcesTab'
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { RECOVERY_ONBOARDING } from '@/onboarding/configs/recovery.config'
+import { currentLocale } from '@/lib/i18n'
 
 function OverviewTab({ weeks, readiness }: { weeks: WeekData[]; readiness: ReadinessResult | null }) {
   const { t } = useI18n()
@@ -72,7 +73,7 @@ export default function RecoveryPage() {
       <div>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, letterSpacing: '-0.01em', margin: 0 }}>{t('recovery.title')}</h1>
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-dim)', margin: '5px 0 0' }}>
-          {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          {new Date().toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
       </div>
     </div>

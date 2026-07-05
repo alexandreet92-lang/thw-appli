@@ -1,6 +1,7 @@
 'use client'
 import { Race, RACE_CFG, daysUntil } from './types'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 interface Props {
   races: Race[]
@@ -17,7 +18,7 @@ export default function NextRaceBar({ races, onEdit }: Props) {
 
   const cfg  = RACE_CFG[next.level]
   const days = daysUntil(next.date)
-  const dateLabel = new Date(next.date).toLocaleDateString('fr-FR', {
+  const dateLabel = new Date(next.date).toLocaleDateString(currentLocale(), {
     weekday: 'long', day: 'numeric', month: 'long',
   })
   const sub = next.distance || next.goal || next.runDistance || ''

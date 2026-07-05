@@ -30,6 +30,7 @@ import TopupEmailModal from '@/components/topup/TopupEmailModal'
 import { MODEL_BADGE, quickActionEstimate, fmtEstimate } from '@/lib/quick-actions/models'
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
 import { computeSportMetrics, wpLabelToCanon, type ActivityWithStreams, type SportMetrics } from '@/lib/analysis/sportMetrics'
+import { currentLocale } from '@/lib/i18n'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -232,18 +233,18 @@ function fmtDate(ts: number, t: (key: string, vars?: Record<string, string | num
   if (d < 60_000) return t('aip.date.instant')
   if (d < 3_600_000) return `${Math.floor(d / 60_000)}min`
   if (d < 86_400_000) return `${Math.floor(d / 3_600_000)}h`
-  return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  return new Date(ts).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })
 }
 
 /** Format timestamp for message hover (C4) */
 function fmtMsgTime(ts: number, t: (key: string, vars?: Record<string, string | number>) => string): string {
   const now = new Date()
   const d = new Date(ts)
-  const hhmm = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const hhmm = d.toLocaleTimeString(currentLocale(), { hour: '2-digit', minute: '2-digit' })
   const diffDays = Math.floor((now.getTime() - d.getTime()) / 86_400_000)
   if (diffDays === 0) return hhmm
   if (diffDays === 1) return t('aip.date.yesterday', { time: hhmm })
-  return `${d.getDate()} ${d.toLocaleString('fr-FR', { month: 'short' })} ${hhmm}`
+  return `${d.getDate()} ${d.toLocaleString(currentLocale(), { month: 'short' })} ${hhmm}`
 }
 
 // ── Markdown renderer ──────────────────────────────────────────
@@ -2820,7 +2821,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
             const isExpanded = expandedDay === i
             const typeColor  = jour.type_jour === 'low' ? '#22c55e' : jour.type_jour === 'mid' ? '#f97316' : '#ef4444'
             const typeLabel  = jour.type_jour === 'low' ? t('aip.nutri.typeLight') : jour.type_jour === 'mid' ? t('aip.nutri.typeMedium') : t('aip.nutri.typeIntense')
-            const dayLabel   = new Date(jour.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+            const dayLabel   = new Date(jour.date + 'T00:00:00').toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'short' })
             return (
               <div key={i}>
                 <button onClick={() => setExpandedDay(isExpanded ? null : i)} style={{
@@ -3827,7 +3828,7 @@ function TestEvolutionMiniChart({ points }: { points: { date: string; valeur: nu
         <g key={i}>
           <circle cx={sx(i)} cy={sy(p.valeur)} r={3} fill="var(--ai-accent)" />
           <text x={sx(i)} y={sy(p.valeur) - 6} textAnchor="middle" fontSize="8" fill="var(--ai-text)" fontFamily="DM Mono,monospace">{p.valeur}</text>
-          <text x={sx(i)} y={H - 2} textAnchor="middle" fontSize="7" fill="var(--ai-dim)">{new Date(p.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}</text>
+          <text x={sx(i)} y={H - 2} textAnchor="middle" fontSize="7" fill="var(--ai-dim)">{new Date(p.date).toLocaleDateString(currentLocale(), { month: 'short', day: 'numeric' })}</text>
         </g>
       ))}
     </svg>
@@ -6236,7 +6237,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
       const isSelected = selected.some(s => s.id === a.id)
       const idx = selected.findIndex(s => s.id === a.id)
       const hasStreams = !!(a.streams && (a.streams.heartrate?.length || a.streams.watts?.length))
-      const dateStr = new Date(a.started_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+      const dateStr = new Date(a.started_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short' })
       const durMin = Math.round((a.moving_time_s ?? 0) / 60)
       const distKm = a.distance_m ? (a.distance_m / 1000).toFixed(1) : null
 
@@ -8297,7 +8298,7 @@ function TrainingPlanFlow({
 
   function formatDate(dateStr: string): string {
     try {
-      return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+      return new Date(dateStr).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
     } catch { return dateStr }
   }
 
@@ -8430,7 +8431,7 @@ function TrainingPlanFlow({
             </span>
             {generatedAt && (
               <span style={{ fontSize: 10, color: 'var(--ai-dim)', opacity: 0.8 }}>
-                · Généré le {generatedAt.toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                · Généré le {generatedAt.toLocaleString(currentLocale(), { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
           </div>
@@ -9162,7 +9163,7 @@ function TrainingPlanFlow({
                         style={{ ...tpInputStyle(), padding: '5px 8px', fontSize: 12, width: '100%' }} />
                     )}
                     <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '2px 0 0' }}>
-                      {race.date ? new Date(race.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : (
+                      {race.date ? new Date(race.date).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) : (
                         <input type="date" value={race.date}
                           onChange={e => updateGoalRace(idx, { date: e.target.value })}
                           style={{ ...tpInputStyle(), padding: '3px 6px', fontSize: 11, marginTop: 4 }} />
@@ -12908,7 +12909,7 @@ Ultra-concrètes, chiffrées, basées sur les données de CETTE semaine.
 TON : Coach direct, factuel. Si tout va bien, félicite. Si c'est critique, n'hésite pas à dire STOP.
 ${rulesBlock}`
 
-  const userPrompt = `Analyse ma semaine du ${weekStart.toLocaleDateString('fr-FR')} au ${weekEnd.toLocaleDateString('fr-FR')}.
+  const userPrompt = `Analyse ma semaine du ${weekStart.toLocaleDateString(currentLocale())} au ${weekEnd.toLocaleDateString(currentLocale())}.
 
 PROFIL ATHLÈTE :
 Poids : ${profile?.weight_kg ?? 'N/A'}kg
@@ -12918,7 +12919,7 @@ ${perfProfile?.lthr ? `LTHR : ${perfProfile.lthr}bpm` : ''}
 Sports : ${[...new Set(activities8w.map(a => a.sport_type))].join(', ') || 'N/A'}
 
 ACTIVITÉS CETTE SEMAINE (${activities.length}) :
-${activities.length > 0 ? activities.map(a => `- ${a.title ?? a.sport_type} (${new Date(a.started_at).toLocaleDateString('fr-FR')}) · ${a.moving_time_s ? Math.round(a.moving_time_s / 60) + 'min' : ''} · ${a.distance_m ? (a.distance_m / 1000).toFixed(1) + 'km' : ''} · TSS ${a.tss ?? 'N/A'} · FC ${a.average_heartrate ?? 'N/A'}bpm${a.avg_watts ? ' · ' + a.avg_watts + 'W' : ''}`).join('\n') : 'Aucune activité.'}
+${activities.length > 0 ? activities.map(a => `- ${a.title ?? a.sport_type} (${new Date(a.started_at).toLocaleDateString(currentLocale())}) · ${a.moving_time_s ? Math.round(a.moving_time_s / 60) + 'min' : ''} · ${a.distance_m ? (a.distance_m / 1000).toFixed(1) + 'km' : ''} · TSS ${a.tss ?? 'N/A'} · FC ${a.average_heartrate ?? 'N/A'}bpm${a.avg_watts ? ' · ' + a.avg_watts + 'W' : ''}`).join('\n') : 'Aucune activité.'}
 
 SÉANCES PLANIFIÉES (${planned.length}) :
 ${planned.length > 0 ? planned.map(p => `- Jour ${p.day_index ?? '?'} : ${p.sport ?? '?'} · ${p.title ?? ''} · ${p.duration_min ?? '?'}min · ${p.intensite ?? '?'} · TSS ${p.tss ?? '?'} · ${p.status ?? '?'}`).join('\n') : 'Aucune.'}
@@ -13993,7 +13994,7 @@ function EstimerZonesFlow({ onCancel, onRecordConv }: {
       const confidence = computeConfidence(gateData.testsCount, gateData.activitiesCount, hasRecentTest)
 
       const zonesDateStr = gateData.currentZonesDate
-        ? new Date(gateData.currentZonesDate).toLocaleDateString('fr-FR')
+        ? new Date(gateData.currentZonesDate).toLocaleDateString(currentLocale())
         : 'non configurées'
 
       const systemPrompt = `Tu es un expert en physiologie du sport et calcul de zones d'entraînement.
@@ -14215,7 +14216,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
                   <span style={{ color: 'var(--ai-mid)' }}>Zones actuelles</span>
                   <span style={{ color: 'var(--ai-text)', fontWeight: 600 }}>
                     {gateData.currentZonesDate
-                      ? `configurées le ${new Date(gateData.currentZonesDate).toLocaleDateString('fr-FR')}`
+                      ? `configurées le ${new Date(gateData.currentZonesDate).toLocaleDateString(currentLocale())}`
                       : 'non configurées'}
                   </span>
                 </div>
@@ -16070,12 +16071,12 @@ Ultra-concrètes, chiffrées, basées sur les données de CETTE semaine.
 TON : Coach direct, factuel. Si tout va bien, félicite. Si c'est critique, n'hésite pas à dire STOP.`
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const userPr = `Analyse ma semaine du ${weekStart.toLocaleDateString('fr-FR')} au ${weekEnd.toLocaleDateString('fr-FR')}.
+      const userPr = `Analyse ma semaine du ${weekStart.toLocaleDateString(currentLocale())} au ${weekEnd.toLocaleDateString(currentLocale())}.
 
 Profil: ${profile?.weight_kg ?? '?'}kg${perfProfile?.ftp_watts ? ` FTP ${perfProfile.ftp_watts}W` : ''}${perfProfile?.vma ? ` VMA ${perfProfile.vma}km/h` : ''}
 
 Activités (${activities.length}):
-${activities.map((a: any) => `- ${a.title ?? a.sport_type} (${new Date(a.started_at).toLocaleDateString('fr-FR')}) · ${a.moving_time_s ? Math.round(a.moving_time_s / 60) + 'min' : ''} · TSS ${a.tss ?? '?'} · FC ${a.average_heartrate ?? '?'}bpm`).join('\n') || 'aucune'}
+${activities.map((a: any) => `- ${a.title ?? a.sport_type} (${new Date(a.started_at).toLocaleDateString(currentLocale())}) · ${a.moving_time_s ? Math.round(a.moving_time_s / 60) + 'min' : ''} · TSS ${a.tss ?? '?'} · FC ${a.average_heartrate ?? '?'}bpm`).join('\n') || 'aucune'}
 
 Séances planifiées (${planned.length}):
 ${planned.map((p: any) => `- Jour ${p.day_index ?? '?'}: ${p.sport ?? '?'} · ${p.title ?? ''} · ${p.duration_min ?? '?'}min · ${p.intensite ?? '?'} · ${p.status ?? '?'}`).join('\n') || 'aucune'}
@@ -16137,7 +16138,7 @@ Patterns 4 semaines (${typeDriftData.length} données): ${typeDriftData.length >
         reader.cancel().catch(() => { /* ignore */ })
         setGenerating(false)
         if (onRecordConv && raw.length > 100) {
-          const weekLabel = `Analyse semaine ${weekStart.toLocaleDateString('fr-FR')} → ${weekEnd.toLocaleDateString('fr-FR')}`
+          const weekLabel = `Analyse semaine ${weekStart.toLocaleDateString(currentLocale())} → ${weekEnd.toLocaleDateString(currentLocale())}`
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const totalKmLocal = Math.round(activities.reduce((s: number, a: any) => s + ((a.distance_m ?? 0) / 1000), 0))
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -19225,7 +19226,7 @@ export default function AIPanel({
   const exportMarkdown = () => {
     if (!active) return
     const modelNames: Record<THWModel, string> = { hermes: 'Hermès', athena: 'Athèna', zeus: 'Zeus' }
-    const lines: string[] = [`# ${active.title}`, '', `_Exporté le ${new Date().toLocaleDateString('fr-FR')}_`, '']
+    const lines: string[] = [`# ${active.title}`, '', `_Exporté le ${new Date().toLocaleDateString(currentLocale())}_`, '']
     for (const m of active.msgs) {
       const role = m.role === 'user' ? '## Vous' : `## ${modelNames[m.modelId ?? 'athena']}`
       lines.push(role, '', m.content, '')
@@ -20083,7 +20084,7 @@ export default function AIPanel({
           const qd = await res.json() as { used?: number; limit?: number; tier?: string; reset_at?: string }
           const tierLabel = qd.tier === 'pro' ? 'Pro' : qd.tier === 'expert' ? 'Expert' : 'Premium'
           if (qd.reset_at) {
-            const resetDate = new Date(qd.reset_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+            const resetDate = new Date(qd.reset_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'long' })
             quotaMsg = `⚠️ **Quota mensuel atteint** — ${qd.used ?? '?'}/${qd.limit ?? '?'} messages utilisés (plan ${tierLabel}).\n\nRemise à zéro le **${resetDate}**.\n\n👉 [Améliorer mon abonnement →](/settings/subscription)`
           }
         } catch { /* fallback */ }

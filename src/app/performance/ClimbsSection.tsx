@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
+import { currentLocale } from '@/lib/i18n'
 
 // ─── useDarkMode — suit la classe dark/light sur <html> ──────────────────────
 function useDarkMode() {
@@ -349,7 +350,7 @@ function ScatterSVG({ climbs, allYears, onPointClick, highlightIds }: {
         }}>
           <div style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13, color:'var(--text)', marginBottom:6 }}>{tooltip.climb.name}</div>
           <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-            <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(tooltip.climb.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</span>
+            <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(tooltip.climb.date).toLocaleDateString(currentLocale(),{day:'2-digit',month:'short',year:'numeric'})}</span>
             <span style={{ fontFamily:'DM Mono,monospace', fontSize:14, fontWeight:700, color:BIKE_COLOR }}>{tooltip.climb.wpkg.toFixed(2)} W/kg</span>
             <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'var(--text-mid)' }}>{tooltip.climb.watts_avg} W · {secToHMS(tooltip.climb.duration_seconds)}</span>
             {tooltip.climb.score != null && (
@@ -983,7 +984,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
                       {rank===1 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>⭐ {t('perf2.bestPerf')}</span>}
                     </div>
                     <div style={{ display:'flex', gap:8, marginTop:2 }}>
-                      <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(c.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</span>
+                      <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(c.date).toLocaleDateString(currentLocale(),{day:'2-digit',month:'short',year:'numeric'})}</span>
                       <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:BIKE_COLOR }}>{c.wpkg.toFixed(2)} W/kg</span>
                     </div>
                   </div>

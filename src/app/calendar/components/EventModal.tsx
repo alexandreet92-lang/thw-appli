@@ -15,6 +15,7 @@ import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import { parseRouteFile } from '@/lib/parcours/parseRouteFile'
 import { RACE_EDITOR_CSS } from './raceTheme'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 interface Props {
   mode?: 'create' | 'edit'
@@ -48,7 +49,7 @@ function getDaysBetween(start: string, end: string): string[] {
   while (cur <= fin) { days.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate() + 1) }
   return days
 }
-const labelDay = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' })
+const labelDay = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday:'long', day:'numeric', month:'long' })
 
 type DayProg = Record<string, { matin: StageSession[]; aprem: StageSession[] }>
 

@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDaysTotals } from '@/hooks/useDaysTotals'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 const FB = 'var(--font-body)'
 const PAGE = 7
@@ -90,7 +91,7 @@ export function DayStrip({ today, selected, targetKcal, onSelect }: {
             const on = d === selected
             const isToday = d === today
             const dt = new Date(d + 'T00:00:00')
-            const abbr = dt.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')
+            const abbr = dt.toLocaleDateString(currentLocale(), { weekday: 'short' }).replace('.', '')
             const dayNum = d.slice(8, 10)
             const size = 38, sw = 3.5, r = (size - sw) / 2, c = 2 * Math.PI * r
             const filled = pct * c

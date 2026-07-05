@@ -2,6 +2,7 @@
 // Positions calculées par différence de dates réelles (robuste aux changements d'année) — on
 // n'affiche jamais de numéro de semaine ISO.
 import { getWeekStart } from '@/lib/utils/weekDates'
+import { currentLocale } from '@/lib/i18n/locale'
 
 export const COLS = 12
 export const LABEL_WIDTH = 80
@@ -27,7 +28,7 @@ export function buildFriseWindow(now: Date = new Date()): FriseWindow {
   const windowStart = new Date(baseMonday); windowStart.setDate(baseMonday.getDate() - TODAY_INDEX * 7)
   const cols: FriseCol[] = Array.from({ length: COLS }, (_, i) => {
     const m = new Date(windowStart); m.setDate(windowStart.getDate() + i * 7)
-    return { idx: i, monday: m, day: m.getDate(), month: m.toLocaleDateString('fr-FR', { month: 'short' }), isCurrent: m.getTime() === baseMonday.getTime() }
+    return { idx: i, monday: m, day: m.getDate(), month: m.toLocaleDateString(currentLocale(), { month: 'short' }), isCurrent: m.getTime() === baseMonday.getTime() }
   })
   const months: MonthGroup[] = []
   cols.forEach(c => {

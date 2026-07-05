@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 interface Effort {
   id: string
@@ -84,7 +85,7 @@ export default function SegmentLeaderboard({ segmentId, isDark }: Props) {
                 {isMe ? t('shared.me') : t('shared.athleteN', { id: e.user_id.slice(0, 6) })}
               </p>
               <p style={{ fontSize: 11, color: dim, margin: '2px 0 0' }}>
-                {new Date(e.started_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                {new Date(e.started_at).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short', year: 'numeric' })}
               </p>
             </div>
             <span style={{ fontSize: 18, fontWeight: 700, color: medal ? medal : text, fontVariantNumeric: 'tabular-nums' }}>

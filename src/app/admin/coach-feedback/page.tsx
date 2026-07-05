@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n";
+import { currentLocale } from '@/lib/i18n'
 
 function isAdminEmail(email: string | undefined | null): boolean {
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
@@ -142,7 +143,7 @@ export default function CoachFeedbackAdminPage() {
               {r.sport && <span style={tag()}>{r.sport}</span>}
               {r.model && <span style={tag("#EEF2FF", "#4338CA")}>{r.model}</span>}
               <span style={{ marginLeft: "auto", fontSize: 12, color: "#9CA3AF" }}>
-                {new Date(r.created_at).toLocaleString("fr-FR")}
+                {new Date(r.created_at).toLocaleString(currentLocale())}
               </span>
             </div>
             {r.user_message && (

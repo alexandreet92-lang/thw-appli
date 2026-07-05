@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { currentLocale } from '@/lib/i18n'
 
 export type BodLog = {
   date: string
@@ -283,7 +284,7 @@ export default function BodyCompositionChart({ logs }: { logs: BodLog[] }) {
           boxShadow: '0 4px 16px rgba(0,0,0,0.18)', pointerEvents: 'none', zIndex: 10,
         }}>
           <div style={{ fontWeight: 700, marginBottom: 5, color: 'var(--text)', fontSize: 11 }}>
-            {new Date(hRow.date + 'T00:00:00').toLocaleDateString('fr-FR', {
+            {new Date(hRow.date + 'T00:00:00').toLocaleDateString(currentLocale(), {
               day: '2-digit', month: '2-digit', year: 'numeric',
             })}
           </div>

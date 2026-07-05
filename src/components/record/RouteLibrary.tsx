@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { SnappedPoint } from '@/lib/openrouteservice'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 interface Route {
   id: string; name: string; sport: string; is_public: boolean
@@ -142,7 +143,7 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: 
               <RouteThumbnail route={route} accent="#06B6D4" fallbackBg={separator} fallbackStroke={dim} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 15, fontWeight: 600, color: text, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{route.name}</p>
-                <p style={{ fontSize: 12, color: dim, margin: '0 0 6px' }}>{SPORT_LABELS[route.sport] ?? route.sport} · {new Date(route.created_at).toLocaleDateString('fr-FR')}</p>
+                <p style={{ fontSize: 12, color: dim, margin: '0 0 6px' }}>{SPORT_LABELS[route.sport] ?? route.sport} · {new Date(route.created_at).toLocaleDateString(currentLocale())}</p>
                 <div style={{ display: 'flex', gap: 12 }}>
                   {route.distance_m != null && <span style={{ fontSize: 12, color: dim }}>{(route.distance_m / 1000).toFixed(1)}km</span>}
                   {route.elevation_gain_m != null && <span style={{ fontSize: 12, color: dim }}>D+ {Math.round(route.elevation_gain_m)}m</span>}

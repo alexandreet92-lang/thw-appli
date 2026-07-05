@@ -11,12 +11,13 @@ import { useDailyMeals, SLOT_LABELS, type MealSlotKey } from '@/hooks/useDailyMe
 import { MacroDonut } from '../today/MacroDonut'
 import { foodsOf } from '../today/mealJournalUtils'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 
 function fmtDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return d.toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 export function DayMealsSheet({ date, onClose }: { date: string; onClose: () => void }) {

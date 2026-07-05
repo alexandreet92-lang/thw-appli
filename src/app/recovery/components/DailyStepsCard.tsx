@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 interface StepsData {
   date: string
@@ -84,10 +85,10 @@ export default function DailyStepsCard() {
         <div style={{ flex: 1, minWidth: 180 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
             <span style={{ fontFamily: 'Syne,sans-serif', fontSize: 36, fontWeight: 800, color: reached ? '#10B981' : 'var(--text)', lineHeight: 1 }}>
-              {steps.toLocaleString('fr-FR')}
+              {steps.toLocaleString(currentLocale())}
             </span>
             <span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 500 }}>
-              / {GOAL.toLocaleString('fr-FR')} {t('recovery.steps.stepsUnit')}
+              / {GOAL.toLocaleString(currentLocale())} {t('recovery.steps.stepsUnit')}
             </span>
           </div>
 

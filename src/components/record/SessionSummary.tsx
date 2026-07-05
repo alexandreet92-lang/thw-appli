@@ -10,6 +10,7 @@ import SessionSummaryPage1 from './SessionSummaryPage1'
 import SessionSummaryPage2 from './SessionSummaryPage2'
 import ActivityPhotos from '@/components/summary/ActivityPhotos'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 interface Props {
   session: FinishedSession
@@ -28,10 +29,10 @@ function getTheme(isDark: boolean) {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+  return new Date(iso).toLocaleDateString(currentLocale(), { weekday: 'short', day: 'numeric', month: 'short' })
 }
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString(currentLocale(), { hour: '2-digit', minute: '2-digit' })
 }
 
 export default function SessionSummary(props: Props) {

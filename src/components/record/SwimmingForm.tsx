@@ -7,14 +7,15 @@ import SwimmingPoolSelector from './SwimmingPoolSelector'
 import SwimmingStrokeSelector from './SwimmingStrokeSelector'
 import SwimmingIntervals, { type SwimInterval } from './SwimmingIntervals'
 import SwimmingSummary, { type SwimSavedData } from './SwimmingSummary'
+import { currentLocale } from '@/lib/i18n'
 
 interface Props { onClose: () => void }
 
 function autoTitle(): string {
   const d = new Date()
-  const day = d.toLocaleDateString('fr-FR', { weekday: 'short' })
+  const day = d.toLocaleDateString(currentLocale(), { weekday: 'short' })
   const num = d.getDate()
-  const month = d.toLocaleDateString('fr-FR', { month: 'long' })
+  const month = d.toLocaleDateString(currentLocale(), { month: 'long' })
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
   return `Natation · ${cap(day)} ${num} ${month}`
 }

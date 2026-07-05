@@ -10,11 +10,12 @@ import {
   MessageCircle, Activity, Calendar, Sunrise, ArrowRight, Receipt, Shield,
 } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
+import { currentLocale } from '@/lib/i18n'
 
 export const APP_URL = '/'
 export const GRAD = 'linear-gradient(135deg, #06B6D4, #5b6fff)'
 export const GRAD_H = 'linear-gradient(90deg, #06B6D4, #5b6fff)'
-export const fmt = (n: number) => n.toLocaleString('fr-FR')
+export const fmt = (n: number) => n.toLocaleString(currentLocale())
 
 // ── Packs (cohérents avec /api/topup/create-checkout) ──
 export interface Pack {

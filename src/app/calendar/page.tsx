@@ -981,7 +981,7 @@ function ObjectiveChooser({ date, onClose, onCourse, onStage }: {
   date: string; onClose: () => void; onCourse: () => void; onStage: () => void
 }) {
   const { t } = useI18n()
-  const pretty = new Date(date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  const pretty = new Date(date + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
   const card: React.CSSProperties = {
     flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '22px 16px',
     borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer',
@@ -1433,7 +1433,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
                   const borderColor = ev.category === 'race' ? '#ef4444' : ev.category === 'pro' ? '#3b82f6' : '#a855f7'
                   const cdColor = isPast ? 'var(--text-dim)' : days < 7 ? '#ef4444' : days < 30 ? '#f97316' : 'var(--text-mid)'
                   const isHovered = hoveredId === ev.id
-                  const dateLabel = new Date(ev.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' })
+                  const dateLabel = new Date(ev.date + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday:'long', day:'numeric', month:'long' })
 
                   return (
                     <div
@@ -1498,7 +1498,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
     const calEv = ev.category !== 'race' ? events.find(e => e.id === ev.id) : undefined
     const borderColor = ev.category === 'race' ? '#ef4444' : ev.category === 'pro' ? '#3b82f6' : '#a855f7'
     const catLabel = tr(CATEGORY_LABEL_KEY[ev.category])
-    const dateLabel = new Date(ev.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' })
+    const dateLabel = new Date(ev.date + 'T12:00:00').toLocaleDateString(currentLocale(), { weekday:'long', day:'numeric', month:'long', year:'numeric' })
     const days = Math.ceil((new Date(ev.date).getTime() - Date.now()) / 86_400_000)
     const isPast = ev.date < today
 

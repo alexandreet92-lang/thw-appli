@@ -130,4 +130,212 @@ export const SEANCES_SL2: Seance[] = [
         ],
         conseil:'Revenir au seuil juste après chaque relance, sans souffler.' },
     ] },
+
+  { id:'velo-seuil-pyramide', nom:'Seuil pyramidal 5-10-15-10-5', sport:'velo', bucket:'sl2', objectif:'Volume au seuil en pyramide', dureeMinMin:90, dureeMaxMin:130, intensite:'eleve', rpe:8, pourQui:'Build', phase:'Build', support:['home-trainer','route'], tags:['seuil','sl2','z4','pyramide'],
+    blocs:[
+      { phase:'echauffement', zone:'Z2', label:'Échauffement', puissance:'Z2', dureeSec:900 },
+      { phase:'corps', zone:'Z4', label:'Pyramide 5-10-15-10-5', reps:1,
+        repsParNiveau:{ debutant:[1,1], intermediaire:[1,1], avance:[1,2], elite:[2,2] },
+        segments:[
+          { zone:'Z4', label:"5' @100%", puissance:'100% FTP', dureeSec:300, recupSec:150 },
+          { zone:'Z4', label:"10' @98%", puissance:'98% FTP', dureeSec:600, recupSec:180 },
+          { zone:'Z4', label:"15' @96%", puissance:'96% FTP', dureeSec:900, recupSec:180 },
+          { zone:'Z4', label:"10' @99%", puissance:'99% FTP', dureeSec:600, recupSec:150 },
+          { zone:'Z4', label:"5' @102%", puissance:'102% FTP', dureeSec:300 },
+        ] },
+      { phase:'retour-calme', zone:'Z2', label:'Retour au calme', puissance:'Z1', dureeSec:600 },
+    ],
+    conseil:'45 min au seuil en pyramide. Bas de zone sur le bloc long central.',
+    conseils:{
+      execution:"Les blocs montent puis descendent en durée : les courts sont un peu au-dessus du FTP, le 15' central en bas de seuil. La pyramide permet un gros volume de seuil sans la monotonie d'un 2×20 classique.",
+      erreurs:"Partir trop haut sur les 5' initiaux : le 15' central devient impossible. Réserve la puissance haute pour les blocs courts de fin.",
+      progression:"Répète la pyramide (récup 6 min) en élite, ou remplace les récup par du haut Z2.",
+      quand:"Phase build : excellent pour élever le FTP en variant les durées d'effort au seuil.",
+    },
+    variantes:[
+      { id:'velo-seuil-pyramide-serree', nom:'Pyramide serrée',
+        pourquoi:"Récup réduite entre blocs : on se rapproche d'un continu au seuil ondulé, la moyenne d'intensité grimpe. Volume proche, tolérance lactique davantage sollicitée.",
+        blocs:[
+          { phase:'echauffement', zone:'Z2', label:'Échauffement', puissance:'Z2', dureeSec:900 },
+          { phase:'corps', zone:'Z4', label:'Pyramide serrée', reps:1,
+            repsParNiveau:{ debutant:[1,1], intermediaire:[1,1], avance:[1,2], elite:[2,2] },
+            segments:[
+              { zone:'Z4', label:"5' @99%", puissance:'99% FTP', dureeSec:300, recupSec:90 },
+              { zone:'Z4', label:"10' @98%", puissance:'98% FTP', dureeSec:600, recupSec:90 },
+              { zone:'Z4', label:"15' @97%", puissance:'97% FTP', dureeSec:900, recupSec:90 },
+              { zone:'Z4', label:"10' @99%", puissance:'99% FTP', dureeSec:600, recupSec:90 },
+              { zone:'Z4', label:"5' @101%", puissance:'101% FTP', dureeSec:300 },
+            ] },
+          { phase:'retour-calme', zone:'Z2', label:'Retour au calme', puissance:'Z1', dureeSec:600 },
+        ],
+        conseil:'Presque continu : garder la puissance en bas de seuil.' },
+    ] },
+
+  { id:'velo-over-unders-longs', nom:'Over-unders longs 3×12', sport:'velo', bucket:'sl2', objectif:'Grosse tolérance lactique sur cycles 2\'/1\'', dureeMinMin:95, dureeMaxMin:125, intensite:'eleve', rpe:9, pourQui:'Build→Spé', phase:'Build', support:['home-trainer','route'], tags:['over-unders','sl2','z4'],
+    blocs:[
+      { phase:'echauffement', zone:'Z2', label:'Échauffement', puissance:'Z2', dureeSec:900 },
+      { phase:'corps', zone:'Z4', label:'Over-under 12\' (2\'/1\')', reps:4,
+        repsParNiveau:{ debutant:[2,2], intermediaire:[4,4], avance:[5,5], elite:[6,6] },
+        segments:[
+          { zone:'Z4', label:"2' @95%", puissance:'95% FTP', dureeSec:120 },
+          { zone:'Z5', label:"1' @108%", puissance:'108% FTP', dureeSec:60 },
+        ],
+        recup:{ zone:'Z2', dureeSec:300, actif:true } },
+      { phase:'retour-calme', zone:'Z2', label:'Retour au calme', puissance:'Z1', dureeSec:600 },
+    ],
+    conseil:'2\' sous le seuil / 1\' au-dessus, sans coupure dans le bloc.',
+    conseils:{
+      execution:"Cycles longs 2'/1' : le « under » de 2' à 95% est déjà exigeant, et tu passes au-dessus 1 min sans coupure. Trois blocs de 12 min = beaucoup de temps autour du seuil. Le « under » n'est jamais une récup.",
+      erreurs:"Souffler sur le « under » pour sauver le « over » : mieux vaut un « over » légèrement plus bas mais un « under » tenu à 95%.",
+      progression:"Passe de 2 à 3 blocs, puis ajoute des cycles par bloc. Ne creuse l'écart over/under qu'ensuite.",
+      quand:"Phase build à spé : la version « grand format » des over-unders, très proche des exigences de course.",
+    },
+    variantes:[
+      { id:'velo-over-unders-30-30', nom:'Micro over-unders 30/30',
+        pourquoi:"Cycles très courts (30\" sur / 30\" sous) : oscillation rapide autour du seuil, plus nerveuse. Volume proche, sollicitation davantage tournée vers les changements de rythme brefs.",
+        blocs:[
+          { phase:'echauffement', zone:'Z2', label:'Échauffement', puissance:'Z2', dureeSec:900 },
+          { phase:'corps', zone:'Z4', label:'Micro over-under 10\'', reps:3,
+            repsParNiveau:{ debutant:[2,2], intermediaire:[3,3], avance:[4,4], elite:[5,5] },
+            segments:[
+              { zone:'Z5', label:'30" @110%', puissance:'110% FTP', dureeSec:30 },
+              { zone:'Z4', label:'30" @92%', puissance:'92% FTP', dureeSec:30 },
+            ],
+            recup:{ zone:'Z2', dureeSec:300, actif:true } },
+          { phase:'retour-calme', zone:'Z2', label:'Retour au calme', puissance:'Z1', dureeSec:600 },
+        ],
+        conseil:'Oscillation rapide : rester fluide, ne jamais s\'arrêter dans le bloc.' },
+    ] },
+
+  { id:'velo-seuil-broken', nom:'Seuil « broken » 4×(5×1\')', sport:'velo', bucket:'sl2', objectif:'Accumuler du seuil via micro-coupures', dureeMinMin:90, dureeMaxMin:120, intensite:'eleve', rpe:8, pourQui:'Build', phase:'Build', support:['home-trainer'], tags:['seuil','sl2','z4','broken'],
+    blocs:[
+      { phase:'echauffement', zone:'Z2', label:'Échauffement', puissance:'Z2', dureeSec:900 },
+      { phase:'corps', zone:'Z4', label:'Seuil fractionné 5×1\'', reps:5,
+        repsParNiveau:{ debutant:[3,3], intermediaire:[5,5], avance:[6,7], elite:[8,8] },
+        segments:[
+          { zone:'Z4', label:"1' @102%", puissance:'102% FTP', dureeSec:60, recupSec:15 },
+        ],
+        recup:{ zone:'Z2', dureeSec:240, actif:true } },
+      { phase:'retour-calme', zone:'Z2', label:'Retour au calme', puissance:'Z1', dureeSec:600 },
+    ],
+    conseil:'Blocs de 1\' au seuil avec micro-coupures de 15", 4 séries.',
+    conseils:{
+      execution:"Le seuil est « cassé » en efforts d'1 min avec 15\" de micro-récup : ces micro-coupures permettent de tenir une puissance un peu plus haute que sur un bloc continu, tout en accumulant beaucoup de temps au seuil.",
+      erreurs:"Utiliser les 15\" pour vraiment souffler : elles servent juste à relâcher les jambes, la puissance moyenne de la série doit rester au seuil.",
+      progression:"Ajoute des reps par série (fourchette) puis des séries. Réduis la micro-récup (15\" → 10\") pour durcir.",
+      quand:"Phase build : bonne alternative aux blocs continus pour les athlètes qui saturent sur le 2×20.",
+    },
+    variantes:[
+      { id:'velo-seuil-broken-2min', nom:'Broken 2\' / 20"',
+        pourquoi:"Efforts plus longs (2') avec micro-coupures de 20\" : plus proche du seuil continu, un cran plus dur. Volume cumulé équivalent.",
+        blocs:[
+          { phase:'echauffement', zone:'Z2', label:'Échauffement', puissance:'Z2', dureeSec:900 },
+          { phase:'corps', zone:'Z4', label:'Seuil fractionné 4×2\'', reps:4,
+            repsParNiveau:{ debutant:[2,2], intermediaire:[4,4], avance:[5,5], elite:[6,6] },
+            segments:[
+              { zone:'Z4', label:"2' @100%", puissance:'100% FTP', dureeSec:120, recupSec:20 },
+            ],
+            recup:{ zone:'Z2', dureeSec:240, actif:true } },
+          { phase:'retour-calme', zone:'Z2', label:'Retour au calme', puissance:'Z1', dureeSec:600 },
+        ],
+        conseil:'Blocs de 2\' quasi continus, 20" pour relâcher seulement.' },
+    ] },
+
+  { id:'velo-seuil-decroissant', nom:'Seuil décroissant 20-15-10', sport:'velo', bucket:'sl2', objectif:'Blocs raccourcissant, puissance croissante', dureeMinMin:90, dureeMaxMin:120, intensite:'eleve', rpe:8, pourQui:'Build', phase:'Build', support:['home-trainer','route'], tags:['seuil','sl2','z4','decroissant'],
+    blocs:[
+      { phase:'echauffement', zone:'Z2', label:'Échauffement', puissance:'Z2', dureeSec:900 },
+      { phase:'corps', zone:'Z4', label:'20-15-10 croissant', reps:1,
+        repsParNiveau:{ debutant:[1,1], intermediaire:[1,1], avance:[1,2], elite:[2,2] },
+        segments:[
+          { zone:'Z4', label:"20' @95%", puissance:'95% FTP', dureeSec:1200, recupSec:300 },
+          { zone:'Z4', label:"15' @98%", puissance:'98% FTP', dureeSec:900, recupSec:240 },
+          { zone:'Z4', label:"10' @102%", puissance:'102% FTP', dureeSec:600 },
+        ] },
+      { phase:'retour-calme', zone:'Z2', label:'Retour au calme', puissance:'Z1', dureeSec:600 },
+    ],
+    conseil:'Blocs plus courts et plus forts : finir au-dessus du FTP.',
+    conseils:{
+      execution:"On part sur un long bloc en bas de seuil (20' à 95%) et on finit court et fort (10' à 102%). La montée de puissance compense la fatigue : le dernier bloc est le plus intense mais le plus bref.",
+      erreurs:"Attaquer le 20' à 100% : tu n'as plus de marge pour monter et tu subis le reste. Sois patient sur le bloc long.",
+      progression:"Répète l'ensemble en élite, ou pousse le dernier bloc plus haut (105%).",
+      quand:"Phase build : combine endurance de seuil et travail juste au-dessus du FTP.",
+    },
+    variantes:[
+      { id:'velo-seuil-croissant', nom:'10-15-20 (endurance de seuil)',
+        pourquoi:"L'inverse : on finit sur le bloc le plus long à puissance stable, sur jambes fatiguées. Développe l'endurance de seuil et la résistance mentale. Volume identique.",
+        blocs:[
+          { phase:'echauffement', zone:'Z2', label:'Échauffement', puissance:'Z2', dureeSec:900 },
+          { phase:'corps', zone:'Z4', label:'10-15-20 négatif', reps:1,
+            repsParNiveau:{ debutant:[1,1], intermediaire:[1,1], avance:[1,2], elite:[2,2] },
+            segments:[
+              { zone:'Z4', label:"10' @100%", puissance:'100% FTP', dureeSec:600, recupSec:240 },
+              { zone:'Z4', label:"15' @98%", puissance:'98% FTP', dureeSec:900, recupSec:300 },
+              { zone:'Z4', label:"20' @96%", puissance:'96% FTP', dureeSec:1200 },
+            ] },
+          { phase:'retour-calme', zone:'Z2', label:'Retour au calme', puissance:'Z1', dureeSec:600 },
+        ],
+        conseil:'Tenir le 20\' final à puissance stable malgré la fatigue.' },
+    ] },
+
+  { id:'velo-ftp-builder-2x20', nom:'Builder FTP 2×20', sport:'velo', bucket:'sl2', objectif:'Le format de référence pour bâtir et tester le FTP', dureeMinMin:80, dureeMaxMin:110, intensite:'eleve', rpe:9, pourQui:'Build→Spé', phase:'Build', support:['home-trainer','route'], tags:['seuil','sl2','z4','ftp','test'],
+    blocs:[
+      { phase:'echauffement', zone:'Z2', label:'Échauffement', puissance:'Z2', dureeSec:1200 },
+      { phase:'corps', zone:'Z4', label:"20' @FTP", puissance:'98-102% FTP', cadence:'normale', dureeSec:1200, reps:2,
+        repsParNiveau:{ debutant:[1,1], intermediaire:[2,2], avance:[2,2], elite:[3,3] },
+        recup:{ zone:'Z2', dureeSec:600, actif:true } },
+      { phase:'retour-calme', zone:'Z2', label:'Retour au calme', puissance:'Z1', dureeSec:600 },
+    ],
+    conseil:'Deux blocs de 20\' au FTP, aussi réguliers que possible.',
+    conseils:{
+      execution:"Le grand classique : deux blocs de 20 min pile au FTP, récup 10 min. La qualité se juge à la régularité — la puissance moyenne du 2e bloc doit égaler celle du 1er. C'est aussi le meilleur repère pour réévaluer ton FTP.",
+      erreurs:"Faire du premier bloc un test maximal : garde-toi pour le second. Un 2e bloc en chute libre signifie que le premier était trop haut.",
+      progression:"Passe de 1 à 2 puis 3 blocs, ou monte la cible d'1-2% quand les deux blocs sont parfaitement réguliers (indice que le FTP a progressé).",
+      quand:"Phase build/spé : séance-pilier et outil de suivi du FTP toutes les 3-4 semaines.",
+    },
+    variantes:[
+      { id:'velo-ftp-test-20', nom:'Test FTP 20\' all-out',
+        pourquoi:"Un seul bloc de 20 min donné à fond pour estimer le FTP (95% de la puissance moyenne). Pas un entraînement mais une mesure : à faire reposé, dans des conditions constantes.",
+        blocs:[
+          { phase:'echauffement', zone:'Z2', label:'Échauffement + activation', puissance:'Z2', dureeSec:1500 },
+          { phase:'corps', zone:'Z4', label:"20' all-out", puissance:'Max 20\'', cadence:'normale', dureeSec:1200 },
+          { phase:'retour-calme', zone:'Z2', label:'Retour au calme', puissance:'Z1', dureeSec:600 },
+        ],
+        conseil:'Partir prudent les 2 premières minutes, finir vidé. FTP ≈ 95% de la moyenne.' },
+    ] },
+
+  { id:'velo-criss-cross-cote', nom:'Criss-cross en côte', sport:'velo', bucket:'sl2', objectif:'Seuil ondulé en montée, tolérance lactique spécifique grimpe', dureeMinMin:95, dureeMaxMin:125, intensite:'eleve', rpe:9, pourQui:'Spé', phase:'Spé', support:['route'], terrain:'cote', tags:['seuil','sl2','z4','criss-cross','cote'],
+    blocs:[
+      { phase:'echauffement', zone:'Z2', label:'Échauffement', puissance:'Z2', dureeSec:900 },
+      { phase:'corps', zone:'Z4', label:'Criss-cross côte 12\'', reps:3,
+        repsParNiveau:{ debutant:[2,2], intermediaire:[3,3], avance:[3,4], elite:[4,4] },
+        segments:[
+          { zone:'Z4', label:"1'30 @95%", puissance:'95% FTP', dureeSec:90 },
+          { zone:'Z5', label:"30\" @110%", puissance:'110% FTP', dureeSec:30 },
+        ],
+        recup:{ zone:'Z1', dureeSec:360, actif:false } },
+      { phase:'retour-calme', zone:'Z2', label:'Retour au calme', puissance:'Z1', dureeSec:600 },
+    ],
+    conseil:'En montée : 1\'30 sous seuil / 30" au-dessus, sans coupure.',
+    conseils:{
+      execution:"L'over-under version montagne : dans une ascension, tu ondules entre juste sous le seuil (1'30) et nettement au-dessus (30\"). La pente amplifie l'effort et rend le travail de tolérance lactique très spécifique aux cols de course.",
+      erreurs:"Souffler sur la portion basse : le « sous seuil » reste à 95%, il n'y a pas de récup. Éviter la danseuse qui fait exploser la puissance sur les surcharges.",
+      progression:"Ajoute un bloc dans ta fourchette, puis allonge (12' → 15'). Réduis la portion basse pour durcir.",
+      quand:"Phase spécifique montagne : la meilleure préparation aux changements de rythme dans les cols.",
+    },
+    variantes:[
+      { id:'velo-criss-cross-plat', nom:'Criss-cross sur le plat',
+        pourquoi:"Même ondulation seuil mais sur le plat / home-trainer, où la puissance est plus facile à piloter : idéal pour apprendre le format avant de le porter en côte. Charge équivalente.",
+        blocs:[
+          { phase:'echauffement', zone:'Z2', label:'Échauffement', puissance:'Z2', dureeSec:900 },
+          { phase:'corps', zone:'Z4', label:'Criss-cross 12\'', reps:3,
+            repsParNiveau:{ debutant:[2,2], intermediaire:[3,3], avance:[3,4], elite:[4,4] },
+            segments:[
+              { zone:'Z4', label:"1'30 @96%", puissance:'96% FTP', dureeSec:90 },
+              { zone:'Z5', label:"30\" @112%", puissance:'112% FTP', dureeSec:30 },
+            ],
+            recup:{ zone:'Z2', dureeSec:300, actif:true } },
+          { phase:'retour-calme', zone:'Z2', label:'Retour au calme', puissance:'Z1', dureeSec:600 },
+        ],
+        conseil:'Piloter la puissance au plat, sans à-coup, avant de porter en côte.' },
+    ] },
 ]

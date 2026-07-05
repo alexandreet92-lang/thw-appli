@@ -83,8 +83,8 @@ interface AnyEvent {
 }
 
 // ── Constants ─────────────────────────────────────
-const MONTHS      = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-const MONTH_SHORT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
+// Libellés de mois : voir les clés i18n `lo.month*` / `lo.monthShort*`
+// (tableaux localisés construits dans chaque composant via useI18n).
 
 const SPORT_BG: Record<SportType, string> = {
   swim:'rgba(56,189,248,0.13)', run:'rgba(34,197,94,0.13)', trail:'rgba(132,204,22,0.13)', bike:'rgba(59,130,246,0.13)',
@@ -1101,6 +1101,8 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
   deleteEvent: (id: string) => void
 }) {
   const { t: tr } = useI18n()
+  const monthsFull = Array.from({ length: 12 }, (_, i) => tr(`lo.month${i}`))
+  const monthShort = Array.from({ length: 12 }, (_, i) => tr(`lo.monthShort${i}`))
   const cfg = CATEGORY_CONFIG[category]
   const year = new Date().getFullYear()
   const [calView, setCalView]           = useState<CalView>('year')
@@ -1213,12 +1215,12 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
       {calView === 'year' && (
         <div style={{ overflowX:'auto' }}>
           <div style={{ display:'grid',gridTemplateColumns:'repeat(4,minmax(150px,1fr))',gap:10,minWidth:580 }}>
-            {MONTHS.map((_, mi) => {
+            {monthsFull.map((_, mi) => {
               const me = getEventsForMonth(mi).sort((a, b) => new Date(a.date).getDate() - new Date(b.date).getDate())
               return (
                 <div key={mi} onClick={() => { setCurrentMonth(mi); setCalView('month') }}
                   style={{ background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:12,padding:12,boxShadow:'var(--shadow-card)',cursor:'pointer' }}>
-                  <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 7px',color:me.length>0?'var(--text)':'var(--text-dim)' }}>{MONTH_SHORT[mi]}</p>
+                  <p style={{ fontFamily:'Syne,sans-serif',fontSize:13,fontWeight:700,margin:'0 0 7px',color:me.length>0?'var(--text)':'var(--text-dim)' }}>{monthShort[mi]}</p>
                   {me.length > 0 ? me.map(e => {
                     const col = getColor(e)
                     return (
@@ -1227,7 +1229,7 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
                         <div style={{ width:6,height:6,borderRadius:'50%',background:col,flexShrink:0 }}/>
                         <div style={{ flex:1,minWidth:0 }}>
                           <p style={{ fontSize:10,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:col }}>{e.title}</p>
-                          <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{new Date(e.date).getDate()} {MONTH_SHORT[mi]}</p>
+                          <p style={{ fontSize:9,color:'var(--text-dim)',margin:0 }}>{new Date(e.date).getDate()} {monthShort[mi]}</p>
                         </div>
                       </div>
                     )
@@ -1245,7 +1247,7 @@ function CategoryTab({ category, eventTypes, events, addEventType, updateEventTy
           <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14 }}>
             <div style={{ display:'flex',alignItems:'center',gap:9 }}>
               <button onClick={() => setCurrentMonth(m => Math.max(0, m - 1))} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>←</button>
-              <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{MONTHS[currentMonth]} {year}</h2>
+              <h2 style={{ fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:700,margin:0 }}>{monthsFull[currentMonth]} {year}</h2>
               <button onClick={() => setCurrentMonth(m => Math.min(11, m + 1))} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',cursor:'pointer',color:'var(--text-mid)',fontSize:13 }}>→</button>
             </div>
             <button onClick={() => setAddEventModal(`${year}-${String(currentMonth+1).padStart(2,'0')}-15`)}
@@ -1334,6 +1336,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
   }
 
   const { t: tr } = useI18n()
+  const monthShort = Array.from({ length: 12 }, (_, i) => tr(`lo.monthShort${i}`))
   const [view, setView] = useState<AllView>('vertical')
   const [detail, setDetail] = useState<UnifiedEvent | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -1411,7 +1414,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
                 {/* Month header */}
                 <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginTop: mi === Object.keys(byMonth).sort((a,b)=>Number(a)-Number(b))[0] ? 0 : 20, marginBottom: 8 }}>
                   <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.10em', textTransform:'uppercase' as const, color:'var(--text-mid)' }}>
-                    {MONTH_SHORT[Number(mi)]}
+                    {monthShort[Number(mi)]}
                   </span>
                   <span style={{ fontSize:10, color:'var(--text-dim)' }}>
                     {monthEvents.length > 1 ? tr('calendar.eventsCountPlural', { n: monthEvents.length }) : tr('calendar.eventsCount', { n: monthEvents.length })}

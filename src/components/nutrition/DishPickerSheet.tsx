@@ -9,6 +9,7 @@ import {
   fetchDishes, getRecentDishes, saveToRecentDishes, dishMacros,
   DISH_CATEGORIES, type DishItem,
 } from '@/lib/dish-search'
+import { useI18n } from '@/lib/i18n'
 
 const CYAN = '#06B6D4'
 
@@ -69,6 +70,7 @@ function GridSkeleton() {
 }
 
 export function DishPickerSheet({ onSelect, onClose }: Props) {
+  const { t } = useI18n()
   const [query,    setQuery]    = useState('')
   const [category, setCategory] = useState('all')
   const [items,    setItems]    = useState<DishItem[]>([])
@@ -122,7 +124,7 @@ export function DishPickerSheet({ onSelect, onClose }: Props) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
               <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
             </svg>
-            <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un plat..."
+            <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} placeholder={t('lo.searchDish')}
               style={{ width: '100%', padding: '9px 9px 9px 32px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', fontSize: 14, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', outline: 'none', boxSizing: 'border-box' }} />
           </div>
           <button onClick={onClose} style={{ width: 40, height: 40, borderRadius: 8, border: 'none', background: 'var(--bg-card2)', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -163,9 +165,9 @@ export function DishPickerSheet({ onSelect, onClose }: Props) {
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.25 }}>{pending.name}</p>
                 <div style={{ display: 'flex', gap: 10, marginTop: 4, fontFamily: 'DM Mono,monospace', fontSize: 11 }}>
                   <span style={{ color: CYAN, fontWeight: 700 }}>{macros.kcal} kcal</span>
-                  <span style={{ color: 'var(--text-dim)' }}>P {macros.prot}</span>
-                  <span style={{ color: 'var(--text-dim)' }}>G {macros.gluc}</span>
-                  <span style={{ color: 'var(--text-dim)' }}>L {macros.lip}</span>
+                  <span style={{ color: 'var(--text-dim)' }}>{t('lo.macroProt')} {macros.prot}</span>
+                  <span style={{ color: 'var(--text-dim)' }}>{t('lo.macroGluc')} {macros.gluc}</span>
+                  <span style={{ color: 'var(--text-dim)' }}>{t('lo.macroLip')} {macros.lip}</span>
                 </div>
               </div>
             </div>
@@ -175,8 +177,8 @@ export function DishPickerSheet({ onSelect, onClose }: Props) {
               <button onClick={() => setGrams(g => g + 10)} style={{ width: 44, height: 44, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 20, cursor: 'pointer', flexShrink: 0 }}>+</button>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <button onClick={() => setPending(null)} style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Retour</button>
-              <button onClick={handleConfirm} style={{ flex: 2, padding: '10px 0', borderRadius: 8, border: 'none', background: `linear-gradient(135deg,${CYAN},#3B82F6)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne,sans-serif' }}>Ajouter au repas</button>
+              <button onClick={() => setPending(null)} style={{ flex: 1, padding: '10px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{t('lo.back')}</button>
+              <button onClick={handleConfirm} style={{ flex: 2, padding: '10px 0', borderRadius: 8, border: 'none', background: `linear-gradient(135deg,${CYAN},#3B82F6)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne,sans-serif' }}>{t('lo.addToMeal')}</button>
             </div>
           </div>
         )}
@@ -190,7 +192,7 @@ export function DishPickerSheet({ onSelect, onClose }: Props) {
               <>
                 {showRecents && (
                   <>
-                    <p style={{ padding: '4px 16px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>Récemment utilisés</p>
+                    <p style={{ padding: '4px 16px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', margin: 0 }}>{t('lo.recentlyUsed')}</p>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10, padding: '0 16px 12px' }}>
                       {recents.map(d => <DishCard key={d.id} dish={d} onSelect={handleSelect} />)}
                     </div>
@@ -207,7 +209,7 @@ export function DishPickerSheet({ onSelect, onClose }: Props) {
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 24px', gap: 10 }}>
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="1.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                     <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
-                      {query.trim() ? <>Aucun plat trouvé pour &ldquo;{query}&rdquo;</> : 'Aucun plat dans ce thème.'}
+                      {query.trim() ? t('lo.noDishFound', { q: query }) : t('lo.noDishInTheme')}
                     </p>
                   </div>
                 )}

@@ -188,9 +188,15 @@ interface Profile { weight_kg: number | null; birth_date: string | null }
 // ─────────────────────────────────────────────────────────────
 // SPORT CONFIG (no emojis)
 // ─────────────────────────────────────────────────────────────
-const SPORT_LABEL: Record<SportType, string> = {
-  run: 'Course', trail_run: 'Trail', bike: 'Vélo', virtual_bike: 'Vélo',
-  swim: 'Natation', rowing: 'Aviron', hyrox: 'Hyrox', gym: 'Muscu', other: 'Autre',
+type Translate = (key: string, vars?: Record<string, string | number>) => string
+
+const SPORT_LABEL_KEY: Record<SportType, string> = {
+  run: 'actp.sport_run', trail_run: 'actp.sport_trail_run', bike: 'actp.sport_bike', virtual_bike: 'actp.sport_bike',
+  swim: 'actp.sport_swim', rowing: 'actp.sport_rowing', hyrox: 'actp.sport_hyrox', gym: 'actp.sport_gym', other: 'actp.sport_other',
+}
+function sportLabel(sport: SportType | string, t: Translate): string {
+  const k = SPORT_LABEL_KEY[sport as SportType]
+  return k ? t(k) : String(sport)
 }
 
 // Pour les agrégations sport, virtual_bike est regroupé avec bike
@@ -203,8 +209,8 @@ const SPORT_COLOR: Record<SportType, string> = {
   swim: '#06b6d4', rowing: '#14b8a6', hyrox: '#ec4899', gym: '#f97316', other: '#94a3b8',
 }
 
-const TIME_FILTER_LABEL: Record<TimeFilter, string> = {
-  '1w': '1 sem.', '4w': '4 sem.', '6w': '6 sem.', '10w': '10 sem.', '6m': '6 mois', '1y': '1 an', 'all': 'Tout',
+const TIME_FILTER_KEYS: Record<TimeFilter, string> = {
+  '1w': 'actp.tf_1w', '4w': 'actp.tf_4w', '6w': 'actp.tf_6w', '10w': 'actp.tf_10w', '6m': 'actp.tf_6m', '1y': 'actp.tf_1y', 'all': 'actp.tf_all',
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -349,6 +355,7 @@ const PAGE_SIZE = 50
 const LIST_COLUMNS = 'id,user_id,provider,provider_id,external_url,sport_type,is_race,race_name,title,description,notes,started_at,ended_at,timezone,moving_time_s,elapsed_time_s,distance_m,elevation_gain_m,elevation_loss_m,max_elevation_m,avg_speed_ms,max_speed_ms,avg_pace_s_km,avg_watts,max_watts,normalized_watts,kilojoules,ftp_at_time,intensity_factor,tss,avg_hr,max_hr,min_hr,avg_cadence,max_cadence,calories,suffer_score,perceived_effort,rpe,avg_temp_c,weather,gear_name,trainer,commute,flagged,laps,created_at,updated_at,total_descent_m,trimp,aerobic_decoupling,average_heartrate,max_heartrate,average_speed,cardiac_drift_pct,summary_polyline,strava_gear_id,records_processed,records_beaten,feeling,difficulty,ef_value,power_hr_ratio,decoupling_pct,ef_calculation_method,sm_score,sn_score,media,device_name,start_lat,start_lng,location_name,comment'
 
 function useActivities() {
+  const { t } = useI18n()
   const [activities, setActivities]   = useState<Activity[]>([])
   const [totalCount, setTotalCount]   = useState<number | null>(null)
   const [loading, setLoading]         = useState(true)
@@ -393,7 +400,7 @@ function useActivities() {
       const o = lastErr as { message?: unknown } | null
       const msg = lastErr instanceof Error ? lastErr.message
         : (o && typeof o.message === 'string') ? o.message
-        : 'Connexion interrompue — réessaie.'
+        : t('actp.connection_interrupted')
       if (reset) setError(msg)
     } finally {
       busyRef.current = false
@@ -541,23 +548,24 @@ function TooltipInfo({ text }: { text: string }) {
 }
 
 function ZoneBars({ zones, timesS }: { zones: ParsedZone[]; timesS: number[] }) {
+  const { t } = useI18n()
   const total = timesS.reduce((a, b) => a + b, 0)
-  if (!total) return <div style={{ fontSize: 12, color: T.textMuted }}>Aucune donnée de zone</div>
+  if (!total) return <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.no_zone_data')}</div>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {zones.map((z, i) => {
-        const t = timesS[i] ?? 0
-        const pct = total > 0 ? (t / total) * 100 : 0
+        const sec = timesS[i] ?? 0
+        const pct = total > 0 ? (sec / total) * 100 : 0
         return (
           <div key={z.label} style={{ display: 'grid', gridTemplateColumns: '72px 1fr 52px 40px', alignItems: 'center', gap: 8 }}>
             <div style={{ fontSize: 11, color: T.textSub, display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, background: z.color, display: 'inline-block', flexShrink: 0 }} />
-              {z.label}
+              {t(z.label)}
             </div>
             <div style={{ height: 7, background: T.border, borderRadius: 4, overflow: 'hidden' }}>
               <div style={{ width: `${pct}%`, height: '100%', background: z.color, borderRadius: 4, transition: 'width 0.4s' }} />
             </div>
-            <div style={{ fontSize: 11, color: T.text, textAlign: 'right', fontWeight: 500 }}>{fmtDur(t)}</div>
+            <div style={{ fontSize: 11, color: T.text, textAlign: 'right', fontWeight: 500 }}>{fmtDur(sec)}</div>
             <div style={{ fontSize: 10, color: T.textMuted, textAlign: 'right' }}>{pct.toFixed(0)}%</div>
           </div>
         )
@@ -566,12 +574,12 @@ function ZoneBars({ zones, timesS }: { zones: ParsedZone[]; timesS: number[] }) 
   )
 }
 
-const ZONE_DESCRIPTIONS: Record<string, string> = {
-  'Z1': 'Récupération — effort très léger, fréquence cardiaque basse. Idéal pour récupérer entre les séances.',
-  'Z2': 'Endurance — base aérobie fondamentale. Effort où une conversation est encore possible. Zone clé du volume d\'entraînement.',
-  'Z3': 'Tempo — allure soutenue, légèrement inconfortable. Améliore l\'endurance lactique.',
-  'Z4': 'Seuil — effort intense, proche du seuil lactique. Impossible de tenir plus de 20–60 min.',
-  'Z5': 'VO2max — sprint, effort maximal court. Stimule la puissance aérobie maximale.',
+const ZONE_DESCRIPTION_KEYS: Record<string, string> = {
+  'Z1': 'actp.zonedesc_z1',
+  'Z2': 'actp.zonedesc_z2',
+  'Z3': 'actp.zonedesc_z3',
+  'Z4': 'actp.zonedesc_z4',
+  'Z5': 'actp.zonedesc_z5',
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -580,8 +588,9 @@ const ZONE_DESCRIPTIONS: Record<string, string> = {
 function DonutChart({ zones, timesS, onZoneClick }: {
   zones: ParsedZone[]; timesS: number[]; onZoneClick?: (zone: ParsedZone) => void
 }) {
+  const { t } = useI18n()
   const total = timesS.reduce((a, b) => a + b, 0)
-  if (!total) return <div style={{ fontSize: 12, color: T.textMuted }}>Aucune donnée de zone</div>
+  if (!total) return <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.no_zone_data')}</div>
 
   const R = 36, strokeW = 10, C = 2 * Math.PI * R
   let offset = 0
@@ -618,7 +627,7 @@ function DonutChart({ zones, timesS, onZoneClick }: {
             onClick={() => onZoneClick?.(seg.zone)}
           >
             <span style={{ width: 8, height: 8, borderRadius: 2, background: seg.zone.color, display: 'inline-block', flexShrink: 0 }} />
-            <span style={{ fontSize: 11, color: T.textSub, minWidth: 24 }}>{seg.zone.label}</span>
+            <span style={{ fontSize: 11, color: T.textSub, minWidth: 24 }}>{t(seg.zone.label)}</span>
             <span style={{ fontSize: 11, color: T.text, fontWeight: 600, fontFamily: T.fontMono }}>{fmtDur(seg.time)}</span>
             <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>{(seg.pct * 100).toFixed(0)}%</span>
           </div>
@@ -630,6 +639,7 @@ function DonutChart({ zones, timesS, onZoneClick }: {
 
 // Zones with toggle (Jauges / Donuts)
 function ZonesSection({ label, zones, timesS }: { label: string; zones: ParsedZone[]; timesS: number[] }) {
+  const { t } = useI18n()
   const [view, setView] = useState<'jauges' | 'donuts'>('jauges')
   const [activeZone, setActiveZone] = useState<ParsedZone | null>(null)
 
@@ -646,7 +656,7 @@ function ZonesSection({ label, zones, timesS }: { label: string; zones: ParsedZo
               border: `1px solid ${view === v ? T.accent : T.border}`,
               transition: 'all 0.15s',
             }}>
-              {v === 'jauges' ? 'Jauges' : 'Donuts'}
+              {v === 'jauges' ? t('actp.gauges') : t('actp.donuts')}
             </button>
           ))}
         </div>
@@ -659,19 +669,19 @@ function ZonesSection({ label, zones, timesS }: { label: string; zones: ParsedZo
       <BottomSheet
         isOpen={activeZone !== null}
         onClose={() => setActiveZone(null)}
-        title={activeZone?.label ?? ''}
+        title={activeZone ? t(activeZone.label) : ''}
       >
         {activeZone && (
           <div style={{ paddingTop: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <span style={{ width: 14, height: 14, borderRadius: 4, background: activeZone.color, display: 'inline-block' }} />
-              <span style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{activeZone.label}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{t(activeZone.label)}</span>
             </div>
             <p style={{ fontSize: 13, color: T.text, lineHeight: 1.6, margin: 0 }}>
-              {ZONE_DESCRIPTIONS[activeZone.label] ?? 'Zone d\'entraînement.'}
+              {ZONE_DESCRIPTION_KEYS[activeZone.label] ? t(ZONE_DESCRIPTION_KEYS[activeZone.label]) : t('actp.zone_default_desc')}
             </p>
             <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12, color: T.textMuted }}>
-              {activeZone.min > 0 && <span>Plage : {activeZone.min} – {activeZone.max === Infinity ? '∞' : activeZone.max}</span>}
+              {activeZone.min > 0 && <span>{t('actp.range')} {activeZone.min} – {activeZone.max === Infinity ? '∞' : activeZone.max}</span>}
             </div>
           </div>
         )}
@@ -822,13 +832,13 @@ const BIKE_DUR_TO_IDX: Record<string, number> = {
 
 // ── Zones de puissance Coggan (% FTP) pour overlay arrière-plan MMP ──
 const MMP_POWER_ZONES = [
-  { z: 1, label: 'Z1 Récup',     min: 0,    max: 0.55, color: '#94a3b8' },
-  { z: 2, label: 'Z2 Endurance', min: 0.55, max: 0.75, color: '#06B6D4' },
-  { z: 3, label: 'Z3 Tempo',     min: 0.75, max: 0.90, color: '#10b981' },
-  { z: 4, label: 'Z4 Seuil',     min: 0.90, max: 1.05, color: '#eab308' },
-  { z: 5, label: 'Z5 VO2max',    min: 1.05, max: 1.20, color: '#f97316' },
-  { z: 6, label: 'Z6 Anaér.',    min: 1.20, max: 1.50, color: '#ef4444' },
-  { z: 7, label: 'Z7 Neuromusc', min: 1.50, max: 99,   color: '#7c2d12' },
+  { z: 1, label: 'actp.pz_z1', min: 0,    max: 0.55, color: '#94a3b8' },
+  { z: 2, label: 'actp.pz_z2', min: 0.55, max: 0.75, color: '#06B6D4' },
+  { z: 3, label: 'actp.pz_z3', min: 0.75, max: 0.90, color: '#10b981' },
+  { z: 4, label: 'actp.pz_z4', min: 0.90, max: 1.05, color: '#eab308' },
+  { z: 5, label: 'actp.pz_z5', min: 1.05, max: 1.20, color: '#f97316' },
+  { z: 6, label: 'actp.pz_z6', min: 1.20, max: 1.50, color: '#ef4444' },
+  { z: 7, label: 'actp.pz_z7', min: 1.50, max: 99,   color: '#7c2d12' },
 ]
 function getPowerZone(watts: number, ftp: number | null): typeof MMP_POWER_ZONES[number] | null {
   if (!ftp || ftp <= 0 || watts <= 0) return null
@@ -842,6 +852,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
   activityDurationS: number
   ftp?:              number | null
 }) {
+  const { t } = useI18n()
   const svgRef = useRef<SVGSVGElement | null>(null)
   const N = watts.length
   // Mobile : edge-to-edge — retire le paddingLeft:32 du conteneur,
@@ -1072,7 +1083,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
           Courbe de puissance
         </span>
         {prLoading ? (
-          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Calcul des records…</span>
+          <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('actp.computing_records')}</span>
         ) : trophies.length > 0 ? (
           <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)' }}>
             {trophies.length} record{trophies.length > 1 ? 's' : ''} battu{trophies.length > 1 ? 's' : ''}
@@ -1258,7 +1269,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
               {/* Séance */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#6366f1' }} />
-                <span style={{ flex: 1, color: 'var(--text-dim)', opacity: 0.8 }}>Séance</span>
+                <span style={{ flex: 1, color: 'var(--text-dim)', opacity: 0.8 }}>{t('actp.session')}</span>
                 <span style={{
                   color: '#6366f1', fontWeight: 700,
                   fontVariantNumeric: 'tabular-nums', fontSize: 13,
@@ -1288,7 +1299,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
                   paddingTop:         4,
                   borderTop:          '1px solid var(--border)',
                 }}>
-                  {delta > 0 ? '+' : ''}{delta} W {tpct !== null ? `(${tpct}% du record)` : ''}
+                  {delta > 0 ? '+' : ''}{delta} W {tpct !== null ? `(${t('actp.of_record', { p: tpct })})` : ''}
                 </div>
               )}
 
@@ -1300,7 +1311,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
                   borderTop: recW > 0 ? 'none' : '1px solid var(--border)',
                 }}>
                   <span style={{ width: 7, height: 7, borderRadius: 2, background: zone.color }} />
-                  <span style={{ flex: 1, color: 'var(--text-dim)', opacity: 0.8, fontSize: 10 }}>{zone.label}</span>
+                  <span style={{ flex: 1, color: 'var(--text-dim)', opacity: 0.8, fontSize: 10 }}>{t(zone.label)}</span>
                   <span style={{
                     color: zone.color, fontWeight: 700,
                     fontVariantNumeric: 'tabular-nums', fontSize: 11,
@@ -1326,7 +1337,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <span style={{ width: 16, height: 2.5, background: '#6366f1', display: 'inline-block', borderRadius: 1 }}/>
-          Cette séance
+          {t('actp.this_session')}
         </div>
         {recordCurve && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -1342,11 +1353,11 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
         {recordBeatSegments.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ width: 16, height: 4, background: '#10b981', display: 'inline-block', borderRadius: 2, opacity: 0.55 }}/>
-            Record battu
+            {t('actp.record_beaten')}
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ color: '#06B6D4' }}>🏆</span> Année
+          <span style={{ color: '#06B6D4' }}>🏆</span> {t('actp.year')}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ color: '#eab308' }}>🏆</span> All Time
@@ -1381,6 +1392,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
 // GAP CHART — Course à pied uniquement (allure réelle vs ajustée)
 // ─────────────────────────────────────────────────────────────
 function GapChart({ velocity, altitude, distance }: { velocity: number[]; altitude: number[]; distance: number[] }) {
+  const { t } = useI18n()
   const svgRef = useRef<SVGSVGElement | null>(null)
   const N = Math.min(velocity.length, altitude.length, distance.length)
   if (N < 60) return null
@@ -1443,16 +1455,16 @@ function GapChart({ velocity, altitude, distance }: { velocity: number[]; altitu
     <div style={{ marginBottom: 20 }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
         textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-        Allure réelle vs ajustée (GAP)
+        {t('actp.real_vs_adjusted_pace')}
       </div>
 
       {idx !== null && (
         <div style={{ display: 'flex', gap: 14, marginBottom: 8, background: T.bgAlt, borderRadius: 8, padding: '6px 12px', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#f97316', fontWeight: 600, fontFamily: T.fontMono }}>Réelle {fmtPace(pace[idx])}</span>
+          <span style={{ fontSize: 11, color: '#f97316', fontWeight: 600, fontFamily: T.fontMono }}>{t('actp.real')} {fmtPace(pace[idx])}</span>
           <span style={{ fontSize: 11, color: '#86efac', fontWeight: 600, fontFamily: T.fontMono }}>GAP {fmtPace(gap[idx])}</span>
           {gap[idx] > 0 && pace[idx] > 0 && Math.abs(gap[idx] - pace[idx]) > 3 && (
             <span style={{ fontSize: 10, color: T.textMuted, fontFamily: T.fontMono }}>
-              {gap[idx] < pace[idx] ? `↑ montée (${Math.round(pace[idx]-gap[idx])}s/km)` : `↓ descente`}
+              {gap[idx] < pace[idx] ? `↑ ${t('actp.uphill')} (${Math.round(pace[idx]-gap[idx])}s/km)` : `↓ ${t('actp.downhill')}`}
             </span>
           )}
         </div>
@@ -1480,10 +1492,10 @@ function GapChart({ velocity, altitude, distance }: { velocity: number[]; altitu
 
       <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
-          <span style={{ width: 12, height: 2, background: '#f97316', display: 'inline-block', borderRadius: 1 }}/>Allure réelle
+          <span style={{ width: 12, height: 2, background: '#f97316', display: 'inline-block', borderRadius: 1 }}/>{t('actp.real_pace')}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
-          <span style={{ width: 12, height: 2, background: '#86efac', display: 'inline-block', borderRadius: 1 }}/>Allure ajustée (GAP)
+          <span style={{ width: 12, height: 2, background: '#86efac', display: 'inline-block', borderRadius: 1 }}/>{t('actp.adjusted_pace_gap')}
         </div>
       </div>
     </div>
@@ -1533,6 +1545,7 @@ function InfoAccordion({ title, summary, children }: {
   summary:  string
   children: React.ReactNode
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   return (
     <div style={{
@@ -1551,7 +1564,7 @@ function InfoAccordion({ title, summary, children }: {
             cursor: 'pointer', padding: 0, whiteSpace: 'nowrap', flexShrink: 0,
           }}
         >
-          {open ? '▴ Réduire' : '▾ En savoir plus'}
+          {open ? `▴ ${t('actp.collapse')}` : `▾ ${t('actp.learn_more')}`}
         </button>
       </div>
       <p style={{ fontSize: 13, color: 'var(--text-body)', margin: '4px 0 0', lineHeight: 1.55 }}>
@@ -1577,6 +1590,7 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
   watts: number[]; heartrate: number[]; decouplingPct: number | null
   altitude?: number[] | null; temp?: number[] | null; time?: number[] | null
 }) {
+  const { t } = useI18n()
   const svgRef = useRef<SVGSVGElement | null>(null)
   const decoupContainerRef = useRef<HTMLDivElement>(null)
   const [decoupMousePos, setDecoupMousePos] = useState<{ x: number; y: number } | null>(null)
@@ -1643,7 +1657,7 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
     <div style={{ marginBottom: 20 }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
         textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-        Découplage puissance / FC
+        {t('actp.power_hr_decoupling')}
         {decouplingPct != null && (
           <span style={{ marginLeft: 8, fontSize: 11, color: decoupColor, fontWeight: 600, fontFamily: T.fontMono }}>
             {decouplingPct.toFixed(1)}%
@@ -1712,12 +1726,12 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#6366f1', flexShrink: 0 }} />
-              <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>Puissance</span>
+              <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>{t('actp.power')}</span>
               <span style={{ fontWeight: 700, color: '#6366f1', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{Math.round(sWatts[idx])} W</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f97316', flexShrink: 0 }} />
-              <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>FC</span>
+              <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>{t('actp.hr')}</span>
               <span style={{ fontWeight: 700, color: '#f97316', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{Math.round(sHr[idx])} bpm</span>
             </div>
             {altitude?.[idx] != null && (
@@ -1730,7 +1744,7 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
             {sTemp?.[idx] != null && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
-                <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>Temp.</span>
+                <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>{t('actp.temp_short')}</span>
                 <span style={{ fontWeight: 700, color: '#10b981', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{Math.round(sTemp[idx])} °C</span>
               </div>
             )}
@@ -1753,47 +1767,43 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
 
       <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
-          <span style={{ width: 12, height: 2, background: '#6366f1', display: 'inline-block', borderRadius: 1 }}/>Puissance (normalisée)
+          <span style={{ width: 12, height: 2, background: '#6366f1', display: 'inline-block', borderRadius: 1 }}/>{t('actp.power_normalized')}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
-          <span style={{ width: 12, height: 2, background: '#f97316', display: 'inline-block', borderRadius: 1, borderTop: '2px dashed #f97316' }}/>FC (normalisée)
+          <span style={{ width: 12, height: 2, background: '#f97316', display: 'inline-block', borderRadius: 1, borderTop: '2px dashed #f97316' }}/>{t('actp.hr_normalized')}
         </div>
         {sTemp && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: T.textSub }}>
-            <span style={{ width: 12, height: 2, background: '#6EE7B7', display: 'inline-block', borderRadius: 1 }}/>Température
+            <span style={{ width: 12, height: 2, background: '#6EE7B7', display: 'inline-block', borderRadius: 1 }}/>{t('actp.temperature')}
           </div>
         )}
       </div>
 
       <InfoAccordion
-        title="Dérive cardiaque"
-        summary="Mesure comment votre FC évolue par rapport à votre puissance au fil de l'effort. Moins c'est élevé, meilleure est votre endurance aérobie."
+        title={t('actp.hr_drift_title')}
+        summary={t('actp.hr_drift_summary')}
       >
         <p style={{ margin: '0 0 12px' }}>
-          La <strong style={{ color: 'var(--text)', fontWeight: 600 }}>dérive cardiaque</strong> mesure dans quelle mesure votre fréquence cardiaque augmente
-          par rapport à votre production de puissance au cours d&apos;un effort. À puissance constante, si votre cœur doit battre de
-          plus en plus vite pour maintenir le même effort, la dérive est positive.
+          {t('actp.hrd_p1_pre')}<strong style={{ color: 'var(--text)', fontWeight: 600 }}>{t('actp.hr_drift')}</strong>{t('actp.hrd_p1_post')}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, margin: '12px 0' }}>
           <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: 'var(--zone-good-bg)', border: '1px solid var(--zone-good-border)' }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#16A34A', margin: '0 0 3px' }}>{'< 5%'}</p>
-            <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>Excellent. Endurance aérobie bien développée.</p>
+            <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>{t('actp.hrd_lvl_good')}</p>
           </div>
           <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: 'var(--zone-med-bg)', border: '1px solid var(--zone-med-border)' }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#D97706', margin: '0 0 3px' }}>5 – 8%</p>
-            <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>Normal sur les longues sorties.</p>
+            <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>{t('actp.hrd_lvl_med')}</p>
           </div>
           <div style={{ padding: '10px 12px', borderRadius: 8, backgroundColor: 'var(--zone-bad-bg)', border: '1px solid var(--zone-bad-border)' }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#DC2626', margin: '0 0 3px' }}>{'>  8%'}</p>
-            <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>Dérive importante. Base aérobie à renforcer.</p>
+            <p style={{ fontSize: 11, color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>{t('actp.hrd_lvl_bad')}</p>
           </div>
         </div>
         <p style={{ margin: '10px 0 0' }}>
-          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>Influence de la chaleur :</strong> au-delà de 30°C, l&apos;organisme redirige
-          le flux sanguin vers la peau. Une dérive élevée par forte chaleur n&apos;est pas le signe d&apos;un manque d&apos;endurance — c&apos;est
-          une réponse physiologique normale. Des études en conditions chaudes (35°C) montrent une augmentation de FC de{' '}
-          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>+11%</strong> et une chute du VO2max de{' '}
-          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>-15%</strong> sur 45 minutes comparé à 22°C.
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{t('actp.heat_influence')}</strong>{t('actp.hrd_heat_1')}
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>+11%</strong>{t('actp.hrd_heat_2')}
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>-15%</strong>{t('actp.hrd_heat_3')}
         </p>
       </InfoAccordion>
     </div>
@@ -1804,6 +1814,7 @@ function DecouplingChart({ watts, heartrate, decouplingPct, altitude, temp, time
 // HR CUMULATIVE CHART — FC durée cumulée (vélo + course)
 // ─────────────────────────────────────────────────────────────
 function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHrEst: number }) {
+  const { t } = useI18n()
   const svgRef = useRef<SVGSVGElement | null>(null)
   const containerRef2 = useRef<HTMLDivElement>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null)
@@ -1865,7 +1876,7 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
     <div style={{ marginBottom: 20 }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
         textTransform: 'uppercase', marginBottom: 8, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-        Durée cumulée par FC
+        {t('actp.cumulative_duration_hr')}
       </div>
 
       <div
@@ -1913,11 +1924,11 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
               fontSize: 10, opacity: 0.6, textTransform: 'uppercase',
               letterSpacing: '0.08em', marginBottom: 5, color: 'var(--text)',
             }}>
-              {bpmRange[idx]} bpm · {Math.round((Number(bpmRange[idx])/maxHrEst)*100)}% FC max
+              {bpmRange[idx]} bpm · {Math.round((Number(bpmRange[idx])/maxHrEst)*100)}% {t('actp.hr_max')}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f97316', flexShrink: 0 }} />
-              <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>Durée cumulée</span>
+              <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>{t('actp.cumulative_duration')}</span>
               <span style={{ fontWeight: 700, color: '#f97316', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtCumTime(cumulative[idx])}</span>
             </div>
           </div>
@@ -1932,22 +1943,18 @@ function HrCumulativeChart({ heartrate, maxHrEst }: { heartrate: number[]; maxHr
       </div>
 
       <InfoAccordion
-        title="Durée cumulée par FC"
-        summary="Temps total passé à chaque niveau de fréquence cardiaque. Plus la courbe descend lentement, plus vous avez accumulé de temps à haute intensité."
+        title={t('actp.cumulative_duration_hr')}
+        summary={t('actp.hrcum_summary')}
       >
         <p style={{ margin: '0 0 10px' }}>
-          Ce graphique montre le temps total passé{' '}
-          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>à atteindre ou dépasser</strong> chaque
-          niveau de fréquence cardiaque. La courbe descend de gauche à droite : plus la FC est élevée, moins vous y avez passé de temps.
+          {t('actp.hrcum_p1_pre')}{' '}
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{t('actp.hrcum_reach_exceed')}</strong>{t('actp.hrcum_p1_post')}
         </p>
         <p style={{ margin: '0 0 10px' }}>
-          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>Le seuil des 90% FCmax est crucial :</strong> c&apos;est dans cette zone
-          que le système cardiovasculaire est soumis à sa plus forte sollicitation, forçant les adaptations
-          qui font progresser le VO2max.
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{t('actp.hrcum_p2_strong')}</strong>{t('actp.hrcum_p2_post')}
         </p>
         <p style={{ margin: 0 }}>
-          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>Lecture :</strong> si le point à 160 bpm indique 1h30, vous avez passé
-          1h30 à 160 bpm <em>ou plus</em>. Suivez ce chiffre à 90%+ FCmax d&apos;une séance à l&apos;autre pour quantifier vos gains de VO2max.
+          <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{t('actp.reading')}</strong>{t('actp.hrcum_p3_a')}<em>{t('actp.or_more')}</em>{t('actp.hrcum_p3_b')}
         </p>
       </InfoAccordion>
     </div>
@@ -2061,7 +2068,7 @@ const POWER_ZONES_DEF = [
   { z: 7, label: 'Z7', range: '>150%',   min: 1.50, max: 99,   color: '#581c87' },
 ]
 const HR_ZONE_COLORS = ['#3b82f6', '#10b981', '#eab308', '#f97316', '#ef4444']
-const HR_ZONE_NAMES  = ['Z1 Récup', 'Z2 Aérobie', 'Z3 Tempo', 'Z4 Seuil', 'Z5 VO2max']
+const HR_ZONE_NAMES  = ['actp.hz_z1', 'actp.hz_z2', 'actp.hz_z3', 'actp.hz_z4', 'actp.hz_z5']
 
 // ── Tranches de température (°C) — 9 tranches (dont < 0 °C et > 35 °C) ──
 const TEMP_ZONES_DEF: { label: string; min: number; max: number; color: string }[] = [
@@ -2234,6 +2241,7 @@ function ZoneDonut({ data, title }: { data: ZoneArc[]; title: string }) {
 }
 
 function SelectionSheet(props: SelectionSheetProps) {
+  const { t } = useI18n()
   const { sel, activity, time, distance, watts, hr, velocity, alt, cadence, temp, ftp, hrZones, onClose } = props
   const [closing, setClosing] = useState(false)
 
@@ -2298,33 +2306,33 @@ function SelectionSheet(props: SelectionSheetProps) {
 
   // ── Groupes de stats ──
   const groups: { title: string; items: { label: string; value: string }[] }[] = [
-    { title: 'Effort', items: [
-      { label: 'Durée',        value: fmtDuration(dur) },
-      { label: 'Distance',     value: distM != null ? `${(distM / 1000).toFixed(2).replace('.', ',')} km` : '—' },
-      { label: 'Vitesse moy.', value: v(avgOf(vS), 'km/h', 1) },
-      { label: 'Vitesse max.', value: v(maxOf(vS), 'km/h', 1) },
+    { title: t('actp.effort'), items: [
+      { label: t('actp.duration'),  value: fmtDuration(dur) },
+      { label: t('actp.distance'),  value: distM != null ? `${(distM / 1000).toFixed(2).replace('.', ',')} km` : '—' },
+      { label: t('actp.avg_speed'), value: v(avgOf(vS), 'km/h', 1) },
+      { label: t('actp.max_speed'), value: v(maxOf(vS), 'km/h', 1) },
     ] },
-    { title: 'Puissance', items: [
-      { label: 'Watts moy.',        value: v(avgOf(wS), 'W') },
-      { label: 'Watts max.',        value: v(maxOf(wS), 'W') },
-      { label: 'Watts normalisés',  value: v(npSeg, 'W') },
-      { label: 'W/kg',              value: '—' },
+    { title: t('actp.power'), items: [
+      { label: t('actp.avg_watts'),        value: v(avgOf(wS), 'W') },
+      { label: t('actp.max_watts'),        value: v(maxOf(wS), 'W') },
+      { label: t('actp.normalized_watts'), value: v(npSeg, 'W') },
+      { label: 'W/kg',                     value: '—' },
     ] },
-    { title: 'Cadence', items: [
-      { label: 'Cadence moy.', value: v(avgOf(cS), 'rpm') },
-      { label: 'Cadence max.', value: v(maxOf(cS), 'rpm') },
-      { label: 'Roue libre',   value: freeDur != null ? `${fmtClock(freeDur)} (${Math.round((freePct ?? 0) * 100)} %)` : '—' },
+    { title: t('actp.cadence'), items: [
+      { label: t('actp.avg_cadence'), value: v(avgOf(cS), 'rpm') },
+      { label: t('actp.max_cadence'), value: v(maxOf(cS), 'rpm') },
+      { label: t('actp.freewheel'),   value: freeDur != null ? `${fmtClock(freeDur)} (${Math.round((freePct ?? 0) * 100)} %)` : '—' },
     ] },
-    { title: 'Terrain', items: [
-      { label: 'D+',           value: aS ? `+${Math.round(dPlus)} m` : '—' },
-      { label: 'D−',           value: aS ? `−${Math.round(dMinus)} m` : '—' },
-      { label: 'Altitude max.',value: v(maxOf(aS), 'm') },
-      { label: 'Altitude moy.',value: v(avgOf(aS), 'm') },
+    { title: t('actp.terrain'), items: [
+      { label: 'D+',                   value: aS ? `+${Math.round(dPlus)} m` : '—' },
+      { label: 'D−',                   value: aS ? `−${Math.round(dMinus)} m` : '—' },
+      { label: t('actp.max_altitude'), value: v(maxOf(aS), 'm') },
+      { label: t('actp.avg_altitude'), value: v(avgOf(aS), 'm') },
     ] },
-    { title: 'Température', items: [
-      { label: 'Temp. moy.', value: v(avgOf(tS), '°C') },
-      { label: 'Temp. max.', value: v(maxOf(tS), '°C') },
-      { label: 'Temp. min.', value: v(minOf(tS), '°C') },
+    { title: t('actp.temperature'), items: [
+      { label: t('actp.avg_temp'), value: v(avgOf(tS), '°C') },
+      { label: t('actp.max_temp'), value: v(maxOf(tS), '°C') },
+      { label: t('actp.min_temp'), value: v(minOf(tS), '°C') },
     ] },
   ]
 
@@ -2375,7 +2383,7 @@ function SelectionSheet(props: SelectionSheetProps) {
       buckets = hrZones.slice(0, 5).map((z, idx) => ({
         min:   z.min,
         max:   idx === 4 ? Infinity : (z.max ?? Infinity),
-        label: z.label || HR_ZONE_NAMES[idx],
+        label: z.label || t(HR_ZONE_NAMES[idx]),
         color: HR_ZONE_COLORS[idx],
       }))
     } else {
@@ -2384,7 +2392,7 @@ function SelectionSheet(props: SelectionSheetProps) {
       buckets = HR_ZONE_NAMES.map((name, idx) => ({
         min:   idx === 0 ? 0 : thresholds[idx - 1],
         max:   idx === 4 ? Infinity : thresholds[idx],
-        label: name,
+        label: t(name),
         color: HR_ZONE_COLORS[idx],
       }))
     }
@@ -2455,22 +2463,22 @@ function SelectionSheet(props: SelectionSheetProps) {
   // ── Hero KPIs (4 stats principales, gros chiffre + unité) ──
   type Hero = { label: string; value: string; unit: string | null }
   const heroDistance: Hero  = distM != null
-    ? { label: 'Distance', value: (distM / 1000).toFixed(2).replace('.', ','), unit: 'km' }
-    : { label: 'Distance', value: '—', unit: null }
+    ? { label: t('actp.distance'), value: (distM / 1000).toFixed(2).replace('.', ','), unit: 'km' }
+    : { label: t('actp.distance'), value: '—', unit: null }
   const _wAvg = avgOf(wS)
   const _vAvg = avgOf(vS)
   const _hrAvg = avgOf(hrS)
   const heroPower: Hero = (showPower && _wAvg != null)
-    ? { label: 'Puiss. moy.', value: `${Math.round(_wAvg)}`, unit: 'W' }
+    ? { label: t('actp.avg_power_short'), value: `${Math.round(_wAvg)}`, unit: 'W' }
     : (_vAvg != null
-        ? { label: 'Allure moy.', value: fmtClock(1000 / Math.max(0.1, _vAvg / 3.6)), unit: '/km' }
-        : { label: 'Puiss. moy.', value: '—', unit: null })
+        ? { label: t('actp.avg_pace'), value: fmtClock(1000 / Math.max(0.1, _vAvg / 3.6)), unit: '/km' }
+        : { label: t('actp.avg_power_short'), value: '—', unit: null })
   const heroHr: Hero = _hrAvg != null
-    ? { label: 'FC moy.', value: `${Math.round(_hrAvg)}`, unit: 'bpm' }
-    : { label: 'FC moy.', value: '—', unit: null }
+    ? { label: t('actp.avg_hr'), value: `${Math.round(_hrAvg)}`, unit: 'bpm' }
+    : { label: t('actp.avg_hr'), value: '—', unit: null }
   const heroSpeed: Hero = _vAvg != null
-    ? { label: 'Vit. moy.', value: _vAvg.toFixed(1).replace('.', ','), unit: 'km/h' }
-    : { label: 'Vit. moy.', value: '—', unit: null }
+    ? { label: t('actp.avg_speed_short'), value: _vAvg.toFixed(1).replace('.', ','), unit: 'km/h' }
+    : { label: t('actp.avg_speed_short'), value: '—', unit: null }
   const heroStats = [heroDistance, heroPower, heroHr, heroSpeed]
 
   // ── Détails compacts (4 colonnes catégorisées, lignes label/valeur) ──
@@ -2478,31 +2486,31 @@ function SelectionSheet(props: SelectionSheetProps) {
   const _aMin = minOf(aS), _aMax = maxOf(aS), _aAvg = avgOf(aS)
   const _tMin = minOf(tS), _tMax = maxOf(tS), _tAvg = avgOf(tS)
   const colEffortDetails: Detail[] = [
-    { label: 'Durée',     value: fmtDuration(dur) },
-    { label: 'Vit. max',  value: v(maxOf(vS), 'km/h', 1) },
-    { label: 'Roue libre',value: freeDur != null ? `${fmtClock(freeDur)} (${Math.round((freePct ?? 0) * 100)} %)` : '—' },
+    { label: t('actp.duration'),        value: fmtDuration(dur) },
+    { label: t('actp.max_speed_short'), value: v(maxOf(vS), 'km/h', 1) },
+    { label: t('actp.freewheel'),       value: freeDur != null ? `${fmtClock(freeDur)} (${Math.round((freePct ?? 0) * 100)} %)` : '—' },
   ]
   const colPowerDetails: Detail[] = [
-    { label: 'Watts max', value: v(maxOf(wS), 'W') },
-    { label: 'NP',        value: v(npSeg, 'W') },
-    { label: 'W/kg',      value: '—' },
+    { label: t('actp.max_watts'), value: v(maxOf(wS), 'W') },
+    { label: 'NP',                value: v(npSeg, 'W') },
+    { label: 'W/kg',              value: '—' },
   ]
   const colHrCadDetails: Detail[] = [
-    { label: 'FC max',    value: v(maxOf(hrS), 'bpm') },
-    { label: 'Cad. moy.', value: v(avgOf(cS), 'rpm') },
-    { label: 'Cad. max',  value: v(maxOf(cS), 'rpm') },
+    { label: t('actp.max_hr'),            value: v(maxOf(hrS), 'bpm') },
+    { label: t('actp.avg_cadence_short'), value: v(avgOf(cS), 'rpm') },
+    { label: t('actp.max_cadence_short'), value: v(maxOf(cS), 'rpm') },
   ]
   const colTerrainDetails: Detail[] = [
-    { label: 'D+ / D−',   value: aS ? `+${Math.round(dPlus)} / −${Math.round(dMinus)} m` : '—' },
-    { label: 'Alt. moy/max', value: (_aAvg != null && _aMax != null) ? `${Math.round(_aAvg)} / ${Math.round(_aMax)} m` : '—' },
-    { label: 'T moy/max', value: (_tAvg != null && _tMax != null && _tMin != null) ? `${Math.round(_tAvg)} / ${Math.round(_tMax)} °C` : '—' },
+    { label: 'D+ / D−',              value: aS ? `+${Math.round(dPlus)} / −${Math.round(dMinus)} m` : '—' },
+    { label: t('actp.alt_avg_max'),  value: (_aAvg != null && _aMax != null) ? `${Math.round(_aAvg)} / ${Math.round(_aMax)} m` : '—' },
+    { label: t('actp.temp_avg_max'), value: (_tAvg != null && _tMax != null && _tMin != null) ? `${Math.round(_tAvg)} / ${Math.round(_tMax)} °C` : '—' },
   ]
   // Colonnes affichées : Puissance retirée pour la course à pied.
   const detailColumns: { title: string; rows: Detail[] }[] = [
-    { title: 'Effort', rows: colEffortDetails },
-    ...(showPower ? [{ title: 'Puissance', rows: colPowerDetails }] : []),
-    { title: 'FC & Cadence', rows: colHrCadDetails },
-    { title: 'Terrain & Temp.', rows: colTerrainDetails },
+    { title: t('actp.effort'), rows: colEffortDetails },
+    ...(showPower ? [{ title: t('actp.power'), rows: colPowerDetails }] : []),
+    { title: t('actp.hr_cadence'), rows: colHrCadDetails },
+    { title: t('actp.terrain_temp'), rows: colTerrainDetails },
   ]
 
   // ── Styles partagés ──
@@ -2550,10 +2558,10 @@ function SelectionSheet(props: SelectionSheetProps) {
 
   // Compte les donuts visibles pour ajuster le layout
   const visibleDonuts: { title: string; data: ZoneArc[] }[] = []
-  if (hasHrData)    visibleDonuts.push({ title: 'Répartition FC',          data: hrDist   })
-  if (showPower)    visibleDonuts.push({ title: 'Répartition Puissance',   data: pwDist   })
-  if (hasTempData)  visibleDonuts.push({ title: 'Répartition Température', data: tempDist })
-  if (hasCadData)   visibleDonuts.push({ title: 'Répartition Cadence',     data: cadDist  })
+  if (hasHrData)    visibleDonuts.push({ title: t('actp.dist_hr'),    data: hrDist   })
+  if (showPower)    visibleDonuts.push({ title: t('actp.dist_power'), data: pwDist   })
+  if (hasTempData)  visibleDonuts.push({ title: t('actp.dist_temp'),  data: tempDist })
+  if (hasCadData)   visibleDonuts.push({ title: t('actp.dist_cadence'), data: cadDist  })
 
   // Sheet rendu via portal sur document.body pour échapper à tout containing
   // block créé par un ancêtre transformé (ex: bottom-sheet de l'activité).
@@ -2624,7 +2632,7 @@ function SelectionSheet(props: SelectionSheetProps) {
         }}>
           <div>
             <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', lineHeight: 1.15 }}>
-              Sélection — {fmtDuration(dur)}
+              {t('actp.selection')} — {fmtDuration(dur)}
             </div>
             <div style={{
               fontSize: 13, color: 'var(--text-dim)', marginTop: 2, fontVariantNumeric: 'tabular-nums',
@@ -2633,7 +2641,7 @@ function SelectionSheet(props: SelectionSheetProps) {
             </div>
           </div>
           <button
-            onClick={handleClose} aria-label="Fermer"
+            onClick={handleClose} aria-label={t('actp.close')}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: 'var(--text-dim)', fontSize: 18, lineHeight: 1, padding: 6,
@@ -2711,6 +2719,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
   polylinePoints?: LatLngPoint[] | null
   onHoverGps?: (gps: LatLngPoint | null) => void
 }) {
+  const { t } = useI18n()
   void powerZones; void paceZones
   const s = activity.streams
   if (!s) return null
@@ -2907,25 +2916,25 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
   // ── FIX 1 : couleurs exactes + nouvelles courbes ──
   const tracks: Track[] = ([
     alt ? {
-      label: 'Altitude', data: alt, color: '#94A3B8', fill: 'rgba(148,163,184,0.15)',
+      label: t('actp.altitude'), data: alt, color: '#94A3B8', fill: 'rgba(148,163,184,0.15)',
       unit: 'm', H: 77, isAlt: true,
       formatY: (v: number) => `${Math.round(v)} m`,
       formatVal: (v: number) => `${Math.round(v)}`,
     } : null,
     hr ? {
-      label: 'FC', data: hr, color: '#F87171', fill: 'rgba(248,113,113,0.10)',
+      label: t('actp.hr'), data: hr, color: '#F87171', fill: 'rgba(248,113,113,0.10)',
       unit: 'bpm', H: 77, isHr: true,
       formatY: (v: number) => `${Math.round(v)} bpm`,
       formatVal: (v: number) => `${Math.round(v)}`,
     } : null,
     isBike && watts ? {
-      label: 'Puissance', data: watts, color: '#818CF8', fill: 'rgba(129,140,248,0.10)',
+      label: t('actp.power'), data: watts, color: '#818CF8', fill: 'rgba(129,140,248,0.10)',
       unit: 'W', H: 86,
       formatY: (v: number) => `${Math.round(v)} W`,
       formatVal: (v: number) => `${Math.round(v)}`,
     } : null,
     isRun && velocity ? {
-      label: 'Allure', data: velocity.map(v => v > 0 ? (1000/v) : 0),
+      label: t('actp.pace'), data: velocity.map(v => v > 0 ? (1000/v) : 0),
       color: '#f97316', fill: 'rgba(249,115,22,0.10)',
       unit: 's/km', H: 86, invertY: true,
       formatY: (v: number) => fmtPace(v),
@@ -2933,20 +2942,20 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
     } : null,
     // ── courbe vitesse (avant cadence) ──
     speedKmh ? {
-      label: 'Vitesse', data: speedKmh, color: '#60A5FA', fill: 'rgba(96,165,250,0.10)',
+      label: t('actp.speed'), data: speedKmh, color: '#60A5FA', fill: 'rgba(96,165,250,0.10)',
       unit: 'km/h', H: 58,
       formatY: (v: number) => `${v.toFixed(1)} km/h`,
       formatVal: (v: number) => v.toFixed(1),
     } : null,
     cadence ? {
-      label: 'Cadence', data: cadence, color: '#F472B6', fill: 'rgba(244,114,182,0.10)',
+      label: t('actp.cadence'), data: cadence, color: '#F472B6', fill: 'rgba(244,114,182,0.10)',
       unit: 'rpm', H: 58,
       formatY: (v: number) => `${Math.round(v)} rpm`,
       formatVal: (v: number) => `${Math.round(v)}`,
     } : null,
     // streams.temp sera disponible après l'ajout de 'temp' dans STREAM_KEYS (voir PROMPT_TEMP_STREAM)
     (isBike || isRun) && temp ? {
-      label: 'Température', data: temp, color: '#6EE7B7', fill: 'rgba(110,231,183,0.10)',
+      label: t('actp.temperature'), data: temp, color: '#6EE7B7', fill: 'rgba(110,231,183,0.10)',
       unit: '°C', H: 58,
       formatY: (v: number) => `${Math.round(v)} °C`,
       formatVal: (v: number) => `${Math.round(v)}`,
@@ -3250,7 +3259,7 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
       {/* Laps */}
       {laps.length > 1 && (
         <div style={{ marginTop: 10 }}>
-          <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 5 }}>Intervalles</div>
+          <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 5 }}>{t('actp.intervals')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {laps.map((lap, li) => {
               const lapIntensity = lap.avg_watts ?? lap.avg_hr ?? 0
@@ -3268,13 +3277,13 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
           </div>
           {selLap && (
             <div style={{ marginTop: 10, background: T.bg, borderRadius: 7, padding: '12px 14px', border: `1px solid ${T.border}` }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 8 }}>Intervalle #{selectedLap! + 1}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, marginBottom: 8 }}>{t('actp.interval')} #{selectedLap! + 1}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 12 }}>
-                {selLap.distance_m > 0 && <span><span style={{ color: T.textMuted }}>Dist. </span>{fmtDist(selLap.distance_m)}</span>}
-                <span><span style={{ color: T.textMuted }}>Durée </span>{fmtDur(selLap.moving_time_s)}</span>
-                {selLap.avg_hr != null && <span><span style={{ color: T.textMuted }}>FC moy. </span>{Math.round(selLap.avg_hr)} bpm</span>}
-                {selLap.avg_watts != null && isBike && <span><span style={{ color: T.textMuted }}>Watts </span>{Math.round(selLap.avg_watts)} W</span>}
-                {selLap.avg_speed_ms != null && !isBike && <span><span style={{ color: T.textMuted }}>Allure </span>{fmtPace((1/selLap.avg_speed_ms)*1000)}</span>}
+                {selLap.distance_m > 0 && <span><span style={{ color: T.textMuted }}>{t('actp.dist_short')} </span>{fmtDist(selLap.distance_m)}</span>}
+                <span><span style={{ color: T.textMuted }}>{t('actp.duration')} </span>{fmtDur(selLap.moving_time_s)}</span>
+                {selLap.avg_hr != null && <span><span style={{ color: T.textMuted }}>{t('actp.avg_hr')} </span>{Math.round(selLap.avg_hr)} bpm</span>}
+                {selLap.avg_watts != null && isBike && <span><span style={{ color: T.textMuted }}>{t('actp.watts')} </span>{Math.round(selLap.avg_watts)} W</span>}
+                {selLap.avg_speed_ms != null && !isBike && <span><span style={{ color: T.textMuted }}>{t('actp.pace')} </span>{fmtPace((1/selLap.avg_speed_ms)*1000)}</span>}
               </div>
             </div>
           )}
@@ -3337,13 +3346,13 @@ interface MetricDef {
 // VAP stockée en km/h ajustée (géométrie « rapide = haut »), affichée en allure.
 const vapFmt = (kmh: number) => kmh > 0 ? fmtPaceMinKm(kmhToPaceMin(kmh)) : '—'
 const METRIC_DEFS: MetricDef[] = [
-  { key: 'altitude', label: 'Altitude',     unit: 'm',    color: '#94a3b8', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
-  { key: 'hr',       label: 'FC',           unit: 'bpm',  color: '#f97316', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
-  { key: 'watts',    label: 'Puissance',    unit: 'W',    color: '#6366f1', textOnColor: '#ffffff', fmt: v => `${Math.round(v)}` },
-  { key: 'speed',    label: 'Vitesse',      unit: 'km/h', color: '#06B6D4', textOnColor: '#000000', fmt: v => v.toFixed(1).replace('.', ',') },
-  { key: 'vap',      label: 'VAP',          unit: '/km',  color: '#7c3aed', textOnColor: '#ffffff', fmt: vapFmt },
-  { key: 'cadence',  label: 'Cadence',      unit: 'rpm',  color: '#ec4899', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
-  { key: 'temp',     label: 'Température',  unit: '°C',   color: '#10B981', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
+  { key: 'altitude', label: 'actp.altitude',    unit: 'm',    color: '#94a3b8', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
+  { key: 'hr',       label: 'actp.hr',          unit: 'bpm',  color: '#f97316', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
+  { key: 'watts',    label: 'actp.power',       unit: 'W',    color: '#6366f1', textOnColor: '#ffffff', fmt: v => `${Math.round(v)}` },
+  { key: 'speed',    label: 'actp.speed',       unit: 'km/h', color: '#06B6D4', textOnColor: '#000000', fmt: v => v.toFixed(1).replace('.', ',') },
+  { key: 'vap',      label: 'actp.vap',         unit: '/km',  color: '#7c3aed', textOnColor: '#ffffff', fmt: vapFmt },
+  { key: 'cadence',  label: 'actp.cadence',     unit: 'rpm',  color: '#ec4899', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
+  { key: 'temp',     label: 'actp.temperature', unit: '°C',   color: '#10B981', textOnColor: '#000000', fmt: v => `${Math.round(v)}` },
 ]
 
 interface ActivityCurvesProps {
@@ -3353,6 +3362,7 @@ interface ActivityCurvesProps {
 type CurvesFormat = 'stacked' | 'overlaid' | 'mono'
 
 export function ActivityCurves({ activity }: ActivityCurvesProps) {
+  const { t } = useI18n()
   void useWindowWidth() // force re-render au resize, mais on s'en sert pas autrement
   const s = activity.streams ?? null
 
@@ -3367,9 +3377,9 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     if (!isRunSport && !isRowSport && !isSwimSport) return METRIC_DEFS
     return METRIC_DEFS.map(d => {
       if (d.key === 'speed') {
-        if (isRunSport)  return { ...d, label: 'Allure', unit: '/km',  color: '#10B981', fmt: (kmh: number) => kmh > 0 ? fmtPaceMinKm(kmhToPaceMin(kmh)) : '—' }
-        if (isRowSport)  return { ...d, label: 'Split',  unit: '/500', color: '#06B6D4', fmt: (kmh: number) => kmh > 0 ? formatSplit(speedKmhToSplit500(kmh)) : '—' }
-        if (isSwimSport) return { ...d, label: 'Allure', unit: '/100', color: '#0EA5E9', fmt: (kmh: number) => kmh > 0 ? formatPaceSwim(100 / (kmh / 3.6)) : '—' }
+        if (isRunSport)  return { ...d, label: 'actp.pace', unit: '/km',  color: '#10B981', fmt: (kmh: number) => kmh > 0 ? fmtPaceMinKm(kmhToPaceMin(kmh)) : '—' }
+        if (isRowSport)  return { ...d, label: 'actp.split', unit: '/500', color: '#06B6D4', fmt: (kmh: number) => kmh > 0 ? formatSplit(speedKmhToSplit500(kmh)) : '—' }
+        if (isSwimSport) return { ...d, label: 'actp.pace', unit: '/100', color: '#0EA5E9', fmt: (kmh: number) => kmh > 0 ? formatPaceSwim(100 / (kmh / 3.6)) : '—' }
       }
       if (d.key === 'cadence') {
         if (isSwimSport) return { ...d, unit: 'c/min' }
@@ -3686,9 +3696,9 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       marginBottom: 12,
     }}>
       {([
-        { id: 'stacked',  label: 'Empilé',     icon: <AlignJustify size={13} /> },
-        { id: 'overlaid', label: 'Superposé',  icon: <LayoutGrid   size={13} /> },
-        { id: 'mono',     label: 'Mono',       icon: <Square       size={13} /> },
+        { id: 'stacked',  label: 'actp.stacked',  icon: <AlignJustify size={13} /> },
+        { id: 'overlaid', label: 'actp.overlaid', icon: <LayoutGrid   size={13} /> },
+        { id: 'mono',     label: 'actp.mono',     icon: <Square       size={13} /> },
       ] as const).map(o => {
         const active = format === o.id
         return (
@@ -3712,7 +3722,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
             }}
           >
             {o.icon}
-            <span>{o.label}</span>
+            <span>{t(o.label)}</span>
           </button>
         )
       })}
@@ -3755,7 +3765,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         return (
           <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: def.color, flexShrink: 0 }} />
-            <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>{def.label}</span>
+            <span style={{ flex: 1, opacity: 0.65, color: 'var(--text)', fontSize: 11 }}>{t(def.label)}</span>
             <span
               ref={el => { tooltipValRefs.current.set(key, el) }}
               style={{
@@ -3931,7 +3941,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
                   borderBottom:  i < presentKeys.length - 1 ? '1px solid var(--border)' : 'none',
                 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: def.color }}>
-                    {def.label}
+                    {t(def.label)}
                   </span>
                   {st && (
                     <span style={{
@@ -4079,7 +4089,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
                   whiteSpace:   'nowrap',
                 }}
               >
-                {d.label}
+                {t(d.label)}
               </button>
             )
           })}
@@ -4249,7 +4259,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
               }}
             >
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: def.color }} />
-              {def.label}
+              {t(def.label)}
             </button>
           )
         })}
@@ -4376,11 +4386,6 @@ const SPORT_PILL_COLOR: Record<string, string> = {
   hyrox:     '#7C3AED',
   rowing:    '#EF4444',
 }
-const SPORT_PILL_LABEL: Record<string, string> = {
-  run: 'Course', trail_run: 'Trail', bike: 'Vélo',
-  swim: 'Natation', gym: 'Muscu', hyrox: 'Hyrox', rowing: 'Aviron',
-}
-
 function SportZoneDonut({ timesS, colors, size = 80 }: { timesS: number[]; colors: string[]; size?: number }) {
   const total = timesS.reduce((a, b) => a + b, 0)
   if (!total) return null
@@ -4410,6 +4415,7 @@ function ZoneTableWithHR({ zones, timesS, hrZones, hrTimesZ }: {
   zones: ParsedZone[]; timesS: number[]
   hrZones?: ParsedZone[]; hrTimesZ?: number[]
 }) {
+  const { t } = useI18n()
   const isMobile = useWindowWidth() < 768
   const totalS = timesS.reduce((a, b) => a + b, 0)
   const totalH = (hrTimesZ ?? []).reduce((a, b) => a + b, 0)
@@ -4418,25 +4424,25 @@ function ZoneTableWithHR({ zones, timesS, hrZones, hrTimesZ }: {
   const renderTable = (zns: ParsedZone[], tms: number[], total: number) => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       {zns.map((z, i) => {
-        const t = tms[i] ?? 0
-        const pct = total > 0 ? (t / total) * 100 : 0
+        const sec = tms[i] ?? 0
+        const pct = total > 0 ? (sec / total) * 100 : 0
         return (
           <div key={z.label} style={{ display: 'grid', gridTemplateColumns: '72px 1fr 52px 36px', alignItems: 'center', gap: 6 }}>
             <div style={{ fontSize: 11, color: T.textSub, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, background: z.color, flexShrink: 0, display: 'inline-block' }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.label}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t(z.label)}</span>
             </div>
             <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
               <div style={{ width: `${pct}%`, height: '100%', background: z.color, borderRadius: 3, transition: 'width 0.4s' }} />
             </div>
-            <div style={{ fontSize: 11, color: T.text, textAlign: 'right', fontWeight: 500, fontFamily: T.fontMono }}>{fmtDur(t)}</div>
+            <div style={{ fontSize: 11, color: T.text, textAlign: 'right', fontWeight: 500, fontFamily: T.fontMono }}>{fmtDur(sec)}</div>
             <div style={{ fontSize: 10, color: T.textMuted, textAlign: 'right' }}>{pct.toFixed(0)}%</div>
           </div>
         )
       })}
     </div>
   )
-  if (!totalS) return <div style={{ fontSize: 12, color: T.textMuted }}>Aucune donnée de zone</div>
+  if (!totalS) return <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.no_zone_data')}</div>
   return (
     <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 20 }}>
       <div>
@@ -4444,7 +4450,7 @@ function ZoneTableWithHR({ zones, timesS, hrZones, hrTimesZ }: {
       </div>
       {hasHr && (
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Fréquence cardiaque</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>{t('actp.heart_rate')}</div>
           {renderTable(hrZones!, hrTimesZ!, totalH)}
         </div>
       )}
@@ -4465,6 +4471,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
   runTimesZ: number[] | null
   hrTimesZ: number[]
 }) {
+  const { t } = useI18n()
   const [activeSport, setActiveSport] = useState<string>('')
   const isMobile = useWindowWidth() < 768
 
@@ -4476,7 +4483,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
   const sport = sportsPresent.includes(activeSport) ? activeSport : (sportsPresent[0] ?? '')
 
   if (!sportsPresent.length) {
-    return <div style={{ color: T.textMuted, padding: 20, fontSize: 13 }}>Aucune activité dans la période</div>
+    return <div style={{ color: T.textMuted, padding: 20, fontSize: 13 }}>{t('actp.no_activity_period')}</div>
   }
 
   const sportActs = inRange.filter(a => {
@@ -4567,7 +4574,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
               color: active ? '#fff' : T.textMuted,
               transition: 'all 0.15s', flexShrink: 0, whiteSpace: 'nowrap',
             }}>
-              {SPORT_PILL_LABEL[sp] ?? sp}
+              {sportLabel(sp, t)}
             </button>
           )
         })}
@@ -4577,16 +4584,16 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {sport === 'run' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-            {avgPace != null && <StatCard label="Allure moy." value={fmtPace(avgPace)} />}
-            {avgHr   != null && <StatCard label="FC moy." value={`${avgHr} bpm`} />}
-            {avgRunCad != null && <StatCard label="Cadence moy." value={`${avgRunCad} spm`} />}
-            {totalTss > 0 && <StatCard label="SM période" value={Math.round(totalTss).toString()} />}
+            {avgPace != null && <StatCard label={t('actp.avg_pace')} value={fmtPace(avgPace)} />}
+            {avgHr   != null && <StatCard label={t('actp.avg_hr')} value={`${avgHr} bpm`} />}
+            {avgRunCad != null && <StatCard label={t('actp.avg_cadence')} value={`${avgRunCad} spm`} />}
+            {totalTss > 0 && <StatCard label={t('actp.sm_period')} value={Math.round(totalTss).toString()} />}
             {vapKmh && <StatCard label="VAP" value={`${vapKmh} km/h`} />}
           </div>
           {runZones && runTimesZ && runTimesZ.some(t => t > 0) && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <SectionTitle>Zones allure + FC</SectionTitle>
+                <SectionTitle>{t('actp.zones_pace_hr')}</SectionTitle>
                 <SportZoneDonut timesS={runTimesZ} colors={ZONE_COLORS} size={64} />
               </div>
               <ZoneTableWithHR
@@ -4599,7 +4606,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
           {!runZones && hasHrForSport && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <SectionTitle>Zones FC</SectionTitle>
+                <SectionTitle>{t('actp.zones_hr')}</SectionTitle>
                 <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
               </div>
               <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
@@ -4607,7 +4614,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
           )}
           {avgDecoupling && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 12, color: T.textMuted }}>Découplage aérobie moyen</div>
+              <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.avg_aerobic_decoupling')}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: pillColor }}>{avgDecoupling}%</div>
             </div>
           )}
@@ -4618,23 +4625,23 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {sport === 'trail_run' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-            <StatCard label="Séances" value={sportActs.length.toString()} />
-            <StatCard label="Distance tot." value={fmtDist(totalDist)} />
+            <StatCard label={t('actp.sessions')} value={sportActs.length.toString()} />
+            <StatCard label={t('actp.total_distance')} value={fmtDist(totalDist)} />
             {totalElevUp > 0 && <StatCard label="D+ total" value={`${Math.round(totalElevUp)} m`} />}
             {totalElevDn > 0 && <StatCard label="D− total" value={`${Math.round(totalElevDn)} m`} />}
-            {avgPace != null && <StatCard label="Allure moy." value={fmtPace(avgPace)} />}
-            {avgHr   != null && <StatCard label="FC moy." value={`${avgHr} bpm`} />}
+            {avgPace != null && <StatCard label={t('actp.avg_pace')} value={fmtPace(avgPace)} />}
+            {avgHr   != null && <StatCard label={t('actp.avg_hr')} value={`${avgHr} bpm`} />}
           </div>
           {hasHrForSport && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <SectionTitle>Zones FC — Trail</SectionTitle>
+                <SectionTitle>{t('actp.zones_hr_trail')}</SectionTitle>
                 <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
               </div>
               <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
             </div>
           )}
-          {totalElevUp === 0 && <div style={{ fontSize: 12, color: T.textMuted, padding: '8px 0' }}>Dénivelé non disponible pour certaines activités</div>}
+          {totalElevUp === 0 && <div style={{ fontSize: 12, color: T.textMuted, padding: '8px 0' }}>{t('actp.elev_unavailable')}</div>}
         </div>
       )}
 
@@ -4642,17 +4649,17 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {sport === 'bike' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-            {avgWatts   != null && <StatCard label="Watts moy." value={`${avgWatts} W`} />}
-            {avgNp      != null && <StatCard label="NP moy." value={`${avgNp} W`} />}
-            {avgIf      != null && <StatCard label="IF moy." value={avgIf} />}
-            {avgBikeCad != null && <StatCard label="Cadence moy." value={`${avgBikeCad} rpm`} />}
-            {avgHr      != null && <StatCard label="FC moy." value={`${avgHr} bpm`} />}
-            {avgDecoupling && <StatCard label="Découplage" value={`${avgDecoupling}%`} />}
+            {avgWatts   != null && <StatCard label={t('actp.avg_watts')} value={`${avgWatts} W`} />}
+            {avgNp      != null && <StatCard label={t('actp.avg_np')} value={`${avgNp} W`} />}
+            {avgIf      != null && <StatCard label={t('actp.avg_if')} value={avgIf} />}
+            {avgBikeCad != null && <StatCard label={t('actp.avg_cadence')} value={`${avgBikeCad} rpm`} />}
+            {avgHr      != null && <StatCard label={t('actp.avg_hr')} value={`${avgHr} bpm`} />}
+            {avgDecoupling && <StatCard label={t('actp.decoupling')} value={`${avgDecoupling}%`} />}
           </div>
           {bikeZones && bikeTimesZ && bikeTimesZ.some(t => t > 0) && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <SectionTitle>Zones puissance + FC</SectionTitle>
+                <SectionTitle>{t('actp.zones_power_hr')}</SectionTitle>
                 <SportZoneDonut timesS={bikeTimesZ} colors={ZONE_COLORS} size={64} />
               </div>
               <ZoneTableWithHR
@@ -4665,7 +4672,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
           {!bikeZones && hasHrForSport && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <SectionTitle>Zones FC</SectionTitle>
+                <SectionTitle>{t('actp.zones_hr')}</SectionTitle>
                 <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
               </div>
               <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
@@ -4678,15 +4685,15 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {sport === 'swim' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-            <StatCard label="Séances" value={sportActs.length.toString()} />
-            <StatCard label="Distance tot." value={fmtDist(totalDist)} />
-            <StatCard label="Temps tot." value={fmtDur(totalTime)} />
-            {avgSwimPace != null && <StatCard label="Allure /100m" value={fmtDur(avgSwimPace)} />}
+            <StatCard label={t('actp.sessions')} value={sportActs.length.toString()} />
+            <StatCard label={t('actp.total_distance')} value={fmtDist(totalDist)} />
+            <StatCard label={t('actp.total_time')} value={fmtDur(totalTime)} />
+            {avgSwimPace != null && <StatCard label={t('actp.pace_100m')} value={fmtDur(avgSwimPace)} />}
           </div>
           {hasHrForSport && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <SectionTitle>Zones FC</SectionTitle>
+                <SectionTitle>{t('actp.zones_hr')}</SectionTitle>
                 <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
               </div>
               <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
@@ -4694,7 +4701,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
           )}
           {!hasHrForSport && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: T.textMuted }}>Zones non disponibles pour la natation</div>
+              <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.zones_unavailable_swim')}</div>
             </div>
           )}
         </div>
@@ -4704,12 +4711,12 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {sport === 'gym' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-            <StatCard label="Séances" value={sportActs.length.toString()} />
-            <StatCard label="Temps tot." value={fmtDur(totalTime)} />
-            {avgCal != null && <StatCard label="Calories moy." value={`${avgCal} kcal`} />}
+            <StatCard label={t('actp.sessions')} value={sportActs.length.toString()} />
+            <StatCard label={t('actp.total_time')} value={fmtDur(totalTime)} />
+            {avgCal != null && <StatCard label={t('actp.avg_calories')} value={`${avgCal} kcal`} />}
           </div>
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', textAlign: 'center' }}>
-            <div style={{ fontSize: 12, color: T.textMuted }}>Analyse spécifique musculation à venir</div>
+            <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.gym_analysis_coming')}</div>
           </div>
         </div>
       )}
@@ -4718,15 +4725,15 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {sport === 'hyrox' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-            <StatCard label="Séances" value={sportActs.length.toString()} />
-            {totalTime > 0 && <StatCard label="Temps moy." value={fmtDur(Math.round(totalTime / sportActs.length))} />}
-            {totalDist > 0 && <StatCard label="Distance tot." value={fmtDist(totalDist)} />}
-            {avgHr != null && <StatCard label="FC moy." value={`${avgHr} bpm`} />}
+            <StatCard label={t('actp.sessions')} value={sportActs.length.toString()} />
+            {totalTime > 0 && <StatCard label={t('actp.avg_time')} value={fmtDur(Math.round(totalTime / sportActs.length))} />}
+            {totalDist > 0 && <StatCard label={t('actp.total_distance')} value={fmtDist(totalDist)} />}
+            {avgHr != null && <StatCard label={t('actp.avg_hr')} value={`${avgHr} bpm`} />}
           </div>
           {hasHrForSport && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <SectionTitle>Zones FC</SectionTitle>
+                <SectionTitle>{t('actp.zones_hr')}</SectionTitle>
                 <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
               </div>
               <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
@@ -4734,7 +4741,7 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
           )}
           {!hasHrForSport && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: T.textMuted }}>Analyse détaillée Hyrox à venir</div>
+              <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.hyrox_analysis_coming')}</div>
             </div>
           )}
         </div>
@@ -4744,16 +4751,16 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
       {sport === 'rowing' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-            <StatCard label="Séances" value={sportActs.length.toString()} />
-            <StatCard label="Distance tot." value={fmtDist(totalDist)} />
-            <StatCard label="Temps tot." value={fmtDur(totalTime)} />
-            {avgRowSplit != null && <StatCard label="Split moy. /500m" value={fmtDur(avgRowSplit)} />}
-            {avgHr      != null && <StatCard label="FC moy." value={`${avgHr} bpm`} />}
+            <StatCard label={t('actp.sessions')} value={sportActs.length.toString()} />
+            <StatCard label={t('actp.total_distance')} value={fmtDist(totalDist)} />
+            <StatCard label={t('actp.total_time')} value={fmtDur(totalTime)} />
+            {avgRowSplit != null && <StatCard label={t('actp.split_500m')} value={fmtDur(avgRowSplit)} />}
+            {avgHr      != null && <StatCard label={t('actp.avg_hr')} value={`${avgHr} bpm`} />}
           </div>
           {hasHrForSport && (
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <SectionTitle>Zones FC</SectionTitle>
+                <SectionTitle>{t('actp.zones_hr')}</SectionTitle>
                 <SportZoneDonut timesS={hrTimesForSport} colors={ZONE_COLORS} size={64} />
               </div>
               <ZoneBars zones={hrZones} timesS={hrTimesForSport} />
@@ -4770,11 +4777,11 @@ function SectionDonneesSpecifiques({ inRange, zones, bikeZones, runZones, hrZone
 // WEEK DETAIL MODAL
 // ─────────────────────────────────────────────────────────────
 const WK_HR_ZONES: ParsedZone[] = [
-  { label: 'Z1 Récup',   color: ZONE_COLORS[0], min: 0,   max: 120 },
-  { label: 'Z2 Aérobie', color: ZONE_COLORS[1], min: 120, max: 150 },
-  { label: 'Z3 Tempo',   color: ZONE_COLORS[2], min: 150, max: 165 },
-  { label: 'Z4 Seuil',   color: ZONE_COLORS[3], min: 165, max: 180 },
-  { label: 'Z5 VO2max',  color: ZONE_COLORS[4], min: 180, max: 999 },
+  { label: 'actp.hz_z1', color: ZONE_COLORS[0], min: 0,   max: 120 },
+  { label: 'actp.hz_z2', color: ZONE_COLORS[1], min: 120, max: 150 },
+  { label: 'actp.hz_z3', color: ZONE_COLORS[2], min: 150, max: 165 },
+  { label: 'actp.hz_z4', color: ZONE_COLORS[3], min: 165, max: 180 },
+  { label: 'actp.hz_z5', color: ZONE_COLORS[4], min: 180, max: 999 },
 ]
 
 function WeekDetailModal({ week, activities, zones, onClose }: {
@@ -4783,6 +4790,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   zones: TrainingZoneRow[]
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const width    = useWindowWidth()
   const isMobile = width < 768
   const [sportFilter, setSportFilter] = useState<string>('all')
@@ -4825,8 +4833,8 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
 
   // ── Days Mon→Sun ───────────────────────────────────────────
   const daysOfWeek = useMemo(() => {
-    const SHORT = ['L','M','M','J','V','S','D']
-    const LONG  = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
+    const SHORT = ['actp.dow_s_1','actp.dow_s_2','actp.dow_s_3','actp.dow_s_4','actp.dow_s_5','actp.dow_s_6','actp.dow_s_7']
+    const LONG  = ['actp.dow_l_1','actp.dow_l_2','actp.dow_l_3','actp.dow_l_4','actp.dow_l_5','actp.dow_l_6','actp.dow_l_7']
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(weekStart); d.setDate(d.getDate() + i)
       const iso = localYMD(d)
@@ -4895,14 +4903,14 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   const hrBands = hrTotal > 0 ? [
     { label: 'Endurance',  sub: 'Z1–Z2', time: hrTimesZ[0] + hrTimesZ[1], color: '#10B981' },
     { label: 'Tempo',      sub: 'Z3',    time: hrTimesZ[2],                color: '#F97316' },
-    { label: 'Haute int.', sub: 'Z4–Z5', time: hrTimesZ[3] + hrTimesZ[4], color: '#EF4444' },
+    { label: t('actp.high_int'), sub: 'Z4–Z5', time: hrTimesZ[3] + hrTimesZ[4], color: '#EF4444' },
   ] : null
 
   const bikeTotal = bikeTimesZ ? bikeTimesZ.reduce((a,b) => a+b, 0) : 0
   const bikeBands = bikeTimesZ && bikeTotal > 0 && bikeZones ? [
     { label: 'Endurance',      sub: 'Z1–Z2', time: bikeTimesZ[0] + bikeTimesZ[1], color: '#10B981' },
-    { label: 'Tempo/Seuil',    sub: 'Z3',    time: bikeTimesZ[2],                 color: '#F97316' },
-    { label: 'VO2/Anaérobie',  sub: 'Z4–Z5', time: bikeTimesZ[3] + bikeTimesZ[4], color: '#EF4444' },
+    { label: t('actp.tempo_threshold'),    sub: 'Z3',    time: bikeTimesZ[2],                 color: '#F97316' },
+    { label: t('actp.vo2_anaerobic'),  sub: 'Z4–Z5', time: bikeTimesZ[3] + bikeTimesZ[4], color: '#EF4444' },
   ] : null
 
   const dateLabel = weekStart.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) +
@@ -4931,7 +4939,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
             background: active ? 'linear-gradient(135deg,#06B6D4,#3B82F6)' : T.bgAlt,
             color: active ? '#fff' : T.textMuted,
           }}>
-            {sp === 'all' ? 'Tous' : (SPORT_LABEL[sp as SportType] ?? sp)}
+            {sp === 'all' ? t('actp.all_m') : sportLabel(sp, t)}
           </button>
         )
       })}
@@ -4966,7 +4974,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   // ── Répartition semaine ────────────────────────────────────
   const distributionEl = (
     <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
-      {secTitle('Répartition sur la semaine')}
+      {secTitle(t('actp.week_distribution'))}
       <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 80 }}>
         {daysOfWeek.map((day, i) => {
           const barH = day.time > 0 ? Math.max(5, (day.time / maxDayTime) * 60) : 2
@@ -4986,7 +4994,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
                 </div>
               </div>
               <span style={{ fontSize: isMobile ? 9 : 10, color: T.textMuted, fontWeight: 600 }}>
-                {isMobile ? day.short : day.long}
+                {t(isMobile ? day.short : day.long)}
               </span>
             </div>
           )
@@ -5000,7 +5008,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <span style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase',
-          letterSpacing: 0.8, fontFamily: T.fontDisplay }}>SM total</span>
+          letterSpacing: 0.8, fontFamily: T.fontDisplay }}>{t('actp.sm_total')}</span>
         <span className="stat-number" style={{ fontSize: 18, fontWeight: 700, color: T.text }}>
           {totalTss > 0 ? Math.round(totalTss) : '—'}
         </span>
@@ -5016,7 +5024,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
             {[...tssBySport.entries()].filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]).map(([sp, tss]) => (
               <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: T.textSub }}>
                 <span style={{ width: 7, height: 7, borderRadius: 2, background: SPORT_COLOR[sp as SportType] ?? '#888', display: 'inline-block' }} />
-                {SPORT_LABEL[sp as SportType] ?? sp}
+                {sportLabel(sp, t)}
                 <span className="stat-number" style={{ fontWeight: 700, color: T.text, fontSize: 12 }}>{Math.round(tss)}</span>
               </div>
             ))}
@@ -5031,10 +5039,10 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   // ── HR polarisation ────────────────────────────────────────
   const hrPolEl = (
     <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
-      {secTitle('Polarisation FC')}
+      {secTitle(t('actp.hr_polarization'))}
       {sportSelectorEl}
       {hrBands ? renderBands(hrBands, hrTotal) : (
-        <div style={{ fontSize: 12, color: T.textMuted }}>Aucune donnée FC pour cette sélection</div>
+        <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.no_hr_data_selection')}</div>
       )}
     </div>
   )
@@ -5043,7 +5051,7 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   const bikePowerEl = (
     <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px',
       border: `1px solid ${T.border}`, borderTop: '3px solid #06B6D4' }}>
-      {secTitle('Polarisation puissance — Cyclisme')}
+      {secTitle(t('actp.power_polarization_cycling'))}
       {bikeBands ? renderBands(bikeBands, bikeTotal) : (
         <div style={{ fontSize: 12, color: T.textMuted }}>—</div>
       )}
@@ -5053,28 +5061,28 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   // ── Zones FC détaillées ────────────────────────────────────
   const hrZonesEl = (
     <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
-      {secTitle('Zones FC détaillées')}
+      {secTitle(t('actp.detailed_hr_zones'))}
       {sportSelectorEl}
       {hrTotal > 0 ? WK_HR_ZONES.map((zone, i) => {
-        const t   = hrTimesZ[i]
-        const pct = hrTotal > 0 ? (t / hrTotal) * 100 : 0
+        const sec = hrTimesZ[i]
+        const pct = hrTotal > 0 ? (sec / hrTotal) * 100 : 0
         return (
           <div key={zone.label} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 90px', gap: 8, alignItems: 'center', marginBottom: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11 }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, background: zone.color, display: 'inline-block', flexShrink: 0 }} />
-              <span style={{ color: T.text, fontWeight: 600 }}>{zone.label}</span>
+              <span style={{ color: T.text, fontWeight: 600 }}>{t(zone.label)}</span>
             </div>
             <div style={{ height: 5, background: T.bgAlt, borderRadius: 3, overflow: 'hidden' }}>
               <div style={{ width: `${pct}%`, height: '100%', background: zone.color, borderRadius: 3 }} />
             </div>
             <div style={{ display: 'flex', gap: 5, fontSize: 10, justifyContent: 'flex-end', alignItems: 'center' }}>
-              <span className="stat-number" style={{ fontWeight: 700, color: T.text, fontSize: 11 }}>{fmtDur(t)}</span>
+              <span className="stat-number" style={{ fontWeight: 700, color: T.text, fontSize: 11 }}>{fmtDur(sec)}</span>
               <span style={{ color: T.textMuted }}>{pct.toFixed(0)}%</span>
             </div>
           </div>
         )
       }) : (
-        <div style={{ fontSize: 12, color: T.textMuted }}>Aucune donnée FC</div>
+        <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.no_hr_data')}</div>
       )}
     </div>
   )
@@ -5082,9 +5090,9 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   // ── Activités ──────────────────────────────────────────────
   const activitiesEl = (
     <div style={{ background: T.surface, borderRadius: T.radiusSm, padding: '14px 16px', border: `1px solid ${T.border}` }}>
-      {secTitle('Activités')}
+      {secTitle(t('actp.activities'))}
       {sortedActs.length === 0 ? (
-        <div style={{ fontSize: 12, color: T.textMuted }}>Aucune activité</div>
+        <div style={{ fontSize: 12, color: T.textMuted }}>{t('actp.no_activity')}</div>
       ) : sortedActs.map(act => {
         const col  = SPORT_COLOR[act.sport_type] ?? '#888'
         const stat = ['gym','hyrox'].includes(act.sport_type)
@@ -5121,17 +5129,17 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: isMobile ? 15 : 17, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay }}>
-            Semaine du {dateLabel}
+            {t('actp.week_of')} {dateLabel}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>{week.count} séance{week.count !== 1 ? 's' : ''}</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{week.count} {week.count !== 1 ? t('actp.sessions_lc') : t('actp.session_lc')}</span>
             {sportsPresent.map(sp => {
               const cnt = weekActs.filter(a => normalizeSport(a.sport_type) === sp).length
               return (
                 <span key={sp} style={{ display: 'inline-flex', alignItems: 'center', gap: 4,
                   background: T.bgAlt, borderRadius: 10, padding: '2px 8px', fontSize: 12 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: SPORT_COLOR[sp as SportType] ?? '#888', flexShrink: 0 }} />
-                  <span style={{ color: T.text, fontWeight: 600 }}>{SPORT_LABEL[sp as SportType] ?? sp}</span>
+                  <span style={{ color: T.text, fontWeight: 600 }}>{sportLabel(sp, t)}</span>
                   <span style={{ color: T.textMuted }}>{cnt}</span>
                 </span>
               )
@@ -5140,11 +5148,11 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
           {compPct !== null && (
             <div style={{ fontSize: 12, marginTop: 5, fontWeight: 600,
               color: compPct >= 0 ? '#10B981' : '#F97316' }}>
-              {compPct >= 0 ? '↑ +' : '↓ '}{compPct}% vs semaine préc.
+              {compPct >= 0 ? '↑ +' : '↓ '}{compPct}% {t('actp.vs_prev_week')}
             </div>
           )}
         </div>
-        <button onClick={requestClose} aria-label="Fermer" style={{ background: T.bgAlt, border: 'none', cursor: 'pointer',
+        <button onClick={requestClose} aria-label={t('actp.close')} style={{ background: T.bgAlt, border: 'none', cursor: 'pointer',
           color: T.textMuted, fontSize: 18, lineHeight: 1, flexShrink: 0, width: 32, height: 32, borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
       </div>
@@ -5155,12 +5163,12 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
   const statsEl = (
     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3,1fr)' : 'repeat(6,1fr)', gap: 8, marginBottom: 16 }}>
       {[
-        { label: 'Temps',    value: fmtDur(totalTime) },
-        { label: 'Distance', value: fmtDist(totalDist) },
+        { label: t('actp.time'),    value: fmtDur(totalTime) },
+        { label: t('actp.distance'), value: fmtDist(totalDist) },
         { label: 'D+',       value: totalElev >= 1 ? `+${Math.round(totalElev)} m` : '—' },
         { label: 'SM',       value: totalTss > 0 ? Math.round(totalTss).toString() : '—' },
-        { label: 'FC moy.',  value: meanHr ? `${meanHr} bpm` : '—' },
-        { label: 'Séances',  value: week.count.toString() },
+        { label: t('actp.avg_hr'),  value: meanHr ? `${meanHr} bpm` : '—' },
+        { label: t('actp.sessions'),  value: week.count.toString() },
       ].map(k => (
         <div key={k.label} style={{ background: T.bgAlt, borderRadius: T.radiusSm, padding: '9px 12px' }}>
           <div style={{ fontSize: 9, color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.7,
@@ -5260,6 +5268,7 @@ function SectionDonnees({ activities, zones, profile }: {
   zones: TrainingZoneRow[]
   profile: Profile
 }) {
+  const { t } = useI18n()
   const [filter, setFilter] = useState<TimeFilter>('4w')
   const [dataTab, setDataTab] = useState<'general' | 'specific'>('general')
   const [periodMenuOpen, setPeriodMenuOpen] = useState(false)
@@ -5400,11 +5409,11 @@ function SectionDonnees({ activities, zones, profile }: {
   const bikeZones   = bikeZoneRow ? buildZones(bikeZoneRow) : null
   const runZones    = runZoneRow  ? buildZones(runZoneRow)  : null
   const hrZoneColors: ParsedZone[] = [
-    { label: 'Z1 Récup', color: ZONE_COLORS[0], min: 0, max: 120 },
-    { label: 'Z2 Aérobie', color: ZONE_COLORS[1], min: 120, max: 150 },
-    { label: 'Z3 Tempo', color: ZONE_COLORS[2], min: 150, max: 165 },
-    { label: 'Z4 Seuil', color: ZONE_COLORS[3], min: 165, max: 180 },
-    { label: 'Z5 VO2max', color: ZONE_COLORS[4], min: 180, max: 999 },
+    { label: 'actp.hz_z1', color: ZONE_COLORS[0], min: 0, max: 120 },
+    { label: 'actp.hz_z2', color: ZONE_COLORS[1], min: 120, max: 150 },
+    { label: 'actp.hz_z3', color: ZONE_COLORS[2], min: 150, max: 165 },
+    { label: 'actp.hz_z4', color: ZONE_COLORS[3], min: 165, max: 180 },
+    { label: 'actp.hz_z5', color: ZONE_COLORS[4], min: 180, max: 999 },
   ]
 
   const bikeTimesZ = useMemo(() => {
@@ -5455,8 +5464,8 @@ function SectionDonnees({ activities, zones, profile }: {
 
   // ── TSB form color ─────────────────────────────────────────────────────────
   const tsbColor = tsb < -20 ? '#EF4444' : tsb < -10 ? '#F97316' : tsb < 5 ? '#06B6D4' : tsb < 20 ? '#10B981' : '#818CF8'
-  const tsbLabel = tsb < -20 ? 'Très fatigué' : tsb < -10 ? 'Fatigué' : tsb < 5 ? 'Optimal' : tsb < 20 ? 'Frais' : 'Très frais'
-  const tsbAdvice = tsb < -20 ? 'Récupération obligatoire' : tsb < -10 ? 'Récupération recommandée' : tsb < 5 ? 'Prêt à performer' : tsb < 20 ? 'Forme optimale' : 'Risque de désentraînement'
+  const tsbLabel = tsb < -20 ? t('actp.tsb_very_tired') : tsb < -10 ? t('actp.tsb_tired') : tsb < 5 ? t('actp.tsb_optimal') : tsb < 20 ? t('actp.tsb_fresh') : t('actp.tsb_very_fresh')
+  const tsbAdvice = tsb < -20 ? t('actp.tsb_advice_rest_mandatory') : tsb < -10 ? t('actp.tsb_advice_rest_recommended') : tsb < 5 ? t('actp.tsb_advice_ready') : tsb < 20 ? t('actp.tsb_advice_optimal') : t('actp.tsb_advice_detraining')
 
   // ── Trend helper ────────────────────────────────────────────────────────────
   function trendOf(curr: number, prev: number): { pct: number; color: string; arrow: string } {
@@ -5508,7 +5517,7 @@ function SectionDonnees({ activities, zones, profile }: {
               background: 'var(--bg)', fontSize: 13, fontWeight: 500, color: 'var(--text)',
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
             }}>
-              {TIME_FILTER_LABEL[filter]}
+              {t(TIME_FILTER_KEYS[filter])}
               <span style={{ fontSize: 10, opacity: 0.6 }}>▼</span>
             </button>
             {periodMenuOpen && (
@@ -5522,7 +5531,7 @@ function SectionDonnees({ activities, zones, profile }: {
                   borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                   overflow: 'hidden', minWidth: 130,
                 }}>
-                {(Object.keys(TIME_FILTER_LABEL) as TimeFilter[]).map(f => (
+                {(Object.keys(TIME_FILTER_KEYS) as TimeFilter[]).map(f => (
                   <button key={f} onClick={() => { setFilter(f); setPeriodMenuOpen(false) }} style={{
                     width: '100%', padding: '10px 14px', textAlign: 'left',
                     fontSize: 13, fontWeight: filter === f ? 700 : 500,
@@ -5530,7 +5539,7 @@ function SectionDonnees({ activities, zones, profile }: {
                     color: filter === f ? '#fff' : 'var(--text)',
                     border: 'none', cursor: 'pointer', display: 'block',
                   }}>
-                    {TIME_FILTER_LABEL[f]}
+                    {t(TIME_FILTER_KEYS[f])}
                   </button>
                 ))}
               </div>
@@ -5547,7 +5556,7 @@ function SectionDonnees({ activities, zones, profile }: {
                 color: dataTab === tab ? '#06B6D4' : 'var(--text-dim)',
                 boxShadow: dataTab === tab ? '0 1px 2px rgba(0,0,0,0.10)' : 'none',
               }}>
-                {tab === 'general' ? 'Général' : 'Spécifique'}
+                {tab === 'general' ? t('actp.general') : t('actp.specific')}
               </button>
             ))}
           </div>
@@ -5557,7 +5566,7 @@ function SectionDonnees({ activities, zones, profile }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
           {/* Time filter pills */}
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-            {(Object.keys(TIME_FILTER_LABEL) as TimeFilter[]).map(f => (
+            {(Object.keys(TIME_FILTER_KEYS) as TimeFilter[]).map(f => (
               <button key={f} onClick={() => setFilter(f)} style={{
                 background: filter === f ? 'linear-gradient(135deg, #06B6D4, #3B82F6)' : 'var(--bg)',
                 color: filter === f ? '#fff' : 'var(--text-dim)',
@@ -5565,7 +5574,7 @@ function SectionDonnees({ activities, zones, profile }: {
                 borderRadius: 20, padding: '4px 12px', fontSize: 12, cursor: 'pointer',
                 fontWeight: filter === f ? 600 : 400, transition: 'all 0.15s',
               }}>
-                {TIME_FILTER_LABEL[f]}
+                {t(TIME_FILTER_KEYS[f])}
               </button>
             ))}
           </div>
@@ -5581,7 +5590,7 @@ function SectionDonnees({ activities, zones, profile }: {
                 borderRadius: 20, padding: '4px 14px', fontSize: 12, cursor: 'pointer',
                 fontWeight: dataTab === tab ? 600 : 400, transition: 'all 0.15s',
               }}>
-                {tab === 'general' ? 'Général' : 'Spécifique'}
+                {tab === 'general' ? t('actp.general') : t('actp.specific')}
               </button>
             ))}
           </div>
@@ -5649,7 +5658,7 @@ function SectionDonnees({ activities, zones, profile }: {
                   </div>
                   {tsb < 5 && tsb > -30 && (
                     <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>
-                      Forme optimale dans ~{Math.max(1, Math.round((5 - tsb) / Math.max(0.1, (ctl - atl) * 0.1 + 0.5)))} jours
+                      {t('actp.optimal_form_in_days', { n: Math.max(1, Math.round((5 - tsb) / Math.max(0.1, (ctl - atl) * 0.1 + 0.5))) })}
                     </div>
                   )}
                 </div>
@@ -5658,9 +5667,9 @@ function SectionDonnees({ activities, zones, profile }: {
               {/* RIGHT: CTL / ATL / TSB cards */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                 {[
-                  { key: 'CTL', val: Math.round(ctl), color: '#06B6D4', max: 120, sub: 'Charge chronique', note: '42 jours' },
-                  { key: 'ATL', val: Math.round(atl), color: '#F97316', max: 150, sub: 'Charge aiguë',     note: '7 jours' },
-                  { key: 'TSB', val: Math.round(tsb), color: tsbColor,  max: 40,  sub: 'Forme du moment', note: 'CTL−ATL' },
+                  { key: 'CTL', val: Math.round(ctl), color: '#06B6D4', max: 120, sub: t('actp.chronic_load'), note: t('actp.days_n', { n: 42 }) },
+                  { key: 'ATL', val: Math.round(atl), color: '#F97316', max: 150, sub: t('actp.acute_load'),   note: t('actp.days_n', { n: 7 }) },
+                  { key: 'TSB', val: Math.round(tsb), color: tsbColor,  max: 40,  sub: t('actp.current_form'), note: 'CTL−ATL' },
                 ].map(({ key, val, color, max, sub, note }) => {
                   const barPct = Math.min(100, Math.abs(val) / max * 100)
                   return (
@@ -5801,7 +5810,7 @@ function SectionDonnees({ activities, zones, profile }: {
                         {new Date(pt.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
                       </div>
                       <div style={{ fontSize: 12.5, color: 'var(--text-dim)', fontWeight: 600, marginBottom: 7 }}>
-                        SM séance <span style={{ color: 'var(--text)', fontWeight: 800 }}>{pt.tss}</span>
+                        {t('actp.sm_session')} <span style={{ color: 'var(--text)', fontWeight: 800 }}>{pt.tss}</span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <span style={{ fontSize: 14, fontWeight: 800, color: '#06B6D4' }}>CTL {pt.ctl}</span>
@@ -5814,7 +5823,7 @@ function SectionDonnees({ activities, zones, profile }: {
               </div>
             ) : (
               <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 12 }}>
-                Données insuffisantes pour le graphique
+                {t('actp.insufficient_data_chart')}
               </div>
             )}
           </div>
@@ -5826,10 +5835,10 @@ function SectionDonnees({ activities, zones, profile }: {
             const prevMeanRpe = prevRpeVals.length ? avg(prevRpeVals) : 0
             const prevDist  = prevInRange.reduce((s, a) => s + (a.distance_m ?? 0), 0)
             const stats = [
-              { label: 'Séances',    curr: inRange.length,    prev: prevInRange.length, fmt: (v: number) => v.toString() },
-              { label: 'Distance',   curr: totalDist / 1000,  prev: prevDist / 1000,    fmt: (v: number) => `${v.toFixed(0)} km` },
-              { label: 'SM Total',   curr: totalTss,           prev: prevTss,            fmt: (v: number) => Math.round(v).toString() },
-              { label: 'RPE Moyen',  curr: rpeVals.length ? avg(rpeVals) : 0, prev: prevMeanRpe, fmt: (v: number) => v ? `${v.toFixed(1)}/10` : '—' },
+              { label: t('actp.sessions'),    curr: inRange.length,    prev: prevInRange.length, fmt: (v: number) => v.toString() },
+              { label: t('actp.distance'),   curr: totalDist / 1000,  prev: prevDist / 1000,    fmt: (v: number) => `${v.toFixed(0)} km` },
+              { label: t('actp.sm_total'),   curr: totalTss,           prev: prevTss,            fmt: (v: number) => Math.round(v).toString() },
+              { label: t('actp.avg_rpe'),  curr: rpeVals.length ? avg(rpeVals) : 0, prev: prevMeanRpe, fmt: (v: number) => v ? `${v.toFixed(1)}/10` : '—' },
             ]
             return (
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
@@ -5882,7 +5891,7 @@ function SectionDonnees({ activities, zones, profile }: {
                 <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
                   {/* Header */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <SectionTitle>Volume hebdomadaire</SectionTitle>
+                    <SectionTitle>{t('actp.weekly_volume')}</SectionTitle>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {/* Deltas discrets */}
                       {prevSlice.length > 0 && (
@@ -6010,7 +6019,7 @@ function SectionDonnees({ activities, zones, profile }: {
                         {sportList.map(sp => (
                           <div key={sp} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: T.textSub }}>
                             <span style={{ width: 7, height: 7, borderRadius: 2, background: SPORT_COLOR[sp as SportType] ?? '#888', display: 'inline-block' }} />
-                            {SPORT_LABEL[sp as SportType] ?? sp}
+                            {sportLabel(sp, t)}
                           </div>
                         ))}
                       </div>
@@ -6022,13 +6031,13 @@ function SectionDonnees({ activities, zones, profile }: {
 
             {/* RIGHT: Polarisation */}
             <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
-              <SectionTitle>Répartition polarisation</SectionTitle>
+              <SectionTitle>{t('actp.polarization_distribution')}</SectionTitle>
               {polTotal > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {[
-                    { label: 'Endurance fondamentale', zones: 'Z1–Z2', time: polZ12, color: '#10B981' },
-                    { label: 'Tempo',                   zones: 'Z3',    time: polZ3,  color: '#F97316' },
-                    { label: 'Haute intensité',          zones: 'Z4–Z5', time: polZ45, color: '#EF4444' },
+                    { label: t('actp.fundamental_endurance'), zones: 'Z1–Z2', time: polZ12, color: '#10B981' },
+                    { label: t('actp.tempo'),                   zones: 'Z3',    time: polZ3,  color: '#F97316' },
+                    { label: t('actp.high_intensity'),          zones: 'Z4–Z5', time: polZ45, color: '#EF4444' },
                   ].map(({ label, zones, time, color }) => {
                     const pct = polTotal > 0 ? (time / polTotal) * 100 : 0
                     return (
@@ -6056,7 +6065,7 @@ function SectionDonnees({ activities, zones, profile }: {
                 </div>
               ) : (
                 <div style={{ color: 'var(--text-dim)', fontSize: 12, marginTop: 16 }}>
-                  Données FC insuffisantes sur la période
+                  {t('actp.insufficient_hr_period')}
                 </div>
               )}
             </div>
@@ -6065,12 +6074,12 @@ function SectionDonnees({ activities, zones, profile }: {
           {/* ── SECTION 5: Heatmap calendrier ───────────────────────────────── */}
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <SectionTitle>Calendrier des charges</SectionTitle>
+              <SectionTitle>{t('actp.load_calendar')}</SectionTitle>
               <span style={{
                 fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase',
                 background: 'rgba(6,182,212,0.15)', color: '#06B6D4',
                 padding: '2px 7px', borderRadius: 10, marginBottom: 14,
-              }}>Nouveau</span>
+              }}>{t('actp.new')}</span>
             </div>
             {(() => {
               const heatDays = Math.min(displayDays, 365)
@@ -6153,11 +6162,11 @@ function SectionDonnees({ activities, zones, profile }: {
                   )}
                   {/* Legend */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 10, color: 'var(--text-dim)' }}>
-                    <span>Repos</span>
+                    <span>{t('actp.rest')}</span>
                     {[0, 25, 75, 125, 160].map((v, i) => (
                       <div key={i} style={{ width: 12, height: 12, borderRadius: 2, background: tssColor(v) }} />
                     ))}
-                    <span>Intensité élevée</span>
+                    <span>{t('actp.high_intensity_short')}</span>
                   </div>
                 </div>
               )
@@ -6168,19 +6177,19 @@ function SectionDonnees({ activities, zones, profile }: {
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 12 }}>
             {bikeZones && bikeTimesZ && bikeTimesZ.some(t => t > 0) && (
               <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
-                <SectionTitle>Zones puissance — Vélo</SectionTitle>
+                <SectionTitle>{t('actp.zones_power_bike')}</SectionTitle>
                 <ZoneBars zones={bikeZones} timesS={bikeTimesZ} />
               </div>
             )}
             {runZones && runTimesZ && runTimesZ.some(t => t > 0) && (
               <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
-                <SectionTitle>Zones allure — Course</SectionTitle>
+                <SectionTitle>{t('actp.zones_pace_run')}</SectionTitle>
                 <ZoneBars zones={runZones} timesS={runTimesZ} />
               </div>
             )}
             {hrTimesZ && hrTimesZ.some(t => t > 0) && (
               <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: '16px 18px' }}>
-                <SectionTitle>Zones FC — Global</SectionTitle>
+                <SectionTitle>{t('actp.zones_hr_global')}</SectionTitle>
                 <ZoneBars zones={hrZoneColors} timesS={hrTimesZ} />
               </div>
             )}
@@ -6200,6 +6209,7 @@ function SectionDonnees({ activities, zones, profile }: {
 // ACTIVITY ROW
 // ─────────────────────────────────────────────────────────────
 function ActivityRow({ a, selected, onClick }: { a: Activity; selected: boolean; onClick: () => void }) {
+  const { t } = useI18n()
   const col = SPORT_COLOR[a.sport_type] ?? '#888'
   const paceS = a.avg_pace_s_km
     ?? (a.moving_time_s && a.distance_m && a.distance_m > 100 ? (a.moving_time_s / a.distance_m) * 1000 : null)
@@ -6227,8 +6237,8 @@ function ActivityRow({ a, selected, onClick }: { a: Activity; selected: boolean;
         </div>
         <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span>{fmtDateShort(a.started_at)}</span>
-          <span style={{ color: col, fontWeight: 600, fontSize: 10, background: col + '18', padding: '1px 7px', borderRadius: 20 }}>{SPORT_LABEL[a.sport_type]}</span>
-          {a.is_race && <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 10, background: '#ef444415', padding: '1px 7px', borderRadius: 20 }}>Compét.</span>}
+          <span style={{ color: col, fontWeight: 600, fontSize: 10, background: col + '18', padding: '1px 7px', borderRadius: 20 }}>{sportLabel(a.sport_type, t)}</span>
+          {a.is_race && <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 10, background: '#ef444415', padding: '1px 7px', borderRadius: 20 }}>{t('actp.race_short')}</span>}
           {a.tss != null && <span style={{ color: T.textMuted, fontSize: 10, fontFamily: T.fontMono }}>TSS {Math.round(Number(a.tss))}</span>}
           {(a.rpe ?? a.perceived_effort) != null && <span style={{ color: T.textMuted, fontSize: 10, fontFamily: T.fontMono }}>RPE {Number(a.rpe ?? a.perceived_effort).toFixed(1)}</span>}
         </div>
@@ -6254,6 +6264,7 @@ function RpeModal({ activityId, initialRpe, initialSensation, onClose, onSave }:
   onClose: () => void
   onSave: (rpe: number, sensation: number) => void
 }) {
+  const { t } = useI18n()
   const [rpe, setRpe]             = useState(initialRpe ?? 5)
   const [sensation, setSensation] = useState(initialSensation ?? 3)
   const [saving, setSaving]       = useState(false)
@@ -6308,15 +6319,15 @@ function RpeModal({ activityId, initialRpe, initialSensation, onClose, onSave }:
       <div style={{ background: T.surface, borderRadius: T.radius, padding: '28px 28px 20px', width: '100%', maxWidth: 380, boxShadow: T.shadowCard }}
         onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay }}>Ressenti & effort</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: T.text, fontFamily: T.fontDisplay }}>{t('actp.feeling_effort')}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: T.textMuted }}>✕</button>
         </div>
 
-        <SliderRow label="Sensation" value={sensation} min={1} max={5} step={0.5}
+        <SliderRow label={t('actp.sensation')} value={sensation} min={1} max={5} step={0.5}
           onChange={setSensation}
           color={sensation <= 2 ? '#ef4444' : sensation <= 3 ? '#f97316' : '#22c55e'} />
 
-        <SliderRow label="RPE (effort perçu)" value={rpe} min={1} max={10} step={0.5}
+        <SliderRow label={t('actp.rpe_perceived')} value={rpe} min={1} max={10} step={0.5}
           onChange={setRpe}
           color={rpe >= 8 ? '#ef4444' : rpe >= 5 ? '#f97316' : '#22c55e'} />
 
@@ -6325,7 +6336,7 @@ function RpeModal({ activityId, initialRpe, initialSensation, onClose, onSave }:
           padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer',
           opacity: saving ? 0.7 : 1, fontFamily: T.fontDisplay,
         }}>
-          {saving ? 'Enregistrement…' : 'Enregistrer'}
+          {saving ? t('actp.saving') : t('actp.save')}
         </button>
       </div>
     </div>
@@ -6342,18 +6353,18 @@ const FD_ARC_TOTAL = 217  // 3/4 de circonférence (2π × 46 ≈ 289)
 const FD_ARC_FULL  = 289
 
 const FEELING_THRESHOLDS = [
-  { max: 1.5, color: '#ef4444', label: 'Triste' },
-  { max: 3,   color: '#eab308', label: 'Normal' },
-  { max: 4.5, color: '#10b981', label: 'Bien' },
-  { max: 5,   color: '#06b6d4', label: 'Incroyable' },
+  { max: 1.5, color: '#ef4444', label: 'actp.feel_sad' },
+  { max: 3,   color: '#eab308', label: 'actp.feel_normal' },
+  { max: 4.5, color: '#10b981', label: 'actp.feel_good' },
+  { max: 5,   color: '#06b6d4', label: 'actp.feel_amazing' },
 ]
 const DIFFICULTY_THRESHOLDS = [
-  { max: 3,   color: '#10b981', label: 'Facile' },
-  { max: 5,   color: '#84cc16', label: 'Modérée' },
-  { max: 6,   color: '#eab308', label: 'Un peu dur' },
-  { max: 7.5, color: '#f97316', label: 'Difficile' },
-  { max: 9,   color: '#ef4444', label: 'Très difficile' },
-  { max: 10,  color: '#991b1b', label: 'Terrible' },
+  { max: 3,   color: '#10b981', label: 'actp.diff_easy' },
+  { max: 5,   color: '#84cc16', label: 'actp.diff_moderate' },
+  { max: 6,   color: '#eab308', label: 'actp.diff_bit_hard' },
+  { max: 7.5, color: '#f97316', label: 'actp.diff_hard' },
+  { max: 9,   color: '#ef4444', label: 'actp.diff_very_hard' },
+  { max: 10,  color: '#991b1b', label: 'actp.diff_terrible' },
 ]
 function feelingDescriptor(v: number)    { return FEELING_THRESHOLDS.find(t => v <= t.max) ?? FEELING_THRESHOLDS[FEELING_THRESHOLDS.length - 1] }
 function difficultyDescriptor(v: number) { return DIFFICULTY_THRESHOLDS.find(t => v <= t.max) ?? DIFFICULTY_THRESHOLDS[DIFFICULTY_THRESHOLDS.length - 1] }
@@ -6367,6 +6378,7 @@ function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit }: {
   descriptor: { color: string; label: string } | null
   onEdit:     () => void
 }) {
+  const { t } = useI18n()
   const isSet  = value != null
   const ratio  = isSet ? Math.max(0, Math.min(1, (value as number) / max)) : 0
   const filled = ratio * FD_ARC_TOTAL
@@ -6413,11 +6425,11 @@ function GaugeArc({ value, max, denomLabel, label, descriptor, onEdit }: {
         color: isSet ? 'var(--text)' : 'var(--text-dim)',
         fontStyle: isSet ? 'normal' : 'italic',
         transition: 'color 0.3s ease',
-      }}>{isSet && descriptor ? descriptor.label : 'Non renseigné'}</div>
+      }}>{isSet && descriptor ? t(descriptor.label) : t('actp.not_set')}</div>
       <button onClick={onEdit} style={{
         fontSize: 11, color: '#06b6d4', textDecoration: 'underline',
         cursor: 'pointer', background: 'none', border: 'none', padding: '8px 14px', marginTop: 0,
-      }}>{isSet ? 'Modifier' : 'Ajouter'}</button>
+      }}>{isSet ? t('actp.edit') : t('actp.add')}</button>
     </div>
   )
 }
@@ -6429,6 +6441,7 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
   onClose: () => void
   onSave:  (v: number) => Promise<void>
 }) {
+  const { t } = useI18n()
   const max = kind === 'feeling' ? 5 : 10
   const [draft,  setDraft]  = useState<number>(value ?? max / 2)
   const [saving, setSaving] = useState(false)
@@ -6448,7 +6461,7 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
   const descriptor = kind === 'feeling' ? feelingDescriptor(draft) : difficultyDescriptor(draft)
   const color  = descriptor.color
   const filled = (draft / max) * FD_ARC_TOTAL
-  const title  = kind === 'feeling' ? 'Ressenti' : 'Difficulté'
+  const title  = kind === 'feeling' ? t('actp.feeling') : t('actp.difficulty')
   return createPortal(
     <>
       <style>{`
@@ -6504,14 +6517,14 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
                   animation: 'fdGaugePulse 0.3s ease-out',
                 }}
               >{fdFormat(draft)}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>sur {max}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{t('actp.out_of')} {max}</div>
             </div>
           </div>
           <div style={{
             fontSize: 14, fontWeight: 600, color: 'var(--text)', marginTop: 8,
             transition: 'color 0.3s ease',
           }}>
-            {descriptor.label}
+            {t(descriptor.label)}
           </div>
         </div>
         {/* Slider 0.5 step */}
@@ -6530,7 +6543,7 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
             background: 'var(--bg-card2)', border: '1px solid var(--border)',
             color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
             fontFamily: 'inherit',
-          }}>Annuler</button>
+          }}>{t('actp.cancel')}</button>
           <button
             onClick={async () => { setSaving(true); await onSave(draft) }}
             disabled={saving}
@@ -6540,7 +6553,7 @@ function GaugeEditModal({ open, kind, value, onClose, onSave }: {
               color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer',
               opacity: saving ? 0.6 : 1, fontFamily: 'inherit',
             }}
-          >{saving ? '…' : 'Enregistrer'}</button>
+          >{saving ? '…' : t('actp.save')}</button>
         </div>
       </div>
     </>,
@@ -6553,6 +6566,7 @@ function FeelingDifficultyCard({ feeling, difficulty, onEdit }: {
   difficulty: number | null
   onEdit:     (kind: 'feeling' | 'difficulty') => void
 }) {
+  const { t } = useI18n()
   const fDesc = feeling    !== null ? feelingDescriptor(feeling)       : null
   const dDesc = difficulty !== null ? difficultyDescriptor(difficulty) : null
 
@@ -6562,8 +6576,8 @@ function FeelingDifficultyCard({ feeling, difficulty, onEdit }: {
       margin: '16px 0',
       display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16,
     }}>
-      <GaugeArc value={feeling}    max={5}  denomLabel="sur 5"  label="RESSENTI"   descriptor={fDesc} onEdit={() => onEdit('feeling')} />
-      <GaugeArc value={difficulty} max={10} denomLabel="sur 10" label="DIFFICULTÉ" descriptor={dDesc} onEdit={() => onEdit('difficulty')} />
+      <GaugeArc value={feeling}    max={5}  denomLabel={`${t('actp.out_of')} 5`}  label={t('actp.feeling_upper')}   descriptor={fDesc} onEdit={() => onEdit('feeling')} />
+      <GaugeArc value={difficulty} max={10} denomLabel={`${t('actp.out_of')} 10`} label={t('actp.difficulty_upper')} descriptor={dDesc} onEdit={() => onEdit('difficulty')} />
     </div>
   )
 }
@@ -6575,6 +6589,7 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
   a: Activity; onClose: () => void; closing?: boolean
   zones: TrainingZoneRow[]; profile: Profile
 }) {
+  const { t } = useI18n()
   const width    = useWindowWidth()
   const isMobile = width < 768
   const col = SPORT_COLOR[a.sport_type] ?? T.accent
@@ -6587,15 +6602,15 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
     const terrain = ['run', 'trail_run', 'bike', 'virtual_bike'].includes(a.sport_type)
     const km = a.distance_m ? `${(Number(a.distance_m) / 1000).toFixed(1)} km` : null
     const stats: { label: string; value: string }[] = [
-      { label: 'Durée', value: fmtDur(a.moving_time_s) },
-      ...(km && !isG ? [{ label: 'Distance', value: km }] : []),
+      { label: t('actp.duration'), value: fmtDur(a.moving_time_s) },
+      ...(km && !isG ? [{ label: t('actp.distance'), value: km }] : []),
       ...(terrain && (a.elevation_gain_m ?? 0) > 5 ? [{ label: 'D+', value: `+${Math.round(Number(a.elevation_gain_m))} m` }] : []),
       { label: 'SM', value: String(smsn.sm) },
       { label: 'SN', value: String(smsn.sn) },
     ]
     void shareCard({
-      title: a.title ?? SPORT_LABEL[a.sport_type],
-      subtitle: `${SPORT_LABEL[a.sport_type]} · ${fmtDate(a.started_at)}`,
+      title: a.title ?? sportLabel(a.sport_type, t),
+      subtitle: `${sportLabel(a.sport_type, t)} · ${fmtDate(a.started_at)}`,
       accent: col.startsWith('#') ? col : '#06B6D4',
       stats, filename: 'hybrid-activite.png',
     })
@@ -6754,7 +6769,7 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
       onClose()
     } catch (err) {
       console.error('Erreur suppression:', err)
-      setDeleteError('Erreur lors de la suppression. Réessayez.')
+      setDeleteError(t('actp.delete_error'))
       setIsDeleting(false)
     }
   }
@@ -6934,12 +6949,12 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
     // eslint-disable-next-line no-console
     console.log('[JAUGES] Save result:', { data, error })
     if (error) {
-      fdToast(`Échec : ${error.message}`)
+      fdToast(`${t('actp.failed')} : ${error.message}`)
       return
     }
     if (kind === 'feeling') setLocalFeeling(v); else setLocalDifficulty(v)
     setFdEditing(null)
-    fdToast('Enregistré')
+    fdToast(t('actp.saved'))
   }
 
   const powerTimesZ = useMemo(() => {
@@ -7086,12 +7101,10 @@ conseil pour la prochaine séance similaire.`
       <BottomSheet
         isOpen={showDeleteConfirm}
         onClose={() => { setShowDeleteConfirm(false); setDeleteError(null) }}
-        title="Supprimer l'activité"
+        title={t('actp.delete_activity')}
       >
         <p style={{ fontSize: 14, color: 'var(--text-body)', lineHeight: 1.7, marginBottom: 16 }}>
-          Cette action est irréversible. L&apos;activité sera supprimée
-          définitivement de THW Coaching.
-          Elle restera présente sur Strava et Polar.
+          {t('actp.delete_confirm_body')}
         </p>
         {deleteError && (
           <p style={{ fontSize: 13, color: '#EF4444', marginBottom: 12 }}>{deleteError}</p>
@@ -7108,7 +7121,7 @@ conseil pour la prochaine séance similaire.`
               opacity: isDeleting ? 0.5 : 1,
             }}
           >
-            Annuler
+            {t('actp.cancel')}
           </button>
           <button
             onClick={handleDelete}
@@ -7121,7 +7134,7 @@ conseil pour la prochaine séance similaire.`
               opacity: isDeleting ? 0.7 : 1,
             }}
           >
-            {isDeleting ? 'Suppression…' : 'Supprimer'}
+            {isDeleting ? t('actp.deleting') : t('actp.delete')}
           </button>
         </div>
       </BottomSheet>
@@ -7145,35 +7158,35 @@ conseil pour la prochaine séance similaire.`
       <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
         {!isGym && a.distance_m != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>Distance</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.distance')}</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDist(a.distance_m)}</span>
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-          <span style={{ fontSize: 12, color: T.textMuted }}>Durée</span>
+          <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.duration')}</span>
           <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDur(a.moving_time_s)}</span>
         </div>
         {isBike && a.avg_speed_ms != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>Vitesse moy.</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.avg_speed')}</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{(Number(a.avg_speed_ms) * 3.6).toFixed(1)} km/h</span>
           </div>
         )}
         {isBike && a.max_speed_ms != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>Vitesse max.</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.max_speed')}</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{(Number(a.max_speed_ms) * 3.6).toFixed(1)} km/h</span>
           </div>
         )}
         {(isRun || isSwim) && paceS != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>Allure moy.</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.avg_pace')}</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtPace(paceS)}</span>
           </div>
         )}
         {isBike && freewheelS != null && freewheelS > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>Roue libre</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.freewheel')}</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDur(freewheelS)} ({freewheelPct}%)</span>
           </div>
         )}
@@ -7182,15 +7195,15 @@ conseil pour la prochaine séance similaire.`
       {/* BLOC 2 — Charge / ressenti */}
       <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ fontSize: 11, color: T.textMuted }}>Ressenti</span>
+          <span style={{ fontSize: 11, color: T.textMuted }}>{t('actp.feeling')}</span>
           <button onClick={() => setShowRpeModal(true)} style={{
             background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: 6,
             padding: '2px 8px', fontSize: 11, cursor: 'pointer', color: T.textSub,
-          }}>+ Saisir</button>
+          }}>{t('actp.enter_plus')}</button>
         </div>
         {localSensation != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>Sensation</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.sensation')}</span>
             <span style={{ fontSize: 12, fontWeight: 600,
               color: Number(localSensation) <= 2 ? '#ef4444' : Number(localSensation) <= 3 ? '#f97316' : '#22c55e',
               fontFamily: T.fontMono }}>{Number(localSensation).toFixed(1)}/5</span>
@@ -7206,13 +7219,13 @@ conseil pour la prochaine séance similaire.`
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <span style={{ fontSize: 12, color: T.textMuted, display: 'flex', alignItems: 'center' }}>
-            SM<TooltipInfo text={'SM — Score Métabolique\n\nCharge cardio-vasculaire et énergétique : intensité relative, durée, chaleur, dénivelé positif.'} />
+            SM<TooltipInfo text={t('actp.sm_tooltip')} />
           </span>
           <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{smsn.sm}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <span style={{ fontSize: 12, color: T.textMuted, display: 'flex', alignItems: 'center' }}>
-            SN<TooltipInfo text={'SN — Score Neuromusculaire\n\nCharge mécanique et musculaire : efforts explosifs, impacts, descentes, volume de force.'} />
+            SN<TooltipInfo text={t('actp.sn_tooltip')} />
           </span>
           <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{smsn.sn}</span>
         </div>
@@ -7225,7 +7238,7 @@ conseil pour la prochaine séance similaire.`
         {z2DurationS != null && z2DurationS > 60 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: 12, color: T.textMuted }}>
-              Durée Z2
+              {t('actp.duration_z2')}
               <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({hrZones[1].min}–{hrZones[1].max} bpm)</span>
             </span>
             <span style={{ fontSize: 12, fontWeight: 600, color: '#F87171', fontFamily: T.fontMono }}>{fmtDur(z2DurationS)}</span>
@@ -7233,7 +7246,7 @@ conseil pour la prochaine séance similaire.`
         )}
         {decoupling != null && !isRun && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>Découplage P/FC</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.decoupling_phr')}</span>
             <span style={{ fontSize: 12, fontWeight: 600, fontFamily: T.fontMono,
               color: decoupling < 5 ? '#22c55e' : decoupling < 8 ? '#eab308' : '#ef4444',
             }}>{decoupling.toFixed(1)}%</span>
@@ -7247,7 +7260,7 @@ conseil pour la prochaine séance similaire.`
           <>
             {a.avg_watts != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Watts moy.</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.avg_watts')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>
                   {Math.round(Number(a.avg_watts))} W{pctFtp ? ` (${pctFtp}% FTP)` : ''}
                 </span>
@@ -7255,19 +7268,19 @@ conseil pour la prochaine séance similaire.`
             )}
             {computedNp != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Watts norm.</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.norm_watts')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{computedNp} W</span>
               </div>
             )}
             {maxWatts != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Watts max</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.max_watts')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxWatts} W</span>
               </div>
             )}
             {vi != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Variabilité (VI)</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.variability_vi')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{vi}</span>
               </div>
             )}
@@ -7279,19 +7292,19 @@ conseil pour la prochaine séance similaire.`
             )}
             {a.avg_cadence != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Cadence moy.</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.avg_cadence')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.avg_cadence))} rpm</span>
               </div>
             )}
             {maxCad != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Cadence max</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.max_cadence')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(maxCad))} rpm</span>
               </div>
             )}
             {freewheelPowerS != null && freewheelPowerS > 60 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Roue libre</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.freewheel')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{fmtDur(freewheelPowerS)} ({freewheelPowerPct}%)</span>
               </div>
             )}
@@ -7319,13 +7332,13 @@ conseil pour la prochaine séance similaire.`
             )}
             {a.avg_cadence != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Cadence moy.</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.avg_cadence')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.avg_cadence))} spm</span>
               </div>
             )}
             {maxCad != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Cadence max</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.max_cadence')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(maxCad))} spm</span>
               </div>
             )}
@@ -7340,7 +7353,7 @@ conseil pour la prochaine séance similaire.`
           <div style={{ flex: '1 1 140px', paddingRight: 24, paddingBottom: 12 }}>
             {(a.max_hr ?? maxHrStream) != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>FC max</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.max_hr')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
                   {a.max_hr ?? maxHrStream} bpm
                   <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({Math.round((Number(a.max_hr ?? maxHrStream)/maxHrEst)*100)}%)</span>
@@ -7349,7 +7362,7 @@ conseil pour la prochaine séance similaire.`
             )}
             {a.avg_hr != null && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>FC moy.</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.avg_hr')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>
                   {Math.round(Number(a.avg_hr))} bpm
                   <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4 }}>({Math.round((Number(a.avg_hr)/maxHrEst)*100)}%)</span>
@@ -7358,7 +7371,7 @@ conseil pour la prochaine séance similaire.`
             )}
             {decoupling != null && !isRun && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: T.textMuted }}>Découplage</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.decoupling')}</span>
                 <span style={{ fontSize: 12, fontWeight: 600, fontFamily: T.fontMono,
                   color: decoupling < 5 ? '#22c55e' : decoupling < 8 ? '#eab308' : '#ef4444',
                 }}>{decoupling.toFixed(1)}%</span>
@@ -7378,31 +7391,31 @@ conseil pour la prochaine séance similaire.`
         )}
         {showTerrainData && maxAlt != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>Alt. max.</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.alt_max')}</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxAlt} m</span>
           </div>
         )}
         {showTerrainData && avgAlt != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>Alt. moy.</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.alt_avg')}</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{avgAlt} m</span>
           </div>
         )}
         {a.avg_temp_c != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>Temp. moy.</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.avg_temp')}</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.avg_temp_c))} °C</span>
           </div>
         )}
         {maxTempStream != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>Temp. max</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.max_temp')}</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{maxTempStream} °C</span>
           </div>
         )}
         {a.calories != null && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: T.textMuted }}>Calories</span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>{t('actp.calories')}</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.text, fontFamily: T.fontMono }}>{Math.round(Number(a.calories))} kcal</span>
           </div>
         )}
@@ -7466,7 +7479,7 @@ conseil pour la prochaine séance similaire.`
         {/* ── Bouton retour flottant (par-dessus la carte) ── */}
         <button
           onClick={onClose}
-          aria-label="Retour"
+          aria-label={t('actp.back')}
           className="thw-activity-back-btn"
           style={{
             position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 16px)', left: 12,
@@ -7510,13 +7523,13 @@ conseil pour la prochaine séance similaire.`
                 <ActivityTitle activityId={a.id} initialName={a.title} />
               </div>
               <p data-activity-subtitle="" style={{ fontSize: 13, color: T.textMuted, margin: '4px 0 0', lineHeight: 1.4 }}>
-                {SPORT_LABEL[a.sport_type]}
+                {sportLabel(a.sport_type, t)}
                 {' · '}
                 {fmtDate(a.started_at)}
-                {a.is_race ? ' · Compétition' : ''}
+                {a.is_race ? ` · ${t('actp.competition')}` : ''}
               </p>
             </div>
-            <button onClick={() => shareThisActivity()} aria-label="Partager" style={{
+            <button onClick={() => shareThisActivity()} aria-label={t('actp.share')} style={{
               flexShrink: 0, width: 38, height: 38, borderRadius: '50%', border: '1px solid var(--border)',
               background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
@@ -7572,13 +7585,13 @@ conseil pour la prochaine séance similaire.`
             const elevGainVal = (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null
             const tssVal = a.tss ? Math.round(Number(a.tss)).toString() : null
             const STATS = [
-              { label: 'Distance',   value: !isGym && km ? `${km} km` : '—' },
-              { label: 'Durée',      value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
-              { label: 'Vitesse',    value: avgSpeedKmh ? `${avgSpeedKmh} km/h` : '—' },
-              { label: isBike ? 'Watts moy.' : 'Allure', value: isBike ? (avgWattsVal ?? '—') : (paceS ? fmtPace(paceS) : '—') },
+              { label: t('actp.distance'),   value: !isGym && km ? `${km} km` : '—' },
+              { label: t('actp.duration'),      value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
+              { label: t('actp.speed'),    value: avgSpeedKmh ? `${avgSpeedKmh} km/h` : '—' },
+              { label: isBike ? t('actp.avg_watts') : t('actp.pace'), value: isBike ? (avgWattsVal ?? '—') : (paceS ? fmtPace(paceS) : '—') },
               showTerrainData
                 ? { label: 'D+', value: elevGainVal ?? '—' }
-                : { label: 'Calories', value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
+                : { label: t('actp.calories'), value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
               { label: 'SM · SN',    value: `${smsn.sm} · ${smsn.sn}` },
             ]
             return (
@@ -7631,7 +7644,7 @@ conseil pour la prochaine séance similaire.`
               }}
             >
               <Sparkles size={14} color="#06B6D4" />
-              Analyse complète de la séance par l&apos;IA
+              {t('actp.full_ai_analysis')}
             </button>
             <AIBubble text={globalAI.text} status={globalAI.status} onRetry={() => { globalAI.reset(); globalAI.run(buildGlobalPrompt()) }} />
           </div>
@@ -7640,26 +7653,26 @@ conseil pour la prochaine séance similaire.`
           <div style={{ padding: '0 16px' }}>
 
             {/* DONNÉES */}
-            <Section title="Données">
+            <Section title={t('actp.data')}>
               {(() => {
                 const maxHrEst = estimateMaxHr(profile.birth_date)
                 const rows: { label: string; value: string | null }[] = [
-                  { label: 'Watts moy.',    value: isBike && a.avg_watts ? `${Math.round(Number(a.avg_watts))} W${pctFtp ? ` (${pctFtp}% FTP)` : ''}` : null },
-                  { label: 'Watts norm.',   value: isBike && computedNp ? `${computedNp} W` : null },
-                  { label: 'Watts max',     value: isBike && maxWatts ? `${maxWatts} W` : null },
-                  { label: 'Cadence moy.',  value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} ${isBike ? 'rpm' : 'spm'}` : null },
-                  { label: 'Cadence max',   value: maxCad ? `${Math.round(Number(maxCad))} ${isBike ? 'rpm' : 'spm'}` : null },
+                  { label: t('actp.avg_watts'),    value: isBike && a.avg_watts ? `${Math.round(Number(a.avg_watts))} W${pctFtp ? ` (${pctFtp}% FTP)` : ''}` : null },
+                  { label: t('actp.norm_watts'),   value: isBike && computedNp ? `${computedNp} W` : null },
+                  { label: t('actp.max_watts'),     value: isBike && maxWatts ? `${maxWatts} W` : null },
+                  { label: t('actp.avg_cadence'),  value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} ${isBike ? 'rpm' : 'spm'}` : null },
+                  { label: t('actp.max_cadence'),   value: maxCad ? `${Math.round(Number(maxCad))} ${isBike ? 'rpm' : 'spm'}` : null },
                   { label: 'W/kg',          value: isBike && wkgMoy ? `${wkgMoy} w/kg` : null },
-                  { label: 'Roue libre',    value: isBike && freewheelPowerS && freewheelPowerS > 60 ? `${fmtDur(freewheelPowerS)} (${freewheelPowerPct}%)` : null },
-                  { label: 'Durée Z2',      value: z2DurationS && z2DurationS > 60 ? fmtDur(z2DurationS) : null },
-                  { label: 'Découplage P/FC', value: (!isRun && decoupling != null) ? `${decoupling.toFixed(1)}%` : null },
-                  { label: 'FC max',        value: (a.max_hr ?? maxHrStream) != null ? `${a.max_hr ?? maxHrStream} bpm (${Math.round((Number(a.max_hr ?? maxHrStream)/maxHrEst)*100)}%)` : null },
+                  { label: t('actp.freewheel'),    value: isBike && freewheelPowerS && freewheelPowerS > 60 ? `${fmtDur(freewheelPowerS)} (${freewheelPowerPct}%)` : null },
+                  { label: t('actp.duration_z2'),      value: z2DurationS && z2DurationS > 60 ? fmtDur(z2DurationS) : null },
+                  { label: t('actp.decoupling_phr'), value: (!isRun && decoupling != null) ? `${decoupling.toFixed(1)}%` : null },
+                  { label: t('actp.max_hr'),        value: (a.max_hr ?? maxHrStream) != null ? `${a.max_hr ?? maxHrStream} bpm (${Math.round((Number(a.max_hr ?? maxHrStream)/maxHrEst)*100)}%)` : null },
                   { label: 'D+',            value: showTerrainData && (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
-                  { label: 'Alt. max.',     value: showTerrainData && maxAlt != null ? `${maxAlt} m` : null },
-                  { label: 'Alt. moy.',     value: showTerrainData && avgAlt != null ? `${avgAlt} m` : null },
-                  { label: 'Temp. moy.',    value: a.avg_temp_c != null ? `${Math.round(Number(a.avg_temp_c))} °C` : null },
-                  { label: 'Temp. max',     value: maxTempStream != null ? `${maxTempStream} °C` : null },
-                  { label: 'Calories',      value: a.calories != null ? `${Math.round(Number(a.calories))} kcal` : null },
+                  { label: t('actp.alt_max'),     value: showTerrainData && maxAlt != null ? `${maxAlt} m` : null },
+                  { label: t('actp.alt_avg'),     value: showTerrainData && avgAlt != null ? `${avgAlt} m` : null },
+                  { label: t('actp.avg_temp'),    value: a.avg_temp_c != null ? `${Math.round(Number(a.avg_temp_c))} °C` : null },
+                  { label: t('actp.max_temp'),     value: maxTempStream != null ? `${maxTempStream} °C` : null },
+                  { label: t('actp.calories'),      value: a.calories != null ? `${Math.round(Number(a.calories))} kcal` : null },
                 ].filter(r => r.value)
                 return (
                   <div style={{ margin: '0 -16px' }}>
@@ -7682,7 +7695,7 @@ conseil pour la prochaine séance similaire.`
 
             {/* COURBES */}
             {a.streams && (
-              <Section title="Courbes">
+              <Section title={t('actp.curves')}>
                 <ActivityCurves activity={a} />
               </Section>
             )}
@@ -7696,7 +7709,7 @@ conseil pour la prochaine séance similaire.`
               return (
                 <>
                   {isBike && s.watts && s.watts.length > 60 && (
-                    <Section title="Courbe de puissance">
+                    <Section title={t('actp.power_curve')}>
                       <PowerCurveChart
                         watts={s.watts}
                         activityId={a.id}
@@ -7710,7 +7723,7 @@ conseil pour la prochaine séance similaire.`
                         <button onClick={() => setShowDecoupling(v => !v)} style={{
                           background: 'none', border: 'none', cursor: 'pointer',
                           fontSize: 11, color: T.accent, fontWeight: 600, padding: 0 }}>
-                          {showDecoupling ? 'Masquer' : 'Voir le graphique'}
+                          {showDecoupling ? t('actp.hide') : t('actp.view_chart')}
                         </button>
                       </div>
                       {showDecoupling && (
@@ -7734,7 +7747,7 @@ conseil pour la prochaine séance similaire.`
                             fontSize: 12, fontWeight: 500, cursor: 'pointer',
                           }}
                         >
-                          <Sparkles size={14} /> Analyser avec l&apos;IA
+                          <Sparkles size={14} /> {t('actp.analyze_with_ai')}
                         </button>
                         <AIBubble text={decoupAI.text} status={decoupAI.status} onRetry={() => { decoupAI.reset(); decoupAI.run(buildDecouplingPrompt()) }} />
                       </div>
@@ -7747,7 +7760,7 @@ conseil pour la prochaine séance similaire.`
                         <button onClick={() => setShowHrCumulative(v => !v)} style={{
                           background: 'none', border: 'none', cursor: 'pointer',
                           fontSize: 11, color: T.accent, fontWeight: 600, padding: 0 }}>
-                          {showHrCumulative ? 'Masquer' : 'Voir le graphique'}
+                          {showHrCumulative ? t('actp.hide') : t('actp.view_chart')}
                         </button>
                       </div>
                       {showHrCumulative && (
@@ -7761,7 +7774,7 @@ conseil pour la prochaine séance similaire.`
 
             {/* NOTES */}
             {(a.notes || a.description) && (
-              <Section title="Commentaire">
+              <Section title={t('actp.comment')}>
                 <div style={{ fontSize: 13, color: T.text, lineHeight: 1.6 }}>{a.notes ?? a.description}</div>
               </Section>
             )}
@@ -7802,7 +7815,7 @@ conseil pour la prochaine séance similaire.`
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead>
                         <tr style={{ textAlign: 'left', color: T.textMuted }}>
-                          {['#','Dist.','Durée', isBike ? 'Watts' : 'Allure', 'FC'].map(h => (
+                          {['#', t('actp.dist_short'), t('actp.duration'), isBike ? t('actp.watts') : t('actp.pace'), t('actp.hr')].map(h => (
                             <th key={h} style={{ padding: '3px 8px 6px 0', fontWeight: 500, fontSize: 10 }}>{h}</th>
                           ))}
                         </tr>
@@ -7845,7 +7858,7 @@ conseil pour la prochaine séance similaire.`
                 }}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"/></svg>
-                Supprimer l&apos;activité
+                {t('actp.delete_activity')}
               </button>
             </div>
 
@@ -7880,11 +7893,11 @@ conseil pour la prochaine séance similaire.`
           <ActivityTitle activityId={a.id} initialName={a.title} />
         </div>
         <span style={{ fontSize: 12, background: col + '18', color: col, padding: '2px 8px', borderRadius: 20, flexShrink: 0, fontWeight: 600 }}>
-          {SPORT_LABEL[a.sport_type]}
+          {sportLabel(a.sport_type, t)}
         </span>
         <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
           {fmtDate(a.started_at)}
-          {a.is_race && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#ef4444', background: '#ef444415', padding: '2px 8px', borderRadius: 20 }}>Compétition</span>}
+          {a.is_race && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#ef4444', background: '#ef444415', padding: '2px 8px', borderRadius: 20 }}>{t('actp.competition')}</span>}
         </span>
         <div style={{ flex: 1 }} />
         <button
@@ -7899,7 +7912,7 @@ conseil pour la prochaine séance similaire.`
             fontFamily: 'inherit',
           }}
         >
-          Supprimer
+          {t('actp.delete')}
         </button>
       </div>
 
@@ -7927,13 +7940,13 @@ conseil pour la prochaine séance similaire.`
         {isRowing && !isRowingOutdoor && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10, marginBottom: 14, fontSize: 12, color: 'var(--text)' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#06b6d4', flexShrink: 0 }} />
-            <span><strong>Aviron indoor</strong> · ergomètre</span>
+            <span><strong>{t('actp.rowing_indoor')}</strong> · {t('actp.ergometer')}</span>
           </div>
         )}
         {isSwim && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card2)', padding: '10px 14px', borderRadius: 10, marginBottom: 14, fontSize: 12, color: 'var(--text)' }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0ea5e9', flexShrink: 0 }} />
-            <span><strong>{isOpenWater ? 'Eau libre' : 'Piscine'}</strong>{a.avg_temp_c != null ? ` · ${Math.round(Number(a.avg_temp_c))} °C` : ''}</span>
+            <span><strong>{isOpenWater ? t('actp.open_water') : t('actp.pool')}</strong>{a.avg_temp_c != null ? ` · ${Math.round(Number(a.avg_temp_c))} °C` : ''}</span>
           </div>
         )}
         {/* Natation : nombre de longueurs (bassin saisi par l'athlète) */}
@@ -7974,36 +7987,36 @@ conseil pour la prochaine séance similaire.`
                 const avgMs = a.avg_speed_ms ? Number(a.avg_speed_ms) : 0
                 const distAuto = a.distance_m ? (Number(a.distance_m) < 1000 ? `${Math.round(Number(a.distance_m))} m` : `${km} km`) : '—'
                 const STATS_MAIN = isRun ? [
-                  { label: 'Distance',       value: km ? `${km} km` : '—' },
-                  { label: 'Allure moy.',    value: paceS ? fmtPace(paceS) : '—', color: '#10b981' },
+                  { label: t('actp.distance'),       value: km ? `${km} km` : '—' },
+                  { label: t('actp.avg_pace'),    value: paceS ? fmtPace(paceS) : '—', color: '#10b981' },
                   { label: 'D+',             value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' },
-                  { label: 'FC moy.',        value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
+                  { label: t('actp.avg_hr'),        value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
                   { label: 'SM · SN',        value: `${smsn.sm} · ${smsn.sn}` },
-                  { label: 'Allure ajustée', value: adjPace > 0 ? `${fmtPaceMinKm(adjPace)}/km` : '—', color: '#7c3aed' },
+                  { label: t('actp.adjusted_pace'), value: adjPace > 0 ? `${fmtPaceMinKm(adjPace)}/km` : '—', color: '#7c3aed' },
                 ] : isRowing ? [
-                  { label: 'Distance',  value: distAuto },
-                  { label: 'Durée',     value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
-                  { label: 'Split moy', value: avgMs > 0 ? `${formatSplit(500 / avgMs)}/500` : '—', color: '#06b6d4' },
-                  { label: 'SPM moy',   value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))}` : '—', color: '#ec4899' },
-                  { label: 'FC moy.',   value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
-                  { label: 'Puiss. moy', value: a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : '—', color: '#6366f1' },
+                  { label: t('actp.distance'),  value: distAuto },
+                  { label: t('actp.duration'),     value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
+                  { label: t('actp.avg_split'), value: avgMs > 0 ? `${formatSplit(500 / avgMs)}/500` : '—', color: '#06b6d4' },
+                  { label: t('actp.avg_spm'),   value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))}` : '—', color: '#ec4899' },
+                  { label: t('actp.avg_hr'),   value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
+                  { label: t('actp.avg_power_short'), value: a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : '—', color: '#6366f1' },
                 ] : isSwim ? [
-                  { label: 'Distance',     value: distAuto },
-                  { label: 'Durée',        value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
-                  { label: 'Allure /100m', value: avgMs > 0 ? formatPaceSwim(100 / avgMs) : '—', color: '#0ea5e9' },
-                  { label: 'FC moy.',      value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
+                  { label: t('actp.distance'),     value: distAuto },
+                  { label: t('actp.duration'),        value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
+                  { label: t('actp.pace_100m'), value: avgMs > 0 ? formatPaceSwim(100 / avgMs) : '—', color: '#0ea5e9' },
+                  { label: t('actp.avg_hr'),      value: a.avg_hr ? `${Math.round(Number(a.avg_hr))} bpm` : '—', color: '#f97316' },
                   { label: 'Cadence',      value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} c/min` : '—', color: '#ec4899' },
                   { label: 'SM · SN',      value: `${smsn.sm} · ${smsn.sn}` },
                 ] : [
-                  { label: 'Distance',  value: km ? `${km} km` : '—' },
-                  { label: 'Durée',     value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
-                  { label: 'Vitesse',   value: avgSpeedKmh ? `${avgSpeedKmh} km/h` : '—' },
-                  { label: isBike ? 'Watts moy.' : 'Allure',
+                  { label: t('actp.distance'),  value: km ? `${km} km` : '—' },
+                  { label: t('actp.duration'),     value: a.moving_time_s ? fmtDur(a.moving_time_s) : '—' },
+                  { label: t('actp.speed'),   value: avgSpeedKmh ? `${avgSpeedKmh} km/h` : '—' },
+                  { label: isBike ? t('actp.avg_watts') : t('actp.pace'),
                     value: isBike ? (a.avg_watts ? `${Math.round(Number(a.avg_watts))} W` : '—') : (paceS ? fmtPace(paceS) : '—'),
                     color: isBike ? '#818CF8' : undefined },
                   showTerrainData
                     ? { label: 'D+', value: (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : '—' }
-                    : { label: 'Calories', value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
+                    : { label: t('actp.calories'), value: a.calories ? `${Math.round(Number(a.calories))} kcal` : '—' },
                   { label: 'SM · SN',   value: `${smsn.sm} · ${smsn.sn}` },
                 ]
                 return (
@@ -8029,7 +8042,7 @@ conseil pour la prochaine séance similaire.`
                       }}>
                         <div style={{ width: 7, height: 7, borderRadius: '50%', background: decoupling < 5 ? '#10B981' : decoupling < 10 ? '#F59E0B' : '#EF4444', flexShrink: 0 }} />
                         <span style={{ fontSize: 12, color: 'var(--text-body)' }}>
-                          {decoupling < 5 ? 'Bonne résistance aérobie' : decoupling < 10 ? 'Légère dérive cardiaque' : 'Dérive cardiaque élevée'} — découplage {decoupling.toFixed(1)}%
+                          {decoupling < 5 ? t('actp.good_aerobic_resistance') : decoupling < 10 ? t('actp.slight_hr_drift') : t('actp.high_hr_drift')} — {t('actp.decoupling_lc')} {decoupling.toFixed(1)}%
                         </span>
                       </div>
                     )}
@@ -8065,7 +8078,7 @@ conseil pour la prochaine séance similaire.`
             }}
           >
             <Sparkles size={14} color="#06B6D4" />
-            Analyse complète de la séance par l&apos;IA
+            {t('actp.full_ai_analysis')}
           </button>
           <AIBubble text={globalAI.text} status={globalAI.status} onRetry={() => { globalAI.reset(); globalAI.run(buildGlobalPrompt()) }} />
         </div>
@@ -8077,22 +8090,22 @@ conseil pour la prochaine séance similaire.`
             {/* ── PUISSANCE (bike) / EFFORT (run/gym) ── */}
             <div>
               <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '.07em', textTransform: 'uppercase', color: '#818CF8', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #818CF825' }}>
-                {isBike ? 'Puissance' : 'Effort'}
+                {isBike ? t('actp.power') : t('actp.effort')}
               </div>
               {(isBike ? [
-                { label: 'Watts norm.',  value: computedNp ? `${computedNp} W` : null },
-                { label: 'Watts max',    value: maxWatts ? `${maxWatts} W` : null },
+                { label: t('actp.norm_watts'),  value: computedNp ? `${computedNp} W` : null },
+                { label: t('actp.max_watts'),    value: maxWatts ? `${maxWatts} W` : null },
                 { label: 'W/kg',         value: wkgMoy ? `${wkgMoy} W/kg` : null },
-                { label: 'Roue libre',   value: freewheelPowerPct ? `${freewheelPowerPct}%` : null },
-                { label: 'Cadence moy.', value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} rpm` : null },
-                { label: 'Cadence max',  value: maxCad ? `${maxCad} rpm` : null },
+                { label: t('actp.freewheel'),   value: freewheelPowerPct ? `${freewheelPowerPct}%` : null },
+                { label: t('actp.avg_cadence'), value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} rpm` : null },
+                { label: t('actp.max_cadence'),  value: maxCad ? `${maxCad} rpm` : null },
               ] : [
-                { label: 'Durée',        value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
-                { label: 'Allure moy.',  value: paceS ? fmtPace(paceS) : null },
+                { label: t('actp.duration'),        value: a.moving_time_s ? fmtDur(a.moving_time_s) : null },
+                { label: t('actp.avg_pace'),  value: paceS ? fmtPace(paceS) : null },
                 ...(isTrail ? (() => { const vam = trailVam(a.streams); return [{ label: 'VAM', value: vam > 0 ? `${vam} m/h` : null }] })() : []),
-                { label: 'Cadence moy.', value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} spm` : null },
-                { label: 'Cadence max',  value: maxCad ? `${maxCad} spm` : null },
-                { label: 'Distance',     value: a.distance_m ? fmtDist(a.distance_m) : null },
+                { label: t('actp.avg_cadence'), value: a.avg_cadence ? `${Math.round(Number(a.avg_cadence))} spm` : null },
+                { label: t('actp.max_cadence'),  value: maxCad ? `${maxCad} spm` : null },
+                { label: t('actp.distance'),     value: a.distance_m ? fmtDist(a.distance_m) : null },
               ] as { label: string; value: string | null }[]).filter(r => r.value != null).map(r => (
                 <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
                   <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
@@ -8104,7 +8117,7 @@ conseil pour la prochaine séance similaire.`
             {/* ── CARDIO ── */}
             <div>
               <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '.07em', textTransform: 'uppercase', color: '#EF4444', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #EF444425' }}>
-                Cardio
+                {t('actp.cardio')}
               </div>
               {(() => {
                 const maxHrVal = a.max_hr ?? maxHrStream
@@ -8114,27 +8127,27 @@ conseil pour la prochaine séance similaire.`
                   <>
                     {maxHrVal != null && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>FC max</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{t('actp.max_hr')}</span>
                         <span style={{ fontWeight: 500, color: 'var(--text)' }}>{maxHrVal} bpm{maxHrPct ? <span style={{ color: 'var(--text-muted)', fontSize: 11 }}> ({maxHrPct}%)</span> : null}</span>
                       </div>
                     )}
                     {decoupling !== null && !isRun && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Découplage P/FC</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{t('actp.decoupling_phr')}</span>
                         <span style={{ fontWeight: 500, color: decoupling < 5 ? '#10B981' : 'var(--text)' }}>{decoupling.toFixed(1)}%</span>
                       </div>
                     )}
                     {z2DurationS != null && z2DurationS > 30 && !isRun && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Durée Z2 (puissance)</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{t('actp.duration_z2_power')}</span>
                         <span style={{ fontWeight: 500, color: '#06B6D4' }}>{fmtDur(z2DurationS)}</span>
                       </div>
                     )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Ressenti</span>
+                      <span style={{ color: 'var(--text-muted)' }}>{t('actp.feeling')}</span>
                       {localFeeling != null
                         ? <button onClick={() => setFdEditing('feeling')} style={{ fontWeight: 500, color: 'var(--text)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, fontFamily: 'inherit' }}>{fdFormat(localFeeling)} / 5</button>
-                        : <button onClick={() => setFdEditing('feeling')} style={{ fontSize: 11, color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Saisir</button>
+                        : <button onClick={() => setFdEditing('feeling')} style={{ fontSize: 11, color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{t('actp.enter_plus')}</button>
                       }
                     </div>
                   </>
@@ -8145,13 +8158,13 @@ conseil pour la prochaine séance similaire.`
             {/* ── TERRAIN ── */}
             <div>
               <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '.07em', textTransform: 'uppercase', color: '#10B981', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #10B98125' }}>
-                Terrain
+                {t('actp.terrain')}
               </div>
               {[
                 { label: 'D+',         value: showTerrainData && (a.elevation_gain_m ?? 0) > 5 ? `+${Math.round(Number(a.elevation_gain_m))} m` : null },
-                { label: 'Alt. max',   value: showTerrainData && maxAlt ? `${maxAlt} m` : null },
-                { label: 'Alt. moy.',  value: showTerrainData && avgAlt ? `${avgAlt} m` : null },
-                { label: 'Distance',   value: a.distance_m ? fmtDist(a.distance_m) : null },
+                { label: t('actp.alt_max'),   value: showTerrainData && maxAlt ? `${maxAlt} m` : null },
+                { label: t('actp.alt_avg'),  value: showTerrainData && avgAlt ? `${avgAlt} m` : null },
+                { label: t('actp.distance'),   value: a.distance_m ? fmtDist(a.distance_m) : null },
               ].filter(r => r.value != null).map(r => (
                 <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
                   <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
@@ -8174,9 +8187,9 @@ conseil pour la prochaine séance similaire.`
                 )
                 return (
                   <>
-                    {above.sec > 0 && HL('rgba(234,179,8,0.16)', '#b45309', 'Au-delà 2000 m', `${fmtDur(above.sec)} (${above.pct}%)`)}
-                    {HL('rgba(239,68,68,0.14)',  '#dc2626', 'Montées',   String(nClimbs))}
-                    {HL('rgba(59,130,246,0.14)', '#2563eb', 'Descentes', String(nDesc))}
+                    {above.sec > 0 && HL('rgba(234,179,8,0.16)', '#b45309', t('actp.above_2000m'), `${fmtDur(above.sec)} (${above.pct}%)`)}
+                    {HL('rgba(239,68,68,0.14)',  '#dc2626', t('actp.climbs'),   String(nClimbs))}
+                    {HL('rgba(59,130,246,0.14)', '#2563eb', t('actp.descents'), String(nDesc))}
                   </>
                 )
               })()}
@@ -8185,16 +8198,16 @@ conseil pour la prochaine séance similaire.`
             {/* ── CONDITIONS ── */}
             <div>
               <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '.07em', textTransform: 'uppercase', color: '#F97316', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #F9731625' }}>
-                Conditions
+                {t('actp.conditions')}
               </div>
               {(() => {
                 const tempAvg = a.avg_temp_c != null
                   ? Math.round(Number(a.avg_temp_c))
                   : (a.streams?.temp?.length ? Math.round(a.streams.temp.reduce((s, v) => s + v, 0) / a.streams.temp.length) : null)
                 return ([
-                  { label: 'Temp. moy.',  value: tempAvg != null ? `${tempAvg} °C` : null,                        color: undefined },
-                  { label: 'Temp. max',   value: maxTempStream ? `${maxTempStream} °C` : null,                     color: maxTempStream && maxTempStream > 32 ? '#EF4444' : undefined },
-                  { label: 'Calories',    value: a.calories ? `${Math.round(Number(a.calories))} kcal` : null,     color: undefined },
+                  { label: t('actp.avg_temp'),  value: tempAvg != null ? `${tempAvg} °C` : null,                        color: undefined },
+                  { label: t('actp.max_temp'),   value: maxTempStream ? `${maxTempStream} °C` : null,                     color: maxTempStream && maxTempStream > 32 ? '#EF4444' : undefined },
+                  { label: t('actp.calories'),    value: a.calories ? `${Math.round(Number(a.calories))} kcal` : null,     color: undefined },
                   { label: 'SM · SN',     value: `${smsn.sm} · ${smsn.sn}` as string | undefined },
                   { label: 'TRIMP',       value: a.trimp ? Math.round(Number(a.trimp)).toString() : null,          color: undefined },
                 ] as { label: string; value: string | null; color?: string }[]).filter(r => r.value != null).map(r => (
@@ -8206,10 +8219,10 @@ conseil pour la prochaine séance similaire.`
               })()}
               {/* Difficulté — éditable via modal partagé */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Difficulté</span>
+                <span style={{ color: 'var(--text-muted)' }}>{t('actp.difficulty')}</span>
                 {localDifficulty != null
                   ? <button onClick={() => setFdEditing('difficulty')} style={{ fontWeight: 500, color: 'var(--text)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, fontFamily: 'inherit' }}>{fdFormat(localDifficulty)} / 10</button>
-                  : <button onClick={() => setFdEditing('difficulty')} style={{ fontSize: 11, color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>+ Saisir</button>
+                  : <button onClick={() => setFdEditing('difficulty')} style={{ fontSize: 11, color: '#06B6D4', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{t('actp.enter_plus')}</button>
                 }
               </div>
             </div>
@@ -8222,7 +8235,7 @@ conseil pour la prochaine séance similaire.`
           <div style={{ marginBottom: 32, paddingTop: 24 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
               textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-              Courbes
+              {t('actp.curves')}
             </div>
             <ActivityCurves activity={a} />
           </div>
@@ -8268,7 +8281,7 @@ conseil pour la prochaine séance similaire.`
           const dt = streamDt(a.streams, n)
           const tempTimes = zoneTimesFromStream(a.streams?.temp, TEMP_ZONES_PARSED, dt)
           const donuts: { title: string; zones: ParsedZone[]; times: number[] }[] = []
-          if (hrTimesZ && hrTimesZ.some(t => t > 0)) donuts.push({ title: 'FC zones', zones: hrZones, times: hrTimesZ })
+          if (hrTimesZ && hrTimesZ.some(t => t > 0)) donuts.push({ title: t('actp.hr_zones'), zones: hrZones, times: hrTimesZ })
           if (isTrail) {
             const altTimes = zoneTimesFromStream(a.streams?.altitude, ALTITUDE_ZONES_DEF, dt)
             if (altTimes.some(t => t > 0)) donuts.push({ title: 'Altitude', zones: ALTITUDE_ZONES_DEF, times: altTimes })
@@ -8276,12 +8289,12 @@ conseil pour la prochaine séance similaire.`
             const cadTimes = zoneTimesFromStream(a.streams?.cadence, CADENCE_RUN_ZONES_DEF, dt)
             if (cadTimes.some(t => t > 0)) donuts.push({ title: 'Cadence', zones: CADENCE_RUN_ZONES_DEF, times: cadTimes })
           }
-          if (tempTimes.some(t => t > 0)) donuts.push({ title: 'Température', zones: TEMP_ZONES_PARSED, times: tempTimes })
+          if (tempTimes.some(t => t > 0)) donuts.push({ title: t('actp.temperature'), zones: TEMP_ZONES_PARSED, times: tempTimes })
           if (!donuts.length) return null
           return (
             <div style={{ marginBottom: 32, paddingTop: 24 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-                Répartitions
+                {t('actp.distributions')}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
                 {donuts.map(d => (
@@ -8303,11 +8316,11 @@ conseil pour la prochaine séance similaire.`
           const altTimes  = zoneTimesFromStream(a.streams?.altitude, ALTITUDE_ZONES_DEF, dt)
           const tempTimes = zoneTimesFromStream(a.streams?.temp, TEMP_ZONES_PARSED, dt)
           const donuts: { title: string; zones: ParsedZone[]; times: number[] }[] = []
-          if (bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0)) donuts.push({ title: 'Puissance', zones: bikeZones, times: powerTimesZ })
-          if (hrTimesZ && hrTimesZ.some(t => t > 0))                    donuts.push({ title: 'FC zones',  zones: hrZones, times: hrTimesZ })
+          if (bikeZones && powerTimesZ && powerTimesZ.some(t => t > 0)) donuts.push({ title: t('actp.power'), zones: bikeZones, times: powerTimesZ })
+          if (hrTimesZ && hrTimesZ.some(t => t > 0))                    donuts.push({ title: t('actp.hr_zones'),  zones: hrZones, times: hrTimesZ })
           if (cadTimes.some(t => t > 0))                                donuts.push({ title: 'Cadence',   zones: CADENCE_BIKE_ZONES_PARSED, times: cadTimes })
           if (altTimes.some(t => t > 0))                                donuts.push({ title: 'Altitude',  zones: ALTITUDE_ZONES_DEF, times: altTimes })
-          if (tempTimes.some(t => t > 0))                               donuts.push({ title: 'Température', zones: TEMP_ZONES_PARSED, times: tempTimes })
+          if (tempTimes.some(t => t > 0))                               donuts.push({ title: t('actp.temperature'), zones: TEMP_ZONES_PARSED, times: tempTimes })
           if (!donuts.length) return null
           return (
             <div style={{ marginBottom: 32, paddingTop: 24 }}>
@@ -8316,7 +8329,7 @@ conseil pour la prochaine séance similaire.`
                 @media (min-width: 768px) { .cyc-donuts-grid { grid-template-columns: repeat(3, 1fr); } }
               `}</style>
               <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-                Répartitions
+                {t('actp.distributions')}
               </div>
               <div className="cyc-donuts-grid">
                 {donuts.map(d => (
@@ -8337,13 +8350,13 @@ conseil pour la prochaine séance similaire.`
           const spmTimes  = zoneTimesFromStream(a.streams?.cadence, SPM_ROWING_ZONES_DEF, dt)
           const tempTimes = zoneTimesFromStream(a.streams?.temp, TEMP_ZONES_PARSED, dt)
           const donuts: { title: string; zones: ParsedZone[]; times: number[] }[] = []
-          if (hrTimesZ && hrTimesZ.some(t => t > 0)) donuts.push({ title: 'FC zones', zones: hrZones, times: hrTimesZ })
+          if (hrTimesZ && hrTimesZ.some(t => t > 0)) donuts.push({ title: t('actp.hr_zones'), zones: hrZones, times: hrTimesZ })
           if (spmTimes.some(t => t > 0))  donuts.push({ title: 'SPM',         zones: SPM_ROWING_ZONES_DEF, times: spmTimes })
-          if (tempTimes.some(t => t > 0)) donuts.push({ title: 'Température', zones: TEMP_ZONES_PARSED,    times: tempTimes })
+          if (tempTimes.some(t => t > 0)) donuts.push({ title: t('actp.temperature'), zones: TEMP_ZONES_PARSED,    times: tempTimes })
           if (!donuts.length) return null
           return (
             <div style={{ marginBottom: 32, paddingTop: 24 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>Répartitions</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>{t('actp.distributions')}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
                 {donuts.map(d => (
                   <div key={d.title}>
@@ -8364,11 +8377,11 @@ conseil pour la prochaine séance similaire.`
           const tempTimes = zoneTimesFromStream(a.streams?.temp, TEMP_ZONES_PARSED, dt)
           const donuts: { title: string; zones: ParsedZone[]; times: number[] }[] = []
           if (cadTimes.some(t => t > 0))  donuts.push({ title: 'Cadence',    zones: CADENCE_SWIM_ZONES_DEF, times: cadTimes })
-          if (tempTimes.some(t => t > 0)) donuts.push({ title: 'Température', zones: TEMP_ZONES_PARSED,      times: tempTimes })
+          if (tempTimes.some(t => t > 0)) donuts.push({ title: t('actp.temperature'), zones: TEMP_ZONES_PARSED,      times: tempTimes })
           if (!donuts.length) return null
           return (
             <div style={{ marginBottom: 32, paddingTop: 24 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>Répartitions</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>{t('actp.distributions')}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
                 {donuts.map(d => (
                   <div key={d.title}>
@@ -8385,37 +8398,37 @@ conseil pour la prochaine séance similaire.`
         {(() => {
           const insights: { type: 'good' | 'neutral' | 'warn'; text: string }[] = []
           if (decoupling !== null && !isRun) {
-            if (decoupling < 5)        insights.push({ type: 'good',    text: `Bonne résistance aérobie — découplage FC/puissance de ${decoupling.toFixed(1)}% (< 5% : excellent)` })
-            else if (decoupling < 10)  insights.push({ type: 'neutral', text: `Légère dérive cardiaque — découplage de ${decoupling.toFixed(1)}% (normal sur les sorties longues)` })
-            else                       insights.push({ type: 'warn',    text: `Dérive cardiaque élevée — découplage de ${decoupling.toFixed(1)}% → fatigue ou base aérobie insuffisante` })
+            if (decoupling < 5)        insights.push({ type: 'good',    text: t('actp.ins_good_aerobic', { v: decoupling.toFixed(1) }) })
+            else if (decoupling < 10)  insights.push({ type: 'neutral', text: t('actp.ins_slight_drift', { v: decoupling.toFixed(1) }) })
+            else                       insights.push({ type: 'warn',    text: t('actp.ins_high_drift', { v: decoupling.toFixed(1) }) })
           }
           if (isBike && vi !== null) {
             const viNum = parseFloat(vi)
-            if (viNum < 1.05)      insights.push({ type: 'good',    text: `Effort très régulier — variabilité de puissance VI ${vi} (idéal triathlon / endurance)` })
-            else if (viNum < 1.12) insights.push({ type: 'neutral', text: `Effort modérément variable — VI ${vi}` })
-            else                   insights.push({ type: 'neutral', text: `Effort très variable — VI ${vi} (typique des parcours accidentés)` })
+            if (viNum < 1.05)      insights.push({ type: 'good',    text: t('actp.ins_very_steady', { v: vi }) })
+            else if (viNum < 1.12) insights.push({ type: 'neutral', text: t('actp.ins_mod_variable', { v: vi }) })
+            else                   insights.push({ type: 'neutral', text: t('actp.ins_very_variable', { v: vi }) })
           }
           if (isBike && a.intensity_factor) {
             const ifNum = Number(a.intensity_factor)
-            if (ifNum < 0.75)      insights.push({ type: 'good',    text: `Sortie en zone d'endurance — IF ${ifNum.toFixed(2)} (récupération rapide prévue)` })
-            else if (ifNum < 0.85) insights.push({ type: 'neutral', text: `Sortie à allure tempo — IF ${ifNum.toFixed(2)}` })
-            else if (ifNum < 0.95) insights.push({ type: 'neutral', text: `Sortie intensive — IF ${ifNum.toFixed(2)}` })
-            else                   insights.push({ type: 'warn',    text: `Effort maximal — IF ${ifNum.toFixed(2)} → priorité à la récupération` })
+            if (ifNum < 0.75)      insights.push({ type: 'good',    text: t('actp.ins_endurance_zone', { v: ifNum.toFixed(2) }) })
+            else if (ifNum < 0.85) insights.push({ type: 'neutral', text: t('actp.ins_tempo_pace', { v: ifNum.toFixed(2) }) })
+            else if (ifNum < 0.95) insights.push({ type: 'neutral', text: t('actp.ins_intensive', { v: ifNum.toFixed(2) }) })
+            else                   insights.push({ type: 'warn',    text: t('actp.ins_max_effort', { v: ifNum.toFixed(2) }) })
           }
           if (isRun && a.avg_hr && paceS && paceS > 0) {
             const ef = (1000 / paceS) / Number(a.avg_hr)
-            if (ef > 0.013)      insights.push({ type: 'good',    text: `Bonne efficacité aérobie en course — EF ${ef.toFixed(3)} m/s/bpm` })
-            else if (ef > 0.010) insights.push({ type: 'neutral', text: `Efficacité aérobie correcte — EF ${ef.toFixed(3)} m/s/bpm` })
+            if (ef > 0.013)      insights.push({ type: 'good',    text: t('actp.ins_good_run_ef', { v: ef.toFixed(3) }) })
+            else if (ef > 0.010) insights.push({ type: 'neutral', text: t('actp.ins_ok_ef', { v: ef.toFixed(3) }) })
           }
           if (a.suffer_score != null && Number(a.suffer_score) > 200) {
-            insights.push({ type: 'warn', text: `Score de souffrance élevé — ${a.suffer_score} (récupération recommandée avant la prochaine séance intense)` })
+            insights.push({ type: 'warn', text: t('actp.ins_high_suffer', { v: String(a.suffer_score) }) })
           }
           if (!insights.length) return null
           return (
             <div style={{ marginBottom: 32, paddingTop: 24 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
                 textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-                Analyse automatique
+                {t('actp.auto_analysis')}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {insights.map((ins, i) => {
@@ -8528,7 +8541,7 @@ conseil pour la prochaine séance similaire.`
                         fontSize: 12, fontWeight: 500, cursor: 'pointer',
                       }}
                     >
-                      <Sparkles size={14} /> Analyser avec l&apos;IA
+                      <Sparkles size={14} /> {t('actp.analyze_with_ai')}
                     </button>
                     <AIBubble text={decoupAI.text} status={decoupAI.status} onRetry={() => { decoupAI.reset(); decoupAI.run(buildDecouplingPrompt()) }} />
                   </div>
@@ -8563,7 +8576,7 @@ conseil pour la prochaine séance similaire.`
                 <div style={{ marginBottom: 32 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
                     textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
-                    Efficacité aérobie
+                    {t('actp.aerobic_efficiency')}
                   </div>
                   <AerobicEfficiency
                     watts={s.watts!}
@@ -8600,7 +8613,7 @@ conseil pour la prochaine séance similaire.`
         initialActiveLap={lapsViewInitial}
         laps={a.laps ?? []}
         streams={a.streams ?? null}
-        sportLabel={SPORT_LABEL[a.sport_type] ?? a.sport_type}
+        sportLabel={sportLabel(a.sport_type, t)}
         totalDistanceM={a.distance_m ?? null}
         totalDurationS={a.moving_time_s ?? null}
         ftp={bikeZoneRow?.ftp_watts ?? null}
@@ -8617,9 +8630,9 @@ conseil pour la prochaine séance similaire.`
 // CALENDAR — Apple Calendar style (all screen sizes)
 // ─────────────────────────────────────────────────────────────
 
-const MCAL_MONTHS    = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-const MCAL_DAYS_MOB  = ['L','M','M','J','V','S','D']
-const MCAL_DAYS_DESK = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
+const MCAL_MONTHS    = ['actp.month_1','actp.month_2','actp.month_3','actp.month_4','actp.month_5','actp.month_6','actp.month_7','actp.month_8','actp.month_9','actp.month_10','actp.month_11','actp.month_12']
+const MCAL_DAYS_MOB  = ['actp.dow_s_1','actp.dow_s_2','actp.dow_s_3','actp.dow_s_4','actp.dow_s_5','actp.dow_s_6','actp.dow_s_7']
+const MCAL_DAYS_DESK = ['actp.dow_l_1','actp.dow_l_2','actp.dow_l_3','actp.dow_l_4','actp.dow_l_5','actp.dow_l_6','actp.dow_l_7']
 
 type MK = { year: number; month: number }
 
@@ -8644,6 +8657,7 @@ function CalendarMonthGrid({ mk, actMap, todayStr, isMobile, onDayTap }: {
   isMobile: boolean
   onDayTap: (d: string) => void
 }) {
+  const { t } = useI18n()
   const firstDow = firstDowMK(mk)
   const days     = daysInMK(mk)
   const cells: (number | null)[] = [
@@ -8711,7 +8725,7 @@ function CalendarMonthGrid({ mk, actMap, todayStr, isMobile, onDayTap }: {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
                     {acts.slice(0, 3).map((a, ai) => {
                       const col   = SPORT_COLOR[a.sport_type] ?? '#94a3b8'
-                      const label = `${SPORT_LABEL[a.sport_type]}${a.moving_time_s ? ` · ${fmtDur(a.moving_time_s)}` : ''}`
+                      const label = `${sportLabel(a.sport_type, t)}${a.moving_time_s ? ` · ${fmtDur(a.moving_time_s)}` : ''}`
                       return (
                         <div key={ai} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           <div style={{ width: 6, height: 6, borderRadius: '50%', background: col, flexShrink: 0 }} />
@@ -8748,6 +8762,7 @@ function DayPanel({ date, acts, isMobile, onClose, onSelect }: {
   onClose: () => void
   onSelect: (a: Activity) => void
 }) {
+  const { t } = useI18n()
   const d   = new Date(date + 'T00:00:00')
   const cap = (() => {
     const s = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -8757,7 +8772,7 @@ function DayPanel({ date, acts, isMobile, onClose, onSelect }: {
   const actList = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {acts.length === 0 ? (
-        <p style={{ fontSize: 13, color: T.textMuted, margin: 0 }}>Aucune activité ce jour</p>
+        <p style={{ fontSize: 13, color: T.textMuted, margin: 0 }}>{t('actp.no_activity_day')}</p>
       ) : acts.map(a => {
         const col = SPORT_COLOR[a.sport_type] ?? '#888'
         return (
@@ -8766,10 +8781,10 @@ function DayPanel({ date, acts, isMobile, onClose, onSelect }: {
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: T.text, margin: 0, lineHeight: 1.3 }}>
-                {a.title || SPORT_LABEL[a.sport_type]}
+                {a.title || sportLabel(a.sport_type, t)}
               </p>
               <p style={{ fontSize: 11, color: T.textMuted, margin: '2px 0 0' }}>
-                {SPORT_LABEL[a.sport_type]}
+                {sportLabel(a.sport_type, t)}
                 {a.moving_time_s ? ` · ${fmtDur(a.moving_time_s)}`  : ''}
                 {a.distance_m    ? ` · ${fmtDist(a.distance_m)}`    : ''}
               </p>
@@ -8831,6 +8846,7 @@ function CalendarView({ activities, onSelect, isMobile }: {
   onSelect: (a: Activity) => void
   isMobile: boolean
 }) {
+  const { t } = useI18n()
   const now      = new Date()
   const todayStr = toDS(now.getFullYear(), now.getMonth(), now.getDate())
   const curMK: MK = { year: now.getFullYear(), month: now.getMonth() }
@@ -8920,7 +8936,7 @@ function CalendarView({ activities, onSelect, isMobile }: {
             textTransform: 'uppercase', letterSpacing: 0.4,
             color: i >= 5 ? T.textMuted : T.textSub,
           }}>
-            {d}
+            {t(d)}
           </div>
         ))}
       </div>
@@ -8949,7 +8965,7 @@ function CalendarView({ activities, onSelect, isMobile }: {
                 fontSize: 28, fontWeight: 800,
                 color: T.text, fontFamily: T.fontDisplay, letterSpacing: -0.5,
               }}>
-                {MCAL_MONTHS[mk.month]}
+                {t(MCAL_MONTHS[mk.month])}
               </span>
               {' '}
               <span style={{ fontSize: 15, fontWeight: 400, color: T.textMuted }}>
@@ -9162,7 +9178,7 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
               style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 7,
                 padding: '7px 10px', fontSize: 12, color: T.text, outline: 'none' }}>
               <option value="all">{t('activities.allSports')}</option>
-              {allSports.map(s => <option key={s} value={s}>{SPORT_LABEL[s]}</option>)}
+              {allSports.map(s => <option key={s} value={s}>{sportLabel(s, t)}</option>)}
             </select>
             <select value={raceFilter} onChange={e => setRaceFilter(e.target.value as typeof raceFilter)}
               style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 7,
@@ -9332,6 +9348,7 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
   sentinelRef: React.RefObject<HTMLDivElement | null>
   loadingMore: boolean
 }) {
+  const { t } = useI18n()
   const [recordsByActivity, setRecordsByActivity] = useState<Map<string, AutoRecRow[]>>(new Map())
   const [bestPerLabel,      setBestPerLabel]      = useState<Map<string, number>>(new Map())
   // Méta par activité : types d'entraînement + nb exos/circuits (muscu) — pour les cartes.
@@ -9434,7 +9451,7 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
     return activities.map(a => {
       const smsn = smSnFromRow(a as Parameters<typeof smSnFromRow>[0], smSnBench)
       const sportColor = SPORT_COLOR[a.sport_type] ?? '#888'
-      const sportLabel = SPORT_LABEL[a.sport_type] ?? a.sport_type
+      const sportLbl = sportLabel(a.sport_type, t)
       const encoded    = a.summary_polyline
         ?? ((a.raw_data as Record<string, unknown> | null)?.map as Record<string, unknown> | undefined)?.summary_polyline as string | undefined
         ?? null
@@ -9459,7 +9476,7 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
         id:               a.id,
         title:            a.title ?? null,
         sportType:        a.sport_type,
-        sportLabel,
+        sportLabel:       sportLbl,
         sportColor,
         startedAt:        a.started_at,
         distance_m:       a.distance_m ? Number(a.distance_m) : null,
@@ -9485,7 +9502,7 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
   if (cards.length === 0) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: T.textMuted, fontSize: 14 }}>
-        Aucune activité
+        {t('actp.no_activity')}
       </div>
     )
   }
@@ -9506,7 +9523,7 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
       </div>
       <div ref={sentinelRef} style={{ height: 1 }} />
       {loadingMore && (
-        <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 12, color: T.textMuted }}>Chargement…</div>
+        <div style={{ padding: '16px 0', textAlign: 'center', fontSize: 12, color: T.textMuted }}>{t('actp.loading')}</div>
       )}
       <style>{`
         .thw-cards-grid {
@@ -9528,6 +9545,7 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
 // SECTION: PROGRESSION
 // ─────────────────────────────────────────────────────────────
 function SectionProgression({ activities }: { activities: Activity[] }) {
+  const { t } = useI18n()
   const bests = useMemo(() => {
     const map: Record<string, {
       longestDist: Activity | null; longestTime: Activity | null
@@ -9562,7 +9580,7 @@ function SectionProgression({ activities }: { activities: Activity[] }) {
   const recent = activities.filter(a => new Date(a.started_at) >= cutoff90).slice(0, 8)
 
   if (!sports.length) {
-    return <div style={{ textAlign: 'center', padding: 60, color: T.textMuted }}>Aucune donnée</div>
+    return <div style={{ textAlign: 'center', padding: 60, color: T.textMuted }}>{t('actp.no_data')}</div>
   }
 
   return (
@@ -9574,17 +9592,17 @@ function SectionProgression({ activities }: { activities: Activity[] }) {
           const count = activities.filter(a => a.sport_type === sport).length
 
           const records = [
-            { label: 'Plus longue distance', v: fmtDist(b.longestDist?.distance_m), a: b.longestDist },
-            { label: 'Sortie la plus longue', v: fmtDur(b.longestTime?.moving_time_s), a: b.longestTime },
-            { label: 'Allure la plus rapide', v: (() => {
+            { label: t('actp.longest_distance'), v: fmtDist(b.longestDist?.distance_m), a: b.longestDist },
+            { label: t('actp.longest_time'), v: fmtDur(b.longestTime?.moving_time_s), a: b.longestTime },
+            { label: t('actp.fastest_pace'), v: (() => {
               const act = b.fastestPace
               if (!act) return '—'
               const p = act.avg_pace_s_km
                 ?? (act.moving_time_s && act.distance_m ? (act.moving_time_s / act.distance_m) * 1000 : null)
               return fmtPace(p)
             })(), a: b.fastestPace },
-            { label: 'TSS le plus élevé', v: b.highestTss?.tss ? Math.round(b.highestTss.tss).toString() : '—', a: b.highestTss },
-            { label: 'NP le plus élevé', v: b.highestWatts?.normalized_watts ? `${Math.round(b.highestWatts.normalized_watts)} W` : '—', a: b.highestWatts },
+            { label: t('actp.highest_tss'), v: b.highestTss?.tss ? Math.round(b.highestTss.tss).toString() : '—', a: b.highestTss },
+            { label: t('actp.highest_np'), v: b.highestWatts?.normalized_watts ? `${Math.round(b.highestWatts.normalized_watts)} W` : '—', a: b.highestWatts },
           ].filter(r => r.a && r.v !== '—')
 
           if (!records.length) return null
@@ -9594,9 +9612,9 @@ function SectionProgression({ activities }: { activities: Activity[] }) {
               <div style={{ padding: '11px 16px', background: T.bg, borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 4, height: 16, background: col, borderRadius: 2 }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{SPORT_LABEL[sport]}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{sportLabel(sport, t)}</span>
                 </div>
-                <span style={{ fontSize: 11, color: T.textMuted }}>{count} séance{count !== 1 ? 's' : ''}</span>
+                <span style={{ fontSize: 11, color: T.textMuted }}>{count} {count !== 1 ? t('actp.sessions_lc') : t('actp.session_lc')}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 1, background: T.border }}>
                 {records.map(r => (
@@ -9618,7 +9636,7 @@ function SectionProgression({ activities }: { activities: Activity[] }) {
 
       {recent.length > 0 && (
         <div>
-          <SectionTitle>Activités récentes — 90 jours</SectionTitle>
+          <SectionTitle>{t('actp.recent_activities_90d')}</SectionTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
             {recent.map(a => {
               const col = SPORT_COLOR[a.sport_type] ?? '#888'
@@ -9629,7 +9647,7 @@ function SectionProgression({ activities }: { activities: Activity[] }) {
                 }}>
                   <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
                     <span>{fmtDateShort(a.started_at)}</span>
-                    {a.is_race && <span style={{ color: '#dc2626', fontWeight: 600 }}>Compét.</span>}
+                    {a.is_race && <span style={{ color: '#dc2626', fontWeight: 600 }}>{t('actp.race_short')}</span>}
                   </div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 5 }}>
                     {a.title}
@@ -9654,8 +9672,8 @@ function SectionProgression({ activities }: { activities: Activity[] }) {
 type Section = 'donnees' | 'analyse' | 'progression'
 
 const NAV: { id: Section; label: string; desc: string; Icon: React.ComponentType<{ size?: number; color?: string }> }[] = [
-  { id: 'donnees',     label: 'Données',     desc: 'Charge et volume',      Icon: BarChart2 },
-  { id: 'analyse',     label: 'Analyse',     desc: 'Activités et détails',  Icon: Search },
+  { id: 'donnees',     label: 'actp.nav_data_label',     desc: 'actp.nav_data_desc',      Icon: BarChart2 },
+  { id: 'analyse',     label: 'actp.nav_analysis_label', desc: 'actp.nav_analysis_desc',  Icon: Search },
   // Onglet « Progression » retiré (trop complexe) — à réactiver plus tard.
 ]
 
@@ -9668,6 +9686,7 @@ export default function TrainingPage() {
 }
 
 function TrainingPageInner() {
+  const { t } = useI18n()
   useTheme() // branche sur le thème global (force re-render quand dark/light change)
   const { activities, totalCount, loading, loadingMore, hasMore, error, reload, loadMore, removeActivity } = useActivities()
   const { showToast } = useToast()
@@ -9712,9 +9731,9 @@ function TrainingPageInner() {
     const { error: delErr } = await sb.from('activities').delete().eq('id', actId)
     if (!delErr) {
       removeActivity(actId)
-      showToast('Activité supprimée')
+      showToast(t('actp.activity_deleted'))
     } else {
-      showToast('Erreur lors de la suppression')
+      showToast(t('actp.delete_error_generic'))
     }
   }
 
@@ -9747,11 +9766,11 @@ function TrainingPageInner() {
       formData.append('file', file)
       const res = await fetch('/api/parse-activity-file', { method: 'POST', body: formData })
       const json = await res.json() as { activity?: { name?: string; date?: string; duration_seconds?: number; distance_km?: number; elevation_gain_m?: number; hr_avg?: number; hr_max?: number; calories?: number; tss?: number }; error?: string }
-      if (!res.ok || !json.activity) throw new Error(json.error ?? 'Erreur import')
+      if (!res.ok || !json.activity) throw new Error(json.error ?? t('actp.import_error'))
       const a = json.activity
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
-      if (!user) throw new Error('Non connecté')
+      if (!user) throw new Error(t('actp.not_connected'))
       const { error: insErr } = await sb.from('activities').insert({
         user_id: user.id,
         title: a.name ?? file.name,
@@ -9767,10 +9786,10 @@ function TrainingPageInner() {
         provider: 'manual_import',
       })
       if (insErr) throw insErr
-      showToast('Activité importée')
+      showToast(t('actp.activity_imported'))
       await reload()
     } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : 'Erreur import')
+      showToast(e instanceof Error ? e.message : t('actp.import_error'))
     } finally {
       setImporting(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -9792,11 +9811,11 @@ function TrainingPageInner() {
     try {
       const res  = await fetch('/api/sync/strava', { method: 'POST' })
       const json = await res.json() as { synced?: number; error?: string }
-      if (!res.ok) throw new Error(json.error ?? 'Sync échoué')
-      setSyncMsg(json.synced === 0 ? 'À jour' : `+${json.synced} activité${json.synced !== 1 ? 's' : ''}`)
+      if (!res.ok) throw new Error(json.error ?? t('actp.sync_failed'))
+      setSyncMsg(json.synced === 0 ? t('actp.up_to_date') : t('actp.synced_n', { n: json.synced ?? 0 }))
       await reload()
     } catch (e) {
-      setSyncMsg(e instanceof Error ? e.message : 'Erreur')
+      setSyncMsg(e instanceof Error ? e.message : t('actp.error'))
     } finally {
       setSyncing(false); setTimeout(() => setSyncMsg(null), 4000)
     }
@@ -9809,8 +9828,8 @@ function TrainingPageInner() {
       const json = await res.json() as { exercises_synced?: number }
       localStorage.setItem('polar_last_sync', String(Date.now()))
       if ((json.exercises_synced ?? 0) > 0) { setSyncMsg(`+${json.exercises_synced} Polar`); await reload() }
-      else setSyncMsg('Polar à jour')
-    } catch { setSyncMsg('Erreur Polar') }
+      else setSyncMsg(t('actp.polar_up_to_date'))
+    } catch { setSyncMsg(t('actp.error_polar')) }
     finally { setSyncingPolar(false); setTimeout(() => setSyncMsg(null), 4000) }
   }
 
@@ -9826,10 +9845,10 @@ function TrainingPageInner() {
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [])
 
-  const tabs: PageTab<Section>[] = NAV.map(n => ({ id: n.id, label: n.label, subtitle: n.desc, icon: n.Icon as unknown as LucideIcon }))
+  const tabs: PageTab<Section>[] = NAV.map(n => ({ id: n.id, label: t(n.label), subtitle: t(n.desc), icon: n.Icon as unknown as LucideIcon }))
   const topControls = (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {loading && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>Chargement…</span>}
+            {loading && <span style={{ fontSize: 11, color: T.textMuted, fontFamily: T.fontBody }}>{t('actp.loading')}</span>}
             {syncing && <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#FC4C02', fontWeight: 600 }}><Spinner size={12} color="#FC4C02" /> Strava</span>}
             {syncingPolar && <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#D0021B', fontWeight: 600 }}><Spinner size={12} color="#D0021B" /> Polar</span>}
             {syncMsg && !syncing && !syncingPolar && (
@@ -9862,7 +9881,7 @@ function TrainingPageInner() {
                 >
                   {/* Header */}
                   <div style={{ padding: '10px 14px 6px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-dim)', borderBottom: '1px solid var(--border)' }}>
-                    Connexions
+                    {t('actp.connections')}
                   </div>
                   {[
                     { name: 'Strava', logo: 'strava', color: '#FC4C02', initial: 'ST', connected: stravaConnected, onPress: () => syncStrava() },
@@ -9899,8 +9918,8 @@ function TrainingPageInner() {
                       </div>
                       <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', flex: 1 }}>{svc.name}</span>
                       {svc.connected
-                        ? <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>✓ Connecté</span>
-                        : <span style={{ fontSize: 11, color: '#06B6D4' }}>{svc.name === 'Garmin' ? 'Importer' : 'Connecter'}</span>
+                        ? <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>✓ {t('actp.connected')}</span>
+                        : <span style={{ fontSize: 11, color: '#06B6D4' }}>{svc.name === 'Garmin' ? t('actp.import') : t('actp.connect')}</span>
                       }
                     </button>
                   ))}
@@ -9910,7 +9929,7 @@ function TrainingPageInner() {
             )}
             <button
               onClick={reload}
-              title="Recharger depuis la base"
+              title={t('actp.reload_from_db')}
               style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radiusSm,
                 color: T.textSub, cursor: 'pointer', padding: '5px 9px', fontSize: 13,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 28 }}
@@ -9926,10 +9945,10 @@ function TrainingPageInner() {
           <>
             {error && (
               <div style={{ background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: T.radius, padding: '16px 18px', marginBottom: 20 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#dc2626', marginBottom: 5 }}>Erreur de chargement</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#dc2626', marginBottom: 5 }}>{t('actp.load_error')}</div>
                 <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 12, fontFamily: 'monospace' }}>{error}</div>
                 <button onClick={reload} style={{ background: T.accent, color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>
-                  Réessayer
+                  {t('actp.retry')}
                 </button>
               </div>
             )}

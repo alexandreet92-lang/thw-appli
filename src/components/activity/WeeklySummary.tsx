@@ -9,11 +9,13 @@ import { IconShare2, IconX } from '@tabler/icons-react'
 import { SPORT_ICON, sportKeyFromType } from '@/components/icons/SportIcon'
 import { shareCard } from '@/lib/share/shareCard'
 import { RecapStory, type RecapAct } from './RecapStory'
+import { useI18n } from '@/lib/i18n'
 
 function fmtH(s: number): string { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min` }
 function getMonday(d: Date): Date { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); const dow = (x.getDay() + 6) % 7; x.setDate(x.getDate() - dow); return x }
 
 export function WeeklySummary({ activities }: { activities: RecapAct[] }) {
+  const { t } = useI18n()
   const now = new Date()
   const weekKey = getMonday(now).toISOString().slice(0, 10)
   const [storyOpen, setStoryOpen] = useState(false)
@@ -47,12 +49,12 @@ export function WeeklySummary({ activities }: { activities: RecapAct[] }) {
   function dismiss() { try { window.localStorage.setItem(`weekly-dismiss-${weekKey}`, '1') } catch { /* ignore */ } setDismissed(true) }
   function onShare() {
     void shareCard({
-      title: `Ma semaine — ${data.label}`, subtitle: 'Récap hebdo', accent,
+      title: t('lo.myWeekShareTitle', { label: data.label }), subtitle: t('lo.recapWeekly'), accent,
       stats: [
-        { label: 'Séances', value: String(data.count) },
-        { label: 'Temps', value: fmtH(data.time) },
-        { label: 'Distance', value: data.dist > 0 ? `${Math.round(data.dist / 1000)} km` : '—' },
-        { label: 'SM total', value: String(Math.round(data.sm)) },
+        { label: t('lo.sessions'), value: String(data.count) },
+        { label: t('lo.time'), value: fmtH(data.time) },
+        { label: t('lo.distance'), value: data.dist > 0 ? `${Math.round(data.dist / 1000)} km` : '—' },
+        { label: t('lo.smTotal'), value: String(Math.round(data.sm)) },
       ], filename: 'hybrid-semaine.png',
     })
   }
@@ -72,23 +74,23 @@ export function WeeklySummary({ activities }: { activities: RecapAct[] }) {
     }}>
       <style>{`@keyframes weeklyIn{from{opacity:0;transform:translateY(14px) scale(0.98)}to{opacity:1;transform:none}}@keyframes recapPulseW{0%,100%{box-shadow:0 4px 14px rgba(0,0,0,0.22)}50%{box-shadow:0 4px 22px ${accent}99}}`}</style>
       {storyOpen && <RecapStory period="week" activities={activities} onClose={() => setStoryOpen(false)} />}
-      <button onClick={dismiss} aria-label="Masquer" style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 28, height: 28, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={15} /></button>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.7)' }}>Récap de la semaine</div>
+      <button onClick={dismiss} aria-label={t('lo.hide')} style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 28, height: 28, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={15} /></button>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.7)' }}>{t('lo.recapWeekLong')}</div>
       <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', textTransform: 'capitalize', margin: '2px 0 16px' }}>{data.label}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 16 }}>
-        {stat('Séances', String(data.count))}
-        {stat('Temps', fmtH(data.time))}
-        {data.dist > 0 ? stat('Distance', `${Math.round(data.dist / 1000)} km`) : stat('SM total', String(Math.round(data.sm)))}
-        {data.best ? stat('Top séance', `SM ${Math.round(data.best.tss ?? 0)}`) : stat('SM total', String(Math.round(data.sm)))}
+        {stat(t('lo.sessions'), String(data.count))}
+        {stat(t('lo.time'), fmtH(data.time))}
+        {data.dist > 0 ? stat(t('lo.distance'), `${Math.round(data.dist / 1000)} km`) : stat(t('lo.smTotal'), String(Math.round(data.sm)))}
+        {data.best ? stat(t('lo.topSession'), `SM ${Math.round(data.best.tss ?? 0)}`) : stat(t('lo.smTotal'), String(Math.round(data.sm)))}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={onShare} style={{
           display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 999,
           background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff',
           fontSize: 13, fontWeight: 700, cursor: 'pointer',
-        }}><IconShare2 size={15} /> Partager ma semaine</button>
+        }}><IconShare2 size={15} /> {t('lo.shareMyWeek')}</button>
         <div style={{ flex: 1 }} />
-        <button onClick={() => setStoryOpen(true)} aria-label="Ouvrir le récap détaillé" style={{
+        <button onClick={() => setStoryOpen(true)} aria-label={t('lo.openDetailedRecap')} style={{
           width: 42, height: 42, borderRadius: '50%', background: '#fff', border: 'none', flexShrink: 0,
           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           animation: 'recapPulseW 2.4s ease-in-out infinite',

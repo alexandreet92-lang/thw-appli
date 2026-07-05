@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 
 // ─── useDarkMode ──────────────────────────────────────────────────────────────
@@ -69,6 +70,14 @@ const RACE_TYPES: { value: string; label: string }[] = [
 ]
 const PRE_LABELS: Record<string, string> = {
   fresh: 'Fraîche', light: 'Légère', moderate: 'Modérée', high: 'Élevée',
+}
+const RACE_TYPE_KEY: Record<string, string> = {
+  training: 'perf2.raceTypeTraining', race: 'perf2.raceTypeRace',
+  competition: 'perf2.raceTypeCompetition', granfondo: 'perf2.raceTypeGranfondo',
+}
+const PRE_FATIGUE_KEY: Record<string, string> = {
+  fresh: 'perf2.preFatigue_fresh', light: 'perf2.preFatigue_light',
+  moderate: 'perf2.preFatigue_moderate', high: 'perf2.preFatigue_high',
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -254,15 +263,19 @@ function Accordion({ title, children }: { title: string; children: React.ReactNo
 const BAREM_TABLE_LABELS: Record<FatigueTable, string> = {
   standard: 'Standard (frais / légère)', moderate: 'Pré-fatigue modérée', heavy: 'Grosse pré-fatigue',
 }
+const BAREM_TABLE_KEY: Record<FatigueTable, string> = {
+  standard: 'perf2.baremStandard', moderate: 'perf2.baremModerate', heavy: 'perf2.baremHeavy',
+}
 function BaremeAccordion() {
+  const { t } = useI18n()
   const [tab, setTab] = useState<FatigueTable>('standard')
   const shownLevels = LEVELS.slice(0, 6)
   return (
-    <Accordion title="Barème des niveaux">
+    <Accordion title={t('perf2.levelsScale')}>
       <div style={{ display:'flex', gap:5, marginBottom:12, flexWrap:'wrap' }}>
-        {(['standard','moderate','heavy'] as FatigueTable[]).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ ...tog(tab === t), fontSize:10, padding:'5px 10px' }}>
-            {BAREM_TABLE_LABELS[t]}
+        {(['standard','moderate','heavy'] as FatigueTable[]).map(tbl => (
+          <button key={tbl} onClick={() => setTab(tbl)} style={{ ...tog(tab === tbl), fontSize:10, padding:'5px 10px' }}>
+            {t(BAREM_TABLE_KEY[tbl])}
           </button>
         ))}
       </div>
@@ -270,7 +283,7 @@ function BaremeAccordion() {
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:10 }}>
           <thead>
             <tr>
-              <th style={{ textAlign:'left', padding:'4px 6px', color:'var(--text-dim)', fontWeight:600, borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>Durée</th>
+              <th style={{ textAlign:'left', padding:'4px 6px', color:'var(--text-dim)', fontWeight:600, borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>{t('perf2.duration')}</th>
               {shownLevels.map(l => (
                 <th key={l.label} style={{ textAlign:'right', padding:'4px 6px', borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>
                   <span style={{ color:l.color, fontWeight:700 }}>{l.label}</span>
@@ -298,6 +311,7 @@ function BaremeAccordion() {
 
 // ─── ScoreSparkline ───────────────────────────────────────────────────────────
 function ScoreSparkline({ races }: { races: RaceRecord[] }) {
+  const { t } = useI18n()
   const wrapRef = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(400)
   useEffect(() => {
@@ -335,7 +349,7 @@ function ScoreSparkline({ races }: { races: RaceRecord[] }) {
     <div ref={wrapRef} style={{ marginBottom:8 }}>
       <p style={{ fontSize:10, color:'var(--text-dim)', margin:'0 0 3px', fontWeight:600,
                   textTransform:'uppercase', letterSpacing:'0.06em' }}>
-        Meilleur score / mois
+        {t('perf2.bestScorePerMonth')}
       </p>
       <svg width={w} height={H} style={{ display:'block', overflow:'visible' }}>
         <defs>
@@ -369,6 +383,7 @@ function ScatterRaceSVG({ races, allYears, onPointClick, highlightIds }: {
   onPointClick: (r: RaceRecord) => void
   highlightIds: Set<string> | null
 }) {
+  const { t } = useI18n()
   const wrapRef = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(520)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
@@ -395,7 +410,7 @@ function ScatterRaceSVG({ races, allYears, onPointClick, highlightIds }: {
   if (allWithDur.length === 0) {
     return (
       <div ref={wrapRef} style={{ height:200, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-dim)', fontSize:13 }}>
-        Aucune course enregistrée
+        {t('perf2.noRaceRecorded')}
       </div>
     )
   }
@@ -442,7 +457,7 @@ function ScatterRaceSVG({ races, allYears, onPointClick, highlightIds }: {
           </text>
         ))}
         {/* Axis labels */}
-        <text x={PL + cW / 2} y={H - 2} textAnchor="middle" fontSize={9} fill={axisLblColor}>Durée (min)</text>
+        <text x={PL + cW / 2} y={H - 2} textAnchor="middle" fontSize={9} fill={axisLblColor}>{t('perf2.durationMin')}</text>
         <text x={10} y={PT + cH / 2} textAnchor="middle" fontSize={9} fill={axisLblColor}
           transform={`rotate(-90, 10, ${PT + cH / 2})`}>NP W/kg</text>
         {/* Points sans puissance — grisés en bas */}
@@ -523,7 +538,7 @@ function ScatterRaceSVG({ races, allYears, onPointClick, highlightIds }: {
           {withoutPow.length > 0 && (
             <div style={{ display:'flex', alignItems:'center', gap:5 }}>
               <div style={{ width:8, height:8, borderRadius:'50%', background:'var(--text-dim)', opacity:0.4 }}/>
-              <span style={{ fontSize:11, color:'var(--text-dim)' }}>Sans puissance</span>
+              <span style={{ fontSize:11, color:'var(--text-dim)' }}>{t('perf2.withoutPower')}</span>
             </div>
           )}
         </div>
@@ -539,6 +554,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
   onImported: (r: RaceRecord) => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [mounted,    setMounted]    = useState(false)
   const [visible,    setVisible]    = useState(false)
   const [closing,    setClosing]    = useState(false)
@@ -573,7 +589,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
       const json = await res.json()
       setAllActs(json.activities ?? [])
     } catch {
-      setError('Impossible de charger les activités Strava')
+      setError(t('perf2.cannotLoadStravaActivities'))
     } finally {
       setLoading(false)
     }
@@ -584,7 +600,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Non connecté')
+      if (!user) throw new Error(t('perf2.notConnected'))
 
       const durSec = a.elapsed_time_s ?? a.moving_time_s ?? 0
       const distKm = a.distance_m ? a.distance_m / 1000 : null
@@ -602,7 +618,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
       const row = {
         user_id: user.id,
         strava_activity_id: a.provider_id ? Number(a.provider_id) : null,
-        name: a.title ?? 'Course Strava',
+        name: a.title ?? t('perf2.stravaRace'),
         date: (a.started_at ?? new Date().toISOString()).slice(0, 10),
         race_type: a.is_race ? 'race' : 'training',
         distance_km: distKm,
@@ -622,7 +638,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
       if (err) throw new Error(err.message)
       onImported(data as RaceRecord)
     } catch (e: any) {
-      setError(e.message ?? 'Erreur import')
+      setError(e.message ?? t('perf2.importError'))
     } finally {
       setImporting(null)
     }
@@ -656,9 +672,9 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
           background:'var(--bg-card)', borderBottom:'1px solid var(--border)',
         }}>
           <div>
-            <h2 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>Importer depuis Strava</h2>
+            <h2 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>{t('perf2.importFromStrava')}</h2>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>
-              {racesOnly ? 'Courses uniquement' : 'Toutes les sorties vélo'} — {activities.length} activité{activities.length !== 1 ? 's' : ''}
+              {racesOnly ? t('perf2.racesOnly') : t('perf2.allBikeRides')} — {activities.length} {activities.length !== 1 ? t('perf2.activities') : t('perf2.activity')}
             </p>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -673,7 +689,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                 {racesOnly ? <><polyline points="20 6 9 17 4 12"/></> : <><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></>}
               </svg>
-              {racesOnly ? 'Courses' : 'Tout'}
+              {racesOnly ? t('perf2.races') : t('perf2.allShort')}
             </button>
             <button onClick={handleClose} style={{
               width:28, height:28, borderRadius:'50%', border:'1px solid var(--border)',
@@ -686,13 +702,13 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
         <div style={{ flex:1, overflowY:'auto', padding:'12px 16px 24px' }}>
           {error && <div style={{ fontSize:12, color:'#f87171', background:'rgba(239,68,68,0.1)', borderRadius:8, padding:'8px 12px', marginBottom:12 }}>{error}</div>}
           {loading && (
-            <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-dim)', fontSize:12 }}>Chargement…</div>
+            <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-dim)', fontSize:12 }}>{t('perf2.loading')}</div>
           )}
           {!loading && activities.length === 0 && (
             <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-dim)', fontSize:12 }}>
               {racesOnly
-                ? <><p style={{ margin:'0 0 8px' }}>Aucune course Strava détectée</p><button onClick={() => setRacesOnly(false)} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-mid)', fontSize:11, cursor:'pointer' }}>Voir toutes les sorties vélo</button></>
-                : 'Toutes tes activités Strava vélo ont déjà été importées'}
+                ? <><p style={{ margin:'0 0 8px' }}>{t('perf2.noStravaRaceDetected')}</p><button onClick={() => setRacesOnly(false)} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-mid)', fontSize:11, cursor:'pointer' }}>{t('perf2.seeAllBikeRides')}</button></>
+                : t('perf2.allStravaBikeImported')}
             </div>
           )}
           {activities.map(a => {
@@ -720,7 +736,7 @@ function StravaImportDrawer({ existingStravaIds, weightKg, onImported, onClose }
                   color: RACE_COLOR, fontSize:12, fontWeight:600,
                   cursor: importing === a.id ? 'not-allowed' : 'pointer', whiteSpace:'nowrap', flexShrink:0,
                 }}>
-                  {importing === a.id ? '…' : 'Importer'}
+                  {importing === a.id ? '…' : t('perf2.import')}
                 </button>
               </div>
             )
@@ -747,6 +763,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
   onSaved: (r: RaceRecord) => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [visible, setVisible] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -803,7 +820,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
       setActivity(a)
       prefill(a)
     } catch (err: any) {
-      setError(err.message ?? 'Erreur de parsing')
+      setError(err.message ?? t('perf2.parsingError'))
       // Fallback: pre-fill name from filename
       setName(file.name.replace(/\.(gpx|fit)$/i, '').replace(/[_-]/g, ' '))
     } finally {
@@ -817,7 +834,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Non connecté')
+      if (!user) throw new Error(t('perf2.notConnected'))
 
       const durSec   = toSec(durationStr) || activity?.duration_seconds || null
       const np       = wattsNpStr  ? Math.round(Number(wattsNpStr))  : (activity?.watts_np  ?? null)
@@ -876,7 +893,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
     distance_km: activity?.distance_km ?? null,
   }) : null
 
-  const INTENSITY_LABELS: Record<number, string> = { 5:'À fond', 4:'Très dur', 3:'Contrôle', 2:'Facile', 1:'Très facile' }
+  const INTENSITY_LABELS: Record<number, string> = { 5:t('perf2.intensity_5'), 4:t('perf2.intensity_4'), 3:t('perf2.intensity_3'), 2:t('perf2.intensity_2'), 1:t('perf2.intensity_1') }
 
   return createPortal(
     <div style={{
@@ -900,12 +917,12 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
         }}>
           <div>
             <h2 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>
-              {activity ? 'Données extraites — vérifiez et confirmez' : 'Upload fichier .gpx / .fit'}
+              {activity ? t('perf2.extractedDataConfirm') : t('perf2.uploadGpxFit')}
             </h2>
             <p style={{ fontSize:11, color:'var(--text-dim)', margin:'2px 0 0' }}>
               {activity
-                ? `${activity.source.toUpperCase()} · ${Object.values(activity).filter(v => v != null && v !== false).length} champs détectés`
-                : 'Extraction automatique de toutes les données disponibles'}
+                ? `${activity.source.toUpperCase()} · ${Object.values(activity).filter(v => v != null && v !== false).length} ${t('perf2.fieldsDetected')}`
+                : t('perf2.autoExtractAll')}
             </p>
           </div>
           <button onClick={handleClose} style={{
@@ -932,14 +949,14 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
             }
             <span style={{ fontSize:13, color: fileName ? 'var(--text)' : 'var(--text-dim)', flex:1 }}>
               {parsing
-                ? 'Analyse du fichier en cours…'
+                ? t('perf2.analyzingFile')
                 : fileName
                   ? `${fileName} ${activity ? '✓' : ''}`
-                  : 'Choisir un fichier .gpx ou .fit'}
+                  : t('perf2.chooseGpxFit')}
             </span>
             {activity && !parsing && (
               <span style={{ fontSize:10, fontWeight:700, color:'#22c55e', background:'rgba(34,197,94,0.12)', padding:'3px 8px', borderRadius:5, border:'1px solid rgba(34,197,94,0.3)' }}>
-                {Object.entries(activity).filter(([k, v]) => v != null && v !== false && k !== 'source' && k !== 'has_power').length} champs extraits
+                {Object.entries(activity).filter(([k, v]) => v != null && v !== false && k !== 'source' && k !== 'has_power').length} {t('perf2.fieldsExtracted')}
               </span>
             )}
             <input type="file" accept=".gpx,.fit" onChange={handleFile} style={{ display:'none' }}/>
@@ -952,10 +969,9 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
           {/* ── No-power notice */}
           {activity && !activity.has_power && (
             <div style={{ background:'rgba(234,179,8,0.08)', border:'1px solid rgba(234,179,8,0.25)', borderRadius:10, padding:'10px 14px' }}>
-              <p style={{ fontSize:12, fontWeight:700, color:'#eab308', margin:'0 0 4px' }}>⚠ Aucun capteur de puissance détecté</p>
+              <p style={{ fontSize:12, fontWeight:700, color:'#eab308', margin:'0 0 4px' }}>⚠ {t('perf2.noPowerSensorDetected')}</p>
               <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>
-                Saisis manuellement les watts NP ci-dessous, ou laisse vide.
-                Le score ne sera pas calculé sans données de puissance.
+                {t('perf2.noPowerHint')}
               </p>
             </div>
           )}
@@ -964,29 +980,29 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
           <div style={secBox('var(--bg-card2)', 'var(--border)')}>
             <div style={secHdr}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth={2.5}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-              <span style={secLbl('var(--text-mid)')}>Identification</span>
+              <span style={secLbl('var(--text-mid)')}>{t('perf2.identification')}</span>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               <div>
-                <p style={lbl10}>Nom de la course *</p>
+                <p style={lbl10}>{t('perf2.raceNameRequired')}</p>
                 <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Tour du Ventoux" style={inp}/>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                 <div>
-                  <p style={lbl10}>Date</p>
+                  <p style={lbl10}>{t('perf2.date')}</p>
                   <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inpGrey}/>
                 </div>
                 <div>
-                  <p style={lbl10}>Durée</p>
+                  <p style={lbl10}>{t('perf2.duration')}</p>
                   <input value={durationStr} onChange={e => setDurationStr(e.target.value)} placeholder="3:45:00" style={inpGrey}/>
                 </div>
               </div>
               <div>
-                <p style={lbl10}>Type de course</p>
+                <p style={lbl10}>{t('perf2.raceType')}</p>
                 <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                   {RACE_TYPES.map(rt => (
                     <button key={rt.value} onClick={() => setRaceType(rt.value)} style={{ ...tog(raceType === rt.value), fontSize:11 }}>
-                      {rt.label}
+                      {t(RACE_TYPE_KEY[rt.value] ?? '') || rt.label}
                     </button>
                   ))}
                 </div>
@@ -999,7 +1015,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
             <div style={secBox('rgba(234,179,8,0.06)', 'rgba(234,179,8,0.2)')}>
               <div style={secHdr}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth={2.5}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                <span style={secLbl('#eab308')}>Performance</span>
+                <span style={secLbl('#eab308')}>{t('perf2.performance')}</span>
               </div>
 
               {/* Read-only GPS metrics */}
@@ -1012,7 +1028,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
                     <span style={{ fontSize:12, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text)' }}>D+ {activity.elevation_gain_m} m</span>
                   )}
                   {activity?.altitude_max_m && (
-                    <span style={{ fontSize:12, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-dim)' }}>Alt max {activity.altitude_max_m} m</span>
+                    <span style={{ fontSize:12, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-dim)' }}>{t('perf2.altMax')} {activity.altitude_max_m} m</span>
                   )}
                   {activity?.speed_avg_kmh && (
                     <span style={{ fontSize:12, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', color:'var(--text-dim)' }}>{activity.speed_avg_kmh} km/h moy</span>
@@ -1026,7 +1042,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
               {/* Editable power */}
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
                 <div>
-                  <p style={lbl10}>NP Watts</p>
+                  <p style={lbl10}>{t('perf2.npWatts')}</p>
                   <input type="number" value={wattsNpStr} onChange={e => setWattsNpStr(e.target.value)}
                     placeholder="Ex: 220" style={inpGrey}/>
                   {wpkgNpPreview && (
@@ -1034,20 +1050,20 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
                   )}
                 </div>
                 <div>
-                  <p style={lbl10}>Watts moyens</p>
+                  <p style={lbl10}>{t('perf2.avgWatts')}</p>
                   <input type="number" value={wattsAvgStr} onChange={e => setWattsAvgStr(e.target.value)}
                     placeholder="Ex: 200" style={inpGrey}/>
                 </div>
                 {(hrAvgStr || activity?.hr_avg) && (
                   <div>
-                    <p style={lbl10}>FC moyenne (bpm)</p>
+                    <p style={lbl10}>{t('perf2.avgHrBpm')}</p>
                     <input type="number" value={hrAvgStr} onChange={e => setHrAvgStr(e.target.value)}
                       placeholder="Ex: 158" style={inpGrey}/>
                   </div>
                 )}
                 {(hrMaxStr || activity?.hr_max) && (
                   <div>
-                    <p style={lbl10}>FC max (bpm)</p>
+                    <p style={lbl10}>{t('perf2.maxHrBpm')}</p>
                     <input type="number" value={hrMaxStr} onChange={e => setHrMaxStr(e.target.value)}
                       placeholder="Ex: 178" style={inpGrey}/>
                   </div>
@@ -1061,7 +1077,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
                 )}
                 {(tempStr || activity?.temp_celsius != null) && (
                   <div>
-                    <p style={lbl10}>Température (°C)</p>
+                    <p style={lbl10}>{t('perf2.temperatureC')}</p>
                     <input type="number" value={tempStr} onChange={e => setTempStr(e.target.value)}
                       placeholder="Ex: 22" style={inpGrey}/>
                   </div>
@@ -1070,7 +1086,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
               {/* Cadence read-only */}
               {activity?.cadence_avg && (
                 <p style={{ fontSize:11, color:'var(--text-dim)', margin:'8px 0 0' }}>
-                  Cadence moy : {activity.cadence_avg} rpm
+                  {t('perf2.avgCadence')} : {activity.cadence_avg} rpm
                   {activity.if_score && ` · IF : ${activity.if_score.toFixed(3)}`}
                 </p>
               )}
@@ -1081,20 +1097,20 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
           <div style={secBox('var(--bg-card2)', 'var(--border)')}>
             <div style={secHdr}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth={2.5}><path d="M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24"/></svg>
-              <span style={secLbl('var(--text-mid)')}>Conditions</span>
+              <span style={secLbl('var(--text-mid)')}>{t('perf2.conditions')}</span>
             </div>
             <div style={{ marginBottom:10 }}>
-              <p style={lbl10}>Pré-fatigue au départ</p>
+              <p style={lbl10}>{t('perf2.preFatigueStart')}</p>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                 {(['fresh','light','moderate','high'] as const).map(k => (
                   <button key={k} onClick={() => setPreFatigue(k)} style={{ ...tog(preFatigue === k), fontSize:11 }}>
-                    {PRE_LABELS[k]}
+                    {t(PRE_FATIGUE_KEY[k] ?? '') || PRE_LABELS[k]}
                   </button>
                 ))}
               </div>
             </div>
             <div style={{ marginBottom:10 }}>
-              <p style={lbl10}>Ressenti global</p>
+              <p style={lbl10}>{t('perf2.overallEffort')}</p>
               <div style={{ display:'flex', gap:5 }}>
                 {[1,2,3,4,5].map(v => (
                   <button key={v} onClick={() => setEffortRating(v)} style={{
@@ -1109,13 +1125,13 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
             </div>
             {!tempStr && !activity?.temp_celsius && (
               <div>
-                <p style={lbl10}>Température (°C) — optionnel</p>
+                <p style={lbl10}>{t('perf2.temperatureCOptional')}</p>
                 <input type="number" value={tempStr} onChange={e => setTempStr(e.target.value)} placeholder="Ex: 22" style={{ ...inpGrey, maxWidth:130 }}/>
               </div>
             )}
             <div style={{ marginTop:10 }}>
-              <p style={lbl10}>Notes (optionnel)</p>
-              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observations…"
+              <p style={lbl10}>{t('perf2.notesOptional')}</p>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('perf2.observationsPlaceholder')}
                 rows={2} style={{ ...inpGrey, resize:'vertical', fontFamily:'var(--font-body)' }}/>
             </div>
           </div>
@@ -1147,7 +1163,7 @@ function FileUploadDrawer({ weightKg, onSaved, onClose }: {
             color: name && !saving ? '#fff' : 'var(--text-dim)',
             fontFamily:'var(--font-display)', fontSize:14, fontWeight:700,
           }}>
-            {saving ? 'Enregistrement…' : 'Confirmer et enregistrer'}
+            {saving ? t('perf2.saving') : t('perf2.confirmAndSave')}
           </button>
         </div>
       </div>
@@ -1163,6 +1179,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
   onDeleted: (id: string) => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [visible, setVisible] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -1226,7 +1243,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
   }
 
   async function handleDelete() {
-    if (!confirm('Supprimer cette course ?')) return
+    if (!confirm(t('perf2.deleteRaceConfirm'))) return
     setDeleting(true)
     try {
       const supabase = createClient()
@@ -1244,7 +1261,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
   if (!mounted) return null
   const shown = visible && !closing
   const lvl = levelOf(sd.total)
-  const INTENSITY_LABELS: Record<number, string> = { 5:'À fond', 4:'Très dur', 3:'Contrôle', 2:'Facile', 1:'Très facile' }
+  const INTENSITY_LABELS: Record<number, string> = { 5:t('perf2.intensity_5'), 4:t('perf2.intensity_4'), 3:t('perf2.intensity_3'), 2:t('perf2.intensity_2'), 1:t('perf2.intensity_1') }
 
   return createPortal(
     <div style={{
@@ -1277,7 +1294,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
                   display:'inline-flex', alignItems:'center', gap:6,
                   fontSize:10, fontWeight:600, padding:'3px 8px', borderRadius:5,
                   background:'var(--bg-card2)', color:'var(--text-mid)',
-                }}><span style={{ width:6, height:6, borderRadius:'50%', background:RACE_COLOR }}/>{RACE_TYPES.find(t => t.value === raceType)?.label ?? raceType}</span>
+                }}><span style={{ width:6, height:6, borderRadius:'50%', background:RACE_COLOR }}/>{t(RACE_TYPE_KEY[raceType] ?? '') || RACE_TYPES.find(rt => rt.value === raceType)?.label || raceType}</span>
               </div>
               <p style={{ fontSize:12, color:'var(--text-dim)', margin:'0 0 8px' }}>
                 {new Date(race.date).toLocaleDateString('fr-FR',{ weekday:'long', day:'2-digit', month:'long', year:'numeric' })}
@@ -1295,7 +1312,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.599h4.172L10.463 0l-7 13.828h4.169"/>
                   </svg>
-                  Voir sur Strava
+                  {t('perf2.viewOnStrava')}
                 </a>
               )}
             </div>
@@ -1314,16 +1331,16 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
           <div style={secBox('rgba(234,179,8,0.08)', 'rgba(234,179,8,0.25)')}>
             <div style={secHdr}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth={2.5}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              <span style={secLbl('#eab308')}>Performance</span>
+              <span style={secLbl('#eab308')}>{t('perf2.performance')}</span>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
               {[
-                { lbl:'NP Watts', val: wattsNp ? `${wattsNp} W` : '—' },
+                { lbl:t('perf2.npWatts'), val: wattsNp ? `${wattsNp} W` : '—' },
                 { lbl:'NP W/kg',  val: wpkgNp  ? wpkgNp.toFixed(2) : '—' },
-                { lbl:'Moy Watts',val: wattsAvgStr || race.watts_avg ? `${wattsAvgStr || race.watts_avg} W` : '—' },
+                { lbl:t('perf2.avgWattsShort'),val: wattsAvgStr || race.watts_avg ? `${wattsAvgStr || race.watts_avg} W` : '—' },
                 { lbl:'SM',       val: tssStr || race.tss ? `${tssStr || race.tss?.toFixed(0)}` : '—' },
                 { lbl:'IF',       val: race.if_score ? race.if_score.toFixed(2) : '—' },
-                { lbl:'Durée',    val: durSec ? secToHMS(durSec) : '—' },
+                { lbl:t('perf2.duration'),    val: durSec ? secToHMS(durSec) : '—' },
               ].map(({ lbl, val }) => (
                 <div key={lbl}>
                   <p style={lbl10}>{lbl}</p>
@@ -1333,11 +1350,11 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:10 }}>
               <div>
-                <p style={lbl10}>NP Watts</p>
+                <p style={lbl10}>{t('perf2.npWatts')}</p>
                 <input type="number" value={wattsNpStr} onChange={e => setWattsNpStr(e.target.value)} placeholder={race.watts_np ? String(race.watts_np) : 'Ex: 210'} style={{ ...inpGrey, fontSize:12 }}/>
               </div>
               <div>
-                <p style={lbl10}>Watts moyens</p>
+                <p style={lbl10}>{t('perf2.avgWatts')}</p>
                 <input type="number" value={wattsAvgStr} onChange={e => setWattsAvgStr(e.target.value)} placeholder={race.watts_avg ? String(race.watts_avg) : 'Ex: 195'} style={{ ...inpGrey, fontSize:12 }}/>
               </div>
               <div>
@@ -1381,11 +1398,11 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
           <div style={secBox('rgba(34,197,94,0.08)', 'rgba(34,197,94,0.25)')}>
             <div style={secHdr}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={2.5}><polyline points="22 17 13 8 8 13 2 7"/></svg>
-              <span style={secLbl('#22c55e')}>Profil de la course</span>
+              <span style={secLbl('#22c55e')}>{t('perf2.raceProfile')}</span>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8 }}>
               {[
-                { lbl:'Distance', val: distKm ? `${distKm.toFixed(1)} km` : '—' },
+                { lbl:t('perf2.distance'), val: distKm ? `${distKm.toFixed(1)} km` : '—' },
                 { lbl:'D+',       val: elevGain ? `${elevGain} m` : '—' },
                 { lbl:'D+/100km', val: distKm && elevGain ? `${((elevGain / distKm) * 100).toFixed(0)} m` : '—' },
               ].map(({ lbl, val }) => (
@@ -1401,29 +1418,29 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
           <div style={secBox('var(--bg-card2)', 'var(--border)')}>
             <div style={secHdr}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth={2.5}><path d="M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24"/></svg>
-              <span style={secLbl('var(--text-mid)')}>Conditions</span>
+              <span style={secLbl('var(--text-mid)')}>{t('perf2.conditions')}</span>
             </div>
             {/* Type course */}
             <div style={{ marginBottom:10 }}>
               <p style={lbl10}>Type de course</p>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                 {RACE_TYPES.map(rt => (
-                  <button key={rt.value} onClick={() => setRaceType(rt.value)} style={tog(raceType === rt.value)}>{rt.label}</button>
+                  <button key={rt.value} onClick={() => setRaceType(rt.value)} style={tog(raceType === rt.value)}>{t(RACE_TYPE_KEY[rt.value] ?? '') || rt.label}</button>
                 ))}
               </div>
             </div>
             {/* Pré-fatigue */}
             <div style={{ marginBottom:10 }}>
-              <p style={lbl10}>Pré-fatigue au départ</p>
+              <p style={lbl10}>{t('perf2.preFatigueStart')}</p>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                 {(['fresh','light','moderate','high'] as const).map(k => (
-                  <button key={k} onClick={() => setPreFatigue(k)} style={tog(preFatigue === k)}>{PRE_LABELS[k]}</button>
+                  <button key={k} onClick={() => setPreFatigue(k)} style={tog(preFatigue === k)}>{t(PRE_FATIGUE_KEY[k] ?? '') || PRE_LABELS[k]}</button>
                 ))}
               </div>
             </div>
             {/* Ressenti */}
             <div style={{ marginBottom:10 }}>
-              <p style={lbl10}>Ressenti global</p>
+              <p style={lbl10}>{t('perf2.overallEffort')}</p>
               <div style={{ display:'flex', gap:6 }}>
                 {[1,2,3,4,5].map(v => (
                   <button key={v} onClick={() => setEffortRating(v)} style={{
@@ -1438,13 +1455,13 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
             </div>
             {/* Température */}
             <div style={{ marginBottom:10 }}>
-              <p style={lbl10}>Température (°C)</p>
+              <p style={lbl10}>{t('perf2.temperatureC')}</p>
               <input type="number" value={tempStr} onChange={e => setTempStr(e.target.value)} placeholder="Ex: 22" style={{ ...inpGrey, maxWidth:140 }}/>
             </div>
             {/* Notes */}
             <div>
-              <p style={lbl10}>Notes</p>
-              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observations…" rows={3} style={{ ...inpGrey, resize:'vertical', fontFamily:'var(--font-body)' }}/>
+              <p style={lbl10}>{t('perf2.notes')}</p>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('perf2.observationsPlaceholder')} rows={3} style={{ ...inpGrey, resize:'vertical', fontFamily:'var(--font-body)' }}/>
             </div>
           </div>
 
@@ -1452,7 +1469,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
           <div style={secBox('rgba(139,92,246,0.08)', 'rgba(139,92,246,0.3)')}>
             <div style={secHdr}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth={2.5}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              <span style={secLbl('#8b5cf6')}>Score</span>
+              <span style={secLbl('#8b5cf6')}>{t('perf2.score')}</span>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:12 }}>
               <div style={{ textAlign:'center' }}>
@@ -1469,7 +1486,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
             {/* Détail coefficients */}
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
               {[
-                { lbl:'Brut', val:`${sd.scoreBrut.toFixed(1)}`, col:'var(--text-mid)' },
+                { lbl:t('perf2.rawShort'), val:`${sd.scoreBrut.toFixed(1)}`, col:'var(--text-mid)' },
                 { lbl:'cTemp', val:`×${sd.cTemp.toFixed(2)}`, col: sd.cTemp > 1 ? '#22c55e' : 'var(--text-dim)' },
                 { lbl:'cD+', val:`×${sd.cElevation.toFixed(2)}`, col: sd.cElevation > 1 ? '#22c55e' : 'var(--text-dim)' },
                 { lbl:'cRessenti', val:`×${sd.cRessenti.toFixed(2)}`, col: sd.cRessenti > 1 ? '#22c55e' : 'var(--text-dim)' },
@@ -1497,7 +1514,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
             color: saving ? 'var(--text-dim)' : '#fff',
             fontFamily:'var(--font-display)', fontSize:14, fontWeight:700, marginBottom:8,
           }}>
-            {saving ? 'Enregistrement…' : 'Enregistrer'}
+            {saving ? t('perf2.saving') : t('perf2.save')}
           </button>
           <button onClick={() => void handleDelete()} disabled={deleting} style={{
             width:'100%', padding:'10px', borderRadius:12,
@@ -1505,7 +1522,7 @@ function RaceCardDrawer({ race: initialRace, onSaved, onDeleted, onClose }: {
             background:'rgba(239,68,68,0.08)', color:'#f87171',
             fontFamily:'var(--font-body)', fontSize:13, fontWeight:600,
           }}>
-            {deleting ? 'Suppression…' : 'Supprimer cette course'}
+            {deleting ? t('perf2.deleting') : t('perf2.deleteThisRace')}
           </button>
         </div>
       </div>
@@ -1521,6 +1538,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
   onFilterChange: (ids: Set<string> | null) => void
   onRaceClick: (r: RaceRecord) => void
 }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const [visible, setVisible] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -1579,8 +1597,8 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
           background:'var(--bg-card)', borderBottom:'1px solid var(--border)',
         }}>
           <div>
-            <h2 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>Classement des courses</h2>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>Score normalisé /100 — conditions incluses</p>
+            <h2 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:700, margin:0, color:'var(--text)' }}>{t('perf2.racesRanking')}</h2>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>{t('perf2.normalizedScore')}</p>
           </div>
           <button onClick={handleClose} style={{
             width:28, height:28, borderRadius:'50%', border:'1px solid var(--border)',
@@ -1592,19 +1610,19 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
         {/* Filtres */}
         <div style={{ padding:'10px 16px 0', flexShrink:0, borderBottom:'1px solid var(--border)' }}>
           <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:8 }}>
-            <button style={tog(yearFilter === null, RACE_COLOR)} onClick={() => setYearFilter(null)}>Toutes</button>
+            <button style={tog(yearFilter === null, RACE_COLOR)} onClick={() => setYearFilter(null)}>{t('perf2.all')}</button>
             {allYears.map(yr => (
               <button key={yr} style={tog(yearFilter === yr, RACE_COLOR)} onClick={() => setYearFilter(yr === yearFilter ? null : yr)}>{yr}</button>
             ))}
           </div>
           <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:10 }}>
             {DUR_FILTERS.map(({ label, id }) => (
-              <button key={label} style={tog(durFilter === id, '#6b7280')} onClick={() => setDurFilter(id === durFilter ? null : id)}>{label}</button>
+              <button key={label} style={tog(durFilter === id, '#6b7280')} onClick={() => setDurFilter(id === durFilter ? null : id)}>{id === null ? t('perf2.all') : label}</button>
             ))}
           </div>
           {(yearFilter || durFilter) && (
             <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:8 }}>
-              {ranked.length} course{ranked.length !== 1 ? 's' : ''} filtrée{ranked.length !== 1 ? 's' : ''}
+              {ranked.length} {ranked.length !== 1 ? t('perf2.racesFilteredPlural') : t('perf2.raceFilteredSingular')}
             </div>
           )}
         </div>
@@ -1629,7 +1647,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
             return (
               <div style={{ marginBottom:14 }}>
                 <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em',
-                             color:'var(--text-dim)', margin:'0 0 8px' }}>Meilleur NP W/kg par durée</p>
+                             color:'var(--text-dim)', margin:'0 0 8px' }}>{t('perf2.bestNpWkgByDuration')}</p>
                 <div style={{ display:'grid', gridTemplateColumns:`repeat(${bestBands.length},1fr)`, gap:6 }}>
                   {bestBands.map(({ label, best }) => best && (
                     <div key={label} style={{
@@ -1652,7 +1670,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
           })()}
 
           {ranked.length === 0 && (
-            <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-dim)', fontSize:12 }}>Aucune course pour ce filtre</div>
+            <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-dim)', fontSize:12 }}>{t('perf2.noRaceForFilter')}</div>
           )}
           {ranked.map(({ r, sd }, idx) => {
             const rank = idx + 1
@@ -1673,7 +1691,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
                       <span style={{ fontFamily:'var(--font-display)', fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.name}</span>
-                      {rank === 1 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>⭐ Meilleure perf</span>}
+                      {rank === 1 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>⭐ {t('perf2.bestPerf')}</span>}
                     </div>
                     <div style={{ display:'flex', gap:8, marginTop:2, flexWrap:'wrap' }}>
                       <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(r.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</span>
@@ -1693,7 +1711,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
                   <div style={{ borderTop:'1px solid var(--border)', padding:'12px 14px', background:'var(--bg-card)' }}>
                     <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
                       {[
-                        { lbl:'Brut', val:`${sd.scoreBrut.toFixed(1)}` },
+                        { lbl:t('perf2.rawShort'), val:`${sd.scoreBrut.toFixed(1)}` },
                         { lbl:'cTemp', val:`×${sd.cTemp.toFixed(2)}` },
                         { lbl:'cD+', val:`×${sd.cElevation.toFixed(2)}` },
                         { lbl:'cRessenti', val:`×${sd.cRessenti.toFixed(2)}` },
@@ -1712,7 +1730,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
                       padding:'7px 14px', borderRadius:8,
                       background:`${RACE_COLOR}15`, border:`1px solid ${RACE_COLOR}40`,
                       color:RACE_COLOR, fontSize:12, fontWeight:600, cursor:'pointer',
-                    }}>Ouvrir la fiche →</button>
+                    }}>{t('perf2.openCard')} →</button>
                   </div>
                 )}
               </div>
@@ -1720,7 +1738,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
           })}
 
           <BaremeAccordion/>
-          <Accordion title="Méthode de calcul">
+          <Accordion title={t('perf2.calcMethod')}>
             <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 14px', marginBottom:8, fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums', fontSize:12, color:RACE_COLOR }}>
               score_brut = (NP W/kg ÷ Réf. Alien) × 100
             </div>
@@ -1728,8 +1746,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
               score = min(100, score_brut × cTemp × cD+ × cRessenti)
             </div>
             <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'10px 0 0' }}>
-              La <strong style={{ color:'var(--text)' }}>pré-fatigue</strong> est encodée dans la table de référence.
-              Le coefficient <strong style={{ color:'var(--text)' }}>cD+</strong> valorise les courses montagnueuses (D+/100km).
+              {t('perf2.racesMethodNote')}
             </p>
           </Accordion>
         </div>
@@ -1743,6 +1760,7 @@ function RaceRankingDrawer({ races, onClose, onFilterChange, onRaceClick }: {
 interface RacesSectionProps { profile: { weight: number } }
 
 export function RacesSection({ profile }: RacesSectionProps) {
+  const { t } = useI18n()
   const [races,         setRaces]         = useState<RaceRecord[]>([])
   const [loaded,        setLoaded]        = useState(false)
   const [showStrava,    setShowStrava]    = useState(false)
@@ -1783,11 +1801,11 @@ export function RacesSection({ profile }: RacesSectionProps) {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:8 }}>
         <div>
           <h2 style={{ fontFamily:'var(--font-display)', fontSize:14, fontWeight:700, margin:0, color:'var(--text)' }}>
-            Courses &amp; Compétitions — NP W/kg par durée
+            {t('perf2.racesCompetitionsTitle')}
           </h2>
           {loaded && races.length > 0 && (
             <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>
-              {races.length} course{races.length > 1 ? 's' : ''} · cliquer sur un point pour la fiche
+              {races.length} {races.length > 1 ? t('perf2.racesPlural') : t('perf2.raceSingular')} · {t('perf2.clickPointForCard')}
             </div>
           )}
         </div>
@@ -1798,7 +1816,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
             color:'#f97316', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
           }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.599h4.172L10.463 0l-7 13.828h4.169"/></svg>
-            + Importer depuis Strava
+            + {t('perf2.importFromStrava')}
           </button>
           <button onClick={() => setShowUpload(true)} style={{
             display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:8,
@@ -1806,7 +1824,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
             color:'var(--text-mid)', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
           }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            + Upload fichier
+            + {t('perf2.uploadFile')}
           </button>
           <button onClick={() => setShowRanking(true)} disabled={races.length === 0} style={{
             display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:8,
@@ -1816,7 +1834,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
             whiteSpace:'nowrap', opacity: races.length > 0 ? 1 : 0.4,
           }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            Classement
+            {t('perf2.ranking')}
           </button>
         </div>
       </div>
@@ -1832,8 +1850,8 @@ export function RacesSection({ profile }: RacesSectionProps) {
             <circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/>
           </svg>
           <div>
-            <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', margin:'0 0 4px' }}>Aucune course enregistrée</p>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>Importe ta première course depuis Strava ou un fichier GPX/FIT</p>
+            <p style={{ fontSize:13, fontWeight:600, color:'var(--text)', margin:'0 0 4px' }}>{t('perf2.noRaceRecorded')}</p>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0 }}>{t('perf2.importFirstRaceHint')}</p>
           </div>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center' }}>
             <button onClick={() => setShowStrava(true)} style={{
@@ -1842,7 +1860,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
               color:'#f97316', fontSize:12, fontWeight:600, cursor:'pointer',
             }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.599h4.172L10.463 0l-7 13.828h4.169"/></svg>
-              Importer depuis Strava
+              {t('perf2.importFromStrava')}
             </button>
             <button onClick={() => setShowUpload(true)} style={{
               display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:9,
@@ -1850,7 +1868,7 @@ export function RacesSection({ profile }: RacesSectionProps) {
               color:'var(--text-mid)', fontSize:12, fontWeight:600, cursor:'pointer',
             }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Upload fichier GPX/FIT
+              {t('perf2.uploadFileGpxFit')}
             </button>
           </div>
         </div>

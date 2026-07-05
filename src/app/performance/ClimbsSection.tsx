@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 
 // ─── useDarkMode — suit la classe dark/light sur <html> ──────────────────────
@@ -268,6 +269,7 @@ function ScatterSVG({ climbs, allYears, onPointClick, highlightIds }: {
   onPointClick: (c: ClimbRecord) => void
   highlightIds: Set<string> | null
 }) {
+  const { t } = useI18n()
   const wrapRef = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(520)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
@@ -352,10 +354,10 @@ function ScatterSVG({ climbs, allYears, onPointClick, highlightIds }: {
             <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color:'var(--text-mid)' }}>{tooltip.climb.watts_avg} W · {secToHMS(tooltip.climb.duration_seconds)}</span>
             {tooltip.climb.score != null && (
               <span style={{ fontFamily:'DM Mono,monospace', fontSize:11, color: scoreColor(tooltip.climb.score) }}>
-                Score {tooltip.climb.score.toFixed(0)}/100 — {levelOf(tooltip.climb.score).label}
+                {t('perf2.score')} {tooltip.climb.score.toFixed(0)}/100 — {levelOf(tooltip.climb.score).label}
               </span>
             )}
-            <span style={{ fontSize:10, color:'var(--text-dim)', opacity:0.7, marginTop:2 }}>Cliquer pour modifier</span>
+            <span style={{ fontSize:10, color:'var(--text-dim)', opacity:0.7, marginTop:2 }}>{t('perf2.clickToEdit')}</span>
           </div>
         </div>, document.body
       )}
@@ -373,6 +375,7 @@ interface ClimbDrawerProps {
 }
 
 function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: ClimbDrawerProps) {
+  const { t } = useI18n()
   const isEdit = Boolean(existing)
   const [mounted, setMounted]   = useState(false)
   const [visible, setVisible]   = useState(false)
@@ -442,7 +445,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Non connecté')
+      if (!user) throw new Error(t('perf2.notConnected'))
       const partialRecord = {
         wpkg: parseFloat(wkg.toFixed(3)),
         pre_fatigue: preFatigue,
@@ -479,7 +482,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
       }
       onSaved(data); handleClose()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e) || 'Erreur inconnue')
+      setError(e instanceof Error ? e.message : String(e) || t('perf2.unknownError'))
     } finally { setSaving(false) }
   }
 
@@ -492,7 +495,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
       if (dbErr) throw new Error(dbErr.message ?? JSON.stringify(dbErr))
       onDeleted(existing.id); handleClose()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e) || 'Erreur inconnue')
+      setError(e instanceof Error ? e.message : String(e) || t('perf2.unknownError'))
       setDeleting(false)
     }
   }
@@ -524,10 +527,10 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
         }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 10px', borderRadius:8, background:'var(--bg-card2)', fontSize:11, fontWeight:600, color:'var(--text-mid)' }}>
-              <span style={{ width:7, height:7, borderRadius:'50%', background:BIKE_COLOR }}/>Cyclisme
+              <span style={{ width:7, height:7, borderRadius:'50%', background:BIKE_COLOR }}/>{t('perf2.cycling')}
             </span>
             <h2 style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:600, margin:0, color:'var(--text)' }}>
-              {isEdit ? 'Modifier cette ascension' : 'Nouvelle ascension'}
+              {isEdit ? t('perf2.editThisClimb') : t('perf2.newClimb')}
             </h2>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -548,16 +551,16 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
           <div style={secBox(`${BIKE_COLOR}0e`, `${BIKE_COLOR}25`)}>
             <div style={secHdr}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 1 8 8c0 5-8 12-8 12S4 15 4 10a8 8 0 0 1 8-8z"/></svg>
-              <span style={secLbl(BIKE_COLOR)}>Identification</span>
+              <span style={secLbl(BIKE_COLOR)}>{t('perf2.identification')}</span>
             </div>
-            <p style={lbl10}>Nom de l'ascension</p>
-            <input style={inp} value={name} onChange={e => setName(e.target.value)} placeholder="ex : Alpe d'Huez, Col du Tourmalet…" autoFocus={!isEdit}/>
+            <p style={lbl10}>{t('perf2.climbName')}</p>
+            <input style={inp} value={name} onChange={e => setName(e.target.value)} placeholder={t('perf2.climbNamePlaceholder')} autoFocus={!isEdit}/>
             {existing?.race_id && (
               <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:6,
                             background:'var(--bg-card2)', border:'1px solid var(--border)',
                             borderRadius:8, padding:'6px 10px' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                <span style={{ fontSize:11, color:'var(--text-dim)' }}>Course associée :</span>
+                <span style={{ fontSize:11, color:'var(--text-dim)' }}>{t('perf2.linkedRace')} :</span>
                 <span style={{ fontSize:11, fontWeight:600, color:'var(--text)' }}>{raceName ?? '…'}</span>
               </div>
             )}
@@ -567,15 +570,15 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
           <div style={secBox(`${BIKE_COLOR}12`, `${BIKE_COLOR}30`)}>
             <div style={secHdr}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-              <span style={secLbl(BIKE_COLOR)}>Performance</span>
+              <span style={secLbl(BIKE_COLOR)}>{t('perf2.performance')}</span>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               <div>
-                <p style={lbl10}>Watts moyens *</p>
+                <p style={lbl10}>{t('perf2.avgWattsRequired')}</p>
                 <input style={inp} type="number" value={watts} onChange={e => setWatts(e.target.value)} placeholder="ex : 280"/>
               </div>
               <div>
-                <p style={lbl10}>Temps de montée *</p>
+                <p style={lbl10}>{t('perf2.climbTimeRequired')}</p>
                 <input style={inp} value={duration} onChange={e => setDuration(e.target.value)} placeholder="mm:ss ou hh:mm:ss"/>
               </div>
             </div>
@@ -589,12 +592,12 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
           <div style={secBox('rgba(255,255,255,0.04)', 'var(--border)')}>
             <div style={secHdr}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth={2}><polyline points="3 17 9 11 13 15 22 6"/><polyline points="14 6 22 6 22 14"/></svg>
-              <span style={secLbl('var(--text-mid)')}>Profil de l'ascension</span>
+              <span style={secLbl('var(--text-mid)')}>{t('perf2.climbProfile')}</span>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
-              <div><p style={lbl10}>Longueur (km)</p><input style={inpGrey} type="number" value={lengthKm} onChange={e=>setLengthKm(e.target.value)} placeholder="13.8"/></div>
-              <div><p style={lbl10}>Pente moy. (%)</p><input style={inpGrey} type="number" value={gradient} onChange={e=>setGradient(e.target.value)} placeholder="8.1"/></div>
-              <div><p style={lbl10}>Alt. sommet (m)</p><input style={inpGrey} type="number" value={altitude} onChange={e=>setAltitude(e.target.value)} placeholder="1850"/></div>
+              <div><p style={lbl10}>{t('perf2.lengthKm')}</p><input style={inpGrey} type="number" value={lengthKm} onChange={e=>setLengthKm(e.target.value)} placeholder="13.8"/></div>
+              <div><p style={lbl10}>{t('perf2.avgGradient')}</p><input style={inpGrey} type="number" value={gradient} onChange={e=>setGradient(e.target.value)} placeholder="8.1"/></div>
+              <div><p style={lbl10}>{t('perf2.summitAltitude')}</p><input style={inpGrey} type="number" value={altitude} onChange={e=>setAltitude(e.target.value)} placeholder="1850"/></div>
             </div>
             {dPlus > 0 && <div style={{ marginTop:4 }}>{calcBadge(`D+ ${dPlus} m`, '#6b7280')}</div>}
           </div>
@@ -603,28 +606,28 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
           <div style={secBox('rgba(255,255,255,0.04)', 'var(--border)')}>
             <div style={secHdr}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth={2}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              <span style={secLbl('var(--text-mid)')}>Conditions</span>
+              <span style={secLbl('var(--text-mid)')}>{t('perf2.conditions')}</span>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
               <div>
-                <p style={lbl10}>Poids ce jour (kg) *</p>
+                <p style={lbl10}>{t('perf2.weightThatDay')}</p>
                 <input style={inpGrey} type="number" value={weight} onChange={e=>setWeight(e.target.value)} placeholder="ex : 70.5"/>
               </div>
               <div>
-                <p style={lbl10}>Pré-fatigue</p>
+                <p style={lbl10}>{t('perf2.preFatigue')}</p>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginTop:2 }}>
                   {(['fresh','light','moderate','high'] as const).map(f => (
-                    <button key={f} style={tog(preFatigue===f)} onClick={()=>setPreFatigue(f)}>{PRE_LABELS[f]}</button>
+                    <button key={f} style={tog(preFatigue===f)} onClick={()=>setPreFatigue(f)}>{t(`perf2.preFatigue_${f}`)}</button>
                   ))}
                 </div>
               </div>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
-              <div><p style={lbl10}>Température au pied (°C)</p><input style={inpGrey} type="number" value={tempBottom} onChange={e=>setTempBottom(e.target.value)} placeholder="ex : 18"/></div>
-              <div><p style={lbl10}>Température au sommet (°C)</p><input style={inpGrey} type="number" value={tempSummit} onChange={e=>setTempSummit(e.target.value)} placeholder="ex : 8"/></div>
+              <div><p style={lbl10}>{t('perf2.tempBottom')}</p><input style={inpGrey} type="number" value={tempBottom} onChange={e=>setTempBottom(e.target.value)} placeholder="ex : 18"/></div>
+              <div><p style={lbl10}>{t('perf2.tempSummit')}</p><input style={inpGrey} type="number" value={tempSummit} onChange={e=>setTempSummit(e.target.value)} placeholder="ex : 8"/></div>
             </div>
             <div style={{ marginBottom:12 }}>
-              <p style={lbl10}>Intensité subjective</p>
+              <p style={lbl10}>{t('perf2.subjectiveIntensity')}</p>
               <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                 {([5,4,3,2,1] as const).map(v => (
                   <button key={v} onClick={()=>setIntensity(intensity===v ? null : v)} style={{
@@ -632,7 +635,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
                     padding:'6px 10px', gap:2, flex:1, minWidth:54,
                   }}>
                     <span style={{ fontSize:13, fontWeight:700 }}>{v}</span>
-                    <span style={{ fontSize:9, opacity:0.8 }}>{INTENSITY_LABELS[v]}</span>
+                    <span style={{ fontSize:9, opacity:0.8 }}>{t(`perf2.intensity_${v}`)}</span>
                   </button>
                 ))}
               </div>
@@ -646,7 +649,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
               }}>
                 <span style={{ position:'absolute', top:2, borderRadius:'50%', width:14, height:14, background:'var(--on-primary)', left: withNutrition ? 19 : 2, transition:'left 0.2s' }}/>
               </button>
-              <span style={{ fontSize:12, color:'var(--text-dim)' }}>{withNutrition ? 'Avec ravitaillement' : 'Sans ravitaillement'}</span>
+              <span style={{ fontSize:12, color:'var(--text-dim)' }}>{withNutrition ? t('perf2.withNutrition') : t('perf2.withoutNutrition')}</span>
             </div>
           </div>
 
@@ -655,7 +658,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
             <div style={{ background:'var(--bg-card2)', border:'1px solid var(--border)', borderRadius:12, padding:'14px 16px' }}>
               <div style={secHdr}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth={2.5}><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                <span style={secLbl()}>Résumé</span>
+                <span style={secLbl()}>{t('perf2.summary')}</span>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
                 <div>
@@ -663,13 +666,13 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
                   <p style={{ fontFamily:'var(--font-body)', fontVariantNumeric:'tabular-nums', fontSize:20, fontWeight:700, margin:0, color:'var(--text)' }}>{wkg.toFixed(2)}</p>
                 </div>
                 <div>
-                  <p style={{ ...lbl10, marginBottom:2 }}>Durée</p>
+                  <p style={{ ...lbl10, marginBottom:2 }}>{t('perf2.duration')}</p>
                   <p style={{ fontFamily:'var(--font-body)', fontVariantNumeric:'tabular-nums', fontSize:20, fontWeight:700, margin:0, color:'var(--text)' }}>
                     {durMin} <span style={{ fontSize:11, fontWeight:500, color:'var(--text-dim)' }}>min</span>
                   </p>
                 </div>
                 <div>
-                  <p style={{ ...lbl10, marginBottom:2 }}>Score</p>
+                  <p style={{ ...lbl10, marginBottom:2 }}>{t('perf2.score')}</p>
                   <p style={{ fontFamily:'var(--font-body)', fontVariantNumeric:'tabular-nums', fontSize:20, fontWeight:700, margin:0, color:'var(--text)' }}>
                     {previewScore.toFixed(0)}<span style={{ fontSize:11, fontWeight:500, color:'var(--text-dim)' }}>/100</span>
                   </p>
@@ -691,7 +694,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
             fontFamily:'var(--font-display)', fontSize:14, fontWeight:600, transition:'all 0.15s',
             marginBottom: isEdit ? 8 : 0,
           }}>
-            {saving ? 'Enregistrement…' : isEdit ? 'Enregistrer les modifications' : 'Enregistrer cette ascension'}
+            {saving ? t('perf2.saving') : isEdit ? t('perf2.saveChanges') : t('perf2.saveThisClimb')}
           </button>
           {isEdit && (
             <button onClick={()=>void handleDelete()} disabled={deleting} style={{
@@ -700,7 +703,7 @@ function ClimbDrawer({ profileWeight, existing, onSaved, onDeleted, onClose }: C
               background:'rgba(239,68,68,0.08)', color:'#f87171',
               fontFamily:'var(--font-body)', fontSize:13, fontWeight:600, transition:'all 0.15s',
             }}>
-              {deleting ? 'Suppression…' : 'Supprimer cette ascension'}
+              {deleting ? t('perf2.deleting') : t('perf2.deleteThisClimb')}
             </button>
           )}
         </div>
@@ -763,21 +766,26 @@ const BAREM_TABLE_LABELS: Record<FatigueTable, string> = {
   heavy:    'Grosse pré-fatigue',
 }
 
+const BAREM_TABLE_KEY: Record<FatigueTable, string> = {
+  standard: 'perf2.baremStandard', moderate: 'perf2.baremModerate', heavy: 'perf2.baremHeavy',
+}
+
 function BaremeAccordion() {
+  const { t } = useI18n()
   const [tab, setTab] = useState<FatigueTable>('standard')
 
   // 6 niveaux affichés (Alien → Amateur), correspondant aux 6 lignes de REF_TABLES_ALL
   const shownLevels = LEVELS.slice(0, 6)
 
   return (
-    <Accordion title="Barème des niveaux">
+    <Accordion title={t('perf2.levelsScale')}>
       {/* Onglets */}
       <div style={{ display:'flex', gap:5, marginBottom:12, flexWrap:'wrap' }}>
-        {(['standard','moderate','heavy'] as FatigueTable[]).map(t => (
-          <button key={t} onClick={()=>setTab(t)} style={{
-            ...tog(tab===t), fontSize:10, padding:'5px 10px',
+        {(['standard','moderate','heavy'] as FatigueTable[]).map(tbl => (
+          <button key={tbl} onClick={()=>setTab(tbl)} style={{
+            ...tog(tab===tbl), fontSize:10, padding:'5px 10px',
           }}>
-            {BAREM_TABLE_LABELS[t]}
+            {t(BAREM_TABLE_KEY[tbl])}
           </button>
         ))}
       </div>
@@ -787,7 +795,7 @@ function BaremeAccordion() {
           <thead>
             <tr>
               <th style={{ textAlign:'left', padding:'4px 6px', color:'var(--text-dim)', fontWeight:600, borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>
-                Durée
+                {t('perf2.duration')}
               </th>
               {shownLevels.map(l => (
                 <th key={l.label} style={{ textAlign:'right', padding:'4px 6px', borderBottom:'1px solid var(--border)', whiteSpace:'nowrap' }}>
@@ -817,7 +825,7 @@ function BaremeAccordion() {
         </table>
       </div>
       <p style={{ fontSize:10, color:'var(--text-dim)', margin:'8px 0 0', lineHeight:1.5 }}>
-        W/kg minimum pour atteindre chaque niveau (conditions neutres, hors bonus temp/altitude/ressenti).
+        {t('perf2.baremFootnote')}
       </p>
     </Accordion>
   )
@@ -829,6 +837,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
   onClose: () => void
   onFilterChange: (ids: Set<string> | null) => void
 }) {
+  const { t } = useI18n()
   const [mounted, setMounted]         = useState(false)
   const [visible, setVisible]         = useState(false)
   const [closing, setClosing]         = useState(false)
@@ -906,8 +915,8 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
           background:'var(--bg-card)', borderBottom:'1px solid var(--border)',
         }}>
           <div>
-            <h2 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:600, margin:0, color:'var(--text)' }}>Classement des ascensions</h2>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>Score normalisé /100 — conditions incluses</p>
+            <h2 style={{ fontFamily:'var(--font-display)', fontSize:15, fontWeight:600, margin:0, color:'var(--text)' }}>{t('perf2.climbsRanking')}</h2>
+            <p style={{ fontSize:11, color:'var(--text-dim)', margin:'3px 0 0' }}>{t('perf2.normalizedScore')}</p>
           </div>
           <button onClick={handleClose} style={{
             width:28, height:28, borderRadius:'50%', border:'1px solid var(--border)',
@@ -920,7 +929,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
         <div style={{ padding:'10px 16px 0', flexShrink:0, borderBottom:'1px solid var(--border)' }}>
           {/* Filtre année */}
           <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:8 }}>
-            <button style={tog(yearFilter===null, BIKE_COLOR)} onClick={()=>setYearFilter(null)}>Toutes</button>
+            <button style={tog(yearFilter===null, BIKE_COLOR)} onClick={()=>setYearFilter(null)}>{t('perf2.all')}</button>
             {allYearsRanking.map(yr => (
               <button key={yr} style={tog(yearFilter===yr, BIKE_COLOR)} onClick={()=>setYearFilter(yr===yearFilter ? null : yr)}>{yr}</button>
             ))}
@@ -928,14 +937,14 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
           {/* Filtre durée */}
           <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:10 }}>
             {DUR_FILTERS.map(({ label, id }) => (
-              <button key={label} style={tog(durFilter===id, '#6b7280')} onClick={()=>setDurFilter(id===durFilter ? null : id)}>{label}</button>
+              <button key={label} style={tog(durFilter===id, '#6b7280')} onClick={()=>setDurFilter(id===durFilter ? null : id)}>{id === null ? t('perf2.all') : label}</button>
             ))}
           </div>
           {/* Résumé filtre actif */}
           {(yearFilter || durFilter) && (
             <div style={{ fontSize:10, color:'var(--text-dim)', marginBottom:8 }}>
-              {ranked.length} ascension{ranked.length!==1?'s':''} filtrée{ranked.length!==1?'s':''}
-              {ranked.length === 0 && ' — aucun résultat'}
+              {ranked.length} {ranked.length!==1?t('perf2.climbsFilteredPlural'):t('perf2.climbFilteredSingular')}
+              {ranked.length === 0 && ` — ${t('perf2.noResult')}`}
             </div>
           )}
         </div>
@@ -944,7 +953,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
         <div style={{ flex:1, overflowY:'auto', padding:'12px 16px 24px' }}>
           {ranked.length === 0 && (
             <div style={{ textAlign:'center', padding:'32px 20px', color:'var(--text-dim)', fontSize:12 }}>
-              Aucune ascension pour ce filtre
+              {t('perf2.noClimbForFilter')}
             </div>
           )}
           {ranked.map(({ c, sd }, idx) => {
@@ -971,7 +980,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
                       <span style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</span>
-                      {rank===1 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>⭐ Meilleure perf</span>}
+                      {rank===1 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(251,191,36,0.15)', color:'#fbbf24', border:'1px solid rgba(251,191,36,0.3)' }}>⭐ {t('perf2.bestPerf')}</span>}
                     </div>
                     <div style={{ display:'flex', gap:8, marginTop:2 }}>
                       <span style={{ fontSize:11, color:'var(--text-dim)' }}>{new Date(c.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</span>
@@ -997,11 +1006,11 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
                     <div style={{ paddingTop:10, display:'flex', flexDirection:'column', gap:7 }}>
                       {([
                         { label:'W/kg',           val: c.wpkg.toFixed(2),                         color: BIKE_COLOR },
-                        { label:'÷ Réf. Alien',   val: `${sd.alienRef.toFixed(2)} W/kg`,           color: 'var(--text-mid)' },
-                        { label:'Score brut',     val: `${sd.scoreBrut.toFixed(1)} / 100`,         color: 'var(--text-mid)' },
-                        { label:'× Température',  val: `×${sd.coeffs.temp.toFixed(2)}`,            color: 'var(--text-mid)' },
-                        { label:'× Altitude',     val: `×${sd.coeffs.altitude.toFixed(2)}`,        color: 'var(--text-mid)' },
-                        { label:'× Ressenti',     val: `×${sd.coeffs.intensity.toFixed(2)}`,       color: 'var(--text-mid)' },
+                        { label:t('perf2.divAlienRef'),   val: `${sd.alienRef.toFixed(2)} W/kg`,           color: 'var(--text-mid)' },
+                        { label:t('perf2.rawScore'),     val: `${sd.scoreBrut.toFixed(1)} / 100`,         color: 'var(--text-mid)' },
+                        { label:t('perf2.mulTemperature'),  val: `×${sd.coeffs.temp.toFixed(2)}`,            color: 'var(--text-mid)' },
+                        { label:t('perf2.mulAltitude'),     val: `×${sd.coeffs.altitude.toFixed(2)}`,        color: 'var(--text-mid)' },
+                        { label:t('perf2.mulPerceived'),     val: `×${sd.coeffs.intensity.toFixed(2)}`,       color: 'var(--text-mid)' },
                       ] as { label: string; val: string; color: string }[]).map(({ label, val, color }) => (
                         <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                           <span style={{ fontSize:11, color:'var(--text-dim)' }}>{label}</span>
@@ -1010,7 +1019,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
                       ))}
                       <div style={{ height:1, background:'var(--border)', margin:'4px 0' }}/>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                        <span style={{ fontSize:11, fontWeight:700, color:'var(--text)' }}>Score final</span>
+                        <span style={{ fontSize:11, fontWeight:700, color:'var(--text)' }}>{t('perf2.finalScore')}</span>
                         <span style={{ fontFamily:'DM Mono,monospace', fontSize:13, fontWeight:800, color:col }}>{sd.total.toFixed(1)} / 100</span>
                       </div>
                     </div>
@@ -1024,7 +1033,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
           <BaremeAccordion />
 
           {/* ── Accordion : Méthode ── */}
-          <Accordion title="Méthode de calcul">
+          <Accordion title={t('perf2.calcMethod')}>
             <p style={{ fontSize:12, fontWeight:700, color:'var(--text)', margin:'0 0 6px', fontFamily:'Syne,sans-serif' }}>Comment est calculé le score ?</p>
             <p style={{ fontSize:12, color:'var(--text-dim)', lineHeight:1.65, margin:'0 0 10px' }}>
               Chaque ascension reçoit un score sur 100. La référence absolue est le niveau <strong style={{ color:'var(--text)' }}>Alien</strong> — elle n'est pas fixe : elle dépend de la durée de l'effort <em>et</em> du niveau de pré-fatigue.
@@ -1160,6 +1169,7 @@ function RankingDrawer({ climbs, onClose, onFilterChange }: {
 interface ClimbsSectionProps { profile: { weight: number } }
 
 export function ClimbsSection({ profile }: ClimbsSectionProps) {
+  const { t } = useI18n()
   const [climbs,       setClimbs]       = useState<ClimbRecord[]>([])
   const [loaded,       setLoaded]       = useState(false)
   const [showDrawer,   setShowDrawer]   = useState(false)
@@ -1197,11 +1207,11 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:8 }}>
         <div>
           <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, margin:0, color:'var(--text)' }}>
-            Ascensions — W/kg par durée
+            {t('perf2.climbsWkgByDuration')}
           </h2>
           {loaded && climbs.length > 0 && (
             <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>
-              {climbs.length} ascension{climbs.length>1?'s':''} · cliquer sur un point pour modifier
+              {climbs.length} {climbs.length>1?t('perf2.climbsPlural'):t('perf2.climbSingular')} · {t('perf2.clickPointToEdit')}
             </div>
           )}
         </div>
@@ -1218,7 +1228,7 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
             </svg>
-            Classement
+            {t('perf2.ranking')}
           </button>
           <button onClick={()=>setShowDrawer(true)} style={{
             display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8,
@@ -1227,7 +1237,7 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
             cursor:'pointer', whiteSpace:'nowrap', minHeight:36,
           }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M12 5v14M5 12h14"/></svg>
-            Ajouter une ascension
+            {t('perf2.addClimb')}
           </button>
         </div>
       </div>
@@ -1241,8 +1251,8 @@ export function ClimbsSection({ profile }: ClimbsSectionProps) {
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth={1.5} style={{ marginBottom:8 }}>
             <polyline points="3 17 9 11 13 15 22 6"/><polyline points="14 6 22 6 22 14"/>
           </svg>
-          <div style={{ fontSize:12, color:'var(--text-dim)' }}>Aucune ascension enregistrée</div>
-          <div style={{ fontSize:11, color:'var(--text-dim)', opacity:0.6, marginTop:4 }}>Ajoutez votre première montée pour voir votre graphique</div>
+          <div style={{ fontSize:12, color:'var(--text-dim)' }}>{t('perf2.noClimbRecorded')}</div>
+          <div style={{ fontSize:11, color:'var(--text-dim)', opacity:0.6, marginTop:4 }}>{t('perf2.addFirstClimbHint')}</div>
         </div>
       )}
 

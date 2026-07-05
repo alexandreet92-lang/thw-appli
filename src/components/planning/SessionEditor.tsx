@@ -15,6 +15,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { segmentElevationProfile, getSignificantClimbs } from '@/lib/gpx/parser'
@@ -58,7 +59,8 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
   onChange: (e: ExerciseItem[]) => void
   onCircuitsChange?: (circuits: ExoCircuit[], map: Record<string, string>) => void
 }) {
-  const defaultCircuit: ExoCircuit = { id: 'default', name: 'Séries 1', type: 'series', rounds: 3, restBetweenRoundsSec: 90 }
+  const { t } = useI18n()
+  const defaultCircuit: ExoCircuit = { id: 'default', name: `${t('sed.series')} 1`, type: 'series', rounds: 3, restBetweenRoundsSec: 90 }
   const [circuits, setCircuits] = useState<ExoCircuit[]>([defaultCircuit])
   const [blockCircuitMap, setBlockCircuitMap] = useState<Record<string, string>>({})
 
@@ -83,8 +85,8 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
         { id: 'push',  label: 'Push'  },
         { id: 'pull',  label: 'Pull'  },
         { id: 'legs',  label: 'Legs'  },
-        { id: 'mixte', label: 'Mixte' },
-        { id: 'abdos', label: 'Abdos' },
+        { id: 'mixte', label: t('sed.cat.mixte') },
+        { id: 'abdos', label: t('sed.cat.abdos') },
       ]
 
   const results = searchExercises(query, catFilter)
@@ -97,7 +99,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
     const num = circuits.length + 1
     const ct = CIRCUIT_TYPES.find(c => c.id === typeId)
     const type = typeId ?? 'series'
-    const name = ct ? `${ct.label} ${num}` : `Séries ${num}`
+    const name = ct ? `${ct.label} ${num}` : `${t('sed.series')} ${num}`
     const rounds = type === 'tabata' ? 8 : type === 'emom' ? 12 : 3
     const restBetweenRoundsSec = type === 'tabata' ? 10 : type === 'emom' ? 0 : 90
     const newCircuit: ExoCircuit = { id: `circuit_${Date.now()}`, name, type, rounds, restBetweenRoundsSec }
@@ -224,7 +226,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                   }}
                 >
                   {CIRCUIT_TYPES.find(c => c.id === (circuit.type ?? 'series'))?.icon ?? '🔁'}{' '}
-                  {CIRCUIT_TYPES.find(c => c.id === (circuit.type ?? 'series'))?.label ?? 'Séries'}
+                  {CIRCUIT_TYPES.find(c => c.id === (circuit.type ?? 'series'))?.label ?? t('sed.series')}
                   <span style={{ fontSize: 8, opacity: 0.7 }}>▾</span>
                 </button>
                 <input
@@ -234,7 +236,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                 />
                 {(circuit.type ?? 'series') !== 'series' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Tours</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{t('sed.rounds')}</span>
                     <input type="number" min={1} max={20} value={circuit.rounds}
                       onChange={e => updateCircuit(circuit.id, { rounds: parseInt(e.target.value) || 1 })}
                       style={{ width: 54, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
@@ -242,7 +244,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                 )}
                 {(circuit.type ?? 'series') !== 'series' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Repos/tour (s)</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{t('sed.restPerRoundS')}</span>
                     <input type="number" min={0} step={15} value={circuit.restBetweenRoundsSec}
                       onChange={e => updateCircuit(circuit.id, { restBetweenRoundsSec: parseInt(e.target.value) || 0 })}
                       style={{ width: 64, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
@@ -250,7 +252,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                 )}
                 {sport === 'hyrox' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>Temps cible (s)</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{t('sed.targetTimeS')}</span>
                     <input type="number" min={0} step={30} value={circuit.targetTimeSec ?? 0}
                       onChange={e => updateCircuit(circuit.id, { targetTimeSec: parseInt(e.target.value) || undefined })}
                       style={{ width: 70, padding: '5px 6px', borderRadius: 7, border: `1px solid ${accentColor}44`, background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Mono,monospace', outline: 'none', textAlign: 'center' as const }} />
@@ -318,7 +320,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       {/* Séries uniquement pour le type "series" — les autres utilisent les tours/rounds du circuit */}
                       {(circuit.type ?? 'series') === 'series' && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Séries</p>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.series')}</p>
                           <input type="number" min={1} value={e.sets}
                             onChange={ev => updExo(e.id, 'sets', parseInt(ev.target.value) || 1)}
                             style={inputStyle} />
@@ -332,7 +334,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       </div>
                       {(exoDef?.hasWeight ?? e.weightKg !== undefined) && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Charge (kg)</p>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.loadKg')}</p>
                           <input type="number" min={0} step={2.5} value={e.weightKg ?? 0}
                             onChange={ev => updExo(e.id, 'weightKg', parseFloat(ev.target.value) || 0)}
                             style={accentInputStyle} />
@@ -340,7 +342,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       )}
                       {(exoDef?.hasDistance ?? e.distanceM !== undefined) && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Distance (m)</p>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.distanceM')}</p>
                           <input type="number" min={0} step={5} value={e.distanceM ?? 0}
                             onChange={ev => updExo(e.id, 'distanceM', parseInt(ev.target.value) || 0)}
                             style={accentInputStyle} />
@@ -348,7 +350,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       )}
                       {(exoDef?.hasKcal ?? e.kcal !== undefined) && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Kcal cible</p>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.kcalTarget')}</p>
                           <input type="number" min={0} value={e.kcal ?? 0}
                             onChange={ev => updExo(e.id, 'kcal', parseInt(ev.target.value) || 0)}
                             style={accentInputStyle} />
@@ -356,7 +358,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                       )}
                       {(exoDef?.hasTime ?? e.targetTimeSec !== undefined) && (
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Temps cible (sec)</p>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.targetTimeSec')}</p>
                           <input type="number" min={0} step={5} value={e.targetTimeSec ?? 0}
                             onChange={ev => updExo(e.id, 'targetTimeSec', parseInt(ev.target.value) || 0)}
                             style={accentInputStyle} />
@@ -366,7 +368,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                         </div>
                       )}
                       <div>
-                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>Repos (sec)</p>
+                        <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px' }}>{t('sed.restSec')}</p>
                         <input type="number" min={0} step={15} value={e.restSec}
                           onChange={ev => updExo(e.id, 'restSec', parseInt(ev.target.value) || 0)}
                           style={inputStyle} />
@@ -375,7 +377,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                     {/* Notes */}
                     <div style={{ marginTop: 6 }}>
                       <input value={e.notes ?? ''} onChange={ev => updExo(e.id, 'notes', ev.target.value)}
-                        placeholder="Notes / consignes (optionnel)"
+                        placeholder={t('sed.notesPlaceholder')}
                         style={{ width: '100%', padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 11, outline: 'none' }} />
                     </div>
                   </div>
@@ -390,12 +392,12 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                   boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Ajouter un exercice</p>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t('sed.addExercise')}</p>
                     <button onClick={() => { setAddingToCircuit(null); setQuery('') }}
                       style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16 }}>×</button>
                   </div>
                   <input value={query} onChange={ev => setQuery(ev.target.value)}
-                    placeholder="ex: squat, développé couché, traction..."
+                    placeholder={t('sed.exoSearchPlaceholder')}
                     autoFocus
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, outline: 'none', marginBottom: 8 }} />
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
@@ -432,12 +434,12 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                     ))}
                     {results.length === 0 && (
                       <div style={{ padding: '10px', textAlign: 'center' as const }}>
-                        <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>Aucun exercice trouvé pour &ldquo;{query}&rdquo;</p>
+                        <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>{t('sed.noExoFound', { q: query })}</p>
                         <button onClick={() => addCustomToCircuit(circuit.id)} style={{
                           padding: '7px 14px', borderRadius: 7,
                           background: `${accentColor}22`, border: `1px solid ${accentColor}`,
                           color: accentColor, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                        }}>+ Créer &ldquo;{query}&rdquo;</button>
+                        }}>{t('sed.createQuoted', { q: query })}</button>
                       </div>
                     )}
                   </div>
@@ -447,7 +449,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
                   width: '100%', padding: '9px', borderRadius: 9,
                   background: 'transparent', border: `1px dashed ${accentColor}55`,
                   color: accentColor, fontSize: 12, cursor: 'pointer',
-                }}>+ Ajouter un exercice</button>
+                }}>{t('sed.addExerciseBtn')}</button>
               )}
             </div>
           </div>
@@ -467,7 +469,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
           marginTop: 4, padding: '12px 14px', borderRadius: 12,
           border: '1px solid var(--border)', background: 'var(--bg-card2)',
         }}>
-          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', margin: '0 0 8px' }}>Quel type de circuit ?</p>
+          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', margin: '0 0 8px' }}>{t('sed.whichCircuitType')}</p>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
             {CIRCUIT_TYPES.map(ct => (
               <button key={ct.id} onClick={() => addCircuit(ct.id)} style={{
@@ -487,7 +489,7 @@ function ExerciseListBuilder({ sport, exercises, onChange, onCircuitsChange }: {
             marginTop: 8, width: '100%', padding: '7px', borderRadius: 6,
             border: '1px solid var(--border)', background: 'transparent',
             color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer',
-          }}>Annuler</button>
+          }}>{t('sed.cancel')}</button>
         </div>
       )}
     </div>
@@ -502,6 +504,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
   blocks: Block[]; onChange: (b: Block[]) => void; accent: string
   exoHistory?: Record<string, { weight: string; reps: number; date: string }>
 }) {
+  const { t } = useI18n()
   const exoCount = (upToIdx: number) =>
     blocks.filter((x, j) => j <= upToIdx && x.type !== 'circuit_header').length
 
@@ -575,7 +578,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0 }} />
                 <span style={{ fontSize: 9, fontWeight: 700, color: accent, background: `${accent}18`, padding: '2px 7px', borderRadius: 5, textTransform: 'uppercase' as const, letterSpacing: '0.06em', flexShrink: 0, whiteSpace: 'nowrap' as const }}>
-                  {CIRCUIT_TYPES.find(c => c.id === circuitType)?.label ?? 'Séries'}
+                  {CIRCUIT_TYPES.find(c => c.id === circuitType)?.label ?? t('sed.series')}
                 </span>
                 <input value={b.label} onChange={e => {
                   const upd = [...blocks]; upd[i] = { ...b, label: e.target.value }; onChange(upd)
@@ -595,7 +598,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                         onChange(upd)
                       }}
                       style={{ width: 38, padding: '3px 6px', borderRadius: 5, border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{isEmom ? 'min' : 'tours'}</span>
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{isEmom ? 'min' : t('sed.roundsShort')}</span>
                   </div>
                 )}
                 {/* Repos (sauf EMOM/tabata) */}
@@ -605,7 +608,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                       value={b.recoveryMin != null ? Math.round(b.recoveryMin * 60) : 90}
                       onChange={e => { const upd = [...blocks]; upd[i] = { ...b, recoveryMin: (parseInt(e.target.value) || 0) / 60 }; onChange(upd) }}
                       style={{ width: 42, padding: '3px 6px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-dim)', fontSize: 12, fontFamily: '"DM Mono",monospace', textAlign: 'center' as const, outline: 'none' }} />
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>s repos</span>
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t('sed.sRest')}</span>
                   </div>
                 )}
                 <button onClick={() => onChange(blocks.filter((_, j) => j !== i))} style={{
@@ -639,12 +642,12 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
               {addingToCircuit === b.id ? (
                 <div style={{ marginTop: 10, background: 'var(--bg-card)', border: '1px solid var(--border-mid)', borderRadius: 10, padding: '10px 12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>Ajouter un exercice</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{t('sed.addExercise')}</span>
                     <button onClick={() => { setAddingToCircuit(null); setSearchQuery(''); setCatFilter(undefined) }}
                       style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 16, padding: 0 }}>×</button>
                   </div>
                   <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="ex: squat, développé couché, traction..."
+                    placeholder={t('sed.exoSearchPlaceholder')}
                     autoFocus
                     style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--input-bg,var(--bg-card2))', color: 'var(--text)', fontSize: 12, outline: 'none', marginBottom: 7, boxSizing: 'border-box' as const }} />
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 7 }}>
@@ -673,11 +676,11 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                     ))}
                     {searchResults.length === 0 && searchQuery.trim() && (
                       <div style={{ padding: '8px', textAlign: 'center' as const }}>
-                        <p style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 6 }}>Aucun résultat pour &ldquo;{searchQuery}&rdquo;</p>
+                        <p style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 6 }}>{t('sed.noResultsFor', { q: searchQuery })}</p>
                         <button onClick={() => insertCustomAfterCircuit(b.id, searchQuery.trim())} style={{
                           padding: '6px 12px', borderRadius: 6, background: `${accent}22`,
                           border: `1px solid ${accent}`, color: accent, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                        }}>+ Créer &ldquo;{searchQuery.trim()}&rdquo;</button>
+                        }}>{t('sed.createQuoted', { q: searchQuery.trim() })}</button>
                       </div>
                     )}
                   </div>
@@ -687,7 +690,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                   width: '100%', marginTop: 8, padding: '7px', borderRadius: 7,
                   background: 'transparent', border: `1px dashed ${accent}44`,
                   color: accent, fontSize: 11, cursor: 'pointer', fontWeight: 600,
-                }}>+ Ajouter un exercice</button>
+                }}>{t('sed.addExerciseBtn')}</button>
               )}
             </div>
           )
@@ -738,7 +741,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                 const dateStr = hist.date ? new Date(hist.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''
                 return (
                   <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 6px 18px', fontStyle: 'italic' as const }}>
-                    Dernière : {hist.weight}kg × {hist.reps}{dateStr ? ` (${dateStr})` : ''}
+                    {t('sed.last')} {hist.weight}kg × {hist.reps}{dateStr ? ` (${dateStr})` : ''}
                   </p>
                 )
               })()}
@@ -748,7 +751,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                 {/* Séries — uniquement pour circuit de type "series" */}
                 {isSeries && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>Séries</span>
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t('sed.series')}</span>
                     <input type="number" min={1} max={20} value={b.zone ?? 3}
                       onChange={e => { const upd = [...blocks]; upd[i] = { ...b, zone: parseInt(e.target.value) || 1 }; onChange(upd) }}
                       style={{ width: 40, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, outline: 'none' }} />
@@ -767,7 +770,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
 
                 {/* Charge */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>Charge</span>
+                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t('sed.load')}</span>
                   <input value={b.value || ''} placeholder="—"
                     onChange={e => { const upd = [...blocks]; upd[i] = { ...b, value: e.target.value }; onChange(upd) }}
                     style={{ width: 56, padding: '4px 6px', borderRadius: 6, border: `1px solid ${accent}44`, background: `${accent}08`, color: accent, fontSize: 13, fontFamily: '"DM Mono", monospace', textAlign: 'center' as const, fontWeight: 700, outline: 'none' }} />
@@ -776,7 +779,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
 
                 {/* Repos */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>Repos</span>
+                  <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t('sed.rest')}</span>
                   <input type="number" min={0} max={600} step={15}
                     value={b.recoveryMin != null ? Math.round(b.recoveryMin * 60) : 90}
                     onChange={e => { const upd = [...blocks]; upd[i] = { ...b, recoveryMin: (parseInt(e.target.value) || 0) / 60 }; onChange(upd) }}
@@ -787,7 +790,7 @@ function StrengthBlockRenderer({ blocks, onChange, accent, exoHistory }: {
                 {/* Temps (gainage, etc.) */}
                 {(b.effortMin ?? 0) > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>Temps</span>
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{t('sed.time')}</span>
                     <span style={{ fontSize: 13, fontFamily: '"DM Mono", monospace', color: accent, fontWeight: 600 }}>
                       {Math.round((b.effortMin ?? 0) * 60)}s
                     </span>
@@ -838,7 +841,7 @@ function estimateSmSn(blocks: { mode?: string; zone?: number; durationMin?: numb
 // ── Compte rendu : image (story) téléchargeable ──
 interface CrRow { color: string; name: string; detail: string }
 function crEsc(t: string) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
-function buildCompteRenduSVG(o: { title: string; subtitle: string; sm: number; sn: number; durLabel: string; rightLabel: string; rightVal: string; rows: CrRow[] }): { svg: string; w: number; h: number } {
+function buildCompteRenduSVG(o: { title: string; subtitle: string; sm: number; sn: number; durLabel: string; rightLabel: string; rightVal: string; rows: CrRow[] }, t: (k: string, v?: Record<string, string | number>) => string): { svg: string; w: number; h: number } {
   const W = 620, BG = '#0A0D14', CARD = '#0E121A', LINE = 'rgba(255,255,255,0.09)', TX = '#F2F5F9', MID = 'rgba(242,245,249,0.55)', DIM = 'rgba(242,245,249,0.38)', CY = '#22D3EE', VIO = '#A78BFA'
   const top = 250, rowH = 66, foot = 78
   const H = top + Math.max(1, o.rows.length) * rowH + foot
@@ -846,16 +849,16 @@ function buildCompteRenduSVG(o: { title: string; subtitle: string; sm: number; s
   let s = `<rect width="${W}" height="${H}" fill="${BG}"/>`
   s += `<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="${CY}"/><stop offset="1" stop-color="${VIO}"/></linearGradient></defs>`
   s += `<rect x="34" y="34" width="36" height="36" rx="10" fill="url(#g)"/>` + T(52, 59, 'T', 20, '#06121A', 800, 'middle')
-  s += T(82, 50, 'THW COACHING', 12, TX, 800) + T(82, 66, 'Compte rendu de séance', 10, DIM)
+  s += T(82, 50, 'THW COACHING', 12, TX, 800) + T(82, 66, t('sed.sessionReport'), 10, DIM)
   s += `<line x1="34" y1="90" x2="${W - 34}" y2="90" stroke="${LINE}"/>`
   s += T(34, 134, o.title, 27, TX, 800) + T(34, 158, o.subtitle, 13, MID)
   // stats
-  const cells = [['SM', String(o.sm), CY], ['SN', String(o.sn), VIO], ['DURÉE', o.durLabel, TX], [o.rightLabel, o.rightVal, TX]]
+  const cells = [['SM', String(o.sm), CY], ['SN', String(o.sn), VIO], [t('sed.durationUpper'), o.durLabel, TX], [o.rightLabel, o.rightVal, TX]]
   const cw = (W - 68 - 30) / 4
   cells.forEach((c, i) => { const x = 34 + i * (cw + 10); s += `<rect x="${x}" y="178" width="${cw}" height="56" rx="12" fill="${CARD}" stroke="${LINE}"/>` + T(x + 12, 200, c[0], 9, DIM, 700) + T(x + 12, 224, c[1], c[1].length > 5 ? 16 : 20, c[2], 700, 'start', true) })
   // rows
   let y = top
-  if (o.rows.length === 0) s += T(34, y + 20, 'Aucun bloc pour le moment.', 13, DIM)
+  if (o.rows.length === 0) s += T(34, y + 20, t('sed.noBlockYet'), 13, DIM)
   o.rows.forEach(r => {
     s += `<rect x="34" y="${y}" width="${W - 68}" height="${rowH - 8}" rx="12" fill="${CARD}" stroke="${LINE}"/>`
     s += `<rect x="48" y="${y + 14}" width="6" height="${rowH - 36}" rx="3" fill="${r.color}"/>`
@@ -863,7 +866,7 @@ function buildCompteRenduSVG(o: { title: string; subtitle: string; sm: number; s
     y += rowH
   })
   s += `<line x1="34" y1="${H - 60}" x2="${W - 34}" y2="${H - 60}" stroke="${LINE}"/>`
-  s += T(34, H - 32, 'thw-coaching.app', 12, MID, 700) + T(W - 34, H - 32, 'Généré par THW Coaching', 11, DIM, 400, 'end')
+  s += T(34, H - 32, 'thw-coaching.app', 12, MID, 700) + T(W - 34, H - 32, t('sed.generatedByThw'), 11, DIM, 400, 'end')
   return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}</svg>`, w: W, h: H }
 }
 
@@ -897,7 +900,8 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
   exoHistory?: Record<string, { weight: string; reps: number; date: string }>
   athleteData?: { ftp: number | null; runThresholdPaceSec?: number | null; cssSecPer100m?: number | null } | null
 }) {
-  const vLabel = sport === 'bike' ? 'Watts' : sport === 'swim' ? 'Allure /100m' : 'Allure /km'
+  const { t } = useI18n()
+  const vLabel = sport === 'bike' ? t('sed.watts') : sport === 'swim' ? t('sed.pace100m') : t('sed.paceKm')
   const vPlh   = sport === 'bike' ? '250' : sport === 'swim' ? '1:35' : '4:30'
   const isStrengthSportBB = sport === 'gym' || sport === 'hyrox'
   const accentBB = SPORT_BORDER[sport]
@@ -922,7 +926,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
   ]
   const ZONE_COL = ['#9CA3AF','#16A34A','#CA8A04','#EA580C','#DC2626','#9333EA','#1D4ED8']
   const ZONE_H   = [8, 12, 16, 20, 24, 28, 32]  // px height per zone (skyline)
-  const ZONE_NMS = ['Récup','Aérobie','Tempo','Seuil','VO2max','Anaérobie','Sprint']
+  const ZONE_NMS = [t('sed.zone.recup'), t('sed.zone.aerobic'), 'Tempo', t('sed.zone.threshold'), 'VO2max', t('sed.zone.anaerobic'), 'Sprint']
   const zc  = (z: number) => ZONE_COL[Math.max(0, Math.min(6, z - 1))]
   const zg  = (z: number) => ZONE_GRAD[Math.max(0, Math.min(6, z - 1))]
   const zh  = (z: number) => ZONE_H[Math.max(0, Math.min(6, z - 1))]
@@ -1037,7 +1041,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
   }
 
   function addSingle() {
-    onChange([...blocks, { id: `b_${Date.now()}`, mode: 'single', type: 'effort', durationMin: 10, zone: 3, value: sport === 'bike' ? '220' : '4:30', hrAvg: '', label: 'Bloc' }])
+    onChange([...blocks, { id: `b_${Date.now()}`, mode: 'single', type: 'effort', durationMin: 10, zone: 3, value: sport === 'bike' ? '220' : '4:30', hrAvg: '', label: t('sed.block') }])
   }
   function addInterval() {
     onChange([...blocks, { id: `b_${Date.now()}`, mode: 'interval', type: 'effort', durationMin: 0, zone: 4, value: '', hrAvg: '', label: '', reps: 5, effortMin: 4, recoveryMin: 1, recoveryZone: 1 }])
@@ -1069,7 +1073,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
     const sec = Math.round(min * 60)
     const lo = sec - Math.round(sec * 0.03), hi = sec + Math.round(sec * 0.03)
     const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-    return `${fmt(lo)} à ${fmt(hi)}`
+    return `${fmt(lo)} ${t('sed.to')} ${fmt(hi)}`
   }
 
   type Bar = { id: string; min: number; zone: number; isRecovery: boolean; block: Block }
@@ -1123,22 +1127,22 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
           {/* 3-metric row */}
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>SM<span style={{ fontSize: 8, color: 'var(--text-dim)' }}> métab.</span></p>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>SM<span style={{ fontSize: 8, color: 'var(--text-dim)' }}> {t('sed.metabShort')}</span></p>
               <p style={{ fontSize: 19, fontWeight: 700, color: '#06B6D4', fontFamily: 'var(--font-display)', margin: 0 }}>{smsnBB.sm}</p>
             </div>
             <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>SN<span style={{ fontSize: 8, color: 'var(--text-dim)' }}> neuro.</span></p>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>SN<span style={{ fontSize: 8, color: 'var(--text-dim)' }}> {t('sed.neuroShort')}</span></p>
               <p style={{ fontSize: 19, fontWeight: 700, color: '#8B5CF6', fontFamily: 'var(--font-display)', margin: 0 }}>{smsnBB.sn}</p>
             </div>
             <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>Durée</p>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>{t('sed.duration')}</p>
               <p style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', margin: 0 }}>{formatHM(Math.round(totalBlocks))}</p>
             </div>
             <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' as const }} />
             <div style={{ flex: 1, padding: '11px 14px', textAlign: 'center' as const }}>
-              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>Intensité Moy.</p>
+              <p style={{ fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.07em', color: 'var(--text-dim)', margin: '0 0 2px' }}>{t('sed.avgIntensity')}</p>
               <p style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', margin: 0 }}>
                 {npWatts ? `${npWatts}W` : '—'}
                 {ifVal && <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-dim)', marginLeft: 4 }}>IF {ifVal}</span>}
@@ -1153,10 +1157,10 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
         <div style={{ position: 'fixed' as const, zIndex: 1100, left: hoveredBar.x, top: hoveredBar.y - 8, transform: 'translate(-50%,-100%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', boxShadow: '0 4px 16px rgba(0,0,0,0.2)', pointerEvents: 'none' as const, whiteSpace: 'nowrap' as const, fontSize: 11 }}>
           <p style={{ fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>{hoveredBar.block.label}</p>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2, color: 'var(--text-dim)' }}>
-            <span>Durée : <strong style={{ fontFamily: 'DM Mono,monospace' }}>{hoveredBar.block.mode === 'interval' && hoveredBar.block.effortMin ? fmtDuration(hoveredBar.block.effortMin) : fmtDuration(hoveredBar.block.durationMin)}</strong></span>
+            <span>{t('sed.duration')} : <strong style={{ fontFamily: 'DM Mono,monospace' }}>{hoveredBar.block.mode === 'interval' && hoveredBar.block.effortMin ? fmtDuration(hoveredBar.block.effortMin) : fmtDuration(hoveredBar.block.durationMin)}</strong></span>
             <span>Zone : <strong style={{ color: zc(hoveredBar.block.zone) }}>Z{hoveredBar.block.zone} — {znm(hoveredBar.block.zone)}</strong></span>
-            {hoveredBar.block.value && <span>{sport === 'bike' ? 'Puissance' : 'Allure'} : <strong style={{ fontFamily: 'DM Mono,monospace' }}>{hoveredBar.block.value}{sport === 'bike' ? 'W' : '/km'}</strong></span>}
-            {hoveredBar.block.hrAvg && parseInt(hoveredBar.block.hrAvg) > 0 && <span>FC moy : <strong style={{ fontFamily: 'DM Mono,monospace' }}>{hoveredBar.block.hrAvg} bpm</strong></span>}
+            {hoveredBar.block.value && <span>{sport === 'bike' ? t('sed.power') : t('sed.pace')} : <strong style={{ fontFamily: 'DM Mono,monospace' }}>{hoveredBar.block.value}{sport === 'bike' ? 'W' : '/km'}</strong></span>}
+            {hoveredBar.block.hrAvg && parseInt(hoveredBar.block.hrAvg) > 0 && <span>{t('sed.avgHr')} : <strong style={{ fontFamily: 'DM Mono,monospace' }}>{hoveredBar.block.hrAvg} bpm</strong></span>}
           </div>
         </div>
       )}
@@ -1164,7 +1168,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
       {/* ══ GUIDE CIRCUITS (gym/hyrox) ══ */}
       {isStrengthSportBB && (
         <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 12, background: `${accentBB}07`, border: `1px solid ${accentBB}18` }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', margin: '0 0 7px' }}>Types de circuits</p>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', margin: '0 0 7px' }}>{t('sed.circuitTypes')}</p>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
             {CIRCUIT_TYPES.map(ct => (
               <div key={ct.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
@@ -1182,7 +1186,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
         const Hpx = 150
         return (
           <div style={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '14px 14px 12px', marginBottom: 12 }}>
-            <p style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text-dim)', margin: '0 0 12px' }}>Profil d&apos;intensité <span style={{ fontWeight: 500, textTransform: 'none' as const, letterSpacing: 0 }}>· glisse un bloc (haut = intensité, bord droit = durée)</span></p>
+            <p style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--text-dim)', margin: '0 0 12px' }}>{t('sed.intensityProfile')} <span style={{ fontWeight: 500, textTransform: 'none' as const, letterSpacing: 0 }}>{t('sed.intensityProfileHint')}</span></p>
             <div style={{ display: 'flex', gap: 8 }}>
               {/* axe zones (bulles) */}
               <div style={{ position: 'relative' as const, width: 28, height: Hpx, flexShrink: 0 }}>
@@ -1194,7 +1198,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                 {Array.from({ length: maxZone }, (_, k) => k + 1).map(z => { const top = Hpx - (z / maxZone) * Hpx; return (
                   <div key={`g${z}`} style={{ position: 'absolute' as const, left: 0, right: 0, top, borderTop: '1px dashed var(--border)', pointerEvents: 'none' as const }} />) })}
                 {blocks.map(b => { const m = blockMin(b); const h = (zonePosF(b) / maxZone) * Hpx; const r = intensityRatio(b); return (
-                  <div key={b.id} data-pbar onPointerDown={e => profileDown(e, b, 'zone')} title={`Z${b.zone}${r != null ? ` · ${Math.round(r * 100)}% seuil` : ''} · ${durMMSS(m)}`}
+                  <div key={b.id} data-pbar onPointerDown={e => profileDown(e, b, 'zone')} title={`Z${b.zone}${r != null ? ` · ${Math.round(r * 100)}% ${t('sed.thresholdShort')}` : ''} · ${durMMSS(m)}`}
                     style={{ position: 'relative' as const, flexGrow: m, flexBasis: 0, minWidth: 6, height: h, background: zc(b.zone), borderRadius: '6px 6px 2px 2px', cursor: 'ns-resize', touchAction: 'none' as const, transition: pdrag.current ? 'none' : 'height 0.12s' }}>
                     <span onPointerDown={e => profileDown(e, b, 'dur')} style={{ position: 'absolute' as const, right: -2, top: 0, bottom: 0, width: 9, cursor: 'ew-resize', touchAction: 'none' as const }} />
                   </div>) })}
@@ -1236,10 +1240,10 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:4 }}>
                       <input type="number" min={0} max={10} step={0.5} value={b.recoveryMin??2} onChange={e=>onChange(blocks.map((x,j)=>j===bi?{...x,recoveryMin:parseFloat(e.target.value)||0}:x))} style={{ width:42,padding:'3px 5px',borderRadius:5,border:'1px solid var(--border)',background:'var(--bg-card2)',color:'var(--text-dim)',fontSize:12,fontFamily:'"DM Mono",monospace',textAlign:'center' as const,outline:'none' }}/>
-                      <span style={{fontSize:10,color:'var(--text-dim)'}}>min repos</span>
+                      <span style={{fontSize:10,color:'var(--text-dim)'}}>{t('sed.minRest')}</span>
                     </div>
                   </div>
-                  <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:12, padding:'0 2px' }} title="Dupliquer">📋</button>
+                  <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:12, padding:'0 2px' }} title={t('sed.duplicate')}>📋</button>
                   <button onClick={()=>onChange(blocks.filter((_,j)=>j!==bi))} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:16, lineHeight:1, padding:'0 2px' }}>×</button>
                 </div>
               )
@@ -1262,7 +1266,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                     <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', background: 'var(--bg-elev)', padding: '3px 8px', borderRadius: 6, flexShrink: 0, letterSpacing: '0.04em' }}>INTERVAL</span>
                     <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{b.reps}× {b.label || `${Math.round((b.effortMin??0)*10)/10}min`}</span>
                     <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', flexShrink: 0 }}>{formatHM(Math.round((b.reps??1)*((b.effortMin??0)+(b.recoveryMin??0))))}</span>
-                    <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:12, padding:'0 3px', flexShrink:0 }} title="Dupliquer">📋</button>
+                    <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:12, padding:'0 3px', flexShrink:0 }} title={t('sed.duplicate')}>📋</button>
                     <button onClick={() => onChange(blocks.filter(x => x.id !== b.id))} style={{ background:'none', border:'none', cursor:'pointer', fontSize:18, lineHeight:1, padding:'0 2px', flexShrink:0, color:'var(--text-dim)' }}>×</button>
                   </div>
                   {/* Body */}
@@ -1271,11 +1275,11 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                       <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>Effort</p>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(90px,1fr))', gap: 8 }}>
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Répétitions</p>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.repetitions')}</p>
                           <input type="number" min={1} value={b.reps??5} onChange={e=>upd(b.id,'reps',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
                         </div>
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Durée</p>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.duration')}</p>
                           <input value={durMMSS(b.effortMin??0)} onChange={e=>upd(b.id,'effortMin',mmssToMin(e.target.value))} placeholder="4:00" style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
                           {effortRange && sport !== 'bike' && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0', fontFamily:'var(--font-display)' }}>{effortRange}</p>}
                         </div>
@@ -1291,25 +1295,25 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                       </div>
                     </div>
                     <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(107,114,128,0.06)', border: '1px solid rgba(107,114,128,0.15)' }}>
-                      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>Récupération</p>
+                      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--text-dim)', margin: '0 0 6px' }}>{t('sed.recovery')}</p>
                       <div style={{ display: 'grid', gridTemplateColumns: sport==='bike' ? '1fr 1fr 1fr' : '1fr 1fr', gap: 8 }}>
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Durée</p>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.duration')}</p>
                           <input value={durMMSS(b.recoveryMin??0)} onChange={e=>upd(b.id,'recoveryMin',mmssToMin(e.target.value))} placeholder="1:00" style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:13, fontFamily:'var(--font-display)', fontWeight:700, outline:'none' }}/>
                         </div>
                         <div>
-                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Zone récup</p>
+                          <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.zoneRecovery')}</p>
                           <input type="number" min={1} max={7} value={b.recoveryZone??1} onChange={e=>upd(b.id,'recoveryZone',parseInt(e.target.value)||1)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none' }}/>
                         </div>
                         {sport==='bike' && (
                           <div>
-                            <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>Watts récup</p>
+                            <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 3px', textTransform: 'uppercase' as const }}>{t('sed.wattsRecovery')}</p>
                             <input type="number" min={0} step={5} value={b.recoveryValue??''} placeholder="180" onChange={e=>upd(b.id,'recoveryValue',e.target.value)} style={{ width:'100%', padding:'6px 10px', borderRadius:6, border:'1px solid rgba(107,114,128,0.25)', background:'var(--bg-card2)', color:'var(--text-mid)', fontSize:13, fontFamily:'DM Mono,monospace', outline:'none', fontWeight:600 }}/>
                             {ftp && parseInt(b.recoveryValue||'0')>0 && <p style={{ fontSize:9, color:'var(--text-dim)', margin:'2px 0 0' }}>{Math.round(parseInt(b.recoveryValue||'0')/ftp*100)}% FTP · {zc(getZone('bike',b.recoveryValue??''))}</p>}
                           </div>
                         )}
                       </div>
-                      <p style={{ fontSize:9, color:'var(--text-dim)', margin:'5px 0 0', fontFamily:'DM Mono,monospace' }}>{recovFmt} en Z{b.recoveryZone??1}{(b.recoveryZone??1)<=1?' — marche/footing très lent':(b.recoveryZone??1)===2?' — footing lent':''}</p>
+                      <p style={{ fontSize:9, color:'var(--text-dim)', margin:'5px 0 0', fontFamily:'DM Mono,monospace' }}>{recovFmt} {t('sed.inZone')} Z{b.recoveryZone??1}{(b.recoveryZone??1)<=1?` — ${t('sed.walkVerySlowJog')}`:(b.recoveryZone??1)===2?` — ${t('sed.slowJog')}`:''}</p>
                     </div>
                   </div>
                   {/* Footer */}
@@ -1339,9 +1343,9 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                   <select value={b.type} onChange={e => changeType(b.id, e.target.value)} style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '2px 4px' }}>
                     {(Object.entries(BLOCK_TYPE_LABEL) as [BlockType,string][]).filter(([k]) => k !== 'circuit_header').map(([k,v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
-                  <span style={{ flex:1, fontSize:13, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{b.label || 'Bloc'}</span>
+                  <span style={{ flex:1, fontSize:13, fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{b.label || t('sed.block')}</span>
                   <span style={{ fontSize:14, fontWeight:700, color:'var(--text)', flexShrink:0 }}>{formatHM(b.durationMin)}</span>
-                  <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:12, padding:'0 3px', flexShrink:0 }} title="Dupliquer">📋</button>
+                  <button onClick={() => duplicate(bi)} style={{ background:'none', border:'none', color:'var(--text-dim)', cursor:'pointer', fontSize:12, padding:'0 3px', flexShrink:0 }} title={t('sed.duplicate')}>📋</button>
                   <button onClick={() => onChange(blocks.filter(x => x.id !== b.id))}
                     onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.color='#EF4444'}}
                     onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.color='var(--text-dim)'}}
@@ -1349,9 +1353,9 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                 </div>
                 {/* Body */}
                 <div style={{ padding: '10px 12px', background: 'var(--bg-card)' }}>
-                  <input value={b.label} onChange={e=>upd(b.id,'label',e.target.value)} placeholder="Nom du bloc (ex: Tempo)" style={{ width:'100%', padding:'8px 11px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, outline:'none', boxSizing:'border-box' as const, marginBottom:10 }}/>
+                  <input value={b.label} onChange={e=>upd(b.id,'label',e.target.value)} placeholder={t('sed.blockNamePlaceholder')} style={{ width:'100%', padding:'8px 11px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13, outline:'none', boxSizing:'border-box' as const, marginBottom:10 }}/>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, alignItems: 'end' }}>
-                    <StepperField label="Durée" value={durMMSS(b.durationMin)}
+                    <StepperField label={t('sed.duration')} value={durMMSS(b.durationMin)}
                       onChange={v=>upd(b.id,'durationMin',mmssToMin(v))}
                       onDec={()=>upd(b.id,'durationMin',bumpDurSec(b.durationMin,-1))}
                       onInc={()=>upd(b.id,'durationMin',bumpDurSec(b.durationMin,1))} />
@@ -1375,7 +1379,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                           <button onClick={() => setFtpPctMode(p=>({...p,[b.id]:!p[b.id]}))} style={{ fontSize:8, padding:'1px 5px', borderRadius:3, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', cursor:'pointer', fontWeight:600 }}>%FTP</button>
                         ) : undefined} />
                     )}
-                    <StepperField label="FC" unit="bpm" value={b.hrAvg||''} color="var(--text)"
+                    <StepperField label={t('sed.hr')} unit="bpm" value={b.hrAvg||''} color="var(--text)"
                       onChange={v=>upd(b.id,'hrAvg',v)}
                       onDec={()=>upd(b.id,'hrAvg',String(Math.max(0,(parseInt(b.hrAvg||'0')||0)-1)))}
                       onInc={()=>upd(b.id,'hrAvg',String((parseInt(b.hrAvg||'0')||0)+1))} />
@@ -1385,7 +1389,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                   {warnFtp && (
                     <div style={{ marginTop:8, padding:'5px 10px', borderRadius:6, background:'rgba(234,88,12,0.08)', border:'1px solid rgba(234,88,12,0.25)', display:'flex', alignItems:'center', gap:5 }}>
                       <span style={{ fontSize:11 }}>⚠</span>
-                      <span style={{ fontSize:10, color:'#EA580C', fontWeight:600 }}>{wattsNum}W &gt; FTP ({ftp}W) sur {b.durationMin}min — intensité non soutenable</span>
+                      <span style={{ fontSize:10, color:'#EA580C', fontWeight:600 }}>{wattsNum}W &gt; FTP ({ftp}W) {t('sed.overMin', { min: b.durationMin })} — {t('sed.unsustainableIntensity')}</span>
                     </div>
                   )}
                 </div>
@@ -1407,12 +1411,12 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
       {/* ══ BOUTONS AJOUTER ══ */}
       {sport === 'gym' || sport === 'hyrox' ? (
         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
-          <button onClick={() => onChange([...blocks,{id:`b_${Date.now()}`,mode:'single',type:'effort',durationMin:0,zone:3,value:'',hrAvg:'',label:'Exercice',reps:10,recoveryMin:1.5}])} style={{ width:'100%', padding:'10px', borderRadius:10, background:'transparent', border:'1px dashed var(--border-mid)', color:'var(--text-dim)', fontSize:12, cursor:'pointer' }}>+ Exercice</button>
+          <button onClick={() => onChange([...blocks,{id:`b_${Date.now()}`,mode:'single',type:'effort',durationMin:0,zone:3,value:'',hrAvg:'',label:t('sed.exercise'),reps:10,recoveryMin:1.5}])} style={{ width:'100%', padding:'10px', borderRadius:10, background:'transparent', border:'1px dashed var(--border-mid)', color:'var(--text-dim)', fontSize:12, cursor:'pointer' }}>{t('sed.plusExercise')}</button>
           {!showCircuitMenu ? (
-            <button onClick={() => setShowCircuitMenu(true)} style={{ width:'100%', padding:'10px', borderRadius:10, background:'transparent', border:`1px dashed ${SPORT_BORDER[sport]}66`, color:SPORT_BORDER[sport], fontSize:12, cursor:'pointer' }}>+ Ajouter un circuit</button>
+            <button onClick={() => setShowCircuitMenu(true)} style={{ width:'100%', padding:'10px', borderRadius:10, background:'transparent', border:`1px dashed ${SPORT_BORDER[sport]}66`, color:SPORT_BORDER[sport], fontSize:12, cursor:'pointer' }}>{t('sed.addCircuit')}</button>
           ) : (
             <div style={{ padding:'12px 14px', borderRadius:12, border:'1px solid var(--border)', background:'var(--bg-card2)' }}>
-              <p style={{ fontSize:10, fontWeight:600, color:'var(--text-dim)', margin:'0 0 8px' }}>Quel type de circuit ?</p>
+              <p style={{ fontSize:10, fontWeight:600, color:'var(--text-dim)', margin:'0 0 8px' }}>{t('sed.whichCircuitType')}</p>
               <div style={{ display:'flex', flexDirection:'column' as const, gap:4 }}>
                 {CIRCUIT_TYPES.map(ct => (
                   <button key={ct.id} onClick={() => {
@@ -1428,7 +1432,7 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
                   </button>
                 ))}
               </div>
-              <button onClick={()=>setShowCircuitMenu(false)} style={{ marginTop:8, width:'100%', padding:'7px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:10, cursor:'pointer' }}>Annuler</button>
+              <button onClick={()=>setShowCircuitMenu(false)} style={{ marginTop:8, width:'100%', padding:'7px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:10, cursor:'pointer' }}>{t('sed.cancel')}</button>
             </div>
           )}
         </div>
@@ -1440,8 +1444,8 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
             style={{ flex:1, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s' }}>
             <span style={{ width:30, height:30, borderRadius:9, background:'var(--bg-elev)', color:'var(--text-mid)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:300, flexShrink:0, lineHeight:1 }}>+</span>
             <span style={{ display:'flex', flexDirection:'column' as const, gap:1 }}>
-              <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>Bloc simple</span>
-              <span style={{ fontSize:10.5, color:'var(--text-dim)' }}>Effort continu</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>{t('sed.simpleBlock')}</span>
+              <span style={{ fontSize:10.5, color:'var(--text-dim)' }}>{t('sed.continuousEffort')}</span>
             </span>
           </button>
           <button onClick={addInterval}
@@ -1450,8 +1454,8 @@ function BlockBuilder({ sport, blocks, onChange, nutritionItems, exoHistory, ath
             style={{ flex:1, padding:'12px 14px', borderRadius:12, background:'var(--bg-card2)', border:'1px solid var(--border)', cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left' as const, transition:'border-color .15s' }}>
             <span style={{ width:30, height:30, borderRadius:9, background:'var(--bg-elev)', color:'var(--text-mid)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0, lineHeight:1 }}>⟳</span>
             <span style={{ display:'flex', flexDirection:'column' as const, gap:1 }}>
-              <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>Répétitions</span>
-              <span style={{ fontSize:10.5, color:'var(--text-dim)' }}>Intervalles</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'var(--text)' }}>{t('sed.repetitions')}</span>
+              <span style={{ fontSize:10.5, color:'var(--text-dim)' }}>{t('sed.intervals')}</span>
             </span>
           </button>
         </div>
@@ -1670,7 +1674,7 @@ function buildElevationProfile(
   return { distKm: Math.round(cumDist / 100) / 10, elevM: Math.round(elevM), profile }
 }
 
-function parseRouteFile(file: File): Promise<ParcoursData> {
+function parseRouteFile(file: File, t: (k: string, v?: Record<string, string | number>) => string): Promise<ParcoursData> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -1711,10 +1715,10 @@ function parseRouteFile(file: File): Promise<ParcoursData> {
             return { lat: lat ?? 0, lon: lon ?? 0, ele: ele ?? 0 }
           })
         } else {
-          reject(new Error('Format non supporté')); return
+          reject(new Error(t('sed.unsupportedFormat'))); return
         }
 
-        if (pts.length === 0) { reject(new Error('Aucun point GPS trouvé')); return }
+        if (pts.length === 0) { reject(new Error(t('sed.noGpsPoint'))); return }
 
         const { distKm, elevM, profile } = buildElevationProfile(pts)
         const gpsTrace = buildGpsTrace(pts)
@@ -1732,7 +1736,7 @@ function parseRouteFile(file: File): Promise<ParcoursData> {
         })
       } catch (err) { reject(err) }
     }
-    reader.onerror = () => reject(new Error('Lecture fichier échouée'))
+    reader.onerror = () => reject(new Error(t('sed.fileReadFailed')))
     reader.readAsText(file)
   })
 }
@@ -1915,6 +1919,7 @@ function IntervalPanel({
   onChange: (v: { blocks: { type: 'effort' | 'recovery'; sec: number; watts: number }[]; reps: number } | null) => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
   const initBlocks = value?.blocks ?? [
     { type: 'effort' as const, sec: 30, watts: defaultWatts },
     { type: 'recovery' as const, sec: 15, watts: Math.round(ftp * 0.50) },
@@ -1979,7 +1984,7 @@ function IntervalPanel({
                   background: active ? `${pCol}22` : 'var(--bg-card)', color: active ? pCol : 'var(--text-mid)' }}>{p.l}</button>
             )
           })}
-          <button onClick={() => onChange(null)} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid rgba(239,68,68,0.35)', background:'rgba(239,68,68,0.07)', color:'#ef4444', fontSize:9, fontWeight:600, cursor:'pointer', marginLeft:'auto' }}>✕ Supprimer</button>
+          <button onClick={() => onChange(null)} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid rgba(239,68,68,0.35)', background:'rgba(239,68,68,0.07)', color:'#ef4444', fontSize:9, fontWeight:600, cursor:'pointer', marginLeft:'auto' }}>✕ {t('sed.delete')}</button>
         </div>
       </div>
       {/* Blocks list */}
@@ -1993,7 +1998,7 @@ function IntervalPanel({
               {/* Type toggle */}
               <button onClick={() => updateBlock(idx, 'type', isEf ? 'recovery' : 'effort')}
                 style={{ padding:'2px 7px', borderRadius:4, border:`1px solid ${col}60`, background:`${col}20`, color:col, fontSize:8, fontWeight:700, cursor:'pointer', minWidth:46, flexShrink:0 }}>
-                {isEf ? 'EFFORT' : 'RÉCUP'}
+                {isEf ? t('sed.effortUpper') : t('sed.recovUpper')}
               </button>
               {/* Duration */}
               <input type="text" defaultValue={toMmSs(ib.sec)} key={`sec_${idx}_${ib.sec}`}
@@ -2017,13 +2022,13 @@ function IntervalPanel({
       {/* Add block buttons */}
       <div style={{ display:'flex', gap:5, marginBottom:8 }}>
         <button onClick={() => addBlock('effort')}
-          style={{ padding:'3px 9px', borderRadius:5, border:'1px solid rgba(239,68,68,0.35)', background:'rgba(239,68,68,0.07)', color:'#EF4444', fontSize:9, fontWeight:600, cursor:'pointer' }}>+ Effort</button>
+          style={{ padding:'3px 9px', borderRadius:5, border:'1px solid rgba(239,68,68,0.35)', background:'rgba(239,68,68,0.07)', color:'#EF4444', fontSize:9, fontWeight:600, cursor:'pointer' }}>{t('sed.plusEffort')}</button>
         <button onClick={() => addBlock('recovery')}
-          style={{ padding:'3px 9px', borderRadius:5, border:'1px solid rgba(16,185,129,0.35)', background:'rgba(16,185,129,0.07)', color:'#10B981', fontSize:9, fontWeight:600, cursor:'pointer' }}>+ Récup</button>
+          style={{ padding:'3px 9px', borderRadius:5, border:'1px solid rgba(16,185,129,0.35)', background:'rgba(16,185,129,0.07)', color:'#10B981', fontSize:9, fontWeight:600, cursor:'pointer' }}>{t('sed.plusRecov')}</button>
       </div>
       {/* Reps row */}
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-        <span style={{ fontSize:9, color:'var(--text-dim)', whiteSpace:'nowrap' as const }}>Répétitions</span>
+        <span style={{ fontSize:9, color:'var(--text-dim)', whiteSpace:'nowrap' as const }}>{t('sed.repetitions')}</span>
         <input type="number" value={reps} min={1} max={99} onChange={e => setReps(Math.max(1,parseInt(e.target.value)||1))}
           style={{ width:40, padding:'2px 5px', borderRadius:4, border:'1px solid var(--border)', background:'var(--bg-card)', color:'var(--text)', fontSize:11, fontWeight:700, fontFamily:'DM Mono,monospace', textAlign:'center' as const, outline:'none' }}/>
         <button onClick={() => { if(perRepSec>0) setReps(Math.max(1,Math.floor(blockSec/perRepSec))) }}
@@ -2032,7 +2037,7 @@ function IntervalPanel({
           = {Math.floor(totMin)}:{String(Math.round((totMin%1)*60)).padStart(2,'0')}
         </span>
         {overflow && <span style={{ fontSize:9, color:'#ef4444', background:'rgba(239,68,68,0.1)', borderRadius:3, padding:'1px 5px' }}>⚠ +{Math.round((totSec-blockSec)/60)}min</span>}
-        {!overflow && remainSec > 30 && <span style={{ fontSize:9, color:'#eab308', background:'rgba(234,179,8,0.1)', borderRadius:3, padding:'1px 5px' }}>⚠ {Math.round(remainSec/60)}min non couverts</span>}
+        {!overflow && remainSec > 30 && <span style={{ fontSize:9, color:'#eab308', background:'rgba(234,179,8,0.1)', borderRadius:3, padding:'1px 5px' }}>⚠ {t('sed.minNotCovered', { min: Math.round(remainSec/60) })}</span>}
       </div>
       {/* Summary formula */}
       <div style={{ padding:'6px 9px', borderRadius:5, background:'var(--bg-card)', border:'1px solid var(--border)', fontSize:9, fontFamily:'DM Mono,monospace', color:'var(--text-mid)', marginBottom:8 }}>
@@ -2051,7 +2056,7 @@ function IntervalPanel({
       <button
         onClick={() => { onChange({ blocks: iBlocks, reps }); onClose() }}
         style={{ width:'100%', padding:'7px', borderRadius:7, border:'none', background:`linear-gradient(135deg,${wattsColor(efW)},${wattsColor(efW)}bb)`, color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-        ⚡ Appliquer ces intervalles
+        ⚡ {t('sed.applyIntervals')}
       </button>
     </div>
   )
@@ -2075,6 +2080,7 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
   onBlockDraw?: (startKm: number, endKm: number, anchorPct: number) => void
   onGaugeAction?: (blockIdx: number, action: 'modify' | 'intervals') => void
 }) {
+  const { t } = useI18n()
   const svgRef = useRef<SVGSVGElement>(null)
   const [cursor, setCursor] = useState<{ x: number; distKm: number; ele: number; slope: number } | null>(null)
   const [dragging, setDragging] = useState<{ blockIdx: number; edge: 'start' | 'end' } | null>(null)
@@ -2470,8 +2476,8 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           Z4:['#EA580C','#FB923C'],Z5:['#DC2626','#F87171'],Z6:['#9333EA','#C084FC'],Z7:['#1D4ED8','#60A5FA'],
         }
         const ZONE_NAMES: Record<string,string> = {
-          Z1:'Z1 — Récup',Z2:'Z2 — EF',Z3:'Z3 — Tempo',Z4:'Z4 — Seuil',
-          Z5:'Z5 — VO2max',Z6:'Z6 — Anaérobie',Z7:'Z7 — Sprint',
+          Z1:`Z1 — ${t('sed.zone.recup')}`,Z2:'Z2 — EF',Z3:'Z3 — Tempo',Z4:`Z4 — ${t('sed.zone.threshold')}`,
+          Z5:'Z5 — VO2max',Z6:`Z6 — ${t('sed.zone.anaerobic')}`,Z7:'Z7 — Sprint',
         }
         const zLblT = zoneRatioT>1.50?'Z7':zoneRatioT>1.20?'Z6':zoneRatioT>1.05?'Z5':zoneRatioT>0.87?'Z4':zoneRatioT>0.75?'Z3':zoneRatioT>0.55?'Z2':'Z1'
         const [,gradTopT] = GRAD_COLORS_T[zLblT] ?? [pg.color, pg.color]
@@ -2492,13 +2498,13 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
 
         const tooltipTitle = pg.name ?? pg.label
         const rows: [string,string,string][] = [
-          ['⚡','Watts',`${pg.watts}W`],
+          ['⚡',t('sed.watts'),`${pg.watts}W`],
           ['🏷','Zone', ZONE_NAMES[zLblT] ?? zLblT],
-          ['⏱','Durée',`${pg.estimatedMin.toFixed(0)} min`],
+          ['⏱',t('sed.duration'),`${pg.estimatedMin.toFixed(0)} min`],
           ['📍','km',`${pg.startKm.toFixed(1)} → ${pg.endKm.toFixed(1)}`],
-          ['📈','Pente',`${slopeT > 0 ? '+' : ''}${slopeT}%`],
+          ['📈',t('sed.slope'),`${slopeT > 0 ? '+' : ''}${slopeT}%`],
           ['🏔','D+',`${Math.round(dPlusT)}m`],
-          ...(pg.hrAvg ? [['❤️','FC cible',`~${pg.hrAvg} bpm`] as [string,string,string]] : []),
+          ...(pg.hrAvg ? [['❤️',t('sed.targetHr'),`~${pg.hrAvg} bpm`] as [string,string,string]] : []),
         ]
 
         return (
@@ -2541,14 +2547,14 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
                 onClick={e => { e.stopPropagation(); setHoveredGauge(null); onGaugeAction?.(pg.blockIdx, 'modify') }}
                 style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', fontSize: 10, fontWeight: 700, cursor: 'pointer', color: 'var(--text)' }}
               >
-                Modifier
+                {t('sed.modify')}
               </button>
               <button
                 onMouseDown={e => e.stopPropagation()}
                 onClick={e => { e.stopPropagation(); setHoveredGauge(null); onGaugeAction?.(pg.blockIdx, 'intervals') }}
                 style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: `1px solid ${gradTopT}60`, background: `${gradTopT}15`, fontSize: 10, fontWeight: 700, cursor: 'pointer', color: gradTopT }}
               >
-                ⚡ Intervalles
+                ⚡ {t('sed.intervals')}
               </button>
             </div>
           </div>
@@ -2562,8 +2568,8 @@ function ElevationChart({ profile, totalKm, accent, onHover, terrainBlocks, onBl
           marginTop: 5, fontSize: 11, justifyContent: 'center', flexWrap: 'wrap' as const,
         }}>
           <span style={{ color: 'var(--text-dim)' }}>km <strong style={{ color: 'var(--text)', fontFamily: '"DM Mono",monospace' }}>{cursor.distKm.toFixed(1)}</strong></span>
-          <span style={{ color: 'var(--text-dim)' }}>altitude <strong style={{ color: accent, fontFamily: '"DM Mono",monospace' }}>{cursor.ele}m</strong></span>
-          <span style={{ color: 'var(--text-dim)' }}>pente <strong style={{ color: slopeColor, fontFamily: '"DM Mono",monospace' }}>{cursor.slope > 0 ? '+' : ''}{cursor.slope}%</strong></span>
+          <span style={{ color: 'var(--text-dim)' }}>{t('sed.altitude')} <strong style={{ color: accent, fontFamily: '"DM Mono",monospace' }}>{cursor.ele}m</strong></span>
+          <span style={{ color: 'var(--text-dim)' }}>{t('sed.slopeLower')} <strong style={{ color: slopeColor, fontFamily: '"DM Mono",monospace' }}>{cursor.slope > 0 ? '+' : ''}{cursor.slope}%</strong></span>
         </div>
       )}
     </div>
@@ -2577,6 +2583,7 @@ function GPSMapInner({ trace, accent, hoveredKm, elevationProfile }: {
   hoveredKm: number | null
   elevationProfile: Array<{ distKm: number; ele: number }>
 }) {
+  const { t } = useI18n()
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<unknown>(null)
   const cursorMarkerRef = useRef<unknown>(null)
@@ -2607,7 +2614,7 @@ function GPSMapInner({ trace, accent, hoveredKm, elevationProfile }: {
       const satLayer = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/512/{z}/{x}/{y}@2x?access_token=${mbToken}`, mbOpts)
       const hybridLayer = L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/512/{z}/{x}/{y}@2x?access_token=${mbToken}`, mbOpts)
       osmLayer.addTo(map)
-      L.control.layers({ 'Standard': osmLayer, 'Satellite': satLayer, 'Hybride': hybridLayer }, {}, { position: 'topright', collapsed: false }).addTo(map)
+      L.control.layers({ [t('sed.mapStandard')]: osmLayer, [t('sed.mapSatellite')]: satLayer, [t('sed.mapHybrid')]: hybridLayer }, {}, { position: 'topright', collapsed: false }).addTo(map)
 
       // Trace
       const latlngs = trace.map(p => [p.lat, p.lon] as [number, number])
@@ -2662,11 +2669,12 @@ function GPSMapWrapper({ trace, accent, hoveredKm, elevationProfile }: {
   hoveredKm: number | null
   elevationProfile: Array<{ distKm: number; ele: number }>
 }) {
+  const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
   if (!mounted) return (
     <div style={{ width: '100%', height: 400, borderRadius: 10, background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
-      Chargement de la carte…
+      {t('sed.loadingMap')}
     </div>
   )
   return <GPSMapInner trace={trace} accent={accent} hoveredKm={hoveredKm} elevationProfile={elevationProfile}/>
@@ -2761,14 +2769,14 @@ interface ExecCircuit {
   exos: ExecExo[]
 }
 
-function buildExecCircuits(blocks: Block[]): ExecCircuit[] {
+function buildExecCircuits(blocks: Block[], t: (k: string, v?: Record<string, string | number>) => string): ExecCircuit[] {
   const result: ExecCircuit[] = []
   let current: ExecCircuit | null = null
   for (const b of blocks) {
     if (b.type === 'circuit_header') {
       const ct: CircuitType = (['series','circuit','superset','emom','tabata'].includes(b.mode) ? b.mode : 'series') as CircuitType
       current = {
-        label: b.label || 'Circuit',
+        label: b.label || t('sed.circuit'),
         rounds: ct === 'tabata' ? 8 : (b.zone || 1),
         type: ct,
         durationMin: b.durationMin || 0,
@@ -2778,7 +2786,7 @@ function buildExecCircuits(blocks: Block[]): ExecCircuit[] {
       result.push(current)
     } else {
       if (!current) {
-        current = { label: 'Séance', rounds: 1, type: 'series', durationMin: 0, restBetweenRoundsSec: 90, exos: [] }
+        current = { label: t('sed.session'), rounds: 1, type: 'series', durationMin: 0, restBetweenRoundsSec: 90, exos: [] }
         result.push(current)
       }
       current.exos.push({
@@ -2845,10 +2853,10 @@ function getExecutionOrder(circ: ExecCircuit): Array<{ exoIdx: number; setIdx: n
 
 type ExecStep = { circuitIdx: number; exoIdx: number; setIdx: number }
 
-const MOTIVATIONAL_MSGS = [
-  'Allez, tu gères ! 💪', 'En feu 🔥', 'Continue comme ça !',
-  'Tu es au sommet !', 'Reste focus.', 'Chaque série compte.',
-  'Mental fort !', 'Champion. 🏆', 'C\'est parti !', 'Bien joué !',
+const getMotivationalMsgs = (t: (k: string, v?: Record<string, string | number>) => string) => [
+  t('sed.motiv1'), t('sed.motiv2'), t('sed.motiv3'),
+  t('sed.motiv4'), t('sed.motiv5'), t('sed.motiv6'),
+  t('sed.motiv7'), t('sed.motiv8'), t('sed.motiv9'), t('sed.motiv10'),
 ]
 
 function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHistory }: {
@@ -2859,10 +2867,11 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
   onSaveLog?: (log: SessionLog) => void
   exoHistory?: Record<string, { weight: string; reps: number; date: string }>
 }) {
+  const { t } = useI18n()
   const accent = SPORT_BORDER[sport]
   const fmtTimer = (sec: number) => `${Math.floor(Math.max(0,sec) / 60)}:${String(Math.max(0, sec) % 60).padStart(2, '0')}`
 
-  const initialCircuits = buildExecCircuits(blocks)
+  const initialCircuits = buildExecCircuits(blocks, t)
 
   // Construire la séquence complète d'exécution
   const initialSequence: ExecStep[] = []
@@ -2964,7 +2973,8 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
   }
 
   function pickMotiv() {
-    setMotivMsg(MOTIVATIONAL_MSGS[Math.floor(Math.random() * MOTIVATIONAL_MSGS.length)])
+    const msgs = getMotivationalMsgs(t)
+    setMotivMsg(msgs[Math.floor(Math.random() * msgs.length)])
   }
 
   function advanceToNextStep(pos: number) {
@@ -3099,10 +3109,10 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
   }
 
   const NOTE_CONFIG = [
-    { id: 'easy', label: 'Facile', color: '#22c55e' },
+    { id: 'easy', label: t('sed.noteEasy'), color: '#22c55e' },
     { id: 'ok',   label: 'OK',    color: '#9ca3af' },
-    { id: 'hard', label: 'Dur',   color: '#f97316' },
-    { id: 'fail', label: 'Échec', color: '#ef4444' },
+    { id: 'hard', label: t('sed.noteHard'),   color: '#f97316' },
+    { id: 'fail', label: t('sed.noteFail'), color: '#ef4444' },
   ]
 
   // ── PHASE : READY ──
@@ -3110,13 +3120,13 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
     return (
       <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: 'var(--bg)', color: 'var(--text)', overflowY: 'auto' as const }}>
         <div style={{ padding: '80px 24px 28px', maxWidth: 500, margin: '0 auto' }}>
-          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 4px' }}>Prêt à lancer</p>
+          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: '0 0 4px' }}>{t('sed.readyToStart')}</p>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 20px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{sessionTitle}</h1>
           {circuits.map((circ, ci) => (
             <div key={ci} style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 6px' }}>
                 {circ.label}
-                {circ.type !== 'series' && circ.rounds > 1 ? ` · ${circ.rounds} tours` : ''}
+                {circ.type !== 'series' && circ.rounds > 1 ? ` · ${circ.rounds} ${t('sed.roundsShort')}` : ''}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
                 {circ.exos.map((exo, ei) => (
@@ -3140,13 +3150,13 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 16 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-mid)', cursor: 'pointer' }}>
               <input type="checkbox" checked={vibrateEnabled} onChange={e => setVibrateEnabled(e.target.checked)} style={{ width: 14, height: 14, accentColor: accent }} />
-              Vibration fin de repos
+              {t('sed.vibrateEndRest')}
             </label>
           </div>
           <button onClick={startSession} style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif', letterSpacing: '0.02em' }}>
-            ▶ Lancer la séance
+            ▶ {t('sed.startSession')}
           </button>
-          <button onClick={onExit} style={{ width: '100%', padding: '12px', borderRadius: 10, marginTop: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
+          <button onClick={onExit} style={{ width: '100%', padding: '12px', borderRadius: 10, marginTop: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>{t('sed.cancel')}</button>
         </div>
       </div>
     )
@@ -3156,7 +3166,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
   if (phase === 'countdown') {
     return (
       <div onClick={e => e.stopPropagation()} style={{ position: 'fixed' as const, inset: 0, zIndex: 2000, background: 'var(--bg)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.12em', margin: '0 0 20px', fontWeight: 600 }}>Prépare-toi</p>
+        <p style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.12em', margin: '0 0 20px', fontWeight: 600 }}>{t('sed.getReady')}</p>
         <div style={{ fontSize: 100, fontWeight: 900, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1, animation: 'pulse 1s ease-in-out infinite' }}>{countdownSec}</div>
         <p style={{ fontSize: 14, color: 'var(--text)', margin: '24px 0 0', fontWeight: 600 }}>{currentCircuit?.exos[0]?.label ?? sessionTitle}</p>
         <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0' }}>
@@ -3202,18 +3212,18 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
         )}
         <div style={{ padding: '80px 24px 32px', maxWidth: 500, margin: '0 auto', textAlign: 'center' as const }}>
           <div style={{ fontSize: 56, marginBottom: 8, display: 'inline-block', animation: 'trophy-bounce 1.2s ease-in-out 3' }}>🏆</div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, fontFamily: 'Syne, sans-serif', margin: '0 0 4px', color: 'var(--text)' }}>Séance terminée !</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 800, fontFamily: 'Syne, sans-serif', margin: '0 0 4px', color: 'var(--text)' }}>{t('sed.sessionDone')}</h2>
           {motivMsg && <p style={{ fontSize: 14, color: accent, fontWeight: 700, margin: '0 0 24px' }}>{motivMsg}</p>}
 
           {/* KPIs */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 20 }}>
             {([
-              { label: 'Durée',     value: fmtTimer(elapsed) },
-              { label: 'Séries',    value: String(totalSetsAll) },
+              { label: t('sed.duration'),     value: fmtTimer(elapsed) },
+              { label: t('sed.seriesKpi'),    value: String(totalSetsAll) },
               { label: 'Reps',      value: String(totalReps) },
-              { label: 'Tonnage',   value: `${Math.round(totalTonnage)}kg` },
-              { label: 'Repos',     value: fmtTimer(totalRestAccum) },
-              { label: 'Exercices', value: String(totalExosCount) },
+              { label: t('sed.tonnage'),   value: `${Math.round(totalTonnage)}kg` },
+              { label: t('sed.rest'),     value: fmtTimer(totalRestAccum) },
+              { label: t('sed.exercises'), value: String(totalExosCount) },
             ] as { label: string; value: string }[]).map(kpi => (
               <div key={kpi.label} style={{ padding: '10px 6px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                 <p style={{ fontSize: 8, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.07em', margin: '0 0 3px' }}>{kpi.label}</p>
@@ -3233,7 +3243,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                   <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{e.label}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{e.logSets.length} séries</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: '"DM Mono",monospace' }}>{t('sed.setsCount', { n: e.logSets.length })}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                       {e.logSets.map((set, si) => (
@@ -3255,9 +3265,9 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
 
           {/* Sync montre */}
           <div style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', marginBottom: 20, textAlign: 'left' as const }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>📡 Corréler avec votre montre</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>📡 {t('sed.correlateWatch')}</p>
             <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5 }}>
-              Vos données Strava, Garmin, Polar ou Suunto seront synchronisées automatiquement dans la page Activités après votre prochaine sync.
+              {t('sed.correlateWatchDesc')}
             </p>
           </div>
 
@@ -3277,9 +3287,9 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
             })
             onExit()
           }} style={{ width: '100%', padding: '14px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>
-            ✓ Terminer et sauvegarder
+            ✓ {t('sed.finishAndSave')}
           </button>
-          <button onClick={onExit} style={{ width: '100%', padding: '11px', borderRadius: 10, marginTop: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>Fermer sans sauvegarder</button>
+          <button onClick={onExit} style={{ width: '100%', padding: '11px', borderRadius: 10, marginTop: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}>{t('sed.closeWithoutSaving')}</button>
         </div>
       </div>
     )
@@ -3305,16 +3315,16 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0, lineHeight: 1.3, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600 }}>
-              {ctInfo?.icon} {ctInfo?.label ?? 'Séries'}
+              {ctInfo?.icon} {ctInfo?.label ?? t('sed.series')}
               {currentCircuit ? ` · ${currentCircuit.label}` : ''}
               {currentStep && currentCircuit && currentCircuit.type !== 'series' && currentCircuit.rounds > 1
-                ? ` · Tour ${currentStep.setIdx + 1}/${currentCircuit.rounds}`
+                ? ` · ${t('sed.round')} ${currentStep.setIdx + 1}/${currentCircuit.rounds}`
                 : ''}
             </p>
           </div>
           <span style={{ fontSize: 16, fontFamily: '"DM Mono",monospace', color: 'var(--text-mid)', fontWeight: 700, margin: '0 12px', flexShrink: 0 }}>{fmtTimer(elapsed)}</span>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <button onClick={() => setVibrateEnabled(v => !v)} title={vibrateEnabled ? 'Vibration ON' : 'Vibration OFF'} style={{ background: 'none', border: '1px solid var(--border)', color: vibrateEnabled ? accent : 'var(--text-dim)', fontSize: 14, cursor: 'pointer', padding: '5px 8px', borderRadius: 8, lineHeight: 1 }}>
+            <button onClick={() => setVibrateEnabled(v => !v)} title={vibrateEnabled ? t('sed.vibrationOn') : t('sed.vibrationOff')} style={{ background: 'none', border: '1px solid var(--border)', color: vibrateEnabled ? accent : 'var(--text-dim)', fontSize: 14, cursor: 'pointer', padding: '5px 8px', borderRadius: 8, lineHeight: 1 }}>
               {vibrateEnabled ? '📳' : '🔕'}
             </button>
             <button onClick={togglePause} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-mid)', fontSize: 13, cursor: 'pointer', padding: '5px 11px', borderRadius: 8 }}>{phase === 'paused' ? '▶' : '⏸'}</button>
@@ -3334,12 +3344,12 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
         {phase === 'paused' && (
           <div style={{ textAlign: 'center' as const, padding: '60px 0 40px' }}>
             <div style={{ fontSize: 52, marginBottom: 16 }}>⏸</div>
-            <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne, sans-serif', margin: '0 0 8px' }}>En pause</p>
-            <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 32px' }}>{fmtTimer(elapsed)} écoulées</p>
-            <button onClick={togglePause} style={{ padding: '15px 48px', borderRadius: 14, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif', marginBottom: 12 }}>▶ Reprendre</button>
+            <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne, sans-serif', margin: '0 0 8px' }}>{t('sed.paused')}</p>
+            <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 32px' }}>{t('sed.elapsed', { time: fmtTimer(elapsed) })}</p>
+            <button onClick={togglePause} style={{ padding: '15px 48px', borderRadius: 14, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'Syne, sans-serif', marginBottom: 12 }}>▶ {t('sed.resume')}</button>
             <br />
             <button onClick={() => { setPhase('done'); setShowConfetti(true); pickMotiv() }} style={{ padding: '11px 28px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', marginTop: 8 }}>
-              Terminer la séance
+              {t('sed.finishSession')}
             </button>
           </div>
         )}
@@ -3357,7 +3367,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                 background: phase === 'rest' ? 'rgba(249,115,22,0.10)' : `${accent}15`,
                 border: `1px solid ${phase === 'rest' ? 'rgba(249,115,22,0.22)' : `${accent}28`}`,
               }}>
-                {phase === 'rest' ? '⏱ Repos' : ct === 'emom' ? `⏱ MIN ${currentSetNum}/${currentCircuit?.durationMin ?? 12}` : ct === 'tabata' ? `⚡ ROUND ${currentSetNum}/8` : `SÉRIE ${currentSetNum}/${currentExo.targetSets}`}
+                {phase === 'rest' ? `⏱ ${t('sed.restPhase')}` : ct === 'emom' ? `⏱ MIN ${currentSetNum}/${currentCircuit?.durationMin ?? 12}` : ct === 'tabata' ? `⚡ ROUND ${currentSetNum}/8` : `${t('sed.setUpper')} ${currentSetNum}/${currentExo.targetSets}`}
               </p>
               <h2 style={{ fontSize: 28, fontWeight: 900, fontFamily: 'Syne, sans-serif', margin: '0 0 16px', color: 'var(--text)', lineHeight: 1.1, letterSpacing: '-0.01em' }}>{currentExo.label}</h2>
               {motivMsg && phase === 'work' && (
@@ -3370,7 +3380,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                 const dateStr = hist.date ? new Date(hist.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''
                 return (
                   <p style={{ fontSize: 10, color: 'var(--text-dim)', margin: '-6px 0 10px', fontStyle: 'italic' as const }}>
-                    Dernière : {hist.weight}kg × {hist.reps}{dateStr ? ` (${dateStr})` : ''}
+                    {t('sed.last')} {hist.weight}kg × {hist.reps}{dateStr ? ` (${dateStr})` : ''}
                   </p>
                 )
               })()}
@@ -3415,7 +3425,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                   </svg>
                   <div style={{ position: 'absolute' as const, inset: 0, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: 44, fontWeight: 900, fontFamily: '"DM Mono",monospace', color: accent, lineHeight: 1 }}>{fmtTimer(restRemaining)}</span>
-                    <span style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 5, letterSpacing: '0.08em' }}>restant</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 5, letterSpacing: '0.08em' }}>{t('sed.remaining')}</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 14, flexWrap: 'wrap' as const }}>
@@ -3430,7 +3440,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                 {nextExo && (
                   <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', textAlign: 'left' as const, marginBottom: 14 }}>
                     <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 4px' }}>
-                      Prochain{nextCircuit && nextCircuit !== currentCircuit ? ` · ${nextCircuit.label}` : ''}
+                      {t('sed.next')}{nextCircuit && nextCircuit !== currentCircuit ? ` · ${nextCircuit.label}` : ''}
                     </p>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
                       {nextExo.label}
@@ -3441,7 +3451,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                   </div>
                 )}
                 <button onClick={skipRest} style={{ padding: '10px 26px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                  Passer le repos →
+                  {t('sed.skipRest')}
                 </button>
               </div>
             )}
@@ -3453,7 +3463,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                 <div style={{ display: 'flex', gap: 14, justifyContent: 'center', alignItems: 'flex-end', marginBottom: 12 }}>
                   {/* Charge */}
                   <div style={{ textAlign: 'center' as const }}>
-                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 7px', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Charge kg</p>
+                    <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: '0 0 7px', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{t('sed.loadKgLabel')}</p>
                     <input
                       value={editWeight}
                       placeholder="—"
@@ -3494,11 +3504,11 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                   fontSize: 16, fontWeight: 900, cursor: 'pointer', fontFamily: 'Syne, sans-serif',
                   letterSpacing: '0.01em', boxShadow: `0 4px 24px ${accent}30`,
                 }}>
-                  {ct === 'emom' ? `⏱ Valider min ${currentSetNum}` :
-                   ct === 'tabata' ? `⚡ Valider round ${currentSetNum}/8` :
-                   `✓ Valider série ${currentSetNum}/${currentExo.targetSets}`}
+                  {ct === 'emom' ? `⏱ ${t('sed.validateMin', { n: currentSetNum })}` :
+                   ct === 'tabata' ? `⚡ ${t('sed.validateRound', { n: currentSetNum })}` :
+                   `✓ ${t('sed.validateSet', { n: currentSetNum, total: currentExo.targetSets })}`}
                   <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.75, marginLeft: 10 }}>
-                    {ct === 'tabata' ? '→ 10s repos' : ct === 'emom' ? '→ 15s repos' : `→ ${fmtTimer(currentExo.restSec)} repos`}
+                    {ct === 'tabata' ? t('sed.arrowRestSec', { s: 10 }) : ct === 'emom' ? t('sed.arrowRestSec', { s: 15 }) : `→ ${fmtTimer(currentExo.restSec)} ${t('sed.restWord')}`}
                   </span>
                 </button>
               </div>
@@ -3506,15 +3516,15 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
 
             {/* ── Actions secondaires ── */}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20, marginTop: 16, flexWrap: 'wrap' as const }}>
-              <button onClick={skipExo} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>Passer →</button>
-              <button onClick={() => setReplaceSearch(currentExo.id)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>⇄ Remplacer</button>
+              <button onClick={skipExo} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>{t('sed.skip')}</button>
+              <button onClick={() => setReplaceSearch(currentExo.id)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>⇄ {t('sed.replace')}</button>
             </div>
 
             {/* ── Remplacement ── */}
             {replaceSearch === currentExo.id && (
               <div style={{ padding: '14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', marginBottom: 16 }}>
                 <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Chercher un exercice..." autoFocus
+                  placeholder={t('sed.searchExercise')} autoFocus
                   style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', marginBottom: 8, boxSizing: 'border-box' as const }} />
                 <div style={{ maxHeight: 160, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
                   {EXERCISE_DATABASE.filter(e => {
@@ -3529,7 +3539,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
                     </button>
                   ))}
                 </div>
-                <button onClick={() => { setReplaceSearch(null); setSearchQuery('') }} style={{ marginTop: 8, width: '100%', padding: '8px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>Annuler</button>
+                <button onClick={() => { setReplaceSearch(null); setSearchQuery('') }} style={{ marginTop: 8, width: '100%', padding: '8px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}>{t('sed.cancel')}</button>
               </div>
             )}
 
@@ -3537,7 +3547,7 @@ function SessionExecute({ blocks, sport, sessionTitle, onExit, onSaveLog, exoHis
             {nextExo && phase === 'work' && (
               <div style={{ marginTop: 20, padding: '12px 16px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                 <p style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 4px' }}>
-                  Suivant{nextCircuit && nextCircuit !== currentCircuit ? ` · ${nextCircuit.label}` : ''}
+                  {t('sed.upNext')}{nextCircuit && nextCircuit !== currentCircuit ? ` · ${nextCircuit.label}` : ''}
                 </p>
                 <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', margin: 0 }}>
                   {nextExo.label}
@@ -3579,6 +3589,7 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   initialSport?: SportType
   reserveMode?: boolean   // Builder « réserve » : masque Sport / Date / Heure (non planifié)
 }) {
+  const { t } = useI18n()
   const isEdit = mode === 'edit'
   const [sport, setSport] = useState<SportType>(session?.sport ?? initialSport ?? 'run')
   const [cyclingSub, setCyclingSub] = useState<CyclingSub>('velo')
@@ -3649,10 +3660,10 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   // Circuit info exposé par ExerciseListBuilder — refs synchrones (pas de stale state)
-  const gymCircuitsRef = useRef<ExoCircuit[]>([{ id: 'default', name: 'Séries 1', type: 'series', rounds: 3, restBetweenRoundsSec: 90 }])
+  const gymCircuitsRef = useRef<ExoCircuit[]>([{ id: 'default', name: `${t('sed.series')} 1`, type: 'series', rounds: 3, restBetweenRoundsSec: 90 }])
   const gymCircuitMapRef = useRef<Record<string, string>>({})
   // Builder Muscu/Hyrox MOBILE — circuits + map réactifs (synchronisés vers les refs ci-dessus)
-  const [mCircuits, setMCircuits] = useState<ExoCircuit[]>([{ id: 'default', name: 'Séries 1', type: 'series', rounds: 3, restBetweenRoundsSec: 90 }])
+  const [mCircuits, setMCircuits] = useState<ExoCircuit[]>([{ id: 'default', name: `${t('sed.series')} 1`, type: 'series', rounds: 3, restBetweenRoundsSec: 90 }])
   const [mMap, setMMap] = useState<Record<string, string>>({})
   const { zones: trainingZones } = useTrainingZones()
   const [parcoursError, setParcoursError] = useState<string | null>(null)
@@ -4049,9 +4060,9 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
     } else {
       rows = blocks.map(b => {
         const col = DONUT_ZONE_COLORS[Math.max(0, Math.min(6, (b.zone || 1) - 1))]
-        const name = b.label || `Bloc Z${b.zone}`
+        const name = b.label || `${t('sed.block')} Z${b.zone}`
         const detail = b.mode === 'interval' && b.reps
-          ? `${b.reps} × ${durMMSS(b.effortMin || 0)}${b.value ? ` @ ${b.value}` : ''} · récup ${durMMSS(b.recoveryMin || 0)}`
+          ? `${b.reps} × ${durMMSS(b.effortMin || 0)}${b.value ? ` @ ${b.value}` : ''} · ${t('sed.recovShort')} ${durMMSS(b.recoveryMin || 0)}`
           : `${durMMSS(b.durationMin || 0)}${b.value ? ` · ${b.value}` : ''} · Z${b.zone}`
         return { color: col, name, detail }
       })
@@ -4060,10 +4071,10 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
       title: finalTitle,
       subtitle: `${SPORT_LABEL[sport]}${trainingTypes.length ? ` · ${trainingTypes.join(' + ')}` : ''}`,
       sm: smsn.sm, sn: smsn.sn, durLabel,
-      rightLabel: isStrength ? 'EXOS' : 'BLOCS',
+      rightLabel: isStrength ? t('sed.exosUpper') : t('sed.blocsUpper'),
       rightVal: String(isStrength ? exercises.length : blocks.length),
       rows,
-    })
+    }, t)
     const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }))
     const img = new Image()
     img.onload = () => {
@@ -4091,13 +4102,13 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
     const finalTitle = title || `${SPORT_LABEL[sport]} ${trainingTypes.join('+')}`
     const blocksHtml = blocks.map(b => {
       const durStr = b.mode === 'interval' && b.reps && b.effortMin && b.recoveryMin
-        ? `${b.reps} × ${b.effortMin}min + ${b.recoveryMin}min récup`
+        ? `${b.reps} × ${b.effortMin}min + ${b.recoveryMin}min ${t('sed.recovShort')}`
         : `${b.durationMin}min`
       const zoneCol = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444'][b.zone - 1] ?? '#9ca3af'
       return `<tr><td style="color:${zoneCol};font-weight:700">Z${b.zone}</td><td>${b.label}</td><td>${durStr}</td><td>${b.value || '—'}</td></tr>`
     }).join('')
     const nutritionHtml = nutritionItems.length > 0
-      ? `<h3 style="font-size:14px;margin-top:28px;border-top:1px solid #eee;padding-top:16px">Stratégie nutritionnelle</h3><table><tr><th>Temps</th><th>Aliment</th><th>Quantité</th><th>Glucides</th><th>Protéines</th></tr>${[...nutritionItems].sort((a,b) => a.timeMin - b.timeMin).map(m => `<tr><td>${m.timeMin === 0 ? 'Avant départ' : m.timeMin + 'min'}</td><td>${m.name || m.type}</td><td>${m.quantity}</td><td>${m.glucidesG}g</td><td>${m.proteinesG}g</td></tr>`).join('')}<tr style="background:#f9f9f9;font-weight:600"><td colspan="3">Total</td><td>${nutritionItems.reduce((s,x)=>s+x.glucidesG,0)}g glucides</td><td>${nutritionItems.reduce((s,x)=>s+x.proteinesG,0)}g prot.</td></tr></table>`
+      ? `<h3 style="font-size:14px;margin-top:28px;border-top:1px solid #eee;padding-top:16px">${t('sed.nutritionStrategy')}</h3><table><tr><th>${t('sed.pdfTime')}</th><th>${t('sed.pdfFood')}</th><th>${t('sed.pdfQuantity')}</th><th>${t('sed.pdfCarbs')}</th><th>${t('sed.pdfProteins')}</th></tr>${[...nutritionItems].sort((a,b) => a.timeMin - b.timeMin).map(m => `<tr><td>${m.timeMin === 0 ? t('sed.beforeStart') : m.timeMin + 'min'}</td><td>${m.name || m.type}</td><td>${m.quantity}</td><td>${m.glucidesG}g</td><td>${m.proteinesG}g</td></tr>`).join('')}<tr style="background:#f9f9f9;font-weight:600"><td colspan="3">${t('sed.total')}</td><td>${nutritionItems.reduce((s,x)=>s+x.glucidesG,0)}${t('sed.gCarbsSuffix')}</td><td>${nutritionItems.reduce((s,x)=>s+x.proteinesG,0)}${t('sed.gProtSuffix')}</td></tr></table>`
       : ''
     const parcoursSection = (() => {
       if (!parcoursData) return ''
@@ -4124,17 +4135,17 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
         const pathD = svgPts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
         const sx = svgPts[0].x, sy = svgPts[0].y
         const ex = svgPts[svgPts.length - 1].x, ey = svgPts[svgPts.length - 1].y
-        return `<h4 style="font-size:12px;font-weight:600;margin:10px 0 6px;color:#555">Trace GPS</h4>
+        return `<h4 style="font-size:12px;font-weight:600;margin:10px 0 6px;color:#555">${t('sed.gpsTrace')}</h4>
 <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;margin:4px 0 12px;background:#f8f9fa;border-radius:8px;border:1px solid #e5e7eb">
   <path d="${pathD}" fill="none" stroke="${accent}" stroke-width="2.5" stroke-linejoin="round" opacity="0.8"/>
   <circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="5" fill="#22c55e" stroke="#fff" stroke-width="2"/>
   <circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
-  <text x="${(sx + 8).toFixed(1)}" y="${(sy + 4).toFixed(1)}" font-size="9" fill="#22c55e" font-weight="700">Départ</text>
-  <text x="${(ex + 8).toFixed(1)}" y="${(ey + 4).toFixed(1)}" font-size="9" fill="#ef4444" font-weight="700">Arrivée</text>
+  <text x="${(sx + 8).toFixed(1)}" y="${(sy + 4).toFixed(1)}" font-size="9" fill="#22c55e" font-weight="700">${t('sed.start')}</text>
+  <text x="${(ex + 8).toFixed(1)}" y="${(ey + 4).toFixed(1)}" font-size="9" fill="#ef4444" font-weight="700">${t('sed.finish')}</text>
 </svg>`
       })()
 
-      const header = `<h3 style="font-size:13px;font-weight:700;margin:24px 0 6px;color:#333">Parcours — ${parcoursData.name}</h3>
+      const header = `<h3 style="font-size:13px;font-weight:700;margin:24px 0 6px;color:#333">${t('sed.route')} — ${parcoursData.name}</h3>
 <div style="display:flex;gap:16px;font-size:11px;color:#666;margin-bottom:8px">${parcoursData.distance != null ? `<span><strong style="color:#333">${parcoursData.distance}</strong> km</span>` : ''}${parcoursData.elevation != null ? `<span><strong style="color:#333">${parcoursData.elevation}</strong> m D+</span>` : ''}</div>${traceSection}`
 
       if (profile.length < 2 || totalKm === 0) return header
@@ -4153,7 +4164,7 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
       const xStep = totalKm > 150 ? 20 : totalKm > 80 ? 10 : totalKm > 30 ? 5 : 2
       const xTicks: number[] = []
       for (let km = 0; km <= totalKm; km += xStep) xTicks.push(km)
-      return `${header}<h4 style="font-size:12px;font-weight:600;margin:10px 0 6px;color:#555">Profil altimétrique</h4>
+      return `${header}<h4 style="font-size:12px;font-weight:600;margin:10px 0 6px;color:#555">${t('sed.elevationProfile')}</h4>
 <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;margin:4px 0 8px">
 ${yTicks.map(ele => { const y = PT+pH-((ele-minEle)/eleRange)*pH; return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}" stroke="#e5e7eb" stroke-width="0.5"/><text x="${PL-4}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="7" fill="#999" font-family="monospace">${ele}m</text>` }).join('\n')}
 ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed(1)}" y1="${PT}" x2="${x.toFixed(1)}" y2="${PT+pH}" stroke="#e5e7eb" stroke-width="0.5" opacity="0.4"/><text x="${x.toFixed(1)}" y="${H-4}" text-anchor="middle" font-size="7" fill="#999" font-family="monospace">${km}km</text>` }).join('\n')}
@@ -4165,7 +4176,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 <text x="${W-PR-4}" y="${PT+8}" text-anchor="end" font-size="7" fill="${accent}" font-weight="600" font-family="monospace">${Math.round(maxEle)}m</text>
 </svg>`
     })()
-    const html = `<!DOCTYPE html><html><head><title>${finalTitle}</title><meta charset="utf-8"><style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:32px;max-width:800px;margin:0 auto;color:#111;background:#fff}h1{font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.03em}h3{font-size:14px;font-weight:700;margin:0 0 10px;color:#333}table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}td,th{padding:7px 10px;border:1px solid #e5e7eb;text-align:left}th{background:#f9fafb;font-weight:600;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:0.04em}.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #f3f4f6}.sport-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:#f3f4f6;color:#555;letter-spacing:0.06em}.metrics{display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap}.metric{text-align:center}.metric-val{font-size:20px;font-weight:800;color:#111;font-variant-numeric:tabular-nums}.metric-lbl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}@media print{body{padding:16px}}</style></head><body><div class="header"><div><h1>${finalTitle}</h1><p style="font-size:13px;color:#999;margin:4px 0 0">${SPORT_LABEL[sport]}</p></div><span class="sport-badge">${SPORT_ABBR[sport]}</span></div><div class="metrics"><div class="metric"><div class="metric-val">${fmtDurLocal(dur)}</div><div class="metric-lbl">Durée</div></div><div class="metric"><div class="metric-val">${tssDisplay}</div><div class="metric-lbl">TSS</div></div><div class="metric"><div class="metric-val">${rpe}/10</div><div class="metric-lbl">RPE</div></div>${parcoursData?.distance != null ? `<div class="metric"><div class="metric-val">${parcoursData.distance} km</div><div class="metric-lbl">Distance</div></div>` : ''}${parcoursData?.elevation != null ? `<div class="metric"><div class="metric-val">${parcoursData.elevation} m</div><div class="metric-lbl">Dénivelé +</div></div>` : ''}</div>${desc ? `<p style="font-size:12px;color:#555;line-height:1.6;background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:24px">${desc}</p>` : ''}${blocks.length > 0 ? `<h3>Blocs d'intensité</h3><table><tr><th>Zone</th><th>Bloc</th><th>Durée</th><th>Cible</th></tr>${blocksHtml}</table>` : ''}${nutritionHtml}${parcoursSection}<p style="margin-top:40px;font-size:10px;color:#bbb;border-top:1px solid #f3f4f6;padding-top:16px">THW Coaching · Généré le ${new Date().toLocaleDateString('fr-FR')}</p></body></html>`
+    const html = `<!DOCTYPE html><html><head><title>${finalTitle}</title><meta charset="utf-8"><style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:32px;max-width:800px;margin:0 auto;color:#111;background:#fff}h1{font-size:24px;font-weight:800;margin:0 0 4px;letter-spacing:-0.03em}h3{font-size:14px;font-weight:700;margin:0 0 10px;color:#333}table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}td,th{padding:7px 10px;border:1px solid #e5e7eb;text-align:left}th{background:#f9fafb;font-weight:600;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:0.04em}.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #f3f4f6}.sport-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:#f3f4f6;color:#555;letter-spacing:0.06em}.metrics{display:flex;gap:24px;margin-bottom:24px;flex-wrap:wrap}.metric{text-align:center}.metric-val{font-size:20px;font-weight:800;color:#111;font-variant-numeric:tabular-nums}.metric-lbl{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}@media print{body{padding:16px}}</style></head><body><div class="header"><div><h1>${finalTitle}</h1><p style="font-size:13px;color:#999;margin:4px 0 0">${SPORT_LABEL[sport]}</p></div><span class="sport-badge">${SPORT_ABBR[sport]}</span></div><div class="metrics"><div class="metric"><div class="metric-val">${fmtDurLocal(dur)}</div><div class="metric-lbl">${t('sed.duration')}</div></div><div class="metric"><div class="metric-val">${tssDisplay}</div><div class="metric-lbl">TSS</div></div><div class="metric"><div class="metric-val">${rpe}/10</div><div class="metric-lbl">RPE</div></div>${parcoursData?.distance != null ? `<div class="metric"><div class="metric-val">${parcoursData.distance} km</div><div class="metric-lbl">Distance</div></div>` : ''}${parcoursData?.elevation != null ? `<div class="metric"><div class="metric-val">${parcoursData.elevation} m</div><div class="metric-lbl">${t('sed.elevationPlus')}</div></div>` : ''}</div>${desc ? `<p style="font-size:12px;color:#555;line-height:1.6;background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:24px">${desc}</p>` : ''}${blocks.length > 0 ? `<h3>${t('sed.intensityBlocks')}</h3><table><tr><th>Zone</th><th>${t('sed.block')}</th><th>${t('sed.duration')}</th><th>${t('sed.target')}</th></tr>${blocksHtml}</table>` : ''}${nutritionHtml}${parcoursSection}<p style="margin-top:40px;font-size:10px;color:#bbb;border-top:1px solid #f3f4f6;padding-top:16px">THW Coaching · ${t('sed.generatedOn')} ${new Date().toLocaleDateString('fr-FR')}</p></body></html>`
     const w = window.open('', '_blank')
     if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 400) }
   }
@@ -4277,9 +4288,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         const durationMin = Math.max(1, Math.round(timeMinExact))
         const lo = fmtDuration(timeMinExact * 0.95)
         const hi = fmtDuration(timeMinExact * 1.05)
-        const typeName = seg.type === 'climb' ? 'Montée' : seg.type === 'descent' ? 'Descente' : 'Plat'
+        const typeName = seg.type === 'climb' ? t('sed.climb') : seg.type === 'descent' ? t('sed.descent') : t('sed.flat')
         const gradStr = Math.abs(seg.avgGradient) >= 0.5 ? ` ${Math.abs(seg.avgGradient).toFixed(1)}%` : ''
-        const label = `${typeName}${gradStr} — ${lo} à ${hi}`
+        const label = `${typeName}${gradStr} — ${lo} ${t('sed.to')} ${hi}`
         return {
           id: `terrain_${i}`,
           mode: 'effort' as BlockMode,
@@ -4434,7 +4445,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       for (let i = 0; i < selectedClimbs.length; i++) {
         const cc = selectedClimbs[i]
         const seg = segs[cc.segIdx]
-        timeline.push({ startKm: seg.startKm, endKm: seg.endKm, watts: cc.watts, grad: seg.avgGradient, label: `Côte ${i + 1} km${seg.startKm}→${seg.endKm}` })
+        timeline.push({ startKm: seg.startKm, endKm: seg.endKm, watts: cc.watts, grad: seg.avgGradient, label: `${t('sed.climbNoun')} ${i + 1} km${seg.startKm}→${seg.endKm}` })
         const nextStart = i < selectedClimbs.length - 1 ? segs[selectedClimbs[i + 1].segIdx].startKm : routeKm
         pushEF(seg.endKm, nextStart)
       }
@@ -4456,7 +4467,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       const sp = parcoursData.elevationProfile.find(p => p.distKm >= sb.startKm)
       const ep = parcoursData.elevationProfile.find(p => p.distKm >= sb.endKm)
       const grad = sp && ep && dist > 0 ? ((ep.ele - sp.ele) / (dist * 1000)) * 100 : 0
-      timeline.push({ startKm: sb.startKm, endKm: sb.endKm, watts: sb.watts, grad, label: `Bloc spécifique km${sb.startKm}→${sb.endKm}` })
+      timeline.push({ startKm: sb.startKm, endKm: sb.endKm, watts: sb.watts, grad, label: `${t('sed.specificBlock')} km${sb.startKm}→${sb.endKm}` })
     }
 
     // Sort by startKm and emit Block objects
@@ -4589,7 +4600,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         console.log('[parcours] raw response (first 500):', raw.slice(0, 500))
       }
       if (!jsonStr) {
-        setAiError(`L'IA n'a pas retourné de JSON valide. Réponse : ${raw.slice(0, 300) || '(vide)'}`)
+        setAiError(t('sed.aiNoValidJson', { resp: raw.slice(0, 300) || t('sed.empty') }))
         return
       }
 
@@ -4599,7 +4610,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       if (isStrengthSport) {
         // ── GYM / HYROX : convertir en Block[] pour BlockBuilder (support circuit_header) ──
         const newBlocks: Block[] = parsed.map((b: Record<string, unknown>, i: number) => {
-          const labelStr = typeof b.label === 'string' ? b.label : 'Exercice'
+          const labelStr = typeof b.label === 'string' ? b.label : t('sed.exercise')
           const blockType: BlockType = b.type === 'circuit_header' ? 'circuit_header' : 'effort'
           const setsVal = typeof b.zone === 'number' ? Math.max(1, Math.min(10, b.zone)) : 3
           const repsVal = typeof b.reps === 'number' ? b.reps : 8
@@ -4622,7 +4633,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             recoveryMin: recoveryMinVal,
           }
         })
-        if (newBlocks.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
+        if (newBlocks.length === 0) { setAiError(t('sed.aiEmptyArray')); return }
         setBlocks(newBlocks)
         // Fix #5: sync dur to computed block total so TSS header stays accurate
         setDur(Math.round(newBlocks.reduce((s, bl) => s + bl.durationMin, 0)) || dur)
@@ -4632,7 +4643,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         // ── ENDURANCE : convertir en Block[] pour BlockBuilder ──
         const newBlocks: Block[] = parsed.map((b: Record<string, unknown>, i: number) => {
           let effortMin = typeof b.effortMin === 'number' ? b.effortMin : 0
-          let label = typeof b.label === 'string' ? b.label : 'Bloc'
+          let label = typeof b.label === 'string' ? b.label : t('sed.block')
           const value = String(b.value ?? '')
           const mode = typeof b.mode === 'string' ? b.mode : 'single'
           const repsN = typeof b.reps === 'number' ? b.reps : 1
@@ -4647,7 +4658,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             effortMin = Math.round(eSec / 60 * 100) / 100
             const lo = Math.round(eSec * 0.97), hi = Math.round(eSec * 1.03)
             const f = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-            label = `${distM}m — ${f(lo)} à ${f(hi)}`
+            label = `${distM}m — ${f(lo)} ${t('sed.to')} ${f(hi)}`
           }
           const rawZone = typeof b.zone === 'number' ? b.zone : 3
           const zone = Math.max(1, Math.min(7, rawZone))
@@ -4663,7 +4674,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
           }
         })
-        if (newBlocks.length === 0) { setAiError("L'IA a retourné un tableau vide."); return }
+        if (newBlocks.length === 0) { setAiError(t('sed.aiEmptyArray')); return }
         setBlocks(newBlocks)
         // Fix #5: sync dur to computed block total so TSS header stays accurate
         setDur(Math.round(newBlocks.reduce((s, bl) => s + bl.durationMin, 0)) || dur)
@@ -4677,7 +4688,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       console.error('[AI blocks] Error:', msg)
-      setAiError(`Erreur : ${msg}`)
+      setAiError(t('sed.errorPrefix', { msg }))
     } finally {
       setAiLoading(false)
     }
@@ -4691,18 +4702,18 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
 
   const TSS_SESSION = [
-    { range: '0 – 50', label: 'Très facile', desc: 'Footing léger, sortie douce' },
-    { range: '50 – 100', label: 'Facile à modérée', desc: 'Rythme modéré' },
-    { range: '100 – 150', label: 'Modérée à difficile', desc: 'Séance soutenue' },
-    { range: '150 – 200', label: 'Difficile', desc: 'Grosse séance, récup nécessaire' },
-    { range: '> 200', label: 'Très difficile', desc: 'Compétition ou longue sortie intense' },
+    { range: '0 – 50', label: t('sed.tssS1Label'), desc: t('sed.tssS1Desc') },
+    { range: '50 – 100', label: t('sed.tssS2Label'), desc: t('sed.tssS2Desc') },
+    { range: '100 – 150', label: t('sed.tssS3Label'), desc: t('sed.tssS3Desc') },
+    { range: '150 – 200', label: t('sed.tssS4Label'), desc: t('sed.tssS4Desc') },
+    { range: '> 200', label: t('sed.tssS5Label'), desc: t('sed.tssS5Desc') },
   ]
   const TSS_WEEKLY = [
-    { range: '150 – 300', level: 'Débutant / Loisir' },
-    { range: '300 – 500', level: 'Intermédiaire' },
-    { range: '500 – 700', level: 'Confirmé / Amateur actif' },
-    { range: '700 – 1000', level: 'Avancé / Compétiteur' },
-    { range: '1000 – 1500', level: 'Élite / Semi-pro' },
+    { range: '150 – 300', level: t('sed.tssW1') },
+    { range: '300 – 500', level: t('sed.tssW2') },
+    { range: '500 – 700', level: t('sed.tssW3') },
+    { range: '700 – 1000', level: t('sed.tssW4') },
+    { range: '1000 – 1500', level: t('sed.tssW5') },
   ]
 
   const fmtDurLocal = (m: number) => {
@@ -4737,7 +4748,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     const strengthBlocksLive = isStrength ? exercisesToBlocks(exercises, mCircuits, mMap) : []
     const strengthSmsn = estimateSmSn(strengthBlocksLive, dur)
     const onFavorite = async () => {
-      const name = prompt('Nom du favori :', title || SPORT_LABEL[sport])
+      const name = prompt(t('sed.favoriteName'), title || SPORT_LABEL[sport])
       if (!name) return
       try {
         const { createClient } = await import('@/lib/supabase/client')
@@ -4749,7 +4760,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           training_type: trainingTypes.join('+') || null, blocks_data: blocks,
           nutrition_data: nutritionItems, duration_min: dur, rpe, notes: desc,
         })
-        alert('✓ Favori sauvegardé')
+        alert(t('sed.favoriteSaved'))
       } catch (e) { console.error('[Fav]', e) }
     }
     const panelProps: SessionEditorPanelProps = {
@@ -4876,7 +4887,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             setParcoursLoading(true)
             setParcoursError(null)
             try {
-              const data = await parseRouteFile(f)
+              const data = await parseRouteFile(f, t)
               // Sauvegarde en Supabase — async, non bloquante pour l'UI
               let parcoursId: string | undefined
               try {
@@ -4899,7 +4910,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               } catch { /* non critique — l'UI fonctionne sans sauvegarde DB */ }
               setParcoursData({ ...data, parcoursId })
             } catch (err) {
-              setParcoursError(err instanceof Error ? err.message : 'Erreur de lecture')
+              setParcoursError(err instanceof Error ? err.message : t('sed.readError'))
               setParcoursData(null)
             } finally {
               setParcoursLoading(false)
@@ -4923,27 +4934,27 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               {SPORT_LABEL[sport]}{trainingTypes.length ? ` · ${trainingTypes.join(' + ')}` : ''}
             </p>
           </div>
-          <button onClick={handleCompteRendu} title="Compte rendu — télécharger en image"
+          <button onClick={handleCompteRendu} title={t('sed.reportDownloadImage')}
             style={{ flexShrink: 0, height: 34, padding: '0 13px', borderRadius: 10, cursor: 'pointer', border: 'none', background: 'var(--primary)', color: 'var(--on-primary, #06121A)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
             <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 8L2.5 4.5h2V1h3v3.5h2L6 8Z" fill="currentColor"/>
               <rect x="1.5" y="10" width="9" height="1.2" rx="0.6" fill="currentColor"/>
             </svg>
-            Compte rendu
+            {t('sed.report')}
           </button>
-          <button onClick={handleExportPDF} title="Exporter en PDF"
+          <button onClick={handleExportPDF} title={t('sed.exportPdf')}
             style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, cursor: 'pointer', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 8.5L2 4.5h2.5V1h3v3.5H10L6 8.5Z" fill="currentColor"/>
               <rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/>
             </svg>
           </button>
-          <button onClick={() => parcoursInputRef.current?.click()} title="Ajouter un parcours GPX/TCX/KML"
+          <button onClick={() => parcoursInputRef.current?.click()} title={t('sed.addRouteFile')}
             style={{ flexShrink: 0, height: 34, padding: '0 11px', borderRadius: 10, cursor: 'pointer', border: '1px solid var(--border)', background: parcoursData ? `${accent}12` : 'transparent', color: parcoursData ? accent : 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' as const }}>
             <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/>
             </svg>
-            {parcoursLoading ? '…' : parcoursData && parcoursData.distance != null ? `${parcoursData.distance}km` : 'Parcours'}
+            {parcoursLoading ? '…' : parcoursData && parcoursData.distance != null ? `${parcoursData.distance}km` : t('sed.route')}
           </button>
         </div>
 
@@ -4956,7 +4967,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               color: showFavorites ? accent : 'var(--text-dim)', fontSize: 11, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 600,
             }}>
-              ★ Charger un favori ({favorites.length})
+              ★ {t('sed.loadFavorite', { n: favorites.length })}
             </button>
             {showFavorites && (
               <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
@@ -4998,7 +5009,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: mobile ? 14 : 20, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, padding: mobile ? 16 : 18 }}>
             {/* Sport — tous les logos sur une ligne, clic = sélection */}
             <div>
-              <span style={lbl}>Sport</span>
+              <span style={lbl}>{t('sed.sport')}</span>
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
                 {(Object.keys(SPORT_LABEL) as SportType[]).map(sp => {
                   const selected = sp === sport
@@ -5033,7 +5044,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     }}>{CYCLING_SUB_LABEL[sub]}</button>
                   ))}
                   {/* Brick Run : enchaînement vélo→course (crée une course liée). */}
-                  <button onClick={() => setBrickRun(b => !b)} title="Enchaînement vélo → running"
+                  <button onClick={() => setBrickRun(b => !b)} title={t('sed.brickTooltip')}
                     style={{
                       padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
                       marginLeft: 'auto',
@@ -5051,7 +5062,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             {/* Type de séance */}
             {trainTypes.length > 0 && (
               <div>
-                <span style={lbl}>Type de séance</span>
+                <span style={lbl}>{t('sed.sessionType')}</span>
                 <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                   {trainTypes.map(t => {
                     const active = trainingTypes.includes(t)
@@ -5077,7 +5088,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             {/* Date + Heure */}
             <div style={{ display: 'flex', gap: 12 }}>
               <div style={{ flex: 1 }}>
-                <span style={lbl}>Date</span>
+                <span style={lbl}>{t('sed.date')}</span>
                 <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{
                   padding: '9px 12px', borderRadius: 9, width: '100%', boxSizing: 'border-box' as const,
                   border: '1px solid var(--border)', background: 'var(--bg-card)',
@@ -5085,7 +5096,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 }} />
               </div>
               <div>
-                <span style={lbl}>Heure</span>
+                <span style={lbl}>{t('sed.timeOfDay')}</span>
                 <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{
                   padding: '9px 12px', borderRadius: 9, width: 100,
                   border: '1px solid var(--border)', background: 'var(--bg-card)',
@@ -5100,9 +5111,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
                 <div>
-                  <span style={lbl}>Effort perçu</span>
+                  <span style={lbl}>{t('sed.perceivedEffort')}</span>
                   <p style={{ fontSize: 12.5, color: rpeCol, fontWeight: 700, margin: '3px 0 0', letterSpacing: '0.01em' }}>
-                    {rpe <= 2 ? 'Très facile' : rpe <= 4 ? 'Facile' : rpe <= 6 ? 'Modéré' : rpe <= 8 ? 'Difficile' : 'Maximal'}
+                    {rpe <= 2 ? t('sed.rpeVeryEasy') : rpe <= 4 ? t('sed.rpeEasy') : rpe <= 6 ? t('sed.rpeModerate') : rpe <= 8 ? t('sed.rpeHard') : t('sed.rpeMax')}
                   </p>
                 </div>
                 <span style={{ display: 'flex', alignItems: 'baseline', gap: 2, fontFamily: 'var(--font-display)', lineHeight: 1 }}>
@@ -5122,7 +5133,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
             {/* Durée — stepper compact */}
             <div style={{ padding: '14px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={lbl}>Durée</span>
+              <span style={lbl}>{t('sed.duration')}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button onClick={() => setDur(Math.max(5, dur - 5))} style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-elev)', color: 'var(--text-mid)', fontSize: 16, cursor: 'pointer', padding: 0 }}>−</button>
                 <span style={{ fontSize: 21, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', minWidth: 74, textAlign: 'center' as const }}>{fmtDurLocal(dur)}</span>
@@ -5137,8 +5148,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             {/* Résumé — SM / SN + répartition de zones (remplace le donut) */}
             <div style={{ padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card2)' }}>
               <div style={{ display: 'flex', gap: 28, marginBottom: 14 }}>
-                <div><div style={{ fontSize: 30, fontWeight: 700, color: '#06B6D4', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{smsn.sm}</div><div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>SM métabolique</div></div>
-                <div><div style={{ fontSize: 30, fontWeight: 700, color: '#8B5CF6', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{smsn.sn}</div><div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>SN neuro</div></div>
+                <div><div style={{ fontSize: 30, fontWeight: 700, color: '#06B6D4', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{smsn.sm}</div><div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>{t('sed.smMetabolic')}</div></div>
+                <div><div style={{ fontSize: 30, fontWeight: 700, color: '#8B5CF6', fontFamily: 'var(--font-display)', lineHeight: 1 }}>{smsn.sn}</div><div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3 }}>{t('sed.snNeuro')}</div></div>
               </div>
               {zoneDist.some(v => v > 0) && (
                 <>
@@ -5164,20 +5175,20 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               if ((sport === 'bike' || sport === 'elliptique') && athleteData.ftp)
                 return { label: 'FTP', value: `${athleteData.ftp}W` }
               if (sport === 'run' && athleteData.runThresholdPaceStr)
-                return { label: 'Seuil', value: `${athleteData.runThresholdPaceStr}/km` }
+                return { label: t('sed.thresholdShort'), value: `${athleteData.runThresholdPaceStr}/km` }
               if (sport === 'swim' && athleteData.swimCSSStr)
                 return { label: 'CSS', value: `${athleteData.swimCSSStr}/100m` }
               if (sport === 'rowing' && athleteData.rowThresholdSecPer500m) {
                 const s = athleteData.rowThresholdSecPer500m
-                return { label: 'Seuil', value: `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}/500m` }
+                return { label: t('sed.thresholdShort'), value: `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}/500m` }
               }
               return null
             })()
             // FC données athlète (tous sports)
             const hrRef = lthrForSport
-              ? { label: athleteData?.lthrRun || athleteData?.lthrBike ? 'LTHR' : 'LTHR est.', value: String(lthrForSport) }
+              ? { label: athleteData?.lthrRun || athleteData?.lthrBike ? 'LTHR' : t('sed.lthrEst'), value: String(lthrForSport) }
               : athleteData?.hrMax
-                ? { label: 'FC max', value: String(athleteData.hrMax) }
+                ? { label: t('sed.hrMax'), value: String(athleteData.hrMax) }
                 : null
 
             if (!hasEstimate && !ref && !hrRef) return null
@@ -5187,7 +5198,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 {hasEstimate && (
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                     <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', lineHeight: 1.4 }}>
-                      {sport === 'bike' || sport === 'elliptique' ? 'Watts moy. estimés' : 'Allure moy. estimée'}
+                      {sport === 'bike' || sport === 'elliptique' ? t('sed.estAvgWatts') : t('sed.estAvgPace')}
                     </span>
                     <span style={{ fontSize: 17, fontWeight: 800, color: accent, fontFamily: '"DM Mono", monospace', letterSpacing: '-0.02em' }}>
                       {sessionAvg.avgWatts ? `${sessionAvg.avgWatts}W` : sessionAvg.avgPace}
@@ -5208,7 +5219,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         {hrRef.label}{' '}
                         <strong style={{ fontFamily: '"DM Mono", monospace', color: 'var(--text-mid)', fontWeight: 700 }}>{hrRef.value}</strong>
                         {athleteData?.hrMax && (
-                          <span style={{ fontSize: 8, color: 'var(--text-dim)', marginLeft: 4 }}>/ FC max {athleteData.hrMax}</span>
+                          <span style={{ fontSize: 8, color: 'var(--text-dim)', marginLeft: 4 }}>/ {t('sed.hrMax')} {athleteData.hrMax}</span>
                         )}
                       </span>
                     )}
@@ -5229,8 +5240,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, fontFamily: 'Syne, sans-serif' }}>TSS — Training Stress Score</h3>
                 <button onClick={() => setTssInfo(false)} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 16, cursor: 'pointer' }}>×</button>
               </div>
-              <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.6 }}>Mesure la charge d&apos;entraînement. Calculé selon l&apos;intensité et la durée.</p>
-              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.10em', marginBottom: 6 }}>Par séance</p>
+              <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.6 }}>{t('sed.tssDesc')}</p>
+              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.10em', marginBottom: 6 }}>{t('sed.perSession')}</p>
               <table style={{ width: '100%', borderCollapse: 'collapse' as const, marginBottom: 16 }}>
                 <tbody>{TSS_SESSION.map((r, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -5240,7 +5251,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   </tr>
                 ))}</tbody>
               </table>
-              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.10em', marginBottom: 6 }}>Par semaine</p>
+              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.10em', marginBottom: 6 }}>{t('sed.perWeek')}</p>
               <table style={{ width: '100%', borderCollapse: 'collapse' as const }}>
                 <tbody>{TSS_WEEKLY.map((r, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -5258,9 +5269,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
         {/* DESCRIPTION */}
         <div style={{ padding: mobile ? '24px 16px 24px' : '24px 24px 24px' }}>
-          <span style={lbl}>Description et objectifs</span>
+          <span style={lbl}>{t('sed.descriptionGoals')}</span>
           <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={mobile ? 3 : 4}
-            placeholder="Décris la séance, les objectifs, les sensations recherchées..."
+            placeholder={t('sed.descriptionPlaceholder')}
             style={{
               width: '100%', padding: '12px 14px', borderRadius: 10, boxSizing: 'border-box' as const,
               border: '1px solid var(--border)', background: 'var(--bg-card)',
@@ -5273,7 +5284,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         {(parcoursLoading || parcoursError || parcoursData) && (
           <div style={{ padding: mobile ? '0 16px 16px' : '0 24px 18px' }}>
             {parcoursLoading && (
-              <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Lecture du parcours…</p>
+              <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{t('sed.readingRoute')}</p>
             )}
             {parcoursError && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)' }}>
@@ -5308,7 +5319,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   </div>
                   <button onClick={() => { setParcoursFile(null); setParcoursData(null) }}
                     style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-dim)', cursor: 'pointer', fontSize: 10, padding: '3px 10px', flexShrink: 0 }}>
-                    Supprimer
+                    {t('sed.delete')}
                   </button>
                 </div>
 
@@ -5330,7 +5341,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     {/* Bouton + pour dessin de bloc spécifique */}
                     <button
                       onClick={() => { setDrawModeActive(v => !v); setPendingBlock(null) }}
-                      title={drawModeActive ? 'Annuler le dessin' : 'Dessiner un bloc spécifique'}
+                      title={drawModeActive ? t('sed.cancelDrawing') : t('sed.drawSpecificBlock')}
                       style={{
                         position: 'absolute' as const, top: 4, right: 4, zIndex: 10,
                         width: 26, height: 26, borderRadius: 6,
@@ -5357,14 +5368,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           minWidth: 220,
                         }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>
-                            Nouveau bloc · km {pendingBlock.startKm} → {pendingBlock.endKm}
+                            {t('sed.newBlock')} · km {pendingBlock.startKm} → {pendingBlock.endKm}
                           </div>
                           <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 10 }}>
                             {(pendingBlock.endKm - pendingBlock.startKm).toFixed(1)} km
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 28 }}>Watts</span>
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 28 }}>{t('sed.watts')}</span>
                               <LocalInput
                                 value={displayPW}
                                 min={50} max={600}
@@ -5374,7 +5385,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>W</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 28 }}>FC</span>
+                              <span style={{ fontSize: 10, color: 'var(--text-dim)', width: 28 }}>{t('sed.hr')}</span>
                               <LocalInput
                                 value={displayPH}
                                 min={60} max={220}
@@ -5406,11 +5417,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                   setDrawModeActive(false)
                                 }}
                                 style={{ flex: 1, padding: '7px 0', borderRadius: 7, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                              >Créer le bloc</button>
+                              >{t('sed.createBlock')}</button>
                               <button
                                 onClick={() => { setPendingBlock(null); setDrawModeActive(false) }}
                                 style={{ padding: '7px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer' }}
-                              >Annuler</button>
+                              >{t('sed.cancel')}</button>
                             </div>
                           </div>
                         </div>
@@ -5442,7 +5453,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             if (!seg) return null
                             const c = cfg.selected ? wToColor(cfg.watts) : '#6b7280'
                             return {
-                              label: `Côte ${ci + 1}`,
+                              label: `${t('sed.climbNoun')} ${ci + 1}`,
                               startKm: seg.startKm,
                               endKm: seg.endKm,
                               zone: 3,
@@ -5497,7 +5508,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 ftpRef: ftp2,
                                 color: wColor(efWatts),
                                 label: `EF${efNum}`,
-                                name: `Endurance fondamentale ${efNum}`,
+                                name: `${t('sed.baseEndurance')} ${efNum}`,
                                 estimatedMin: estimateTimeOnSegment(distKm, 0, efWatts, athleteWeight, bikeWeight),
                               })
                             }
@@ -5521,8 +5532,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                   watts: cc.watts,
                                   ftpRef: ftp2,
                                   color: wColor(cc.watts),
-                                  label: `Côte ${climbNum}`,
-                                  name: `Côte ${climbNum} — km ${seg.startKm} → ${seg.endKm}`,
+                                  label: `${t('sed.climbNoun')} ${climbNum}`,
+                                  name: `${t('sed.climbNoun')} ${climbNum} — km ${seg.startKm} → ${seg.endKm}`,
                                   estimatedMin: estimateTimeOnSegment(seg.distanceKm, seg.avgGradient, cc.watts, athleteWeight, bikeWeight),
                                 })
                                 // EF gap until next climb (or end)
@@ -5559,8 +5570,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 watts: sb.watts,
                                 ftpRef: ftp2,
                                 color: wColor(sb.watts),
-                                label: `Bloc ${si + 1}`,
-                                name: `Bloc spécifique ${si + 1} — km ${sb.startKm} → ${sb.endKm}`,
+                                label: `${t('sed.block')} ${si + 1}`,
+                                name: `${t('sed.specificBlock')} ${si + 1} — km ${sb.startKm} → ${sb.endKm}`,
                                 estimatedMin: sb.estimatedMin,
                                 hrAvg: sb.hrAvg,
                               })
@@ -5675,7 +5686,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             opacity: terrainLoading ? 0.6 : 1,
                           }}
                         >
-                          {terrainLoading ? '…' : '⛰ Planifier depuis le parcours'}
+                          {terrainLoading ? '…' : `⛰ ${t('sed.planFromRoute')}`}
                         </button>
                       </div>
                     )}
@@ -5878,16 +5889,16 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}>
                     {carbEst && (
                       <>
-                        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>🍯 Glucides</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>🍯 {t('sed.carbs')}</span>
                         <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: accent }}>{carbEst.lo}–{carbEst.hi}g</span>
                         <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{carbEst.loGh}–{carbEst.hiGh}g/h</span>
                         <div style={{ width: 1, height: 24, background: 'var(--border)', flexShrink: 0 }} />
                       </>
                     )}
-                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>⚡ Moy.</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>⚡ {t('sed.avg')}</span>
                     <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--text)' }}>{avgPower}<span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 2 }}>W</span></span>
                     <div style={{ width: 1, height: 24, background: 'var(--border)', flexShrink: 0 }} />
-                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>❤️ FC moy.</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>❤️ {t('sed.avgHrShort')}</span>
                     <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: '#ef4444' }}>{avgFc}<span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-dim)', marginLeft: 2 }}>bpm</span></span>
                   </div>
                 )
@@ -5903,13 +5914,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         <div style={{ padding: mobile ? '24px 16px 24px' : '24px 24px 24px' }}>
           {!parcoursData && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <span style={lbl}>Construction de la séance</span>
+              <span style={lbl}>{t('sed.sessionBuilder')}</span>
               <div style={{ display: 'flex', gap: 0, background: 'var(--bg-card)', borderRadius: 7, border: '1px solid var(--border)', overflow: 'hidden' }}>
                 <button onClick={() => setBuilderTab('manual')} style={{
                   padding: '6px 14px', border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
                   background: builderTab === 'manual' ? `${accent}18` : 'transparent',
                   color: builderTab === 'manual' ? accent : 'var(--text-dim)',
-                }}>Manuel</button>
+                }}>{t('sed.manual')}</button>
                 <button onClick={() => setBuilderTab('ai')} style={{
                   padding: '6px 14px', border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
                   background: builderTab === 'ai' ? `${accent}18` : 'transparent',
@@ -5972,11 +5983,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       <div style={{ width: 28, height: 28, borderRadius: '50%', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13, color: '#fff' }}>✦</div>
                       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', flex: 1 }}>
                         <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--text)', lineHeight: 1.5, fontWeight: 500 }}>
-                          Souhaites-tu construire ta séance en tenant compte du profil de ce parcours ?
+                          {t('sed.buildFromRouteQuestion')}
                         </p>
                         <p style={{ margin: '0 0 3px', fontSize: 11, color: accent, fontWeight: 700 }}>{parcoursData?.name}</p>
                         <p style={{ margin: 0, fontSize: 10, color: 'var(--text-dim)' }}>
-                          {[parcoursData?.distance ? `${parcoursData.distance} km` : '', parcoursData?.elevation ? `${parcoursData.elevation} m D+` : '', `${climbs.length} montée${climbs.length > 1 ? 's' : ''} détectée${climbs.length > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}
+                          {[parcoursData?.distance ? `${parcoursData.distance} km` : '', parcoursData?.elevation ? `${parcoursData.elevation} m D+` : '', t('sed.climbsDetected', { n: climbs.length })].filter(Boolean).join(' · ')}
                         </p>
                       </div>
                     </div>
@@ -5985,12 +5996,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         flex: 2, padding: '10px 16px', borderRadius: 9, border: 'none',
                         background: `linear-gradient(135deg, ${accent}, ${accent}bb)`,
                         color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif',
-                      }}>⛰ Oui, intégrer le parcours</button>
+                      }}>⛰ {t('sed.yesIntegrateRoute')}</button>
                       <button onClick={() => setAiFlowStep('free')} style={{
                         flex: 1, padding: '10px 16px', borderRadius: 9,
                         border: '1px solid var(--border)', background: 'transparent',
                         color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                      }}>Texte libre</button>
+                      }}>{t('sed.freeText')}</button>
                     </div>
                   </div>
                 )
@@ -6014,8 +6025,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     {/* Durée totale prévue (requis pour TSS) */}
                     <div style={{ borderRadius: 10, border: `1px solid ${accent}30`, background: `${accent}06`, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, position: 'relative' as const }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Durée prévue de la sortie</div>
-                        <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Heures · minutes · nécessaire pour le TSS</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{t('sed.plannedRideDuration')}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('sed.hoursMinutesTss')}</div>
                       </div>
                       <button
                         onClick={() => setShowDurPicker(v => !v)}
@@ -6030,7 +6041,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         return (
                           <div style={{ position: 'absolute' as const, right: 0, top: '100%', marginTop: 6, zIndex: 200, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.35)', padding: 12, display: 'flex', gap: 0, minWidth: 180 }}>
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' as const, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Heures</div>
+                              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' as const, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t('sed.hours')}</div>
                               <div style={{ maxHeight: 200, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
                                 {hours.map(h => (
                                   <button key={h} onClick={() => { setTotalDuration(`${h}:${String(curM).padStart(2, '0')}`); setDur(h * 60 + curM); setShowDurPicker(false) }} style={{ padding: '6px 8px', borderRadius: 7, border: 'none', background: curH === h ? `${accent}22` : 'transparent', color: curH === h ? accent : 'var(--text)', fontSize: 13, fontWeight: curH === h ? 800 : 500, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'center' as const }}>{h}h</button>
@@ -6039,7 +6050,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             </div>
                             <div style={{ width: 1, background: 'var(--border)', margin: '0 8px' }} />
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' as const, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Minutes</div>
+                              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-dim)', textAlign: 'center' as const, marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t('sed.minutes')}</div>
                               <div style={{ maxHeight: 200, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
                                 {mins.map(m => (
                                   <button key={m} onClick={() => { setTotalDuration(`${curH}:${String(m).padStart(2, '0')}`); setDur(curH * 60 + m); setShowDurPicker(false) }} style={{ padding: '6px 8px', borderRadius: 7, border: 'none', background: curM === m ? `${accent}22` : 'transparent', color: curM === m ? accent : 'var(--text)', fontSize: 13, fontWeight: curM === m ? 800 : 500, fontFamily: 'DM Mono, monospace', cursor: 'pointer', textAlign: 'center' as const }}>{String(m).padStart(2, '0')}</button>
@@ -6058,7 +6069,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       const displayHr = bulkHr > 0 ? bulkHr : wattToFc(bulkWatts, bFtp, bLthr)
                       return (
                         <div style={{ borderRadius: 10, border: `1px solid ${accent}30`, background: `${accent}06`, padding: '10px 12px' }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 8 }}>⚡ Même puissance pour toutes les côtes</div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 8 }}>⚡ {t('sed.samePowerAllClimbs')}</div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <LocalInput
@@ -6093,7 +6104,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 }))
                               }}
                               style={{ padding: '6px 16px', borderRadius: 7, border: 'none', background: `linear-gradient(135deg, ${accent}, ${accent}bb)`, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
-                            >Appliquer à toutes</button>
+                            >{t('sed.applyToAll')}</button>
                           </div>
                         </div>
                       )
@@ -6126,7 +6137,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             {/* Info */}
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                Côte {ci + 1}
+                                {t('sed.climbNoun')} {ci + 1}
                                 <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: 10 }}>km {seg.startKm}→{seg.endKm}</span>
                                 {overrideBlock && (
                                   <span style={{ fontSize: 9, fontWeight: 700, color: '#f97316', background: 'rgba(249,115,22,0.12)', borderRadius: 4, padding: '1px 5px', letterSpacing: '0.04em' }}>OVERRIDE</span>
@@ -6205,7 +6216,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               onClick={() => setOpenIntervals(prev => ({ ...prev, [`c_${ci}`]: !prev[`c_${ci}`] }))}
                               style={{ margin:'6px 12px 0', padding:'4px 10px', borderRadius:6, border:`1px solid ${zc}40`, background:openIntervals[`c_${ci}`]?`${zc}20`:`${zc}08`, color:zc, fontSize:9, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
                               <span>⚡</span>
-                              <span>{cfg.intervals ? `${cfg.intervals.reps}×(${cfg.intervals.blocks.length} blocs)` : 'Intervalles'}</span>
+                              <span>{cfg.intervals ? t('sed.intervalsSummary', { reps: cfg.intervals.reps, n: cfg.intervals.blocks.length }) : t('sed.intervals')}</span>
                               <span style={{ opacity:0.6 }}>{openIntervals[`c_${ci}`] ? '▲' : '▼'}</span>
                             </button>
                           )}
@@ -6223,7 +6234,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           {warnOverFtp && !overrideBlock && (
                             <div style={{ padding: '5px 12px', background: 'rgba(234,179,8,0.10)', borderTop: '1px solid rgba(234,179,8,0.25)', fontSize: 10, color: '#ca8a04', display: 'flex', gap: 5, alignItems: 'center' }}>
                               <span>⚠</span>
-                              <span>{cfg.watts}W &gt; FTP ({ftp}W) sur {timeMin.toFixed(0)} min — intensité non soutenable.</span>
+                              <span>{cfg.watts}W &gt; FTP ({ftp}W) {t('sed.overMinSpaced', { min: timeMin.toFixed(0) })} — {t('sed.unsustainableIntensityDot')}</span>
                             </div>
                           )}
                         </div>
@@ -6237,9 +6248,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       return (
                         <div style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Plats & descentes</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{t('sed.flatsDescents')}</div>
                             <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-                              Endurance de fond — Z{efWatts / efFtp < 0.56 ? 1 : efWatts / efFtp < 0.76 ? 2 : efWatts / efFtp < 0.90 ? 3 : 4} ({Math.round((efWatts / efFtp) * 100)}% FTP)
+                              {t('sed.baseEndurance')} — Z{efWatts / efFtp < 0.56 ? 1 : efWatts / efFtp < 0.76 ? 2 : efWatts / efFtp < 0.90 ? 3 : 4} ({Math.round((efWatts / efFtp) * 100)}% FTP)
                             </div>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
@@ -6270,8 +6281,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     <div style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', overflow: 'hidden' }}>
                       <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>Blocs spécifiques</div>
-                          <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Km début→fin, watts cibles, HR optionnel</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{t('sed.specificBlocks')}</div>
+                          <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('sed.specificBlocksHint')}</div>
                         </div>
                         <button
                           onClick={() => {
@@ -6289,7 +6300,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             setSpecificBlocks(prev => [...prev, { id: newId, startKm: defaultStart, endKm: defaultEnd, watts: defaultW, estimatedMin: mins }])
                           }}
                           style={{ padding: '5px 10px', borderRadius: 7, border: `1px solid ${accent}40`, background: `${accent}10`, color: accent, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-                        >+ Ajouter</button>
+                        >{t('sed.add')}</button>
                       </div>
                       {specificBlocks.length > 0 && (
                         <div style={{ borderTop: '1px solid var(--border)' }}>
@@ -6379,7 +6390,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 onClick={() => setOpenIntervals(prev => ({ ...prev, [sb.id]: !prev[sb.id] }))}
                                 style={{ margin:'2px 0 0', padding:'3px 9px', borderRadius:5, border:`1px solid ${zoneColor(sb.watts)}40`, background:openIntervals[sb.id]?`${zoneColor(sb.watts)}20`:`${zoneColor(sb.watts)}08`, color:zoneColor(sb.watts), fontSize:9, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4, alignSelf:'flex-start' as const }}>
                                 <span>⚡</span>
-                                <span>{sb.intervals ? `${sb.intervals.reps}×(${sb.intervals.blocks.length} blocs)` : 'Intervalles'}</span>
+                                <span>{sb.intervals ? t('sed.intervalsSummary', { reps: sb.intervals.reps, n: sb.intervals.blocks.length }) : t('sed.intervals')}</span>
                                 <span style={{ opacity:0.6 }}>{openIntervals[sb.id]?'▲':'▼'}</span>
                               </button>
                               {openIntervals[sb.id] && (
@@ -6394,12 +6405,12 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               )}
                               {/* Durée estimée NR */}
                               <div style={{ fontSize: 10, color: 'var(--text-dim)', paddingLeft: 28 }}>
-                                ⏱ ~<strong style={{ color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{sb.estimatedMin.toFixed(0)}</strong> min estimées
+                                ⏱ ~<strong style={{ color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{sb.estimatedMin.toFixed(0)}</strong> {t('sed.estMin')}
                                 {specificBlocks.some(x => x.id === sb.id && climbConfigs.some(c => {
                                   const seg = segs[c.segIdx]
                                   return seg && sb.startKm < seg.endKm && sb.endKm > seg.startKm
                                 })) && (
-                                  <span style={{ marginLeft: 8, color: '#f97316', fontWeight: 700, fontSize: 9 }}>override côte</span>
+                                  <span style={{ marginLeft: 8, color: '#f97316', fontWeight: 700, fontSize: 9 }}>{t('sed.climbOverride')}</span>
                                 )}
                               </div>
                             </div>
@@ -6413,7 +6424,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       <div style={{ flex: 1, borderRadius: 10, border: `1px solid ${tssResult ? accent + '40' : 'var(--border)'}`, background: tssResult ? `${accent}08` : 'var(--bg-card)', padding: '10px 8px', textAlign: 'center' as const }}>
                         <div style={{ fontSize: 18, fontWeight: 800, color: tssResult ? accent : 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{tssResult ? String(tssResult.tss) : '—'}</div>
                         <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>
-                          {tssResult ? 'TSS' : 'TSS — saisir durée'}
+                          {tssResult ? 'TSS' : t('sed.tssEnterDuration')}
                         </div>
                         {tssResult && (
                           <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', marginTop: 3 }}>
@@ -6425,11 +6436,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                         <div style={{ fontSize: 18, fontWeight: 800, color: totalDurMin > 0 ? 'var(--text)' : 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>
                           {totalDurMin > 0 ? `${Math.floor(totalDurMin / 60)}h${String(totalDurMin % 60).padStart(2, '0')}` : '—'}
                         </div>
-                        <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>durée totale</div>
+                        <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>{t('sed.totalDuration')}</div>
                       </div>
                       <div style={{ flex: 1, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '10px 8px', textAlign: 'center' as const }}>
                         <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono, monospace' }}>{Math.round(totalClimbMin)}</div>
-                        <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>min côtes</div>
+                        <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: 2 }}>{t('sed.minClimbs')}</div>
                       </div>
                     </div>
 
@@ -6483,7 +6494,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       return (
                         <div style={{ borderRadius: 12, border: `1px solid ${accent}30`, background: `${accent}06`, padding: 14, display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
                           {/* Title */}
-                          <div style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>Résumé séance</div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: accent, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t('sed.sessionSummary')}</div>
 
                           {/* Côtes */}
                           {climbRows.map((r, i) => (
@@ -6491,7 +6502,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               <div style={{ width: 3, height: 32, borderRadius: 2, background: r.zc, flexShrink: 0 }} />
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                                  Côte {i + 1} · km{r.seg.startKm}→{r.seg.endKm}
+                                  {t('sed.climbNoun')} {i + 1} · km{r.seg.startKm}→{r.seg.endKm}
                                 </div>
                                 <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>{r.min.toFixed(0)} min · {r.zl}</div>
                               </div>
@@ -6517,9 +6528,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 <div style={{ width: 3, height: 32, borderRadius: 2, background: '#f97316', flexShrink: 0 }} />
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                                    Bloc {i + 1} · km{sb.startKm}→{sb.endKm}
+                                    {t('sed.block')} {i + 1} · km{sb.startKm}→{sb.endKm}
                                   </div>
-                                  <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>{sb.estimatedMin.toFixed(0)} min{sb.hrAvg ? ` · FC ~${sb.hrAvg}` : ''}</div>
+                                  <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>{sb.estimatedMin.toFixed(0)} min{sb.hrAvg ? ` · ${t('sed.hr')} ~${sb.hrAvg}` : ''}</div>
                                 </div>
                                 <LocalInput
                                   value={sb.watts}
@@ -6539,7 +6550,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                               <div style={{ width: 3, height: 32, borderRadius: 2, background: '#22c55e', flexShrink: 0 }} />
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)' }}>Plats & descentes</div>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)' }}>{t('sed.flatsDescents')}</div>
                                 <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>{Math.round(remainingS / 60)} min · Z2</div>
                               </div>
                               <LocalInput
@@ -6555,10 +6566,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                           {/* KPIs */}
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
                             {[
-                              { lbl: 'Moy', val: `${avgW}W` },
+                              { lbl: t('sed.avg'), val: `${avgW}W` },
                               { lbl: 'TSS', val: tssResult ? String(tssResult.tss) : '—' },
                               { lbl: 'Kcal', val: kcal > 0 ? String(kcal) : '—' },
-                              { lbl: '↑ Total', val: `${Math.round(totalClimbS / 60)}min` },
+                              { lbl: t('sed.totalUp'), val: `${Math.round(totalClimbS / 60)}min` },
                             ].map(({ lbl, val }) => (
                               <div key={lbl} style={{ borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: '8px 6px', textAlign: 'center' as const }}>
                                 <div style={{ fontSize: 13, fontWeight: 800, color: accent, fontFamily: 'DM Mono, monospace' }}>{val}</div>
@@ -6586,7 +6597,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       marginBottom: 10, padding: '4px 10px', borderRadius: 7,
                       border: '1px solid var(--border)', background: 'transparent',
                       color: 'var(--text-dim)', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                    }}>← Retour au flow parcours</button>
+                    }}>{t('sed.backToRouteFlow')}</button>
                   )}
                   <div style={{ position: 'relative' as const }}>
                     <textarea value={aiPrompt}
@@ -6602,8 +6613,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       onKeyDown={e => { if (e.key === 'Escape') setShowSlashMenu(false) }}
                       rows={6}
                       placeholder={isStrength
-                        ? 'Tape / pour les types de circuits\n\nEx :\n/lap\nSquat @100kg\nBench @80kg\nx4\n\n/superset\nCurl @14kg + Triceps @20kg\nx3'
-                        : 'Ex : 10×400m @3:30/km avec 1min récup, échauffement 15min...'}
+                        ? t('sed.aiStrengthPlaceholder')
+                        : t('sed.aiEndurancePlaceholder')}
                       style={{
                         width: '100%', background: 'var(--bg-card2)', border: '1px solid var(--border)',
                         borderRadius: 9, color: 'var(--text)', padding: 12, fontSize: 13, outline: 'none',
@@ -6640,7 +6651,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     background: aiLoading ? 'var(--border)' : `linear-gradient(135deg, ${accent}, ${accent}bb)`,
                     color: '#fff', fontSize: 12, fontWeight: 700, cursor: aiLoading ? 'wait' : 'pointer',
                     fontFamily: 'Syne, sans-serif',
-                  }}>{aiLoading ? 'Génération...' : 'Générer les blocs'}</button>
+                  }}>{aiLoading ? t('sed.generating') : t('sed.generateBlocks')}</button>
                   {aiError && (
                     <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)', color: '#ef4444', fontSize: 11, lineHeight: 1.5, wordBreak: 'break-all' as const }}>
                       {aiError}
@@ -6666,11 +6677,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <svg width="15" height="15" viewBox="0 0 14 14" fill="none"><path d="M7 1.2C4.6 4.2 2.6 6.4 2.6 8.7a4.4 4.4 0 0 0 8.8 0C11.4 6.4 9.4 4.2 7 1.2Z" fill="currentColor"/></svg>
             </span>
             <span style={{ flex: 1, textAlign: 'left' as const, display: 'flex', flexDirection: 'column' as const, gap: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Stratégie nutritionnelle</span>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{t('sed.nutritionStrategy')}</span>
               <span style={{ fontSize: 10.5, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                 {nutritionItems.length > 0
-                  ? `${nutritionItems.length} ravitaillement${nutritionItems.length > 1 ? 's' : ''} · ${dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0} g/h`
-                  : 'Optionnel — gels, boissons, barres…'}
+                  ? `${t('sed.refuelCount', { n: nutritionItems.length })} · ${dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0} g/h`
+                  : t('sed.nutritionOptional')}
               </span>
             </span>
             {nutritionItems.length > 0 && (
@@ -6693,7 +6704,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     padding: '5px 12px', border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
                     background: nutritionTab === 'manual' ? `${accent}18` : 'transparent',
                     color: nutritionTab === 'manual' ? accent : 'var(--text-dim)',
-                  }}>Manuel</button>
+                  }}>{t('sed.manual')}</button>
                   <button onClick={() => setNutritionTab('ai')} style={{
                     padding: '5px 12px', border: 'none', fontSize: 10, fontWeight: 600, cursor: 'pointer',
                     background: nutritionTab === 'ai' ? `${accent}18` : 'transparent',
@@ -6725,11 +6736,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                               {/* En-tête du moment */}
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: items.length > 0 ? 8 : 0 }}>
                                 <span style={{ fontSize: 12, fontWeight: 700, color: accent, fontFamily: '"DM Mono", monospace', minWidth: 44 }}>
-                                  {timeMin === 0 ? 'Départ' : `${timeMin}'`}
+                                  {timeMin === 0 ? t('sed.startShort') : `${timeMin}'`}
                                 </span>
                                 <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                                 <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>
-                                  {items.reduce((s, x) => s + x.glucidesG, 0)}g glu
+                                  {items.reduce((s, x) => s + x.glucidesG, 0)}{t('sed.gCarbsShort')}
                                 </span>
                               </div>
                               {/* Aliments */}
@@ -6746,11 +6757,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                   <select value={item.type}
                                     onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, type: e.target.value as NutritionItem['type'] } : x))}
                                     style={{ fontSize: 9, padding: '3px 6px', borderRadius: 5, border: `1px solid ${accent}44`, background: `${accent}0a`, color: accent, outline: 'none', cursor: 'pointer' }}>
-                                    {NUTRITION_TYPES.map(nt => <option key={nt.id} value={nt.id}>{nt.label}</option>)}
+                                    {NUTRITION_TYPES.map(nt => <option key={nt.id} value={nt.id}>{t(`sed.nutType_${nt.id}`)}</option>)}
                                   </select>
                                   {/* Nom + sélecteur produits athlète */}
                                   <div style={{ display: 'flex', flexDirection: 'column' as const, minWidth: 0, gap: 2 }}>
-                                    <input value={item.name} placeholder="Aliment..."
+                                    <input value={item.name} placeholder={t('sed.foodPlaceholder')}
                                       onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, name: e.target.value } : x))}
                                       style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: 12, outline: 'none', minWidth: 0 }} />
                                     {athleteProducts.filter(p => p.type === item.type).length > 0 && (
@@ -6761,9 +6772,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                           if (prod) setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, name: prod.name, glucidesG: prod.glucidesG, proteinesG: prod.proteinesG, quantity: prod.quantity } : x))
                                         }}
                                         style={{ appearance: 'none' as const, padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 9, cursor: 'pointer', outline: 'none' }}>
-                                        <option value="">Mes produits ▾</option>
+                                        <option value="">{t('sed.myProducts')}</option>
                                         {athleteProducts.filter(p => p.type === item.type).map(p => (
-                                          <option key={p.name} value={p.name}>{p.name} ({p.glucidesG}g glu)</option>
+                                          <option key={p.name} value={p.name}>{p.name} ({p.glucidesG}{t('sed.gCarbsShort')})</option>
                                         ))}
                                       </select>
                                     )}
@@ -6776,7 +6787,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                     <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>g</span>
                                   </div>
                                   {/* Quantité */}
-                                  <input value={item.quantity} placeholder="Qté"
+                                  <input value={item.quantity} placeholder={t('sed.qtyShort')}
                                     onChange={e => setNutritionItems(prev => prev.map(x => x.id === item.id ? { ...x, quantity: e.target.value } : x))}
                                     style={{ width: 56, padding: '3px 6px', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 11, fontFamily: '"DM Mono",monospace', outline: 'none' }} />
                                   {/* Supprimer */}
@@ -6796,18 +6807,18 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                                 marginTop: 6, background: 'none', border: 'none',
                                 color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer', opacity: 0.65,
                                 padding: 0,
-                              }}>+ ajouter à ce moment</button>
+                              }}>{t('sed.addAtThisMoment')}</button>
                             </div>
                           )
                         })}
                         {/* Summary — 2 chips */}
                         <div style={{ display: 'flex', gap: 8 }}>
                           <div style={{ flex: 1, padding: '8px 12px', borderRadius: 9, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>Total glucides</div>
+                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{t('sed.totalCarbs')}</div>
                             <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)', lineHeight: 1.2 }}>{nutritionItems.reduce((s, x) => s + x.glucidesG, 0)}<span style={{ fontSize: 11, color: 'var(--text-dim)' }}> g</span></div>
                           </div>
                           <div style={{ flex: 1, padding: '8px 12px', borderRadius: 9, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>Apport</div>
+                            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'var(--text-dim)' }}>{t('sed.intake')}</div>
                             <div style={{ fontSize: 17, fontWeight: 700, color: accent, fontFamily: 'var(--font-display)', lineHeight: 1.2 }}>{dur > 0 ? Math.round(nutritionItems.reduce((s, x) => s + x.glucidesG, 0) / (dur / 60)) : 0}<span style={{ fontSize: 11, color: 'var(--text-dim)' }}> g/h</span></div>
                           </div>
                         </div>
@@ -6827,13 +6838,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     width: '100%', padding: '10px', borderRadius: 9,
                     border: `1px dashed ${accent}55`, background: `${accent}0c`,
                     color: accent, fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
-                  }}>+ Ajouter un ravitaillement</button>
+                  }}>{t('sed.addRefuel')}</button>
                 </>
               ) : (
                 <>
                   {/* MODE IA */}
                   <textarea value={nutritionAiPrompt} onChange={e => setNutritionAiPrompt(e.target.value)} rows={3}
-                    placeholder={'Ex :\n- 1 gel toutes les 30min\n- 1 barre à mi-parcours\n- Boisson isotonique toutes les 20min\n\nOu simplement : "Sortie vélo 3h, 250w moy, chaleur"'}
+                    placeholder={t('sed.nutritionAiPlaceholder')}
                     style={{
                       width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
                       borderRadius: 9, color: 'var(--text)', padding: 12, fontSize: 12, outline: 'none',
@@ -6913,7 +6924,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     fontFamily: 'Syne, sans-serif',
                     opacity: !nutritionAiPrompt.trim() ? 0.5 : 1,
                   }}>
-                    {nutritionAiLoading ? 'Génération...' : 'Générer la stratégie'}
+                    {nutritionAiLoading ? t('sed.generating') : t('sed.generateStrategy')}
                   </button>
                 </>
               )}
@@ -6940,7 +6951,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                 <path d="M8 5v14l11-7z" fill="#fff" />
               </svg>
-              <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Lancer</span>
+              <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>{t('sed.launch')}</span>
             </button>
           </div>
         )}
@@ -6966,10 +6977,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 style={{ padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', color: '#6B7280', fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'color 0.15s' }}
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                Fermer
+                {t('sed.close')}
               </button>
               {/* ── Gauche : actions secondaires (text-only, no bg) ── */}
-              <button onClick={handleExportPDF} title="Exporter en PDF" style={{
+              <button onClick={handleExportPDF} title={t('sed.exportPdf')} style={{
                 padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
                 border: '1px solid var(--border)', background: 'transparent',
                 color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
@@ -6978,17 +6989,17 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 8.5L2 4.5h2.5V1h3v3.5H10L6 8.5Z" fill="currentColor"/><rect x="1" y="10" width="10" height="1.2" rx="0.6" fill="currentColor"/></svg>
                 PDF
               </button>
-              <button onClick={() => parcoursInputRef.current?.click()} title="Importer un parcours GPX/TCX/KML" style={{
+              <button onClick={() => parcoursInputRef.current?.click()} title={t('sed.importRouteFile')} style={{
                 padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
                 border: '1px solid var(--border)', background: 'transparent',
                 color: 'var(--text-dim)', fontSize: 11, fontWeight: 600,
                 display: 'flex', alignItems: 'center', gap: 5,
               }}>
                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1.5C4.07 1.5 2.5 3.07 2.5 5c0 2.5 3.5 5.5 3.5 5.5s3.5-3 3.5-5.5C9.5 3.07 7.93 1.5 6 1.5Zm0 4.75a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" fill="currentColor"/></svg>
-                {parcoursLoading ? '…' : parcoursData ? (parcoursData.distance != null ? `${parcoursData.distance} km` : '✓') : 'Parcours'}
+                {parcoursLoading ? '…' : parcoursData ? (parcoursData.distance != null ? `${parcoursData.distance} km` : '✓') : t('sed.route')}
               </button>
               <button onClick={async () => {
-                const name = prompt('Nom du favori :', title || `${SPORT_LABEL[sport]}`)
+                const name = prompt(t('sed.favoriteName'), title || `${SPORT_LABEL[sport]}`)
                 if (!name) return
                 try {
                   const { createClient } = await import('@/lib/supabase/client')
@@ -7000,19 +7011,19 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     training_type: trainingTypes.join('+') || null, blocks_data: blocks,
                     nutrition_data: nutritionItems, duration_min: dur, rpe, notes: desc,
                   })
-                  alert('✓ Favori sauvegardé')
+                  alert(t('sed.favoriteSaved'))
                 } catch (e) { console.error('[Fav]', e) }
               }} style={{
                 padding: '8px 12px', borderRadius: 8,
                 border: '1px solid var(--border)', background: 'transparent',
                 color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-              }}>★ Favori</button>
+              }}>★ {t('sed.favorite')}</button>
               {onDuplicate && session && (
                 <button onClick={() => setShowDuplicateMenu(true)} style={{
                   padding: '8px 12px', borderRadius: 8,
                   border: '1px solid var(--border)', background: 'transparent',
                   color: 'var(--text-dim)', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                }}>Dupliquer</button>
+                }}>{t('sed.duplicate')}</button>
               )}
 
               <div style={{ flex: 1 }} />
@@ -7033,11 +7044,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
               {/* ── Droite : actions principales ── */}
               {onDelete && session && (
-                <button onClick={() => { if (confirm('Supprimer cette séance ?')) { onDelete(session.id); onClose() } }} style={{
+                <button onClick={() => { if (confirm(t('sed.deleteSessionConfirm'))) { onDelete(session.id); onClose() } }} style={{
                   padding: '8px 12px', borderRadius: 8,
                   background: 'transparent', border: 'none',
                   color: '#ef4444', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                }}>Supprimer</button>
+                }}>{t('sed.delete')}</button>
               )}
               {session?.originalContent && (
                 <button onClick={() => {
@@ -7050,14 +7061,14 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   padding: '8px 12px', borderRadius: 8,
                   background: 'transparent', border: 'none',
                   color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer', fontWeight: 600,
-                }}>Réinitialiser IA</button>
+                }}>{t('sed.resetAi')}</button>
               )}
               {session?.status !== 'done' && onValidate && session && (
                 <button onClick={() => onValidate({ ...session, sport, title, time, durationMin: dur, rpe, blocks, notes: desc })} style={{
                   padding: '8px 14px', borderRadius: 8,
                   background: 'transparent', border: '1px solid rgba(34,197,94,0.5)',
                   color: '#22c55e', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                }}>Valider</button>
+                }}>{t('sed.validate')}</button>
               )}
               <button onClick={async () => {
                 if (!session?.id || saving) return
@@ -7111,7 +7122,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 boxShadow: saved ? 'none' : `0 4px 14px ${accent}40`,
                 transition: 'background 0.3s, box-shadow 0.2s',
                 fontFamily: 'Syne, sans-serif', letterSpacing: '0.01em',
-              }}>{saving ? '…' : saved ? '✓ Enregistré' : 'Enregistrer →'}</button>
+              }}>{saving ? '…' : saved ? `✓ ${t('sed.saved')}` : t('sed.save')}</button>
             </div>
           ) : (
             /* Mode create */
@@ -7120,9 +7131,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 padding: '10px 20px', borderRadius: 8,
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
                 color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
-              }}>Annuler</button>
+              }}>{t('sed.cancel')}</button>
               <button onClick={async () => {
-                const name = prompt('Nom du favori :', title || `${SPORT_LABEL[sport]}`)
+                const name = prompt(t('sed.favoriteName'), title || `${SPORT_LABEL[sport]}`)
                 if (!name) return
                 try {
                   const { createClient } = await import('@/lib/supabase/client')
@@ -7134,19 +7145,19 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     training_type: trainingTypes.join('+') || null, blocks_data: blocks,
                     nutrition_data: nutritionItems, duration_min: dur, rpe, notes: desc,
                   })
-                  alert('✓ Favori sauvegardé')
+                  alert(t('sed.favoriteSaved'))
                 } catch (e) { console.error('[Fav]', e) }
               }} style={{
                 padding: '10px 20px', borderRadius: 8,
                 background: 'var(--bg-card)', border: '1px solid var(--border)',
                 color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer',
-              }}>★ Favori</button>
+              }}>★ {t('sed.favorite')}</button>
               <div style={{ flex: 1 }} />
               <button onClick={handleSubmit} style={{
                 padding: '10px 28px', borderRadius: 8, border: 'none',
                 background: accent, color: '#fff', fontSize: 12, fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'Syne, sans-serif',
-              }}>Ajouter la séance</button>
+              }}>{t('sed.addSession')}</button>
             </div>
           )}
         </div>
@@ -7166,10 +7177,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             }}>
               <div style={{ fontSize: 32, marginBottom: 12, lineHeight: 1 }}>⚠</div>
               <div style={{ fontSize: 18, fontWeight: 600, color: '#111827', fontFamily: 'Syne, sans-serif', marginBottom: 8 }}>
-                Modifications non enregistrées
+                {t('sed.unsavedChanges')}
               </div>
               <div style={{ fontSize: 14, color: '#6B7280', marginBottom: 24, lineHeight: 1.5 }}>
-                Vous avez des modifications non enregistrées sur cette séance. Voulez-vous les enregistrer avant de quitter ?
+                {t('sed.unsavedChangesBody')}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
                 {/* Enregistrer et quitter */}
@@ -7221,7 +7232,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   background: '#111827', border: 'none',
                   color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}>
-                  {saving ? '…' : 'Enregistrer et quitter'}
+                  {saving ? '…' : t('sed.saveAndQuit')}
                 </button>
                 {/* Quitter sans enregistrer */}
                 <button onClick={() => { setShowCloseModal(false); onClose() }} style={{
@@ -7229,7 +7240,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   background: 'transparent', border: '1px solid #EF4444',
                   color: '#EF4444', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}>
-                  Quitter sans enregistrer
+                  {t('sed.quitWithoutSaving')}
                 </button>
                 {/* Annuler */}
                 <button onClick={() => setShowCloseModal(false)} style={{
@@ -7254,11 +7265,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               background: 'var(--bg-card)', borderRadius: 14, padding: 20,
               maxWidth: 320, width: '100%', border: '1px solid var(--border)',
             }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 14px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>Dupliquer sur quel jour ?</h3>
+              <h3 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 14px', fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>{t('sed.duplicateWhichDay')}</h3>
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
-                {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map((day, i) => (
+                {[t('sed.monday'), t('sed.tuesday'), t('sed.wednesday'), t('sed.thursday'), t('sed.friday'), t('sed.saturday'), t('sed.sunday')].map((day, i) => (
                   <button key={i} onClick={() => {
-                    onDuplicate(i, { ...session, id: '', title: session.title + ' (copie)', dayIndex: i })
+                    onDuplicate(i, { ...session, id: '', title: session.title + ` ${t('sed.copySuffix')}`, dayIndex: i })
                     setShowDuplicateMenu(false)
                     onClose()
                   }} style={{
@@ -7272,7 +7283,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                 marginTop: 10, width: '100%', padding: 8, borderRadius: 7,
                 border: '1px solid var(--border)', background: 'transparent',
                 color: 'var(--text-dim)', fontSize: 10, cursor: 'pointer',
-              }}>Annuler</button>
+              }}>{t('sed.cancel')}</button>
             </div>
           </div>
         )}

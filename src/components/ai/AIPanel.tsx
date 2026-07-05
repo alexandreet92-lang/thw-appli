@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '@/lib/i18n'
 import { createPortal } from 'react-dom'
 import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
@@ -42,16 +43,16 @@ type THWModel = 'hermes' | 'athena' | 'zeus'
 // Libellé animé affiché pendant que le coach consulte tes données (read-tools
 // de la boucle agentique). Premier outil de la salve → message clair.
 const TOOL_STATUS_LABELS: Record<string, string> = {
-  get_activities:        'Analyse de tes activités…',
-  analyze_sport_metrics: 'Calcul de tes métriques…',
-  get_training_plan:     'Lecture de ton plan…',
-  get_planned_sessions:  'Lecture de tes séances prévues…',
-  web_search:            'Recherche sur le web…',
+  get_activities:        'aip.tool.getActivities',
+  analyze_sport_metrics: 'aip.tool.analyzeMetrics',
+  get_training_plan:     'aip.tool.getPlan',
+  get_planned_sessions:  'aip.tool.getSessions',
+  web_search:            'aip.tool.webSearch',
 }
 function toolStatusLabel(tools: string[] | undefined): string {
   const first = (tools ?? []).find(t => TOOL_STATUS_LABELS[t]) ?? (tools ?? [])[0]
   if (!first) return ''
-  return TOOL_STATUS_LABELS[first] ?? 'Consultation de tes données…'
+  return TOOL_STATUS_LABELS[first] ?? 'aip.tool.default'
 }
 
 interface AIMsg {
@@ -185,63 +186,63 @@ const MODEL_CONFIGS: Record<THWModel, ModelConfig> = {
     color: '#d4a017',
     colorBg: 'rgba(212,160,23,0.1)',
     colorBgDark: 'rgba(212,160,23,0.13)',
-    desc: 'Rapide et direct',
-    hint: 'Réponse express',
+    desc: 'aip.model.hermes.desc',
+    hint: 'aip.model.hermes.hint',
   },
   athena: {
     name: 'Athéna',
     color: '#5b6fff',
     colorBg: 'rgba(91,111,255,0.1)',
     colorBgDark: 'rgba(91,111,255,0.13)',
-    desc: 'Analyse approfondie',
-    hint: 'Équilibre et expertise',
+    desc: 'aip.model.athena.desc',
+    hint: 'aip.model.athena.hint',
   },
   zeus: {
     name: 'Zeus',
     color: '#8b5cf6',
     colorBg: 'rgba(139,92,246,0.1)',
     colorBgDark: 'rgba(139,92,246,0.13)',
-    desc: 'Vision stratégique',
-    hint: 'Analyse maximale',
+    desc: 'aip.model.zeus.desc',
+    hint: 'aip.model.zeus.hint',
   },
 }
 
 function getGreeting() {
   const h = new Date().getHours()
   // 0h–4h : encore debout
-  if (h >= 0 && h <= 4) return 'Toujours levé'
+  if (h >= 0 && h <= 4) return 'aip.greeting.stillUp'
   // 5h–6h
-  if (h >= 5 && h <= 6) return 'Déjà levé'
+  if (h >= 5 && h <= 6) return 'aip.greeting.earlyUp'
   // 7h–10h
-  if (h >= 7 && h <= 10) return 'Bonne matinée'
+  if (h >= 7 && h <= 10) return 'aip.greeting.morning'
   // 11h–13h
-  if (h >= 11 && h <= 13) return 'Bonne journée'
+  if (h >= 11 && h <= 13) return 'aip.greeting.day'
   // 14h–18h
-  if (h >= 14 && h <= 18) return 'Bon après-midi'
+  if (h >= 14 && h <= 18) return 'aip.greeting.afternoon'
   // 19h–22h
-  if (h >= 19 && h <= 22) return 'Bonne soirée'
+  if (h >= 19 && h <= 22) return 'aip.greeting.evening'
   // 23h
-  return 'Bonne nuit'
+  return 'aip.greeting.night'
 }
 
 // Largeur de la sidebar coulissante (mobile) — doit matcher l'underlay
 const AI_SIDEBAR_W = 326
-function fmtDate(ts: number) {
+function fmtDate(ts: number, t: (key: string, vars?: Record<string, string | number>) => string) {
   const d = Date.now() - ts
-  if (d < 60_000) return 'instant'
+  if (d < 60_000) return t('aip.date.instant')
   if (d < 3_600_000) return `${Math.floor(d / 60_000)}min`
   if (d < 86_400_000) return `${Math.floor(d / 3_600_000)}h`
   return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
 /** Format timestamp for message hover (C4) */
-function fmtMsgTime(ts: number): string {
+function fmtMsgTime(ts: number, t: (key: string, vars?: Record<string, string | number>) => string): string {
   const now = new Date()
   const d = new Date(ts)
   const hhmm = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   const diffDays = Math.floor((now.getTime() - d.getTime()) / 86_400_000)
   if (diffDays === 0) return hhmm
-  if (diffDays === 1) return `Hier ${hhmm}`
+  if (diffDays === 1) return t('aip.date.yesterday', { time: hhmm })
   return `${d.getDate()} ${d.toLocaleString('fr-FR', { month: 'short' })} ${hhmm}`
 }
 
@@ -280,6 +281,7 @@ function parseChartSpec(raw: string): ChartSpec | null {
 }
 
 function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: boolean }) {
+  const { t } = useI18n()
   const [active, setActive] = useState<number | null>(null)
   const [uid] = useState(() => 'chart-' + Math.random().toString(36).slice(2, 8))
   const W = 640, H = embedded ? 340 : 300, PL = 50, PR = 18, PT = 16, PB = 38
@@ -411,12 +413,12 @@ function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: bo
           {series.map((s, si) => (
             <span key={si} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-mid)' }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: colorOf(si) }} />
-              {s.name ?? `Série ${si + 1}`}
+              {s.name ?? t('aip.chart.series', { n: si + 1 })}
             </span>
           ))}
         </div>
       )}
-      <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center', padding: '3px 0 0' }}>Touche le graphique pour les valeurs</div>
+      <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center', padding: '3px 0 0' }}>{t('aip.chart.tapForValues')}</div>
     </div>
   )
 }
@@ -424,6 +426,7 @@ function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: bo
 // Indicateur persistant « Recherche web » — chip dépliable listant les requêtes
 // réellement envoyées par l'IA (preuve visible qu'elle a cherché sur internet).
 function WebSearchBadge({ queries }: { queries: string[] }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   return (
     <div style={{ marginLeft: 34, marginTop: 6 }}>
@@ -438,8 +441,8 @@ function WebSearchBadge({ queries }: { queries: string[] }) {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
         </svg>
-        <span style={{ fontWeight: 600, color: 'var(--text)' }}>Recherche web</span>
-        <span>· {queries.length} requête{queries.length > 1 ? 's' : ''}</span>
+        <span style={{ fontWeight: 600, color: 'var(--text)' }}>{t('aip.chart.webSearch')}</span>
+        <span>· {queries.length} {queries.length > 1 ? t('aip.chart.queries') : t('aip.chart.query')}</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
           <path d="M6 9l6 6 6-6" />
         </svg>
@@ -488,9 +491,10 @@ function ChartThumb({ spec }: { spec: ChartSpec }) {
 
 // Carte cliquable (façon « artifact » Claude) → ouvre le graphe en grand.
 function ChartCard({ spec }: { spec: ChartSpec }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
-  const title = spec.title || 'Graphique'
-  const sub = `Graphique interactif · ${spec.series[0].points.length} points${spec.y_unit ? ' · ' + spec.y_unit : ''}`
+  const title = spec.title || t('aip.chart.chart')
+  const sub = `${t('aip.chart.interactive')} · ${spec.series[0].points.length} ${t('aip.chart.points')}${spec.y_unit ? ' · ' + spec.y_unit : ''}`
   return (
     <>
       <button
@@ -522,6 +526,7 @@ function ChartCard({ spec }: { spec: ChartSpec }) {
 
 // Vue plein écran (panneau qui glisse du bas) avec le graphe interactif en grand.
 function ChartViewer({ spec, onClose }: { spec: ChartSpec; onClose: () => void }) {
+  const { t } = useI18n()
   return createPortal(
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'aip_fade_in 0.16s ease' }}>
       <div onClick={e => e.stopPropagation()} style={{
@@ -533,15 +538,15 @@ function ChartViewer({ spec, onClose }: { spec: ChartSpec; onClose: () => void }
         <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)', margin: '6px auto 14px' }} />
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif', lineHeight: 1.25 }}>{spec.title || 'Graphique'}</div>
-            {spec.y_unit && <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 2 }}>Unité : {spec.y_unit}</div>}
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,sans-serif', lineHeight: 1.25 }}>{spec.title || t('aip.chart.chart')}</div>
+            {spec.y_unit && <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 2 }}>{t('aip.chart.unit')} : {spec.y_unit}</div>}
           </div>
-          <button onClick={onClose} aria-label="Fermer" style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'var(--bg-alt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button onClick={onClose} aria-label={t('aip.close')} style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'var(--bg-alt)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
         <ChartBlock spec={spec} embedded />
-        <div style={{ fontSize: 12, color: 'var(--text-mid)', textAlign: 'center', marginTop: 10 }}>Touche une barre ou un point pour voir la valeur exacte.</div>
+        <div style={{ fontSize: 12, color: 'var(--text-mid)', textAlign: 'center', marginTop: 10 }}>{t('aip.chart.tapBarOrPoint')}</div>
       </div>
     </div>,
     document.body,
@@ -549,6 +554,7 @@ function ChartViewer({ spec, onClose }: { spec: ChartSpec; onClose: () => void }
 }
 
 function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string }) {
+  const { t } = useI18n()
   const blocks: React.ReactNode[] = []
   const lines = text.split('\n')
   let i = 0
@@ -581,7 +587,7 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
           // JSON incomplet (en cours de streaming) ou invalide → placeholder discret
           blocks.push(
             <div key={`chart-ph-${i}`} style={{ marginLeft: 34, margin: '8px 0', fontSize: 13, color: 'var(--ai-dim)' }}>
-              📊 Génération du graphique…
+              📊 {t('aip.chart.generating')}
             </div>
           )
         }
@@ -778,6 +784,7 @@ function parseBold(text: string): React.ReactNode {
 
 // CodeBlock — E2: fenced code block with language label and copy button
 function CodeBlock({ lang, code }: { lang: string; code: string }) {
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const [showBtn, setShowBtn] = useState(false)
   return (
@@ -814,7 +821,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
           ) : (
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
           )}
-          {copied ? 'Copié' : 'Copier'}
+          {copied ? t('aip.copied') : t('aip.copy')}
         </button>
       )}
     </div>
@@ -1205,8 +1212,8 @@ function SessionBlockChart({ blocks, total, sport }: { blocks: SessionBlock[]; t
 // ── AddToPlanningModal ────────────────────────────────────────
 
 const SPORT_LABELS_FR: Record<string, string> = {
-  running: 'Running', cycling: 'Vélo', swim: 'Natation',
-  rowing: 'Aviron', hyrox: 'Hyrox', gym: 'Muscu',
+  running: 'aip.sport.running', cycling: 'aip.sport.cycling', swim: 'aip.sport.swim',
+  rowing: 'aip.sport.rowing', hyrox: 'aip.sport.hyrox', gym: 'aip.sport.gym',
 }
 
 function weekStartOf(dateStr: string): string {
@@ -1221,6 +1228,7 @@ function dayIdxOf(dateStr: string): number {
 }
 
 function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClose: () => void }) {
+  const { t } = useI18n()
   const [nom,    setNom]    = useState(session.title !== 'Séance proposée' ? session.title : '')
   const [saving, setSaving] = useState(false)
   const [done,   setDone]   = useState(false)
@@ -1241,13 +1249,13 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
   }
 
   async function save() {
-    if (!nom.trim()) { setErrMsg('Nom requis'); return }
+    if (!nom.trim()) { setErrMsg(t('aip.lib.nameRequired')); return }
     setSaving(true); setErrMsg('')
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
-      if (!user) { setErrMsg('Non connecté'); setSaving(false); return }
+      if (!user) { setErrMsg(t('aip.notConnected')); setSaving(false); return }
 
       // Map ParsedSession blocks → session_library blocs format
       const blocs = session.blocks.map(b => {
@@ -1288,7 +1296,7 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
       if (error) { setErrMsg(error.message); setSaving(false); return }
       setDone(true)
     } catch (e) {
-      setErrMsg(e instanceof Error ? e.message : 'Erreur réseau')
+      setErrMsg(e instanceof Error ? e.message : t('aip.networkError'))
       setSaving(false)
     }
   }
@@ -1306,38 +1314,38 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
         {done ? (
           <div style={{ textAlign: 'center', padding: '8px 0' }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-            <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 5px', color: 'var(--ai-text)' }}>Ajouté à la bibliothèque !</p>
+            <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 5px', color: 'var(--ai-text)' }}>{t('aip.lib.added')}</p>
             <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 16px' }}>
-              Retrouve-la dans Session → Bibliothèque
+              {t('aip.lib.findInLibrary')}
             </p>
             <button onClick={onClose} style={{ padding: '8px 22px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              Fermer
+              {t('aip.close')}
             </button>
           </div>
         ) : (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <h3 style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--ai-text)' }}>
-                Ajouter à la bibliothèque
+                {t('aip.lib.addToLibrary')}
               </h3>
               <button onClick={onClose} style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 6 }}>Nom de la séance</p>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ai-dim)', marginBottom: 6 }}>{t('aip.lib.sessionName')}</p>
                 <input
                   value={nom}
                   onChange={e => setNom(e.target.value)}
-                  placeholder="Ex: Sortie marathon tempo"
+                  placeholder={t('aip.lib.sessionNamePlaceholder')}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none', boxSizing: 'border-box', fontFamily: 'DM Sans,sans-serif' }}
                 />
               </div>
               <div style={{ padding: '8px 10px', borderRadius: 8, background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.15)' }}>
                 <div style={{ fontSize: 11, color: 'var(--ai-dim)', marginBottom: 4 }}>
-                  {SPORT_LABELS_FR[session.sport] ?? session.sport} · {formatDuration(session.total_min)} · {session.blocks.filter(b => b.rawValue !== 0).length} blocs d'effort
+                  {t(SPORT_LABELS_FR[session.sport] ?? session.sport)} · {formatDuration(session.total_min)} · {t('aip.lib.effortBlocks', { n: session.blocks.filter(b => b.rawValue !== 0).length })}
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--ai-mid)' }}>
-                  Intensité {deriveIntensite().toLowerCase()}
+                  {t('aip.lib.intensity')} {deriveIntensite().toLowerCase()}
                 </div>
               </div>
               {errMsg && <p style={{ fontSize: 11, color: '#ef4444', margin: 0 }}>{errMsg}</p>}
@@ -1347,7 +1355,7 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
                 color: '#fff', fontSize: 13, fontWeight: 700,
                 cursor: saving ? 'not-allowed' : 'pointer',
               }}>
-                {saving ? 'Enregistrement…' : 'Ajouter à la bibliothèque'}
+                {saving ? t('aip.saving') : t('aip.lib.addToLibrary')}
               </button>
             </div>
           </>
@@ -1360,6 +1368,7 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
 // ── SessionCard ───────────────────────────────────────────────
 
 function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean }) {
+  const { t } = useI18n()
   const [session,      setSession]      = useState<ParsedSession | null>(null)
   const [editMode,     setEditMode]     = useState(false)
   const [editedBlocks, setEditedBlocks] = useState<SessionBlock[]>([])
@@ -1376,7 +1385,7 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
 
   const displayBlocks = editMode ? editedBlocks : session.blocks
   const total = displayBlocks.reduce((s, b) => s + b.duration_min, 0)
-  const sportLabel = SPORT_LABELS_FR[session.sport] ?? session.sport
+  const sportLabel = t(SPORT_LABELS_FR[session.sport] ?? session.sport)
 
   // ── Average metrics (effort blocks only, rawValue > 0) ──────
   const effortBs = displayBlocks.filter(b => b.rawValue !== undefined && b.rawValue > 0)
@@ -1418,7 +1427,7 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
               {sportLabel} · {formatDuration(total)}
             </span>
             <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, background: 'var(--ai-accent-dim)', color: 'var(--ai-accent)', fontWeight: 700, letterSpacing: '0.05em' }}>
-              SÉANCE
+              {t('aip.session')}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1500,7 +1509,7 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
             padding: '6px 18px 8px',
             borderTop: '1px solid var(--ai-border)',
           }}>
-            <span style={{ fontSize: 10, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Moy. cible</span>
+            <span style={{ fontSize: 10, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>{t('aip.avgTarget')}</span>
             {avgRaw !== null && (
               <span style={{ fontSize: 12, fontFamily: 'DM Mono,monospace', fontWeight: 700, color: 'var(--ai-text)' }}>
                 {formatRawValue(avgRaw, session.sport)}
@@ -1518,19 +1527,19 @@ function SessionCard({ text, isStreaming }: { text: string; isStreaming: boolean
           {editMode ? (
             <>
               <button onClick={() => setEditMode(false)} style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                Annuler
+                {t('aip.cancel')}
               </button>
               <button onClick={confirmEdit} style={{ flex: 2, padding: '7px', borderRadius: 8, border: 'none', background: 'rgba(91,111,255,0.15)', color: '#5b6fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                Valider les modifications
+                {t('aip.confirmEdits')}
               </button>
             </>
           ) : (
             <>
               <button onClick={() => { setEditedBlocks(session.blocks); setEditMode(true) }} style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg)', color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                Modifier
+                {t('aip.edit')}
               </button>
               <button onClick={() => setShowModal(true)} style={{ flex: 2, padding: '7px 10px', borderRadius: 8, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                + Ajouter à la bibliothèque
+                + {t('aip.lib.addToLibrary')}
               </button>
             </>
           )}
@@ -1636,6 +1645,7 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
   disabled?: boolean
   isMobile?: boolean
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -1658,7 +1668,7 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
       <button
         onClick={() => { if (!disabled) setOpen(p => !p) }}
         disabled={disabled}
-        title={disabled ? 'Modèle imposé pendant la génération' : `Modèle : ${cfg.name}`}
+        title={disabled ? t('aip.model.locked') : `${t('aip.model.label')} : ${cfg.name}`}
         style={{
           width: 28, height: 28, borderRadius: '50%',
           border: `1px solid ${open ? 'var(--ai-mid)' : 'var(--ai-border)'}`,
@@ -1709,7 +1719,7 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
                   fontSize: isMobile ? 12 : 11, color: 'var(--text-mid)',
                   fontFamily: 'DM Sans,sans-serif', marginTop: 2,
                 }}>
-                  {mc.desc}
+                  {t(mc.desc)}
                 </div>
               </div>
               {isA && (
@@ -1722,7 +1732,7 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
         })
 
         if (isMobile) {
-          return <MobileSheet title="Modèle IA" onClose={() => setOpen(false)}>{list}</MobileSheet>
+          return <MobileSheet title={t('aip.model.aiModel')} onClose={() => setOpen(false)}>{list}</MobileSheet>
         }
         return (
           <div style={{
@@ -1736,7 +1746,7 @@ function ModelPicker({ model, onChange, disabled = false, isMobile = false }: {
               padding: '6px 10px 6px', fontSize: 9, fontWeight: 700, color: 'var(--ai-dim)',
               letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'DM Sans,sans-serif',
             }}>
-              Modèle IA
+              {t('aip.model.aiModel')}
             </div>
             {list}
           </div>
@@ -1797,6 +1807,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
   onCancel: () => void
   onRecordConv?: (userMsg: string, aiMsg: string) => void
 }) {
+  const { t } = useI18n()
   type WPPhase = 'gate' | 'sports' | 'generating' | 'result'
 
   const [phase,          setPhase]          = useState<WPPhase>('gate')
@@ -1889,11 +1900,11 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
         })
 
         setGateChecks([
-          { label: 'Profil de performance',       ok: !!profRes.data,        link: '/performance', detail: null },
-          { label: "Zones d'entraînement",         ok: hasZones,              link: '/performance', detail: hasZones ? `${zonesCount} sport${zonesCount > 1 ? 's' : ''} configuré${zonesCount > 1 ? 's' : ''}` : null },
-          { label: 'Activités récentes (3 mois)',  ok: activitiesCount > 0,   link: '/activities',  detail: activitiesCount ? `${activitiesCount} activités` : null },
-          { label: 'Tests de performance',         ok: testsCount > 0,        link: '/performance', detail: testsCount ? `${testsCount} tests` : null },
-          { label: 'Courses planifiées',           ok: racesCount > 0,        link: '/planning',    detail: racesCount ? `${racesCount} courses` : null },
+          { label: t('aip.wp.gatePerfProfile'),    ok: !!profRes.data,        link: '/performance', detail: null },
+          { label: t('aip.wp.gateZones'),           ok: hasZones,              link: '/performance', detail: hasZones ? t(zonesCount > 1 ? 'aip.wp.sportsConfigured' : 'aip.wp.sportConfigured', { n: zonesCount }) : null },
+          { label: t('aip.wp.gateRecentActs'),      ok: activitiesCount > 0,   link: '/activities',  detail: activitiesCount ? t('aip.wp.nActivities', { n: activitiesCount }) : null },
+          { label: t('aip.wp.gateTests'),           ok: testsCount > 0,        link: '/performance', detail: testsCount ? t('aip.wp.nTests', { n: testsCount }) : null },
+          { label: t('aip.wp.gateRaces'),           ok: racesCount > 0,        link: '/planning',    detail: racesCount ? t('aip.wp.nRaces', { n: racesCount }) : null },
         ])
       } catch (err) {
         console.error('[WeakpointsFlow gate]', err)
@@ -1948,12 +1959,13 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
       setPhase('result')
 
       if (onRecordConv) {
-        const userMsg = `Identifier mes points faibles — ${selected.join(', ')}`
-        const aiMsg   = `**Analyse de points faibles** — Score global : ${r.score_global}/100\n\n${r.resume}\n\n**${r.plan_action?.length ?? 0} action${(r.plan_action?.length ?? 0) > 1 ? 's' : ''}** recommandée${(r.plan_action?.length ?? 0) > 1 ? 's' : ''}.`
+        const nActions = r.plan_action?.length ?? 0
+        const userMsg = t('aip.wp.recordUser', { sports: selected.join(', ') })
+        const aiMsg   = `**${t('aip.wp.title')}** — ${t('aip.wp.scoreGlobal')} : ${r.score_global}/100\n\n${r.resume}\n\n${t(nActions > 1 ? 'aip.wp.recordActionsPlural' : 'aip.wp.recordActionsSingular', { n: nActions })}`
         onRecordConv(userMsg, aiMsg)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur')
+      setError(e instanceof Error ? e.message : t('aip.error'))
       setPhase('sports')
     }
   }
@@ -1964,7 +1976,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
       return (
         <div style={{ padding: '40px 0', textAlign: 'center' }}>
           <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(6,182,212,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
-          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Chargement de tes données…</p>
+          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>{t('aip.loadingData')}</p>
         </div>
       )
     }
@@ -1974,14 +1986,14 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
     return (
       <div style={{ padding: '4px 0' }}>
         <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
-          Analyse de points faibles
+          {t('aip.wp.title')}
         </p>
         <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>
           {okCount === 0
-            ? 'Aucune donnée détectée. Complète ton profil pour une analyse précise.'
+            ? t('aip.wp.gateNone')
             : okCount < 3
-              ? 'Quelques données manquantes — l\'analyse sera moins complète. Tu peux continuer.'
-              : 'Tes données sont prêtes. Plus ton profil est complet, plus l\'analyse sera précise.'}
+              ? t('aip.wp.gatePartial')
+              : t('aip.wp.gateReady')}
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
@@ -2002,7 +2014,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
               )}
               {!c.ok && (
                 <a href={c.link} style={{ fontSize: 10, color: '#5b6fff', fontWeight: 600, textDecoration: 'none' }}>
-                  Compléter
+                  {t('aip.complete')}
                 </a>
               )}
             </div>
@@ -2010,7 +2022,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
         </div>
 
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 12px', textAlign: 'center' }}>
-          {okCount}/{gateChecks.length} données disponibles
+          {t('aip.wp.dataAvailable', { ok: okCount, total: gateChecks.length })}
         </p>
 
         <button onClick={() => setPhase('sports')} style={{
@@ -2019,10 +2031,10 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
           color: '#fff', fontSize: 13, fontWeight: 700,
           cursor: 'pointer', fontFamily: 'Syne,sans-serif',
         }}>
-          Choisir les sports à analyser →
+          {t('aip.wp.chooseSports')} →
         </button>
         <button onClick={onCancel} style={{ display: 'block', margin: '8px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
-          Annuler
+          {t('aip.cancel')}
         </button>
       </div>
     )
@@ -2033,10 +2045,10 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
-          Sur quels sports analyser tes points faibles ?
+          {t('aip.wp.whichSports')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
-          Sélectionne un ou plusieurs sports
+          {t('aip.wp.selectSports')}
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
           {WP_SPORTS.map(s => {
@@ -2066,7 +2078,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
             color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
             fontFamily: 'DM Sans,sans-serif',
           }}>
-            Retour
+            {t('aip.back')}
           </button>
           <button onClick={() => { void generate() }} disabled={selected.length === 0} style={{
             flex: 1, padding: '9px 16px', borderRadius: 9,
@@ -2076,7 +2088,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
             cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
             fontFamily: 'DM Sans,sans-serif', transition: 'background 0.15s',
           }}>
-            Analyser {selected.length > 0 ? `(${selected.length})` : ''}
+            {t('aip.analyze')} {selected.length > 0 ? `(${selected.length})` : ''}
           </button>
         </div>
       </div>
@@ -2089,10 +2101,10 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
       <div style={{ padding: '48px 0', textAlign: 'center' }}>
         <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(6,182,212,0.15)', borderTop: '3px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
-          Analyse en cours…
+          {t('aip.analyzing')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6, maxWidth: 260, marginLeft: 'auto', marginRight: 'auto' }}>
-          Croisement de tes données d&apos;entraînement, tests, zones et récupération
+          {t('aip.wp.crossingData')}
         </p>
       </div>
     )
@@ -2125,7 +2137,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
         </svg>
         <div>
           <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
-            Score global
+            {t('aip.wp.scoreGlobal')}
           </p>
           <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.6 }}>
             {report.resume}
@@ -2137,7 +2149,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
       {report.profil_athletique && (
         <div style={{ marginBottom: 16 }}>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
-            Profil athlétique
+            {t('aip.wp.athleticProfile')}
           </p>
           {(report.profil_athletique.forces_majeures ?? []).map((f, i) => (
             <div key={`fg-${i}`} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 4 }}>
@@ -2161,7 +2173,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
 
       {/* ─── 3. Analyse par sport — accordéon ─────────────── */}
       <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
-        Analyse par sport
+        {t('aip.wp.analysisBySport')}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
         {(report.sports_analysis ?? []).map((sa, i) => {
@@ -2190,7 +2202,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
                   {/* Forces */}
                   {(sa.forces ?? []).length > 0 && (
                     <>
-                      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#22c55e', margin: '0 0 6px' }}>Forces</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#22c55e', margin: '0 0 6px' }}>{t('aip.wp.strengths')}</p>
                       {(sa.forces ?? []).map((f, fi) => (
                         <div key={fi} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 4 }}>
                           <p style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', margin: '0 0 2px' }}>{f.label}</p>
@@ -2203,7 +2215,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
                   {/* Faiblesses */}
                   {(sa.faiblesses ?? []).length > 0 && (
                     <>
-                      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ef4444', margin: `${(sa.forces ?? []).length > 0 ? '10px' : '0'} 0 6px` }}>Faiblesses</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ef4444', margin: `${(sa.forces ?? []).length > 0 ? '10px' : '0'} 0 6px` }}>{t('aip.wp.weaknesses')}</p>
                       {(sa.faiblesses ?? []).sort((a, b) => a.priority - b.priority).map((f, fi) => (
                         <div key={fi} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: 4, display: 'flex', gap: 8 }}>
                           <span style={{ fontSize: 9, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start', flexShrink: 0 }}>P{f.priority}</span>
@@ -2219,7 +2231,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
                   {/* Évolution */}
                   {sa.evolution && (
                     <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ai-dim)', margin: '0 0 4px' }}>Tendance</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ai-dim)', margin: '0 0 4px' }}>{t('aip.wp.trend')}</p>
                       <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>{sa.evolution}</p>
                     </div>
                   )}
@@ -2234,7 +2246,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
       {diag && (
         <div style={{ marginBottom: 16 }}>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
-            Diagnostic de l&apos;entraînement
+            {t('aip.wp.trainingDiagnostic')}
           </p>
           {diag.resume && (
             <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 8px', lineHeight: 1.6 }}>{diag.resume}</p>
@@ -2259,8 +2271,8 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
           {/* 2 indicateurs statut */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 8 }}>
             {([
-              { key: 'coherence_objectifs', label: 'Cohérence objectifs', val: diag.coherence_objectifs },
-              { key: 'recuperation',        label: 'Récupération',        val: diag.recuperation },
+              { key: 'coherence_objectifs', label: t('aip.wp.goalCoherence'), val: diag.coherence_objectifs },
+              { key: 'recuperation',        label: t('aip.wp.recovery'),        val: diag.recuperation },
             ] as const).map(({ key, label, val }) => val ? (
               <div key={key} style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
@@ -2276,7 +2288,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
 
       {/* ─── 5. Plan d'action ────────────────────────────── */}
       <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ai-dim)', margin: '0 0 8px' }}>
-        Plan d&apos;action
+        {t('aip.wp.actionPlan')}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
         {(report.plan_action ?? []).sort((a, b) => a.priority - b.priority).map((act, i) => {
@@ -2313,7 +2325,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
       {/* ─── 6. Sources ──────────────────────────────────── */}
       {(report.sources_used ?? []).length > 0 && (
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>
-          Sources : {report.sources_used.join(', ')}
+          {t('aip.sources')} : {report.sources_used.join(', ')}
         </p>
       )}
 
@@ -2324,7 +2336,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
         color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', marginTop: 4,
         fontFamily: 'DM Sans,sans-serif',
       }}>
-        Fermer
+        {t('aip.close')}
       </button>
     </div>
   )
@@ -2334,6 +2346,7 @@ function WeakpointsFlow({ onCancel, onRecordConv }: {
 
 interface NutritionStep {
   question: string
+  qKey: string
   options: string[]
   multi?: boolean
 }
@@ -2341,44 +2354,54 @@ interface NutritionStep {
 const NUTRITION_STEPS: NutritionStep[] = [
   {
     question: 'Quel est ton objectif principal ?',
+    qKey: 'aip.nutri.q.goal',
     options: ['Perte de poids', 'Performance sportive', 'Prise de masse musculaire', 'Maintenance'],
   },
   {
     question: 'As-tu des fluctuations de poids importantes ?',
+    qKey: 'aip.nutri.q.weightFluct',
     options: ['Oui, régulièrement', 'Parfois', 'Non, poids stable'],
   },
   {
     question: 'Quels sports pratiques-tu principalement ?',
+    qKey: 'aip.nutri.q.sports',
     options: ['Running', 'Cyclisme', 'Natation', 'Hyrox', 'Musculation', 'Aviron', 'Trail'],
     multi: true,
   },
   {
     question: 'Quelle est ta charge hebdomadaire d\'entraînement ?',
+    qKey: 'aip.nutri.q.weeklyLoad',
     options: ['Légère (moins de 3h)', 'Modérée (3 à 6h)', 'Élevée (6 à 10h)', 'Très élevée (plus de 10h)'],
   },
   {
     question: 'Quand t\'entraînes-tu habituellement ?',
+    qKey: 'aip.nutri.q.when',
     options: ['Matin (avant 8h)', 'Milieu de journée', 'Fin de journée (17h-20h)', 'Horaires variables'],
   },
   {
     question: 'Comment gères-tu tes repas au quotidien ?',
+    qKey: 'aip.nutri.q.meals',
     options: ['Je cuisine la plupart du temps', 'Mix cuisine maison et extérieur', 'Majoritairement extérieur ou livraison', 'Meal prep (préparation en avance)'],
   },
   {
     question: 'Comment décris-tu ton mode de vie hors entraînement ?',
+    qKey: 'aip.nutri.q.lifestyle',
     options: ['Sédentaire (bureau, télétravail)', 'Peu actif', 'Actif (debout, déplacements)', 'Très actif (travail physique)'],
   },
   {
     question: 'Quelles sont tes habitudes alimentaires actuelles ?',
+    qKey: 'aip.nutri.q.habits',
     options: ['3 repas structurés', '3 repas + collations', 'Alimentation variable et irrégulière', 'Périodes de jeûne intentionnelles'],
   },
   {
     question: 'As-tu des préférences ou restrictions alimentaires ?',
+    qKey: 'aip.nutri.q.restrictions',
     options: ['Aucune restriction', 'Végétarien', 'Vegan', 'Sans gluten', 'Sans lactose'],
     multi: true,
   },
   {
     question: 'Quel type de plan veux-tu ?',
+    qKey: 'aip.nutri.q.planType',
     options: ['Principes et vue d\'ensemble', 'Plan jour type détaillé', 'Timing précis (avant / pendant / après effort)'],
   },
 ]
@@ -2415,6 +2438,7 @@ function NutritionGate({ onContinue, onCancel }: {
   onContinue: (profile: { weight?: number; height?: number }, templates: NutriMealTemplate[]) => void
   onCancel: () => void
 }) {
+  const { t } = useI18n()
   const [status,    setStatus]    = useState<NutritionGateStatus | null>(null)
   const [templates, setTemplates] = useState<NutriMealTemplate[]>([])
   const [loading,   setLoading]   = useState(true)
@@ -2463,19 +2487,19 @@ function NutritionGate({ onContinue, onCancel }: {
     return (
       <div style={{ padding: '40px 0', textAlign: 'center' }}>
         <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(249,115,22,0.2)', borderTop: '2px solid #f97316', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
-        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Vérification du profil…</p>
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>{t('aip.checkingProfile')}</p>
       </div>
     )
   }
 
   const s = status
   const checks = [
-    { label: 'Poids',                         ok: s?.hasWeight ?? false,              link: '/profile',     detail: s?.weight ? `${s.weight} kg` : null },
-    { label: 'Taille',                         ok: s?.hasHeight ?? false,              link: '/profile',     detail: s?.height ? `${s.height} cm` : null },
-    { label: 'Activités récentes (3 mois)',    ok: (s?.activitiesCount ?? 0) > 0,      link: '/activities',  detail: s?.activitiesCount ? `${s.activitiesCount} activités` : null },
-    { label: 'Courses planifiées',             ok: (s?.racesCount ?? 0) > 0,           link: '/planning',    detail: s?.racesCount ? `${s.racesCount} courses` : null },
-    { label: "Zones d'entraînement",          ok: s?.hasZones ?? false,              link: '/performance', detail: null },
-    { label: 'Habitudes alimentaires',         ok: (s?.mealTemplatesCount ?? 0) > 0,  link: '/nutrition',   detail: s?.mealTemplatesCount ? `${s.mealTemplatesCount} repas types` : null },
+    { label: t('aip.nutri.gateWeight'),        ok: s?.hasWeight ?? false,              link: '/profile',     detail: s?.weight ? `${s.weight} kg` : null },
+    { label: t('aip.nutri.gateHeight'),        ok: s?.hasHeight ?? false,              link: '/profile',     detail: s?.height ? `${s.height} cm` : null },
+    { label: t('aip.wp.gateRecentActs'),       ok: (s?.activitiesCount ?? 0) > 0,      link: '/activities',  detail: s?.activitiesCount ? t('aip.wp.nActivities', { n: s.activitiesCount }) : null },
+    { label: t('aip.wp.gateRaces'),            ok: (s?.racesCount ?? 0) > 0,           link: '/planning',    detail: s?.racesCount ? t('aip.wp.nRaces', { n: s.racesCount }) : null },
+    { label: t('aip.wp.gateZones'),            ok: s?.hasZones ?? false,              link: '/performance', detail: null },
+    { label: t('aip.nutri.gateFoodHabits'),    ok: (s?.mealTemplatesCount ?? 0) > 0,  link: '/nutrition',   detail: s?.mealTemplatesCount ? t('aip.nutri.nMealTemplates', { n: s.mealTemplatesCount }) : null },
   ]
 
   const okCount = checks.filter(c => c.ok).length
@@ -2484,12 +2508,12 @@ function NutritionGate({ onContinue, onCancel }: {
   return (
     <div style={{ padding: '4px 0' }}>
       <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
-        Plan nutritionnel
+        {t('aip.nutri.title')}
       </p>
       <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.6 }}>
         {criticalMissing
-          ? "Ton poids n'est pas renseigné — le plan sera moins précis. Tu peux le compléter dans ton profil."
-          : 'Tes données sont vérifiées. Plus ton profil est complet, plus le plan sera précis.'}
+          ? t('aip.nutri.gateWeightMissing')
+          : t('aip.nutri.gateReady')}
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
@@ -2510,7 +2534,7 @@ function NutritionGate({ onContinue, onCancel }: {
             )}
             {!c.ok && (
               <a href={c.link} style={{ fontSize: 10, color: '#5b6fff', fontWeight: 600, textDecoration: 'none' }}>
-                Compléter
+                {t('aip.complete')}
               </a>
             )}
           </div>
@@ -2518,7 +2542,7 @@ function NutritionGate({ onContinue, onCancel }: {
       </div>
 
       <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 12px', textAlign: 'center' }}>
-        {okCount}/{checks.length} données disponibles
+        {t('aip.wp.dataAvailable', { ok: okCount, total: checks.length })}
       </p>
 
       <button onClick={() => onContinue({ weight: s?.weight, height: s?.height }, templates)} style={{
@@ -2527,10 +2551,10 @@ function NutritionGate({ onContinue, onCancel }: {
         border: 'none', color: '#fff', fontSize: 13, fontWeight: 700,
         cursor: 'pointer', fontFamily: 'Syne,sans-serif',
       }}>
-        Continuer vers le questionnaire →
+        {t('aip.nutri.continueQuestionnaire')} →
       </button>
       <button onClick={onCancel} style={{ display: 'block', margin: '8px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
-        Annuler
+        {t('aip.cancel')}
       </button>
     </div>
   )
@@ -2573,6 +2597,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
   onCancel: () => void
   onRecordConv?: (userMsg: string, aiMsg: string) => void
 }) {
+  const { t } = useI18n()
   type NutriPhase = 'gate' | 'questionnaire' | 'generating' | 'result' | 'saved'
 
   // ── All hooks first (no conditional return before hooks) ──────
@@ -2602,8 +2627,8 @@ function NutritionFlow({ onCancel, onRecordConv }: {
     return (
       <div style={{ padding: '32px 0', textAlign: 'center' }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(249,115,22,0.2)', borderTop: '3px solid #f97316', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>Ton plan nutritionnel est en cours de création…</p>
-        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6 }}>Analyse de ton profil, tes entraînements et tes objectifs.</p>
+        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>{t('aip.nutri.creating')}</p>
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0, lineHeight: 1.6 }}>{t('aip.nutri.creatingSub')}</p>
       </div>
     )
   }
@@ -2615,15 +2640,15 @@ function NutritionFlow({ onCancel, onRecordConv }: {
         <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
         </div>
-        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>Plan nutritionnel enregistré</p>
+        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>{t('aip.nutri.saved')}</p>
         <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 20px', lineHeight: 1.5 }}>
-          Ton plan est actif dans la section Nutrition. Tu peux le consulter et suivre tes repas au quotidien.
+          {t('aip.nutri.savedSub')}
         </p>
         <button onClick={onCancel} style={{
           padding: '10px 24px', borderRadius: 10, border: '1px solid var(--ai-border)',
           background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
         }}>
-          Fermer
+          {t('aip.close')}
         </button>
       </div>
     )
@@ -2637,7 +2662,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
       const { createClient } = await import('@/lib/supabase/client')
       const sb = createClient()
       const { data: { user } } = await sb.auth.getUser()
-      if (!user) throw new Error('Non authentifié')
+      if (!user) throw new Error(t('aip.notAuthenticated'))
 
       const today    = new Date().toISOString().split('T')[0]
       const in14days = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]
@@ -2672,11 +2697,11 @@ function NutritionFlow({ onCancel, onRecordConv }: {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json() as { plan?: NutriPlanGenerated; error?: string }
       if (data.error) throw new Error(data.error)
-      if (!data.plan) throw new Error('Plan vide')
+      if (!data.plan) throw new Error(t('aip.nutri.emptyPlan'))
       setPlan(data.plan)
       setPhase('result')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur de génération')
+      setError(e instanceof Error ? e.message : t('aip.genError'))
       setPhase('questionnaire')
       setStep(NUTRITION_STEPS.length - 1)
     }
@@ -2703,13 +2728,18 @@ function NutritionFlow({ onCancel, onRecordConv }: {
       })
 
       if (onRecordConv) {
-        const userMsg = `Créer un plan nutritionnel — ${activePlanType}`
-        const aiMsg   = `**Plan nutritionnel ${activePlanType === 'minimal' ? 'essentiel' : 'complet'}** généré et ajouté à ton planning nutrition.\n\n${plan.resume}\n\n**${planData.jours.length} jours** programmés · **${planData.calories_mid} kcal/jour** en moyenne`
+        const userMsg = t('aip.nutri.recordUser', { type: activePlanType })
+        const aiMsg   = t('aip.nutri.recordAi', {
+          variant: activePlanType === 'minimal' ? t('aip.nutri.variantEssential') : t('aip.nutri.variantComplete'),
+          resume: plan.resume,
+          days: planData.jours.length,
+          kcal: planData.calories_mid,
+        })
         onRecordConv(userMsg, aiMsg)
       }
       setPhase('saved')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur de sauvegarde')
+      setError(e instanceof Error ? e.message : t('aip.saveError'))
     } finally {
       setSaving(false)
     }
@@ -2719,14 +2749,14 @@ function NutritionFlow({ onCancel, onRecordConv }: {
   if (phase === 'result' && plan) {
     const currentPlan = activePlanType === 'minimal' ? plan.plan_minimal : plan.plan_maximal
     const MEAL_LABELS: Record<string, string> = {
-      petit_dejeuner: 'Petit-déjeuner', collation_matin: 'Collation matin',
-      dejeuner: 'Déjeuner', collation_apres_midi: 'Collation après-midi',
-      diner: 'Dîner', collation_soir: 'Collation soir',
+      petit_dejeuner: t('aip.nutri.meal.breakfast'), collation_matin: t('aip.nutri.meal.morningSnack'),
+      dejeuner: t('aip.nutri.meal.lunch'), collation_apres_midi: t('aip.nutri.meal.afternoonSnack'),
+      diner: t('aip.nutri.meal.dinner'), collation_soir: t('aip.nutri.meal.eveningSnack'),
     }
 
     return (
       <div style={{ padding: '4px 0' }}>
-        <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>Plan nutritionnel</p>
+        <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>{t('aip.nutri.title')}</p>
         <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: '0 0 16px', lineHeight: 1.5 }}>{plan.resume}</p>
 
         {/* Sélecteur Essentiel / Complet */}
@@ -2742,7 +2772,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
                 cursor: 'pointer', transition: 'all 0.15s',
               }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: active ? '#f97316' : 'var(--ai-dim)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  {type === 'minimal' ? 'Essentiel' : 'Complet'}
+                  {type === 'minimal' ? t('aip.nutri.variantEssential') : t('aip.nutri.variantComplete')}
                 </p>
                 <p style={{ fontSize: 10, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.4 }}>
                   {p.description.slice(0, 60)}{p.description.length > 60 ? '…' : ''}
@@ -2755,9 +2785,9 @@ function NutritionFlow({ onCancel, onRecordConv }: {
         {/* KPIs 3 colonnes */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
           {[
-            { label: 'Jour light',    kcal: currentPlan.calories_low,  macros: currentPlan.macros_low,  color: '#22c55e' },
-            { label: 'Jour moyen',    kcal: currentPlan.calories_mid,  macros: currentPlan.macros_mid,  color: '#f97316' },
-            { label: 'Jour intensif', kcal: currentPlan.calories_hard, macros: currentPlan.macros_hard, color: '#ef4444' },
+            { label: t('aip.nutri.dayLight'),    kcal: currentPlan.calories_low,  macros: currentPlan.macros_low,  color: '#22c55e' },
+            { label: t('aip.nutri.dayMedium'),    kcal: currentPlan.calories_mid,  macros: currentPlan.macros_mid,  color: '#f97316' },
+            { label: t('aip.nutri.dayIntense'), kcal: currentPlan.calories_hard, macros: currentPlan.macros_hard, color: '#ef4444' },
           ].map(d => (
             <div key={d.label} style={{ padding: '10px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' }}>
               <p style={{ fontSize: 9, fontWeight: 700, color: d.color, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{d.label}</p>
@@ -2783,13 +2813,13 @@ function NutritionFlow({ onCancel, onRecordConv }: {
 
         {/* Jours accordéon */}
         <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
-          Programme jour par jour — {currentPlan.jours.length} jours
+          {t('aip.nutri.dayByDay', { n: currentPlan.jours.length })}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16, maxHeight: 300, overflowY: 'auto' }}>
           {currentPlan.jours.map((jour, i) => {
             const isExpanded = expandedDay === i
             const typeColor  = jour.type_jour === 'low' ? '#22c55e' : jour.type_jour === 'mid' ? '#f97316' : '#ef4444'
-            const typeLabel  = jour.type_jour === 'low' ? 'Light' : jour.type_jour === 'mid' ? 'Moyen' : 'Intensif'
+            const typeLabel  = jour.type_jour === 'low' ? t('aip.nutri.typeLight') : jour.type_jour === 'mid' ? t('aip.nutri.typeMedium') : t('aip.nutri.typeIntense')
             const dayLabel   = new Date(jour.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
             return (
               <div key={i}>
@@ -2838,14 +2868,14 @@ function NutritionFlow({ onCancel, onRecordConv }: {
           border: 'none', color: saving ? 'var(--ai-dim)' : '#fff', fontSize: 13, fontWeight: 700,
           cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'Syne,sans-serif', marginBottom: 8,
         }}>
-          {saving ? 'Enregistrement…' : 'Ajouter au planning nutrition →'}
+          {saving ? t('aip.saving') : `${t('aip.nutri.addToPlanning')} →`}
         </button>
         <button onClick={onCancel} style={{
           width: '100%', padding: '10px', borderRadius: 10,
           border: '1px solid var(--ai-border)', background: 'transparent',
           color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
         }}>
-          Annuler
+          {t('aip.cancel')}
         </button>
       </div>
     )
@@ -2890,7 +2920,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
       </div>
 
       <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif', lineHeight: 1.4 }}>
-        {cur.question}
+        {t(cur.qKey)}
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
@@ -2927,7 +2957,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
             border: '1px solid var(--ai-border)', background: 'transparent',
             color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
             fontFamily: 'DM Sans,sans-serif',
-          }}>Retour</button>
+          }}>{t('aip.back')}</button>
         )}
         {step === 0 && (
           <button onClick={onCancel} style={{
@@ -2935,7 +2965,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
             border: '1px solid var(--ai-border)', background: 'transparent',
             color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer',
             fontFamily: 'DM Sans,sans-serif',
-          }}>Annuler</button>
+          }}>{t('aip.cancel')}</button>
         )}
         <button onClick={next} disabled={!canNext} style={{
           flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none',
@@ -2944,7 +2974,7 @@ function NutritionFlow({ onCancel, onRecordConv }: {
           cursor: canNext ? 'pointer' : 'not-allowed',
           fontFamily: 'DM Sans,sans-serif', transition: 'background 0.15s',
         }}>
-          {isLast ? 'Générer mon plan' : 'Suivant'}
+          {isLast ? t('aip.nutri.generatePlan') : t('aip.next')}
         </button>
       </div>
     </div>
@@ -2981,6 +3011,7 @@ function RechargeFlow({ onPrepare, onCancel, onRecordConv }: {
   onCancel: () => void
   onRecordConv?: (userMsg: string, aiMsg: string) => void
 }) {
+  const { t } = useI18n()
   const [step, setStep] = useState<RechargeStep>('gate')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<string | null>(null)
@@ -3220,51 +3251,51 @@ FORMATAGE OBLIGATOIRE :
     const np = gateData?.nutritionPlan
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <FlowTitle title="Recharge glucidique" sub="Stratégie nutritionnelle avant un effort important" />
+        <FlowTitle title={t('aip.recharge.title')} sub={t('aip.recharge.subtitle')} />
 
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 12, marginBottom: 16 }}>
             <Dots />
-            <span>Chargement de ton profil…</span>
+            <span>{t('aip.loadingProfile')}</span>
           </div>
         ) : gateData && (
           <div style={{ marginBottom: 18 }}>
             <GateRow
-              label="Morphologie"
-              value={gateData.weight ? `${gateData.weight} kg${gateData.height ? ` · ${gateData.height} cm` : ''}` : 'non renseigné'}
+              label={t('aip.recharge.morphology')}
+              value={gateData.weight ? `${gateData.weight} kg${gateData.height ? ` · ${gateData.height} cm` : ''}` : t('aip.notProvided')}
               tone={gateData.weight ? 'ok' : 'warn'}
             />
             <GateRow
-              label="Plan nutritionnel"
-              value={gateData.planNutritionActive ? 'actif' : 'non configuré'}
+              label={t('aip.nutri.title')}
+              value={gateData.planNutritionActive ? t('aip.active') : t('aip.notConfigured')}
               tone={gateData.planNutritionActive ? 'ok' : 'warn'}
             />
             {np?.calories_target && (
-              <GateRow label="Macros quotidiennes" value={`${np.calories_target} kcal`} tone="ok" />
+              <GateRow label={t('aip.recharge.dailyMacros')} value={`${np.calories_target} kcal`} tone="ok" />
             )}
             <GateRow
-              label="Séances planifiées (2 sem.)"
+              label={t('aip.recharge.plannedSessions2w')}
               value={gateData.plannedSessions}
               tone={gateData.plannedSessions > 0 ? 'ok' : 'default'}
             />
             <GateRow
-              label="Courses planifiées"
-              value={gateData.plannedRaces.length > 0 ? `${gateData.plannedRaces.length} course${gateData.plannedRaces.length > 1 ? 's' : ''}` : 'aucune'}
+              label={t('aip.wp.gateRaces')}
+              value={gateData.plannedRaces.length > 0 ? t(gateData.plannedRaces.length > 1 ? 'aip.wp.nRaces' : 'aip.wp.nRace', { n: gateData.plannedRaces.length }) : t('aip.none')}
               tone={gateData.plannedRaces.length > 0 ? 'ok' : 'default'}
               last
             />
             {np?.allergies && (
-              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '10px 2px 0' }}>Allergies prises en compte : {np.allergies}</p>
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '10px 2px 0' }}>{t('aip.recharge.allergiesConsidered')} : {np.allergies}</p>
             )}
           </div>
         )}
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button onClick={onCancel} style={{ padding: '10px 6px', border: 'none', background: 'transparent', color: 'var(--ai-dim)', fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            Annuler
+            {t('aip.cancel')}
           </button>
           <button onClick={() => setStep('event')} disabled={loading} style={{ flex: 1, padding: '11px 16px', borderRadius: 12, border: 'none', background: loading ? 'var(--ai-border)' : 'var(--ai-gradient)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            Continuer
+            {t('aip.continue')}
           </button>
         </div>
       </div>
@@ -3277,17 +3308,17 @@ FORMATAGE OBLIGATOIRE :
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
-          Pour quel objectif ?
+          {t('aip.recharge.whichGoal')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
-          La stratégie diffère selon le contexte
+          {t('aip.recharge.strategyDiffers')}
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 14 }}>
           {plannedRaces.length > 0 && (
             <div>
               <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>
-                Courses planifiées
+                {t('aip.wp.gateRaces')}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {plannedRaces.map(race => (
@@ -3315,8 +3346,8 @@ FORMATAGE OBLIGATOIRE :
             background: eventType === 'race_manual' ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
             cursor: 'pointer', transition: 'all 0.12s',
           }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'race_manual' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>Autre compétition</div>
-            <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2 }}>Saisir manuellement nom, sport et date</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'race_manual' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{t('aip.recharge.otherRace')}</div>
+            <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2 }}>{t('aip.recharge.otherRaceSub')}</div>
           </button>
 
           <button onClick={() => { setEventType('training'); setSelectedRace(null) }} style={{
@@ -3325,15 +3356,15 @@ FORMATAGE OBLIGATOIRE :
             background: eventType === 'training' ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
             cursor: 'pointer', transition: 'all 0.12s',
           }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'training' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>Séance d'entraînement</div>
-            <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2 }}>Session haute intensité ou longue distance</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: eventType === 'training' ? '#5b6fff' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{t('aip.recharge.trainingSession')}</div>
+            <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 2 }}>{t('aip.recharge.trainingSessionSub')}</div>
           </button>
         </div>
 
         {eventType === 'race_manual' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
             <input
-              placeholder="Nom de la compétition"
+              placeholder={t('aip.recharge.raceNamePlaceholder')}
               value={manualRaceName}
               onChange={e => setManualRaceName(e.target.value)}
               style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none' }}
@@ -3346,7 +3377,7 @@ FORMATAGE OBLIGATOIRE :
                   background: manualRaceSport === sp ? 'rgba(91,111,255,0.1)' : 'var(--ai-bg2)',
                   color: manualRaceSport === sp ? '#5b6fff' : 'var(--ai-mid)', cursor: 'pointer',
                 }}>
-                  {sp === 'running' ? 'Course' : sp === 'cycling' ? 'Vélo' : sp === 'triathlon' ? 'Tri' : sp === 'trail' ? 'Trail' : 'Ultra'}
+                  {sp === 'running' ? t('aip.recharge.sportRun') : sp === 'cycling' ? t('aip.sport.cycling') : sp === 'triathlon' ? t('aip.recharge.sportTri') : sp === 'trail' ? t('aip.recharge.sportTrail') : t('aip.recharge.sportUltra')}
                 </button>
               ))}
             </div>
@@ -3361,7 +3392,7 @@ FORMATAGE OBLIGATOIRE :
 
         {eventType === 'training' && (
           <div style={{ marginBottom: 14 }}>
-            <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Intensité prévue</p>
+            <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{t('aip.recharge.plannedIntensity')}</p>
             <div style={{ display: 'flex', gap: 6 }}>
               {['Haute', 'Très haute', 'Longue distance'].map(lvl => (
                 <button key={lvl} onClick={() => setTrainingIntensity(lvl)} style={{
@@ -3379,10 +3410,10 @@ FORMATAGE OBLIGATOIRE :
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setStep('gate')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
-            Retour
+            {t('aip.back')}
           </button>
           <button onClick={() => setStep('questions')} disabled={!eventType} style={{ flex: 1, padding: '9px 16px', borderRadius: 9, border: 'none', background: eventType ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: eventType ? 'pointer' : 'not-allowed' }}>
-            Continuer
+            {t('aip.continue')}
           </button>
         </div>
       </div>
@@ -3396,22 +3427,22 @@ FORMATAGE OBLIGATOIRE :
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 5px', fontFamily: 'Syne,sans-serif' }}>
-          Personnalise ton plan
+          {t('aip.recharge.customize')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
-          Quelques questions pour un plan sur-mesure
+          {t('aip.recharge.customizeSub')}
         </p>
 
         {/* Expérience nutrition */}
         <div style={{ marginBottom: 14 }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px' }}>
-            Expérience nutrition pendant l'effort *
+            {t('aip.recharge.nutriExp')} *
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {([
-              { id: 'never',      label: "Jamais testé / je ne mange pas pendant l'effort" },
-              { id: 'occasional', label: 'Gels ou boissons énergétiques occasionnellement' },
-              { id: 'protocol',   label: 'Protocole rodé : je sais ce que je tolère et combien' },
+              { id: 'never',      label: t('aip.recharge.nutriExpNever') },
+              { id: 'occasional', label: t('aip.recharge.nutriExpOccasional') },
+              { id: 'protocol',   label: t('aip.recharge.nutriExpProtocol') },
             ] as { id: string; label: string }[]).map(opt => (
               <button key={opt.id} onClick={() => setNutritionExp(opt.id)} style={{
                 padding: '10px 12px', borderRadius: 8, textAlign: 'left' as const,
@@ -3430,13 +3461,13 @@ FORMATAGE OBLIGATOIRE :
         {showSolids && (
           <div style={{ marginBottom: 14 }}>
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px' }}>
-              Tolérance aliments solides pendant l'effort *
+              {t('aip.recharge.solidsTolerance')} *
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {([
-                { id: 'yes',           label: 'Oui, sans problème' },
-                { id: 'low_intensity', label: 'Seulement à faible intensité (marche, Z1-Z2)' },
-                { id: 'no',            label: 'Non, uniquement du liquide/gel' },
+                { id: 'yes',           label: t('aip.recharge.solidsYes') },
+                { id: 'low_intensity', label: t('aip.recharge.solidsLow') },
+                { id: 'no',            label: t('aip.recharge.solidsNo') },
               ] as { id: string; label: string }[]).map(opt => (
                 <button key={opt.id} onClick={() => setSolidsTolerance(opt.id)} style={{
                   padding: '10px 12px', borderRadius: 8, textAlign: 'left' as const,
@@ -3455,7 +3486,7 @@ FORMATAGE OBLIGATOIRE :
         {/* Heure de départ */}
         <div style={{ marginBottom: 14 }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px' }}>
-            Heure de départ prévue
+            {t('aip.recharge.startTime')}
           </p>
           <input
             type="time"
@@ -3463,14 +3494,14 @@ FORMATAGE OBLIGATOIRE :
             onChange={e => setRaceStartTime(e.target.value)}
             style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 12, outline: 'none' }}
           />
-          <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '4px 0 0' }}>Pour planifier le dernier repas (J-3h) et la collation pré-départ</p>
+          <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '4px 0 0' }}>{t('aip.recharge.startTimeHint')}</p>
         </div>
 
         {/* Durée estimée (courses uniquement) */}
         {eventType !== 'training' && (
           <div style={{ marginBottom: 14 }}>
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px' }}>
-              Durée estimée de l'épreuve
+              {t('aip.recharge.estimatedDuration')}
             </p>
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
               {['< 1h30', '1h30–3h', '3h–6h', '6h–12h', '> 12h'].map(d => (
@@ -3490,12 +3521,12 @@ FORMATAGE OBLIGATOIRE :
         {/* Notes libres */}
         <div style={{ marginBottom: 14 }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 8px' }}>
-            Précisions (optionnel)
+            {t('aip.recharge.notes')}
           </p>
           <textarea
             value={rechargeNotes}
             onChange={e => setRechargeNotes(e.target.value)}
-            placeholder="Ex : je digère mal les gels, tendance aux crampes, je préfère les aliments naturels…"
+            placeholder={t('aip.recharge.notesPlaceholder')}
             rows={2}
             style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none', resize: 'vertical', boxSizing: 'border-box' as const }}
           />
@@ -3503,7 +3534,7 @@ FORMATAGE OBLIGATOIRE :
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setStep('event')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
-            Retour
+            {t('aip.back')}
           </button>
           <button
             onClick={async () => {
@@ -3519,12 +3550,12 @@ FORMATAGE OBLIGATOIRE :
                   body: JSON.stringify({ prompt }),
                 })
                 if (!res.ok) {
-                  setResult(`Erreur HTTP ${res.status} — réessaie dans quelques instants.`)
+                  setResult(t('aip.recharge.httpError', { status: res.status }))
                   return
                 }
 
                 const reader = res.body?.getReader()
-                if (!reader) { setResult('Pas de body dans la réponse.'); return }
+                if (!reader) { setResult(t('aip.recharge.noBody')); return }
 
                 const decoder = new TextDecoder()
                 let raw = ''
@@ -3544,7 +3575,7 @@ FORMATAGE OBLIGATOIRE :
                   reader.cancel().catch(() => { /* ignore */ })
                 }
               } catch (e) {
-                setResult((prev) => (prev ?? '') + '\n\n[Erreur : ' + (e instanceof Error ? e.message : 'inconnue') + ']')
+                setResult((prev) => (prev ?? '') + '\n\n[' + t('aip.error') + ' : ' + (e instanceof Error ? e.message : t('aip.unknown')) + ']')
               } finally {
                 // TOUJOURS exécuté — même en cas d'erreur ou d'exception
                 setGenerating(false)
@@ -3558,7 +3589,7 @@ FORMATAGE OBLIGATOIRE :
               cursor: canSubmit ? 'pointer' : 'not-allowed',
             }}
           >
-            Créer mon plan
+            {t('aip.recharge.createPlan')}
           </button>
         </div>
       </div>
@@ -3571,10 +3602,10 @@ FORMATAGE OBLIGATOIRE :
       <div style={{ padding: '20px 0', textAlign: 'center' as const }}>
         <Dots />
         <p style={{ fontSize: 12, color: 'var(--ai-mid)', marginTop: 12, margin: '12px 0 4px' }}>
-          Création de ton plan de recharge…
+          {t('aip.recharge.creating')}
         </p>
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>
-          Plan détaillé de J-3 au jour de course
+          {t('aip.recharge.creatingSub')}
         </p>
       </div>
     )
@@ -3582,8 +3613,8 @@ FORMATAGE OBLIGATOIRE :
 
   // ── Step: result ─────────────────────────────────────────────
   if (step === 'result' && result !== null) {
-    const raceName = selectedRace?.name ?? manualRaceName ?? (eventType === 'training' ? 'Entraînement' : 'Compétition')
-    const sportLabel = selectedRace?.sport ?? manualRaceSport ?? (eventType === 'training' ? 'entraînement' : '')
+    const raceName = selectedRace?.name ?? manualRaceName ?? (eventType === 'training' ? t('aip.recharge.training') : t('aip.recharge.race'))
+    const sportLabel = selectedRace?.sport ?? manualRaceSport ?? (eventType === 'training' ? t('aip.recharge.trainingLower') : '')
 
     async function generateRechargePDF() {
       if (!result) return
@@ -3602,7 +3633,7 @@ FORMATAGE OBLIGATOIRE :
       y += 10
 
       doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(26, 26, 46)
-      doc.text(`Plan de Recharge — ${raceName}`, margin, y)
+      doc.text(`${t('aip.recharge.pdfTitle')} — ${raceName}`, margin, y)
       y += 6
 
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 100, 120)
@@ -3648,7 +3679,7 @@ FORMATAGE OBLIGATOIRE :
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i)
         doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(120, 120, 140)
-        doc.text(`THW Coaching — Plan de recharge — ${raceName}`, margin, doc.internal.pageSize.getHeight() - 6)
+        doc.text(`THW Coaching — ${t('aip.recharge.pdfFooter')} — ${raceName}`, margin, doc.internal.pageSize.getHeight() - 6)
         doc.text(`${i}/${totalPages}`, pageW - margin - 8, doc.internal.pageSize.getHeight() - 6)
       }
       doc.save(`THW_Recharge_${raceName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`)
@@ -3657,7 +3688,7 @@ FORMATAGE OBLIGATOIRE :
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 4px' }}>
-          Plan de recharge glucidique
+          {t('aip.recharge.resultTitle')}
         </p>
         <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '0 0 12px' }}>
           {raceName}{sportLabel ? ` · ${sportLabel}` : ''}
@@ -3666,10 +3697,10 @@ FORMATAGE OBLIGATOIRE :
         {/* KPIs */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 14 }}>
           {([
-            { label: 'Poids',      value: gateData?.weight ? `${gateData.weight}kg` : '70kg*' },
-            { label: 'Durée',      value: eventType === 'training' ? 'Séance' : 'J-3 à J' },
-            { label: 'Gluc. cible', value: gateData?.weight ? `${Math.round(gateData.weight * 10)}g/j` : '700g/j' },
-            { label: 'Départ',     value: raceStartTime || '08:00' },
+            { label: t('aip.recharge.kpiWeight'),      value: gateData?.weight ? `${gateData.weight}kg` : '70kg*' },
+            { label: t('aip.recharge.kpiDuration'),      value: eventType === 'training' ? t('aip.recharge.kpiSession') : 'J-3 à J' },
+            { label: t('aip.recharge.kpiCarbTarget'), value: gateData?.weight ? `${Math.round(gateData.weight * 10)}g/j` : '700g/j' },
+            { label: t('aip.recharge.kpiStart'),     value: raceStartTime || '08:00' },
           ] as { label: string; value: string }[]).map(kpi => (
             <div key={kpi.label} style={{ padding: '8px 6px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
               <p style={{ fontSize: 8, color: 'var(--ai-dim)', margin: 0, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>{kpi.label}</p>
@@ -3691,7 +3722,7 @@ FORMATAGE OBLIGATOIRE :
         {generating && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, color: 'var(--ai-dim)', fontSize: 11 }}>
             <Dots />
-            <span>Génération en cours…</span>
+            <span>{t('aip.generating')}</span>
           </div>
         )}
 
@@ -3707,12 +3738,12 @@ FORMATAGE OBLIGATOIRE :
                 cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
               }}
             >
-              📄 Télécharger PDF
+              📄 {t('aip.downloadPdf')}
             </button>
             {onRecordConv && (
               <button
                 onClick={() => {
-                  const label = 'Recharge glucidique — ' + raceName
+                  const label = t('aip.recharge.title') + ' — ' + raceName
                   onRecordConv(label, result)
                 }}
                 style={{
@@ -3721,7 +3752,7 @@ FORMATAGE OBLIGATOIRE :
                   color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer',
                 }}
               >
-                💾 Sauvegarder
+                💾 {t('aip.save')}
               </button>
             )}
             <button onClick={onCancel} style={{
@@ -3729,7 +3760,7 @@ FORMATAGE OBLIGATOIRE :
               border: '1px solid var(--ai-border)', background: 'transparent',
               color: 'var(--ai-dim)', fontSize: 11, cursor: 'pointer',
             }}>
-              Fermer
+              {t('aip.close')}
             </button>
           </div>
         )}
@@ -3807,6 +3838,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
   onCancel: () => void
   onRecordConv?: (userMsg: string, aiMsg: string) => void
 }) {
+  const { t } = useI18n()
   type Phase = 'loading' | 'gate' | 'sport' | 'select' | 'generating' | 'result'
   const [phase, setPhase] = useState<Phase>('loading')
   const [sport, setSport] = useState<string | null>(null)
@@ -3829,7 +3861,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
-        if (!user) { setError('Non connecté'); return }
+        if (!user) { setError(t('aip.notConnected')); return }
 
         const [testsRes, zonesRes, profileRes] = await Promise.all([
           sb.from('test_results').select('id,test_definition_id,test_definitions(sport)').eq('user_id', user.id),
@@ -3852,7 +3884,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         })
         setPhase('gate')
       } catch {
-        setError('Erreur de chargement')
+        setError(t('aip.loadError'))
       }
     })()
   }, [])
@@ -3948,13 +3980,13 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         }),
       })
       const data = await res.json() as { report?: TestReport; error?: string }
-      if (data.error || !data.report) throw new Error(data.error ?? 'Réponse invalide')
+      if (data.error || !data.report) throw new Error(data.error ?? t('aip.invalidResponse'))
       setReport(data.report)
 
       if (onRecordConv) {
-        const testNom = selectedTest.test_definitions?.nom ?? 'Test'
-        const userMsg = `Analyser un test — ${testNom} du ${selectedTest.date}`
-        const aiMsg = `**Analyse du test ${testNom}** — ${selectedTest.date}\n\nNiveau : ${data.report.interpretation.niveau}\nFiabilité : ${data.report.fiabilite.score}%\n${data.report.evolution.disponible ? `Évolution : ${data.report.evolution.tendance}` : ''}\n${data.report.impact_zones.mise_a_jour_necessaire ? '⚠ Mise à jour des zones recommandée' : 'Zones à jour'}`
+        const testNom = selectedTest.test_definitions?.nom ?? t('aip.test.testFallback')
+        const userMsg = t('aip.test.recordUser', { name: testNom, date: selectedTest.date })
+        const aiMsg = `**${t('aip.test.recordTitle', { name: testNom })}** — ${selectedTest.date}\n\n${t('aip.test.level')} : ${data.report.interpretation.niveau}\n${t('aip.test.reliability')} : ${data.report.fiabilite.score}%\n${data.report.evolution.disponible ? `${t('aip.test.evolution')} : ${data.report.evolution.tendance}` : ''}\n${data.report.impact_zones.mise_a_jour_necessaire ? t('aip.test.zonesUpdateNeeded') : t('aip.test.zonesUpToDate')}`
         onRecordConv(userMsg, aiMsg)
       }
 
@@ -3968,7 +4000,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
   if (phase === 'loading') {
     return (
       <div style={{ padding: '16px 0', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 12 }}>
-        <Dots /><span>Chargement…</span>
+        <Dots /><span>{t('aip.loading')}</span>
       </div>
     )
   }
@@ -3978,43 +4010,43 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
-          Analyser un test
+          {t('aip.test.title')}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
             <span style={{ color: hasSports ? '#22c55e' : '#ef4444' }}>{hasSports ? '✓' : '✗'}</span>
             <span style={{ color: 'var(--ai-mid)' }}>
               {hasSports
-                ? `${gateData.testsCount} test${gateData.testsCount > 1 ? 's' : ''} réalisé${gateData.testsCount > 1 ? 's' : ''} (${Object.keys(gateData.sportCounts).join(', ')})`
-                : 'Aucun test réalisé'}
+                ? t(gateData.testsCount > 1 ? 'aip.test.nTestsDone' : 'aip.test.nTestDone', { n: gateData.testsCount, sports: Object.keys(gateData.sportCounts).join(', ') })
+                : t('aip.test.noneDone')}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
             <span style={{ color: gateData.zonesCount > 0 ? '#22c55e' : '#f97316' }}>{gateData.zonesCount > 0 ? '✓' : '⚠'}</span>
             <span style={{ color: 'var(--ai-mid)' }}>
-              {gateData.zonesCount > 0 ? `Zones configurées pour ${gateData.zonesCount} sport${gateData.zonesCount > 1 ? 's' : ''}` : 'Zones non configurées (comparaison limitée)'}
+              {gateData.zonesCount > 0 ? t(gateData.zonesCount > 1 ? 'aip.test.zonesConfiguredN' : 'aip.test.zonesConfigured1', { n: gateData.zonesCount }) : t('aip.test.zonesNotConfigured')}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
             <span style={{ color: gateData.profileOk ? '#22c55e' : '#f97316' }}>{gateData.profileOk ? '✓' : '⚠'}</span>
             <span style={{ color: 'var(--ai-mid)' }}>
-              {gateData.profileOk ? 'Profil de performance renseigné' : 'Profil incomplet'}
+              {gateData.profileOk ? t('aip.test.profileOk') : t('aip.test.profileIncomplete')}
             </span>
           </div>
         </div>
         {!hasSports ? (
           <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14, fontSize: 12, color: '#ef4444', lineHeight: 1.5 }}>
-            Aucun test réalisé. Rends-toi dans <strong>Performance → Tests</strong> pour enregistrer ton premier test.
+            {t('aip.test.noneDoneHintPre')} <strong>Performance → Tests</strong> {t('aip.test.noneDoneHintPost')}
           </div>
         ) : null}
         {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            Annuler
+            {t('aip.cancel')}
           </button>
           {hasSports && (
             <button onClick={() => setPhase('sport')} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-              Continuer
+              {t('aip.continue')}
             </button>
           )}
         </div>
@@ -4026,9 +4058,9 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
     const availableSports = Object.keys(gateData.sportCounts)
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>Quel sport analyser ?</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>{t('aip.test.whichSport')}</p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
-          {availableSports.map(sp => `${AE_SPORT_LABELS[sp] ?? sp} (${gateData.sportCounts[sp]})`).join(' · ')}
+          {availableSports.map(sp => `${t(AE_SPORT_LABELS[sp] ?? sp)} (${gateData.sportCounts[sp]})`).join(' · ')}
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
           {availableSports.map(sp => (
@@ -4037,12 +4069,12 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#5b6fff'; (e.currentTarget as HTMLButtonElement).style.color = '#5b6fff' }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--ai-mid)' }}
             >
-              {AE_SPORT_LABELS[sp] ?? sp}
+              {t(AE_SPORT_LABELS[sp] ?? sp)}
             </button>
           ))}
         </div>
         <button onClick={() => setPhase('gate')} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
-          Retour
+          {t('aip.back')}
         </button>
       </div>
     )
@@ -4052,7 +4084,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
     return (
       <div style={{ padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--ai-dim)' }}>
         <Dots />
-        <p style={{ fontSize: 12, margin: 0 }}>Analyse en cours — croisement de tes données…</p>
+        <p style={{ fontSize: 12, margin: 0 }}>{t('aip.test.analyzing')}</p>
       </div>
     )
   }
@@ -4063,18 +4095,18 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         <div style={{ padding: '8px 0 4px' }}>
           <div style={{ padding: '16px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 14 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
-              Aucun test en {AE_SPORT_LABELS[sport ?? ''] ?? sport}
+              {t('aip.test.noTestInSport', { sport: t(AE_SPORT_LABELS[sport ?? ''] ?? sport ?? '') })}
             </p>
             <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0 }}>
-              Va dans <strong>Performance → Tests</strong> pour en ajouter.
+              {t('aip.test.goToAddPre')} <strong>Performance → Tests</strong> {t('aip.test.goToAddPost')}
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => setPhase('sport')} style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
-              Autre sport
+              {t('aip.test.otherSport')}
             </button>
             <button onClick={onCancel} style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-bg2)', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
-              Fermer
+              {t('aip.close')}
             </button>
           </div>
         </div>
@@ -4082,29 +4114,29 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
     }
 
     const byDef: Record<string, TestRow[]> = {}
-    for (const t of tests) {
-      if (!byDef[t.test_definition_id]) byDef[t.test_definition_id] = []
-      byDef[t.test_definition_id].push(t)
+    for (const tst of tests) {
+      if (!byDef[tst.test_definition_id]) byDef[tst.test_definition_id] = []
+      byDef[tst.test_definition_id].push(tst)
     }
     for (const k of Object.keys(byDef)) byDef[k].sort((a, b) => a.date.localeCompare(b.date))
 
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
-          {tests.length} test{tests.length > 1 ? 's' : ''} en {AE_SPORT_LABELS[sport ?? ''] ?? sport}
+          {t(tests.length > 1 ? 'aip.test.nTestsInSport' : 'aip.test.nTestInSport', { n: tests.length, sport: t(AE_SPORT_LABELS[sport ?? ''] ?? sport ?? '') })}
         </p>
-        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 12px' }}>Sélectionne un test à analyser</p>
+        <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 12px' }}>{t('aip.test.selectTest')}</p>
         {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-          {tests.map(t => {
-            const ctx = testContexts.get(t.id)
-            const isSelected = selectedTest?.id === t.id
-            const sameType = byDef[t.test_definition_id] ?? []
-            const prevTest = sameType.filter(x => x.date < t.date).slice(-1)[0]
+          {tests.map(tst => {
+            const ctx = testContexts.get(tst.id)
+            const isSelected = selectedTest?.id === tst.id
+            const sameType = byDef[tst.test_definition_id] ?? []
+            const prevTest = sameType.filter(x => x.date < tst.date).slice(-1)[0]
             let deltaPct: number | null = null
             if (prevTest) {
               const prevVal = Object.values(prevTest.valeurs)[0]
-              const curVal = Object.values(t.valeurs)[0]
+              const curVal = Object.values(tst.valeurs)[0]
               if (typeof prevVal === 'number' && typeof curVal === 'number' && prevVal > 0) {
                 deltaPct = Math.round(((curVal - prevVal) / prevVal) * 1000) / 10
               }
@@ -4114,7 +4146,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
               : 'var(--ai-dim)'
 
             return (
-              <div key={t.id} onClick={() => setSelectedTest(isSelected ? null : t)}
+              <div key={tst.id} onClick={() => setSelectedTest(isSelected ? null : tst)}
                 style={{
                   padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
                   border: `1px solid ${isSelected ? 'var(--ai-accent)' : 'var(--ai-border)'}`,
@@ -4124,22 +4156,22 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>
-                    {t.test_definitions?.nom ?? 'Test'}
+                    {tst.test_definitions?.nom ?? t('aip.test.testFallback')}
                   </span>
-                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{t.date}</span>
+                  <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{tst.date}</span>
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: 'var(--ai-accent)', marginBottom: 6 }}>
-                  {Object.entries(t.valeurs).slice(0, 2).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+                  {Object.entries(tst.valeurs).slice(0, 2).map(([k, v]) => `${k}: ${v}`).join(' · ')}
                 </div>
                 {ctx && (
                   <div style={{ fontSize: 11, color: 'var(--ai-mid)', lineHeight: 1.6, marginBottom: 6 }}>
-                    <div>TSS semaine précédente : <strong>{ctx.tssWeek}pts</strong>
-                      {ctx.tssWeek > 500 ? <span style={{ color: '#ef4444' }}> (charge élevée)</span> : ctx.tssWeek > 350 ? <span style={{ color: '#f97316' }}> (charge modérée)</span> : <span style={{ color: '#22c55e' }}> (charge normale)</span>}
+                    <div>{t('aip.test.tssPrevWeek')} : <strong>{ctx.tssWeek}pts</strong>
+                      {ctx.tssWeek > 500 ? <span style={{ color: '#ef4444' }}> {t('aip.test.loadHigh')}</span> : ctx.tssWeek > 350 ? <span style={{ color: '#f97316' }}> {t('aip.test.loadModerate')}</span> : <span style={{ color: '#22c55e' }}> {t('aip.test.loadNormal')}</span>}
                     </div>
                     {ctx.hrv != null ? (
-                      <div>HRV ce jour : <strong>{ctx.hrv}ms</strong>
+                      <div>{t('aip.test.hrvToday')} : <strong>{ctx.hrv}ms</strong>
                         {ctx.hrvBaseline != null && (
-                          <span> vs baseline {ctx.hrvBaseline}ms
+                          <span> {t('aip.test.vsBaseline')} {ctx.hrvBaseline}ms
                             <span style={{ color: ctx.hrv >= ctx.hrvBaseline * 0.9 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
                               {' '}{ctx.hrv >= ctx.hrvBaseline ? '+' : ''}{Math.round(((ctx.hrv - ctx.hrvBaseline) / ctx.hrvBaseline) * 100)}%
                             </span>
@@ -4147,14 +4179,14 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
                         )}
                       </div>
                     ) : (
-                      <div style={{ color: 'var(--ai-dim)', fontStyle: 'italic' }}>HRV non disponible ce jour</div>
+                      <div style={{ color: 'var(--ai-dim)', fontStyle: 'italic' }}>{t('aip.test.hrvUnavailable')}</div>
                     )}
                   </div>
                 )}
                 {ctx && (
                   <div style={{ marginBottom: 6 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ai-dim)', marginBottom: 2 }}>
-                      <span>Fiabilité estimée</span>
+                      <span>{t('aip.test.estimatedReliability')}</span>
                       <span style={{ color: validityColor, fontWeight: 700 }}>{ctx.validityScore}%</span>
                     </div>
                     <div style={{ height: 4, borderRadius: 2, background: 'var(--ai-bg)', overflow: 'hidden' }}>
@@ -4169,7 +4201,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
                 )}
                 {isSelected && sameType.length >= 2 && (
                   <div style={{ marginTop: 8, padding: '8px', borderRadius: 8, background: 'var(--ai-bg)' }}>
-                    <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Évolution</p>
+                    <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.evolution')}</p>
                     <TestEvolutionMiniChart points={sameType.map(x => ({
                       date: x.date,
                       valeur: typeof Object.values(x.valeurs)[0] === 'number' ? Object.values(x.valeurs)[0] as number : 0,
@@ -4183,12 +4215,12 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => { setPhase('sport'); setTests([]); setTestContexts(new Map()) }}
             style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
-            Retour
+            {t('aip.back')}
           </button>
           <button onClick={() => void handleGenerate()}
             disabled={!selectedTest}
             style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: selectedTest ? 'var(--ai-gradient)' : 'var(--ai-bg2)', color: selectedTest ? '#fff' : 'var(--ai-dim)', fontSize: 12, fontWeight: 700, cursor: selectedTest ? 'pointer' : 'not-allowed' }}>
-            Analyser ce test →
+            {t('aip.test.analyzeThis')} →
           </button>
         </div>
       </div>
@@ -4196,7 +4228,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
   }
 
   if (phase === 'result' && report && selectedTest) {
-    const testNom = selectedTest.test_definitions?.nom ?? 'Test'
+    const testNom = selectedTest.test_definitions?.nom ?? t('aip.test.testFallback')
     const confidenceColor = report.confiance === 'élevée' ? '#22c55e' : report.confiance === 'modérée' ? '#f97316' : '#ef4444'
 
     return (
@@ -4222,7 +4254,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
 
         <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fiabilité du test</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.reliabilityTitle')}</p>
             <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: report.fiabilite.score >= 80 ? '#22c55e' : report.fiabilite.score >= 60 ? '#f97316' : '#ef4444' }}>
               {report.fiabilite.score}%
             </span>
@@ -4249,7 +4281,7 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
 
         {report.evolution.disponible && report.evolution.tests.length > 0 && (
           <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 10 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Évolution</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.evolution')}</p>
             {report.evolution.tests.length >= 2 && (
               <div style={{ marginBottom: 8, padding: '6px', borderRadius: 8, background: 'var(--ai-bg)' }}>
                 <TestEvolutionMiniChart points={report.evolution.tests.map(t => ({ date: t.date, valeur: t.valeur }))} />
@@ -4268,10 +4300,10 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
           background: report.impact_zones.mise_a_jour_necessaire ? 'rgba(249,115,22,0.05)' : 'var(--ai-bg2)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Impact sur les zones</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-text)', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.test.zonesImpact')}</p>
             {report.impact_zones.ecart_pct != null && (
               <span style={{ fontSize: 11, fontWeight: 700, color: report.impact_zones.mise_a_jour_necessaire ? '#f97316' : '#22c55e' }}>
-                {report.impact_zones.mise_a_jour_necessaire ? `⚠ Écart ${report.impact_zones.ecart_pct}%` : '✓ À jour'}
+                {report.impact_zones.mise_a_jour_necessaire ? `⚠ ${t('aip.test.gap')} ${report.impact_zones.ecart_pct}%` : `✓ ${t('aip.test.upToDate')}`}
               </span>
             )}
           </div>
@@ -4311,12 +4343,12 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
         )}
 
         <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--ai-bg2)', fontSize: 10, color: 'var(--ai-dim)', marginBottom: 10 }}>
-          <p style={{ margin: '0 0 2px' }}>Sources : {report.sources_used.join(' · ')}</p>
-          <p style={{ margin: 0 }}>Confiance : <strong style={{ color: confidenceColor }}>{report.confiance}</strong></p>
+          <p style={{ margin: '0 0 2px' }}>{t('aip.sources')} : {report.sources_used.join(' · ')}</p>
+          <p style={{ margin: 0 }}>{t('aip.test.confidence')} : <strong style={{ color: confidenceColor }}>{report.confiance}</strong></p>
         </div>
 
         <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
-          Fermer
+          {t('aip.close')}
         </button>
       </div>
     )
@@ -4387,11 +4419,12 @@ function fmtDist(m: number | null): string {
 }
 
 const AE_SPORT_LABELS: Record<string, string> = {
-  running: 'Running', cycling: 'Vélo', hyrox: 'Hyrox', gym: 'Gym',
-  trail: 'Trail', triathlon: 'Triathlon', natation: 'Natation',
+  running: 'aip.aeSport.running', cycling: 'aip.aeSport.cycling', hyrox: 'aip.aeSport.hyrox', gym: 'aip.aeSport.gym',
+  trail: 'aip.aeSport.trail', triathlon: 'aip.aeSport.triathlon', natation: 'aip.aeSport.natation',
 }
 
 function AnalyserEntrainementFlow({ onPrepare, onCancel }: { onPrepare: (apiPrompt: string, label: string) => void; onCancel: () => void }) {
+  const { t } = useI18n()
   const [step,           setStep]           = useState<'select' | 'context'>('select')
   const [activities,     setActivities]     = useState<ActivityRow[] | null>(null)
   const [loadingActs,    setLoadingActs]    = useState(false)
@@ -4607,7 +4640,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
 ## Actions suggérées
 (parmi : "Analyser ma semaine", "Analyser ma récupération", "Estimer mes zones", "Analyser ma progression")`
 
-      onPrepare(apiPrompt, `Training Analyse — ${AE_SPORT_LABELS[selectedAct.sport_type] ?? selectedAct.sport_type}`)
+      onPrepare(apiPrompt, `${t('aip.ae.label')} — ${t(AE_SPORT_LABELS[selectedAct.sport_type] ?? selectedAct.sport_type)}`)
     } catch {
       setGenerating(false)
     }
@@ -4620,7 +4653,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
         <div style={{ padding: '8px 0 4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 11 }}>
             <Dots />
-            <span>Chargement des activités…</span>
+            <span>{t('aip.ae.loadingActivities')}</span>
           </div>
         </div>
       )
@@ -4631,14 +4664,14 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
         <div style={{ padding: '8px 0 4px' }}>
           <div style={{ padding: '16px', borderRadius: 10, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 14 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>
-              Pas encore d'activités synchronisées
+              {t('aip.ae.noActivities')}
             </p>
             <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.5 }}>
-              Connecte Strava dans <strong style={{ color: 'var(--ai-text)' }}>Connexions → Strava → Synchroniser</strong>.
+              {t('aip.ae.connectStravaPre')} <strong style={{ color: 'var(--ai-text)' }}>Connexions → Strava → Synchroniser</strong>.
             </p>
           </div>
           <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            Fermer
+            {t('aip.close')}
           </button>
         </div>
       )
@@ -4647,10 +4680,10 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
-          Quelle séance analyser ?
+          {t('aip.ae.whichSession')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 10px' }}>
-          30 dernières activités
+          {t('aip.ae.last30')}
         </p>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -4670,18 +4703,18 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
                 transition: 'left 0.15s',
               }} />
             </div>
-            Comparer 2 activités
+            {t('aip.ae.compare2')}
           </label>
           {compareMode && selectedAct && (
             <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontStyle: 'italic' }}>
-              {compareAct ? 'Comparaison prête' : 'Sélectionne une 2e activité'}
+              {compareAct ? t('aip.ae.comparisonReady') : t('aip.ae.select2nd')}
             </span>
           )}
         </div>
 
         {compareMode && selectedAct && compareAct && compareAct.sport_type !== selectedAct.sport_type && (
           <div style={{ padding: '6px 10px', borderRadius: 7, background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', fontSize: 11, color: '#f97316', marginBottom: 8 }}>
-            Sports différents ({selectedAct.sport_type} vs {compareAct.sport_type}) — comparaison possible mais interprétation limitée
+            {t('aip.ae.differentSports', { a: selectedAct.sport_type, b: compareAct.sport_type })}
           </div>
         )}
 
@@ -4703,9 +4736,9 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif' }}>
-                    {AE_SPORT_LABELS[a.sport_type] ?? a.sport_type}
-                    {isMain && <span style={{ marginLeft: 6, fontSize: 10, color: '#5b6fff', fontWeight: 700 }}>PRINCIPAL</span>}
-                    {isCmp && <span style={{ marginLeft: 6, fontSize: 10, color: '#06B6D4', fontWeight: 700 }}>COMPARE</span>}
+                    {t(AE_SPORT_LABELS[a.sport_type] ?? a.sport_type)}
+                    {isMain && <span style={{ marginLeft: 6, fontSize: 10, color: '#5b6fff', fontWeight: 700 }}>{t('aip.ae.main')}</span>}
+                    {isCmp && <span style={{ marginLeft: 6, fontSize: 10, color: '#06B6D4', fontWeight: 700 }}>{t('aip.ae.compareTag')}</span>}
                   </span>
                   <span style={{ fontSize: 10, color: 'var(--ai-dim)', fontFamily: 'DM Mono,monospace' }}>{dateStr}</span>
                 </div>
@@ -4716,7 +4749,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
                     background: hasStreams ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)',
                     color: hasStreams ? '#22c55e' : '#f97316',
                   }}>
-                    {hasStreams ? 'Streams disponibles' : 'Données limitées'}
+                    {hasStreams ? t('aip.ae.streamsAvailable') : t('aip.ae.limitedData')}
                   </span>
                 </div>
               </div>
@@ -4726,7 +4759,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            Annuler
+            {t('aip.cancel')}
           </button>
           {selectedAct && compareMode && compareAct && (
             <button
@@ -4739,7 +4772,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
                 fontSize: 12, fontWeight: 700, cursor: generating ? 'not-allowed' : 'pointer',
                 fontFamily: 'DM Sans,sans-serif',
               }}>
-              {generating ? 'Préparation…' : 'Comparer les 2 séances'}
+              {generating ? t('aip.preparing') : t('aip.ae.compareBoth')}
             </button>
           )}
         </div>
@@ -4755,27 +4788,27 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
-          Contexte chargé
+          {t('aip.ae.contextLoaded')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 12px' }}>
-          {AE_SPORT_LABELS[act.sport_type] ?? act.sport_type} · {act.started_at.split('T')[0]} · {fmtDuration(act.moving_time_s)}
+          {t(AE_SPORT_LABELS[act.sport_type] ?? act.sport_type)} · {act.started_at.split('T')[0]} · {fmtDuration(act.moving_time_s)}
         </p>
 
         {loadingCtx ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 11, marginBottom: 14 }}>
             <Dots />
-            <span>Chargement du contexte…</span>
+            <span>{t('aip.ae.loadingContext')}</span>
           </div>
         ) : ctxData ? (
           <div style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', marginBottom: 14, fontSize: 11, lineHeight: 1.7, color: 'var(--ai-mid)' }}>
             <div>
-              <span style={{ fontWeight: 600, color: 'var(--ai-text)' }}>Zones {act.sport_type}</span>
+              <span style={{ fontWeight: 600, color: 'var(--ai-text)' }}>{t('aip.ae.zones')} {act.sport_type}</span>
               {ctxData.zones
-                ? <span style={{ color: '#22c55e', marginLeft: 6 }}>configurées</span>
-                : <span style={{ color: '#f97316', marginLeft: 6 }}>non configurées</span>}
+                ? <span style={{ color: '#22c55e', marginLeft: 6 }}>{t('aip.ae.configured')}</span>
+                : <span style={{ color: '#f97316', marginLeft: 6 }}>{t('aip.ae.notConfigured')}</span>}
             </div>
             <div>
-              Récupération veille : HRV {ctxData.hrvYesterday ?? 'N/A'}ms
+              {t('aip.ae.prevDayRecovery')} : HRV {ctxData.hrvYesterday ?? 'N/A'}ms
               {ctxData.hrvBaseline != null && (
                 <span> (baseline {ctxData.hrvBaseline}ms
                   {ctxData.hrvYesterday != null && (
@@ -4785,21 +4818,21 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
                   )}
                 </span>
               )}
-              {!ctxData.hrvBaseline && <span style={{ color: 'var(--ai-dim)', fontStyle: 'italic' }}> — non disponible</span>}
+              {!ctxData.hrvBaseline && <span style={{ color: 'var(--ai-dim)', fontStyle: 'italic' }}> — {t('aip.notAvailable')}</span>}
             </div>
             <div>
-              Séance planifiée : {ctxData.planned
-                ? <span style={{ color: '#22c55e' }}>{(ctxData.planned as { title?: string | null }).title ?? 'trouvée'}</span>
-                : <span style={{ color: 'var(--ai-dim)', fontStyle: 'italic' }}>non trouvée</span>}
+              {t('aip.ae.plannedSession')} : {ctxData.planned
+                ? <span style={{ color: '#22c55e' }}>{(ctxData.planned as { title?: string | null }).title ?? t('aip.ae.found')}</span>
+                : <span style={{ color: 'var(--ai-dim)', fontStyle: 'italic' }}>{t('aip.ae.notFound')}</span>}
             </div>
-            <div>{ctxData.similarCount} séance{ctxData.similarCount !== 1 ? 's' : ''} similaire{ctxData.similarCount !== 1 ? 's' : ''} disponible{ctxData.similarCount !== 1 ? 's' : ''} pour comparaison</div>
+            <div>{t(ctxData.similarCount !== 1 ? 'aip.ae.nSimilarPlural' : 'aip.ae.nSimilarSingular', { n: ctxData.similarCount })}</div>
             <div style={{ marginTop: 4 }}>
               <span style={{
                 padding: '2px 8px', borderRadius: 5, fontSize: 10, fontWeight: 600,
                 background: hasStreams ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)',
                 color: hasStreams ? '#22c55e' : '#f97316',
               }}>
-                {hasStreams ? 'Analyse approfondie disponible (drift, zones depuis streams)' : 'Analyse partielle — pas de données streams'}
+                {hasStreams ? t('aip.ae.deepAnalysis') : t('aip.ae.partialAnalysis')}
               </span>
             </div>
           </div>
@@ -4808,7 +4841,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setStep('select')}
             style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-            Retour
+            {t('aip.back')}
           </button>
           <button
             onClick={() => void handleGenerate()}
@@ -4821,7 +4854,7 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
               cursor: generating || loadingCtx ? 'not-allowed' : 'pointer',
               fontFamily: 'DM Sans,sans-serif',
             }}>
-            {generating ? 'Préparation…' : loadingCtx ? 'Chargement…' : 'Générer l\'analyse'}
+            {generating ? t('aip.preparing') : loadingCtx ? t('aip.loading') : t('aip.ae.generateAnalysis')}
           </button>
         </div>
       </div>
@@ -4846,6 +4879,7 @@ function StreamProfileChart({ streams, zones, sport }: {
   zones: { z1_max?: number; z2_max?: number; z3_max?: number; z4_max?: number } | null
   sport: string
 }) {
+  const { t } = useI18n()
   // ── ALL HOOKS BEFORE ANY EARLY RETURN ───────────────────────
   const containerRef = useRef<HTMLDivElement>(null)
   const [cursorPct, setCursorPct] = useState<number | null>(null)
@@ -4898,27 +4932,27 @@ function StreamProfileChart({ streams, zones, sport }: {
   const paceS     = velocityS ? velocityS.map(v => v > 0 ? 1000 / v : 0) : null
 
   type TrackDef = {
-    label: string; data: number[]; color: string; H: number
+    label: string; displayLabel: string; data: number[]; color: string; H: number
     isHr?: boolean; invertY?: boolean; formatY?: (v: number) => string
   }
   const tracks: TrackDef[] = ([
-    altS     ? { label: 'Altitude', data: altS,    color: 'rgba(140,140,140,0.7)', H: 56,                  formatY: (v: number) => `${Math.round(v)}m`    } : null,
-    hrS      ? { label: 'FC',       data: hrS,     color: '#ef4444',               H: 72, isHr: true,      formatY: (v: number) => `${Math.round(v)}bpm`  } : null,
-    isBike && wattsS  ? { label: 'Puissance', data: wattsS,   color: '#5b6fff', H: 72,                     formatY: (v: number) => `${Math.round(v)}W`    } : null,
-    isRun  && paceS   ? { label: 'Allure',    data: paceS,    color: '#f97316', H: 72, invertY: true,      formatY: (v: number) => fmtPaceFromSKm(v)      } : null,
-    cadenceS ? { label: 'Cadence',  data: cadenceS, color: '#8b5cf6',              H: 48,                  formatY: (v: number) => `${Math.round(v)}rpm`  } : null,
-  ] as (TrackDef | null)[]).filter((t): t is TrackDef => t !== null)
+    altS     ? { label: 'Altitude', displayLabel: t('aip.stream.altitude'), data: altS,    color: 'rgba(140,140,140,0.7)', H: 56,                  formatY: (v: number) => `${Math.round(v)}m`    } : null,
+    hrS      ? { label: 'FC',       displayLabel: t('aip.stream.hr'),       data: hrS,     color: '#ef4444',               H: 72, isHr: true,      formatY: (v: number) => `${Math.round(v)}bpm`  } : null,
+    isBike && wattsS  ? { label: 'Puissance', displayLabel: t('aip.stream.power'), data: wattsS,   color: '#5b6fff', H: 72,                     formatY: (v: number) => `${Math.round(v)}W`    } : null,
+    isRun  && paceS   ? { label: 'Allure',    displayLabel: t('aip.stream.pace'),  data: paceS,    color: '#f97316', H: 72, invertY: true,      formatY: (v: number) => fmtPaceFromSKm(v)      } : null,
+    cadenceS ? { label: 'Cadence',  displayLabel: t('aip.stream.cadence'),  data: cadenceS, color: '#8b5cf6',              H: 48,                  formatY: (v: number) => `${Math.round(v)}rpm`  } : null,
+  ] as (TrackDef | null)[]).filter((tr): tr is TrackDef => tr !== null)
 
   // Annotations via useMemo — deps are actual prop arrays, stable references
   const annotations = useMemo(() => {
     const anns: { trackLabel: string; idx: number; label: string; color: string }[] = []
     if (hrS && hrS.length >= 10) {
       const maxV = Math.max(...hrS)
-      anns.push({ trackLabel: 'FC', idx: hrS.indexOf(maxV), label: `Max ${Math.round(maxV)}`, color: '#ef4444' })
+      anns.push({ trackLabel: 'FC', idx: hrS.indexOf(maxV), label: `${t('aip.stream.max')} ${Math.round(maxV)}`, color: '#ef4444' })
     }
     if (wattsS && wattsS.length >= 10) {
       const maxV = Math.max(...wattsS)
-      anns.push({ trackLabel: 'Puissance', idx: wattsS.indexOf(maxV), label: `Max ${Math.round(maxV)}W`, color: '#5b6fff' })
+      anns.push({ trackLabel: 'Puissance', idx: wattsS.indexOf(maxV), label: `${t('aip.stream.max')} ${Math.round(maxV)}W`, color: '#5b6fff' })
     }
     return anns
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5009,7 +5043,7 @@ function StreamProfileChart({ streams, zones, sport }: {
   return (
     <div style={{ marginBottom: 14 }}>
       <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 5px' }}>
-        Profil de la séance
+        {t('aip.stream.sessionProfile')}
       </p>
 
       {/* Barre de valeurs au curseur */}
@@ -5019,7 +5053,7 @@ function StreamProfileChart({ streams, zones, sport }: {
           background: 'var(--ai-bg2)', borderRadius: 6, padding: '4px 10px', alignItems: 'center',
           fontSize: 10, fontFamily: 'DM Mono, monospace',
         }}>
-          {hrS      && <span style={{ color: '#ef4444', fontWeight: 600 }}>FC {Math.round(hrS[Math.min(cursor, hrS.length - 1)])}bpm</span>}
+          {hrS      && <span style={{ color: '#ef4444', fontWeight: 600 }}>{t('aip.stream.hr')} {Math.round(hrS[Math.min(cursor, hrS.length - 1)])}bpm</span>}
           {isBike && wattsS && <span style={{ color: '#5b6fff', fontWeight: 600 }}>{Math.round(wattsS[Math.min(cursor, wattsS.length - 1)])}W</span>}
           {isRun && velocityS && velocityS[Math.min(cursor, velocityS.length - 1)] > 0 && (
             <span style={{ color: '#f97316', fontWeight: 600 }}>{fmtPaceFromSKm(1000 / velocityS[Math.min(cursor, velocityS.length - 1)])}</span>
@@ -5083,7 +5117,7 @@ function StreamProfileChart({ streams, zones, sport }: {
           return (
             <div key={track.label} style={{ marginBottom: 2 }}>
               <div style={{ fontSize: 9, color: 'var(--ai-dim)', marginBottom: 1, display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: track.color, fontWeight: 600 }}>{track.label}</span>
+                <span style={{ color: track.color, fontWeight: 600 }}>{track.displayLabel}</span>
                 <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 8 }}>{rangeLabel}</span>
               </div>
               <svg
@@ -5159,7 +5193,7 @@ function StreamProfileChart({ streams, zones, sport }: {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne, sans-serif' }}>
-                Sélection{selStats.dur ? ` — ${Math.floor(selStats.dur / 60)}min${String(Math.round(selStats.dur % 60)).padStart(2, '0')}` : ''}
+                {t('aip.stream.selection')}{selStats.dur ? ` — ${Math.floor(selStats.dur / 60)}min${String(Math.round(selStats.dur % 60)).padStart(2, '0')}` : ''}
               </div>
               <button
                 onClick={() => { setShowSelModal(false); setSelection(null) }}
@@ -5169,7 +5203,7 @@ function StreamProfileChart({ streams, zones, sport }: {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
               {selStats.dist != null && selStats.dist > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--ai-dim)' }}>Distance</span>
+                  <span style={{ color: 'var(--ai-dim)' }}>{t('aip.stream.distance')}</span>
                   <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>
                     {selStats.dist >= 1000 ? `${(selStats.dist / 1000).toFixed(2)} km` : `${Math.round(selStats.dist)} m`}
                   </span>
@@ -5177,25 +5211,25 @@ function StreamProfileChart({ streams, zones, sport }: {
               )}
               {selStats.hrMoy != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--ai-dim)' }}>FC moyenne</span>
+                  <span style={{ color: 'var(--ai-dim)' }}>{t('aip.stream.hrAvg')}</span>
                   <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>{selStats.hrMoy} bpm</span>
                 </div>
               )}
               {selStats.hrMax != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--ai-dim)' }}>FC max.</span>
+                  <span style={{ color: 'var(--ai-dim)' }}>{t('aip.stream.hrMax')}</span>
                   <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>{selStats.hrMax} bpm</span>
                 </div>
               )}
               {selStats.watts != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--ai-dim)' }}>Watts moy.</span>
+                  <span style={{ color: 'var(--ai-dim)' }}>{t('aip.stream.wattsAvg')}</span>
                   <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>{selStats.watts} W</span>
                 </div>
               )}
               {selStats.pace != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--ai-dim)' }}>Allure moy.</span>
+                  <span style={{ color: 'var(--ai-dim)' }}>{t('aip.stream.paceAvg')}</span>
                   <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>{fmtPaceFromSKm(selStats.pace)}</span>
                 </div>
               )}
@@ -5207,7 +5241,7 @@ function StreamProfileChart({ streams, zones, sport }: {
               )}
               {selStats.cad != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--ai-dim)' }}>Cadence moy.</span>
+                  <span style={{ color: 'var(--ai-dim)' }}>{t('aip.stream.cadenceAvg')}</span>
                   <span style={{ fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'DM Mono, monospace' }}>{selStats.cad} rpm</span>
                 </div>
               )}
@@ -5220,6 +5254,7 @@ function StreamProfileChart({ streams, zones, sport }: {
 }
 
 function CardiacDriftChart({ heartrate, driftPct }: { heartrate: number[]; driftPct: number }) {
+  const { t } = useI18n()
   if (heartrate.length < 20) return null
   const W = 380, H = 52, PAD_L = 28, PAD_R = 6
 
@@ -5248,7 +5283,7 @@ function CardiacDriftChart({ heartrate, driftPct }: { heartrate: number[]; drift
   return (
     <div style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>Dérive cardiaque</p>
+        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>{t('aip.drift.title')}</p>
         <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'DM Mono,monospace', color: driftColor }}>{driftPct > 0 ? '+' : ''}{driftPct.toFixed(1)}%</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: H, display: 'block' }}>
@@ -5262,10 +5297,10 @@ function CardiacDriftChart({ heartrate, driftPct }: { heartrate: number[]; drift
       </svg>
       <p style={{ fontSize: 10, color: 'var(--ai-mid)', margin: '3px 0 0', lineHeight: 1.4 }}>
         {Math.abs(driftPct) < 5
-          ? 'Drift normal — effort bien maîtrisé tout au long de la séance.'
+          ? t('aip.drift.normal')
           : Math.abs(driftPct) < 8
-          ? 'Drift modéré — légère fatigue en 2ème moitié. Surveiller hydratation et intensité.'
-          : 'Drift élevé — fatigue significative. Possible départ trop rapide ou récupération insuffisante.'}
+          ? t('aip.drift.moderate')
+          : t('aip.drift.high')}
       </p>
     </div>
   )
@@ -5275,13 +5310,14 @@ function ZoneDistributionBar({ distribution, target }: {
   distribution: { zone: string; pct: number; minutes: number; color: string }[]
   target: { zone: string; pct: number }[] | null
 }) {
+  const { t } = useI18n()
   const ZONE_COLORS: Record<string, string> = { Z1: '#22c55e', Z2: '#84cc16', Z3: '#f97316', Z4: '#ef4444', Z5: '#dc2626' }
   const active = distribution.filter(z => z.pct > 0)
   if (active.length === 0) return null
 
   return (
     <div style={{ marginBottom: 14 }}>
-      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 5px' }}>Distribution des zones</p>
+      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 5px' }}>{t('aip.zoneDist.title')}</p>
       <div style={{ display: 'flex', height: 18, borderRadius: 4, overflow: 'hidden', marginBottom: 2 }}>
         {active.map(z => (
           <div key={z.zone} style={{ width: `${z.pct}%`, background: ZONE_COLORS[z.zone] ?? z.color, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -5289,7 +5325,7 @@ function ZoneDistributionBar({ distribution, target }: {
           </div>
         ))}
       </div>
-      <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 4px' }}>Réalisé</p>
+      <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 4px' }}>{t('aip.zoneDist.done')}</p>
       {target && target.filter(z => z.pct > 0).length > 0 && (
         <>
           <div style={{ display: 'flex', height: 10, borderRadius: 3, overflow: 'hidden', marginBottom: 2, opacity: 0.5 }}>
@@ -5297,7 +5333,7 @@ function ZoneDistributionBar({ distribution, target }: {
               <div key={z.zone} style={{ width: `${z.pct}%`, background: ZONE_COLORS[z.zone] ?? '#999' }} />
             ))}
           </div>
-          <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 4px' }}>Cible (plan)</p>
+          <p style={{ fontSize: 9, color: 'var(--ai-dim)', margin: '0 0 4px' }}>{t('aip.zoneDist.target')}</p>
         </>
       )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
@@ -5464,6 +5500,7 @@ function getFollowUpActions(
   actTitle: string,
   actDate: string,
   streams: { heartrate?: number[]; watts?: number[]; velocity_smooth?: number[]; cadence?: number[] },
+  t: (key: string, vars?: Record<string, string | number>) => string,
 ): FollowUpAction[] {
   const actions: FollowUpAction[] = []
   const s = sport.toLowerCase()
@@ -5478,69 +5515,69 @@ function getFollowUpActions(
 
   if (isRun) {
     if (hasVelocity) actions.push({
-      label: 'Analyse mon pacing',
+      label: t('aip.at.followup.pacing'),
       prompt: `${ctx}, analyse mon pacing en détail. Positive split, negative split, ou even split ? Quelles phases ont été trop rapides ou trop lentes ? La stratégie de pacing était-elle optimale pour ce type d'effort ? Qu'aurais-je dû faire différemment ?`,
     })
     if (hasHr && driftAbove3) actions.push({
-      label: `Explique le drift cardiaque (${report.cardiac_drift_pct! > 0 ? '+' : ''}${report.cardiac_drift_pct!.toFixed(1)}%)`,
+      label: t('aip.at.followup.drift', { drift: `${report.cardiac_drift_pct! > 0 ? '+' : ''}${report.cardiac_drift_pct!.toFixed(1)}` }),
       prompt: `${ctx}, le drift cardiaque est de ${report.cardiac_drift_pct!.toFixed(1)}%. Explique en détail ce que ça signifie physiologiquement. Quelles sont les causes possibles (déshydratation, chaleur, fatigue musculaire, mauvais pacing) ? Qu'est-ce que ça révèle sur mon niveau d'endurance aérobie ? Que faire pour l'améliorer ?`,
     })
     if (hasCadence) actions.push({
-      label: 'Analyse ma cadence de course',
+      label: t('aip.at.followup.runCadence'),
       prompt: `${ctx}, analyse ma cadence de course. Est-elle dans la plage optimale (170-185 spm) ? Comment évolue-t-elle avec la fatigue au fil de la séance ? Est-ce un levier d'amélioration de mon économie de course ? Donne des recommandations concrètes.`,
     })
     if (hasHr || hasVelocity) actions.push({
-      label: "Gestion de l'intensité par zones",
+      label: t('aip.at.followup.intensityByZones'),
       prompt: `${ctx}, analyse la distribution de l'intensité par zones. La répartition était-elle adaptée au type d'effort ? Ai-je passé trop de temps en zone 3 (no man's land) ? Pas assez en Z1-Z2 si c'était de l'endurance ? Trop conservateur ou trop agressif ? Donne la répartition optimale pour ce type de séance.`,
     })
     actions.push({
-      label: 'Compare avec mes séances similaires',
+      label: t('aip.at.followup.compareSimilar'),
       prompt: `Compare la séance "${actTitle}" du ${actDate} avec mes séances de course similaires récentes. Est-ce que je progresse, stagne, ou régresse ? Quels indicateurs le montrent (allure, FC, EI, drift) ? Sois précis avec les chiffres et donne une tendance claire.`,
     })
     actions.push({
-      label: 'Prochaine séance running idéale',
+      label: t('aip.at.followup.nextRun'),
       prompt: `Basé sur l'analyse de la course "${actTitle}" du ${actDate} (verdict: ${report.verdict}, EI: ${report.kpis.efficiency_index}, drift: ${report.cardiac_drift_pct?.toFixed(1) ?? 'N/A'}%), quelle serait la séance running idéale pour mon prochain entraînement ? Donne un plan concret : échauffement, corps de séance, retour au calme, zones cibles, durée totale.`,
     })
   } else if (isBike) {
     if (hasWatts) actions.push({
-      label: 'Analyse mon profil de puissance',
+      label: t('aip.at.followup.powerProfile'),
       prompt: `${ctx}, analyse en détail mon profil de puissance. Comment la puissance a-t-elle évolué au cours de la séance ? Y a-t-il des signes de fatigue (chute progressive, incapacité à reproduire les efforts) ? La variabilité de puissance (VI) était-elle adaptée au type d'effort ? Analyse les intervalles si c'était du fractionné.`,
     })
     if (hasHr && driftAbove3) actions.push({
-      label: `Explique le drift cardiaque (${report.cardiac_drift_pct! > 0 ? '+' : ''}${report.cardiac_drift_pct!.toFixed(1)}%)`,
+      label: t('aip.at.followup.drift', { drift: `${report.cardiac_drift_pct! > 0 ? '+' : ''}${report.cardiac_drift_pct!.toFixed(1)}` }),
       prompt: `${ctx}, le drift cardiaque est de ${report.cardiac_drift_pct!.toFixed(1)}%. Explique ce que ça signifie dans le contexte du vélo. Causes possibles : déshydratation, chaleur, fatigue musculaire, intensité trop élevée ? Qu'est-ce que ça révèle sur ma base aérobie ? Recommandations concrètes.`,
     })
     if (hasCadence) actions.push({
-      label: 'Analyse ma cadence de pédalage',
+      label: t('aip.at.followup.bikeCadence'),
       prompt: `${ctx}, analyse ma cadence de pédalage. Est-elle adaptée au terrain et à l'intensité ? Ai-je tendance à mouliner trop (>100rpm) ou forcer trop (<75rpm) ? Comment évolue-t-elle avec la fatigue ? Quel impact sur l'efficacité neuromusculaire et la fatigue musculaire ? Recommandations concrètes.`,
     })
     if (hasWatts && hasHr) actions.push({
-      label: 'Analyse le rapport puissance/FC',
+      label: t('aip.at.followup.powerHr'),
       prompt: `${ctx}, analyse le rapport entre ma puissance et ma fréquence cardiaque tout au long de la séance. Y a-t-il un découplement aérobie ? À quel moment l'efficience commence-t-elle à baisser ? Qu'est-ce que ça dit sur mon endurance de base et mon niveau de forme actuel ?`,
     })
     actions.push({
-      label: 'Compare avec mes séances similaires',
+      label: t('aip.at.followup.compareSimilar'),
       prompt: `Compare la séance vélo "${actTitle}" du ${actDate} avec mes sorties vélo similaires récentes. Est-ce que je progresse, stagne, ou régresse ? Quels indicateurs le montrent (puissance, NP, EI, drift, cadence) ? Sois précis avec les chiffres.`,
     })
     actions.push({
-      label: 'Prochaine séance vélo idéale',
+      label: t('aip.at.followup.nextBike'),
       prompt: `Basé sur l'analyse de la séance vélo "${actTitle}" du ${actDate} (verdict: ${report.verdict}, EI: ${report.kpis.efficiency_index}, drift: ${report.cardiac_drift_pct?.toFixed(1) ?? 'N/A'}%), quelle serait la séance vélo idéale pour ma prochaine sortie ? Donne un plan concret : type de séance, zones cibles, durée, structure des intervalles si pertinent.`,
     })
   } else {
     if (hasHr || hasVelocity || hasWatts) actions.push({
-      label: "Détaille la gestion de l'intensité",
+      label: t('aip.at.followup.detailIntensity'),
       prompt: `${ctx}, analyse en détail la gestion de l'intensité. Comment l'effort a-t-il été réparti ? Y a-t-il eu des erreurs de pacing ? Des phases trop agressives ou trop conservatrices ?`,
     })
     if (hasHr && driftAbove3) actions.push({
-      label: `Explique le drift cardiaque (${report.cardiac_drift_pct! > 0 ? '+' : ''}${report.cardiac_drift_pct!.toFixed(1)}%)`,
+      label: t('aip.at.followup.drift', { drift: `${report.cardiac_drift_pct! > 0 ? '+' : ''}${report.cardiac_drift_pct!.toFixed(1)}` }),
       prompt: `${ctx}, le drift cardiaque est de ${report.cardiac_drift_pct!.toFixed(1)}%. Explique ce que ça signifie physiologiquement et quelles en sont les causes possibles.`,
     })
     actions.push({
-      label: 'Compare avec mes séances similaires',
+      label: t('aip.at.followup.compareSimilar'),
       prompt: `Compare la séance "${actTitle}" du ${actDate} avec mes séances similaires récentes. Progression, stagnation ou régression ?`,
     })
     actions.push({
-      label: 'Prochaine séance idéale',
+      label: t('aip.at.followup.nextSession'),
       prompt: `Basé sur l'analyse de "${actTitle}" du ${actDate} (verdict: ${report.verdict}), quelle serait la séance idéale pour mon prochain entraînement ?`,
     })
   }
@@ -5553,6 +5590,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
   onRecordConv?: (userMsg: string, aiMsg: string, reportData?: TrainingReportData) => void
   onFollowUp?: (displayLabel: string, fullPrompt: string) => void
 }) {
+  const { t } = useI18n()
   type Phase = 'loading' | 'gate' | 'type_select' | 'select' | 'period_select' | 'year_select' | 'generating' | 'result' | 'period_result'
   type AnalysisType = 'training' | 'race' | 'period' | 'year'
   const [phase, setPhase] = useState<Phase>('loading')
@@ -5595,7 +5633,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         const { createClient } = await import('@/lib/supabase/client')
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
-        if (!user) { setError('Non connecté'); return }
+        if (!user) { setError(t('aip.notConnected')); return }
 
         const [countRes, plannedRes] = await Promise.all([
           sb.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
@@ -5610,7 +5648,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         setPlannedDates(dates)
         setPhase('gate')
       } catch {
-        setError('Erreur de chargement')
+        setError(t('aip.loadError'))
         setPhase('gate')
       }
     })()
@@ -5681,12 +5719,12 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
     // Si l'analyse n'a pas encore été enregistrée (cas edge où onRecordConv n'a pas été appelé)
     if (!recorded && onRecordConv && report && selected.length > 0) {
       const mainAct = selected[0]
-      const actNom = mainAct.title ?? AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type
+      const actNom = mainAct.title ?? t(AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type)
       const actDate = mainAct.started_at?.slice(0, 10) ?? ''
       const userMsg = compareMode
-        ? `Comparer 2 entraînements — ${actNom} (${actDate}) vs ${selected[1]?.started_at?.slice(0, 10)}`
-        : `Training Analyse — ${actNom} (${actDate})`
-      const aiMsg = `**Analyse — ${actNom}** (${actDate})\n\nVerdict : ${report.verdict}\nTSS : ${report.kpis.tss} · EI : ${report.kpis.efficiency_index}\n${report.interpretation.execution}`
+        ? t('aip.at.recordCompare', { name: actNom, date: actDate, dateB: selected[1]?.started_at?.slice(0, 10) ?? '' })
+        : `${t('aip.ae.label')} — ${actNom} (${actDate})`
+      const aiMsg = `**${t('aip.at.recordAnalysis', { name: actNom })}** (${actDate})\n\n${t('aip.at.verdict')} : ${report.verdict}\nTSS : ${report.kpis.tss} · EI : ${report.kpis.efficiency_index}\n${report.interpretation.execution}`
       const reportData: TrainingReportData = {
         report,
         activities: selected.map(a => ({
@@ -5790,15 +5828,15 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
         }),
       })
       const data = await res.json() as { report?: TrainingReport; error?: string }
-      if (data.error || !data.report) throw new Error(data.error ?? 'Réponse invalide')
+      if (data.error || !data.report) throw new Error(data.error ?? t('aip.invalidResponse'))
       setReport(data.report)
 
       if (onRecordConv) {
-        const actNom = mainAct.title ?? AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type
+        const actNom = mainAct.title ?? t(AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type)
         const userMsg = compareMode
-          ? `Comparer 2 entraînements — ${actNom} (${actDate}) vs ${selected[1]?.started_at?.slice(0, 10)}`
-          : `Training Analyse — ${actNom} (${actDate})`
-        const aiMsg = `**Analyse — ${actNom}** (${actDate})\n\nVerdict : ${data.report.verdict}\nTSS : ${data.report.kpis.tss} · EI : ${data.report.kpis.efficiency_index}\n${data.report.interpretation.execution}`
+          ? t('aip.at.recordCompare', { name: actNom, date: actDate, dateB: selected[1]?.started_at?.slice(0, 10) ?? '' })
+          : `${t('aip.ae.label')} — ${actNom} (${actDate})`
+        const aiMsg = `**${t('aip.at.recordAnalysis', { name: actNom })}** (${actDate})\n\n${t('aip.at.verdict')} : ${data.report.verdict}\nTSS : ${data.report.kpis.tss} · EI : ${data.report.kpis.efficiency_index}\n${data.report.interpretation.execution}`
         const reportData: TrainingReportData = {
           report: data.report,
           activities: selected.map(a => ({
@@ -5910,7 +5948,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
     setError(null)
     try {
       const data1 = await loadPeriodData(period1!.start, period1!.end)
-      if (!data1) throw new Error('Impossible de charger les données')
+      if (!data1) throw new Error(t('aip.at.loadDataFailed'))
       setPeriodData(data1)
       let data2: PeriodData | null = null
       if (compareMode && period2) {
@@ -5919,7 +5957,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
       }
       await generatePeriodAnalysis(data1, data2)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur')
+      setError(e instanceof Error ? e.message : t('aip.error'))
       setPhase('period_select')
     }
   }
@@ -5929,7 +5967,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
     setError(null)
     try {
       const data1 = await loadPeriodData(`${year1}-01-01`, `${year1}-12-31`)
-      if (!data1) throw new Error('Impossible de charger les données')
+      if (!data1) throw new Error(t('aip.at.loadDataFailed'))
       setPeriodData(data1)
       let data2: PeriodData | null = null
       if (compareMode && year2) {
@@ -5938,7 +5976,7 @@ function AnalyzeTrainingFlow({ onCancel, onRecordConv, onFollowUp }: {
       }
       await generatePeriodAnalysis(data1, data2, true)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur')
+      setError(e instanceof Error ? e.message : t('aip.error'))
       setPhase('year_select')
     }
   }
@@ -6050,36 +6088,36 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
   }
 
   if (phase === 'loading') {
-    return <div style={{ padding: '16px 0', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 12 }}><Dots /><span>Chargement…</span></div>
+    return <div style={{ padding: '16px 0', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--ai-dim)', fontSize: 12 }}><Dots /><span>{t('aip.loading')}</span></div>
   }
 
   if (phase === 'gate') {
     const hasActivities = totalCount > 0
     return (
       <div style={{ padding: '8px 0 4px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>Training Analyse</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>{t('aip.at.title')}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
             <span style={{ color: hasActivities ? '#22c55e' : '#ef4444' }}>{hasActivities ? '✓' : '✗'}</span>
-            <span style={{ color: 'var(--ai-mid)' }}>{totalCount > 0 ? `${totalCount} activité${totalCount > 1 ? 's' : ''} synchronisée${totalCount > 1 ? 's' : ''}` : 'Aucune activité synchronisée'}</span>
+            <span style={{ color: 'var(--ai-mid)' }}>{totalCount > 0 ? t(totalCount > 1 ? 'aip.at.nSyncedPlural' : 'aip.at.nSyncedSingular', { n: totalCount }) : t('aip.at.noSynced')}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
             <span style={{ color: plannedDates.size > 0 ? '#22c55e' : '#f97316' }}>{plannedDates.size > 0 ? '✓' : '⚠'}</span>
-            <span style={{ color: 'var(--ai-mid)' }}>{plannedDates.size > 0 ? 'Séances planifiées disponibles' : 'Pas de séances planifiées (comparaison plan/réel impossible)'}</span>
+            <span style={{ color: 'var(--ai-mid)' }}>{plannedDates.size > 0 ? t('aip.at.plannedAvailable') : t('aip.at.noPlanned')}</span>
           </div>
         </div>
         {!hasActivities && (
           <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 14, fontSize: 12, color: '#ef4444', lineHeight: 1.5 }}>
-            Aucune activité. Synchronise Strava ou importe une activité d'abord.
+            {t('aip.at.noActivitySync')}
           </div>
         )}
         {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
+          <button onClick={onCancel} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>{t('aip.cancel')}</button>
           {hasActivities && (
             <button onClick={() => { setPhase('type_select') }}
               style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: 'var(--ai-gradient)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              Continuer →
+              {t('aip.continue')} →
             </button>
           )}
         </div>
@@ -6091,7 +6129,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
     return (
       <div style={{ padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'var(--ai-dim)' }}>
         <Dots />
-        <p style={{ fontSize: 12, margin: 0, textAlign: 'center' }}>Analyse en cours — croisement de tes données…</p>
+        <p style={{ fontSize: 12, margin: 0, textAlign: 'center' }}>{t('aip.test.analyzing')}</p>
       </div>
     )
   }
@@ -6100,18 +6138,18 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
-          Training Analyse
+          {t('aip.at.title')}
         </p>
         <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 14px' }}>
-          Que veux-tu analyser ?
+          {t('aip.at.whatAnalyze')}
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
           {([
-            { id: 'training' as const, label: 'Un entraînement', desc: 'Analyse détaillée d\'une séance', icon: '🏋️' },
-            { id: 'race' as const, label: 'Une compétition', desc: 'Pacing, stratégie, performance', icon: '🏆' },
-            { id: 'period' as const, label: 'Une période', desc: 'Volume, charge, progression', icon: '📊' },
-            { id: 'year' as const, label: 'Une année complète', desc: 'Diagnostic global annuel', icon: '📅' },
+            { id: 'training' as const, label: t('aip.at.typeTraining'), desc: t('aip.at.typeTrainingDesc'), icon: '🏋️' },
+            { id: 'race' as const, label: t('aip.at.typeRace'), desc: t('aip.at.typeRaceDesc'), icon: '🏆' },
+            { id: 'period' as const, label: t('aip.at.typePeriod'), desc: t('aip.at.typePeriodDesc'), icon: '📊' },
+            { id: 'year' as const, label: t('aip.at.typeYear'), desc: t('aip.at.typeYearDesc'), icon: '📅' },
           ]).map(opt => (
             <button key={opt.id} onClick={() => setAnalysisType(opt.id)} style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10,
@@ -6130,7 +6168,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
         {analysisType && (
           <div style={{ marginBottom: 14 }}>
-            <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 6px' }}>Mode</p>
+            <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '0 0 6px' }}>{t('aip.at.mode')}</p>
             <div style={{ display: 'flex', gap: 6 }}>
               {(['single', 'compare'] as const).map(m => (
                 <button key={m} onClick={() => setCompareMode(m === 'compare')} style={{
@@ -6140,7 +6178,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
                   color: (m === 'compare') === compareMode ? 'var(--ai-accent)' : 'var(--ai-mid)',
                   cursor: 'pointer', fontWeight: (m === 'compare') === compareMode ? 700 : 400,
                 }}>
-                  {m === 'single' ? 'Analyser' : 'Comparer'}
+                  {m === 'single' ? t('aip.analyze') : t('aip.at.compareVerb')}
                 </button>
               ))}
             </div>
@@ -6148,7 +6186,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         )}
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>Annuler</button>
+          <button onClick={onCancel} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>{t('aip.cancel')}</button>
           <button
             onClick={() => {
               if (analysisType === 'training' || analysisType === 'race') setPhase('select')
@@ -6157,14 +6195,14 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             }}
             disabled={!analysisType}
             style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: analysisType ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: analysisType ? 'pointer' : 'not-allowed' }}
-          >Continuer →</button>
+          >{t('aip.continue')} →</button>
         </div>
       </div>
     )
   }
 
   if (phase === 'select') {
-    const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+    const MONTHS_FR = [t('aip.month.0'),t('aip.month.1'),t('aip.month.2'),t('aip.month.3'),t('aip.month.4'),t('aip.month.5'),t('aip.month.6'),t('aip.month.7'),t('aip.month.8'),t('aip.month.9'),t('aip.month.10'),t('aip.month.11')]
     const availableSports = [...new Set([...monthActivities, ...raceActivities].map(a => a.sport_type))].filter(Boolean).sort()
 
     const filteredMonth = sportFilter ? monthActivities.filter(a => a.sport_type === sportFilter) : monthActivities
@@ -6215,14 +6253,14 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: isSelected ? '#5b6fff' : 'var(--ai-text)', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {a.title ?? a.sport_type.replace('_', ' ')}
-              {a.is_race && <span style={{ fontSize: 9, fontWeight: 700, color: '#f97316', marginLeft: 6 }}>COURSE</span>}
+              {a.is_race && <span style={{ fontSize: 9, fontWeight: 700, color: '#f97316', marginLeft: 6 }}>{t('aip.at.raceTag')}</span>}
             </p>
             <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>
               {dateStr} · {durMin}min{distKm ? ` · ${distKm}km` : ''}{a.tss ? ` · TSS ${a.tss}` : ''}
             </p>
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
-            {hasStreams && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 4, background: 'rgba(91,111,255,0.12)', color: '#5b6fff' }}>Streams</span>}
+            {hasStreams && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 4, background: 'rgba(91,111,255,0.12)', color: '#5b6fff' }}>{t('aip.at.streamsTag')}</span>}
             {isSelected && (
               <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#5b6fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {compareMode
@@ -6238,19 +6276,19 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
     return (
       <div style={{ padding: '4px 0' }}>
         <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 4px', fontFamily: 'Syne,sans-serif' }}>
-          {analysisType === 'race' ? 'Training Analyse — Compétitions' : 'Training Analyse'}
+          {analysisType === 'race' ? t('aip.at.titleRaces') : t('aip.at.title')}
         </p>
 
         {/* Toggle comparaison */}
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0 12px', cursor: 'pointer' }}>
           <input type="checkbox" checked={compareMode} onChange={e => { setCompareMode(e.target.checked); setSelected(prev => prev.slice(0, 1)) }}
             style={{ accentColor: '#5b6fff' }} />
-          <span style={{ fontSize: 12, color: 'var(--ai-mid)' }}>Comparer 2 entraînements similaires</span>
+          <span style={{ fontSize: 12, color: 'var(--ai-mid)' }}>{t('aip.at.compare2similar')}</span>
         </label>
 
         {showSimilarOnly && (
           <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(91,111,255,0.06)', border: '1px solid rgba(91,111,255,0.2)', marginBottom: 10, fontSize: 11, color: '#5b6fff' }}>
-            Séances similaires à "{selected[0].title ?? selected[0].sport_type}" ({Math.round((selected[0].moving_time_s ?? 0) / 60)}min)
+            {t('aip.at.similarTo', { name: selected[0].title ?? selected[0].sport_type, min: Math.round((selected[0].moving_time_s ?? 0) / 60) })}
           </div>
         )}
 
@@ -6259,7 +6297,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
           {(['', ...availableSports] as string[]).map(sp => (
             <button key={sp || '__all__'} onClick={() => setSportFilter(sp || null)}
               style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${(sp === '' ? !sportFilter : sportFilter === sp) ? '#5b6fff' : 'var(--ai-border)'}`, background: (sp === '' ? !sportFilter : sportFilter === sp) ? 'rgba(91,111,255,0.08)' : 'transparent', color: (sp === '' ? !sportFilter : sportFilter === sp) ? '#5b6fff' : 'var(--ai-mid)', fontSize: 11, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize' }}>
-              {sp === '' ? 'Tous' : (AE_SPORT_LABELS[sp] ?? sp.replace('_', ' '))}
+              {sp === '' ? t('aip.all') : t(AE_SPORT_LABELS[sp] ?? sp.replace('_', ' '))}
             </button>
           ))}
         </div>
@@ -6274,7 +6312,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
                 <path d="M9 18l6-6-6-6"/>
               </svg>
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Courses ({displayedRaces.length})
+                {t('aip.at.races')} ({displayedRaces.length})
               </span>
             </button>
             {racesExpanded && (
@@ -6301,11 +6339,11 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
           {loadingMonth ? (
             <div style={{ padding: '20px 0', textAlign: 'center' }}>
               <Dots />
-              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '8px 0 0' }}>Chargement…</p>
+              <p style={{ fontSize: 11, color: 'var(--ai-dim)', margin: '8px 0 0' }}>{t('aip.loading')}</p>
             </div>
           ) : displayedMonth.length === 0 ? (
             <p style={{ fontSize: 12, color: 'var(--ai-dim)', textAlign: 'center', padding: '20px 0' }}>
-              Aucune activité en {MONTHS_FR[selectedMonth.month]} {selectedMonth.year}
+              {t('aip.at.noActivityIn', { month: MONTHS_FR[selectedMonth.month], year: selectedMonth.year })}
             </p>
           ) : displayedMonth.map(a => renderActivityCard(a))}
         </div>
@@ -6324,15 +6362,15 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
           }}>
           {compareMode
             ? selected.length === 2
-              ? `Comparer — ${selected[0].title ?? selected[0].sport_type} vs ${selected[1].title ?? selected[1].sport_type}`
-              : `Comparer (${selected.length}/2)`
+              ? t('aip.at.compareNames', { a: selected[0].title ?? selected[0].sport_type, b: selected[1].title ?? selected[1].sport_type })
+              : t('aip.at.compareCount', { n: selected.length })
             : selected.length > 0
-              ? `Analyser — ${selected[0].title ?? selected[0].sport_type}`
-              : 'Sélectionne une activité'}
+              ? t('aip.at.analyzeName', { name: selected[0].title ?? selected[0].sport_type })
+              : t('aip.at.selectActivity')}
         </button>
 
         <button onClick={onCancel} style={{ display: 'block', margin: '0 auto', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
-          Annuler
+          {t('aip.cancel')}
         </button>
       </div>
     )
@@ -6340,16 +6378,17 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
   if (phase === 'result' && report && selected.length > 0) {
     const verdictColors: Record<string, string> = { excellent: '#22c55e', bon: '#3b82f6', passable: '#f97316', a_revoir: '#ef4444' }
-    const verdictLabels: Record<string, string> = { excellent: '🏆 Excellent', bon: '✓ Bon', passable: '~ Passable', a_revoir: '⚠ À revoir' }
+    const verdictLabels: Record<string, string> = { excellent: `🏆 ${t('aip.at.verdictExcellent')}`, bon: `✓ ${t('aip.at.verdictGood')}`, passable: `~ ${t('aip.at.verdictOk')}`, a_revoir: `⚠ ${t('aip.at.verdictReview')}` }
     const vColor = verdictColors[report.verdict] ?? '#3b82f6'
     const mainAct = selected[0]
     const confidenceColor = report.confiance === 'élevée' ? '#22c55e' : report.confiance === 'modérée' ? '#f97316' : '#ef4444'
     const followUpActions = getFollowUpActions(
       mainAct.sport_type,
       report,
-      mainAct.title ?? AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type,
+      mainAct.title ?? t(AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type),
       mainAct.started_at?.slice(0, 10) ?? '',
       mainAct.streams ?? {},
+      t,
     )
 
     return (
@@ -6357,7 +6396,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
           <div>
             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px', fontFamily: 'Syne,sans-serif' }}>
-              {mainAct.title ?? AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type}
+              {mainAct.title ?? t(AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type)}
             </p>
             <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{mainAct.started_at.slice(0, 10)}</p>
           </div>
@@ -6368,8 +6407,8 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 12 }}>
           {[
-            { label: 'Durée', value: fmtDuration(Math.round((report.kpis.duree_min ?? 0) * 60)) },
-            { label: 'Distance', value: report.kpis.distance_km != null ? `${report.kpis.distance_km.toFixed(1)}km` : '—' },
+            { label: t('aip.stream.durationKpi'), value: fmtDuration(Math.round((report.kpis.duree_min ?? 0) * 60)) },
+            { label: t('aip.stream.distance'), value: report.kpis.distance_km != null ? `${report.kpis.distance_km.toFixed(1)}km` : '—' },
             { label: 'TSS', value: report.kpis.tss != null ? String(report.kpis.tss) : '—' },
             { label: 'EI', value: report.kpis.efficiency_index != null ? report.kpis.efficiency_index.toFixed(2) : '—', sub: report.kpis.ei_vs_average != null ? `${report.kpis.ei_vs_average > 0 ? '+' : ''}${report.kpis.ei_vs_average.toFixed(1)}%` : '' },
           ].map(k => (
@@ -6410,7 +6449,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         {compareMode && selected[1]?.streams && (
           <div style={{ marginBottom: 14 }}>
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 5px' }}>
-              Séance B — {selected[1].title ?? AE_SPORT_LABELS[selected[1].sport_type] ?? selected[1].sport_type}
+              {t('aip.at.sessionB')} — {selected[1].title ?? t(AE_SPORT_LABELS[selected[1].sport_type] ?? selected[1].sport_type)}
             </p>
             <StreamProfileChart
               streams={selected[1].streams}
@@ -6423,14 +6462,14 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         {/* ── Séparateur + titre Analyse du coach ── */}
         <div style={{ margin: '16px 0 10px', borderBottom: '1px solid var(--ai-border)' }} />
         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne, sans-serif', margin: '0 0 10px', letterSpacing: '-0.01em' }}>
-          Analyse du coach
+          {t('aip.at.coachAnalysis')}
         </p>
 
         {[
-          { title: 'Exécution', text: report.interpretation?.execution },
-          { title: 'Récupération', text: report.interpretation?.contexte_recuperation },
-          ...(report.interpretation?.plan_vs_realise ? [{ title: 'Plan vs réalisé', text: report.interpretation.plan_vs_realise }] : []),
-          { title: 'Tendance historique', text: report.interpretation?.tendance_historique },
+          { title: t('aip.at.execution'), text: report.interpretation?.execution },
+          { title: t('aip.wp.recovery'), text: report.interpretation?.contexte_recuperation },
+          ...(report.interpretation?.plan_vs_realise ? [{ title: t('aip.at.planVsActual'), text: report.interpretation.plan_vs_realise }] : []),
+          { title: t('aip.at.historicalTrend'), text: report.interpretation?.tendance_historique },
         ].filter(b => b.text && b.text.trim() !== '').map((b, i, arr) => (
           <div key={i} style={{ marginBottom: i < arr.length - 1 ? 16 : 0 }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>{b.title}</p>
@@ -6441,9 +6480,9 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         {report.comparison && (
           <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(6,182,212,0.04)', marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comparaison</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.at.comparison')}</p>
               <span style={{ fontSize: 11, fontWeight: 700, color: report.comparison.progression === 'progression' ? '#22c55e' : report.comparison.progression === 'regression' ? '#ef4444' : 'var(--ai-mid)' }}>
-                {report.comparison.progression === 'progression' ? '↑ Progression' : report.comparison.progression === 'regression' ? '↓ Régression' : '= Stable'}
+                {report.comparison.progression === 'progression' ? `↑ ${t('aip.at.progression')}` : report.comparison.progression === 'regression' ? `↓ ${t('aip.at.regression')}` : `= ${t('aip.at.stable')}`}
               </span>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
@@ -6471,7 +6510,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
         {(report.conseils ?? []).length > 0 && (
           <div style={{ marginBottom: 10 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>Conseils d'optimisation</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{t('aip.at.optimizationTips')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {(report.conseils ?? []).map((c, i) => (
                 <div key={i} style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
@@ -6487,7 +6526,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         {followUpActions.length > 0 && (
           <div style={{ marginBottom: 12 }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>
-              Approfondir l&apos;analyse
+              {t('aip.at.deepenAnalysis')}
             </p>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {followUpActions.map((action, i) => (
@@ -6506,12 +6545,12 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         )}
 
         <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--ai-bg2)', fontSize: 10, color: 'var(--ai-dim)', marginBottom: 10 }}>
-          <p style={{ margin: '0 0 2px' }}>Sources : {report.sources_used.join(' · ')}</p>
-          <p style={{ margin: 0 }}>Confiance : <strong style={{ color: confidenceColor }}>{report.confiance}</strong></p>
+          <p style={{ margin: '0 0 2px' }}>{t('aip.sources')} : {report.sources_used.join(' · ')}</p>
+          <p style={{ margin: 0 }}>{t('aip.test.confidence')} : <strong style={{ color: confidenceColor }}>{report.confiance}</strong></p>
         </div>
 
         <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>
-          Fermer
+          {t('aip.close')}
         </button>
       </div>
     )
@@ -6520,19 +6559,19 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
   if (phase === 'period_select') {
     const today = new Date()
     const shortcuts = [
-      { label: 'Ce mois', start: new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10), end: today.toISOString().slice(0, 10) },
-      { label: 'Mois dernier', start: new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString().slice(0, 10), end: new Date(today.getFullYear(), today.getMonth(), 0).toISOString().slice(0, 10) },
-      { label: '3 mois', start: new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10), end: today.toISOString().slice(0, 10) },
-      { label: '6 mois', start: new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10), end: today.toISOString().slice(0, 10) },
+      { label: t('aip.at.thisMonth'), start: new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10), end: today.toISOString().slice(0, 10) },
+      { label: t('aip.at.lastMonth'), start: new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString().slice(0, 10), end: new Date(today.getFullYear(), today.getMonth(), 0).toISOString().slice(0, 10) },
+      { label: t('aip.at.3months'), start: new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10), end: today.toISOString().slice(0, 10) },
+      { label: t('aip.at.6months'), start: new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10), end: today.toISOString().slice(0, 10) },
     ]
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
-          {compareMode ? 'Sélectionne 2 périodes' : 'Sélectionne une période'}
+          {compareMode ? t('aip.at.select2periods') : t('aip.at.selectPeriod')}
         </p>
 
         <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase' as const }}>
-          {compareMode ? 'Période A' : 'Période'}
+          {compareMode ? t('aip.at.periodA') : t('aip.at.period')}
         </p>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
           {shortcuts.map(s => (
@@ -6546,12 +6585,12 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         </div>
         <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'flex-end' }}>
           <div>
-            <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>Du</label>
+            <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>{t('aip.at.from')}</label>
             <input type="date" value={customStart1} onChange={e => setCustomStart1(e.target.value)}
               style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
           </div>
           <div>
-            <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>Au</label>
+            <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>{t('aip.at.to')}</label>
             <input type="date" value={customEnd1} onChange={e => setCustomEnd1(e.target.value)}
               style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
           </div>
@@ -6562,7 +6601,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
         {compareMode && period1 && (
           <>
-            <p style={{ fontSize: 10, fontWeight: 600, color: '#f97316', margin: '4px 0 6px', textTransform: 'uppercase' as const }}>Période B</p>
+            <p style={{ fontSize: 10, fontWeight: 600, color: '#f97316', margin: '4px 0 6px', textTransform: 'uppercase' as const }}>{t('aip.at.periodB')}</p>
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginBottom: 8 }}>
               {shortcuts.map(s => (
                 <button key={s.label} onClick={() => setPeriod2(s)} style={{
@@ -6575,12 +6614,12 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
             </div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'flex-end' }}>
               <div>
-                <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>Du</label>
+                <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>{t('aip.at.from')}</label>
                 <input type="date" value={customStart2} onChange={e => setCustomStart2(e.target.value)}
                   style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
               </div>
               <div>
-                <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>Au</label>
+                <label style={{ fontSize: 9, color: 'var(--ai-dim)', display: 'block', marginBottom: 3 }}>{t('aip.at.to')}</label>
                 <input type="date" value={customEnd2} onChange={e => setCustomEnd2(e.target.value)}
                   style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', color: 'var(--ai-text)', fontSize: 11, outline: 'none' }} />
               </div>
@@ -6593,11 +6632,11 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
         {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setPhase('type_select')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>Retour</button>
+          <button onClick={() => setPhase('type_select')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>{t('aip.back')}</button>
           <button onClick={() => { void loadAndAnalyzePeriod() }}
             disabled={!period1 || (compareMode && !period2)}
             style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: period1 ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: period1 ? 'pointer' : 'not-allowed' }}
-          >Analyser →</button>
+          >{t('aip.analyze')} →</button>
         </div>
       </div>
     )
@@ -6607,10 +6646,10 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
     return (
       <div style={{ padding: '8px 0 4px' }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)', margin: '0 0 12px', fontFamily: 'Syne,sans-serif' }}>
-          {compareMode ? 'Compare 2 années' : 'Sélectionne une année'}
+          {compareMode ? t('aip.at.compare2years') : t('aip.at.selectYear')}
         </p>
         <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ai-dim)', margin: '0 0 6px', textTransform: 'uppercase' as const }}>
-          {compareMode ? 'Année A' : 'Année'}
+          {compareMode ? t('aip.at.yearA') : t('aip.at.year')}
         </p>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 10 }}>
           {availableYears.map(y => (
@@ -6625,7 +6664,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         </div>
         {compareMode && year1 && (
           <>
-            <p style={{ fontSize: 10, fontWeight: 600, color: '#f97316', margin: '8px 0 6px', textTransform: 'uppercase' as const }}>Année B</p>
+            <p style={{ fontSize: 10, fontWeight: 600, color: '#f97316', margin: '8px 0 6px', textTransform: 'uppercase' as const }}>{t('aip.at.yearB')}</p>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 10 }}>
               {availableYears.filter(y => y !== year1).map(y => (
                 <button key={y} onClick={() => setYear2(y)} style={{
@@ -6641,11 +6680,11 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         )}
         {error && <p style={{ fontSize: 11, color: '#ef4444', margin: '0 0 8px' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setPhase('type_select')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>Retour</button>
+          <button onClick={() => setPhase('type_select')} style={{ padding: '9px 16px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer' }}>{t('aip.back')}</button>
           <button onClick={() => { void loadAndAnalyzeYear() }}
             disabled={!year1 || (compareMode && !year2)}
             style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', background: year1 ? 'var(--ai-gradient)' : 'var(--ai-border)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: year1 ? 'pointer' : 'not-allowed' }}
-          >Analyser →</button>
+          >{t('aip.analyze')} →</button>
         </div>
       </div>
     )
@@ -6657,9 +6696,9 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
       <div style={{ padding: '8px 0 4px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 14 }}>
           {[
-            { label: 'Activités', value: String(pd.summary.totalActivities) },
-            { label: 'Distance', value: pd.summary.totalKm.toFixed(0) + 'km' },
-            { label: 'Durée', value: pd.summary.totalHours.toFixed(0) + 'h' },
+            { label: t('aip.at.activitiesKpi'), value: String(pd.summary.totalActivities) },
+            { label: t('aip.stream.distance'), value: pd.summary.totalKm.toFixed(0) + 'km' },
+            { label: t('aip.stream.durationKpi'), value: pd.summary.totalHours.toFixed(0) + 'h' },
             { label: 'TSS', value: String(Math.round(pd.summary.totalTSS)) },
           ].map(kpi => (
             <div key={kpi.label} style={{ padding: '8px', borderRadius: 8, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)', textAlign: 'center' as const }}>
@@ -6684,12 +6723,12 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         )}
 
         <div style={{ margin: '14px 0', borderBottom: '1px solid var(--ai-border)' }} />
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 10px' }}>Analyse du coach</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne,sans-serif', margin: '0 0 10px' }}>{t('aip.at.coachAnalysis')}</p>
         <MsgContent text={periodResult.analysis} />
 
         {(periodResult.key_metrics ?? []).length > 0 && (
           <div style={{ marginTop: 14, marginBottom: 14 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>Métriques clés</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>{t('aip.at.keyMetrics')}</p>
             {periodResult.key_metrics.map((m, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--ai-border)' }}>
                 <span style={{ fontSize: 14, color: m.trend === 'up' ? '#22c55e' : m.trend === 'down' ? '#ef4444' : 'var(--ai-dim)' }}>
@@ -6705,7 +6744,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
         {(periodResult.strengths ?? []).length > 0 && (
           <div style={{ marginBottom: 10 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 4px' }}>Points forts</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 4px' }}>{t('aip.at.strengths')}</p>
             {periodResult.strengths.map((s, i) => (
               <p key={i} style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '2px 0', paddingLeft: 10, borderLeft: '2px solid #22c55e' }}>{s}</p>
             ))}
@@ -6714,7 +6753,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
         {(periodResult.weaknesses ?? []).length > 0 && (
           <div style={{ marginBottom: 10 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: '#f97316', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 4px' }}>Points faibles</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#f97316', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 4px' }}>{t('aip.at.weaknesses')}</p>
             {periodResult.weaknesses.map((w, i) => (
               <p key={i} style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '2px 0', paddingLeft: 10, borderLeft: '2px solid #f97316' }}>{w}</p>
             ))}
@@ -6723,7 +6762,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
         {(periodResult.recommendations ?? []).length > 0 && (
           <div style={{ marginBottom: 14 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>Recommandations</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>{t('aip.at.recommendations')}</p>
             {periodResult.recommendations.map((r, i) => (
               <div key={i} style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', marginBottom: 4 }}>
                 <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-text)', margin: 0 }}>{r.label}</p>
@@ -6735,13 +6774,13 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
         {periodResult.comparison && (
           <div style={{ marginBottom: 14 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>Comparaison</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: '0 0 6px' }}>{t('aip.at.comparison')}</p>
             <div style={{ overflowX: 'auto' as const }}>
               <table style={{ width: '100%', fontSize: 10, borderCollapse: 'collapse' as const }}>
                 <thead>
                   <tr>
-                    {['Métrique', 'A', 'B', 'Delta'].map(h => (
-                      <th key={h} style={{ textAlign: h === 'Métrique' ? 'left' as const : 'right' as const, padding: '4px 6px', color: 'var(--ai-dim)', borderBottom: '1px solid var(--ai-border)' }}>{h}</th>
+                    {[t('aip.at.metric'), 'A', 'B', 'Delta'].map((h, hi) => (
+                      <th key={h} style={{ textAlign: hi === 0 ? 'left' as const : 'right' as const, padding: '4px 6px', color: 'var(--ai-dim)', borderBottom: '1px solid var(--ai-border)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -6764,7 +6803,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
         )}
 
         <button onClick={onCancel} style={{ width: '100%', padding: '9px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-mid)', fontSize: 12, cursor: 'pointer', marginTop: 8 }}>
-          Fermer
+          {t('aip.close')}
         </button>
       </div>
     )
@@ -6780,12 +6819,13 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 // sans le bouton "Fermer".
 
 function TrainingReportView({ data }: { data: TrainingReportData }) {
+  const { t } = useI18n()
   const { report, activities, zones, compareMode } = data
   const mainAct = activities[0]
   if (!mainAct) return null
 
   const verdictColors: Record<string, string> = { excellent: '#22c55e', bon: '#3b82f6', passable: '#f97316', a_revoir: '#ef4444' }
-  const verdictLabels: Record<string, string> = { excellent: '🏆 Excellent', bon: '✓ Bon', passable: '~ Passable', a_revoir: '⚠ À revoir' }
+  const verdictLabels: Record<string, string> = { excellent: `🏆 ${t('aip.at.verdictExcellent')}`, bon: `✓ ${t('aip.at.verdictGood')}`, passable: `~ ${t('aip.at.verdictOk')}`, a_revoir: `⚠ ${t('aip.at.verdictReview')}` }
   const vColor = verdictColors[report.verdict] ?? '#3b82f6'
   const confidenceColor = report.confiance === 'élevée' ? '#22c55e' : report.confiance === 'modérée' ? '#f97316' : '#ef4444'
 
@@ -6795,7 +6835,7 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div>
           <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 2px', fontFamily: 'Syne,sans-serif' }}>
-            {mainAct.title ?? AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type}
+            {mainAct.title ?? t(AE_SPORT_LABELS[mainAct.sport_type] ?? mainAct.sport_type)}
           </p>
           <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: 0 }}>{mainAct.started_at.slice(0, 10)}</p>
         </div>
@@ -6807,8 +6847,8 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 12 }}>
         {[
-          { label: 'Durée', value: fmtDuration(Math.round((report.kpis.duree_min ?? 0) * 60)) },
-          { label: 'Distance', value: report.kpis.distance_km != null ? `${report.kpis.distance_km.toFixed(1)}km` : '—' },
+          { label: t('aip.stream.durationKpi'), value: fmtDuration(Math.round((report.kpis.duree_min ?? 0) * 60)) },
+          { label: t('aip.stream.distance'), value: report.kpis.distance_km != null ? `${report.kpis.distance_km.toFixed(1)}km` : '—' },
           { label: 'TSS', value: report.kpis.tss != null ? String(report.kpis.tss) : '—' },
           { label: 'EI', value: report.kpis.efficiency_index != null ? report.kpis.efficiency_index.toFixed(2) : '—', sub: report.kpis.ei_vs_average != null ? `${report.kpis.ei_vs_average > 0 ? '+' : ''}${report.kpis.ei_vs_average.toFixed(1)}%` : '' },
         ].map(k => (
@@ -6839,7 +6879,7 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
       {compareMode && activities[1]?.streams && (
         <div style={{ marginBottom: 14 }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)', margin: '0 0 5px' }}>
-            Séance B — {activities[1].title ?? AE_SPORT_LABELS[activities[1].sport_type] ?? activities[1].sport_type}
+            {t('aip.at.sessionB')} — {activities[1].title ?? t(AE_SPORT_LABELS[activities[1].sport_type] ?? activities[1].sport_type)}
           </p>
           <StreamProfileChart streams={activities[1].streams} zones={zones} sport={activities[1].sport_type} />
         </div>
@@ -6848,14 +6888,14 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
       {/* ── Séparateur + titre Analyse du coach ── */}
       <div style={{ margin: '16px 0 10px', borderBottom: '1px solid var(--ai-border)' }} />
       <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne, sans-serif', margin: '0 0 10px', letterSpacing: '-0.01em' }}>
-        Analyse du coach
+        {t('aip.at.coachAnalysis')}
       </p>
 
       {[
-        { title: 'Exécution', text: report.interpretation?.execution },
-        { title: 'Récupération', text: report.interpretation?.contexte_recuperation },
-        ...(report.interpretation?.plan_vs_realise ? [{ title: 'Plan vs réalisé', text: report.interpretation.plan_vs_realise }] : []),
-        { title: 'Tendance historique', text: report.interpretation?.tendance_historique },
+        { title: t('aip.at.execution'), text: report.interpretation?.execution },
+        { title: t('aip.wp.recovery'), text: report.interpretation?.contexte_recuperation },
+        ...(report.interpretation?.plan_vs_realise ? [{ title: t('aip.at.planVsActual'), text: report.interpretation.plan_vs_realise }] : []),
+        { title: t('aip.at.historicalTrend'), text: report.interpretation?.tendance_historique },
       ].filter(b => b.text && b.text.trim() !== '').map((b, i, arr) => (
         <div key={i} style={{ marginBottom: i < arr.length - 1 ? 16 : 10 }}>
           <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 4px' }}>{b.title}</p>
@@ -6867,9 +6907,9 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
       {report.comparison && (
         <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(6,182,212,0.2)', background: 'rgba(6,182,212,0.04)', marginBottom: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Comparaison</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#06B6D4', margin: 0, fontFamily: 'Syne,sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('aip.at.comparison')}</p>
             <span style={{ fontSize: 11, fontWeight: 700, color: report.comparison.progression === 'progression' ? '#22c55e' : report.comparison.progression === 'regression' ? '#ef4444' : 'var(--ai-mid)' }}>
-              {report.comparison.progression === 'progression' ? '↑ Progression' : report.comparison.progression === 'regression' ? '↓ Régression' : '= Stable'}
+              {report.comparison.progression === 'progression' ? `↑ ${t('aip.at.progression')}` : report.comparison.progression === 'regression' ? `↓ ${t('aip.at.regression')}` : `= ${t('aip.at.stable')}`}
             </span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
@@ -6898,7 +6938,7 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
       {/* Conseils */}
       {(report.conseils ?? []).length > 0 && (
         <div style={{ marginBottom: 10 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>Conseils d&apos;optimisation</p>
+          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 6px' }}>{t('aip.at.optimizationTips')}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {(report.conseils ?? []).map((c, i) => (
               <div key={i} style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
@@ -6913,8 +6953,8 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
 
       {/* Sources */}
       <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--ai-bg2)', fontSize: 10, color: 'var(--ai-dim)' }}>
-        <p style={{ margin: '0 0 2px' }}>Sources : {(report.sources_used ?? []).join(' · ')}</p>
-        <p style={{ margin: 0 }}>Confiance : <strong style={{ color: confidenceColor }}>{report.confiance}</strong></p>
+        <p style={{ margin: '0 0 2px' }}>{t('aip.sources')} : {(report.sources_used ?? []).join(' · ')}</p>
+        <p style={{ margin: 0 }}>{t('aip.test.confidence')} : <strong style={{ color: confidenceColor }}>{report.confiance}</strong></p>
       </div>
     </div>
   )
@@ -7352,6 +7392,7 @@ interface TpIntroStatus {
 function TpSubRow({ label, ok, count, link }: {
   label: string; ok: boolean; count?: number; link: string
 }) {
+  const { t } = useI18n()
   const hasCount = !ok && (count ?? 0) > 0
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--ai-border)' }}>
@@ -7365,7 +7406,7 @@ function TpSubRow({ label, ok, count, link }: {
       <span style={{ flex: 1, fontSize: 12, color: ok ? 'var(--ai-text)' : 'var(--ai-mid)', lineHeight: 1.4 }}>{label}</span>
       {!ok && (
         <a href={link} style={{ fontSize: 10, color: '#8b5cf6', textDecoration: 'none', flexShrink: 0, fontWeight: 600 }}>
-          Compléter →
+          {t('aip.complete')} →
         </a>
       )}
     </div>
@@ -7420,6 +7461,7 @@ function TpSectionWrap({ id, label, ok, total, isOpen, onToggle, children }: {
 }
 
 function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCancel: () => void }) {
+  const { t } = useI18n()
   const [status,  setStatus]  = useState<TpIntroStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<Record<string, boolean>>({
@@ -7516,7 +7558,7 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
           border: '2px solid rgba(139,92,246,0.2)', borderTop: '2px solid #8b5cf6',
           animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px',
         }} />
-        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Vérification du profil…</p>
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>{t('aip.checkingProfile')}</p>
       </div>
     )
   }
@@ -7535,37 +7577,37 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
         <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 6px', fontFamily: 'Syne,sans-serif' }}>
-          Prépare ton plan d&apos;entraînement
+          {t('aip.tp.introTitle')}
         </p>
         <p style={{ fontSize: 12, color: 'var(--ai-mid)', margin: 0, lineHeight: 1.65 }}>
-          Plus ton profil est complet, plus le plan généré sera précis. Tu peux continuer même si des données manquent.
+          {t('aip.tp.introSub')}
         </p>
       </div>
 
       {/* Performance */}
-      <TpSectionWrap id="performance" label="Performance" ok={perfOk} total={11} isOpen={open.performance} onToggle={() => toggle('performance')}>
-        <TpSubRow label="Zones puissance vélo"       ok={s?.zones_bike   ?? false} link="/performance" />
-        <TpSubRow label="Records puissance vélo"      ok={!!(s?.records_bike)} count={s?.records_bike} link="/performance" />
-        <TpSubRow label="Zones allure running"  ok={s?.zones_run    ?? false} link="/performance" />
-        <TpSubRow label="Records running"       ok={!!(s?.records_run)}  count={s?.records_run}  link="/performance" />
-        <TpSubRow label="Zones allure natation"       ok={s?.zones_swim   ?? false} link="/performance" />
-        <TpSubRow label="Records natation"            ok={!!(s?.records_swim)} count={s?.records_swim} link="/performance" />
-        <TpSubRow label="Zones FC"                    ok={s?.zones_hr     ?? false} link="/performance" />
+      <TpSectionWrap id="performance" label={t('aip.tp.secPerformance')} ok={perfOk} total={11} isOpen={open.performance} onToggle={() => toggle('performance')}>
+        <TpSubRow label={t('aip.tp.bikePowerZones')}       ok={s?.zones_bike   ?? false} link="/performance" />
+        <TpSubRow label={t('aip.tp.bikePowerRecords')}      ok={!!(s?.records_bike)} count={s?.records_bike} link="/performance" />
+        <TpSubRow label={t('aip.tp.runPaceZones')}  ok={s?.zones_run    ?? false} link="/performance" />
+        <TpSubRow label={t('aip.tp.runRecords')}       ok={!!(s?.records_run)}  count={s?.records_run}  link="/performance" />
+        <TpSubRow label={t('aip.tp.swimPaceZones')}       ok={s?.zones_swim   ?? false} link="/performance" />
+        <TpSubRow label={t('aip.tp.swimRecords')}            ok={!!(s?.records_swim)} count={s?.records_swim} link="/performance" />
+        <TpSubRow label={t('aip.tp.hrZones')}                    ok={s?.zones_hr     ?? false} link="/performance" />
         <TpSubRow label="Year datas"                  ok={!!(s?.year_datas)}   count={s?.year_datas}   link="/performance" />
         <TpSubRow label="Tests"                       ok={!!(s?.tests)}        count={s?.tests}        link="/performance" />
         <TpSubRow label="VO2max"                      ok={s?.vo2max       ?? false} link="/performance" />
-        <TpSubRow label="FC repos"                    ok={s?.hr_rest      ?? false} link="/performance" />
+        <TpSubRow label={t('aip.tp.restHr')}                    ok={s?.hr_rest      ?? false} link="/performance" />
       </TpSectionWrap>
 
       {/* Training */}
       <TpSectionWrap id="training" label="Training" ok={trainOk} total={3} isOpen={open.training} onToggle={() => toggle('training')}>
-        <TpSubRow label="3 mois d'historique"  ok={!!(s?.activities_3m)}  count={s?.activities_3m}  link="/activities" />
-        <TpSubRow label="6 mois d'historique"  ok={!!(s?.activities_6m)}  count={s?.activities_6m}  link="/activities" />
-        <TpSubRow label="1 an d'historique"    ok={!!(s?.activities_12m)} count={s?.activities_12m} link="/activities" />
+        <TpSubRow label={t('aip.tp.history3m')}  ok={!!(s?.activities_3m)}  count={s?.activities_3m}  link="/activities" />
+        <TpSubRow label={t('aip.tp.history6m')}  ok={!!(s?.activities_6m)}  count={s?.activities_6m}  link="/activities" />
+        <TpSubRow label={t('aip.tp.history1y')}    ok={!!(s?.activities_12m)} count={s?.activities_12m} link="/activities" />
       </TpSectionWrap>
 
       {/* Calendrier */}
-      <TpSectionWrap id="calendrier" label="Calendrier" ok={calOk} total={4} isOpen={open.calendrier} onToggle={() => toggle('calendrier')}>
+      <TpSectionWrap id="calendrier" label={t('aip.tp.secCalendar')} ok={calOk} total={4} isOpen={open.calendrier} onToggle={() => toggle('calendrier')}>
         <TpSubRow label="Race calendar"    ok={!!(s?.races)}        count={s?.races}        link="/calendar" />
         <TpSubRow label="GTY"              ok={!!(s?.gty)}          count={s?.gty}          link="/calendar" />
         <TpSubRow label="Pro calendar"     ok={!!(s?.pro_events)}   count={s?.pro_events}   link="/calendar" />
@@ -7574,12 +7616,12 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
 
       {/* Nutrition */}
       <TpSectionWrap id="nutrition" label="Nutrition" ok={0} total={1} isOpen={open.nutrition} onToggle={() => toggle('nutrition')}>
-        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '10px 0', textAlign: 'center' }}>À compléter</p>
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '10px 0', textAlign: 'center' }}>{t('aip.tp.toComplete')}</p>
       </TpSectionWrap>
 
       {/* Récupération */}
-      <TpSectionWrap id="recuperation" label="Récupération" ok={0} total={1} isOpen={open.recuperation} onToggle={() => toggle('recuperation')}>
-        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '10px 0', textAlign: 'center' }}>À compléter</p>
+      <TpSectionWrap id="recuperation" label={t('aip.wp.recovery')} ok={0} total={1} isOpen={open.recuperation} onToggle={() => toggle('recuperation')}>
+        <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '10px 0', textAlign: 'center' }}>{t('aip.tp.toComplete')}</p>
       </TpSectionWrap>
 
       {/* CTA sticky */}
@@ -7597,13 +7639,13 @@ function TpIntroScreen({ onContinue, onCancel }: { onContinue: () => void; onCan
             cursor: 'pointer', fontFamily: 'Syne,sans-serif', letterSpacing: '0.01em',
           }}
         >
-          Continuer vers le questionnaire →
+          {t('aip.nutri.continueQuestionnaire')} →
         </button>
         <button
           onClick={onCancel}
           style={{ display: 'block', margin: '8px auto 0', fontSize: 11, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}
         >
-          Annuler
+          {t('aip.cancel')}
         </button>
       </div>
     </div>
@@ -7621,6 +7663,7 @@ function TrainingPlanFlow({
   onCancel: () => void
   onRecordConv: (userMsg: string, aiMsg: string) => void
 }) {
+  const { t } = useI18n()
   type TpPhase = 'intro' | 'gate' | 'questionnaire' | 'generating' | 'result' | 'modifying'
 
   const [phase, setPhase] = useState<TpPhase>('intro')
@@ -7917,7 +7960,7 @@ function TrainingPlanFlow({
         data = JSON.parse(rawText)
       } catch {
         console.error('[training-plan] response non-JSON (status', res.status, '):', rawText.slice(0, 300))
-        throw new Error(`Erreur serveur ${res.status}: ${rawText.slice(0, 120)}`)
+        throw new Error(`${t('aip.tp.serverError')} ${res.status}: ${rawText.slice(0, 120)}`)
       }
       // Diagnostic : on inspecte aussi les clés alternatives que l'agent
       // pourrait renvoyer (programme/semaines/blocs au top-level), via cast ciblé.
@@ -7968,10 +8011,10 @@ function TrainingPlanFlow({
       const structureInvalid = !prog || !semainesArr || semainesArr.length === 0
 
       if (data.error || structureInvalid) {
-        const errMsg = data.error ?? 'Erreur de génération'
+        const errMsg = data.error ?? t('aip.genError')
         const isParseErr = errMsg.toLowerCase().includes('json') || errMsg.toLowerCase().includes('parse') || errMsg.toLowerCase().includes('unterminated') || structureInvalid
         console.error('[training-plan] error:', data.error ?? 'none', '| structureInvalid:', structureInvalid, '| stack:', (data as Record<string,unknown>).debug_stack ?? 'n/a', '| response:', data)
-        setError(isParseErr ? 'La génération a rencontré un problème.' : errMsg)
+        setError(isParseErr ? t('aip.tp.genProblem') : errMsg)
         setRetryable(isParseErr)
         setPhase(program ? 'result' : 'questionnaire')
         return
@@ -7981,15 +8024,15 @@ function TrainingPlanFlow({
       setGeneratedAt(new Date())
       // Record conversation
       const totalSeances = prog.semaines.reduce((s, w) => s + (w.seances ?? []).length, 0)
-      const userMsg = `Créer un plan d'entraînement — ${form.sport_principal} — ${prog.duree_semaines} semaines — ${form.course_cible_nom || form.niveau_vise}`
-      const aiMsg = `**${prog.nom}**\n\n${prog.objectif_principal}\n\n**${prog.duree_semaines} semaines · ${totalSeances} séances au total**\n\n${(prog.conseils_adaptation ?? []).slice(0, 3).map(c => `• ${c}`).join('\n')}`
+      const userMsg = t('aip.tp.recordUser', { sport: form.sport_principal, weeks: prog.duree_semaines, target: form.course_cible_nom || form.niveau_vise })
+      const aiMsg = `**${prog.nom}**\n\n${prog.objectif_principal}\n\n**${t('aip.tp.recordWeeksSessions', { weeks: prog.duree_semaines, sessions: totalSeances })}**\n\n${(prog.conseils_adaptation ?? []).slice(0, 3).map(c => `• ${c}`).join('\n')}`
       onRecordConv(userMsg, aiMsg)
       setPhase('result')
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Erreur réseau'
+      const msg = e instanceof Error ? e.message : t('aip.networkError')
       const isParseErr = msg.toLowerCase().includes('json') || msg.toLowerCase().includes('parse') || msg.toLowerCase().includes('unterminated')
       console.error('[training-plan] catch error:', e)
-      setError(isParseErr ? 'La génération a rencontré un problème.' : msg)
+      setError(isParseErr ? t('aip.tp.genProblem') : msg)
       setRetryable(isParseErr)
       setPhase(program ? 'result' : 'questionnaire')
     }
@@ -12155,6 +12198,7 @@ function HistoryDrawer({
   activeAgent: 'training' | 'networks'
   onAgentChange: (a: 'training' | 'networks') => void
 }) {
+  const { t } = useI18n()
   const [menuId,   setMenuId]   = useState<string | null>(null)
   const [renId,    setRenId]    = useState<string | null>(null)
   const [renVal,   setRenVal]   = useState('')
@@ -12357,7 +12401,7 @@ function HistoryDrawer({
                     {conv.title}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--ai-mid)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                    {mounted ? fmtDate(conv.updatedAt) : ''}
+                    {mounted ? fmtDate(conv.updatedAt, t) : ''}
                   </div>
                 </div>
 
@@ -13841,6 +13885,7 @@ function EstimerZonesFlow({ onCancel, onRecordConv }: {
   onCancel: () => void
   onRecordConv?: (userMsg: string, aiMsg: string) => void
 }) {
+  const { t } = useI18n()
   const [phase, setPhase] = useState<'sport' | 'gate' | 'generating' | 'result'>('sport')
   const [selectedSport, setSelectedSport] = useState<string | null>(null)
   const [userSports, setUserSports] = useState<string[]>([])
@@ -14127,7 +14172,7 @@ FORMAT DE RÉPONSE OBLIGATOIRE (JSON uniquement, 0 texte avant ou après) :
       return (
         <div style={{ padding: '40px 0', textAlign: 'center' }}>
           <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid rgba(6,182,212,0.2)', borderTop: '2px solid var(--ai-accent)', animation: 'ai_spin 0.8s linear infinite', margin: '0 auto 12px' }} />
-          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>Chargement de tes données…</p>
+          <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: 0 }}>{t('aip.loadingData')}</p>
         </div>
       )
     }
@@ -18757,6 +18802,7 @@ export default function AIPanel({
   planContext,
   planName,
 }: Props) {
+  const { t } = useI18n()
 
   // ── State ──────────────────────────────────────────────────
   const [convs,       setConvs]       = useState<AIConv[]>([])
@@ -20866,7 +20912,7 @@ export default function AIPanel({
                   fontSize: isDesktop ? 38 : 30, fontWeight: 400, color: 'var(--ai-text)',
                   fontFamily: 'var(--font-display)', lineHeight: 1.15, letterSpacing: '-0.02em',
                 }}>
-                  {mounted ? getGreeting() : 'Bonjour'}{userFirstName ? `, ${userFirstName}` : ''}
+                  {mounted ? t(getGreeting()) : t('aip.greeting.hello')}{userFirstName ? `, ${userFirstName}` : ''}
                 </p>
               </div>
             )}
@@ -21355,7 +21401,7 @@ export default function AIPanel({
                             </svg>
                           </span>
                           <span className="ai-shimmer" style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>
-                            Recherche sur internet
+                            {t('aip.searchingInternet')}
                           </span>
                           <span className="ai-search-dots" style={{ color: 'var(--ai-accent, #06B6D4)', fontWeight: 700, letterSpacing: 1, fontSize: 13.5 }}>
                             <span>.</span><span>.</span><span>.</span>
@@ -21373,7 +21419,7 @@ export default function AIPanel({
                             style={{ width: 15, height: 15, objectFit: 'contain', animation: 'spin 2.4s linear infinite', opacity: 0.85 }}
                           />
                           <span className="ai-shimmer" style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--font-display)' }}>
-                            {toolStatusByMsg[msg.id]}
+                            {t(toolStatusByMsg[msg.id])}
                           </span>
                         </div>
                       )
@@ -21423,7 +21469,7 @@ export default function AIPanel({
                       }}>
                         {/* Timestamp (C4) */}
                         <span style={{ fontSize: 10, color: 'var(--ai-dim)', opacity: 0.7, userSelect: 'none', marginRight: 4 }}>
-                          {fmtMsgTime(msg.ts)}
+                          {fmtMsgTime(msg.ts, t)}
                         </span>
                         {/* AI message actions (C1) */}
                         {msg.role === 'assistant' && (

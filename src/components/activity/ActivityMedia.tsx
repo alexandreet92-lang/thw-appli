@@ -9,10 +9,12 @@ import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { IconPlus, IconX, IconPhoto, IconTrash, IconPlayerPlayFilled, IconLoader2 } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
+import { useI18n } from '@/lib/i18n'
 
 export interface MediaItem { url: string; type: 'image' | 'video'; path: string }
 
 export function ActivityMedia({ activityId, initialMedia, initialComment }: { activityId: string; initialMedia?: MediaItem[] | null; initialComment?: string | null }) {
+  const { t } = useI18n()
   const [media, setMedia] = useState<MediaItem[]>(Array.isArray(initialMedia) ? initialMedia : [])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,7 +60,7 @@ export function ActivityMedia({ activityId, initialMedia, initialComment }: { ac
       setMedia(next)
     } catch (e) {
       console.error('[ActivityMedia] upload', e)
-      setError("Échec de l'envoi. Réessaie.")
+      setError(t('lo.uploadFailed'))
     } finally {
       setBusy(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -93,13 +95,13 @@ export function ActivityMedia({ activityId, initialMedia, initialComment }: { ac
         />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>Photos &amp; vidéos</span>
+        <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>{t('lo.photosVideos')}</span>
         <button onClick={() => inputRef.current?.click()} disabled={busy} style={{
           display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', borderRadius: 999,
           border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: busy ? 'default' : 'pointer',
         }}>
           {busy ? <IconLoader2 size={15} className="thw-spin" /> : <IconPlus size={15} />}
-          {busy ? 'Envoi…' : 'Ajouter'}
+          {busy ? t('lo.sending') : t('lo.add')}
         </button>
       </div>
       <input ref={inputRef} type="file" accept="image/*,video/*" multiple hidden onChange={e => onFiles(e.target.files)} />
@@ -113,7 +115,7 @@ export function ActivityMedia({ activityId, initialMedia, initialComment }: { ac
           color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
         }}>
           <IconPhoto size={26} />
-          <span style={{ fontSize: 13, fontWeight: 600 }}>Ajoute des photos ou vidéos de ta séance</span>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{t('lo.addMediaHint')}</span>
         </button>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -133,8 +135,8 @@ export function ActivityMedia({ activityId, initialMedia, initialComment }: { ac
 
       {viewer != null && media[viewer] && createPortal(
         <div onClick={() => setViewer(null)} style={{ position: 'fixed', inset: 0, zIndex: 14000, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <button onClick={e => { e.stopPropagation(); setViewer(null) }} aria-label="Fermer" style={{ position: 'absolute', top: 'calc(16px + env(safe-area-inset-top))', right: 16, width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={20} color="#fff" /></button>
-          <button onClick={e => { e.stopPropagation(); remove(viewer) }} aria-label="Supprimer" style={{ position: 'absolute', top: 'calc(16px + env(safe-area-inset-top))', left: 16, width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconTrash size={19} color="#fff" /></button>
+          <button onClick={e => { e.stopPropagation(); setViewer(null) }} aria-label={t('lo.close')} style={{ position: 'absolute', top: 'calc(16px + env(safe-area-inset-top))', right: 16, width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconX size={20} color="#fff" /></button>
+          <button onClick={e => { e.stopPropagation(); remove(viewer) }} aria-label={t('lo.delete')} style={{ position: 'absolute', top: 'calc(16px + env(safe-area-inset-top))', left: 16, width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconTrash size={19} color="#fff" /></button>
           {media[viewer].type === 'video'
             ? <video src={media[viewer].url} controls autoPlay playsInline style={{ maxWidth: '100%', maxHeight: '86vh' }} onClick={e => e.stopPropagation()} />
             : <img src={media[viewer].url} alt="" style={{ maxWidth: '100%', maxHeight: '86vh', objectFit: 'contain' }} onClick={e => e.stopPropagation()} />}

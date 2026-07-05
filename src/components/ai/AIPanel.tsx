@@ -672,7 +672,7 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
           <span style={{ color: 'var(--ai-dim)', minWidth: 18, fontSize: 12, fontWeight: 700, flexShrink: 0, marginTop: 3, fontFamily: 'DM Mono,monospace' }}>
             {nMatch[1]}.
           </span>
-          <span style={{ fontSize: 15, lineHeight: 1.72 }}>{parseBold(nMatch[2])}</span>
+          <span style={{ fontSize: 16, fontWeight: 450, lineHeight: 1.72 }}>{parseBold(nMatch[2])}</span>
         </div>
       )
       i++; continue
@@ -685,14 +685,14 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
       blocks.push(
         <div key={i} style={{ display: 'flex', gap: 9, marginBottom: 4, paddingLeft: level * 16 }}>
           <span style={{ color: 'var(--ai-dim)', flexShrink: 0, fontSize: level > 0 ? 6 : 8, marginTop: level > 0 ? 7 : 6, lineHeight: 1 }}>{level > 0 ? '○' : '●'}</span>
-          <span style={{ fontSize: 15, lineHeight: 1.72 }}>{parseBold(bMatch[2])}</span>
+          <span style={{ fontSize: 16, fontWeight: 450, lineHeight: 1.72 }}>{parseBold(bMatch[2])}</span>
         </div>
       )
       i++; continue
     }
 
     blocks.push(
-      <p key={i} style={{ fontSize: 16, lineHeight: 1.65, margin: '0 0 8px 0', color: 'var(--ai-text)' }}>
+      <p key={i} style={{ fontSize: 16.5, fontWeight: 450, lineHeight: 1.68, margin: '0 0 9px 0', color: 'var(--ai-text)' }}>
         {parseBold(line)}
       </p>
     )
@@ -21163,12 +21163,13 @@ export default function AIPanel({
                       justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                       alignItems: 'flex-start', gap: 10,
                     }}>
-                      {/* Avatar IA — Zap dans cercle cyan */}
+                      {/* Avatar IA — masqué sur mobile pour que le texte prenne
+                          toute la largeur (façon Claude) ; conservé sur desktop. */}
                       {msg.role === 'assistant' && (
                         <div style={{
                           width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
                           background: 'rgba(6,182,212,0.12)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          display: isDesktop ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center',
                           alignSelf: 'flex-start', marginTop: 4,
                         }}>
                           <Zap size={14} color="#06B6D4" />
@@ -21403,7 +21404,7 @@ export default function AIPanel({
                       <div style={{
                         display: 'flex', alignItems: 'center',
                         justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                        gap: 4, paddingLeft: msg.role === 'assistant' ? 32 : 0,
+                        gap: 4, paddingLeft: msg.role === 'assistant' && isDesktop ? 32 : 0,
                         opacity: 0, animation: 'ai_actions_in 0.15s ease forwards',
                       }}>
                         {/* Timestamp (C4) */}

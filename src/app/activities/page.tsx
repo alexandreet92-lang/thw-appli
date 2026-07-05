@@ -132,6 +132,11 @@ interface Activity {
   summary_polyline: string | null
   raw_data:         Record<string, unknown> | null
   media:            Array<{ url: string; type: 'image' | 'video'; path: string }> | null
+  device_name:      string | null
+  start_lat:        number | null
+  start_lng:        number | null
+  location_name:    string | null
+  comment:          string | null
   [key: string]:    unknown
 }
 
@@ -341,7 +346,7 @@ const PAGE_SIZE = 50
 // power_curve, pace_curve) qui ne servent qu'au détail : un `select('*')` les
 // tirait pour chaque ligne → payload énorme → timeout (500). On garde tout le
 // reste (dont summary_polyline pour la mini-carte et laps).
-const LIST_COLUMNS = 'id,user_id,provider,provider_id,external_url,sport_type,is_race,race_name,title,description,notes,started_at,ended_at,timezone,moving_time_s,elapsed_time_s,distance_m,elevation_gain_m,elevation_loss_m,max_elevation_m,avg_speed_ms,max_speed_ms,avg_pace_s_km,avg_watts,max_watts,normalized_watts,kilojoules,ftp_at_time,intensity_factor,tss,avg_hr,max_hr,min_hr,avg_cadence,max_cadence,calories,suffer_score,perceived_effort,rpe,avg_temp_c,weather,gear_name,trainer,commute,flagged,laps,created_at,updated_at,total_descent_m,trimp,aerobic_decoupling,average_heartrate,max_heartrate,average_speed,cardiac_drift_pct,summary_polyline,strava_gear_id,records_processed,records_beaten,feeling,difficulty,ef_value,power_hr_ratio,decoupling_pct,ef_calculation_method,sm_score,sn_score,media'
+const LIST_COLUMNS = 'id,user_id,provider,provider_id,external_url,sport_type,is_race,race_name,title,description,notes,started_at,ended_at,timezone,moving_time_s,elapsed_time_s,distance_m,elevation_gain_m,elevation_loss_m,max_elevation_m,avg_speed_ms,max_speed_ms,avg_pace_s_km,avg_watts,max_watts,normalized_watts,kilojoules,ftp_at_time,intensity_factor,tss,avg_hr,max_hr,min_hr,avg_cadence,max_cadence,calories,suffer_score,perceived_effort,rpe,avg_temp_c,weather,gear_name,trainer,commute,flagged,laps,created_at,updated_at,total_descent_m,trimp,aerobic_decoupling,average_heartrate,max_heartrate,average_speed,cardiac_drift_pct,summary_polyline,strava_gear_id,records_processed,records_beaten,feeling,difficulty,ef_value,power_hr_ratio,decoupling_pct,ef_calculation_method,sm_score,sn_score,media,device_name,start_lat,start_lng,location_name,comment'
 
 function useActivities() {
   const [activities, setActivities]   = useState<Activity[]>([])
@@ -7545,7 +7550,7 @@ conseil pour la prochaine séance similaire.`
 
           {/* Photos & vidéos (mobile) */}
           <div style={{ padding: '14px 16px 0' }}>
-            <ActivityMedia activityId={a.id} initialMedia={a.media} />
+            <ActivityMedia activityId={a.id} initialMedia={a.media} initialComment={a.comment} />
           </div>
 
           {/* Records battus — sous la carte (mobile) */}
@@ -8040,7 +8045,7 @@ conseil pour la prochaine séance similaire.`
 
         {/* ── Photos & vidéos (desktop) ── */}
         <div style={{ marginBottom: 20 }}>
-          <ActivityMedia activityId={a.id} initialMedia={a.media} />
+          <ActivityMedia activityId={a.id} initialMedia={a.media} initialComment={a.comment} />
         </div>
 
         {/* ── Records battus — sous la carte (desktop) ── */}
@@ -9467,6 +9472,12 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
         trainingTypes:    meta?.types ?? [],
         nbExercises:      meta?.nbExos ?? null,
         nbCircuits:       meta?.nbCircuits ?? null,
+        deviceName:       a.device_name ?? null,
+        startLat:         a.start_lat ?? null,
+        startLng:         a.start_lng ?? null,
+        locationName:     a.location_name ?? null,
+        media:            (a.media as ActivityCardData['media']) ?? null,
+        comment:          a.comment ?? null,
       } satisfies ActivityCardData
     })
   }, [activities, recordsByActivity, bestPerLabel, smSnBench, metaByActivity])

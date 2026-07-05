@@ -6,11 +6,12 @@
 // + grille 4 stats + section records.
 // ══════════════════════════════════════════════════════════════
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatRecordDuration, durationRank } from '@/lib/records/format'
 import { SmSnStat } from '@/components/metrics/SmSnStat'
 import { workoutTypeDefs } from '@/components/activity/WorkoutTypeBadges'
 import { useI18n } from '@/lib/i18n'
+import { reverseGeocode } from '@/lib/geo/reverseGeocode'
 
 // ── Couleurs sémantiques fixes ─────────────────────────────────────────
 const GOLD = '#eab308'
@@ -39,6 +40,12 @@ export interface ActivityCardData {
   trainingTypes?: string[]        // ids de type d'entraînement (Force, PMA…)
   nbExercises?:   number | null   // muscu : nb d'exercices
   nbCircuits?:    number | null   // muscu : nb de circuits
+  deviceName?:    string | null   // ex: « Garmin Edge 830 »
+  startLat?:      number | null
+  startLng?:      number | null
+  locationName?:  string | null   // « Ville, Région » (si déjà géocodé)
+  media?:         Array<{ url: string; type: 'image' | 'video'; path: string }> | null
+  comment?:       string | null
 }
 
 interface Props {
@@ -80,8 +87,9 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 function mapboxStaticUrl(encodedPolyline: string, sportColor: string, width: number, height: number): string | null {
   if (!MAPBOX_TOKEN || !encodedPolyline) return null
   const color = sportColor.replace('#', '')
-  // path-{w}+{color}-{opacity}({polyline}) — la polyline doit être URL-encodée
-  const overlay = `path-2.5+${color}-1(${encodeURIComponent(encodedPolyline)})`
+  // Liseré blanc dessous + trait couleur du sport dessus → bien lisible (façon Strava).
+  const enc = encodeURIComponent(encodedPolyline)
+  const overlay = `path-8+ffffff-1(${enc}),path-5+${color}-1(${enc})`
   return `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/${overlay}/auto/${width}x${height}@2x?access_token=${MAPBOX_TOKEN}`
 }
 
@@ -103,82 +111,88 @@ function TrophyIcon({ color, size = 12 }: { color: string; size?: number }) {
 // ── Main component ─────────────────────────────────────────────────────
 export function ActivityCard({ data, onClick }: Props) {
   const { t } = useI18n()
-  const [hover, setHover] = useState(false)
   const [active, setActive] = useState(false)
+  const [place, setPlace] = useState<string | null>(data.locationName ?? null)
+
+  // Géocode le lieu de départ (Ville, Région) si pas déjà connu.
+  useEffect(() => {
+    if (place || data.startLat == null || data.startLng == null) return
+    let cancelled = false
+    void reverseGeocode(data.startLat, data.startLng).then(n => { if (!cancelled && n) setPlace(n) })
+    return () => { cancelled = true }
+  }, [place, data.startLat, data.startLng])
 
   const allTime = [...data.records.allTime].sort((a, b) => durationRank(a.label) - durationRank(b.label))
   const year    = [...data.records.year].sort((a, b) => durationRank(a.label) - durationRank(b.label))
   const totalRecords = allTime.length + year.length
 
-  // Map preview (640x180 cible ratio, mais auto sur Mapbox)
-  const mapUrlMobile  = data.encodedPolyline ? mapboxStaticUrl(data.encodedPolyline, data.sportColor, 600, 160) : null
-  const mapUrl        = data.encodedPolyline ? mapboxStaticUrl(data.encodedPolyline, data.sportColor, 700, 200) : null
+  const mapUrl = data.encodedPolyline ? mapboxStaticUrl(data.encodedPolyline, data.sportColor, 720, 300) : null
+  const media  = data.media ?? []
+  const slides = [...(mapUrl ? [{ kind: 'map' as const, url: mapUrl }] : []), ...media.map(m => ({ kind: m.type, url: m.url }))]
 
   const yearLabel = year[0]?.year ?? String(new Date(data.startedAt).getFullYear())
 
   return (
     <div
       onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       onTouchStart={() => setActive(true)}
       onTouchEnd={() => setActive(false)}
       onTouchCancel={() => setActive(false)}
       className="thw-activity-card"
       style={{
-        background:    'var(--bg-card)',
-        border:        `1px solid ${hover ? 'var(--border-mid)' : 'var(--border)'}`,
-        borderRadius:  14,
-        overflow:      'hidden',
+        background:    'transparent',
+        borderBottom:  '1px solid var(--border)',
         cursor:        'pointer',
-        opacity:       active ? 0.85 : 1,
-        transition:    'border-color 0.2s, opacity 0.15s',
+        opacity:       active ? 0.7 : 1,
+        transition:    'opacity 0.15s',
         display:       'flex',
         flexDirection: 'column',
       }}
     >
       {/* ── Header ── */}
-      <div style={{ padding: '14px 16px 10px' }}>
+      <div style={{ padding: '16px 16px 10px' }}>
         <p style={{
-          fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0,
+          fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: 0,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {data.title ?? t('activities.untitledActivity')}
         </p>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6, marginTop: 4,
-          fontSize: 10, color: 'var(--text-dim)',
-        }}>
-          <span style={{
-            width:        6, height: 6, borderRadius: '50%',
-            background:   data.sportColor, flexShrink: 0,
-          }} />
-          <span style={{
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            {fmtSubline(data.sportLabel, data.startedAt)}
+        {/* Sport · date · heure [· appareil] */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 11.5, color: 'var(--text-dim)' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: data.sportColor, flexShrink: 0 }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {fmtSubline(data.sportLabel, data.startedAt)}{data.deviceName ? ` · ${data.deviceName}` : ''}
           </span>
         </div>
+        {/* Lieu de départ */}
+        {place && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, fontSize: 11.5, color: 'var(--text-dim)' }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{place}</span>
+          </div>
+        )}
       </div>
 
-      {/* ── Map preview ── */}
-      {mapUrl && (
-        <picture>
-          <source media="(min-width: 640px)" srcSet={mapUrl} />
-          <img
-            src={mapUrlMobile ?? mapUrl}
-            alt=""
-            loading="lazy"
-            style={{
-              width:        '100%',
-              height:       180,
-              objectFit:    'cover',
-              display:      'block',
-              background:   'var(--bg-card2)',
-            }}
-            className="thw-card-map"
-          />
-        </picture>
+      {/* ── Commentaire de l'athlète ── */}
+      {data.comment && data.comment.trim() && (
+        <p style={{ margin: '0 16px 12px', fontSize: 13.5, lineHeight: 1.5, color: 'var(--text-mid)' }}>{data.comment}</p>
+      )}
+
+      {/* ── Carte + médias (défilement horizontal, façon Strava) ── */}
+      {slides.length > 0 && (
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{ display: 'flex', gap: 3, overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], marginBottom: 2 }}
+          className="thw-card-carousel"
+        >
+          {slides.map((s, i) => (
+            <div key={i} style={{ flex: slides.length > 1 ? '0 0 92%' : '0 0 100%', scrollSnapAlign: 'start', height: 210, background: 'var(--bg-card2)' }}>
+              {s.kind === 'video'
+                ? <video src={s.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} muted playsInline preload="metadata" />
+                : <img src={s.url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} className={s.kind === 'map' ? 'thw-card-map' : undefined} />}
+            </div>
+          ))}
+        </div>
       )}
 
       {/* ── Type d'entraînement (Force, PMA, EF…) ── */}

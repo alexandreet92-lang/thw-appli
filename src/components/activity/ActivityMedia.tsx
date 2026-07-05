@@ -12,12 +12,22 @@ import { createClient } from '@/lib/supabase/client'
 
 export interface MediaItem { url: string; type: 'image' | 'video'; path: string }
 
-export function ActivityMedia({ activityId, initialMedia }: { activityId: string; initialMedia?: MediaItem[] | null }) {
+export function ActivityMedia({ activityId, initialMedia, initialComment }: { activityId: string; initialMedia?: MediaItem[] | null; initialComment?: string | null }) {
   const [media, setMedia] = useState<MediaItem[]>(Array.isArray(initialMedia) ? initialMedia : [])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [viewer, setViewer] = useState<number | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [comment, setComment] = useState<string>(initialComment ?? '')
+  const savedComment = useRef<string>(initialComment ?? '')
+
+  async function saveComment() {
+    const v = comment.trim()
+    if (v === savedComment.current) return
+    savedComment.current = v
+    try { await createClient().from('activities').update({ comment: v || null }).eq('id', activityId) }
+    catch (e) { console.error('[ActivityMedia] comment', e) }
+  }
 
   async function persist(next: MediaItem[]) {
     const sb = createClient()
@@ -70,6 +80,18 @@ export function ActivityMedia({ activityId, initialMedia }: { activityId: string
 
   return (
     <div style={{ marginTop: 4 }}>
+      {/* Commentaire de l'athlète */}
+      <div style={{ marginBottom: 16 }}>
+        <span style={{ display: 'block', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: 8 }}>Commentaire</span>
+        <textarea
+          value={comment}
+          onChange={e => setComment(e.target.value)}
+          onBlur={saveComment}
+          placeholder="Ajoute un commentaire sur ta séance…"
+          rows={2}
+          style={{ width: '100%', resize: 'vertical', minHeight: 44, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, lineHeight: 1.5, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+        />
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>Photos &amp; vidéos</span>
         <button onClick={() => inputRef.current?.click()} disabled={busy} style={{

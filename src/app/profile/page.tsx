@@ -278,21 +278,24 @@ function useProfile() {
     load()
   }, [])
 
-  async function save() {
+  async function save(): Promise<string | null> {
     setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSaving(false); return }
-    await supabase.from('profiles').upsert({
-      id:             user.id,
+    // getSession() rafraîchit le token si besoin (getUser seul peut renvoyer null
+    // sur token expiré → sauvegarde silencieusement perdue).
+    const { data: s } = await supabase.auth.getSession()
+    const uid = s.session?.user?.id ?? (await supabase.auth.getUser()).data.user?.id ?? null
+    if (!uid) { setSaving(false); return 'not-auth' }
+    const { error } = await supabase.from('profiles').upsert({
+      id:             uid,
       full_name:      data.full_name || null,
       bio:            data.bio       || null,
       height_cm:      data.height_cm      ? parseFloat(data.height_cm) : null,
       weight_kg:      data.weight_kg      ? parseFloat(data.weight_kg) : null,
-      bike_weight_kg: data.bike_weight_kg ? parseFloat(data.bike_weight_kg) : 8.0,
       avatar_url:     data.avatar_url || null,
       updated_at:     new Date().toISOString(),
     })
     setSaving(false)
+    return error?.message ?? null
   }
 
   async function uploadAvatar(file: File): Promise<string|null> {
@@ -503,6 +506,7 @@ function ProfilIdentityBloc() {
   const { t } = useI18n()
   const { data: profileData, setData: setProfileData, save: saveProfile, uploadAvatar } = useProfile()
   const fileRef = useRef<HTMLInputElement>(null)
+  const saveRef = useRef<() => Promise<void>>(async () => {})
 
   const [photo, setPhoto]       = useState<string|null>(null)
   const [uploading, setUploading] = useState(false)
@@ -514,11 +518,14 @@ function ProfilIdentityBloc() {
   }, [profileData.avatar_url])
 
   // Le bouton ✓ flottant de l'en-tête déclenche l'enregistrement.
+  // saveRef pointe TOUJOURS vers le dernier handleSave (données à jour) : sans
+  // ça, le listener capturait une closure figée sur le `data` initial (vide) et
+  // écrasait le profil avec des null à chaque enregistrement.
+  saveRef.current = handleSave
   useEffect(() => {
-    const onSave = () => { void handleSave() }
+    const onSave = () => { void saveRef.current() }
     window.addEventListener('thw:profile-save', onSave)
     return () => window.removeEventListener('thw:profile-save', onSave)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -537,8 +544,9 @@ function ProfilIdentityBloc() {
   }
 
   async function handleSave() {
-    await saveProfile()
-    setToast({ msg:t('profile.profileSaved'), ok:true }); setTimeout(()=>setToast(null), 2500)
+    const err = await saveProfile()
+    if (err) { setToast({ msg:t('profile.photoUploadError'), ok:false }); setTimeout(()=>setToast(null), 4000) }
+    else { setToast({ msg:t('profile.profileSaved'), ok:true }); setTimeout(()=>setToast(null), 2500) }
   }
 
   const imc = profileData.height_cm && profileData.weight_kg
@@ -1740,12 +1748,7 @@ function AbonnementContent() {
             border: `1px solid ${meta.color}33`, boxShadow: `0 14px 34px -22px ${meta.color}` }}>
             <div aria-hidden style={{ position: 'absolute', top: -70, right: -50, width: 180, height: 180, borderRadius: '50%', background: `radial-gradient(circle, ${meta.color}26, transparent 70%)`, pointerEvents: 'none' }} />
             <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ display: 'flex', gap: 13, minWidth: 0 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: `linear-gradient(140deg, ${meta.color}, ${meta.color}bb)`, boxShadow: `0 8px 18px -8px ${meta.color}` }}>
-                  <Sparkles size={21} color="#fff" strokeWidth={2} />
-                </div>
-                <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0 }}>
                 <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 20, background: `${meta.color}1f`, border: `1px solid ${meta.color}55`, color: meta.color, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase' }}>
                   {tierLabel}
                 </span>
@@ -1770,7 +1773,6 @@ function AbonnementContent() {
                 ) : (
                   <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{t('profile.fullAccess')}</p>
                 )}
-                </div>
               </div>
               {!isCancelling && (
                 <div style={{ flexShrink: 0, paddingTop: 4 }}>
@@ -2395,6 +2397,7 @@ export function ProfileContent() {
   const [dir, setDir] = useState(1)
   const [signingOut, setSigningOut] = useState(false)
   const [planLabel, setPlanLabel] = useState<string | null>(null)
+  const [confirmLogout, setConfirmLogout] = useState(false)
 
   // Libellé d'abonnement affiché dans le menu : détecté depuis le tier réel.
   useEffect(() => {
@@ -2509,11 +2512,25 @@ export function ProfileContent() {
 
             {/* Se déconnecter */}
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
-              <ListRow Icon={LogOut} label={signingOut ? t('profile.signingOut') : t('profile.signOut')} danger last onClick={() => { if (!signingOut) void handleSignOut() }} />
+              <ListRow Icon={LogOut} label={signingOut ? t('profile.signingOut') : t('profile.signOut')} danger last onClick={() => { if (!signingOut) setConfirmLogout(true) }} />
             </div>
           </div>
         )}
       </SlideView>
+
+      {/* Confirmation de déconnexion */}
+      {confirmLogout && (
+        <div onClick={() => { if (!signingOut) setConfirmLogout(false) }} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: 'var(--bg-card)', borderRadius: 18, padding: '22px 20px', boxShadow: '0 24px 60px rgba(0,0,0,0.35)', border: '1px solid var(--border)' }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 6px' }}>Se déconnecter ?</p>
+            <p style={{ fontSize: 13.5, color: 'var(--text-mid)', margin: '0 0 18px', lineHeight: 1.5 }}>Tu devras te reconnecter pour accéder à ton compte.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setConfirmLogout(false)} disabled={signingOut} style={{ flex: 1, padding: '11px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+              <button onClick={() => { if (!signingOut) void handleSignOut() }} disabled={signingOut} style={{ flex: 1, padding: '11px', borderRadius: 12, border: 'none', background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 700, cursor: signingOut ? 'default' : 'pointer', opacity: signingOut ? 0.6 : 1 }}>{signingOut ? t('profile.signingOut') : t('profile.signOut')}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

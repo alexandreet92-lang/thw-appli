@@ -16,6 +16,17 @@ export const MODEL_BADGE: Record<QAModel, { color: string; bg: string; border: s
 // Estimations pondérées indicatives (le coût réel dépend du contexte).
 const ESTIMATES: Record<string, number> = {
   training_plan:         50000,
+  prise_de_masse:        50000,
+  programme_cardio:      50000,
+  perte_de_poids:        50000,
+  reathletisation:       50000,
+  velo_endurance:        30000,
+  velo_vo2:              30000,
+  velo_seuil:            30000,
+  run_ef:                30000,
+  run_seuil:             30000,
+  run_vo2:               30000,
+  run_power:             30000,
   nutrition:             50000,
   weakpoints:            30000,
   strategie_course:      30000,

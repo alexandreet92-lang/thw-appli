@@ -15,7 +15,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen } from 'lucide-react'
+import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen, Bike, Footprints } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { haptic } from '@/lib/ui/haptic'
@@ -11615,21 +11615,31 @@ function actionIcon(flow: FlowId | undefined): React.ReactNode {
 }
 
 // ── Actions rapides : thèmes (colonne gauche du sous-écran) ──
-type QuickActionTheme = 'entrainement' | 'course' | 'nutrition' | 'recuperation' | 'plan' | 'application'
+type QuickActionTheme = 'objectifs' | 'entrainement' | 'velo' | 'run' | 'autres' | 'course' | 'nutrition' | 'recuperation' | 'plan' | 'application'
 
-const QA_THEMES: { id: QuickActionTheme; label: string; flows: FlowId[] }[] = [
-  { id: 'entrainement', label: 'Entraînement', flows: ['sessionbuilder', 'analyze_training', 'analyser_semaine', 'analyser_progression', 'weakpoints'] },
-  { id: 'course',       label: 'Course',       flows: ['strategie_course', 'estimer_zones', 'analyzetest'] },
-  { id: 'nutrition',    label: 'Nutrition',    flows: ['nutrition', 'recharge'] },
-  { id: 'recuperation', label: 'Récupération', flows: ['analyser_recuperation', 'conseils_sommeil'] },
-  { id: 'plan',         label: 'Plan',         flows: ['training_plan'] },
-  { id: 'application',  label: 'Application',  flows: ['app_guide'] },
+// Les thèmes référencent des actions par leur `key` (= flow pour les actions
+// historiques, slug dédié pour les nouvelles actions à prompt).
+const QA_THEMES: { id: QuickActionTheme; label: string; keys: string[] }[] = [
+  { id: 'objectifs',    label: 'Objectifs',    keys: ['prise_de_masse', 'programme_cardio', 'perte_de_poids', 'reathletisation'] },
+  { id: 'plan',         label: 'Plan',         keys: ['training_plan'] },
+  { id: 'entrainement', label: 'Entraînement', keys: ['sessionbuilder', 'analyze_training', 'analyser_semaine', 'analyser_progression', 'weakpoints'] },
+  { id: 'velo',         label: 'Vélo',         keys: ['velo_endurance', 'velo_vo2', 'velo_seuil'] },
+  { id: 'run',          label: 'Run',          keys: ['run_ef', 'run_seuil', 'run_vo2', 'run_power'] },
+  { id: 'autres',       label: 'Et d\'autres sports', keys: [] },
+  { id: 'course',       label: 'Course',       keys: ['strategie_course', 'estimer_zones', 'analyzetest'] },
+  { id: 'nutrition',    label: 'Nutrition',    keys: ['nutrition', 'recharge'] },
+  { id: 'recuperation', label: 'Récupération', keys: ['analyser_recuperation', 'conseils_sommeil'] },
+  { id: 'application',  label: 'Application',  keys: ['app_guide'] },
 ]
 
 function themeIcon(id: QuickActionTheme): React.ReactNode {
   const sz = 15
   switch (id) {
+    case 'objectifs':    return <Target size={sz} />
     case 'entrainement': return <Zap size={sz} />
+    case 'velo':         return <Bike size={sz} />
+    case 'run':          return <Footprints size={sz} />
+    case 'autres':       return <Dumbbell size={sz} />
     case 'course':       return <Flag size={sz} />
     case 'nutrition':    return <Apple size={sz} />
     case 'recuperation': return <Moon size={sz} />
@@ -11647,6 +11657,7 @@ function PlusMenu({
   onCamera,
   onPhotos,
   onFiles,
+  onPickPhoto,
   onForceModel,
   onWebSearch,
   isMobile = false,
@@ -11659,6 +11670,7 @@ function PlusMenu({
   onCamera:     () => void
   onPhotos:     () => void
   onFiles:      () => void
+  onPickPhoto:  (url: string) => void
   onForceModel: (m: THWModel) => void
   onWebSearch:  () => void
   isMobile?:    boolean
@@ -11674,6 +11686,8 @@ function PlusMenu({
   const [compCount, setCompCount] = useState<number | null>(null)
   const [compLimit, setCompLimit] = useState(3)
   const [compNames, setCompNames] = useState<string[]>([])
+  // 10 dernières photos de l'utilisateur (médias uploadés sur ses activités).
+  const [recentPhotos, setRecentPhotos] = useState<string[]>([])
   // Desktop : flyout latéral (style Claude) ouvert au survol d'une rubrique.
   // Porté vers document.body (position fixe) pour échapper à l'overflow:hidden
   // de la colonne chat qui sinon le coupe.
@@ -11725,6 +11739,39 @@ function PlusMenu({
           .filter((x): x is string => !!x)
         setCompNames(names)
         setCompCount(names.length)
+      } catch { /* silencieux */ }
+    })()
+    return () => { alive = false }
+  }, [])
+
+  // Charge les 10 dernières photos uploadées par l'utilisateur sur ses activités.
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return
+        const { data: rows } = await sb
+          .from('activities')
+          .select('media, started_at')
+          .eq('user_id', user.id)
+          .not('media', 'is', null)
+          .order('started_at', { ascending: false })
+          .limit(20)
+        if (!alive) return
+        const urls: string[] = []
+        for (const r of (rows ?? []) as { media: unknown }[]) {
+          const media = Array.isArray(r.media) ? r.media : []
+          for (const m of media) {
+            const item = m as { url?: string; type?: string }
+            if (item?.url && item.type !== 'video') urls.push(item.url)
+            if (urls.length >= 10) break
+          }
+          if (urls.length >= 10) break
+        }
+        setRecentPhotos(urls)
       } catch { /* silencieux */ }
     })()
     return () => { alive = false }
@@ -11788,17 +11835,17 @@ function PlusMenu({
           <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: MODEL_BADGE[qa.model].color, flexShrink: 0 }} />
             <span style={{ fontSize: 11, fontWeight: 500, color: MODEL_BADGE[qa.model].color }}>{MODEL_CONFIGS[qa.model].name}</span>
-            <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>· {fmtEstimate(quickActionEstimate(qa.flow))}</span>
+            <span style={{ fontSize: 11, color: 'var(--ai-dim)' }}>· {fmtEstimate(quickActionEstimate(qa.flow ?? qa.key))}</span>
           </span>
         </span>
       </button>
     )
   }
 
-  // Actions d'un thème (dans l'ordre déclaré)
+  // Actions d'un thème (dans l'ordre déclaré), résolues par `key`.
   function actionsOfTheme(theme: QuickActionTheme): QuickAction[] {
-    return (QA_THEMES.find(t => t.id === theme)?.flows ?? [])
-      .map(f => QUICK_ACTIONS.find(qa => qa.flow === f))
+    return (QA_THEMES.find(t => t.id === theme)?.keys ?? [])
+      .map(k => QUICK_ACTIONS.find(qa => qa.key === k))
       .filter((qa): qa is QuickAction => !!qa)
   }
 
@@ -11818,6 +11865,17 @@ function PlusMenu({
     cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
   }
   const photoTileLabel: React.CSSProperties = { fontSize: 12, color: 'var(--text)', fontWeight: 500 }
+
+  // État vide (thème « Et d'autres sports » — à venir)
+  const themeEmptyState = (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '36px 20px', textAlign: 'center' }}>
+      <Dumbbell size={26} color="var(--text-dim)" />
+      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ai-text)' }}>Bientôt d&apos;autres sports</span>
+      <span style={{ fontSize: 12, color: 'var(--ai-dim)', lineHeight: 1.5, maxWidth: 220 }}>
+        Natation, Hyrox, renforcement… Des actions dédiées arrivent pour chaque discipline.
+      </span>
+    </div>
+  )
 
   // ── Contenus réutilisables (sous-écran plein OU flyout desktop) ──
   const actionsTwoColumns = (
@@ -11851,7 +11909,9 @@ function PlusMenu({
       </div>
       {/* Colonne droite — actions du thème actif */}
       <div key={activeTheme} style={{ flex: 1, padding: 6, overflowY: 'auto', animation: 'aip_fade_in 0.15s ease-out' }}>
-        {actionsOfTheme(activeTheme).map((qa, i) => renderActionButton(qa, i))}
+        {actionsOfTheme(activeTheme).length > 0
+          ? actionsOfTheme(activeTheme).map((qa, i) => renderActionButton(qa, i))
+          : themeEmptyState}
       </div>
     </div>
   )
@@ -11934,19 +11994,38 @@ function PlusMenu({
       {/* ════ ÉCRAN PRINCIPAL ════ */}
       {activeScreen === 'main' && (
         <div style={{ maxHeight: isMobile ? undefined : '72vh', overflowY: isMobile ? undefined : 'auto' }}>
-          {/* Rangée Caméra + Photothèque — mobile (web : pas d'accès à la galerie système) */}
-          {isMobile && (
-            <div style={{ display: 'flex', gap: 8, padding: '2px 4px 12px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <button onClick={() => { onClose(); setTimeout(onCamera, 80) }} style={photoTileStyle}>
-                <Camera size={22} color="var(--text)" />
-                <span style={photoTileLabel}>{t('aip.ui.camera')}</span>
-              </button>
-              <button onClick={() => { onClose(); setTimeout(onPhotos, 80) }} style={photoTileStyle}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8.5" cy="8.5" r="1.6" /><path d="M21 15l-5-5L5 21" />
-                </svg>
-                <span style={photoTileLabel}>{t('aip.ui.photoLibrary')}</span>
-              </button>
+          {/* Rangée Caméra + Photothèque + 10 dernières photos (style Claude) */}
+          {(isMobile || recentPhotos.length > 0) && (
+            <div style={{ display: 'flex', gap: 8, padding: '2px 4px 12px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+              {isMobile && (
+                <>
+                  <button onClick={() => { onClose(); setTimeout(onCamera, 80) }} style={photoTileStyle}>
+                    <Camera size={22} color="var(--text)" />
+                    <span style={photoTileLabel}>{t('aip.ui.camera')}</span>
+                  </button>
+                  <button onClick={() => { onClose(); setTimeout(onPhotos, 80) }} style={photoTileStyle}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8.5" cy="8.5" r="1.6" /><path d="M21 15l-5-5L5 21" />
+                    </svg>
+                    <span style={photoTileLabel}>{t('aip.ui.photoLibrary')}</span>
+                  </button>
+                </>
+              )}
+              {recentPhotos.map((url, i) => (
+                <button
+                  key={i}
+                  onClick={() => { onPickPhoto(url); onClose() }}
+                  aria-label={`Photo ${i + 1}`}
+                  style={{
+                    flexShrink: 0, width: 92, height: 92, borderRadius: 14, padding: 0,
+                    border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
+                    overflow: 'hidden', cursor: 'pointer', position: 'relative',
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                </button>
+              ))}
             </div>
           )}
 
@@ -12072,7 +12151,9 @@ function PlusMenu({
                   <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ai-text)', fontFamily: 'var(--font-display, Fraunces), Georgia, serif' }}>{QA_THEMES.find(t => t.id === mobileTheme)?.label}</span>
                 </div>
                 <div style={{ padding: 8 }}>
-                  {actionsOfTheme(mobileTheme).map((qa, i) => renderActionButton(qa, i))}
+                  {actionsOfTheme(mobileTheme).length > 0
+                    ? actionsOfTheme(mobileTheme).map((qa, i) => renderActionButton(qa, i))
+                    : themeEmptyState}
                 </div>
               </div>
             )
@@ -12560,6 +12641,7 @@ function HistoryDrawer({
 // ══════════════════════════════════════════════════════════════
 
 interface QuickAction {
+  key: string       // identifiant stable (= flow pour l'historique, slug sinon)
   label: string
   sub: string
   prompt?: string
@@ -12570,88 +12652,185 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
+    key: 'training_plan',
     label: 'Créer un plan d\'entraînement',
     sub: 'Plan structuré adapté à tes objectifs',
     model: 'zeus',
     flow: 'training_plan' as FlowId,
   },
   {
+    key: 'weakpoints',
     label: 'Identifier mes points faibles',
     sub: 'Analyse croisée de tes données et lacunes',
     model: 'athena',
     flow: 'weakpoints',
   },
   {
+    key: 'nutrition',
     label: 'Créer un plan nutritionnel',
     sub: 'Plan personnalisé selon ton profil et tes sports',
     model: 'athena',
     flow: 'nutrition',
   },
   {
+    key: 'app_guide',
     label: 'Comprendre l\'application',
     sub: 'Fonctionnalités, navigation et configuration',
     model: 'hermes',
     flow: 'app_guide' as FlowId,
   },
   {
+    key: 'analyze_training',
     label: 'Training Analyse',
     sub: 'Analyse détaillée ou comparaison de 2 activités',
     model: 'athena',
     flow: 'analyze_training' as FlowId,
   },
   {
+    key: 'strategie_course',
     label: 'Stratégie de course',
     sub: 'Plan de course personnalisé allures, nutrition, Plan B',
     flow: 'strategie_course' as FlowId,
     model: 'athena',
   },
   {
+    key: 'sessionbuilder',
     label: 'Créer une séance',
     sub: 'Séance sur mesure selon ton sport et ta forme',
     model: 'athena',
     flow: 'sessionbuilder' as FlowId,
   },
   {
+    key: 'analyser_semaine',
     label: 'Analyser ma semaine',
     sub: 'Bilan de charge, équilibre et risques de la semaine',
     model: 'athena',
     flow: 'analyser_semaine' as FlowId,
   },
   {
+    key: 'analyser_recuperation',
     label: 'Analyser ma récupération',
     sub: 'État de forme, HRV, sommeil et fatigue',
     model: 'athena',
     flow: 'analyser_recuperation' as FlowId,
   },
   {
+    key: 'conseils_sommeil',
     label: 'Conseils sommeil',
     sub: 'Recommandations pour mieux récupérer la nuit',
     model: 'hermes',
     flow: 'conseils_sommeil' as FlowId,
   },
   {
+    key: 'analyzetest',
     label: 'Analyser un test',
     sub: 'Interprétation d\'un test de performance',
     model: 'athena',
     flow: 'analyzetest' as FlowId,
   },
   {
+    key: 'recharge',
     label: 'Recharge glucidique',
     sub: 'Plan de recharge avant compétition',
     model: 'athena',
     flow: 'recharge' as FlowId,
   },
   {
+    key: 'analyser_progression',
     label: 'Analyser ma progression',
     sub: 'Évolution de tes performances dans le temps',
     model: 'athena',
     flow: 'analyser_progression' as FlowId,
   },
   {
+    key: 'estimer_zones',
     label: 'Estimer mes zones',
     sub: 'Calcul de tes zones d\'intensité',
     model: 'athena',
     flow: 'estimer_zones' as FlowId,
+  },
+
+  // ─────────── OBJECTIFS (programmes à prompt) ───────────
+  {
+    key: 'prise_de_masse',
+    label: 'Prise de masse',
+    sub: 'Programme d\'hypertrophie + apports pour prendre du muscle',
+    model: 'zeus',
+    prompt: 'Construis-moi un programme complet de PRISE DE MASSE (hypertrophie musculaire). Appuie-toi sur mon profil, mon historique d\'entraînement et mes sports pratiqués. Détaille : une périodisation sur 8 à 12 semaines, la répartition hebdomadaire des séances de force (groupes musculaires, volume, séries × répétitions, intensité en %1RM ou RPE, temps de repos, tempo), la gestion de la surcharge progressive, l\'intégration éventuelle du cardio pour ne pas nuire à la prise de muscle, et les grandes lignes nutritionnelles (surplus calorique, apport protéique cible en g/kg, timing). Termine par les indicateurs à suivre pour valider la progression.',
+  },
+  {
+    key: 'programme_cardio',
+    label: 'Programme cardio',
+    sub: 'Développer ton moteur aérobie et ton endurance',
+    model: 'zeus',
+    prompt: 'Construis-moi un PROGRAMME CARDIO progressif pour développer mon endurance et mon système aérobie. Base-toi sur mon profil, mes zones d\'intensité et mon historique. Détaille : une progression sur 8 à 12 semaines, la répartition polarisée (endurance fondamentale, seuil, VO2 max), les séances clés semaine par semaine avec durées et zones cibles (FC / allure / puissance), la montée de charge, les semaines d\'assimilation, et comment tester ma progression. Adapte au(x) sport(s) que je pratique.',
+  },
+  {
+    key: 'perte_de_poids',
+    label: 'Perte de poids',
+    sub: 'Recomposition : entraînement + déficit maîtrisé',
+    model: 'zeus',
+    prompt: 'Construis-moi un programme de PERTE DE POIDS / recomposition corporelle qui préserve ma masse musculaire et mes performances. Appuie-toi sur mon profil et mon historique. Détaille : la stratégie d\'entraînement (mélange force + cardio, fréquence, intensité), un déficit calorique raisonnable et progressif, l\'apport protéique cible pour protéger le muscle, la gestion de la fatigue et de la récupération, et les repères concrets de suivi (poids, mensurations, performances) sur 8 à 12 semaines. Reste réaliste et durable, sans approche extrême.',
+  },
+  {
+    key: 'reathletisation',
+    label: 'Programme réathlétisation',
+    sub: 'Retour progressif après blessure ou coupure',
+    model: 'zeus',
+    prompt: 'Construis-moi un programme de RÉATHLÉTISATION pour reprendre l\'entraînement en toute sécurité après une blessure ou une longue coupure. Demande-moi d\'abord les infos manquantes (nature de la blessure/coupure, douleurs actuelles, feu vert médical, niveau de départ) si elles ne sont pas dans mon profil. Détaille ensuite : une reprise progressive par phases (retour à la charge, renforcement, réintroduction de l\'intensité, retour à la performance), les critères de passage d\'une phase à l\'autre, les signaux d\'alerte qui imposent de temporiser, et les séances type semaine par semaine. Priorité absolue à la prévention de la re-blessure.',
+  },
+
+  // ─────────── VÉLO (blocs ciblés par filière) ───────────
+  {
+    key: 'velo_endurance',
+    label: 'Vélo — Endurance / durabilité',
+    sub: 'Corriger un manque d\'endurance et de durabilité',
+    model: 'athena',
+    prompt: 'À vélo, je manque d\'ENDURANCE et de DURABILITÉ (ma puissance chute sur les efforts longs et en fin de sortie). Propose-moi un bloc d\'entraînement ciblé, basé sur mon profil, ma FTP/mes zones et mon historique. Détaille les séances type (sorties longues en endurance, travail de durabilité avec efforts en fin de sortie/fatigue, volume hebdo, progression sur 4 à 6 semaines), les zones de puissance cibles, et comment mesurer les progrès sur la durabilité.',
+  },
+  {
+    key: 'velo_vo2',
+    label: 'Vélo — VO2 max',
+    sub: 'Développer ta puissance aérobie maximale',
+    model: 'athena',
+    prompt: 'À vélo, je veux développer ma VO2 MAX (puissance aérobie maximale). Propose-moi un bloc VO2 max structuré, basé sur ma FTP/mes zones et mon historique. Détaille : les formats d\'intervalles adaptés (ex. 30/30, 3 à 5 min, over-unders), les puissances cibles, le volume par séance, la fréquence hebdo, la progression sur 3 à 5 semaines, et la récupération nécessaire. Précise comment savoir si le bloc porte ses fruits.',
+  },
+  {
+    key: 'velo_seuil',
+    label: 'Vélo — Seuil (SL1 / Sweet spot / SL2)',
+    sub: 'Travail du seuil : SL1, Sweet spot, SL2',
+    model: 'athena',
+    prompt: 'À vélo, je veux travailler mon SEUIL. Explique-moi et programme les intensités SL1 (endurance tempo bas de seuil), SWEET SPOT (~88–94 % FTP) et SL2 (seuil / autour de la FTP). Base-toi sur ma FTP et mes zones. Détaille un bloc de 4 à 6 semaines avec les séances type pour chaque intensité, les durées d\'intervalles et le temps total à la cible, la répartition entre Sweet spot et seuil selon mon niveau, la progression et les repères de réussite.',
+  },
+
+  // ─────────── RUN (blocs ciblés par filière) ───────────
+  {
+    key: 'run_ef',
+    label: 'Run — EF / durabilité',
+    sub: 'Endurance fondamentale et résistance à la fatigue',
+    model: 'athena',
+    prompt: 'En course à pied, je veux renforcer mon ENDURANCE FONDAMENTALE (EF) et ma DURABILITÉ. Propose-moi un bloc basé sur mes allures/zones et mon historique. Détaille : le rôle de l\'EF, les allures cibles (FC / allure), les sorties longues avec travail de durabilité (finish rapide, portions en fatigue), le volume hebdo et sa progression sur 4 à 6 semaines, et comment évaluer les gains de durabilité.',
+  },
+  {
+    key: 'run_seuil',
+    label: 'Run — Seuil',
+    sub: 'Repousser ton allure seuil / tempo',
+    model: 'athena',
+    prompt: 'En course à pied, je veux travailler mon SEUIL (allure tempo / seuil lactique). Base-toi sur mes allures et zones. Détaille un bloc de 4 à 6 semaines : les formats de séances au seuil (tempo continu, intervalles au seuil, cruise intervals), les allures cibles, le temps total à la cible, la fréquence hebdo, la progression et les tests pour vérifier que mon allure seuil s\'améliore.',
+  },
+  {
+    key: 'run_vo2',
+    label: 'Run — VO2 max',
+    sub: 'Développer ta puissance aérobie maximale',
+    model: 'athena',
+    prompt: 'En course à pied, je veux développer ma VO2 MAX. Base-toi sur mes allures/zones et mon historique. Détaille un bloc VO2 max : les formats d\'intervalles (ex. 30/30, 400–1000 m, 3–5 min à VMA), les allures cibles, la récupération entre répétitions, le volume par séance, la fréquence et la progression sur 3 à 5 semaines, ainsi que les signes de bonne assimilation.',
+  },
+  {
+    key: 'run_power',
+    label: 'Run — Power / explosivité',
+    sub: 'Puissance, foulée et explosivité',
+    model: 'athena',
+    prompt: 'En course à pied, je veux gagner en PUISSANCE et en EXPLOSIVITÉ (foulée plus dynamique, meilleure économie de course). Propose-moi un bloc combinant sprints courts / lignes droites, côtes courtes, pliométrie et renforcement spécifique. Détaille les séances type, les volumes, la fréquence hebdo, la progression sur 4 à 6 semaines, l\'intégration avec le reste de mon entraînement, et les précautions pour éviter les blessures.',
   },
 ]
 
@@ -19764,6 +19943,24 @@ export default function AIPanel({
     }
   }, [])
 
+  // Attache une photo déjà uploadée (bucket activity-media) via son URL publique.
+  const handlePickRecentPhoto = useCallback(async (url: string) => {
+    setAttachErr(null)
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('fetch failed')
+      const blob = await res.blob()
+      const name = url.split('/').pop()?.split('?')[0] || 'photo.jpg'
+      const file = new File([blob], name, { type: blob.type || 'image/jpeg' })
+      const attached = await fileToAttachment(file)
+      setAttachment(attached)
+      areaRef.current?.focus()
+    } catch {
+      setAttachErr('Impossible de charger cette photo.')
+      setTimeout(() => setAttachErr(null), 4000)
+    }
+  }, [])
+
   // ── Dictée vocale (Whisper) ──────────────────────────────────
   // L'enregistrement + la transcription sont gérés par VoiceOverlay
   // (getUserMedia + MediaRecorder + /api/stt). Ici : état + insertion du
@@ -21790,6 +21987,7 @@ export default function AIPanel({
                       onCamera={() => cameraRef.current?.click()}
                       onPhotos={() => photosRef.current?.click()}
                       onFiles={() => filesRef.current?.click()}
+                      onPickPhoto={url => { setPlusOpen(false); void handlePickRecentPhoto(url) }}
                       isMobile={!isDesktop}
                     />
                   )}

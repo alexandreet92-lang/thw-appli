@@ -15,7 +15,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen, Bike, Footprints } from 'lucide-react'
+import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen, Bike, Footprints, Waves } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { haptic } from '@/lib/ui/haptic'
@@ -11615,35 +11615,39 @@ function actionIcon(flow: FlowId | undefined): React.ReactNode {
 }
 
 // ── Actions rapides : thèmes (colonne gauche du sous-écran) ──
-type QuickActionTheme = 'objectifs' | 'entrainement' | 'velo' | 'run' | 'autres' | 'course' | 'nutrition' | 'recuperation' | 'plan' | 'application'
+type QuickActionTheme = 'objectifs' | 'plan' | 'seances' | 'force' | 'velo' | 'run' | 'autres' | 'course' | 'analyse' | 'nutrition' | 'recuperation' | 'application'
 
 // Les thèmes référencent des actions par leur `key` (= flow pour les actions
 // historiques, slug dédié pour les nouvelles actions à prompt).
 const QA_THEMES: { id: QuickActionTheme; label: string; keys: string[] }[] = [
   { id: 'objectifs',    label: 'Objectifs',    keys: ['prise_de_masse', 'programme_cardio', 'perte_de_poids', 'reathletisation'] },
-  { id: 'plan',         label: 'Plan',         keys: ['training_plan'] },
-  { id: 'entrainement', label: 'Entraînement', keys: ['sessionbuilder', 'analyze_training', 'analyser_semaine', 'analyser_progression', 'weakpoints'] },
+  { id: 'plan',         label: 'Plan',         keys: ['training_plan', 'planifier_semaine', 'reajuster_plan', 'prepa_competition', 'semaine_decharge'] },
+  { id: 'seances',      label: 'Séances',      keys: ['sessionbuilder', 'seance_du_jour', 'peu_de_temps', 'sans_materiel', 'indoor', 'recup_active', 'echauffement'] },
+  { id: 'force',        label: 'Force',        keys: ['seance_force', 'renforcement', 'desequilibre', 'wod_hyrox'] },
   { id: 'velo',         label: 'Vélo',         keys: ['velo_endurance', 'velo_vo2', 'velo_seuil'] },
   { id: 'run',          label: 'Run',          keys: ['run_ef', 'run_seuil', 'run_vo2', 'run_power'] },
   { id: 'autres',       label: 'Et d\'autres sports', keys: [] },
-  { id: 'course',       label: 'Course',       keys: ['strategie_course', 'estimer_zones', 'analyzetest'] },
-  { id: 'nutrition',    label: 'Nutrition',    keys: ['nutrition', 'recharge'] },
-  { id: 'recuperation', label: 'Récupération', keys: ['analyser_recuperation', 'conseils_sommeil'] },
-  { id: 'application',  label: 'Application',  keys: ['app_guide'] },
+  { id: 'course',       label: 'Course',       keys: ['strategie_course', 'predire_chrono', 'analyzetest'] },
+  { id: 'analyse',      label: 'Analyse',      keys: ['analyze_training', 'derniere_activite', 'analyser_semaine', 'bilan_mois', 'analyser_progression', 'weakpoints', 'surentrainement', 'derive_cardiaque', 'estimer_zones', 'estimer_vo2max'] },
+  { id: 'nutrition',    label: 'Nutrition',    keys: ['nutrition', 'nutrition_effort', 'recharge', 'hydratation', 'repas_post', 'besoins_macros'] },
+  { id: 'recuperation', label: 'Récupération', keys: ['analyser_recuperation', 'conseils_sommeil', 'douleur_blessure', 'etirements', 'gestion_stress'] },
+  { id: 'application',  label: 'Application',  keys: ['app_guide', 'expliquer_concept'] },
 ]
 
 function themeIcon(id: QuickActionTheme): React.ReactNode {
   const sz = 15
   switch (id) {
     case 'objectifs':    return <Target size={sz} />
-    case 'entrainement': return <Zap size={sz} />
+    case 'plan':         return <Calendar size={sz} />
+    case 'seances':      return <Zap size={sz} />
+    case 'force':        return <Dumbbell size={sz} />
     case 'velo':         return <Bike size={sz} />
     case 'run':          return <Footprints size={sz} />
-    case 'autres':       return <Dumbbell size={sz} />
+    case 'autres':       return <Waves size={sz} />
     case 'course':       return <Flag size={sz} />
+    case 'analyse':      return <Activity size={sz} />
     case 'nutrition':    return <Apple size={sz} />
     case 'recuperation': return <Moon size={sz} />
-    case 'plan':         return <Calendar size={sz} />
     case 'application':  return <BookOpen size={sz} />
   }
 }
@@ -11680,7 +11684,7 @@ function PlusMenu({
   const router = useRouter()
   const [activeScreen, setActiveScreen] = useState<MenuScreen>('main')
   const [animating, setAnimating] = useState(false)
-  const [activeTheme, setActiveTheme] = useState<QuickActionTheme>('entrainement')
+  const [activeTheme, setActiveTheme] = useState<QuickActionTheme>('objectifs')
   // Mobile : navigation à deux niveaux — null = liste des thèmes, sinon actions du thème.
   const [mobileTheme, setMobileTheme] = useState<QuickActionTheme | null>(null)
   const [compCount, setCompCount] = useState<number | null>(null)
@@ -12830,7 +12834,219 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: 'Run — Power / explosivité',
     sub: 'Puissance, foulée et explosivité',
     model: 'athena',
-    prompt: 'En course à pied, je veux gagner en PUISSANCE et en EXPLOSIVITÉ (foulée plus dynamique, meilleure économie de course). Propose-moi un bloc combinant sprints courts / lignes droites, côtes courtes, pliométrie et renforcement spécifique. Détaille les séances type, les volumes, la fréquence hebdo, la progression sur 4 à 6 semaines, l\'intégration avec le reste de mon entraînement, et les précautions pour éviter les blessures.',
+    prompt: 'En course à pied, je veux gagner en PUISSANCE et en EXPLOSIVITÉ (foulée plus dynamique, meilleure économie de course). Propose-moi un bloc combinant sprints courts / lignes droites, côtes courtes, pliométrie et renforcement spécifique. Détaille les séances type, les volumes, la fréquence hebdo, la progression sur 4 à 6 semaines, l\'intégration avec le reste de mon entraînement, et les précautions pour éviter les blessures. Si j\'ai un plan actif, propose d\'ajouter ces séances à mon planning (je validerai).',
+  },
+
+  // ─────────── PLAN (planification & compétition) ───────────
+  {
+    key: 'planifier_semaine',
+    label: 'Planifier ma semaine',
+    sub: 'Générer la semaine à venir dans le planning',
+    model: 'athena',
+    prompt: 'Planifie ma semaine d\'entraînement à venir en tenant compte de mon plan, de ma forme actuelle, de ma charge récente et de mes contraintes. Propose une répartition équilibrée (séances, sports, intensités, jours de repos), puis ajoute les séances à mon planning — je validerai chaque ajout. Si une information décisive te manque (jours disponibles, objectif de la semaine), demande-la moi d\'abord.',
+  },
+  {
+    key: 'reajuster_plan',
+    label: 'Réajuster mon plan',
+    sub: 'Adapter le plan à un imprévu (maladie, voyage…)',
+    model: 'athena',
+    prompt: 'Je dois réajuster mon plan d\'entraînement à cause d\'un imprévu (maladie, fatigue, voyage, manque de temps…). Demande-moi la contrainte si elle n\'est pas claire, puis propose les modifications (déplacer, alléger, remplacer ou supprimer des séances) et applique-les à mon planning après ma validation.',
+  },
+  {
+    key: 'prepa_competition',
+    label: 'Préparer ma compétition (affûtage)',
+    sub: 'Tapering + check-list avant le jour J',
+    model: 'zeus',
+    prompt: 'Prépare mon affûtage (tapering) pour ma prochaine compétition. Base-toi sur ma course cible et mon plan. Détaille comment réduire la charge sur les derniers jours/semaines tout en gardant de l\'intensité, propose une check-list d\'avant-course (logistique, nutrition, sommeil, matériel), puis ajuste les séances de mon planning après ma validation.',
+  },
+  {
+    key: 'semaine_decharge',
+    label: 'Semaine de décharge (deload)',
+    sub: 'Alléger la charge pour mieux assimiler',
+    model: 'athena',
+    prompt: 'Propose-moi une semaine de décharge (deload) pour mieux récupérer et assimiler, en te basant sur ma charge récente (CTL/ATL/TSB) et ma fatigue. Explique pourquoi elle est utile maintenant, détaille la réduction de volume/intensité, puis applique cette semaine allégée à mon planning après ma validation.',
+  },
+
+  // ─────────── SÉANCES (à la demande) ───────────
+  {
+    key: 'seance_du_jour',
+    label: 'Séance du jour',
+    sub: 'Quoi faire aujourd\'hui selon ton plan et ta forme',
+    model: 'athena',
+    prompt: 'Quelle séance dois-je faire aujourd\'hui ? Regarde ma séance planifiée du jour (s\'il y en a une) et mon état de forme actuel (fatigue, récup, charge). Propose la séance adaptée et, si tu l\'ajustes ou la crées, ajoute-la à mon planning après ma validation.',
+  },
+  {
+    key: 'peu_de_temps',
+    label: 'J\'ai peu de temps (30 min)',
+    sub: 'Séance courte et efficace',
+    model: 'athena',
+    prompt: 'Je n\'ai qu\'environ 30 minutes aujourd\'hui. Propose une séance courte mais efficace, adaptée à mon sport principal, à mon objectif du moment et à ma forme. Structure-la (échauffement, corps, retour au calme) et propose de l\'ajouter à mon planning si je valide.',
+  },
+  {
+    key: 'sans_materiel',
+    label: 'Séance sans matériel / maison',
+    sub: 'Poids de corps, réalisable chez toi',
+    model: 'athena',
+    prompt: 'Propose-moi une séance sans matériel, réalisable à la maison (poids de corps), adaptée à mon niveau et à mon objectif. Détaille les exercices, séries, répétitions et temps de repos, puis propose de l\'ajouter à mon planning si je valide.',
+  },
+  {
+    key: 'indoor',
+    label: 'Séance indoor (home-trainer / tapis)',
+    sub: 'Séance structurée avec cibles watts / allure',
+    model: 'athena',
+    prompt: 'Propose-moi une séance indoor structurée (home-trainer vélo ou tapis de course selon mon sport) avec des cibles précises de puissance/allure et de zones, basée sur mes zones d\'intensité. Détaille les blocs (échauffement, intervalles, récup) et propose de l\'ajouter à mon planning si je valide.',
+  },
+  {
+    key: 'recup_active',
+    label: 'Séance de récupération active',
+    sub: 'Très basse intensité, calibrée sur ta fatigue',
+    model: 'athena',
+    prompt: 'Propose-moi une séance de récupération active (très basse intensité) calibrée sur ma fatigue et ma charge actuelles. Précise la durée, la zone cible et les consignes, puis propose de l\'ajouter à mon planning si je valide.',
+  },
+  {
+    key: 'echauffement',
+    label: 'Échauffement / mobilité',
+    sub: 'Routine d\'activation avant ta séance',
+    model: 'hermes',
+    prompt: 'Propose-moi une routine d\'échauffement complète (mobilité articulaire + activation musculaire + montée en intensité progressive) avant ma prochaine séance. Adapte-la au sport concerné et à l\'intensité prévue.',
+  },
+
+  // ─────────── FORCE / MUSCU ───────────
+  {
+    key: 'seance_force',
+    label: 'Séance de force',
+    sub: 'Haut, bas du corps ou full body',
+    model: 'athena',
+    prompt: 'Propose-moi une séance de force / musculation (demande-moi haut du corps, bas du corps ou full body si ce n\'est pas précisé), adaptée à mon niveau et à mon sport principal. Détaille les exercices, séries × répétitions, charge cible (%1RM ou RPE), temps de repos et tempo, puis propose de l\'ajouter à mon planning si je valide.',
+  },
+  {
+    key: 'renforcement',
+    label: 'Renforcement spécifique',
+    sub: 'Prévention blessure (gainage, stabilité)',
+    model: 'athena',
+    prompt: 'Propose-moi une séance de renforcement spécifique orientée prévention des blessures pour mon sport principal (gainage, chaîne postérieure, stabilité, proprioception). Détaille les exercices et le format, puis propose de l\'ajouter à mon planning si je valide.',
+  },
+  {
+    key: 'desequilibre',
+    label: 'Corriger un déséquilibre',
+    sub: 'Adresser une asymétrie ou une faiblesse',
+    model: 'athena',
+    prompt: 'Aide-moi à corriger un déséquilibre ou une asymétrie musculaire. Appuie-toi sur mes données et mes points faibles pour identifier la zone à travailler, explique-moi le problème, puis propose une séance corrective et ajoute-la à mon planning si je valide.',
+  },
+  {
+    key: 'wod_hyrox',
+    label: 'Simulation / WOD Hyrox',
+    sub: 'Séance format Hyrox (stations + course)',
+    model: 'athena',
+    prompt: 'Propose-moi une séance type Hyrox (simulation complète ou travail spécifique de certaines stations combiné à la course), adaptée à mon niveau. Détaille l\'enchaînement, les charges et les temps cibles, puis propose de l\'ajouter à mon planning si je valide.',
+  },
+
+  // ─────────── COURSE ───────────
+  {
+    key: 'predire_chrono',
+    label: 'Prédire mon chrono',
+    sub: 'Estimer un temps réaliste sur une distance',
+    model: 'athena',
+    prompt: 'Prédis mon chrono réaliste sur une distance cible (demande-moi la distance ou l\'objectif si ce n\'est pas précisé), à partir de mes performances et données récentes. Explique les hypothèses, donne une fourchette de temps et les allures correspondantes.',
+  },
+
+  // ─────────── ANALYSE ───────────
+  {
+    key: 'derniere_activite',
+    label: 'Analyser ma dernière activité',
+    sub: 'Analyse directe de ta dernière sortie',
+    model: 'athena',
+    prompt: 'Analyse en détail ma dernière activité enregistrée : allure/puissance/FC, répartition en zones, dérive éventuelle, points forts et axes d\'amélioration. Termine par 2 ou 3 recommandations concrètes.',
+  },
+  {
+    key: 'bilan_mois',
+    label: 'Bilan du mois',
+    sub: 'Rétrospective : volume, records, tendances',
+    model: 'athena',
+    prompt: 'Fais le bilan de mon mois écoulé : volume et charge d\'entraînement, records éventuels, tendances par sport, équilibre endurance/force, et ce qu\'il faudrait ajuster le mois prochain.',
+  },
+  {
+    key: 'surentrainement',
+    label: 'Suis-je en surentraînement ?',
+    sub: 'Diagnostic charge + HRV + sommeil',
+    model: 'athena',
+    prompt: 'Suis-je en état de surentraînement ou de fatigue excessive ? Croise ma charge d\'entraînement (CTL/ATL/TSB), ma variabilité cardiaque (HRV), mon sommeil et mes ressentis récents, puis donne un diagnostic clair et des recommandations (réduire, maintenir, récupérer).',
+  },
+  {
+    key: 'derive_cardiaque',
+    label: 'Analyser mon endurance (dérive cardiaque)',
+    sub: 'Découplage aérobie sur tes sorties longues',
+    model: 'athena',
+    prompt: 'Analyse ma dérive cardiaque / mon découplage aérobie (Pw:HR ou allure:FC) sur mes sorties longues récentes, pour évaluer la qualité de mon endurance aérobie. Explique ce que révèlent les chiffres et comment progresser.',
+  },
+  {
+    key: 'estimer_vo2max',
+    label: 'Estimer ma VO2max / VMA / FTP',
+    sub: 'Calculer tes indices à partir des données',
+    model: 'athena',
+    prompt: 'Estime ma VO2max, ma VMA et/ou ma FTP à partir de mes données et performances récentes. Explique la méthode et propose les valeurs. Si je valide, mets à jour mon profil de performance (demande-moi confirmation avant tout changement).',
+  },
+
+  // ─────────── NUTRITION ───────────
+  {
+    key: 'nutrition_effort',
+    label: 'Nutrition pendant l\'effort',
+    sub: 'Stratégie glucides / gels / timing',
+    model: 'athena',
+    prompt: 'Donne-moi une stratégie de nutrition PENDANT l\'effort (glucides par heure, type d\'apports, gels/boissons, timing) pour une sortie longue ou une course. Demande-moi la durée et l\'intensité prévues si ce n\'est pas clair, et adapte à mon profil.',
+  },
+  {
+    key: 'hydratation',
+    label: 'Hydratation & électrolytes',
+    sub: 'Plan boisson selon durée et chaleur',
+    model: 'hermes',
+    prompt: 'Propose-moi un plan d\'hydratation et d\'électrolytes adapté à la durée, l\'intensité et la chaleur de mon effort. Donne des repères concrets (ml/h, sodium, quand boire) et adapte à mon profil.',
+  },
+  {
+    key: 'repas_post',
+    label: 'Repas post-entraînement',
+    sub: 'Quoi manger pour bien récupérer',
+    model: 'hermes',
+    prompt: 'Que dois-je manger après ma séance pour bien récupérer ? Donne des exemples de repas et collations concrets (avec ordres de grandeur protéines/glucides), adaptés à mon profil et au type d\'effort réalisé.',
+  },
+  {
+    key: 'besoins_macros',
+    label: 'Calculer mes besoins (calories / macros)',
+    sub: 'Estimation perso selon profil et charge',
+    model: 'athena',
+    prompt: 'Calcule mes besoins caloriques quotidiens et ma répartition de macros (protéines / glucides / lipides) selon mon profil, mon poids et ma charge d\'entraînement actuelle. Explique la méthode et propose un ajustement selon mon objectif (maintien, prise, perte).',
+  },
+
+  // ─────────── RÉCUPÉRATION / SANTÉ ───────────
+  {
+    key: 'douleur_blessure',
+    label: 'J\'ai une douleur / blessure',
+    sub: 'Orientation + suivi de la blessure',
+    model: 'athena',
+    prompt: 'J\'ai une douleur ou une possible blessure. Pose-moi les questions nécessaires (localisation, type de douleur, depuis quand, ce qui la déclenche), oriente-moi (repos, adaptation de l\'entraînement, signes qui imposent de consulter), et propose d\'enregistrer cette blessure dans mon suivi si je le valide. Tu n\'es pas médecin : reste prudent et invite à consulter en cas de doute sérieux.',
+  },
+  {
+    key: 'etirements',
+    label: 'Routine étirements / mobilité',
+    sub: 'Séquence ciblée souplesse & récup',
+    model: 'hermes',
+    prompt: 'Propose-moi une routine d\'étirements et de mobilité ciblée (demande-moi la zone si ce n\'est pas précisé) pour améliorer ma souplesse et ma récupération. Détaille les mouvements, la durée et la respiration.',
+  },
+  {
+    key: 'gestion_stress',
+    label: 'Gérer le stress / charge mentale',
+    sub: 'Récupération mentale et gestion de la pression',
+    model: 'hermes',
+    prompt: 'Donne-moi des conseils concrets pour mieux gérer mon stress et ma charge mentale liés à l\'entraînement, à la performance et à la vie quotidienne, afin d\'améliorer ma récupération globale.',
+  },
+
+  // ─────────── PÉDAGOGIE ───────────
+  {
+    key: 'expliquer_concept',
+    label: 'M\'expliquer un concept',
+    sub: 'CTL/ATL/TSB, zones, seuil, VO2max…',
+    model: 'hermes',
+    prompt: 'Explique-moi un concept d\'entraînement de façon claire et pédagogique (par exemple CTL/ATL/TSB, zones d\'intensité, seuil lactique, VO2max, sweet spot, polarisation…). Demande-moi lequel si je ne l\'ai pas précisé, puis illustre avec mon cas si pertinent.',
   },
 ]
 

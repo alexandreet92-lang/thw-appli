@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check } from 'lucide-react'
+import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SlideView } from '@/components/ui/SlideView'
@@ -1728,7 +1728,6 @@ function AbonnementContent() {
 
   const tier = details?.tier ?? 'trial'
   const meta = TIER_META[tier] ?? TIER_META.trial
-  const tierLabel = tierBadgeLabel(tier)
   const planName  = tierPlanName(tier)
   const hasStripe = !!(details?.stripe?.nextBillingDate)
   const isCancelling = details?.cancel_at_period_end || details?.stripe?.cancelAtPeriodEnd
@@ -1749,11 +1748,8 @@ function AbonnementContent() {
             <div aria-hidden style={{ position: 'absolute', top: -70, right: -50, width: 180, height: 180, borderRadius: '50%', background: `radial-gradient(circle, ${meta.color}26, transparent 70%)`, pointerEvents: 'none' }} />
             <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{ minWidth: 0 }}>
-                <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 20, background: `${meta.color}1f`, border: `1px solid ${meta.color}55`, color: meta.color, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase' }}>
-                  {tierLabel}
-                </span>
-                <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, margin: '8px 0 2px', color: 'var(--text)' }}>
-                  THW Coach {planName}
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 700, margin: '0 0 3px', color: 'var(--text)' }}>
+                  THW {planName}
                 </p>
                 {isCancelling ? (
                   <p style={{ fontSize: 11, color: '#ef4444', margin: 0, fontWeight: 600 }}>
@@ -1774,20 +1770,20 @@ function AbonnementContent() {
                   <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>{t('profile.fullAccess')}</p>
                 )}
               </div>
-              {!isCancelling && (
-                <div style={{ flexShrink: 0, paddingTop: 4 }}>
+              {!isCancelling && (hasStripe || tier !== 'expert') && (
+                <div style={{ flexShrink: 0, paddingTop: 2 }}>
                   {hasStripe ? (
                     <button
                       onClick={handlePortal}
                       disabled={portalLoading}
-                      style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--bg-card2)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: portalLoading ? 0.6 : 1 }}
+                      style={{ padding: '6px 13px', borderRadius: 999, background: 'transparent', border: '1px solid var(--border-mid)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: portalLoading ? 0.6 : 1 }}
                     >
                       {portalLoading ? '…' : t('profile.manage')}
                     </button>
                   ) : (
                     <button
                       onClick={() => { window.location.href = '/profile?tab=ia' }}
-                      style={{ padding: '8px 14px', borderRadius: 10, background: 'linear-gradient(135deg,#06B6D4,#5b6fff)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      style={{ padding: '6px 13px', borderRadius: 999, background: 'transparent', border: `1px solid ${meta.color}66`, color: meta.color, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                     >
                       {t('profile.upgrade')}
                     </button>
@@ -2389,6 +2385,77 @@ function ListRow({ Icon, label, value, danger, last, onClick }: {
   )
 }
 
+// ══════════════════════════════════════════════════
+// UNITÉS DE MESURE (bulle « Unités »)
+// ══════════════════════════════════════════════════
+
+function UnitSegmented({ value, options, onChange }: { value: string; options: { v: string; label: string }[]; onChange: (v: string) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      {options.map(o => {
+        const on = value === o.v
+        return (
+          <button key={o.v} onClick={() => onChange(o.v)} style={{
+            flex: 1, padding: '11px 6px', borderRadius: 12, cursor: 'pointer',
+            border: `1.5px solid ${on ? 'var(--primary)' : 'var(--border)'}`,
+            background: on ? 'var(--primary)' : 'var(--bg-card2)',
+            color: on ? 'var(--on-primary,#fff)' : 'var(--text-mid)',
+            fontFamily: 'var(--font-body)', fontSize: 13.5, fontWeight: 600, transition: 'all .15s' }}>
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function UnitesBloc() {
+  const supabase = createClient()
+  const [prefs, setPrefs] = useState<{ distance: string; temperature: string; weight: string }>({ distance: 'km', temperature: 'c', weight: 'kg' })
+
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const cached = localStorage.getItem('thw-unit-prefs')
+        if (cached && alive) setPrefs(p => ({ ...p, ...JSON.parse(cached) }))
+      } catch { /* ignore */ }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase.from('profiles').select('unit_prefs').eq('id', user.id).single()
+      const up = (data?.unit_prefs ?? {}) as Partial<{ distance: string; temperature: string; weight: string }>
+      if (alive && up) setPrefs(p => ({ ...p, ...up }))
+    })()
+    return () => { alive = false }
+  }, [])
+
+  async function update(key: 'distance' | 'temperature' | 'weight', val: string) {
+    const next = { ...prefs, [key]: val }
+    setPrefs(next)
+    try { localStorage.setItem('thw-unit-prefs', JSON.stringify(next)) } catch { /* ignore */ }
+    window.dispatchEvent(new CustomEvent('thw:unit-prefs', { detail: next }))
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) await supabase.from('profiles').update({ unit_prefs: next, updated_at: new Date().toISOString() }).eq('id', user.id)
+  }
+
+  const ROWS: { key: 'distance' | 'temperature' | 'weight'; label: string; opts: { v: string; label: string }[] }[] = [
+    { key: 'distance',    label: 'Distance',    opts: [{ v: 'km', label: 'Kilomètres' }, { v: 'mi', label: 'Miles' }] },
+    { key: 'temperature', label: 'Température',  opts: [{ v: 'c',  label: 'Celsius °C' }, { v: 'f',  label: 'Fahrenheit °F' }] },
+    { key: 'weight',      label: 'Poids',       opts: [{ v: 'kg', label: 'Kilogrammes' }, { v: 'lb', label: 'Livres (lb)' }] },
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <Intro>Choisis les unités de mesure affichées dans l&apos;application.</Intro>
+      {ROWS.map(r => (
+        <Section key={r.key} label={r.label}>
+          <UnitSegmented value={prefs[r.key]} options={r.opts} onChange={v => void update(r.key, v)} />
+        </Section>
+      ))}
+    </div>
+  )
+}
+
 export function ProfileContent() {
   const { t } = useI18n()
   const router = useRouter()
@@ -2431,6 +2498,7 @@ export function ProfileContent() {
     connexions:      { label: t('profile.navConnexions'),      node: <ConnexionsBloc /> },
     ia:              { label: t('profile.navIa'),     node: <IASettingsBloc /> },
     langue:          { label: t('profile.navLangue'),          node: <LangueBloc /> },
+    unites:          { label: 'Unités',                        node: <UnitesBloc /> },
     localisation:    { label: t('profile.navLocalisation'),    node: <LocalisationBloc /> },
     apparence:       { label: t('profile.navApparence'),       node: <ApparenceBloc /> },
   }
@@ -2452,6 +2520,7 @@ export function ProfileContent() {
     { title: t('profile.groupApp'), rows: [
       { id: 'ia',          label: t('profile.navIa'), Icon: Sparkles },
       { id: 'langue',      label: t('profile.navLangue'),      Icon: Globe },
+      { id: 'unites',      label: 'Unités',                    Icon: Ruler },
       { id: 'localisation',label: t('profile.navLocalisation'),Icon: MapPin },
       { id: 'apparence',   label: t('profile.navApparence'),   Icon: Palette },
     ]},

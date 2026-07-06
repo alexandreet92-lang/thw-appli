@@ -14036,6 +14036,26 @@ function toolCallMeta(tc: PendingToolCall): { borderColor: string; emoji: string
     return { borderColor: '#3C90D5', emoji: '✦', label: "Créer le plan d'entraînement",
       description: `${String(inp.name ?? 'Plan')} · ${String(inp.sport_principal ?? '')} · ${String(inp.duree_semaines ?? '?')} sem · ${String(inp.seances_par_semaine ?? '?')}×/sem (généré à partir de tes données)` }
   }
+  if (tool_name === 'update_athlete_profile') {
+    const parts: string[] = []
+    if (inp.ftp_watts != null)           parts.push(`FTP ${inp.ftp_watts} W`)
+    if (inp.vma_km_h != null)            parts.push(`VMA ${inp.vma_km_h} km/h`)
+    if (inp.vo2max_ml_kg_min != null)    parts.push(`VO2max ${inp.vo2max_ml_kg_min}`)
+    if (inp.threshold_pace_s_km != null) parts.push(`Seuil ${Math.floor(Number(inp.threshold_pace_s_km) / 60)}:${String(Number(inp.threshold_pace_s_km) % 60).padStart(2, '0')}/km`)
+    if (inp.css_s_100m != null)          parts.push(`CSS ${Math.floor(Number(inp.css_s_100m) / 60)}:${String(Number(inp.css_s_100m) % 60).padStart(2, '0')}/100m`)
+    if (inp.lthr_bike != null)           parts.push(`LTHR vélo ${inp.lthr_bike}`)
+    if (inp.lthr_run != null)            parts.push(`LTHR run ${inp.lthr_run}`)
+    if (inp.hr_max != null)              parts.push(`FC max ${inp.hr_max}`)
+    return { borderColor: '#8b5cf6', emoji: '✦', label: 'Mettre à jour mon profil',
+      description: parts.length ? parts.join(' · ') : 'Aucune valeur' }
+  }
+  if (tool_name === 'create_injury') {
+    const sev = String(inp.severity ?? '')
+    const sevLabel = sev === 'gene' ? 'Gêne' : sev === 'douleur' ? 'Douleur' : sev === 'blessure' ? 'Blessure' : sev
+    const side = inp.side ? ` (${String(inp.side)})` : ''
+    return { borderColor: '#ef4444', emoji: '+', label: 'Enregistrer une blessure',
+      description: `${sevLabel} · ${String(inp.zone ?? '—')}${side}` }
+  }
   return { borderColor: '#9ca3af', emoji: '?', label: tool_name, description: '' }
 }
 
@@ -20025,6 +20045,42 @@ export default function AIPanel({
           }
         }
       }
+
+    } else if (tool_name === 'update_athlete_profile') {
+      // Écrit les indices de perf estimés par le coach (validation = carte front).
+      const patch: Record<string, unknown> = { user_id: userId, updated_at: new Date().toISOString() }
+      if (typeof inp.ftp_watts === 'number')           patch.ftp_watts = Math.round(inp.ftp_watts)
+      if (typeof inp.vma_km_h === 'number') {
+        patch.vma_km_h = inp.vma_km_h
+        patch.vma_ms   = Math.round((inp.vma_km_h / 3.6) * 100) / 100   // garde vma_ms cohérent
+      }
+      if (typeof inp.vo2max_ml_kg_min === 'number') {
+        patch.vo2max_ml_kg_min = inp.vo2max_ml_kg_min
+        patch.vo2max           = inp.vo2max_ml_kg_min
+      }
+      if (typeof inp.threshold_pace_s_km === 'number') patch.threshold_pace_s_km = Math.round(inp.threshold_pace_s_km)
+      if (typeof inp.css_s_100m === 'number')          patch.css_s_100m = Math.round(inp.css_s_100m)
+      if (typeof inp.lthr_bike === 'number')           patch.lthr_bike = Math.round(inp.lthr_bike)
+      if (typeof inp.lthr_run === 'number')            patch.lthr_run = Math.round(inp.lthr_run)
+      if (typeof inp.hr_max === 'number')              patch.hr_max = Math.round(inp.hr_max)
+      const { error } = await sb.from('athlete_performance_profile').upsert(patch, { onConflict: 'user_id' })
+      pgErr = error
+
+    } else if (tool_name === 'create_injury') {
+      const today = new Date().toISOString().slice(0, 10)
+      const { error } = await sb.from('injuries').insert({
+        user_id:     userId,
+        zone:        inp.zone,
+        severity:    inp.severity,
+        onset_date:  (typeof inp.onset_date === 'string' && inp.onset_date) ? inp.onset_date : today,
+        side:        inp.side ?? null,
+        structure:   inp.structure ?? null,
+        mechanism:   inp.mechanism ?? null,
+        phase:       inp.phase ?? 'aigue',
+        status:      'active',
+        description: inp.description ?? null,
+      })
+      pgErr = error
 
     } else {
       return `Tool inconnu : ${tool_name}`

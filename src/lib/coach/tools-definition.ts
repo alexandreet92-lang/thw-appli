@@ -33,6 +33,8 @@ export type CoachToolName =
   | 'update_plan_periodisation'
   | 'ask_clarifying_questions'
   | 'create_training_plan'
+  | 'update_athlete_profile'
+  | 'create_injury'
 
 // ── Types des inputs par tool ─────────────────────────────────
 
@@ -155,6 +157,33 @@ export interface CreateTrainingPlanInput {
   methodologie?: string          // la logique/approche raisonnée du coach, à suivre fidèlement
 }
 
+/** Mise à jour des indices de performance (athlete_performance_profile).
+ *  Tous les champs sont optionnels : ne fournir QUE ceux que le coach vient
+ *  d'estimer. La carte de validation front sert d'autorisation utilisateur. */
+export interface UpdateAthleteProfileInput {
+  ftp_watts?: number             // FTP vélo en watts
+  vma_km_h?: number              // VMA course en km/h
+  vo2max_ml_kg_min?: number      // VO2max en ml/kg/min
+  threshold_pace_s_km?: number   // allure seuil course en s/km
+  css_s_100m?: number            // CSS natation en s/100m
+  lthr_bike?: number             // FC seuil vélo (bpm)
+  lthr_run?: number              // FC seuil course (bpm)
+  hr_max?: number                // FC max (bpm)
+  source_note?: string           // courte justification (méthode d'estimation)
+}
+
+/** Création d'une blessure / douleur dans le suivi (table injuries). */
+export interface CreateInjuryInput {
+  zone: string                   // localisation (ex: "genou", "ischio-jambier droit")
+  severity: 'gene' | 'douleur' | 'blessure'
+  onset_date?: string            // YYYY-MM-DD (défaut : aujourd'hui)
+  side?: 'gauche' | 'droit' | 'central'
+  structure?: 'muscle' | 'tendon' | 'articulation' | 'ligament' | 'os' | 'nerf' | 'inconnu'
+  mechanism?: 'soudaine' | 'progressive'
+  phase?: 'aigue' | 'recuperation' | 'reathletisation' | 'resolu'
+  description?: string           // contexte, ressenti, ce qui déclenche la douleur
+}
+
 // ── Map CoachToolName → Input type ────────────────────────────
 
 export interface CoachToolInputMap {
@@ -166,6 +195,8 @@ export interface CoachToolInputMap {
   update_plan_periodisation: UpdatePlanPeriodisationInput
   ask_clarifying_questions:  AskClarifyingQuestionsInput
   create_training_plan:      CreateTrainingPlanInput
+  update_athlete_profile:    UpdateAthleteProfileInput
+  create_injury:             CreateInjuryInput
 }
 
 export type CoachToolInput<T extends CoachToolName> = CoachToolInputMap[T]
@@ -508,6 +539,59 @@ export const coachTools: Anthropic.Tool[] = [
         methodologie:       { type: 'string', description: 'TA logique de coach validée avec l\'athlète : approche par sport et par phase, et le POURQUOI. Le générateur la suivra fidèlement. Sois précis et concret.' },
       },
       required: ['name', 'objectif_principal', 'sport_principal', 'niveau', 'duree_semaines', 'start_date', 'seances_par_semaine', 'requirements_resume', 'methodologie'],
+    },
+  },
+
+  // ── 9. update_athlete_profile ────────────────────────────────
+  {
+    name: 'update_athlete_profile',
+    description:
+      "Met à jour les indices de performance de l'athlète dans son profil " +
+      "(athlete_performance_profile) : FTP, VMA, VO2max, allure seuil, CSS, FC seuil, FC max. " +
+      "Appelle ce tool UNIQUEMENT quand tu viens d'estimer ou de recalculer une ou plusieurs de " +
+      "ces valeurs à partir de ses données, et que tu veux les enregistrer. " +
+      "Ne fournis QUE les champs réellement estimés — les autres restent inchangés. " +
+      "L'athlète voit une carte de validation avant l'écriture : tu n'écris jamais sans son accord. " +
+      "Explique brièvement en texte la valeur proposée et la méthode AVANT d'appeler le tool.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        ftp_watts:           { type: 'integer', description: 'FTP vélo en watts.' },
+        vma_km_h:            { type: 'number',  description: 'VMA course en km/h.' },
+        vo2max_ml_kg_min:    { type: 'number',  description: 'VO2max en ml/kg/min.' },
+        threshold_pace_s_km: { type: 'integer', description: 'Allure seuil course en secondes par km (ex: 258 = 4:18/km).' },
+        css_s_100m:          { type: 'integer', description: 'CSS natation en secondes par 100 m.' },
+        lthr_bike:           { type: 'integer', description: 'FC seuil vélo en bpm.' },
+        lthr_run:            { type: 'integer', description: 'FC seuil course en bpm.' },
+        hr_max:              { type: 'integer', description: 'FC maximale en bpm.' },
+        source_note:         { type: 'string',  description: "Courte justification de l'estimation (méthode, test, période). Optionnel." },
+      },
+    },
+  },
+
+  // ── 10. create_injury ────────────────────────────────────────
+  {
+    name: 'create_injury',
+    description:
+      "Enregistre une blessure ou une douleur dans le suivi de l'athlète (table injuries). " +
+      "Appelle ce tool quand l'athlète décrit une douleur/blessure et confirme vouloir la suivre. " +
+      "Rassemble d'abord les infos décisives (localisation, sévérité, depuis quand) via " +
+      "ask_clarifying_questions si elles manquent. " +
+      "L'athlète voit une carte de validation avant l'écriture. " +
+      "Tu n'es pas médecin : reste prudent, n'établis pas de diagnostic médical définitif.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        zone:      { type: 'string', description: 'Localisation de la blessure (ex: "genou droit", "ischio-jambier", "épaule").' },
+        severity:  { type: 'string', enum: ['gene', 'douleur', 'blessure'], description: "Sévérité : 'gene' (gêne légère) | 'douleur' | 'blessure'." },
+        onset_date:{ type: 'string', description: "Date d'apparition au format YYYY-MM-DD. Défaut : aujourd'hui." },
+        side:      { type: 'string', enum: ['gauche', 'droit', 'central'], description: "Côté : 'gauche' | 'droit' | 'central'. Optionnel." },
+        structure: { type: 'string', enum: ['muscle', 'tendon', 'articulation', 'ligament', 'os', 'nerf', 'inconnu'], description: 'Structure touchée. Optionnel.' },
+        mechanism: { type: 'string', enum: ['soudaine', 'progressive'], description: "Mécanisme : 'soudaine' | 'progressive'. Optionnel." },
+        phase:     { type: 'string', enum: ['aigue', 'recuperation', 'reathletisation', 'resolu'], description: "Phase actuelle. Défaut : 'aigue'. Optionnel." },
+        description:{ type: 'string', description: 'Contexte, ressenti, ce qui déclenche la douleur. Optionnel.' },
+      },
+      required: ['zone', 'severity'],
     },
   },
 ]

@@ -115,8 +115,19 @@ OUTILS DE LECTURE — ENQUÊTE SUR LES DONNÉES (raisonne comme Claude, pas comm
 Tu disposes d'outils pour ALLER CHERCHER les données réelles dont tu as besoin, puis raisonner dessus avant de répondre :
 - get_activities : liste d'activités au-delà du contexte (tendances, historique long, un sport précis, les compétitions).
 - analyze_sport_metrics : métriques objectives capteurs (courbe de puissance + FTP estimée vélo ; profil d'allure + réserve de vitesse course ; durabilité = fade + découplage cardiaque). À utiliser pour TOUTE analyse de niveau, de point faible ou pour chiffrer une prescription.
+- get_activity_detail : ouvre UNE activité en profondeur (métriques complètes, tours/laps, retour d'effort, séance de force). À utiliser dès que l'athlète veut analyser une séance précise (« analyse ma sortie d'hier », « décortique cette séance »).
 - get_training_plan / get_planned_sessions : plan actif et séances planifiées AVEC LEURS ID RÉELS.
 - get_session_library : bibliothèque de séances de référence (catalogue curé + séances PERSO de l'athlète). Consulte-la AVANT de prescrire ou de bâtir une séance/un plan, pour t'inspirer de la structure, du dosage et de l'intention — puis ADAPTE au profil et aux zones réelles (ne recopie pas tel quel).
+- get_stages : STAGES / camps d'entraînement de l'athlète — programme jour par jour (séances matin/aprem) ET les TRACES/PARCOURS prévus (distance, D+). À utiliser dès qu'il parle de son « stage », de ses « traces prévues » ou d'un séjour d'entraînement.
+- get_parcours : PARCOURS / traces GPS importés (GPX) — distance, D+/D-, analyse des montées (pente, longueur). Pour analyser la difficulté d'un parcours ou caler une séance sur son profil.
+- get_races : CALENDRIER complet des courses / objectifs (au-delà des 3 prochaines du contexte) — dates, priorités, chronos et temps cibles par discipline. Pour périodiser et prioriser.
+- get_recovery : HISTORIQUE de récupération (HRV, sommeil, FC repos, readiness, fatigue) sur une fenêtre — pour analyser une TENDANCE, pas juste le dernier point.
+- get_injuries : BLESSURES en détail + historique de suivi (le contexte ne résume que les actives). Pour le détail, l'évolution ou les blessures résolues.
+- get_nutrition : PLAN NUTRITIONNEL actif (cibles kcal/macros, régime, allergies) — avant tout conseil nutritionnel chiffré.
+- get_nutrition_log : ce que l'athlète a RÉELLEMENT mangé et bu (repas, kcal/macros par jour, hydratation) — pour analyser les apports réels vs les besoins (« analyse ce que je mange »).
+- get_personal_records : RECORDS PERSO (perf, allure, splits) + records de puissance/allure auto-détectés — pour situer le niveau et calibrer des objectifs/allures.
+- get_climb_records : RECORDS EN CÔTE vélo (W/kg, pente, durée, conditions) — pour évaluer le niveau grimpeur et fixer un objectif de W/kg.
+- get_body_metrics : suivi CORPOREL (poids + composition, tendance) — pour un objectif de poids ou pondérer W/kg et allures.
 RÈGLES :
 1. Si une affirmation utile peut être VÉRIFIÉE par un outil (niveau réel, tendance, charge, point faible), APPELLE l'outil au lieu de supposer. Tu peux enchaîner plusieurs lectures avant de conclure.
 2. Avant TOUTE modification de plan/séance (add/update/move/delete), si tu n'as pas déjà l'id réel dans le contexte, appelle d'abord get_training_plan ou get_planned_sessions pour récupérer les id — n'invente JAMAIS d'identifiant.
@@ -478,6 +489,46 @@ très peu d'athlètes peuvent encaisser une telle charge et propose une version
 réaliste adaptée à CET athlète.`
   }
 
+  // ── Analyse de parcours importé (le coach reçoit un profil altimétrique) ──
+  //    Quand l'athlète attache un parcours (GPX/TCX/KML), le front injecte un
+  //    « PARCOURS IMPORTÉ » (distance, D+/D-, altitude, montées catégorisées,
+  //    segments). Ce module apprend au coach à le lire comme un vrai expert :
+  //    difficulté, effort/allure par section, TSS estimé, spécificité vs objectif,
+  //    séance à y faire, ravitaillement. Toujours croisé avec la forme et les
+  //    objectifs réels (contexte athlète + outils de lecture).
+  if ((chatBody as { agentId?: string }).agentId === 'central') {
+    systemWithTools += `
+
+═══════════ ANALYSE D'UN PARCOURS (impératif) ═══════════
+Ce module s'applique dans DEUX cas : (a) le message contient un bloc « PARCOURS
+IMPORTÉ » (l'athlète vient d'uploader une trace) ; (b) l'athlète te demande
+d'analyser un parcours DÉJÀ ENREGISTRÉ ou une trace de stage — dans ce cas va
+CHERCHER ses données avec get_parcours (ou get_stages pour un parcours de stage)
+avant d'analyser, ne réponds jamais « envoie-moi le fichier ».
+Dans les deux cas tu l'analyses comme un coach expert — pas une description
+générique. Tu CROISES systématiquement le parcours avec les données réelles de
+l'athlète (objectifs/courses du calendrier, forme CTL/ATL/TSB, zones, FTP/VMA/
+allures, blessures) — appelle les outils de lecture si une donnée te manque.
+
+Livre une analyse structurée et CHIFFRÉE :
+1. DIFFICULTÉ : juge le profil (plat/vallonné/montagneux), le ratio D+/km, les
+   montées clés (longueur, pente moy/max, catégorie) et l'exigence globale.
+2. EFFORT & ALLURE PAR SECTION : traduis les montées/descentes/plats en zones,
+   allures ou watts CIBLES à partir des repères de l'athlète (ex. « la montée du
+   km 8, 2,3 km à 6,5 %, tiens Z3 haut ~ X W / Y/km, sans passer au rouge »).
+3. COÛT PHYSIOLOGIQUE : estime l'ordre de grandeur (durée réaliste vu son niveau,
+   TSS approximatif, filière dominante) et l'impact sur sa charge de la semaine.
+4. PERTINENCE vs OBJECTIF : dis en quoi ce parcours sert (ou non) sa prochaine
+   course / son objectif (spécificité dénivelé, terrain, allure) et ce que ça
+   entraîne concrètement.
+5. QUOI EN FAIRE : propose 1 à 2 séances concrètes À FAIRE sur ce parcours,
+   calées sur ses montées réelles (format, intensités, structure), + le meilleur
+   moment pour la placer vu sa forme. Ajoute un mot de ravitaillement/pacing si la
+   durée le justifie.
+Reste honnête : si une donnée manque (zones, FTP…), raisonne en relatif et indique
+brièvement où la renseigner — sans transformer ça en interrogatoire.`
+  }
+
   // ── Doctrine ciblée injectée (principes + méthode choisie + doc selon mots-clés) ──
   if ((chatBody as { agentId?: string }).agentId === 'central') {
     try {
@@ -673,12 +724,29 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
           lastStop  = finalMsg.stop_reason ?? null
 
           // Recherches web réellement effectuées → indicateur persistant au front.
+          // On remonte AUSSI les résultats réels (titre + URL) pour l'affichage
+          // « Sources » cliquable (blocs web_search_tool_result renvoyés par l'API).
           if ((chatBody as { agentId?: string }).agentId === 'central') {
             const queries = finalMsg.content
               .filter(b => (b as { type?: string }).type === 'server_tool_use' && (b as { name?: string }).name === 'web_search')
               .map(b => (b as { input?: { query?: string } }).input?.query)
               .filter((q): q is string => typeof q === 'string' && q.length > 0)
-            if (queries.length > 0) send('web_search', JSON.stringify({ queries }))
+
+            const sources: { url: string; title: string }[] = []
+            const seenUrls = new Set<string>()
+            for (const b of finalMsg.content) {
+              if ((b as { type?: string }).type !== 'web_search_tool_result') continue
+              const content = (b as { content?: unknown }).content
+              if (!Array.isArray(content)) continue
+              for (const r of content as Array<Record<string, unknown>>) {
+                if (r?.type !== 'web_search_result') continue
+                const url = typeof r.url === 'string' ? r.url : ''
+                if (!url || seenUrls.has(url)) continue
+                seenUrls.add(url)
+                sources.push({ url, title: typeof r.title === 'string' && r.title ? r.title : url })
+              }
+            }
+            if (queries.length > 0 || sources.length > 0) send('web_search', JSON.stringify({ queries, sources }))
           }
 
           const toolUses = finalMsg.content.filter(

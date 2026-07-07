@@ -45,9 +45,21 @@ type THWModel = 'hermes' | 'athena' | 'zeus'
 // de la boucle agentique). Premier outil de la salve → message clair.
 const TOOL_STATUS_LABELS: Record<string, string> = {
   get_activities:        'aip.tool.getActivities',
+  get_activity_detail:   'aip.tool.getActivityDetail',
   analyze_sport_metrics: 'aip.tool.analyzeMetrics',
   get_training_plan:     'aip.tool.getPlan',
   get_planned_sessions:  'aip.tool.getSessions',
+  get_session_library:   'aip.tool.getLibrary',
+  get_stages:            'aip.tool.getStages',
+  get_parcours:          'aip.tool.getParcours',
+  get_races:             'aip.tool.getRaces',
+  get_recovery:          'aip.tool.getRecovery',
+  get_injuries:          'aip.tool.getInjuries',
+  get_nutrition:         'aip.tool.getNutrition',
+  get_nutrition_log:     'aip.tool.getNutritionLog',
+  get_personal_records:  'aip.tool.getRecords',
+  get_climb_records:     'aip.tool.getClimbRecords',
+  get_body_metrics:      'aip.tool.getBody',
   web_search:            'aip.tool.webSearch',
 }
 function toolStatusLabel(tools: string[] | undefined): string {
@@ -65,6 +77,7 @@ interface AIMsg {
   thinking?: string    // raisonnement étendu (extended thinking) — feuille « Processus de réflexion »
   clarifyingQuestions?: ClarifyingQuestions  // questions IA (tool ask_clarifying_questions)
   webSearches?: string[]  // requêtes web effectuées (indicateur persistant)
+  webSources?: WebSource[]  // sources réelles citées (titre + URL) — pastille « Sources »
   planProposal?: PlanProposal  // aperçu de plan avant validation (tool create_training_plan)
   sessionData?: SBSession  // données structurées SessionBuilder (persiste en localStorage)
   trainingReport?: TrainingReportData  // données structurées AnalyzeTrainingFlow (persiste en localStorage)
@@ -420,6 +433,152 @@ function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: bo
         </div>
       )}
       <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center', padding: '3px 0 0' }}>{t('aip.chart.tapForValues')}</div>
+    </div>
+  )
+}
+
+// Les variables --ai-* sont scopées à .aip-root. Les surpages rendues via
+// createPortal(document.body) sortent de ce scope → var(--ai-bg) devient
+// indéfini (fond transparent). On ré-injecte le mapping sur la racine du portal.
+const AI_PORTAL_VARS = {
+  ['--ai-bg']:     'var(--bg-card)',
+  ['--ai-bg2']:    'var(--bg-alt)',
+  ['--ai-border']: 'var(--border)',
+  ['--ai-text']:   'var(--text)',
+  ['--ai-mid']:    'var(--text-mid)',
+  ['--ai-dim']:    'var(--text-dim)',
+  ['--ai-accent']: '#06B6D4',
+} as React.CSSProperties
+
+// Nom de domaine lisible depuis une URL (ex 'https://www.legibase.fr/x' → 'legibase.fr').
+function hostFromUrl(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, '') } catch { return url }
+}
+
+// Source web citée par l'IA (résultat réel de recherche : titre + lien).
+interface WebSource { url: string; title: string }
+
+// Favicon d'un domaine (service DuckDuckGo, sans tracking). Fallback : pastille lettre.
+function SourceFavicon({ url, size = 18 }: { url: string; size?: number }) {
+  const [err, setErr] = useState(false)
+  const host = hostFromUrl(url)
+  if (err) {
+    return (
+      <span style={{
+        width: size, height: size, borderRadius: '50%', flexShrink: 0,
+        background: 'var(--ai-accent-dim, rgba(6,182,212,0.14))', color: 'var(--ai-accent, #06B6D4)',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: size * 0.55, fontWeight: 700, textTransform: 'uppercase',
+      }}>{host.charAt(0)}</span>
+    )
+  }
+  return (
+    <img
+      src={`https://icons.duckduckgo.com/ip3/${host}.ico`}
+      alt="" width={size} height={size} loading="lazy" onError={() => setErr(true)}
+      style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, objectFit: 'cover', background: 'var(--ai-bg2, #eee)' }}
+    />
+  )
+}
+
+// Sources façon Claude : pastille compacte (favicons empilés) → surpage cliquable.
+function SourcesBadge({ sources }: { sources: WebSource[] }) {
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
+  // Dédup par domaine pour la pile de favicons (aperçu), max 4.
+  const previewHosts: string[] = []
+  for (const s of sources) {
+    const h = hostFromUrl(s.url)
+    if (!previewHosts.includes(h)) previewHosts.push(h)
+    if (previewHosts.length >= 4) break
+  }
+
+  return (
+    <div style={{ marginLeft: 34, marginTop: 6 }}>
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 9, cursor: 'pointer',
+          padding: '5px 12px 5px 12px', borderRadius: 999, border: '1px solid var(--border)',
+          background: 'var(--bg-card)', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif',
+        }}
+      >
+        <span style={{ fontWeight: 600 }}>{t('aip.sources.label')}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+          {previewHosts.map((h, i) => (
+            <span key={h} style={{ marginLeft: i === 0 ? 0 : -7, display: 'inline-flex', borderRadius: '50%', border: '2px solid var(--bg-card)', background: 'var(--bg-card)' }}>
+              <SourceFavicon url={`https://${h}`} size={18} />
+            </span>
+          ))}
+        </span>
+      </button>
+
+      {open && mounted && createPortal(
+        <>
+          <style>{`
+            @keyframes src_in { from { opacity: 0 } to { opacity: 1 } }
+            @keyframes src_up { from { transform: translateY(100%) } to { transform: translateY(0) } }
+            @keyframes src_side { from { transform: translateX(100%) } to { transform: translateX(0) } }
+          `}</style>
+          <div
+            role="dialog" aria-modal="true" aria-label={t('aip.sources.label')}
+            onClick={() => setOpen(false)}
+            style={{
+              ...AI_PORTAL_VARS,
+              position: 'fixed', inset: 0, zIndex: 1600,
+              background: 'rgba(0,0,0,0.32)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
+              animation: 'src_in 0.2s ease',
+              display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                position: 'relative',
+                background: 'var(--ai-bg)', color: 'var(--ai-text)',
+                width: '100%', maxWidth: 680, maxHeight: '82vh',
+                borderTopLeftRadius: 20, borderTopRightRadius: 20,
+                display: 'flex', flexDirection: 'column',
+                animation: 'src_up 0.3s cubic-bezier(0.32,0.72,0,1)',
+                boxShadow: '0 -10px 44px rgba(0,0,0,0.22)',
+              }}
+            >
+              {/* En-tête */}
+              <div style={{ flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '18px 18px 14px', borderBottom: '1px solid var(--ai-border)' }}>
+                <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)', width: 38, height: 4, borderRadius: 2, background: 'var(--ai-border)' }} />
+                <span style={{ fontSize: 17, fontWeight: 700, fontFamily: 'var(--font-display)' }}>{t('aip.sources.label')}</span>
+                <button
+                  onClick={() => setOpen(false)} aria-label={t('aip.ui.close')}
+                  style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-4px)', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'var(--ai-bg2)', color: 'var(--ai-text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </div>
+              {/* Liste des sources */}
+              <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '8px 8px 24px' }}>
+                {sources.map((s, i) => (
+                  <a
+                    key={i} href={s.url} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 14px', borderRadius: 14, textDecoration: 'none', color: 'inherit' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--ai-bg2)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}
+                  >
+                    <div style={{ marginTop: 2 }}><SourceFavicon url={s.url} size={22} /></div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.3, color: 'var(--ai-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.title || hostFromUrl(s.url)}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--ai-mid)', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hostFromUrl(s.url)}</div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body,
+      )}
     </div>
   )
 }
@@ -11548,6 +11707,11 @@ interface AttachedFile {
   data:      string   // base64 sans préfixe data:...;base64,
   preview?:  string   // data URL pour aperçu image
   isImage:   boolean
+  kind?:     'file' | 'parcours'   // 'parcours' = trace GPX/TCX/KML analysée côté serveur
+  analysisText?: string            // bloc texte « PARCOURS IMPORTÉ » injecté à l'IA (kind='parcours')
+  meta?:     string                // libellé court pour l'aperçu (ex '12,4 km · D+ 340 m')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parcoursSave?: any               // corps POST /api/parcours pour persister la trace (kind='parcours')
 }
 
 // Convertit un File en AttachedFile (base64 + preview)
@@ -11571,6 +11735,65 @@ function fileToAttachment(file: File): Promise<AttachedFile> {
     reader.onerror = () => reject(new Error('Lecture fichier échouée'))
     reader.readAsDataURL(file)
   })
+}
+
+// Détecte une trace de parcours (GPX/TCX/KML) à partir du nom de fichier.
+function isRouteFileName(name: string): boolean {
+  return /\.(gpx|tcx|kml)$/i.test(name.trim())
+}
+
+// Profil de parcours renvoyé par /api/parse-course-file.
+interface ParsedCourseProfile {
+  total_distance_km: number; total_denivele_pos: number; total_denivele_neg: number
+  altitude_min: number; altitude_max: number
+  segments: Array<{ start_km: number; end_km: number; distance_km: number; ele_start: number; ele_end: number; denivele: number; pente_moyenne_pct: number; type: string; description: string }>
+  major_climbs: Array<{ start_km: number; end_km: number; distance_km: number; denivele: number; pente_moyenne_pct: number; pente_max_pct: number; altitude_max: number; categorie: string }>
+  elevation_profile: Array<{ dist_km: number; ele: number }>
+}
+
+// Mappe un profil parsé vers le corps attendu par POST /api/parcours, pour
+// PERSISTER la trace sur la page Parcours. On convertit les segments au format
+// ParsedSegment (type climb/descent/flat) attendu par la base et par get_parcours.
+function courseProfileToSaveBody(p: ParsedCourseProfile, fileName: string) {
+  const name = fileName.replace(/\.(gpx|tcx|kml)$/i, '').trim() || 'Parcours importé'
+  return {
+    name,
+    totalKm: p.total_distance_km,
+    elevationGainM: p.total_denivele_pos,
+    elevationLossM: p.total_denivele_neg,
+    elevationProfile: (p.elevation_profile ?? []).map(e => ({ distKm: e.dist_km, ele: e.ele })),
+    segments: (p.segments ?? []).map(s => ({
+      startKm: s.start_km, endKm: s.end_km,
+      startEle: s.ele_start, endEle: s.ele_end,
+      distanceKm: s.distance_km,
+      avgGradient: s.pente_moyenne_pct,
+      maxGradient: Math.abs(s.pente_moyenne_pct),
+      elevationDeltaM: s.denivele,
+      type: s.type === 'montee' ? 'climb' : s.type === 'descente' ? 'descent' : 'flat',
+    })),
+  }
+}
+
+// Formate un CourseProfile parsé en un bloc texte compact « PARCOURS IMPORTÉ »
+// injecté à l'IA (le module d'analyse de parcours du system prompt s'appuie
+// dessus). Chiffres bruts et structurés — l'IA raisonne, ne re-parse rien.
+function courseProfileToAnalysisText(p: ParsedCourseProfile, fileName: string): string {
+  const L: string[] = []
+  L.push(`PARCOURS IMPORTÉ — ${fileName}`)
+  L.push(`Distance ${p.total_distance_km} km · D+ ${p.total_denivele_pos} m · D- ${p.total_denivele_neg} m · Altitude ${p.altitude_min}→${p.altitude_max} m · D+/km ${(p.total_denivele_pos / Math.max(1, p.total_distance_km)).toFixed(0)} m/km`)
+  if (p.major_climbs?.length) {
+    L.push(`Montées majeures (${p.major_climbs.length}) :`)
+    p.major_climbs.slice(0, 12).forEach((c, i) => {
+      L.push(`  ${i + 1}. km ${c.start_km}→${c.end_km} · ${c.distance_km} km · D+ ${c.denivele} m · ${c.pente_moyenne_pct}% moy (max ${c.pente_max_pct}%) · cat ${c.categorie} · sommet ${c.altitude_max} m`)
+    })
+  }
+  if (p.segments?.length) {
+    L.push(`Profil segment par segment (${p.segments.length}) :`)
+    p.segments.slice(0, 24).forEach(s => L.push(`  - ${s.description}`))
+    if (p.segments.length > 24) L.push(`  … (${p.segments.length - 24} segments supplémentaires)`)
+  }
+  L.push('Analyse ce parcours selon mes objectifs, ma forme et mes zones réelles, et dis-moi ce que je peux/dois y faire.')
+  return L.join('\n')
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -19257,6 +19480,7 @@ export default function AIPanel({
   const [selPopup,    setSelPopup]    = useState<{ text: string; x: number; y: number } | null>(null)
   const [attachment,    setAttachment]    = useState<AttachedFile | null>(null)
   const [attachErr,     setAttachErr]     = useState<string | null>(null)
+  const [attachParsing, setAttachParsing] = useState(false)
   const [pendingToolCalls, setPendingToolCalls] = useState<PendingToolCall[]>([])
   const [toolApplyStatus,  setToolApplyStatus]  = useState<'idle' | 'applying' | 'success' | 'error'>('idle')
   const [toolApplyError,   setToolApplyError]   = useState<string | null>(null)
@@ -20199,12 +20423,44 @@ export default function AIPanel({
     } catch { setSelPopup(null) }
   }, [])
 
-  // Handler fichier sélectionné (caméra / photos / fichiers)
+  // Handler fichier sélectionné (caméra / photos / fichiers / parcours GPX)
   const handleFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''   // reset pour permettre re-sélection
     setAttachErr(null)
+
+    // Trace de parcours (GPX/TCX/KML) → parsée côté serveur en profil
+    // altimétrique, puis attachée comme bloc texte « PARCOURS IMPORTÉ ».
+    if (isRouteFileName(file.name)) {
+      setAttachParsing(true)
+      try {
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await fetch('/api/parse-course-file', { method: 'POST', body: fd })
+        const json = await res.json() as { profile?: ParsedCourseProfile; error?: string }
+        if (!res.ok || !json.profile) throw new Error(json.error || 'parse failed')
+        const p = json.profile
+        setAttachment({
+          name: file.name,
+          mediaType: 'application/gpx',
+          data: '',
+          isImage: false,
+          kind: 'parcours',
+          analysisText: courseProfileToAnalysisText(p, file.name),
+          meta: `${p.total_distance_km} km · D+ ${p.total_denivele_pos} m${p.major_climbs?.length ? ` · ${p.major_climbs.length} montée${p.major_climbs.length > 1 ? 's' : ''}` : ''}`,
+          parcoursSave: courseProfileToSaveBody(p, file.name),
+        })
+        areaRef.current?.focus()
+      } catch (err) {
+        setAttachErr(err instanceof Error && err.message !== 'parse failed' ? err.message : 'Parcours illisible (formats : GPX, TCX, KML).')
+        setTimeout(() => setAttachErr(null), 5000)
+      } finally {
+        setAttachParsing(false)
+      }
+      return
+    }
+
     try {
       const attached = await fileToAttachment(file)
       setAttachment(attached)
@@ -20488,7 +20744,22 @@ export default function AIPanel({
       ? `[Recherche web demandée] Effectue une recherche web (outil web_search) pour fonder ta réponse sur des informations à jour et fiables, puis cite tes sources.\n\n${quotedApiText}`
       : quotedApiText
 
-    if (hasAttachment && attachment) {
+    if (hasAttachment && attachment && attachment.kind === 'parcours') {
+      // Parcours : pas de fichier binaire — on injecte le profil analysé en texte.
+      // On n'ajoute le texte utilisateur que s'il a réellement écrit quelque chose
+      // (sinon apiContentText vaut juste le placeholder "[nom.gpx]").
+      const extra = (txt || webForSend || quoteForSend) ? apiContentText : ''
+      const parcoursText = [attachment.analysisText, extra].filter(Boolean).join('\n\n')
+      apiMsgs.push({ role: 'user', content: parcoursText })
+      // Persiste la trace sur la page Parcours (best-effort, n'interrompt jamais l'envoi).
+      if (attachment.parcoursSave) {
+        void fetch('/api/parcours', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(attachment.parcoursSave),
+        }).catch(() => { /* silencieux : l'analyse reste prioritaire */ })
+      }
+    } else if (hasAttachment && attachment) {
       const blocks: { type: string; [k: string]: unknown }[] = []
       if (attachment.isImage) {
         blocks.push({ type: 'image', mediaType: attachment.mediaType, data: attachment.data })
@@ -20673,12 +20944,20 @@ export default function AIPanel({
             } catch { /* ignore */ }
           } else if (eventType === 'web_search') {
             try {
-              const { queries } = JSON.parse(data) as { queries?: string[] }
-              const qs = (queries ?? []).filter(q => typeof q === 'string' && q.trim())
-              if (qs.length > 0) {
+              const parsed = JSON.parse(data) as { queries?: string[]; sources?: WebSource[] }
+              const qs = (parsed.queries ?? []).filter(q => typeof q === 'string' && q.trim())
+              const srcs = (parsed.sources ?? []).filter(s => s && typeof s.url === 'string' && s.url.trim())
+              if (qs.length > 0 || srcs.length > 0) {
                 setConvs(prev => prev.map(c =>
                   c.id === cid
-                    ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, webSearches: [...(m.webSearches ?? []), ...qs] } : m) }
+                    ? { ...c, msgs: c.msgs.map(m => {
+                        if (m.id !== aiMsgId) return m
+                        // Dédup des sources par URL en cumulant les salves successives.
+                        const seen = new Set((m.webSources ?? []).map(s => s.url))
+                        const merged = [...(m.webSources ?? [])]
+                        for (const s of srcs) if (!seen.has(s.url)) { seen.add(s.url); merged.push(s) }
+                        return { ...m, webSearches: [...(m.webSearches ?? []), ...qs], webSources: merged }
+                      }) }
                     : c
                 ))
               }
@@ -21906,10 +22185,13 @@ export default function AIPanel({
                         </div>
                       )
                     )}
-                    {/* Indicateur persistant : recherches web effectuées */}
-                    {msg.role === 'assistant' && msg.webSearches && msg.webSearches.length > 0 && (
+                    {/* Sources réelles citées (façon Claude) — priorité aux liens ;
+                        à défaut, on montre au moins les requêtes effectuées. */}
+                    {msg.role === 'assistant' && msg.webSources && msg.webSources.length > 0 ? (
+                      <SourcesBadge sources={msg.webSources} />
+                    ) : msg.role === 'assistant' && msg.webSearches && msg.webSearches.length > 0 ? (
                       <WebSearchBadge queries={msg.webSearches} />
-                    )}
+                    ) : null}
                     {/* Questions de clarification IA — carte interactive */}
                     {msg.role === 'assistant' && msg.clarifyingQuestions && (
                       <div style={{ marginLeft: 34 }}>
@@ -22071,7 +22353,7 @@ export default function AIPanel({
             {/* Hidden file inputs */}
             <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileSelected} />
             <input ref={photosRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileSelected} />
-            <input ref={filesRef}  type="file" accept=".pdf,image/*,.doc,.docx,.txt" style={{ display: 'none' }} onChange={handleFileSelected} />
+            <input ref={filesRef}  type="file" accept=".pdf,image/*,.doc,.docx,.txt,.gpx,.tcx,.kml" style={{ display: 'none' }} onChange={handleFileSelected} />
 
             {/* Compétences actives : visibles via le flyout du bouton Compétences
                 (menu « + »), plus affichées en pastilles bleues au-dessus du champ. */}
@@ -22124,6 +22406,16 @@ export default function AIPanel({
                 <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   {attachment.isImage && attachment.preview
                     ? <img src={attachment.preview} alt={attachment.name} style={{ height: 56, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--ai-border)' }} />
+                    : attachment.kind === 'parcours'
+                    ? (
+                      <div style={{ padding: '6px 12px', borderRadius: 10, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.35)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <span>🗺️</span>
+                        <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
+                          <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{attachment.name}</span>
+                          {attachment.meta && <span style={{ fontSize: 10, color: 'var(--ai-mid)' }}>{attachment.meta}</span>}
+                        </span>
+                      </div>
+                    )
                     : (
                       <div style={{ padding: '6px 12px', borderRadius: 10, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
                         <span>📄</span><span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachment.name}</span>
@@ -22135,6 +22427,11 @@ export default function AIPanel({
                     style={{ width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'var(--ai-mid)', color: 'var(--ai-bg)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                   >×</button>
                 </div>
+              )}
+
+              {/* Parcours en cours d'analyse */}
+              {attachParsing && (
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '4px 12px 0', padding: 0 }}>🗺️ Analyse du parcours…</p>
               )}
 
               {/* Attachment error */}
@@ -22431,6 +22728,7 @@ export default function AIPanel({
               role="dialog" aria-modal="true" aria-label={t('aip.ui.thinkingProcess')}
               onClick={close}
               style={{
+                ...AI_PORTAL_VARS,
                 position: 'fixed', inset: 0, zIndex: 1600,
                 background: 'rgba(0,0,0,0.32)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
                 animation: 'rsheet_in 0.2s ease',

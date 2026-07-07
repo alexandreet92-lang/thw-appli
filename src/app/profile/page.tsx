@@ -114,8 +114,12 @@ function AppLogo({ id, size=28 }: { id:string; size?:number }) {
 // SHARED UI
 // ══════════════════════════════════════════════════
 
+// Bulles légèrement grisées sur un fond quasi blanc (façon Claude).
+const GREY_CARD = 'color-mix(in srgb, var(--text) 6%, var(--bg))'
+const GREY_PAGE = 'color-mix(in srgb, var(--text) 1.5%, var(--bg))'
+
 function Card({ children, style }: { children:React.ReactNode; style?:React.CSSProperties }) {
-  return <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:18, padding:20, boxShadow:'var(--shadow-card)', marginBottom:12, ...style }}>{children}</div>
+  return <div style={{ background:GREY_CARD, border:'1px solid var(--border)', borderRadius:18, padding:20, boxShadow:'var(--shadow-card)', marginBottom:12, ...style }}>{children}</div>
 }
 function CardTitle({ children, icon }: { children:React.ReactNode; icon?:React.ReactNode }) {
   return (
@@ -141,7 +145,7 @@ function Section({ label, children, style }: { label?:string; children:React.Rea
   )
 }
 function Group({ children, style }: { children:React.ReactNode; style?:React.CSSProperties }) {
-  return <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:16, overflow:'hidden', ...style }}>{children}</div>
+  return <div style={{ background:GREY_CARD, border:'1px solid var(--border)', borderRadius:16, overflow:'hidden', ...style }}>{children}</div>
 }
 // Ligne dans une Group. `first` retire le séparateur du haut.
 function Line({ first, onClick, align='center', children }: { first?:boolean; onClick?:()=>void; align?:'center'|'flex-start'; children:React.ReactNode }) {
@@ -1881,7 +1885,7 @@ function AbonnementContent() {
 
           {/* ── Actions abonnement (liste groupée, façon Claude) ── */}
           {!isCancelling && (
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
               <button onClick={() => setSubEmail('change')} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
                 <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>Changer d&apos;abonnement</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
@@ -2504,7 +2508,7 @@ export function ProfileContent() {
   const initial = (profile.full_name || profile.email || '?').trim().charAt(0).toUpperCase()
 
   return (
-    <div style={{ width: '100%', minHeight: '100dvh', background: 'color-mix(in srgb, var(--text) 4%, var(--bg))', boxSizing: 'border-box' }}>
+    <div style={{ width: '100%', minHeight: '100dvh', background: GREY_PAGE, boxSizing: 'border-box' }}>
     <div style={{ width: '100%', maxWidth: 620, margin: '0 auto', padding: '20px 16px 40px', boxSizing: 'border-box' }}>
       <style>{`
         .profile-notif-grid { display: flex; flex-direction: column; }
@@ -2547,7 +2551,7 @@ export function ProfileContent() {
             {GROUPS.map(g => (
               <div key={g.title} style={{ marginBottom: 22 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 8px 4px' }}>{g.title}</p>
-                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
+                <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
                   {g.rows.map((r, i) => (
                     <ListRow key={r.id} Icon={r.Icon} label={r.label} value={r.value} last={i === g.rows.length - 1} onClick={() => open(r.id)} />
                   ))}
@@ -2556,7 +2560,7 @@ export function ProfileContent() {
             ))}
 
             {/* Se déconnecter */}
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
+            <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
               <ListRow Icon={LogOut} label={signingOut ? t('profile.signingOut') : t('profile.signOut')} danger last onClick={() => { if (!signingOut) setConfirmLogout(true) }} />
             </div>
           </div>

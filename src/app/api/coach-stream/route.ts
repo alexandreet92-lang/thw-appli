@@ -724,12 +724,29 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
           lastStop  = finalMsg.stop_reason ?? null
 
           // Recherches web réellement effectuées → indicateur persistant au front.
+          // On remonte AUSSI les résultats réels (titre + URL) pour l'affichage
+          // « Sources » cliquable (blocs web_search_tool_result renvoyés par l'API).
           if ((chatBody as { agentId?: string }).agentId === 'central') {
             const queries = finalMsg.content
               .filter(b => (b as { type?: string }).type === 'server_tool_use' && (b as { name?: string }).name === 'web_search')
               .map(b => (b as { input?: { query?: string } }).input?.query)
               .filter((q): q is string => typeof q === 'string' && q.length > 0)
-            if (queries.length > 0) send('web_search', JSON.stringify({ queries }))
+
+            const sources: { url: string; title: string }[] = []
+            const seenUrls = new Set<string>()
+            for (const b of finalMsg.content) {
+              if ((b as { type?: string }).type !== 'web_search_tool_result') continue
+              const content = (b as { content?: unknown }).content
+              if (!Array.isArray(content)) continue
+              for (const r of content as Array<Record<string, unknown>>) {
+                if (r?.type !== 'web_search_result') continue
+                const url = typeof r.url === 'string' ? r.url : ''
+                if (!url || seenUrls.has(url)) continue
+                seenUrls.add(url)
+                sources.push({ url, title: typeof r.title === 'string' && r.title ? r.title : url })
+              }
+            }
+            if (queries.length > 0 || sources.length > 0) send('web_search', JSON.stringify({ queries, sources }))
           }
 
           const toolUses = finalMsg.content.filter(

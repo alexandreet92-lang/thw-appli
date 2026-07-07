@@ -77,6 +77,7 @@ interface AIMsg {
   thinking?: string    // raisonnement étendu (extended thinking) — feuille « Processus de réflexion »
   clarifyingQuestions?: ClarifyingQuestions  // questions IA (tool ask_clarifying_questions)
   webSearches?: string[]  // requêtes web effectuées (indicateur persistant)
+  webSources?: WebSource[]  // sources réelles citées (titre + URL) — pastille « Sources »
   planProposal?: PlanProposal  // aperçu de plan avant validation (tool create_training_plan)
   sessionData?: SBSession  // données structurées SessionBuilder (persiste en localStorage)
   trainingReport?: TrainingReportData  // données structurées AnalyzeTrainingFlow (persiste en localStorage)
@@ -432,6 +433,152 @@ function ChartBlock({ spec, embedded = false }: { spec: ChartSpec; embedded?: bo
         </div>
       )}
       <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center', padding: '3px 0 0' }}>{t('aip.chart.tapForValues')}</div>
+    </div>
+  )
+}
+
+// Les variables --ai-* sont scopées à .aip-root. Les surpages rendues via
+// createPortal(document.body) sortent de ce scope → var(--ai-bg) devient
+// indéfini (fond transparent). On ré-injecte le mapping sur la racine du portal.
+const AI_PORTAL_VARS = {
+  ['--ai-bg']:     'var(--bg-card)',
+  ['--ai-bg2']:    'var(--bg-alt)',
+  ['--ai-border']: 'var(--border)',
+  ['--ai-text']:   'var(--text)',
+  ['--ai-mid']:    'var(--text-mid)',
+  ['--ai-dim']:    'var(--text-dim)',
+  ['--ai-accent']: '#06B6D4',
+} as React.CSSProperties
+
+// Nom de domaine lisible depuis une URL (ex 'https://www.legibase.fr/x' → 'legibase.fr').
+function hostFromUrl(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, '') } catch { return url }
+}
+
+// Source web citée par l'IA (résultat réel de recherche : titre + lien).
+interface WebSource { url: string; title: string }
+
+// Favicon d'un domaine (service DuckDuckGo, sans tracking). Fallback : pastille lettre.
+function SourceFavicon({ url, size = 18 }: { url: string; size?: number }) {
+  const [err, setErr] = useState(false)
+  const host = hostFromUrl(url)
+  if (err) {
+    return (
+      <span style={{
+        width: size, height: size, borderRadius: '50%', flexShrink: 0,
+        background: 'var(--ai-accent-dim, rgba(6,182,212,0.14))', color: 'var(--ai-accent, #06B6D4)',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: size * 0.55, fontWeight: 700, textTransform: 'uppercase',
+      }}>{host.charAt(0)}</span>
+    )
+  }
+  return (
+    <img
+      src={`https://icons.duckduckgo.com/ip3/${host}.ico`}
+      alt="" width={size} height={size} loading="lazy" onError={() => setErr(true)}
+      style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, objectFit: 'cover', background: 'var(--ai-bg2, #eee)' }}
+    />
+  )
+}
+
+// Sources façon Claude : pastille compacte (favicons empilés) → surpage cliquable.
+function SourcesBadge({ sources }: { sources: WebSource[] }) {
+  const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
+  // Dédup par domaine pour la pile de favicons (aperçu), max 4.
+  const previewHosts: string[] = []
+  for (const s of sources) {
+    const h = hostFromUrl(s.url)
+    if (!previewHosts.includes(h)) previewHosts.push(h)
+    if (previewHosts.length >= 4) break
+  }
+
+  return (
+    <div style={{ marginLeft: 34, marginTop: 6 }}>
+      <button
+        onClick={() => setOpen(true)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 9, cursor: 'pointer',
+          padding: '5px 12px 5px 12px', borderRadius: 999, border: '1px solid var(--border)',
+          background: 'var(--bg-card)', fontSize: 13, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif',
+        }}
+      >
+        <span style={{ fontWeight: 600 }}>{t('aip.sources.label')}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+          {previewHosts.map((h, i) => (
+            <span key={h} style={{ marginLeft: i === 0 ? 0 : -7, display: 'inline-flex', borderRadius: '50%', border: '2px solid var(--bg-card)', background: 'var(--bg-card)' }}>
+              <SourceFavicon url={`https://${h}`} size={18} />
+            </span>
+          ))}
+        </span>
+      </button>
+
+      {open && mounted && createPortal(
+        <>
+          <style>{`
+            @keyframes src_in { from { opacity: 0 } to { opacity: 1 } }
+            @keyframes src_up { from { transform: translateY(100%) } to { transform: translateY(0) } }
+            @keyframes src_side { from { transform: translateX(100%) } to { transform: translateX(0) } }
+          `}</style>
+          <div
+            role="dialog" aria-modal="true" aria-label={t('aip.sources.label')}
+            onClick={() => setOpen(false)}
+            style={{
+              ...AI_PORTAL_VARS,
+              position: 'fixed', inset: 0, zIndex: 1600,
+              background: 'rgba(0,0,0,0.32)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
+              animation: 'src_in 0.2s ease',
+              display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                position: 'relative',
+                background: 'var(--ai-bg)', color: 'var(--ai-text)',
+                width: '100%', maxWidth: 680, maxHeight: '82vh',
+                borderTopLeftRadius: 20, borderTopRightRadius: 20,
+                display: 'flex', flexDirection: 'column',
+                animation: 'src_up 0.3s cubic-bezier(0.32,0.72,0,1)',
+                boxShadow: '0 -10px 44px rgba(0,0,0,0.22)',
+              }}
+            >
+              {/* En-tête */}
+              <div style={{ flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '18px 18px 14px', borderBottom: '1px solid var(--ai-border)' }}>
+                <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)', width: 38, height: 4, borderRadius: 2, background: 'var(--ai-border)' }} />
+                <span style={{ fontSize: 17, fontWeight: 700, fontFamily: 'var(--font-display)' }}>{t('aip.sources.label')}</span>
+                <button
+                  onClick={() => setOpen(false)} aria-label={t('aip.ui.close')}
+                  style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-4px)', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'var(--ai-bg2)', color: 'var(--ai-text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </div>
+              {/* Liste des sources */}
+              <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '8px 8px 24px' }}>
+                {sources.map((s, i) => (
+                  <a
+                    key={i} href={s.url} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 14px', borderRadius: 14, textDecoration: 'none', color: 'inherit' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'var(--ai-bg2)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}
+                  >
+                    <div style={{ marginTop: 2 }}><SourceFavicon url={s.url} size={22} /></div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.3, color: 'var(--ai-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.title || hostFromUrl(s.url)}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--ai-mid)', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hostFromUrl(s.url)}</div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body,
+      )}
     </div>
   )
 }
@@ -20797,12 +20944,20 @@ export default function AIPanel({
             } catch { /* ignore */ }
           } else if (eventType === 'web_search') {
             try {
-              const { queries } = JSON.parse(data) as { queries?: string[] }
-              const qs = (queries ?? []).filter(q => typeof q === 'string' && q.trim())
-              if (qs.length > 0) {
+              const parsed = JSON.parse(data) as { queries?: string[]; sources?: WebSource[] }
+              const qs = (parsed.queries ?? []).filter(q => typeof q === 'string' && q.trim())
+              const srcs = (parsed.sources ?? []).filter(s => s && typeof s.url === 'string' && s.url.trim())
+              if (qs.length > 0 || srcs.length > 0) {
                 setConvs(prev => prev.map(c =>
                   c.id === cid
-                    ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId ? { ...m, webSearches: [...(m.webSearches ?? []), ...qs] } : m) }
+                    ? { ...c, msgs: c.msgs.map(m => {
+                        if (m.id !== aiMsgId) return m
+                        // Dédup des sources par URL en cumulant les salves successives.
+                        const seen = new Set((m.webSources ?? []).map(s => s.url))
+                        const merged = [...(m.webSources ?? [])]
+                        for (const s of srcs) if (!seen.has(s.url)) { seen.add(s.url); merged.push(s) }
+                        return { ...m, webSearches: [...(m.webSearches ?? []), ...qs], webSources: merged }
+                      }) }
                     : c
                 ))
               }
@@ -22030,10 +22185,13 @@ export default function AIPanel({
                         </div>
                       )
                     )}
-                    {/* Indicateur persistant : recherches web effectuées */}
-                    {msg.role === 'assistant' && msg.webSearches && msg.webSearches.length > 0 && (
+                    {/* Sources réelles citées (façon Claude) — priorité aux liens ;
+                        à défaut, on montre au moins les requêtes effectuées. */}
+                    {msg.role === 'assistant' && msg.webSources && msg.webSources.length > 0 ? (
+                      <SourcesBadge sources={msg.webSources} />
+                    ) : msg.role === 'assistant' && msg.webSearches && msg.webSearches.length > 0 ? (
                       <WebSearchBadge queries={msg.webSearches} />
-                    )}
+                    ) : null}
                     {/* Questions de clarification IA — carte interactive */}
                     {msg.role === 'assistant' && msg.clarifyingQuestions && (
                       <div style={{ marginLeft: 34 }}>
@@ -22570,6 +22728,7 @@ export default function AIPanel({
               role="dialog" aria-modal="true" aria-label={t('aip.ui.thinkingProcess')}
               onClick={close}
               style={{
+                ...AI_PORTAL_VARS,
                 position: 'fixed', inset: 0, zIndex: 1600,
                 background: 'rgba(0,0,0,0.32)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
                 animation: 'rsheet_in 0.2s ease',

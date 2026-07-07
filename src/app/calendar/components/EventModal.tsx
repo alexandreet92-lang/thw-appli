@@ -63,6 +63,11 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
   // devient invisible).
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
+  // Masque la barre d'onglets du bas tant que l'éditeur est ouvert.
+  useEffect(() => {
+    document.body.classList.add('race-editor-open')
+    return () => document.body.classList.remove('race-editor-open')
+  }, [])
   const [name,      setName]      = useState(initialData?.name ?? '')
   const [startDate, setStartDate] = useState(initialData?.startDate ?? initialDate ?? '')
   const [endDate,   setEndDate]   = useState(initialData?.endDate ?? initialData?.startDate ?? initialDate ?? '')

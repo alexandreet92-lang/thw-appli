@@ -34,6 +34,11 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave, on
   // Portail sur <body> : la sheet doit passer AU-DESSUS de la barre d'onglets.
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
+  // Masque la barre d'onglets du bas tant que l'éditeur est ouvert.
+  useEffect(() => {
+    document.body.classList.add('race-editor-open')
+    return () => document.body.classList.remove('race-editor-open')
+  }, [])
   const [sport, setSport] = useState<RaceSport>(race?.sport ?? 'run')
   const [level, setLevel] = useState<RaceLevel>(race?.level ?? 'important')
   const [name, setName] = useState(race?.name ?? '')

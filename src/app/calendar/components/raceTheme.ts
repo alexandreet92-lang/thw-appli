@@ -8,4 +8,8 @@ export const RACE_EDITOR_CSS = `
 .race-ed input, .race-ed textarea, .race-ed button { font-family: inherit; }
 @keyframes raceSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes raceScrimIn { from { opacity: 0; } to { opacity: 1; } }
+/* Tant qu'un éditeur (stage / objectif) est ouvert, on masque la barre
+   d'onglets du bas — sinon ses boutons chevauchent le footer de la sheet
+   et « Enregistrer » devient invisible. */
+body.race-editor-open .mobile-tab-bar { display: none !important; }
 `

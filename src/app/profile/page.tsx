@@ -1658,13 +1658,6 @@ interface SubDetails {
   paymentMethod?:  { brand: string; last4: string; exp_month: number; exp_year: number } | null
 }
 
-const TIER_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  trial:   { label: 'Essai gratuit',  color: '#ffb340', bg: 'rgba(255,179,64,0.07)',   border: 'rgba(255,179,64,0.28)' },
-  premium: { label: 'Premium',        color: '#06B6D4', bg: 'rgba(6,182,212,0.07)',    border: 'rgba(6,182,212,0.25)' },
-  pro:     { label: 'Pro',            color: '#5b6fff', bg: 'rgba(91,111,255,0.07)',   border: 'rgba(91,111,255,0.25)' },
-  expert:  { label: 'Expert',         color: '#8b5cf6', bg: 'rgba(139,92,246,0.07)',   border: 'rgba(139,92,246,0.25)' },
-}
-
 // Libellé affiché à l'utilisateur, détecté depuis le tier réel de l'abonnement.
 // premium→Premium · pro→Pro · expert→Expert · trial→« Essai Premium ».
 function tierBadgeLabel(tier: string): string {
@@ -1733,7 +1726,6 @@ function AbonnementContent() {
   }
 
   const tier = details?.tier ?? 'trial'
-  const meta = TIER_META[tier] ?? TIER_META.trial
   const planName  = tierPlanName(tier)
   const hasStripe = !!(details?.stripe?.nextBillingDate)
   const isCancelling = details?.cancel_at_period_end || details?.stripe?.cancelAtPeriodEnd
@@ -1747,12 +1739,9 @@ function AbonnementContent() {
       ) : (
         <div style={{ padding: '8px 0 24px', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-          {/* ── 1. Carte plan ───────────────────────────── */}
-          <div style={{ position: 'relative', overflow: 'hidden', padding: '20px', borderRadius: 20,
-            background: `linear-gradient(155deg, ${meta.color}1f, ${meta.color}0a 55%, transparent)`,
-            border: `1px solid ${meta.color}33`, boxShadow: `0 14px 34px -22px ${meta.color}` }}>
-            <div aria-hidden style={{ position: 'absolute', top: -70, right: -50, width: 180, height: 180, borderRadius: '50%', background: `radial-gradient(circle, ${meta.color}26, transparent 70%)`, pointerEvents: 'none' }} />
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+          {/* ── 1. Carte plan (bulle neutre, façon Claude) ── */}
+          <div style={{ padding: '18px 20px', borderRadius: 16, background: GREY_CARD, border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: tier === 'trial' ? 14 : 0 }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 700, margin: '0 0 3px', color: 'var(--text)' }}>
                   THW {planName}
@@ -1769,7 +1758,7 @@ function AbonnementContent() {
                       : ''}
                   </p>
                 ) : tier === 'trial' && details?.current_period_end ? (
-                  <p style={{ fontSize: 11, color: meta.color, margin: 0, fontWeight: 600 }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-mid)', margin: 0, fontWeight: 500 }}>
                     {t('profile.expiresOn')} {fmtDate(details.current_period_end)}
                   </p>
                 ) : (
@@ -1782,14 +1771,14 @@ function AbonnementContent() {
                     <button
                       onClick={handlePortal}
                       disabled={portalLoading}
-                      style={{ padding: '6px 13px', borderRadius: 999, background: 'transparent', border: '1px solid var(--border-mid)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: portalLoading ? 0.6 : 1 }}
+                      style={{ padding: '7px 14px', borderRadius: 999, background: 'var(--text)', border: 'none', color: 'var(--bg)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', opacity: portalLoading ? 0.6 : 1 }}
                     >
                       {portalLoading ? '…' : t('profile.manage')}
                     </button>
                   ) : (
                     <button
                       onClick={() => { window.location.href = '/profile?tab=ia' }}
-                      style={{ padding: '6px 13px', borderRadius: 999, background: 'transparent', border: `1px solid ${meta.color}66`, color: meta.color, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      style={{ padding: '7px 14px', borderRadius: 999, background: 'var(--text)', border: 'none', color: 'var(--bg)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                     >
                       {t('profile.upgrade')}
                     </button>
@@ -1890,7 +1879,7 @@ function AbonnementContent() {
                 <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>Changer d&apos;abonnement</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
-              <button onClick={() => (hasStripe ? setCancelConfirm(true) : setSubEmail('cancel'))} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer' }}>
+              <button onClick={() => (hasStripe ? void handlePortal() : setSubEmail('cancel'))} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer' }}>
                 <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: '#ef4444' }}>Résilier l&apos;abonnement</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>

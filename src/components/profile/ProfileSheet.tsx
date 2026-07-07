@@ -21,6 +21,13 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
     if (open) { setMounted(true); setClosing(false) }
   }, [open])
 
+  // Masque la barre d'onglets du bas tant que la sur-page profil est montée.
+  useEffect(() => {
+    if (!mounted) return
+    document.body.classList.add('profile-sheet-open')
+    return () => document.body.classList.remove('profile-sheet-open')
+  }, [mounted])
+
   function handleClose() {
     setClosing(true)
     setTimeout(() => { setMounted(false); setClosing(false); onClose() }, 280)
@@ -54,6 +61,7 @@ export function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => 
         @keyframes profSheetIn { from { transform: translateY(100%) } to { transform: translateY(0) } }
         @keyframes profSheetOut { from { transform: translateY(0) } to { transform: translateY(100%) } }
         @keyframes profScrimIn { from { opacity: 0 } to { opacity: 1 } }
+        body.profile-sheet-open .mobile-tab-bar { display: none !important; }
       `}</style>
 
       {/* Scrim — tap pour replier */}

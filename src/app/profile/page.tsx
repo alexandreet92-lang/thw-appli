@@ -1879,7 +1879,7 @@ function AbonnementContent() {
                 <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>Changer d&apos;abonnement</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
-              <button onClick={() => setSubEmail('cancel')} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer' }}>
+              <button onClick={() => void handlePortal()} disabled={portalLoading} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer' }}>
                 <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: '#ef4444' }}>Résilier l&apos;abonnement</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>

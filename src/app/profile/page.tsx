@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler } from 'lucide-react'
-import PlanPicker from '@/components/subscription/PlanPicker'
+import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SlideView } from '@/components/ui/SlideView'
@@ -1690,7 +1690,7 @@ function AbonnementContent() {
   const [cancelling, setCancelling] = useState(false)
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
-  const [pickerOpen, setPickerOpen] = useState(false)
+  const [subEmail, setSubEmail] = useState<'change' | 'cancel' | null>(null)
 
   useEffect(() => {
     fetch('/api/subscription/details')
@@ -1875,16 +1875,14 @@ function AbonnementContent() {
           {/* ── Actions abonnement (liste groupée, façon Claude) ── */}
           {!isCancelling && (
             <div style={{ background: GREY_CARD, border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
-              <button onClick={() => (hasStripe ? void handlePortal() : setPickerOpen(true))} disabled={portalLoading} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>{hasStripe ? "Changer d'abonnement" : 'Choisir une formule'}</span>
+              <button onClick={() => setSubEmail('change')} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>Changer d&apos;abonnement</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
-              {hasStripe && (
-                <button onClick={() => void handlePortal()} disabled={portalLoading} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer' }}>
-                  <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: '#ef4444' }}>Résilier l&apos;abonnement</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-                </button>
-              )}
+              <button onClick={() => setSubEmail('cancel')} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer' }}>
+                <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: '#ef4444' }}>Résilier l&apos;abonnement</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
             </div>
           )}
 
@@ -1910,7 +1908,7 @@ function AbonnementContent() {
             </div>
           )}
 
-          {pickerOpen && <PlanPicker onClose={() => setPickerOpen(false)} />}
+          {subEmail && <SubscriptionEmailModal action={subEmail} onClose={() => setSubEmail(null)} />}
         </div>
       )}
 

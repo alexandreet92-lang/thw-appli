@@ -48,6 +48,15 @@ const TOOL_STATUS_LABELS: Record<string, string> = {
   analyze_sport_metrics: 'aip.tool.analyzeMetrics',
   get_training_plan:     'aip.tool.getPlan',
   get_planned_sessions:  'aip.tool.getSessions',
+  get_session_library:   'aip.tool.getLibrary',
+  get_stages:            'aip.tool.getStages',
+  get_parcours:          'aip.tool.getParcours',
+  get_races:             'aip.tool.getRaces',
+  get_recovery:          'aip.tool.getRecovery',
+  get_injuries:          'aip.tool.getInjuries',
+  get_nutrition:         'aip.tool.getNutrition',
+  get_personal_records:  'aip.tool.getRecords',
+  get_body_metrics:      'aip.tool.getBody',
   web_search:            'aip.tool.webSearch',
 }
 function toolStatusLabel(tools: string[] | undefined): string {

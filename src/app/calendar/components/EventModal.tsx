@@ -8,6 +8,7 @@
 // auto au planning géré côté page. Persistance JSONB daily_program.
 // ══════════════════════════════════════════════════════════════════
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { IconX } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
 import { RaceStage, StageSport, StageSession, StageDayParcours } from './types'
@@ -57,6 +58,11 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
   const { t } = useI18n()
   const supabase = createClient()
   const isEdit = mode === 'edit'
+  // Portail sur <body> : échappe au contexte d'empilement du swipe/onglets
+  // (sinon la sheet passe SOUS la barre d'onglets et le bouton Enregistrer
+  // devient invisible).
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
   const [name,      setName]      = useState(initialData?.name ?? '')
   const [startDate, setStartDate] = useState(initialData?.startDate ?? initialDate ?? '')
   const [endDate,   setEndDate]   = useState(initialData?.endDate ?? initialData?.startDate ?? initialDate ?? '')
@@ -173,12 +179,14 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
 
   const accent = sports.length ? sportColor(sports[0]) : '#5b6fff'
 
-  return (
+  if (!mounted) return null
+
+  return createPortal(
     <>
       <style>{RACE_EDITOR_CSS}</style>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'raceScrimIn .2s ease' }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'raceScrimIn .2s ease' }} />
       <div className="race-ed" onClick={e => e.stopPropagation()} style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0, top: 'max(64px, calc(env(safe-area-inset-top, 0px) + 48px))', zIndex: 401,
+        position: 'fixed', left: 0, right: 0, bottom: 0, top: 'max(64px, calc(env(safe-area-inset-top, 0px) + 48px))', zIndex: 1201,
         background: 'var(--bg-card2)', borderRadius: '26px 26px 0 0', boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'raceSheetUp .34s cubic-bezier(.2,.8,.2,1) forwards',
       }}>
@@ -207,11 +215,13 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
               </div>
             </div>
 
-            {/* Nom + dates */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
+            {/* Nom + dates — nom pleine largeur, dates côte à côte (lisible sur mobile) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div><p style={LBL}>{t('calendar.stageName')}</p><input style={INP} value={name} onChange={e => setName(e.target.value)} placeholder={t('calendar.stageNamePlaceholder')} /></div>
-              <div><p style={LBL}>{t('calendar.start')}</p><input type="date" style={INP} value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
-              <div><p style={LBL}>{t('calendar.end')}</p><input type="date" style={INP} value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div><p style={LBL}>{t('calendar.start')}</p><input type="date" style={INP} value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+                <div><p style={LBL}>{t('calendar.end')}</p><input type="date" style={INP} value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
+              </div>
             </div>
             {days.length > 0 && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '-8px 0 0' }}>{t('calendar.duration')} : <strong style={{ color: 'var(--text)' }}>{days.length > 1 ? t('calendar.daysCountPlural', { n: days.length }) : t('calendar.daysCount', { n: days.length })}</strong></p>}
 
@@ -232,16 +242,22 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
                         {(['matin','aprem'] as const).map(slot => (
                           <div key={slot} style={{ marginBottom: 10 }}>
                             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px' }}>{slot === 'matin' ? t('calendar.morning') : t('calendar.afternoon')}</p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                               {dp[slot].map((ses, i) => (
-                                <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                                  <select value={ses.sport} onChange={e => updSession(d, slot, i, { sport: e.target.value as StageSport })} style={{ ...INP, width: 'auto', flex: 'none', minWidth: 130, padding: '8px 10px' }}>
-                                    {sportOptions.map(sp => <option key={sp} value={sp}>{sportLabel(sp)}</option>)}
-                                  </select>
-                                  <input type="time" value={ses.time ?? ''} onChange={e => updSession(d, slot, i, { time: e.target.value })} style={{ ...INP, width: 'auto', flex: 'none', padding: '8px 10px' }} />
-                                  <input value={ses.title ?? ''} onChange={e => updSession(d, slot, i, { title: e.target.value })} placeholder={t('calendar.sessionTitlePlaceholder')} style={{ ...INP, flex: 1, minWidth: 130, padding: '8px 10px' }} />
-                                  <input value={ses.detail} onChange={e => updSession(d, slot, i, { detail: e.target.value })} placeholder={t('calendar.detailPlaceholder')} style={{ ...INP, flex: 1, minWidth: 120, padding: '8px 10px' }} />
-                                  <button onClick={() => rmSession(d, slot, i)} aria-label={t('calendar.remove')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2, flexShrink: 0 }}><IconX size={16} /></button>
+                                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 7, padding: '9px 10px', borderRadius: 11, border: `1px solid ${sportColor(ses.sport)}33`, background: 'var(--bg-card2)' }}>
+                                  {/* Ligne 1 : sport · heure · supprimer */}
+                                  <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: sportColor(ses.sport), flexShrink: 0 }} />
+                                    <select value={ses.sport} onChange={e => updSession(d, slot, i, { sport: e.target.value as StageSport })} style={{ ...INP, flex: 1, minWidth: 0, padding: '8px 10px' }}>
+                                      {sportOptions.map(sp => <option key={sp} value={sp}>{sportLabel(sp)}</option>)}
+                                    </select>
+                                    <input type="time" value={ses.time ?? ''} onChange={e => updSession(d, slot, i, { time: e.target.value })} style={{ ...INP, width: 118, flex: 'none', padding: '8px 10px' }} />
+                                    <button onClick={() => rmSession(d, slot, i)} aria-label={t('calendar.remove')} style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><IconX size={15} /></button>
+                                  </div>
+                                  {/* Ligne 2 : titre */}
+                                  <input value={ses.title ?? ''} onChange={e => updSession(d, slot, i, { title: e.target.value })} placeholder={t('calendar.sessionTitlePlaceholder')} style={{ ...INP, padding: '8px 10px' }} />
+                                  {/* Ligne 3 : détail */}
+                                  <input value={ses.detail} onChange={e => updSession(d, slot, i, { detail: e.target.value })} placeholder={t('calendar.detailPlaceholder')} style={{ ...INP, padding: '8px 10px' }} />
                                 </div>
                               ))}
                               <button onClick={() => addSession(d, slot)} style={{ alignSelf: 'flex-start', fontSize: 11.5, color: 'var(--text-dim)', background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', borderRadius: 9, padding: '7px 12px', cursor: 'pointer' }}>
@@ -301,6 +317,7 @@ export default function EventModal({ mode = 'create', initialData, initialDate, 
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }

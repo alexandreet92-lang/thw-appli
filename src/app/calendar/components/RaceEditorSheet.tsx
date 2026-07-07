@@ -5,7 +5,8 @@
 // (onSave, clés performanceData) sont INCHANGÉS. Triathlon = 5 segments ;
 // autres sports = SportFields existant (zéro perte de donnée) dans une carte.
 // ══════════════════════════════════════════════════════════════════
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { IconX } from '@tabler/icons-react'
 import { Race, RaceLevel, RaceSport, RACE_CFG, SPORT_LABEL, SPORT_COLOR, SPORT_BG } from './types'
 import SportFields from './SportFields'
@@ -30,6 +31,9 @@ const findGpx = (list: File[]) => list.find(f => /\.(gpx|tcx|kml)$/i.test(f.name
 export default function RaceEditorSheet({ race, initialDate, onClose, onSave, onDelete }: Props) {
   const { t } = useI18n()
   const isEdit = !!race
+  // Portail sur <body> : la sheet doit passer AU-DESSUS de la barre d'onglets.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
   const [sport, setSport] = useState<RaceSport>(race?.sport ?? 'run')
   const [level, setLevel] = useState<RaceLevel>(race?.level ?? 'important')
   const [name, setName] = useState(race?.name ?? '')
@@ -60,12 +64,14 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave, on
     } catch (e) { console.error('[RaceEditor save]', e) } finally { setSaving(false) }
   }
 
-  return (
+  if (!mounted) return null
+
+  return createPortal(
     <>
       <style>{RACE_EDITOR_CSS}</style>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'raceScrimIn .2s ease' }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', animation: 'raceScrimIn .2s ease' }} />
       <div className="race-ed" onClick={e => e.stopPropagation()} style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0, top: 'max(64px, calc(env(safe-area-inset-top, 0px) + 48px))', zIndex: 401,
+        position: 'fixed', left: 0, right: 0, bottom: 0, top: 'max(64px, calc(env(safe-area-inset-top, 0px) + 48px))', zIndex: 1201,
         background: 'var(--bg-card2)', borderRadius: '26px 26px 0 0', boxShadow: '0 -10px 50px rgba(0,0,0,0.22)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'raceSheetUp .34s cubic-bezier(.2,.8,.2,1) forwards',
       }}>
@@ -154,6 +160,7 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave, on
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { RaceStage } from './types'
 import GpxFullView from '@/components/gpx/GpxFullView'
@@ -30,6 +31,8 @@ type SaveStatus = 'idle' | 'saving' | 'success' | 'error'
 
 export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: Props) {
   const { t } = useI18n()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
   const supabase = createClient()
   const stageId  = stage.id
 
@@ -252,8 +255,10 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
 
   const isSaving = saveStatus === 'saving'
 
-  return (
-    <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:500,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
+  if (!mounted) return null
+
+  return createPortal(
+    <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:1200,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}>
       <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:'1px solid var(--border-mid)',padding:24,maxWidth:560,width:'100%',maxHeight:'92vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:16 }}>
 
         {/* Header */}
@@ -369,6 +374,7 @@ export default function DayModal({ stage, date, onClose, onSaved, onDeleted }: P
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Abonnements — THW Coaching</title>
+  <link rel="icon" href="/logo.png"/>
+  <link rel="stylesheet" href="/colors_and_type.css"/>
+  <link rel="stylesheet" href="/site.css"/>
+
+  <!-- Theme controller — applied before first paint to avoid any flash -->
+  <script>
+    window.THWTheme = (function () {
+      var KEY = 'thw-theme-mode';
+      var listeners = [];
+      function getMode() { try { return localStorage.getItem(KEY) || 'auto'; } catch (e) { return 'auto'; } }
+      function resolve(mode) {
+        if (mode === 'light') return 'light';
+        if (mode === 'dark') return 'dark';
+        var h = new Date().getHours();
+        return (h >= 7 && h < 20) ? 'light' : 'dark';
+      }
+      function apply(mode) {
+        var eff = resolve(mode);
+        var el = document.documentElement;
+        el.classList.toggle('light', eff === 'light');
+        el.classList.toggle('dark', eff === 'dark');
+        for (var i = 0; i < listeners.length; i++) { try { listeners[i](mode, eff); } catch (e) {} }
+      }
+      function setMode(mode) { try { localStorage.setItem(KEY, mode); } catch (e) {} apply(mode); }
+      function onChange(fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
+      apply(getMode());
+      setInterval(function () { if (getMode() === 'auto') apply('auto'); }, 60000);
+      return { getMode: getMode, setMode: setMode, resolve: resolve, apply: apply, onChange: onChange, effective: function () { return resolve(getMode()); } };
+    })();
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; font-family: var(--font-body); -webkit-font-smoothing: antialiased; overflow-x: hidden; transition: background 0.4s ease, color 0.4s ease; }
+
+    /* Solid card surface — theme-aware (used for featured/highlighted gradient ends) */
+    :root { --card-solid: #070b0f; }
+    .light { --card-solid: #ffffff; }
+
+    a { color: var(--brand); }
+    a:hover { color: var(--brand-vivid); }
+
+    .atmosphere {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 70% 60% at 15% 20%, rgba(0,200,224,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 60% at 85% 80%, rgba(91,111,255,0.09) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 0%, rgba(0,200,224,0.04) 0%, transparent 70%);
+    }
+    .grid-bg {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(127,127,127,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(127,127,127,0.05) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 20%, black 10%, transparent 70%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 20%, black 10%, transparent 70%);
+    }
+    #root { position: relative; z-index: 1; }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes proGlow { 0%,100% { box-shadow: 0 0 30px rgba(0,200,224,0.18), 0 0 60px rgba(91,111,255,0.10); } 50% { box-shadow: 0 0 50px rgba(0,200,224,0.32), 0 0 100px rgba(91,111,255,0.18); } }
+    @keyframes pulse-dot { 0%,100% { box-shadow: 0 0 0 0 rgba(0,200,224,0.45); } 50% { box-shadow: 0 0 0 10px rgba(0,200,224,0); } }
+
+    @media (max-width: 960px) { .cards-grid { grid-template-columns: 1fr !important; max-width: 520px !important; } }
+    @media (max-width: 600px) {
+      .page-pad { padding-left: 16px !important; padding-right: 16px !important; }
+      .settings-bar { top: 10px !important; right: 10px !important; transform: scale(0.9); transform-origin: top right; }
+    }
+  </style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div class="grid-bg"></div>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel">
+    // ── i18n dictionaries ──────────────────────────────────────────────────────
+    const I18N = {
+      fr: {
+        title: 'Abonnements — THW Coaching',
+        back: "Retour à l'accueil",
+        pill: 'Saison 2026 · 14 jours gratuits',
+        titleLead: 'Choisissez votre', titleAccent: 'formule',
+        monthly: 'Mensuel', annual: 'Annuel', save: '2 mois offerts',
+        popular: 'Le plus populaire',
+        perMonth: '/mois',
+        billedAnnual: (a) => <>Facturé <span style={{ color: 'var(--text-mid)', fontWeight: 500 }}>{a} €/an</span></>,
+        billedMonthly: 'Facturé mensuellement',
+        subscribe: "S'abonner",
+        ctaNote: '14 jours gratuits · Sans carte bancaire',
+        trust: ['Paiement sécurisé', 'Résiliable à tout moment', 'Données hébergées en Europe'],
+        faqLabel: 'FAQ', faqTitle: 'Questions fréquentes',
+        faq: [
+          { q: "Comment fonctionne l'essai gratuit ?",
+            a: "Tu accèdes à toutes les fonctionnalités de la formule choisie pendant 14 jours, sans carte bancaire requise. À la fin de la période, tu choisis de continuer ou non — aucun prélèvement automatique." },
+          { q: "Puis-je changer de formule ?",
+            a: "Oui, à tout moment depuis ton espace personnel. Le changement prend effet immédiatement et est calculé au prorata de la période restante." },
+          { q: "Comment résilier ?",
+            a: "En un clic depuis les réglages de ton compte. Aucun préavis, aucune pénalité. Tu gardes l'accès jusqu'à la fin de la période payée." },
+          { q: "Mes données sont-elles sécurisées ?",
+            a: "Tes données sportives et personnelles sont hébergées en Europe (RGPD), chiffrées en transit et au repos. Nous ne les partageons jamais avec des tiers." },
+        ],
+        footerLinks: ['Conditions générales', 'Politique de confidentialité'],
+        theme: { day: 'Jour', night: 'Nuit', auto: 'Auto' },
+      },
+      en: {
+        title: 'Plans — THW Coaching',
+        back: 'Back to home',
+        pill: 'Season 2026 · 14 days free',
+        titleLead: 'Choose your', titleAccent: 'plan',
+        monthly: 'Monthly', annual: 'Annual', save: '2 months free',
+        popular: 'Most popular',
+        perMonth: '/mo',
+        billedAnnual: (a) => <>Billed <span style={{ color: 'var(--text-mid)', fontWeight: 500 }}>€{a}/yr</span></>,
+        billedMonthly: 'Billed monthly',
+        subscribe: 'Subscribe',
+        ctaNote: '14 days free · No credit card',
+        trust: ['Secure payment', 'Cancel anytime', 'Data hosted in Europe'],
+        faqLabel: 'FAQ', faqTitle: 'Frequently asked questions',
+        faq: [
+          { q: 'How does the free trial work?',
+            a: 'You get full access to every feature of your chosen plan for 14 days, no credit card required. At the end of the period, you decide whether to continue — no automatic charge.' },
+          { q: 'Can I change plans?',
+            a: 'Yes, anytime from your account. The change takes effect immediately and is prorated for the remaining period.' },
+          { q: 'How do I cancel?',
+            a: 'In one click from your account settings. No notice, no penalty. You keep access until the end of the paid period.' },
+          { q: 'Is my data secure?',
+            a: 'Your sports and personal data are hosted in Europe (GDPR), encrypted in transit and at rest. We never share them with third parties.' },
+        ],
+        footerLinks: ['Terms of service', 'Privacy policy'],
+        theme: { day: 'Day', night: 'Night', auto: 'Auto' },
+      },
+      es: {
+        title: 'Planes — THW Coaching',
+        back: 'Volver al inicio',
+        pill: 'Temporada 2026 · 14 días gratis',
+        titleLead: 'Elige tu', titleAccent: 'plan',
+        monthly: 'Mensual', annual: 'Anual', save: '2 meses gratis',
+        popular: 'El más popular',
+        perMonth: '/mes',
+        billedAnnual: (a) => <>Facturado <span style={{ color: 'var(--text-mid)', fontWeight: 500 }}>{a} €/año</span></>,
+        billedMonthly: 'Facturación mensual',
+        subscribe: 'Suscribirse',
+        ctaNote: '14 días gratis · Sin tarjeta bancaria',
+        trust: ['Pago seguro', 'Cancela cuando quieras', 'Datos alojados en Europa'],
+        faqLabel: 'FAQ', faqTitle: 'Preguntas frecuentes',
+        faq: [
+          { q: '¿Cómo funciona la prueba gratuita?',
+            a: 'Accedes a todas las funciones del plan elegido durante 14 días, sin tarjeta bancaria. Al final del período decides si continúas — sin cobro automático.' },
+          { q: '¿Puedo cambiar de plan?',
+            a: 'Sí, en cualquier momento desde tu cuenta. El cambio es inmediato y se prorratea según el período restante.' },
+          { q: '¿Cómo cancelo?',
+            a: 'Con un clic desde los ajustes de tu cuenta. Sin preaviso ni penalización. Mantienes el acceso hasta el fin del período pagado.' },
+          { q: '¿Están seguros mis datos?',
+            a: 'Tus datos deportivos y personales se alojan en Europa (RGPD), cifrados en tránsito y en reposo. Nunca los compartimos con terceros.' },
+        ],
+        footerLinks: ['Términos y condiciones', 'Política de privacidad'],
+        theme: { day: 'Día', night: 'Noche', auto: 'Auto' },
+      },
+    };
+
+    // ── Localized feature labels ────────────────────────────────────────────────
+    const LABELS = {
+      chat:   { fr: 'Messages chat',        en: 'Chat messages',        es: 'Mensajes de chat' },
+      train:  { fr: 'Plans entraînement',   en: 'Training plans',       es: 'Planes de entrenamiento' },
+      nutri:  { fr: 'Plans nutrition',      en: 'Nutrition plans',      es: 'Planes de nutrición' },
+      tool:   { fr: 'Tool use',             en: 'Tool use',             es: 'Uso de herramientas' },
+      brief:  { fr: 'Briefing',             en: 'Briefing',             es: 'Briefing' },
+      histA:  { fr: 'Histo. activités',     en: 'Activity history',     es: 'Historial actividades' },
+      histC:  { fr: 'Histo. conversations', en: 'Conversation history', es: 'Historial conversaciones' },
+      strava: { fr: 'Sync Strava',          en: 'Strava sync',          es: 'Sinc. Strava' },
+      store:  { fr: 'Stockage',             en: 'Storage',              es: 'Almacenamiento' },
+    };
+
+    // ── Data — built per language ────────────────────────────────────────────────
+    function buildPlans(lang) {
+      const pm    = (n) => `${n}${I18N[lang].perMonth}`;
+      const conv  = (n) => ({ fr: `${n} par conversation`, en: `${n} per conversation`, es: `${n} por conversación` }[lang]);
+      const mo    = (n) => ({ fr: `${n} mois`, en: `${n} months`, es: `${n} meses` }[lang]);
+      const dy    = (n) => ({ fr: `${n} jours`, en: `${n} days`, es: `${n} días` }[lang]);
+      const gb    = (n) => ({ fr: `${n} Go`, en: `${n} GB`, es: `${n} GB` }[lang]);
+      const week  = (n) => ({ fr: `${n}×/semaine`, en: `${n}×/week`, es: `${n}×/semana` }[lang]);
+      const UNL   = { fr: 'Illimité', en: 'Unlimited', es: 'Ilimitado' }[lang];
+      const daily = { fr: 'Quotidien', en: 'Daily', es: 'Diario' }[lang];
+      const prio  = { fr: 'Prioritaire', en: 'Priority', es: 'Prioritario' }[lang];
+      const noWeb = { fr: 'Sans web search', en: 'No web search', es: 'Sin búsqueda web' }[lang];
+      const webIn = { fr: 'Web search inclus', en: 'Web search included', es: 'Búsqueda web incluida' }[lang];
+      const webPr = { fr: 'Web search · 7×/sem', en: 'Web search · 7×/wk', es: 'Búsqueda web · 7×/sem' }[lang];
+      const L = (k) => LABELS[k][lang];
+
+      return [
+        {
+          id: 'premium', name: 'Premium',
+          ai: { name: 'Hermes', model: 'Claude Haiku', glyph: 'H' },
+          price: { monthly: 14, annual: 132 },
+          accent: '#00c8e0', accentB: '#0099b8', accentDeep: '#0089a3',
+          featured: false,
+          stripe: { monthly: 'https://buy.stripe.com/dRm00kflNfCR9cz68sf3a11', annual: 'https://buy.stripe.com/bJefZi3D5duJ88vcwQf3a12' },
+          features: [
+            { l: L('chat'),   v: pm(30), s: conv(15) },
+            { l: L('train'),  v: pm(2) },
+            { l: L('nutri'),  v: pm(1) },
+            { l: L('tool'),   v: pm(50) },
+            { l: L('brief'),  v: week(4), s: noWeb },
+            { l: L('histA'),  v: mo(6) },
+            { l: L('histC'),  v: dy(90) },
+            { l: L('strava'), v: pm(100) },
+            { l: L('store'),  v: gb(1) },
+          ],
+        },
+        {
+          id: 'pro', name: 'Pro',
+          ai: { name: 'Athena', model: 'Claude Sonnet 4.6', glyph: 'A' },
+          price: { monthly: 26, annual: 249 },
+          accent: '#00c8e0', accentB: '#5b6fff', accentDeep: '#0089a3',
+          featured: true,
+          stripe: { monthly: 'https://buy.stripe.com/9B6dRa7TlgGVcoLgN6f3a13', annual: 'https://buy.stripe.com/7sY7sM6Ph62hcoL0O8f3a14' },
+          features: [
+            { l: L('chat'),   v: pm(100), s: conv(25) },
+            { l: L('train'),  v: pm(6) },
+            { l: L('nutri'),  v: pm(3) },
+            { l: L('tool'),   v: pm(150) },
+            { l: L('brief'),  v: daily, s: webIn },
+            { l: L('histA'),  v: mo(24) },
+            { l: L('histC'),  v: dy(180) },
+            { l: L('strava'), v: UNL },
+            { l: L('store'),  v: gb(5) },
+          ],
+        },
+        {
+          id: 'expert', name: 'Expert',
+          ai: { name: 'Zeus', model: 'Claude Sonnet 4.6', glyph: 'Z', sub: { fr: 'Contexte max 16k', en: 'Max context 16k', es: 'Contexto máx 16k' }[lang] },
+          price: { monthly: 49, annual: 468 },
+          accent: '#f59e0b', accentB: '#d97706', accentDeep: '#b45309',
+          featured: false,
+          stripe: { monthly: 'https://buy.stripe.com/3cI7sM4H9aixcoL54of3a15', annual: 'https://buy.stripe.com/cNi28sehJfCR60n7cwf3a16' },
+          features: [
+            { l: L('chat'),   v: pm(300), s: conv(50) },
+            { l: L('train'),  v: pm(20) },
+            { l: L('nutri'),  v: pm(10) },
+            { l: L('tool'),   v: pm(400) },
+            { l: L('brief'),  v: prio, s: webPr },
+            { l: L('histA'),  v: UNL },
+            { l: L('histC'),  v: UNL },
+            { l: L('strava'), v: UNL },
+            { l: L('store'),  v: gb(20) },
+          ],
+        },
+      ];
+    }
+
+    // ── Small SVG icons (no emoji) ───────────────────────────────────────────────
+    const IconSun = (p) => (
+      <svg width={p.s||15} height={p.s||15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
+      </svg>
+    );
+    const IconMoon = (p) => (
+      <svg width={p.s||15} height={p.s||15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+    );
+    const IconAuto = (p) => (
+      <svg width={p.s||15} height={p.s||15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/>
+      </svg>
+    );
+    const IconLock = () => (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+      </svg>
+    );
+    const IconCycle = () => (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/>
+        <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/>
+      </svg>
+    );
+    const IconShield = () => (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3l7 3v5c0 4.4-3 8.3-7 9.5C8 19.3 5 15.4 5 11V6l7-3z"/><path d="M9 12l2 2 4-4"/>
+      </svg>
+    );
+    const TRUST_ICONS = [IconLock, IconCycle, IconShield];
+
+    // ── Menu déroulant partagé (mêmes entrées sur toutes les pages) ─────────────
+    const MENU_ITEMS = [
+      { label: 'Politique de confidentialité', href: 'confidentialite.html' },
+      { label: 'Mentions légales',            href: 'mentions-legales.html' },
+      { label: "Conditions d'utilisation",     href: 'conditions-utilisation.html' },
+      { label: 'Exporter mes données',        href: 'exporter-mes-donnees.html' },
+      { label: 'Abonnement',                  href: 'Abonnements.html', group: 'shop' },
+      { label: 'Recharge Tokens',             href: 'Achat de tokens.html', group: 'shop' },
+    ];
+
+    function PageMenu() {
+      const [open, setOpen] = React.useState(false);
+      const ref = React.useRef(null);
+      React.useEffect(() => {
+        function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+        function onKey(e) { if (e.key === 'Escape') setOpen(false); }
+        document.addEventListener('mousedown', onDoc);
+        document.addEventListener('keydown', onKey);
+        return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+      }, []);
+      return (
+        <div ref={ref} style={{ position: 'relative' }}>
+          <button type="button" onClick={() => setOpen(o => !o)} aria-haspopup="true" aria-expanded={open} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer',
+            padding: '9px 13px', borderRadius: 999,
+            background: 'var(--bg-card)', border: '1px solid var(--border-mid)',
+            boxShadow: 'var(--shadow-card)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+            color: open ? 'var(--text)' : 'var(--text-mid)',
+            fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 600,
+          }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            Menu
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          {open && (
+            <div role="menu" style={{
+              position: 'absolute', top: 'calc(100% + 8px)', right: 0, minWidth: 250, zIndex: 200,
+              background: 'var(--nav-bg)', border: '1px solid var(--border-mid)', borderRadius: 14,
+              padding: 6, boxShadow: 'var(--shadow)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+            }}>
+              {MENU_ITEMS.map((m, i) => {
+                const divider = m.group === 'shop' && (i === 0 || MENU_ITEMS[i - 1].group !== 'shop');
+                return (
+                  <React.Fragment key={m.href}>
+                    {divider && <div style={{ height: 1, background: 'var(--border)', margin: '6px 8px' }}/>}
+                    <a role="menuitem" href={m.href} style={{
+                      display: 'block', padding: '10px 12px', borderRadius: 9,
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, fontWeight: 500,
+                      color: 'var(--text-mid)', textDecoration: 'none', transition: 'background .14s, color .14s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--brand)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-mid)'; }}>
+                      {m.label}
+                    </a>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Language switcher (FR / EN / ES) — sits in the shared header ─────────────
+    function LangSwitcher({ lang, setLang }) {
+      const langs = [['fr', 'FR'], ['en', 'EN'], ['es', 'ES']];
+      return (
+        <div role="group" aria-label="Langue" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 2, padding: 3,
+          borderRadius: 999, background: 'var(--bg-card)',
+          border: '1px solid var(--border-mid)', boxShadow: 'var(--shadow-card)',
+        }}>
+          {langs.map(([v, label]) => {
+            const active = lang === v;
+            return (
+              <button key={v} type="button" onClick={() => setLang(v)} aria-pressed={active} style={{
+                padding: '6px 11px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                background: active ? 'var(--brand-gradient)' : 'transparent',
+                color: active ? '#fff' : 'var(--text-mid)',
+                fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: active ? 700 : 500,
+                lineHeight: 1, letterSpacing: '0.02em',
+                boxShadow: active ? '0 2px 10px rgba(0,200,224,0.30)' : 'none',
+                transition: 'color 0.18s, background 0.18s',
+              }}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.color = 'var(--text)'; }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.color = 'var(--text-mid)'; }}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // ── BillingToggle ────────────────────────────────────────────────────────
+    function BillingToggle({ value, onChange, T }) {
+      return (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-mid)',
+          borderRadius: 999, padding: 4, gap: 2,
+        }}>
+          {[
+            { v: 'monthly', label: T.monthly },
+            { v: 'annual',  label: T.annual  },
+          ].map(({ v, label }) => {
+            const active = value === v;
+            return (
+              <button key={v} onClick={() => onChange(v)} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '9px 20px', borderRadius: 999, border: 'none',
+                background: active ? 'var(--bg-hover)' : 'transparent',
+                color: active ? 'var(--text)' : 'var(--text-dim)',
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 13, fontWeight: active ? 600 : 400,
+                cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+              }}>
+                {label}
+                {v === 'annual' && (
+                  <span style={{
+                    padding: '3px 9px', borderRadius: 999,
+                    background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
+                    color: '#fff', fontSize: 10, fontWeight: 700,
+                    letterSpacing: '0.04em',
+                  }}>{T.save}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // ── PlanCard ─────────────────────────────────────────────────────────────
+    function PlanCard({ plan, billing, flipping, delay, highlighted, T, eff }) {
+      const isAnnual  = billing === 'annual';
+      const monthly   = isAnnual ? Math.round(plan.price.annual / 12) : plan.price.monthly;
+      const { accent, accentB, featured } = plan;
+      const aText = eff === 'light' ? plan.accentDeep : accent;
+
+      const cardInner = (
+        <div style={{
+          background: featured
+            ? `linear-gradient(180deg, rgba(0,200,224,0.055) 0%, var(--card-solid) 36%)`
+            : highlighted
+              ? `linear-gradient(180deg, ${plan.accent}0d 0%, var(--card-solid) 36%)`
+              : 'var(--bg-card-2)',
+          borderRadius: featured ? 19 : 15,
+          outline: highlighted && !featured ? `2px solid ${plan.accent}55` : 'none',
+          padding: '26px 26px 22px',
+          height: '100%', display: 'flex', flexDirection: 'column',
+          position: 'relative', overflow: 'hidden',
+          animation: `fadeUp 0.65s ${delay}s cubic-bezier(0.4,0,0.2,1) both`,
+        }}>
+
+          {/* Top accent bar */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0,
+            height: featured ? 3 : 2,
+            background: featured
+              ? `linear-gradient(90deg, ${accent}, ${accentB})`
+              : `linear-gradient(90deg, ${accent}70, transparent 60%)`,
+          }}/>
+
+          {/* Popular badge */}
+          {featured && (
+            <div style={{
+              position: 'absolute', top: 14, right: 14,
+              padding: '4px 11px', borderRadius: 999,
+              background: 'linear-gradient(135deg, #00c8e0, #5b6fff)',
+              fontFamily: "'DM Sans', sans-serif", fontSize: 10,
+              fontWeight: 700, letterSpacing: '0.05em',
+              textTransform: 'uppercase', color: '#fff',
+              boxShadow: '0 2px 14px rgba(0,200,224,0.38)',
+            }}>{T.popular}</div>
+          )}
+
+          {/* AI identity */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 9,
+            padding: '7px 12px', borderRadius: 10,
+            background: `${accent}10`, border: `1px solid ${accent}28`,
+            marginBottom: 18, alignSelf: 'flex-start',
+          }}>
+            <div style={{
+              width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+              background: `${accent}1a`, border: `1px solid ${accent}38`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 500, color: aText,
+            }}>{plan.ai.glyph}</div>
+            <div>
+              <div style={{
+                fontFamily: "'DM Mono', monospace", fontSize: 10,
+                fontWeight: 600, color: aText,
+                letterSpacing: '0.1em', textTransform: 'uppercase', lineHeight: 1,
+              }}>{plan.ai.name}</div>
+              <div style={{
+                fontFamily: "'DM Sans', sans-serif", fontSize: 10,
+                color: 'var(--text-dim)', marginTop: 3, lineHeight: 1,
+              }}>{plan.ai.model}{plan.ai.sub ? ` · ${plan.ai.sub}` : ''}</div>
+            </div>
+          </div>
+
+          {/* Plan name */}
+          <div style={{
+            fontFamily: "'Syne', sans-serif", fontSize: 24,
+            fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 18,
+          }}>{plan.name}</div>
+
+          {/* Price */}
+          <div style={{
+            marginBottom: 20,
+            opacity: flipping ? 0 : 1,
+            transform: flipping ? 'translateY(-10px)' : 'translateY(0)',
+            transition: 'opacity 0.14s ease, transform 0.14s ease',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3 }}>
+              <span style={{
+                fontFamily: "'DM Sans', sans-serif", fontSize: 18,
+                fontWeight: 600, color: 'var(--text-mid)', marginBottom: 9,
+              }}>€</span>
+              <span style={{
+                fontFamily: "'Syne', sans-serif", fontSize: 52,
+                fontWeight: 800, letterSpacing: '-0.06em', lineHeight: 1,
+                color: 'var(--text)',
+              }}>{monthly}</span>
+              <span style={{
+                fontFamily: "'DM Mono', monospace", fontSize: 11,
+                color: 'var(--text-dim)', marginBottom: 10, paddingLeft: 2,
+              }}>{T.perMonth}</span>
+            </div>
+            <div style={{
+              fontFamily: "'DM Sans', sans-serif", fontSize: 11,
+              color: 'var(--text-dim)', marginTop: 4,
+            }}>
+              {isAnnual ? T.billedAnnual(plan.price.annual) : T.billedMonthly}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div style={{
+            height: 1, marginBottom: 14,
+            background: `linear-gradient(90deg, ${accent}22, transparent 70%)`,
+          }}/>
+
+          {/* Features */}
+          <div style={{ flex: 1, marginBottom: 20 }}>
+            {plan.features.map((f, i) => (
+              <div key={i} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                padding: '8px 0', gap: 12,
+                borderBottom: i < plan.features.length - 1 ? '1px solid var(--border)' : 'none',
+              }}>
+                <span style={{
+                  fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+                  color: 'var(--text-dim)', flexShrink: 0, lineHeight: 1.4,
+                }}>{f.l}</span>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{
+                    fontFamily: "'DM Mono', monospace", fontSize: 12,
+                    fontWeight: 500, color: aText, lineHeight: 1.3,
+                  }}>{f.v}</div>
+                  {f.s && <div style={{
+                    fontFamily: "'DM Sans', sans-serif", fontSize: 10,
+                    color: 'var(--text-dim)', marginTop: 2,
+                  }}>{f.s}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <a href={billing === 'annual' ? plan.stripe.annual : plan.stripe.monthly}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '13px 20px', borderRadius: 12, textDecoration: 'none',
+              background: featured
+                ? `linear-gradient(135deg, ${accent}, ${accentB})`
+                : `${accent}14`,
+              border: featured ? 'none' : `1px solid ${accent}28`,
+              color: featured ? '#fff' : aText,
+              fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
+              letterSpacing: '-0.01em', cursor: 'pointer',
+              boxShadow: featured ? `0 4px 22px ${accent}40` : 'none',
+              transition: 'all 0.18s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.filter = 'brightness(1.09)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.filter = '';
+              e.currentTarget.style.transform = '';
+            }}
+          >
+            {T.subscribe}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M5 12h14M13 5l7 7-7 7"/>
+            </svg>
+          </a>
+          <div style={{
+            textAlign: 'center', marginTop: 10,
+            fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: 'var(--text-dim)',
+          }}>{T.ctaNote}</div>
+        </div>
+      );
+
+      // Featured: gradient border wrapper + glow
+      if (featured) {
+        return (
+          <div style={{
+            background: `linear-gradient(145deg, ${accent}, ${accentB})`,
+            borderRadius: 20, padding: 1,
+            animation: `proGlow 4s ease-in-out infinite`,
+            alignSelf: 'stretch',
+          }}>
+            {cardInner}
+          </div>
+        );
+      }
+
+      return (
+        <div style={{
+          border: '1px solid var(--border)',
+          borderRadius: 16, overflow: 'hidden', alignSelf: 'stretch',
+        }}>
+          {cardInner}
+        </div>
+      );
+    }
+
+    // ── FAQItem ───────────────────────────────────────────────────────────────
+    function FAQItem({ item }) {
+      const [open, setOpen] = React.useState(false);
+      return (
+        <div style={{ borderBottom: '1px solid var(--border)' }}>
+          <button onClick={() => setOpen(o => !o)} style={{
+            width: '100%', display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', padding: '20px 0',
+            background: 'none', border: 'none', cursor: 'pointer', gap: 16, textAlign: 'left',
+          }}>
+            <span style={{
+              fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500,
+              color: open ? 'var(--text)' : 'var(--text-mid)', lineHeight: 1.5,
+              transition: 'color 0.15s',
+            }}>{item.q}</span>
+            <div style={{
+              width: 26, height: 26, flexShrink: 0, borderRadius: '50%',
+              background: open ? 'linear-gradient(135deg,#00c8e0,#5b6fff)' : 'var(--bg-hover)',
+              border: open ? 'none' : '1px solid var(--border-mid)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transform: open ? 'rotate(45deg)' : 'none',
+              transition: 'all 0.22s cubic-bezier(0.4,0,0.2,1)',
+            }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={open ? 'white' : 'currentColor'} strokeWidth="3.5" style={{ color: 'var(--text-mid)' }}>
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+            </div>
+          </button>
+          <div style={{
+            maxHeight: open ? 220 : 0, overflow: 'hidden',
+            transition: 'max-height 0.32s cubic-bezier(0.4,0,0.2,1)',
+          }}>
+            <p style={{
+              fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+              color: 'var(--text-mid)', lineHeight: 1.72,
+              paddingBottom: 22, margin: 0,
+            }}>{item.a}</p>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Theme helpers ─────────────────────────────────────────────────────────
+    function resolveAuto() {
+      const h = new Date().getHours();
+      return (h >= 7 && h < 20) ? 'light' : 'dark';
+    }
+
+    // ── App ───────────────────────────────────────────────────────────────────
+    function App() {
+      const params  = new URLSearchParams(window.location.search);
+      const defaultBilling = params.get('billing') === 'annual' ? 'annual' : 'monthly';
+      const highlightPlan  = params.get('plan') || null;
+      const [billing,  setBilling]  = React.useState(defaultBilling);
+      const [flipping, setFlipping] = React.useState(false);
+
+      // Language
+      const [lang, setLang] = React.useState(() => localStorage.getItem('thw_lang') || 'fr');
+      const T = I18N[lang];
+      React.useEffect(() => {
+        localStorage.setItem('thw_lang', lang);
+        document.documentElement.lang = lang;
+        document.title = T.title;
+      }, [lang]);
+
+      // Theme — driven by shared window.THWTheme (Jour/Nuit/Auto in the header).
+      // `eff` (light|dark) only feeds accent-color choices in the cards.
+      const [eff, setEff] = React.useState(() => (window.THWTheme ? window.THWTheme.effective() : 'dark'));
+      React.useEffect(() => {
+        if (!window.THWTheme) return undefined;
+        setEff(window.THWTheme.effective());
+        return window.THWTheme.onChange(() => setEff(window.THWTheme.effective()));
+      }, []);
+
+      const PLANS = React.useMemo(() => buildPlans(lang), [lang]);
+
+      function handleBilling(v) {
+        if (v === billing) return;
+        setFlipping(true);
+        setTimeout(() => { setBilling(v); setFlipping(false); }, 160);
+      }
+
+      return (
+        <div style={{ minHeight: '100vh' }}>
+
+          {/* ── Header auto-suffisant (logo + langue) ── */}
+          <header style={{
+            position: 'sticky', top: 0, zIndex: 100,
+            backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+            background: 'var(--nav-bg)', borderBottom: '1px solid var(--nav-border)',
+          }}>
+            <div style={{
+              maxWidth: 1180, margin: '0 auto', padding: '14px 24px',
+              display: 'flex', alignItems: 'center', gap: 16,
+            }}>
+              <a href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+                <img src="/logo.png" alt="THW" width="30" height="30" style={{ borderRadius: 8, display: 'block' }}/>
+                <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: '-0.04em', color: 'var(--text)' }}>
+                  THW <span style={{ color: 'var(--brand)' }}>Coaching</span>
+                </span>
+              </a>
+              <div style={{ marginLeft: 'auto' }}>
+                <LangSwitcher lang={lang} setLang={setLang} />
+              </div>
+            </div>
+          </header>
+
+          {/* ── Header ── */}
+          <div className="page-pad" style={{ textAlign: 'center', padding: '64px 24px 52px', maxWidth: 860, margin: '0 auto' }}>
+            {/* Pill label */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '5px 14px', borderRadius: 999, marginBottom: 22,
+              border: '1px solid rgba(0,200,224,0.22)',
+              background: 'rgba(0,200,224,0.06)',
+              animation: 'fadeUp 0.5s cubic-bezier(0.4,0,0.2,1) both',
+            }}>
+              <span style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: '#00c8e0', display: 'inline-block',
+                animation: 'pulse-dot 2s infinite',
+              }}/>
+              <span style={{
+                fontFamily: "'DM Mono', monospace", fontSize: 10,
+                color: '#00c8e0', letterSpacing: '0.14em', textTransform: 'uppercase',
+              }}>{T.pill}</span>
+            </div>
+
+            {/* Title */}
+            <h1 style={{
+              fontFamily: "'Syne', sans-serif",
+              fontSize: 'clamp(38px, 6vw, 68px)',
+              fontWeight: 800, letterSpacing: '-0.055em', lineHeight: 1.0,
+              margin: '0 0 16px', textWrap: 'balance',
+              animation: 'fadeUp 0.6s 0.06s cubic-bezier(0.4,0,0.2,1) both',
+            }}>
+              {T.titleLead}{' '}
+              <span style={{
+                background: 'linear-gradient(135deg, #00c8e0 20%, #5b6fff 80%)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+              }}>{T.titleAccent}</span>
+            </h1>
+
+            {/* Toggle */}
+            <div style={{ animation: 'fadeUp 0.6s 0.18s cubic-bezier(0.4,0,0.2,1) both' }}>
+              <BillingToggle value={billing} onChange={handleBilling} T={T} />
+            </div>
+          </div>
+
+          {/* ── Cards ── */}
+          <div className="page-pad" style={{ padding: '0 24px 90px', maxWidth: 1160, margin: '0 auto' }}>
+            <div className="cards-grid" style={{
+              display: 'grid', gridTemplateColumns: '1fr 1.05fr 1fr',
+              gap: 14, alignItems: 'stretch', margin: '0 auto',
+            }}>
+              {PLANS.map((plan, i) => (
+                <PlanCard
+                  key={plan.id} plan={plan}
+                  billing={billing} flipping={flipping}
+                  delay={0.12 + i * 0.09}
+                  highlighted={highlightPlan === plan.id}
+                  T={T} eff={eff}
+                />
+              ))}
+            </div>
+
+            {/* Trust strip */}
+            <div style={{
+              display: 'flex', justifyContent: 'center', gap: 28,
+              marginTop: 36, flexWrap: 'wrap',
+            }}>
+              {T.trust.map((label, i) => {
+                const Icon = TRUST_ICONS[i];
+                return (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+                    color: 'var(--text-dim)',
+                  }}>
+                    <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><Icon/></span>{label}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── FAQ ── */}
+          <div className="page-pad" style={{ maxWidth: 700, margin: '0 auto', padding: '0 24px 90px' }}>
+            <div style={{ textAlign: 'center', marginBottom: 36 }}>
+              <div style={{
+                fontFamily: "'DM Mono', monospace", fontSize: 10,
+                color: '#00c8e0', letterSpacing: '0.14em',
+                textTransform: 'uppercase', marginBottom: 12,
+              }}>{T.faqLabel}</div>
+              <h2 style={{
+                fontFamily: "'Syne', sans-serif",
+                fontSize: 'clamp(26px, 4vw, 38px)',
+                fontWeight: 800, letterSpacing: '-0.04em', margin: 0,
+              }}>{T.faqTitle}</h2>
+            </div>
+            <div style={{
+              background: 'var(--bg-card-2)',
+              border: '1px solid var(--border)',
+              borderRadius: 16, padding: '0 26px',
+            }}>
+              {T.faq.map((item, i) => <FAQItem key={lang + i} item={item} />)}
+            </div>
+          </div>
+
+          {/* ── Footer ── */}
+          <div style={{
+            borderTop: '1px solid var(--border)',
+            padding: '22px 24px 28px', textAlign: 'center',
+          }}>
+            <div style={{
+              display: 'flex', justifyContent: 'center', gap: 24,
+              flexWrap: 'wrap', marginBottom: 12,
+            }}>
+              {T.footerLinks.map((l, i) => (
+                <a key={i} href="#" style={{
+                  fontFamily: "'DM Sans', sans-serif", fontSize: 12,
+                  color: 'var(--text-dim)', textDecoration: 'none', transition: 'color 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.color = '#00c8e0'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-dim)'}
+                >{l}</a>
+              ))}
+            </div>
+            <div style={{
+              fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)',
+            }}>© 2026 THW Coaching</div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

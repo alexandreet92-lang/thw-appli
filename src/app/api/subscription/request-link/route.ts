@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 
 const APP_BASE = process.env.APP_BASE_URL ?? 'https://thw-appli.vercel.app'
 // Destinations (surchargables par variables d'env quand les pages du site sont prêtes).
-const CHANGE_URL = process.env.SUBSCRIPTION_CHANGE_URL ?? `${APP_BASE}/decouvrir/theme.html#abonnements`
+const CHANGE_URL = process.env.SUBSCRIPTION_CHANGE_URL ?? `${APP_BASE}/abonnement.html`
 const CANCEL_URL = process.env.SUBSCRIPTION_CANCEL_URL ?? `${APP_BASE}/decouvrir/theme.html#resiliation`
 const LOGO_URL = process.env.EMAIL_LOGO_URL ?? 'https://thw-appli.vercel.app/branding/logo-thw-light.png'
 

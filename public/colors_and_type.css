@@ -1,0 +1,288 @@
+/* ════════════════════════════════════════════════════════════════
+   THW Coaching — Colors & Type Tokens
+   Source of truth for the brand visual foundation.
+   Pulled from src/styles/design-system.ts and src/app/globals.css.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Webfonts — Syne (display) + DM Sans (body) + DM Mono (numbers).
+   These are the canonical brand fonts. Same Google Fonts URL the app uses. */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ─── Brand colors ──────────────────────────────────────────── */
+  --brand:          #00c8e0;   /* cyan principal — signature */
+  --brand-vivid:    #00e5ff;   /* hover / highlight */
+  --brand-deep:     #0099b8;   /* pressed / underline */
+  --brand-alt:      #5b6fff;   /* indigo accent — gradient pair */
+  --brand-purple:   #5b6fff;   /* alias of brand-alt */
+
+  /* Signature gradient — the THW visual hook (logo, primary buttons,
+     active states, ring fills, hero backgrounds). */
+  --brand-gradient: linear-gradient(135deg, #00c8e0, #5b6fff);
+  --brand-gradient-h: linear-gradient(90deg, #00c8e0, #5b6fff);
+
+  /* ─── Sport accents ─────────────────────────────────────────── */
+  --sport-running:  #f97316;   /* orange */
+  --sport-cycling:  #00c8e0;   /* cyan (= brand) */
+  --sport-hyrox:    #a855f7;   /* violet */
+  --sport-gym:      #22c55e;   /* green */
+
+  /* ─── Performance metrics ───────────────────────────────────── */
+  --metric-ctl:     #00c8e0;   /* fitness */
+  --metric-atl:     #ef4444;   /* fatigue */
+  --metric-tsb:     #5b6fff;   /* form */
+  --metric-volume:  #f59e0b;   /* training volume */
+
+  /* ─── Semantic ──────────────────────────────────────────────── */
+  --success:        #22c55e;
+  --warning:        #f59e0b;
+  --danger:         #ef4444;
+  --info:           #5b6fff;
+
+  /* ─── Surfaces — DARK (default theme; brand standard) ───────── */
+  --bg:             #070b0f;   /* near-black, blue-tinted */
+  --bg-alt:         #0c1118;
+  --bg-card:        rgba(255, 255, 255, 0.04);
+  --bg-card-2:      rgba(255, 255, 255, 0.025);
+  --bg-hover:       rgba(255, 255, 255, 0.06);
+  --nav-bg:         rgba(8, 12, 18, 0.97);
+
+  /* Borders — translucent white over dark */
+  --border:         rgba(255, 255, 255, 0.08);
+  --border-mid:     rgba(255, 255, 255, 0.14);
+  --nav-border:     rgba(255, 255, 255, 0.07);
+
+  /* Text — three-tier hierarchy on dark */
+  --text:           #eef2f7;
+  --text-mid:       rgba(238, 242, 247, 0.65);
+  --text-dim:       rgba(238, 242, 247, 0.38);
+
+  /* Inputs */
+  --input-bg:       rgba(255, 255, 255, 0.05);
+
+  /* ─── Shadows ───────────────────────────────────────────────── */
+  --shadow:         0 2px 20px rgba(0, 0, 0, 0.5);
+  --shadow-card:    0 1px 1px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 4px 24px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-brand:   0 0 24px rgba(0, 200, 224, 0.22);
+  --shadow-brand-sm: 0 0 10px rgba(0, 200, 224, 0.18);
+
+  /* ─── Atmospheric backgrounds ──────────────────────────────── */
+  --bg-atmosphere:
+    radial-gradient(ellipse 60% 50% at 20% 50%, rgba(0, 200, 224, 0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 80% 20%, rgba(91, 111, 255, 0.06) 0%, transparent 70%);
+
+  /* ─── Spacing scale (px) ────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ─── Radius ────────────────────────────────────────────────── */
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;   /* card default */
+  --radius-xl:   20px;
+  --radius-btn:  10px;
+  --radius-tag:  7px;
+  --radius-pill: 999px;
+
+  /* ─── Layout ────────────────────────────────────────────────── */
+  --nav-w: 240px;
+  --topbar-h-mobile: 56px;
+
+  /* ─── Type families ─────────────────────────────────────────── */
+  --font-display: 'Syne', system-ui, sans-serif;       /* h1, metrics, brand */
+  --font-body:    'DM Sans', system-ui, sans-serif;    /* paragraphs, UI */
+  --font-mono:    'DM Mono', ui-monospace, monospace;  /* data, numbers */
+}
+
+/* Light theme override — exists in product but secondary to dark. */
+.light {
+  --bg:          #eef2f7;
+  --bg-alt:      #e4eaf2;
+  --bg-card:     #ffffff;
+  --bg-card-2:   #f8fafc;
+  --bg-hover:    #eef5fa;
+  --nav-bg:      #ffffff;
+  --border:      rgba(0, 0, 0, 0.07);
+  --border-mid:  rgba(0, 0, 0, 0.12);
+  --nav-border:  rgba(0, 0, 0, 0.07);
+  --text:        #0d1117;
+  --text-mid:    rgba(13, 17, 23, 0.60);
+  --text-dim:    rgba(13, 17, 23, 0.38);
+  --input-bg:    #f0f6f9;
+  --shadow:      0 4px 24px rgba(0, 100, 150, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 2px 12px rgba(0, 80, 160, 0.07), 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Semantic type styles — apply directly with the `t-*` classes
+   or copy the values into inline styles.
+   ════════════════════════════════════════════════════════════════ */
+
+.t-display {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.t-h1 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.t-h2 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.t-h3 {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+/* All-caps section labels — used for "CTL · FORME" etc. */
+.t-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.t-label-md {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* Metric numbers — Syne, big, tight letter-spacing, often colored */
+.t-metric-xl { font-family: var(--font-display); font-size: 40px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; }
+.t-metric-lg { font-family: var(--font-display); font-size: 32px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+.t-metric-md { font-family: var(--font-display); font-size: 24px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+
+/* Body */
+.t-body    { font-family: var(--font-body); font-size: 14px; font-weight: 400; line-height: 1.5; }
+.t-body-sm { font-family: var(--font-body); font-size: 12px; font-weight: 400; line-height: 1.5; }
+.t-body-xs { font-family: var(--font-body); font-size: 11px; font-weight: 400; line-height: 1.4; }
+
+/* Mono — for data, durations, paces, watts, BPM */
+.t-mono-md { font-family: var(--font-mono); font-size: 14px; font-weight: 500; }
+.t-mono-sm { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+.t-mono-xs { font-family: var(--font-mono); font-size: 11px; font-weight: 500; }
+
+/* ════════════════════════════════════════════════════════════════
+   Common patterns — copy these wholesale.
+   ════════════════════════════════════════════════════════════════ */
+
+.thw-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-card);
+}
+
+.thw-card-compact {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-card);
+}
+
+.thw-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius-btn);
+  background: var(--brand-gradient);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 200, 224, 0.28);
+  transition: all 0.18s;
+}
+.thw-btn-primary:hover {
+  filter: brightness(1.10);
+  box-shadow: 0 4px 20px rgba(0, 200, 224, 0.35);
+  transform: translateY(-1px);
+}
+
+.thw-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-btn);
+  color: var(--text-mid);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.thw-btn-ghost:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: rgba(0, 200, 224, 0.06);
+}
+
+.thw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+
+/* Section accent stripe — the 3px-tall gradient bar that runs across
+   the top of metric cards. Inline this on the inner ::before. */
+.thw-card-accent::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand), transparent);
+}
+
+/* Animations — direct copies of globals.css keyframes */
+@keyframes fadeUp     { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes cardEnter  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes barFill    { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes chartBarEnter { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes spin       { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

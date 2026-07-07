@@ -195,6 +195,24 @@ export const readTools: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'get_activity_detail',
+    description:
+      "Ouvre UNE activité en profondeur pour l'analyser à fond (page détail d'une activité). " +
+      "Renvoie les métriques complètes (durée, distance, D+/D-, FC moy/max, watts moy/max/normalisés, IF, TSS, " +
+      "TRIMP, EF, découplage cardiaque/aérobie, calories, RPE/ressenti), le découpage en TOURS/LAPS (allure, FC, " +
+      "watts par lap), le retour d'effort saisi (RPE, sensation, commentaire) et le détail de la séance de FORCE " +
+      "(exercices, séries, charges) s'il y en a. Utilise-le quand l'athlète veut analyser UNE séance précise " +
+      "(« analyse ma sortie d'hier », « décortique cette séance »). Sans activity_id, prend la plus récente " +
+      "(éventuellement filtrée par sport).",
+    input_schema: {
+      type: 'object',
+      properties: {
+        activity_id: { type: 'string', description: "UUID de l'activité. Absent → l'activité la plus récente." },
+        sport:       { type: 'string', description: "Filtre sport quand activity_id est absent (sous-chaîne, ex 'run')." },
+      },
+    },
+  },
+  {
     name: 'get_stages',
     description:
       "Récupère les STAGES / camps d'entraînement de l'athlète (page Calendrier → événements). " +
@@ -485,6 +503,91 @@ export async function resolveReadTool(
           perso_count: perso.length,
           sessions: [...catalogue, ...perso],
         })
+      }
+
+      // ── get_activity_detail ─────────────────────────────────
+      case 'get_activity_detail': {
+        const DETAIL_COLS =
+          'id,title,sport_type,started_at,is_race,race_name,moving_time_s,elapsed_time_s,distance_m,' +
+          'elevation_gain_m,elevation_loss_m,avg_pace_s_km,average_speed,max_speed_ms,avg_watts,max_watts,' +
+          'normalized_watts,intensity_factor,tss,trimp,kilojoules,ef_value,aerobic_decoupling,cardiac_drift_pct,' +
+          'decoupling_pct,average_heartrate,max_heartrate,avg_cadence,max_cadence,calories,rpe,perceived_effort,' +
+          'feeling,difficulty,notes,description,laps'
+
+        const actId = typeof input.activity_id === 'string' ? input.activity_id.trim() : ''
+        const sport = typeof input.sport === 'string' ? input.sport.trim() : ''
+
+        let a: Record<string, unknown> | null = null
+        if (actId) {
+          const { data, error } = await sb.from('activities').select(DETAIL_COLS)
+            .eq('user_id', userId).eq('id', actId).maybeSingle()
+          if (error) return JSON.stringify({ error: error.message })
+          a = data as Record<string, unknown> | null
+        } else {
+          let q = sb.from('activities').select(DETAIL_COLS)
+            .eq('user_id', userId).order('started_at', { ascending: false }).limit(1)
+          if (sport) q = q.ilike('sport_type', `%${sport}%`)
+          const { data, error } = await q.maybeSingle()
+          if (error) return JSON.stringify({ error: error.message })
+          a = data as Record<string, unknown> | null
+        }
+        if (!a) return JSON.stringify({ activity: null, message: actId ? 'Activité introuvable.' : 'Aucune activité.' })
+
+        // Compléments : retour d'effort + séance de force
+        const [{ data: fb }, { data: ex }] = await Promise.all([
+          sb.from('activity_feedback').select('rpe,sensation,comment,created_at')
+            .eq('activity_id', a.id as string).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          sb.from('activity_extras').select('strength_log,pool_length_m,workout_types')
+            .eq('activity_id', a.id as string).maybeSingle(),
+        ])
+
+        // Laps : compactés (max 40)
+        const rawLaps = Array.isArray(a.laps) ? (a.laps as Array<Record<string, unknown>>) : []
+        const laps = rawLaps.slice(0, 40).map((l, i) => {
+          const dist = (l.distance_m ?? l.distance) as number | undefined
+          const time = (l.moving_time_s ?? l.elapsed_time_s ?? l.time) as number | undefined
+          const speed = (l.average_speed ?? l.avg_speed_ms) as number | undefined
+          return {
+            i: i + 1,
+            distM: typeof dist === 'number' ? Math.round(dist) : undefined,
+            durS: typeof time === 'number' ? Math.round(time) : undefined,
+            paceSecPerKm: typeof speed === 'number' && speed > 0 ? Math.round(1000 / speed) : undefined,
+            hr: (l.average_heartrate ?? l.avg_hr) as number | undefined,
+            watts: (l.average_watts ?? l.avg_watts) as number | undefined,
+          }
+        })
+
+        const durMin = a.moving_time_s ? Math.round((a.moving_time_s as number) / 60) : null
+        const distKm = a.distance_m ? Math.round((a.distance_m as number) / 100) / 10 : null
+        const avgSpeed = a.average_speed as number | undefined
+        const detail = {
+          id: a.id,
+          date: a.started_at ? (a.started_at as string).slice(0, 10) : null,
+          sport: a.sport_type,
+          title: a.title,
+          race: a.is_race ? (a.race_name ?? true) : false,
+          durMin,
+          distKm,
+          elevationGainM: a.elevation_gain_m ?? undefined,
+          elevationLossM: a.elevation_loss_m ?? undefined,
+          paceSecPerKm: a.avg_pace_s_km ?? (typeof avgSpeed === 'number' && avgSpeed > 0 ? Math.round(1000 / avgSpeed) : undefined),
+          hrAvg: a.average_heartrate ?? undefined, hrMax: a.max_heartrate ?? undefined,
+          watts: a.avg_watts ?? undefined, wattsMax: a.max_watts ?? undefined, wattsNorm: a.normalized_watts ?? undefined,
+          intensityFactor: a.intensity_factor ?? undefined,
+          tss: a.tss ?? undefined, trimp: a.trimp ?? undefined, kJ: a.kilojoules ?? undefined,
+          ef: a.ef_value ?? undefined,
+          decouplingPct: a.aerobic_decoupling ?? a.decoupling_pct ?? a.cardiac_drift_pct ?? undefined,
+          cadence: a.avg_cadence ?? undefined,
+          calories: a.calories ?? undefined,
+          rpe: a.rpe ?? a.perceived_effort ?? undefined,
+          feeling: a.feeling ?? undefined, difficulty: a.difficulty ?? undefined,
+          notes: (a.notes ?? a.description) || undefined,
+          feedback: fb ? { rpe: (fb as Record<string, unknown>).rpe, sensation: (fb as Record<string, unknown>).sensation, comment: (fb as Record<string, unknown>).comment } : undefined,
+          strength: ex && (ex as Record<string, unknown>).strength_log ? (ex as Record<string, unknown>).strength_log : undefined,
+          lapCount: rawLaps.length,
+          laps: laps.length ? laps : undefined,
+        }
+        return JSON.stringify({ activity: detail })
       }
 
       // ── get_stages ──────────────────────────────────────────

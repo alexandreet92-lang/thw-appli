@@ -45,6 +45,7 @@ type THWModel = 'hermes' | 'athena' | 'zeus'
 // de la boucle agentique). Premier outil de la salve → message clair.
 const TOOL_STATUS_LABELS: Record<string, string> = {
   get_activities:        'aip.tool.getActivities',
+  get_activity_detail:   'aip.tool.getActivityDetail',
   analyze_sport_metrics: 'aip.tool.analyzeMetrics',
   get_training_plan:     'aip.tool.getPlan',
   get_planned_sessions:  'aip.tool.getSessions',
@@ -11557,6 +11558,9 @@ interface AttachedFile {
   data:      string   // base64 sans préfixe data:...;base64,
   preview?:  string   // data URL pour aperçu image
   isImage:   boolean
+  kind?:     'file' | 'parcours'   // 'parcours' = trace GPX/TCX/KML analysée côté serveur
+  analysisText?: string            // bloc texte « PARCOURS IMPORTÉ » injecté à l'IA (kind='parcours')
+  meta?:     string                // libellé court pour l'aperçu (ex '12,4 km · D+ 340 m')
 }
 
 // Convertit un File en AttachedFile (base64 + preview)
@@ -11580,6 +11584,41 @@ function fileToAttachment(file: File): Promise<AttachedFile> {
     reader.onerror = () => reject(new Error('Lecture fichier échouée'))
     reader.readAsDataURL(file)
   })
+}
+
+// Détecte une trace de parcours (GPX/TCX/KML) à partir du nom de fichier.
+function isRouteFileName(name: string): boolean {
+  return /\.(gpx|tcx|kml)$/i.test(name.trim())
+}
+
+// Formate un CourseProfile parsé en un bloc texte compact « PARCOURS IMPORTÉ »
+// injecté à l'IA (le module d'analyse de parcours du system prompt s'appuie
+// dessus). Chiffres bruts et structurés — l'IA raisonne, ne re-parse rien.
+function courseProfileToAnalysisText(
+  p: {
+    total_distance_km: number; total_denivele_pos: number; total_denivele_neg: number
+    altitude_min: number; altitude_max: number
+    segments: Array<{ start_km: number; end_km: number; distance_km: number; pente_moyenne_pct: number; type: string; description: string }>
+    major_climbs: Array<{ start_km: number; end_km: number; distance_km: number; denivele: number; pente_moyenne_pct: number; pente_max_pct: number; altitude_max: number; categorie: string }>
+  },
+  fileName: string,
+): string {
+  const L: string[] = []
+  L.push(`PARCOURS IMPORTÉ — ${fileName}`)
+  L.push(`Distance ${p.total_distance_km} km · D+ ${p.total_denivele_pos} m · D- ${p.total_denivele_neg} m · Altitude ${p.altitude_min}→${p.altitude_max} m · D+/km ${(p.total_denivele_pos / Math.max(1, p.total_distance_km)).toFixed(0)} m/km`)
+  if (p.major_climbs?.length) {
+    L.push(`Montées majeures (${p.major_climbs.length}) :`)
+    p.major_climbs.slice(0, 12).forEach((c, i) => {
+      L.push(`  ${i + 1}. km ${c.start_km}→${c.end_km} · ${c.distance_km} km · D+ ${c.denivele} m · ${c.pente_moyenne_pct}% moy (max ${c.pente_max_pct}%) · cat ${c.categorie} · sommet ${c.altitude_max} m`)
+    })
+  }
+  if (p.segments?.length) {
+    L.push(`Profil segment par segment (${p.segments.length}) :`)
+    p.segments.slice(0, 24).forEach(s => L.push(`  - ${s.description}`))
+    if (p.segments.length > 24) L.push(`  … (${p.segments.length - 24} segments supplémentaires)`)
+  }
+  L.push('Analyse ce parcours selon mes objectifs, ma forme et mes zones réelles, et dis-moi ce que je peux/dois y faire.')
+  return L.join('\n')
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -19266,6 +19305,7 @@ export default function AIPanel({
   const [selPopup,    setSelPopup]    = useState<{ text: string; x: number; y: number } | null>(null)
   const [attachment,    setAttachment]    = useState<AttachedFile | null>(null)
   const [attachErr,     setAttachErr]     = useState<string | null>(null)
+  const [attachParsing, setAttachParsing] = useState(false)
   const [pendingToolCalls, setPendingToolCalls] = useState<PendingToolCall[]>([])
   const [toolApplyStatus,  setToolApplyStatus]  = useState<'idle' | 'applying' | 'success' | 'error'>('idle')
   const [toolApplyError,   setToolApplyError]   = useState<string | null>(null)
@@ -20208,12 +20248,43 @@ export default function AIPanel({
     } catch { setSelPopup(null) }
   }, [])
 
-  // Handler fichier sélectionné (caméra / photos / fichiers)
+  // Handler fichier sélectionné (caméra / photos / fichiers / parcours GPX)
   const handleFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''   // reset pour permettre re-sélection
     setAttachErr(null)
+
+    // Trace de parcours (GPX/TCX/KML) → parsée côté serveur en profil
+    // altimétrique, puis attachée comme bloc texte « PARCOURS IMPORTÉ ».
+    if (isRouteFileName(file.name)) {
+      setAttachParsing(true)
+      try {
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await fetch('/api/parse-course-file', { method: 'POST', body: fd })
+        const json = await res.json() as { profile?: Parameters<typeof courseProfileToAnalysisText>[0]; error?: string }
+        if (!res.ok || !json.profile) throw new Error(json.error || 'parse failed')
+        const p = json.profile
+        setAttachment({
+          name: file.name,
+          mediaType: 'application/gpx',
+          data: '',
+          isImage: false,
+          kind: 'parcours',
+          analysisText: courseProfileToAnalysisText(p, file.name),
+          meta: `${p.total_distance_km} km · D+ ${p.total_denivele_pos} m${p.major_climbs?.length ? ` · ${p.major_climbs.length} montée${p.major_climbs.length > 1 ? 's' : ''}` : ''}`,
+        })
+        areaRef.current?.focus()
+      } catch (err) {
+        setAttachErr(err instanceof Error && err.message !== 'parse failed' ? err.message : 'Parcours illisible (formats : GPX, TCX, KML).')
+        setTimeout(() => setAttachErr(null), 5000)
+      } finally {
+        setAttachParsing(false)
+      }
+      return
+    }
+
     try {
       const attached = await fileToAttachment(file)
       setAttachment(attached)
@@ -20497,7 +20568,14 @@ export default function AIPanel({
       ? `[Recherche web demandée] Effectue une recherche web (outil web_search) pour fonder ta réponse sur des informations à jour et fiables, puis cite tes sources.\n\n${quotedApiText}`
       : quotedApiText
 
-    if (hasAttachment && attachment) {
+    if (hasAttachment && attachment && attachment.kind === 'parcours') {
+      // Parcours : pas de fichier binaire — on injecte le profil analysé en texte.
+      // On n'ajoute le texte utilisateur que s'il a réellement écrit quelque chose
+      // (sinon apiContentText vaut juste le placeholder "[nom.gpx]").
+      const extra = (txt || webForSend || quoteForSend) ? apiContentText : ''
+      const parcoursText = [attachment.analysisText, extra].filter(Boolean).join('\n\n')
+      apiMsgs.push({ role: 'user', content: parcoursText })
+    } else if (hasAttachment && attachment) {
       const blocks: { type: string; [k: string]: unknown }[] = []
       if (attachment.isImage) {
         blocks.push({ type: 'image', mediaType: attachment.mediaType, data: attachment.data })
@@ -22080,7 +22158,7 @@ export default function AIPanel({
             {/* Hidden file inputs */}
             <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileSelected} />
             <input ref={photosRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileSelected} />
-            <input ref={filesRef}  type="file" accept=".pdf,image/*,.doc,.docx,.txt" style={{ display: 'none' }} onChange={handleFileSelected} />
+            <input ref={filesRef}  type="file" accept=".pdf,image/*,.doc,.docx,.txt,.gpx,.tcx,.kml" style={{ display: 'none' }} onChange={handleFileSelected} />
 
             {/* Compétences actives : visibles via le flyout du bouton Compétences
                 (menu « + »), plus affichées en pastilles bleues au-dessus du champ. */}
@@ -22133,6 +22211,16 @@ export default function AIPanel({
                 <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   {attachment.isImage && attachment.preview
                     ? <img src={attachment.preview} alt={attachment.name} style={{ height: 56, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--ai-border)' }} />
+                    : attachment.kind === 'parcours'
+                    ? (
+                      <div style={{ padding: '6px 12px', borderRadius: 10, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.35)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <span>🗺️</span>
+                        <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
+                          <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{attachment.name}</span>
+                          {attachment.meta && <span style={{ fontSize: 10, color: 'var(--ai-mid)' }}>{attachment.meta}</span>}
+                        </span>
+                      </div>
+                    )
                     : (
                       <div style={{ padding: '6px 12px', borderRadius: 10, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
                         <span>📄</span><span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachment.name}</span>
@@ -22144,6 +22232,11 @@ export default function AIPanel({
                     style={{ width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'var(--ai-mid)', color: 'var(--ai-bg)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                   >×</button>
                 </div>
+              )}
+
+              {/* Parcours en cours d'analyse */}
+              {attachParsing && (
+                <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '4px 12px 0', padding: 0 }}>🗺️ Analyse du parcours…</p>
               )}
 
               {/* Attachment error */}

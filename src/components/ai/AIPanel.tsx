@@ -56,6 +56,7 @@ const TOOL_STATUS_LABELS: Record<string, string> = {
   get_recovery:          'aip.tool.getRecovery',
   get_injuries:          'aip.tool.getInjuries',
   get_nutrition:         'aip.tool.getNutrition',
+  get_nutrition_log:     'aip.tool.getNutritionLog',
   get_personal_records:  'aip.tool.getRecords',
   get_body_metrics:      'aip.tool.getBody',
   web_search:            'aip.tool.webSearch',

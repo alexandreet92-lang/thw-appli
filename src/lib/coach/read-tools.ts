@@ -296,6 +296,20 @@ export const readTools: Anthropic.Tool[] = [
     input_schema: { type: 'object', properties: {} },
   },
   {
+    name: 'get_nutrition_log',
+    description:
+      "Récupère ce que l'athlète A RÉELLEMENT MANGÉ ET BU (journal nutritionnel, page Nutrition) sur une " +
+      "fenêtre : repas enregistrés (nom, description, kcal et macros réelles), totaux caloriques/macros par " +
+      "jour, et hydratation (litres/jour). Utilise-le pour analyser les apports réels vs les besoins/cibles " +
+      "(« analyse ce que je mange », « mes apports de la semaine », « est-ce que je mange assez ? »).",
+    input_schema: {
+      type: 'object',
+      properties: {
+        since_days: { type: 'integer', description: 'Fenêtre en jours (défaut 7, max 60).' },
+      },
+    },
+  },
+  {
     name: 'get_personal_records',
     description:
       "Récupère les RECORDS PERSONNELS (PR) de l'athlète (page Records) : par sport et distance, la perf, " +
@@ -841,6 +855,74 @@ export async function resolveReadTool(
           date: row.created_at ? row.created_at.slice(0, 10) : null,
           plan: row.plan_data ?? null,
         })
+      }
+
+      // ── get_nutrition_log ───────────────────────────────────
+      case 'get_nutrition_log': {
+        const sinceDays = clamp(Number(input.since_days) || 7, 1, 60)
+        const since = ymd(new Date(Date.now() - sinceDays * 86400000))
+
+        const [{ data: meals }, { data: totals }, { data: hydra }] = await Promise.all([
+          sb.from('nutrition_meal_logs')
+            .select('date,meal_slot,meal_name,actual_description,actual_kcal,actual_prot,actual_gluc,actual_lip,validated')
+            .eq('user_id', userId).gte('date', since).order('date', { ascending: true }),
+          sb.from('nutrition_daily_logs')
+            .select('date,kcal_consommees,proteines,glucides,lipides')
+            .eq('user_id', userId).gte('date', since).order('date', { ascending: true }),
+          sb.from('hydration')
+            .select('date,liters')
+            .eq('user_id', userId).gte('date', since).order('date', { ascending: true }),
+        ])
+
+        const hydraByDate: Record<string, number> = {}
+        for (const h of (hydra ?? []) as Array<{ date: string; liters: number | null }>) {
+          hydraByDate[h.date] = (hydraByDate[h.date] ?? 0) + (h.liters ?? 0)
+        }
+        const totalsByDate: Record<string, Record<string, number | null>> = {}
+        for (const t of (totals ?? []) as Array<Record<string, unknown>>) {
+          totalsByDate[t.date as string] = {
+            kcal: (t.kcal_consommees as number) ?? null,
+            prot: (t.proteines as number) ?? null,
+            gluc: (t.glucides as number) ?? null,
+            lip:  (t.lipides as number) ?? null,
+          }
+        }
+        // Regroupe les repas par jour
+        const mealsByDate: Record<string, Array<Record<string, unknown>>> = {}
+        for (const m of (meals ?? []) as Array<Record<string, unknown>>) {
+          const d = m.date as string
+          ;(mealsByDate[d] ??= []).push({
+            slot: m.meal_slot ?? undefined,
+            nom: m.meal_name ?? m.actual_description ?? undefined,
+            kcal: m.actual_kcal ?? undefined,
+            prot: m.actual_prot ?? undefined,
+            gluc: m.actual_gluc ?? undefined,
+            lip: m.actual_lip ?? undefined,
+            valide: m.validated ?? undefined,
+          })
+        }
+        const allDates = [...new Set([...Object.keys(mealsByDate), ...Object.keys(totalsByDate), ...Object.keys(hydraByDate)])].sort()
+        if (!allDates.length) {
+          return JSON.stringify({ error: `Aucun apport nutritionnel enregistré sur ${sinceDays} jours.`, window_days: sinceDays })
+        }
+        const days = allDates.slice(-30).map(d => {
+          const mealsD = mealsByDate[d] ?? []
+          const sum = (k: string) => {
+            const v = mealsD.map(m => m[k]).filter((x): x is number => typeof x === 'number')
+            return v.length ? Math.round(v.reduce((a, b) => a + b, 0)) : null
+          }
+          const t = totalsByDate[d]
+          return {
+            date: d,
+            kcal: t?.kcal ?? sum('kcal'),
+            prot: t?.prot ?? sum('prot'),
+            gluc: t?.gluc ?? sum('gluc'),
+            lip:  t?.lip ?? sum('lip'),
+            eauL: hydraByDate[d] != null ? Math.round(hydraByDate[d] * 10) / 10 : undefined,
+            repas: mealsD.length ? mealsD : undefined,
+          }
+        })
+        return JSON.stringify({ window_days: sinceDays, count: days.length, days })
       }
 
       // ── get_personal_records ────────────────────────────────

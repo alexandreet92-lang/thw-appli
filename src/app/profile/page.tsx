@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { User, Bell, Zap, Moon, Apple, TrendingUp, Sparkles, Coins, Plug, Trophy, Settings, Package, Bike, Footprints, Target, Globe, MapPin, Shield, Lock, CreditCard, BarChart3, Dumbbell, LogOut, ChevronLeft, Palette, Sun, Monitor, Check, Ruler } from 'lucide-react'
+import SubscriptionEmailModal from '@/components/subscription/SubscriptionEmailModal'
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SlideView } from '@/components/ui/SlideView'
@@ -1692,6 +1693,7 @@ function AbonnementContent() {
   const [cancelling, setCancelling] = useState(false)
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [subEmail, setSubEmail] = useState<'change' | 'cancel' | null>(null)
 
   useEffect(() => {
     fetch('/api/subscription/details')
@@ -1815,41 +1817,7 @@ function AbonnementContent() {
             )}
           </div>
 
-          {/* ── 2. Jauges tokens ────────────────────────── */}
-          {(details?.monthly || details?.rolling_6h) && (
-            <div>
-              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 5, margin: '0 0 12px' }}>
-                {t('profile.aiUsage')}
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {([
-                  details?.monthly    && { label: t('profile.weekly'),          gauge: details.monthly,   color: '#06B6D4' },
-                  details?.rolling_6h && { label: t('profile.rolling6h'), gauge: details.rolling_6h, color: '#5b6fff' },
-                ].filter(Boolean) as { label: string; gauge: { used: number; limit: number; resets_at: string }; color: string }[]).map(g => {
-                  const pct       = Math.min(100, Math.round((g.gauge.used / g.gauge.limit) * 100))
-                  const remaining = g.gauge.limit - g.gauge.used
-                  return (
-                    <div key={g.label} style={{ padding: '14px 16px', borderRadius: 13, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{g.label}</p>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 16, fontWeight: 700, color: g.color }}>{fmtTokens(g.gauge.used)}</span>
-                          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>/ {fmtTokens(g.gauge.limit)}</span>
-                        </div>
-                      </div>
-                      <div style={{ height: 8, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', marginBottom: 8 }}>
-                        <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg,${g.color},${g.color}bb)`, borderRadius: 999, transition: 'width 0.4s' }}/>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t('profile.pctUsed', { pct })}</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-mid)', fontWeight: 600 }}>{t('profile.remaining', { n: fmtTokens(remaining), s: remaining > 1 ? 's' : '' })}</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
+          {/* Jauges d'utilisation IA retirées ici — visibles dans « Utilisation ». */}
 
           {/* ── 3. Derniers paiements ───────────────────── */}
           {details?.invoices && details.invoices.length > 0 && (
@@ -1911,36 +1879,43 @@ function AbonnementContent() {
             </div>
           )}
 
-          {/* ── 5. Actions bas de page ──────────────────── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 8 }}>
-            <a
-              href="/decouvrir/theme.html#abonnements"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '14px', background: 'transparent', border: '0.5px solid var(--border)', borderRadius: 10, color: 'var(--text)', fontSize: 14, fontWeight: 500, textDecoration: 'none', cursor: 'pointer' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
-                <polyline points="15 3 21 3 21 9"/>
-                <line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-              {t('profile.learnMoreSubscriptions')}
-            </a>
-            {hasStripe && !isCancelling && (
-              <button
-                onClick={() => setCancelConfirm(true)}
-                style={{ width: '100%', padding: '12px', borderRadius: 12, background: 'transparent', border: '1px solid rgba(239,68,68,0.35)', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-              >
-                {t('profile.cancelSubscription')}
+          {/* ── Actions abonnement (liste groupée, façon Claude) ── */}
+          {!isCancelling && (
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+              <button onClick={() => setSubEmail('change')} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>Changer d&apos;abonnement</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
-            )}
-            {isCancelling && (
-              <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', textAlign: 'center' }}>
-                <p style={{ fontSize: 12, color: '#ef4444', margin: 0, fontWeight: 600 }}>{t('profile.cancellationScheduled')}</p>
-                <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>
-                  {t('profile.accessActiveUntil', { date: details?.current_period_end ? fmtDate(details.current_period_end) : '—' })}
-                </p>
-              </div>
-            )}
-          </div>
+              <button onClick={() => (hasStripe ? setCancelConfirm(true) : setSubEmail('cancel'))} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '15px 16px', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', cursor: 'pointer' }}>
+                <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: '#ef4444' }}>Résilier l&apos;abonnement</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+            </div>
+          )}
+
+          {/* En savoir plus */}
+          <a
+            href="/decouvrir/theme.html#abonnements"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '14px', background: 'transparent', border: '0.5px solid var(--border)', borderRadius: 12, color: 'var(--text)', fontSize: 14, fontWeight: 500, textDecoration: 'none', cursor: 'pointer' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            {t('profile.learnMoreSubscriptions')}
+          </a>
+
+          {isCancelling && (
+            <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', textAlign: 'center' }}>
+              <p style={{ fontSize: 12, color: '#ef4444', margin: 0, fontWeight: 600 }}>{t('profile.cancellationScheduled')}</p>
+              <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>
+                {t('profile.accessActiveUntil', { date: details?.current_period_end ? fmtDate(details.current_period_end) : '—' })}
+              </p>
+            </div>
+          )}
+
+          {subEmail && <SubscriptionEmailModal action={subEmail} onClose={() => setSubEmail(null)} />}
         </div>
       )}
 
@@ -2529,7 +2504,8 @@ export function ProfileContent() {
   const initial = (profile.full_name || profile.email || '?').trim().charAt(0).toUpperCase()
 
   return (
-    <div style={{ width: '100%', maxWidth: 620, margin: '0 auto', padding: '20px 16px 80px', boxSizing: 'border-box' }}>
+    <div style={{ width: '100%', minHeight: '100dvh', background: 'color-mix(in srgb, var(--text) 4%, var(--bg))', boxSizing: 'border-box' }}>
+    <div style={{ width: '100%', maxWidth: 620, margin: '0 auto', padding: '20px 16px 40px', boxSizing: 'border-box' }}>
       <style>{`
         .profile-notif-grid { display: flex; flex-direction: column; }
       `}</style>
@@ -2600,6 +2576,7 @@ export function ProfileContent() {
           </div>
         </div>
       )}
+    </div>
     </div>
   )
 }

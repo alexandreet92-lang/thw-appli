@@ -128,6 +128,8 @@ export default function MobileTabBar() {
   if (pathname?.startsWith('/competences')) return null
   // Page /topup : standalone (lien email)
   if (pathname?.startsWith('/topup')) return null
+  // Page /profile : réglages plein écran, on masque la barre d'onglets
+  if (pathname === '/profile') return null
   // Pages d'entrée (connexion, onboarding…) : pas de barre d'onglets
   if (isFullscreenRoute(pathname)) return null
 

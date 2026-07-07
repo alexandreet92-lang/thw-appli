@@ -314,7 +314,9 @@ export const readTools: Anthropic.Tool[] = [
     description:
       "Récupère les RECORDS PERSONNELS (PR) de l'athlète (page Records) : par sport et distance, la perf, " +
       "l'allure, la course associée, la date, et les splits (natation/vélo/course, transitions, stations Hyrox). " +
-      "Utilise-le pour situer le niveau réel, fixer des objectifs cohérents ou calibrer des allures cibles.",
+      "Inclut aussi les RECORDS DE PUISSANCE/ALLURE détectés automatiquement (meilleurs efforts par durée, " +
+      "PB all-time / de la saison). Utilise-le pour situer le niveau réel, fixer des objectifs cohérents ou " +
+      "calibrer des allures/puissances cibles.",
     input_schema: {
       type: 'object',
       properties: {
@@ -333,6 +335,20 @@ export const readTools: Anthropic.Tool[] = [
       type: 'object',
       properties: {
         since_days: { type: 'integer', description: 'Fenêtre en jours (défaut 180, max 365).' },
+      },
+    },
+  },
+  {
+    name: 'get_climb_records',
+    description:
+      "Récupère les RECORDS EN CÔTE de l'athlète (cyclisme) : montées nommées avec puissance moyenne, " +
+      "W/kg, durée, longueur, pente moyenne, altitude au sommet et conditions (pré-fatigue, nutrition, " +
+      "température). Utilise-le pour évaluer le niveau grimpeur, comparer des ascensions, ou fixer un " +
+      "objectif de W/kg sur une montée.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'integer', description: 'Nombre max de records (défaut 20, max 50).' },
       },
     },
   },
@@ -955,7 +971,55 @@ export async function resolveReadTool(
             : undefined,
           stations: r.station_times ?? undefined,
         }))
-        return JSON.stringify({ count: records.length, records })
+
+        // Records de puissance/allure auto-détectés (best efforts par durée)
+        let q2 = sb.from('performance_records')
+          .select('sport,record_type,duration_s,distance_m,value,value_label,achieved_at,is_all_time_pb,is_season_pb,season_year')
+          .eq('user_id', userId)
+          .order('is_all_time_pb', { ascending: false })
+          .order('achieved_at', { ascending: false })
+          .limit(40)
+        if (sport) q2 = q2.ilike('sport', `%${sport}%`)
+        const { data: prData } = await q2
+        const power_records = ((prData ?? []) as Array<Record<string, unknown>>).map(r => ({
+          sport: r.sport,
+          type: r.record_type ?? undefined,
+          durS: r.duration_s ?? undefined,
+          distM: r.distance_m ?? undefined,
+          value: [r.value, r.value_label].filter(Boolean).join(' ') || (r.value ?? undefined),
+          date: r.achieved_at ?? undefined,
+          allTimePB: r.is_all_time_pb ?? undefined,
+          seasonPB: r.is_season_pb ?? undefined,
+        }))
+        return JSON.stringify({ count: records.length, records, power_records })
+      }
+
+      // ── get_climb_records ───────────────────────────────────
+      case 'get_climb_records': {
+        const limit = clamp(Number(input.limit) || 20, 1, 50)
+        const { data, error } = await sb.from('climb_records')
+          .select('name,date,watts_avg,duration_seconds,weight_kg,wpkg,length_km,avg_gradient_pct,altitude_summit_m,pre_fatigue,with_nutrition,intensity_rating,score')
+          .eq('user_id', userId)
+          .order('score', { ascending: false, nullsFirst: false })
+          .order('date', { ascending: false })
+          .limit(limit)
+        if (error) return JSON.stringify({ error: error.message })
+        const climbs = ((data ?? []) as Array<Record<string, unknown>>).map(c => ({
+          name: c.name,
+          date: c.date ?? undefined,
+          watts: c.watts_avg ?? undefined,
+          wPerKg: c.wpkg ?? undefined,
+          durS: c.duration_seconds ?? undefined,
+          lengthKm: c.length_km ?? undefined,
+          gradientPct: c.avg_gradient_pct ?? undefined,
+          summitM: c.altitude_summit_m ?? undefined,
+          weightKg: c.weight_kg ?? undefined,
+          preFatigue: c.pre_fatigue ?? undefined,
+          withNutrition: c.with_nutrition ?? undefined,
+          intensity: c.intensity_rating ?? undefined,
+          score: c.score ?? undefined,
+        }))
+        return JSON.stringify({ count: climbs.length, climbs })
       }
 
       // ── get_body_metrics ────────────────────────────────────

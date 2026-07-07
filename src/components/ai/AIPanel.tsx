@@ -58,6 +58,7 @@ const TOOL_STATUS_LABELS: Record<string, string> = {
   get_nutrition:         'aip.tool.getNutrition',
   get_nutrition_log:     'aip.tool.getNutritionLog',
   get_personal_records:  'aip.tool.getRecords',
+  get_climb_records:     'aip.tool.getClimbRecords',
   get_body_metrics:      'aip.tool.getBody',
   web_search:            'aip.tool.webSearch',
 }
@@ -11562,6 +11563,8 @@ interface AttachedFile {
   kind?:     'file' | 'parcours'   // 'parcours' = trace GPX/TCX/KML analysée côté serveur
   analysisText?: string            // bloc texte « PARCOURS IMPORTÉ » injecté à l'IA (kind='parcours')
   meta?:     string                // libellé court pour l'aperçu (ex '12,4 km · D+ 340 m')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  parcoursSave?: any               // corps POST /api/parcours pour persister la trace (kind='parcours')
 }
 
 // Convertit un File en AttachedFile (base64 + preview)
@@ -11592,18 +11595,42 @@ function isRouteFileName(name: string): boolean {
   return /\.(gpx|tcx|kml)$/i.test(name.trim())
 }
 
+// Profil de parcours renvoyé par /api/parse-course-file.
+interface ParsedCourseProfile {
+  total_distance_km: number; total_denivele_pos: number; total_denivele_neg: number
+  altitude_min: number; altitude_max: number
+  segments: Array<{ start_km: number; end_km: number; distance_km: number; ele_start: number; ele_end: number; denivele: number; pente_moyenne_pct: number; type: string; description: string }>
+  major_climbs: Array<{ start_km: number; end_km: number; distance_km: number; denivele: number; pente_moyenne_pct: number; pente_max_pct: number; altitude_max: number; categorie: string }>
+  elevation_profile: Array<{ dist_km: number; ele: number }>
+}
+
+// Mappe un profil parsé vers le corps attendu par POST /api/parcours, pour
+// PERSISTER la trace sur la page Parcours. On convertit les segments au format
+// ParsedSegment (type climb/descent/flat) attendu par la base et par get_parcours.
+function courseProfileToSaveBody(p: ParsedCourseProfile, fileName: string) {
+  const name = fileName.replace(/\.(gpx|tcx|kml)$/i, '').trim() || 'Parcours importé'
+  return {
+    name,
+    totalKm: p.total_distance_km,
+    elevationGainM: p.total_denivele_pos,
+    elevationLossM: p.total_denivele_neg,
+    elevationProfile: (p.elevation_profile ?? []).map(e => ({ distKm: e.dist_km, ele: e.ele })),
+    segments: (p.segments ?? []).map(s => ({
+      startKm: s.start_km, endKm: s.end_km,
+      startEle: s.ele_start, endEle: s.ele_end,
+      distanceKm: s.distance_km,
+      avgGradient: s.pente_moyenne_pct,
+      maxGradient: Math.abs(s.pente_moyenne_pct),
+      elevationDeltaM: s.denivele,
+      type: s.type === 'montee' ? 'climb' : s.type === 'descente' ? 'descent' : 'flat',
+    })),
+  }
+}
+
 // Formate un CourseProfile parsé en un bloc texte compact « PARCOURS IMPORTÉ »
 // injecté à l'IA (le module d'analyse de parcours du system prompt s'appuie
 // dessus). Chiffres bruts et structurés — l'IA raisonne, ne re-parse rien.
-function courseProfileToAnalysisText(
-  p: {
-    total_distance_km: number; total_denivele_pos: number; total_denivele_neg: number
-    altitude_min: number; altitude_max: number
-    segments: Array<{ start_km: number; end_km: number; distance_km: number; pente_moyenne_pct: number; type: string; description: string }>
-    major_climbs: Array<{ start_km: number; end_km: number; distance_km: number; denivele: number; pente_moyenne_pct: number; pente_max_pct: number; altitude_max: number; categorie: string }>
-  },
-  fileName: string,
-): string {
+function courseProfileToAnalysisText(p: ParsedCourseProfile, fileName: string): string {
   const L: string[] = []
   L.push(`PARCOURS IMPORTÉ — ${fileName}`)
   L.push(`Distance ${p.total_distance_km} km · D+ ${p.total_denivele_pos} m · D- ${p.total_denivele_neg} m · Altitude ${p.altitude_min}→${p.altitude_max} m · D+/km ${(p.total_denivele_pos / Math.max(1, p.total_distance_km)).toFixed(0)} m/km`)
@@ -20264,7 +20291,7 @@ export default function AIPanel({
         const fd = new FormData()
         fd.append('file', file)
         const res = await fetch('/api/parse-course-file', { method: 'POST', body: fd })
-        const json = await res.json() as { profile?: Parameters<typeof courseProfileToAnalysisText>[0]; error?: string }
+        const json = await res.json() as { profile?: ParsedCourseProfile; error?: string }
         if (!res.ok || !json.profile) throw new Error(json.error || 'parse failed')
         const p = json.profile
         setAttachment({
@@ -20275,6 +20302,7 @@ export default function AIPanel({
           kind: 'parcours',
           analysisText: courseProfileToAnalysisText(p, file.name),
           meta: `${p.total_distance_km} km · D+ ${p.total_denivele_pos} m${p.major_climbs?.length ? ` · ${p.major_climbs.length} montée${p.major_climbs.length > 1 ? 's' : ''}` : ''}`,
+          parcoursSave: courseProfileToSaveBody(p, file.name),
         })
         areaRef.current?.focus()
       } catch (err) {
@@ -20576,6 +20604,14 @@ export default function AIPanel({
       const extra = (txt || webForSend || quoteForSend) ? apiContentText : ''
       const parcoursText = [attachment.analysisText, extra].filter(Boolean).join('\n\n')
       apiMsgs.push({ role: 'user', content: parcoursText })
+      // Persiste la trace sur la page Parcours (best-effort, n'interrompt jamais l'envoi).
+      if (attachment.parcoursSave) {
+        void fetch('/api/parcours', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(attachment.parcoursSave),
+        }).catch(() => { /* silencieux : l'analyse reste prioritaire */ })
+      }
     } else if (hasAttachment && attachment) {
       const blocks: { type: string; [k: string]: unknown }[] = []
       if (attachment.isImage) {

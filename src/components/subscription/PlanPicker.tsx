@@ -13,10 +13,10 @@ interface Props { onClose: () => void }
 
 type Period = 'monthly' | 'yearly'
 
-const PLANS: { tier: string; name: string; coach: string; monthly: number; popular?: boolean }[] = [
-  { tier: 'premium', name: 'Premium', coach: 'Coach Hermès', monthly: 14 },
-  { tier: 'pro',     name: 'Pro',     coach: 'Coach Athéna', monthly: 26, popular: true },
-  { tier: 'expert',  name: 'Expert',  coach: 'Coach Zeus',   monthly: 49 },
+const PLANS: { tier: string; name: string; coach: string; monthly: number; yearly: number; popular?: boolean }[] = [
+  { tier: 'premium', name: 'Premium', coach: 'Coach Hermès', monthly: 14, yearly: 132 },
+  { tier: 'pro',     name: 'Pro',     coach: 'Coach Athéna', monthly: 26, yearly: 249, popular: true },
+  { tier: 'expert',  name: 'Expert',  coach: 'Coach Zeus',   monthly: 49, yearly: 468 },
 ]
 
 export default function PlanPicker({ onClose }: Props) {
@@ -42,8 +42,8 @@ export default function PlanPicker({ onClose }: Props) {
     }
   }
 
-  const priceLabel = (monthly: number) =>
-    period === 'monthly' ? `${monthly} €` : `${monthly * 10} €`
+  const priceLabel = (pl: { monthly: number; yearly: number }) =>
+    period === 'monthly' ? `${pl.monthly} €` : `${pl.yearly} €`
   const priceUnit = period === 'monthly' ? '/mois' : '/an'
 
   return (
@@ -58,7 +58,7 @@ export default function PlanPicker({ onClose }: Props) {
             const on = period === p
             return (
               <button key={p} onClick={() => setPeriod(p)} style={{ flex: 1, padding: '9px 6px', borderRadius: 999, border: 'none', cursor: 'pointer', background: on ? 'var(--bg-card)' : 'transparent', color: on ? 'var(--text)' : 'var(--text-dim)', fontSize: 13, fontWeight: 600, boxShadow: on ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition: 'all .15s' }}>
-                {p === 'monthly' ? 'Mensuel' : 'Annuel · 2 mois offerts'}
+                {p === 'monthly' ? 'Mensuel' : 'Annuel · −20 %'}
               </button>
             )
           })}
@@ -74,7 +74,7 @@ export default function PlanPicker({ onClose }: Props) {
                   <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{pl.coach}</p>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{priceLabel(pl.monthly)}<span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-dim)' }}>{priceUnit}</span></p>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{priceLabel(pl)}<span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-dim)' }}>{priceUnit}</span></p>
                 </div>
               </div>
               <button onClick={() => void choose(pl.tier)} disabled={loading !== null} style={{ width: '100%', marginTop: 12, padding: '11px', borderRadius: 12, border: 'none', background: 'var(--text)', color: 'var(--bg)', fontSize: 13.5, fontWeight: 600, cursor: loading ? 'default' : 'pointer', opacity: loading && loading !== pl.tier ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>

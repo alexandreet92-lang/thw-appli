@@ -272,23 +272,36 @@ export function buildChatParams(input: ChatInput) {
     ? formatContextForAgent(agentId, context)
     : ''
 
-  // Bloc règles personnalisées — injecté entre le system prompt de base et le contexte
+  // Bloc règles personnalisées — injecté entre le system prompt de base et le contexte.
+  // L'INSTRUCTION personnelle (catégorie réservée 'instruction') est hissée en
+  // tête, avec une consigne forte : elle définit le style/le ton/la manière de
+  // répondre du coach, et prime sur les formats par défaut.
+  let instructionBlock = ''
   let rulesBlock = ''
   if (aiRules && aiRules.length > 0) {
-    const grouped: Record<string, string[]> = {}
-    for (const r of aiRules) {
-      if (!grouped[r.category]) grouped[r.category] = []
-      grouped[r.category].push(r.rule_text)
+    const instr = aiRules.filter(r => r.category === 'instruction').map(r => r.rule_text.trim()).filter(Boolean).join('\n')
+    if (instr) {
+      instructionBlock = `\n\n═══════════ INSTRUCTION PERSONNELLE DE L'ATHLÈTE (PRIORITAIRE) ═══════════
+L'athlète a défini comment tu dois te comporter et répondre. Applique-la à CHAQUE réponse — c'est son coach sur-mesure. Elle prime sur les consignes de format par défaut (mais jamais sur les planchers de sécurité).
+${instr}`
     }
-    const sections = Object.entries(grouped)
-      .map(([cat, rules]) => `${CATEGORY_LABELS[cat] ?? cat} :\n${rules.map(r => `- ${r}`).join('\n')}`)
-      .join('\n\n')
-    rulesBlock = `\n\nRÈGLES PERSONNELLES DE L'ATHLÈTE — À RESPECTER IMPÉRATIVEMENT :\n${sections}`
+    const rest = aiRules.filter(r => r.category !== 'instruction')
+    if (rest.length > 0) {
+      const grouped: Record<string, string[]> = {}
+      for (const r of rest) {
+        if (!grouped[r.category]) grouped[r.category] = []
+        grouped[r.category].push(r.rule_text)
+      }
+      const sections = Object.entries(grouped)
+        .map(([cat, rules]) => `${CATEGORY_LABELS[cat] ?? cat} :\n${rules.map(r => `- ${r}`).join('\n')}`)
+        .join('\n\n')
+      rulesBlock = `\n\nRÈGLES PERSONNELLES DE L'ATHLÈTE — À RESPECTER IMPÉRATIVEMENT :\n${sections}`
+    }
   }
 
   const systemPrompt = contextBlock
-    ? `${baseSystem}${rulesBlock}\n\n${contextBlock}`
-    : `${baseSystem}${rulesBlock}`
+    ? `${baseSystem}${instructionBlock}${rulesBlock}\n\n${contextBlock}`
+    : `${baseSystem}${instructionBlock}${rulesBlock}`
   const anthropicMessages = messages.map(m => {
     if (typeof m.content === 'string') {
       return { role: m.role as 'user' | 'assistant', content: m.content }

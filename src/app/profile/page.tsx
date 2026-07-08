@@ -1345,8 +1345,39 @@ function useAiRules() {
     setRules(p => p.filter(r => r.id !== id))
   }
 
-  return { rules, loading, addRule, toggleRule, deleteRule }
+  // Instruction personnelle unique (style/comportement de l'IA) — catégorie
+  // réservée 'instruction'. Upsert : on met à jour l'existante ou on crée.
+  async function saveInstruction(text: string) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const trimmed = text.trim()
+    const existing = rules.find(r => r.category === 'instruction')
+    if (!trimmed) {
+      if (existing) { await supabase.from('ai_rules').delete().eq('id', existing.id); setRules(p => p.filter(r => r.id !== existing.id)) }
+      return
+    }
+    if (existing) {
+      await supabase.from('ai_rules').update({ rule_text: trimmed, active: true, updated_at: new Date().toISOString() }).eq('id', existing.id)
+      setRules(p => p.map(r => r.id === existing.id ? { ...r, rule_text: trimmed, active: true } : r))
+    } else {
+      const { data, error } = await supabase.from('ai_rules')
+        .insert({ user_id: user.id, category: 'instruction', rule_text: trimmed, active: true })
+        .select('id,category,rule_text,active,created_at').single()
+      if (!error && data) setRules(p => [...p, data as AiRule])
+    }
+  }
+
+  return { rules, loading, addRule, toggleRule, deleteRule, saveInstruction }
 }
+
+// Presets d'instruction — un tap pour définir le style de l'IA.
+const INSTRUCTION_PRESETS: { label: string; text: string }[] = [
+  { label: 'Coach exigeant', text: "Sois un coach exigeant et franc : aucune complaisance, tu me pousses, tu me reprends quand je me relâche, et tu vises la performance." },
+  { label: 'Pédagogue',      text: "Explique-moi toujours le POURQUOI de tes conseils, avec des mots simples, comme à quelqu'un qui veut comprendre et progresser." },
+  { label: 'Direct & concis', text: "Va droit au but : réponses courtes et concrètes, l'essentiel d'abord, sans introduction ni blabla." },
+  { label: 'Motivant',       text: "Sois positif et motivant : encourage-moi, valorise mes progrès, garde un ton énergique qui donne envie de m'entraîner." },
+  { label: 'Scientifique',   text: "Appuie tes conseils sur la science et mes données chiffrées (zones, charge, physiologie) ; explicite les principes quand c'est utile." },
+]
 
 // ── Composant RuleCreator — modal IA de formulation de règle ──
 function RuleCreator({ addRule, onClose }: {
@@ -1523,14 +1554,27 @@ function RuleCreator({ addRule, onClose }: {
 // ── Composant RulesCard ───────────────────────────────────────
 function RulesCard() {
   const { t } = useI18n()
-  const { rules, loading, addRule, toggleRule, deleteRule } = useAiRules()
+  const { rules, loading, addRule, toggleRule, deleteRule, saveInstruction } = useAiRules()
   const [activeTab,  setActiveTab]  = useState<string>('all')
   const [showModal,  setShowModal]  = useState(false)
   const [confirmDel, setConfirmDel] = useState<string|null>(null)
   const [hoveredId,  setHoveredId]  = useState<string|null>(null)
 
+  // ── Instruction personnelle (champ unique, façon Claude) ──
+  const instrRule = rules.find(r => r.category === 'instruction')
+  const [instr, setInstr] = useState('')
+  const [instrDirty, setInstrDirty] = useState(false)
+  const [instrSaved, setInstrSaved] = useState(false)
+  useEffect(() => { if (!instrDirty) setInstr(instrRule?.rule_text ?? '') }, [instrRule?.rule_text, instrDirty])
+  async function handleSaveInstruction() {
+    await saveInstruction(instr)
+    setInstrDirty(false); setInstrSaved(true); setTimeout(() => setInstrSaved(false), 1800)
+  }
+
   const catMeta = (id: string) => RULE_CATEGORIES.find(c => c.id === id) ?? { label: id, color: '#6b7280', icon: '📌', placeholder: '' }
-  const filtered = activeTab === 'all' ? rules : rules.filter(r => r.category === activeTab)
+  // La règle 'instruction' a son propre champ → on l'exclut de la liste des règles.
+  const listRules = rules.filter(r => r.category !== 'instruction')
+  const filtered = activeTab === 'all' ? listRules : listRules.filter(r => r.category === activeTab)
 
   async function handleDelete(id: string) {
     await deleteRule(id)
@@ -1549,6 +1593,43 @@ function RulesCard() {
         .rule-row { animation: ruleSlideIn 0.18s ease both }
         .rules-tabs::-webkit-scrollbar { display:none }
       `}</style>
+
+      {/* ── Instructions : prompt personnel qui définit le style de l'IA ── */}
+      <Card>
+        <CardTitle icon={<svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a7 7 0 00-4 12.7V17a1 1 0 001 1h6a1 1 0 001-1v-2.3A7 7 0 0012 2z"/><path d="M9 21h6"/></svg>}>Instructions</CardTitle>
+        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'6px 0 12px', lineHeight:1.5 }}>
+          Un prompt qui dit à l&apos;IA comment se comporter et répondre. Il s&apos;applique à TOUTES tes conversations avec le coach.
+        </p>
+
+        {/* Presets — un tap pour insérer un style */}
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap' as const, marginBottom:10 }}>
+          {INSTRUCTION_PRESETS.map(p => (
+            <button
+              key={p.label}
+              onClick={() => { setInstr(p.text); setInstrDirty(true) }}
+              style={{ padding:'5px 11px', borderRadius:20, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-mid)', fontSize:11, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' as const }}
+            >{p.label}</button>
+          ))}
+        </div>
+
+        <textarea
+          value={instr}
+          onChange={e => { setInstr(e.target.value); setInstrDirty(true) }}
+          placeholder="Ex : Tu es mon coach personnel exigeant. Va à l'essentiel, appuie-toi sur mes données chiffrées, et pousse-moi à progresser."
+          rows={4}
+          style={{ width:'100%', boxSizing:'border-box' as const, padding:'11px 12px', borderRadius:12, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text)', fontSize:13.5, lineHeight:1.5, fontFamily:'DM Sans,sans-serif', resize:'vertical' as const, outline:'none' }}
+        />
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:10 }}>
+          <span style={{ fontSize:11, color: instrSaved ? '#22c55e' : 'var(--text-dim)' }}>
+            {instrSaved ? '✓ Enregistré' : `${instr.length} caractères`}
+          </span>
+          <button
+            onClick={() => void handleSaveInstruction()}
+            disabled={!instrDirty}
+            style={{ padding:'8px 18px', borderRadius:10, border:'none', background: instrDirty ? 'linear-gradient(135deg,#06B6D4,#5b6fff)' : 'var(--border)', color:'#fff', fontSize:12.5, fontWeight:700, cursor: instrDirty ? 'pointer' : 'default' }}
+          >Enregistrer</button>
+        </div>
+      </Card>
 
       <Card>
         {/* Header */}

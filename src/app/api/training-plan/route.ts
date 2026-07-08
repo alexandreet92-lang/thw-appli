@@ -537,14 +537,14 @@ ${modification ? `MODIFICATION DEMANDÉE :\n${modification}\n\nPROGRAMME EXISTAN
 INSTRUCTIONS DE GÉNÉRATION — RESPECTER IMPÉRATIVEMENT :
 
 STRUCTURE & DÉTAIL PROGRESSIF (méthode coach d'élite) — RÈGLE ABSOLUE DE TAILLE (sinon la génération échoue) :
-- Génère TOUTES les semaines de la durée demandée, mais ne détaille les SÉANCES que pour les 2 premières.
-- SEMAINES 1 et 2 UNIQUEMENT : seances[] complètes, avec blocs[] détaillés (échauffement → corps → retour au calme), zone, répétitions, récup et watts/allure/FC CALIBRÉS sur les zones de l'athlète (section ZONES D'ENTRAÎNEMENT).
-- SEMAINES 3 ET SUIVANTES : "seances": [] (TABLEAU VIDE OBLIGATOIRE). Ne génère AUCUNE séance pour ces semaines. Donne seulement : numero, type, volume_h, tss_semaine, theme (court), note_coach (1 phrase courte). Ces semaines seront détaillées plus tard, à l'approche. C'est ESSENTIEL pour que la génération aboutisse.
+- Génère TOUTES les semaines de la durée demandée, mais ne détaille les SÉANCES que pour les 3 premières.
+- SEMAINES 1 à 3 UNIQUEMENT : seances[] complètes, avec blocs[] détaillés (échauffement → corps → retour au calme), zone, répétitions, récup et watts/allure/FC CALIBRÉS sur les zones de l'athlète (section ZONES D'ENTRAÎNEMENT). JAMAIS de séance vague type « 3h vélo » : toujours la STRUCTURE (blocs, intensités chiffrées, reps, récup).
+- SEMAINES 4 ET SUIVANTES : "seances": [] (TABLEAU VIDE OBLIGATOIRE). Ne génère AUCUNE séance pour ces semaines. Donne seulement : numero, type, volume_h, tss_semaine, theme (court), note_coach (1 phrase courte). Ces semaines seront détaillées plus tard, à l'approche (l'athlète peut demander au coach de détailler une semaine précise à tout moment). C'est ESSENTIEL pour que la génération aboutisse.
 - note_coach : 1 phrase COURTE par semaine — le POURQUOI (objectif physiologique, place dans la périodisation).
 - conseils_adaptation : 3 à 4 maximum. points_cles : 3 à 4 maximum. Phrases courtes et concrètes.
 
 CALIBRAGE SUR LES DONNÉES RÉELLES :
-- Utilise les ZONES fournies pour prescrire des intensités chiffrées (watts vélo, allure run, FC) dans les blocs des semaines 1-2.
+- Utilise les ZONES fournies pour prescrire des intensités chiffrées (watts vélo, allure run, FC) dans les blocs des semaines 1-3.
 - Analyse l'HISTORIQUE 30 jours (volume, sports, charge) pour fixer un point de départ RÉALISTE.
 - Tiens compte des MÉTRIQUES santé récentes et des courses du CALENDRIER pour la périodisation et les volumes (début / progression / pic / affûtage).
 
@@ -606,7 +606,7 @@ RÈGLES GÉNÉRALES — RESPECTER ABSOLUMENT :
     const client = getAnthropicClient()
     const resp = await client.messages.create({
       model: MODELS.powerful,
-      max_tokens: 8000,
+      max_tokens: 12000,
       system: SYSTEM + JSON_ONLY,
       messages: [{ role: 'user', content: userPrompt }],
     })

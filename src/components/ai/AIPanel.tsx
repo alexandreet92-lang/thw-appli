@@ -69,6 +69,7 @@ const TOOL_STATUS_LABELS: Record<string, string> = {
   add_race:              'aip.tool.writePage',
   add_personal_record:   'aip.tool.writePage',
   create_route:          'aip.tool.createRoute',
+  clear_planned_sessions:'aip.tool.writePage',
   web_search:            'aip.tool.webSearch',
 }
 function toolStatusLabel(tools: string[] | undefined): string {

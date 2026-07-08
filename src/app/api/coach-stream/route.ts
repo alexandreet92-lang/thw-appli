@@ -673,22 +673,28 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
   // rapide, sans réflexion.
   const reqAgentId = (chatBody as { agentId?: string }).agentId
   const thinkingEnabled = reqAgentId === 'central' && (cappedKey === 'zeus' || cappedKey === 'athena')
-  const thinkingParam: Record<string, unknown> = thinkingEnabled
-    ? { thinking: { type: 'adaptive', display: 'summarized' } }
-    : {}
-
   // Client Supabase dédié aux outils de lecture (réutilisé sur toute la boucle)
   const sbForTools = await createClient()
 
   const encoder = new TextEncoder()
   const readable = new ReadableStream({
     async start(controller) {
-      const send = (eventType: string, data: string) =>
-        controller.enqueue(encoder.encode(`event: ${eventType}\ndata: ${data}\n\n`))
+      let streamClosed = false
+      const send = (eventType: string, data: string) => {
+        if (streamClosed) return
+        try { controller.enqueue(encoder.encode(`event: ${eventType}\ndata: ${data}\n\n`)) } catch { /* fermé */ }
+      }
+      // Battement de cœur SSE : maintient la connexion mobile ouverte pendant les
+      // temps de calcul du modèle (raisonnement/lectures) — sinon un long silence
+      // sur 4G peut faire « couper » le flux. Event 'ping' ignoré par le front.
+      const heartbeat = setInterval(() => send('ping', '1'), 12000)
 
       let convMessages = anthropicMessages as Anthropic.MessageParam[]
       let totalIn = 0, totalOut = 0
       let lastStop: string | null = null
+      // Raisonnement étendu par étape : désactivé si une sortie est tronquée
+      // (le raisonnement peut manger tout le budget avant la réponse — voir max_tokens).
+      let allowThinking = thinkingEnabled
 
       try {
         for (let step = 0; step < MAX_STEPS; step++) {
@@ -699,7 +705,7 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
             messages: convMessages,
             tools: cachedTools,
             tool_choice: { type: 'auto' },
-            ...thinkingParam,
+            ...(allowThinking ? { thinking: { type: 'adaptive', display: 'summarized' } } : {}),
           })
 
           // Streaming live du texte token-par-token + raisonnement + statut web
@@ -771,6 +777,26 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
               convMessages = [...convMessages, { role: 'assistant', content: finalMsg.content }]
               continue
             }
+            // Réponse TRONQUÉE (plafond de tokens atteint). Cause fréquente : le
+            // raisonnement étendu a consommé tout le budget avant d'écrire la réponse
+            // (l'utilisateur voit alors « ça a coupé »). On relance pour finir, en
+            // COUPANT le raisonnement pour laisser toute la place au texte.
+            if (lastStop === 'max_tokens' && step < MAX_STEPS - 1) {
+              allowThinking = false
+              // On ne renvoie que le texte déjà produit (jamais les blocs de pensée :
+              // les remonter sans thinking activé ferait échouer l'API).
+              const kept = finalMsg.content.filter(b => b.type === 'text' || b.type === 'tool_use')
+              if (kept.length > 0) {
+                convMessages = [
+                  ...convMessages,
+                  { role: 'assistant', content: kept },
+                  { role: 'user', content: 'Continue exactement là où tu t\'es arrêté, sans rien répéter ni recommencer, jusqu\'à terminer ta réponse.' },
+                ]
+              }
+              // Si rien que du raisonnement (aucun texte) → on rejoue la même requête
+              // sans thinking : cette fois le modèle écrit directement la réponse.
+              continue
+            }
             break // réponse finale déjà streamée
           }
 
@@ -814,6 +840,8 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
         console.error('[coach-stream] agentic loop error:', msg)
         send('text', JSON.stringify(`\n\n⚠️ IA : ${msg}`))
       } finally {
+        streamClosed = true
+        clearInterval(heartbeat)
         controller.close()
       }
 

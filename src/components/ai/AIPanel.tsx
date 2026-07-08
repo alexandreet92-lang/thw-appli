@@ -15,7 +15,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen, Bike, Footprints, Waves } from 'lucide-react'
+import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe, Paperclip, Camera, Plug, Brain, Activity, Map as MapIcon, MapPin, Dumbbell, Apple, Target, HelpCircle, Search, Flag, Moon, Calendar, BookOpen, Bike, Footprints, Waves } from 'lucide-react'
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { haptic } from '@/lib/ui/haptic'
@@ -68,6 +68,7 @@ const TOOL_STATUS_LABELS: Record<string, string> = {
   log_recovery_checkin:  'aip.tool.writePage',
   add_race:              'aip.tool.writePage',
   add_personal_record:   'aip.tool.writePage',
+  create_route:          'aip.tool.createRoute',
   web_search:            'aip.tool.webSearch',
 }
 function toolStatusLabel(tools: string[] | undefined): string {
@@ -11804,6 +11805,10 @@ function courseProfileToAnalysisText(p: ParsedCourseProfile, fileName: string): 
   return L.join('\n')
 }
 
+// Amorce « Créer un parcours » — l'IA récolte les infos puis génère le tracé
+// (outil create_route). Envoyée comme action rapide (onPrepare).
+const CREATE_ROUTE_PROMPT = "Je veux que tu me crées un parcours et que tu l'enregistres dans mes parcours. Récolte d'abord les infos décisives qui te manquent (point de départ / région précise, distance visée, dénivelé souhaité, cols ou points de passage, boucle ou aller simple, sport) via des questions, sans rien inventer. Dès que tu as ce qu'il faut, génère le tracé avec l'outil de création de parcours (points/lieux à relier), puis confirme-moi le nom, la distance et le dénivelé. Si je décris un stage en plusieurs jours, crée un parcours par étape."
+
 // ══════════════════════════════════════════════════════════════
 // PLUS MENU
 // ══════════════════════════════════════════════════════════════
@@ -12317,6 +12322,28 @@ function PlusMenu({
               </span>
             </span>
             <ChevronRight size={13} color="var(--text-dim)" style={{ marginLeft: 'auto', flexShrink: 0, marginTop: 4 }} />
+          </button>
+
+          <div style={sepStyle} />
+
+          {/* 7. Parcours — créer (l'IA génère) ou analyser (déposer un fichier) */}
+          <button
+            style={rowStyle}
+            onClick={() => { onPrepare('Créer un parcours', CREATE_ROUTE_PROMPT); onClose() }}
+            onMouseEnter={hoverOn} onMouseLeave={hoverOff}
+          >
+            <MapIcon size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>Créer un parcours</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>IA</span>
+          </button>
+          <button
+            style={rowStyle}
+            onClick={() => { onClose(); setTimeout(onFiles, 80) }}
+            onMouseEnter={hoverOn} onMouseLeave={hoverOff}
+          >
+            <MapPin size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1 }}>Analyser un parcours</span>
+            <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>GPX / TCX</span>
           </button>
 
           <div style={sepStyle} />

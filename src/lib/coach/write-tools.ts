@@ -82,6 +82,23 @@ export const writeTools: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'clear_planned_sessions',
+    description:
+      "SUPPRIME des séances planifiées EN MASSE (page Planning). À utiliser quand l'athlète demande de supprimer " +
+      "TOUTES ses séances (scope 'all'), toutes celles à venir ('future'), ou une plage de dates ('range'). " +
+      "BEAUCOUP plus fiable que supprimer une par une (pas d'énumération d'ID, aucune séance oubliée). " +
+      "Renvoie le nombre RÉELLEMENT supprimé — annonce ce nombre à l'athlète (ne prétends pas au succès sans lui).",
+    input_schema: {
+      type: 'object',
+      properties: {
+        scope:     { type: 'string', enum: ['all', 'future', 'range'], description: "Portée (défaut 'all')." },
+        from_date: { type: 'string', description: "YYYY-MM-DD — début (scope 'range')." },
+        to_date:   { type: 'string', description: "YYYY-MM-DD — fin (scope 'range')." },
+        plan_id:   { type: 'string', description: "Limiter à un plan précis (UUID, optionnel)." },
+      },
+    },
+  },
+  {
     name: 'log_body_weight',
     description: "ÉCRIT le POIDS du jour dans la page Récupération (suivi corporel). Sur demande de l'athlète.",
     input_schema: {
@@ -218,6 +235,22 @@ export async function resolveWriteTool(
         const { error } = await sb.from('nutrition_daily_logs').upsert(rows, { onConflict: 'user_id,date' })
         if (error) return JSON.stringify({ ok: false, error: error.message })
         return JSON.stringify({ ok: true, page: 'Nutrition', days: rows.map(r => r.date) })
+      }
+
+      case 'clear_planned_sessions': {
+        const scope = input.scope === 'future' || input.scope === 'range' ? input.scope : 'all'
+        let q = sb.from('planned_sessions').delete().eq('user_id', userId)
+        if (scope === 'future') {
+          q = q.gte('week_start', today())
+        } else if (scope === 'range') {
+          const from = typeof input.from_date === 'string' ? input.from_date.slice(0, 10) : today()
+          const to = typeof input.to_date === 'string' ? input.to_date.slice(0, 10) : ymd(new Date(Date.now() + 365 * 86400000))
+          q = q.gte('week_start', from).lte('week_start', to)
+        }
+        if (typeof input.plan_id === 'string' && input.plan_id.trim()) q = q.eq('plan_id', input.plan_id.trim())
+        const { data, error } = await q.select('id')
+        if (error) return JSON.stringify({ ok: false, error: error.message })
+        return JSON.stringify({ ok: true, page: 'Planning', scope, deleted: (data ?? []).length })
       }
 
       case 'log_body_weight': {

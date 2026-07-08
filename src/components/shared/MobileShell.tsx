@@ -23,6 +23,21 @@ const OPEN_RATIO = 0.80
 const OPEN_MAX = 360
 const EDGE = 28 // px depuis le bord gauche pour amorcer l'ouverture
 
+// Cherche un ancêtre défilable horizontalement (tableau large, carrousel…) entre
+// l'élément touché et la page, pour NE PAS ouvrir le menu latéral quand on fait
+// défiler un tableau vers la gauche/droite.
+function hScrollAncestor(node: EventTarget | null, stop: HTMLElement | null): HTMLElement | null {
+  let el = node as HTMLElement | null
+  while (el && el !== stop) {
+    if (el.scrollWidth > el.clientWidth + 4) {
+      const ox = getComputedStyle(el).overflowX
+      if (ox === 'auto' || ox === 'scroll') return el
+    }
+    el = el.parentElement
+  }
+  return null
+}
+
 export function MobileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { t } = useI18n()
@@ -35,7 +50,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
-  const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0 })
+  const g = useRef({ active: false, dragging: false, startX: 0, startY: 0, base: 0, last: 0, hscroll: null as HTMLElement | null })
 
   useEffect(() => {
     const m = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -94,6 +109,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     st.startX = t.clientX; st.startY = t.clientY; st.dragging = false
     st.base = open ? offsetPx() : 0; st.last = st.base
     st.active = open || t.clientX <= EDGE // fermé : seulement depuis le bord
+    // Tableau/carrousel défilable sous le doigt → on le mémorise pour lui laisser
+    // le scroll horizontal (ne pas ouvrir le menu latéral).
+    st.hscroll = hScrollAncestor(e.target, panelRef.current)
   }
   function onTouchMove(e: React.TouchEvent) {
     const st = g.current; if (!st.active) return
@@ -101,6 +119,14 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     if (!st.dragging) {
       if (Math.abs(dx) < 8) return
       if (Math.abs(dy) > Math.abs(dx)) { st.active = false; return } // scroll vertical
+      // Défilement horizontal d'un tableau : si le conteneur peut encore défiler
+      // dans ce sens, on lui cède le geste (pas d'ouverture de la sidebar).
+      const hs = st.hscroll
+      if (hs) {
+        const canRight = hs.scrollLeft < hs.scrollWidth - hs.clientWidth - 1 // doigt vers la gauche
+        const canLeft  = hs.scrollLeft > 1                                   // doigt vers la droite
+        if ((dx < 0 && canRight) || (dx > 0 && canLeft)) { st.active = false; return }
+      }
       st.dragging = true
       if (panelRef.current) panelRef.current.style.transition = 'none'
     }

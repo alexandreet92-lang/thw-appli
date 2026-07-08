@@ -657,7 +657,9 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
   // Recherche web côté serveur Anthropic : ancre les réponses sur la science /
   // les faits à jour au lieu de répondre « de mémoire » (chiffres fiables).
   // Réservé aux modèles avancés (Haiku ne supporte pas cette version d'outil).
-  const webEnabled = cappedKey === 'athena' || cappedKey === 'zeus'
+  // Réglage persistant côté utilisateur (défaut activé). Désactivé → outil coupé.
+  const webSearchAllowed = (chatBody as { webSearch?: boolean }).webSearch !== false
+  const webEnabled = (cappedKey === 'athena' || cappedKey === 'zeus') && webSearchAllowed
   const cachedTools = (webEnabled
     ? [...cachedCustom, { type: 'web_search_20260209', name: 'web_search', max_uses: 5 }]
     : cachedCustom) as unknown as Anthropic.ToolUnion[]

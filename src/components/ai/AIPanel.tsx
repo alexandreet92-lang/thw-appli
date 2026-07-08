@@ -11889,6 +11889,7 @@ function PlusMenu({
   onPickPhoto,
   onForceModel,
   onWebSearch,
+  webSearchOn = true,
   isMobile = false,
 }: {
   onPrepare:    (label: string, apiPrompt: string) => void
@@ -11902,6 +11903,7 @@ function PlusMenu({
   onPickPhoto:  (url: string) => void
   onForceModel: (m: THWModel) => void
   onWebSearch:  () => void
+  webSearchOn?: boolean
   isMobile?:    boolean
 }) {
   const { t } = useI18n()
@@ -12320,10 +12322,22 @@ function PlusMenu({
             <span style={{ fontSize: 10, color: 'var(--text-dim)', flexShrink: 0 }}>{t('aip.ui.soon')}</span>
           </div>
 
-          {/* 9. Recherche Web — active le mode recherche internet */}
-          <button style={rowStyle} onClick={() => { onWebSearch(); onClose() }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+          {/* 9. Recherche Web — réglage persistant activé/désactivé (défaut activé) */}
+          <button style={rowStyle} onClick={() => { onWebSearch() }} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
             <Globe size={16} color="var(--text-mid)" style={{ flexShrink: 0 }} />
             <span style={{ flex: 1 }}>Recherche Web</span>
+            {/* Interrupteur */}
+            <span style={{
+              width: 38, height: 22, borderRadius: 999, flexShrink: 0, position: 'relative',
+              background: webSearchOn ? 'var(--ai-accent, #06B6D4)' : 'var(--border)',
+              transition: 'background 0.18s',
+            }}>
+              <span style={{
+                position: 'absolute', top: 2, left: webSearchOn ? 18 : 2, width: 18, height: 18,
+                borderRadius: '50%', background: '#fff', transition: 'left 0.18s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+              }} />
+            </span>
           </button>
         </div>
       )}
@@ -19470,9 +19484,20 @@ export default function AIPanel({
   const [tokenLimitMsg, setTokenLimitMsg] = useState<string | null>(null)
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
   const [activeQA,    setActiveQA]    = useState<ActiveQuickAction | null>(null)
-  // Mode « Recherche Web » : force le coach à chercher sur internet pour le
-  // prochain message (instruction injectée + bascule sur un modèle compatible).
-  const [webSearchMode, setWebSearchMode] = useState(false)
+  // Recherche Web : réglage PERSISTANT (activé/désactivé), activé PAR DÉFAUT.
+  // Quand actif, le coach peut chercher sur le web quand c'est pertinent (il
+  // décide lui-même) — sans indicateur « activé » dans le fil. Désactivé → outil coupé.
+  const [webSearchOn, setWebSearchOn] = useState(true)
+  useEffect(() => {
+    try { const v = localStorage.getItem('thw_web_search'); if (v !== null) setWebSearchOn(v === '1') } catch { /* ignore */ }
+  }, [])
+  const toggleWebSearch = useCallback(() => {
+    setWebSearchOn(prev => {
+      const next = !prev
+      try { localStorage.setItem('thw_web_search', next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }, [])
   // Feuille « Processus de réflexion » : id du message dont on affiche le
   // raisonnement étendu (null = fermée).
   const [reasoningMsgId, setReasoningMsgId] = useState<string | null>(null)
@@ -20677,7 +20702,6 @@ export default function AIPanel({
     const quoteForSend = quotedText // capture before clearing
     setActiveQA(null)
     setQuotedText(null)
-    setWebSearchMode(false)         // le mode ne vaut que pour ce message
     if (areaRef.current) { areaRef.current.style.height = 'auto'; areaRef.current.focus() }
     setLoading(true)
 
@@ -20739,18 +20763,16 @@ export default function AIPanel({
     const quotedApiText = quoteForSend
       ? `À propos de ce passage : "${quoteForSend}"\n\n${rawApiText}`
       : rawApiText
-    // Mode « Recherche Web » : on instruit explicitement le coach d'utiliser sa
-    // recherche web. Capturé avant reset pour ne s'appliquer qu'à ce message.
-    const webForSend = webSearchMode
-    const apiContentText = webForSend
-      ? `[Recherche web demandée] Effectue une recherche web (outil web_search) pour fonder ta réponse sur des informations à jour et fiables, puis cite tes sources.\n\n${quotedApiText}`
-      : quotedApiText
+    // Recherche Web : réglage persistant (pas d'injection forcée par message).
+    // Le coach décide lui-même quand chercher ; l'outil est activé/coupé côté
+    // serveur via le flag webSearch. Aucun indicateur « activé » dans le fil.
+    const apiContentText = quotedApiText
 
     if (hasAttachment && attachment && attachment.kind === 'parcours') {
       // Parcours : pas de fichier binaire — on injecte le profil analysé en texte.
       // On n'ajoute le texte utilisateur que s'il a réellement écrit quelque chose
       // (sinon apiContentText vaut juste le placeholder "[nom.gpx]").
-      const extra = (txt || webForSend || quoteForSend) ? apiContentText : ''
+      const extra = (txt || quoteForSend) ? apiContentText : ''
       const parcoursText = [attachment.analysisText, extra].filter(Boolean).join('\n\n')
       apiMsgs.push({ role: 'user', content: parcoursText })
       // Persiste la trace sur la page Parcours (best-effort, n'interrompt jamais l'envoi).
@@ -20814,6 +20836,7 @@ export default function AIPanel({
           modelId:  snapshot,
           method:   method !== 'auto' ? method : undefined,
           voice:    opts?.voice ? true : undefined,
+          webSearch: webSearchOn,
           convId:   cid,
           messages: apiMsgs,
           aiRules:  effectiveRules.length > 0 ? effectiveRules : undefined,
@@ -21108,7 +21131,7 @@ export default function AIPanel({
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext, webSearchMode])
+  }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext, webSearchOn])
 
   // ── Enriched actions — charge les données puis appelle send ──
   const handleEnrichedAction = useCallback(async (id: string, label: string) => {
@@ -22551,12 +22574,12 @@ export default function AIPanel({
                       onClose={() => setPlusOpen(false)}
                       onClosePanel={onClose}
                       onForceModel={setModel}
+                      webSearchOn={webSearchOn}
                       onWebSearch={() => {
-                        setPlusOpen(false)
-                        setWebSearchMode(true)
-                        // La recherche web n'est dispo que sur Athéna/Zeus → bascule si Hermès
-                        setModel(m => (m === 'hermes' ? 'athena' : m))
-                        setTimeout(() => areaRef.current?.focus(), 60)
+                        // Bascule persistante (activé/désactivé). Si on active depuis
+                        // Hermès (incompatible), on passe sur Athéna.
+                        if (!webSearchOn) setModel(m => (m === 'hermes' ? 'athena' : m))
+                        toggleWebSearch()
                       }}
                       onCamera={() => cameraRef.current?.click()}
                       onPhotos={() => photosRef.current?.click()}
@@ -22669,39 +22692,6 @@ export default function AIPanel({
                   })()}
               </div>
             </div>
-
-            {/* Bulle « Recherche Web » — sous le champ, sans entourer la saisie */}
-            {webSearchMode && !recording && (
-              <div style={{ maxWidth: 756, margin: '8px auto 0', width: '100%', display: 'flex', justifyContent: 'center' }}>
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '6px 8px 6px 12px', borderRadius: 999,
-                  background: 'var(--ai-accent-soft, rgba(6,182,212,0.08))',
-                  border: '1px solid var(--ai-accent-line, rgba(6,182,212,0.35))',
-                  animation: 'ai_slidein 0.18s ease',
-                }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ai-accent, #06B6D4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                    <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-                  </svg>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai-accent, #06B6D4)', fontFamily: 'DM Sans, sans-serif' }}>
-                    Recherche Web activée
-                  </span>
-                  <button
-                    onClick={() => setWebSearchMode(false)}
-                    title={t('aip.ui.disable')}
-                    aria-label={t('aip.ui.disableWebSearch')}
-                    style={{
-                      width: 20, height: 20, borderRadius: '50%', border: 'none',
-                      background: 'var(--ai-accent-dim, rgba(6,182,212,0.15))', color: 'var(--ai-accent, #06B6D4)',
-                      cursor: 'pointer', flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-                  </button>
-                </div>
-              </div>
-            )}
 
             {!recording && (
               <div style={{ fontSize: 10, color: 'var(--ai-dim)', marginTop: 5, textAlign: 'center' }}>

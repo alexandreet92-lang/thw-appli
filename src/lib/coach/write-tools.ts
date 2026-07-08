@@ -14,8 +14,31 @@
 
 import type Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { snapRoute } from '@/lib/openrouteservice'
 
 function ymd(d: Date): string { return d.toISOString().slice(0, 10) }
+
+// Sport athlète → profil de routage ORS (cycling | mtb | trail | hiking).
+function orsSport(sport: string): string {
+  const s = sport.toLowerCase()
+  if (s.includes('vtt') || s.includes('mtb') || s.includes('gravel')) return 'mtb'
+  if (s.includes('trail')) return 'trail'
+  if (s.includes('bike') || s.includes('vélo') || s.includes('velo') || s.includes('cycl')) return 'cycling'
+  return 'hiking' // run / marche / rando / défaut
+}
+
+// Géocode un lieu (nom/adresse) → coordonnées, via Mapbox (comme le créateur de routes).
+async function geocodePlace(query: string): Promise<{ lat: number; lng: number } | null> {
+  const token = process.env.NEXT_PUBLIC_MAPBOX ?? ''
+  if (!token) return null
+  try {
+    const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&limit=1&language=fr`)
+    if (!r.ok) return null
+    const j = await r.json() as { features?: Array<{ center?: [number, number] }> }
+    const c = j.features?.[0]?.center
+    return c ? { lng: c[0], lat: c[1] } : null
+  } catch { return null }
+}
 function today(): string { return ymd(new Date()) }
 function clampInt(v: unknown, lo: number, hi: number): number | null {
   const n = Math.round(Number(v))
@@ -118,6 +141,38 @@ export const writeTools: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'create_route',
+    description:
+      "CRÉE un vrai PARCOURS GPS pour l'athlète, à partir de sa description, et l'enregistre dans ses parcours. " +
+      "Tu fournis une SÉQUENCE DE POINTS (lieux nommés — villes, cols, sommets — ou coordonnées) que le tracé " +
+      "doit relier ; le routage suit les vraies routes/chemins et calcule distance et dénivelé. " +
+      "Utilise-le quand l'athlète te demande de lui créer/générer un parcours. " +
+      "RÈGLE : s'il manque des infos décisives (point de départ précis, région, cols/points de passage, boucle ou " +
+      "aller simple, sport), NE DEVINE PAS un lieu au hasard — demande-les d'abord via ask_clarifying_questions. " +
+      "Pour un parcours en plusieurs étapes (stage), appelle create_route une fois par étape.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        name:  { type: 'string', description: 'Nom du parcours (ex: « Boucle des cols du Galibier »).' },
+        sport: { type: 'string', description: 'Sport : bike/cycling, vtt/mtb, trail, run/rando…' },
+        points: {
+          type: 'array',
+          description: 'Points à relier DANS L’ORDRE (min 2). Chaque point : un lieu nommé (place) OU des coordonnées (lat/lng).',
+          items: {
+            type: 'object',
+            properties: {
+              place: { type: 'string', description: 'Lieu (ville, col, sommet, adresse).' },
+              lat:   { type: 'number', description: 'Latitude (si connue).' },
+              lng:   { type: 'number', description: 'Longitude (si connue).' },
+            },
+          },
+        },
+        loop:  { type: 'boolean', description: 'Si true, boucle (retour au point de départ).' },
+      },
+      required: ['name', 'sport', 'points'],
+    },
+  },
+  {
     name: 'add_personal_record',
     description:
       "AJOUTE un RECORD PERSONNEL (page Records) : sport, distance/épreuve, performance, date. Sur demande explicite.",
@@ -211,6 +266,51 @@ export async function resolveWriteTool(
         }).select('id').single()
         if (error) return JSON.stringify({ ok: false, error: error.message })
         return JSON.stringify({ ok: true, page: 'Calendrier', id: (data as { id: string })?.id, name: nm, date })
+      }
+
+      case 'create_route': {
+        const name = typeof input.name === 'string' ? input.name.trim() : ''
+        const sport = typeof input.sport === 'string' ? input.sport.trim() : ''
+        const rawPts = Array.isArray(input.points) ? input.points as Array<Record<string, unknown>> : []
+        if (!name || !sport) return JSON.stringify({ ok: false, error: 'Nom et sport requis.' })
+        if (rawPts.length < 2) return JSON.stringify({ ok: false, error: 'Au moins 2 points (départ + arrivée/étape).' })
+
+        // Résolution des points → coordonnées (géocodage des lieux nommés).
+        const coords: Array<{ lat: number; lng: number }> = []
+        for (const p of rawPts.slice(0, 25)) {
+          if (num(p.lat) !== null && num(p.lng) !== null) {
+            coords.push({ lat: num(p.lat) as number, lng: num(p.lng) as number })
+          } else if (typeof p.place === 'string' && p.place.trim()) {
+            const g = await geocodePlace(p.place.trim())
+            if (!g) return JSON.stringify({ ok: false, error: `Lieu introuvable : « ${p.place} ». Précise (ville/région).` })
+            coords.push(g)
+          }
+        }
+        if (coords.length < 2) return JSON.stringify({ ok: false, error: 'Points insuffisants après géocodage.' })
+        if (input.loop === true) coords.push({ ...coords[0] })
+
+        let snap
+        try {
+          snap = await snapRoute(coords, orsSport(sport))
+        } catch (e) {
+          return JSON.stringify({ ok: false, error: `Routage impossible (${e instanceof Error ? e.message : 'erreur'}). Vérifie les points.` })
+        }
+
+        const { data, error } = await sb.from('routes').insert({
+          user_id: userId, name, sport, is_public: false,
+          distance_m: Math.round(snap.distanceM),
+          elevation_gain_m: Math.round(snap.elevGain),
+          waypoints: coords,
+          snapped_points: snap.snappedPoints,
+          elevation_profile: snap.elevationProfile,
+          surfaces: snap.surfaces,
+        }).select('id').single()
+        if (error) return JSON.stringify({ ok: false, error: error.message })
+        return JSON.stringify({
+          ok: true, page: 'Parcours', id: (data as { id: string })?.id, name,
+          distanceKm: Math.round(snap.distanceM / 100) / 10,
+          elevationGainM: Math.round(snap.elevGain),
+        })
       }
 
       case 'add_personal_record': {

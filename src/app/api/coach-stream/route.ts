@@ -27,6 +27,7 @@ import { buildChatParams } from '@/lib/agents/chatAgent'
 import type { ChatInput } from '@/lib/coach-engine/schemas'
 import { coachTools } from '@/lib/coach/tools-definition'
 import { readTools, READ_TOOL_NAMES, resolveReadTool } from '@/lib/coach/read-tools'
+import { memoryTools, MEMORY_TOOL_NAMES, resolveMemoryTool, buildStructuredMemory } from '@/lib/coach/memory-tools'
 import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
@@ -196,7 +197,14 @@ RÈGLES :
 1. Si des infos décisives manquent (localisation, sévérité gene/douleur/blessure, depuis quand), demande-les d'abord via ask_clarifying_questions — au tour suivant seulement, appelle create_injury.
 2. Tu n'es pas médecin : reste prudent, n'établis pas de diagnostic médical définitif, et invite à consulter un professionnel en cas de doute sérieux (douleur vive, gonflement, perte de fonction…).
 3. L'athlète valide l'enregistrement via la carte : ne prétends pas que c'est déjà fait avant sa validation.
-4. Après enregistrement, adapte tes recommandations d'entraînement en conséquence.`
+4. Après enregistrement, adapte tes recommandations d'entraînement en conséquence.
+
+OUTILS save_memory / forget_memory — MÉMOIRE LONG TERME (retiens ce qui compte) :
+Tu disposes d'une mémoire durable : la section « MÉMOIRE DURABLE » du contexte liste les faits déjà retenus sur l'athlète. Utilise-les naturellement et ne les redemande JAMAIS.
+- save_memory : dès que tu apprends un fait STABLE et RÉUTILISABLE d'une conversation à l'autre — une préférence (ex: s'entraîne le matin, déteste le seuil continu), une contrainte (ex: pas de sport le mercredi, home-trainer seulement l'hiver), un objectif de fond, une décision méthodologique prise ensemble, un fait de santé récurrent — enregistre-le en UNE phrase concise. Mentionne-le brièvement (« Je retiens que… »). Ne l'annonce pas comme une base de données.
+- N'enregistre PAS : ce qui est déjà en base (activités, zones, blessures suivies, courses), l'éphémère, ni un simple message. Pas de doublon (le système déduplique).
+- forget_memory : quand l'athlète demande d'oublier quelque chose, ou qu'un fait devient faux.
+- Si save_memory renvoie reason:"limit", explique à l'athlète que sa mémoire est pleine pour son abonnement, propose d'oublier un fait obsolète (forget_memory) ou de passer à un abonnement supérieur — sans insister lourdement.`
 
 // ── Route handler ─────────────────────────────────────────────
 
@@ -553,15 +561,17 @@ brièvement où la renseigner — sans transformer ça en interrogatoire.`
       const convId = (chatBody as { convId?: string }).convId
       const lastUserMsg = [...(chatBody.messages ?? [])].reverse().find(m => m.role === 'user')
       const lastText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : ''
-      const [competencesBlock, athleteCtx, memory, insights] = await Promise.all([
+      const [competencesBlock, athleteCtx, memory, durableMemory, insights] = await Promise.all([
         getActiveCompetencesPrompt(userId).catch(() => ''),
         buildAthleteContext(sbCtx, userId).catch(() => ''),
         buildCoachMemory(sbCtx, userId, convId).catch(() => ''),
+        buildStructuredMemory(sbCtx, userId).catch(() => ''),
         buildLearnedInsights(lastText).catch(() => ''),
       ])
-      // Append dans l'ordre stable (compétences → contexte → mémoire → insights)
+      // Append dans l'ordre stable (compétences → contexte → mémoire durable → mémoire échanges → insights)
       if (competencesBlock) systemWithTools = `${systemWithTools}\n\n${competencesBlock}`
       if (athleteCtx)       systemWithTools = `${systemWithTools}\n\n${athleteCtx}`
+      if (durableMemory)    systemWithTools = `${systemWithTools}\n\n${durableMemory}`
       if (memory)           systemWithTools = `${systemWithTools}\n\n${memory}`
       if (insights)         systemWithTools = `${systemWithTools}\n\n${insights}`
     } catch (e) {
@@ -621,8 +631,11 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
   //    et la boucle s'arrête (hand-off UI, comportement inchangé) ;
   //  • aucun tool → réponse finale déjà streamée, on s'arrête.
   // ══════════════════════════════════════════════════════════════
-  const allTools = [...coachTools, ...readTools]
+  const allTools = [...coachTools, ...readTools, ...memoryTools]
   const MAX_STEPS = 6
+  // Outils résolus CÔTÉ SERVEUR (lecture + mémoire) → non terminaux : on les
+  // exécute et on reboucle. Tout le reste = outils d'ACTION rendus au front.
+  const SERVER_RESOLVED = (n: string) => READ_TOOL_NAMES.has(n) || MEMORY_TOOL_NAMES.has(n)
 
   // ── PROMPT CACHING ──────────────────────────────────────────────
   // Le bloc système (prompt + contexte athlète + doctrine + mémoire) et la
@@ -761,8 +774,8 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
             break // réponse finale déjà streamée
           }
 
-          const reads     = toolUses.filter(t => READ_TOOL_NAMES.has(t.name))
-          const terminals = toolUses.filter(t => !READ_TOOL_NAMES.has(t.name))
+          const reads     = toolUses.filter(t => SERVER_RESOLVED(t.name))
+          const terminals = toolUses.filter(t => !SERVER_RESOLVED(t.name))
 
           // Un outil d'action terminal → hand-off au front et fin de boucle
           if (terminals.length > 0) {
@@ -782,8 +795,11 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
           }
           const results: Anthropic.ToolResultBlockParam[] = []
           for (const r of reads) {
-            console.log('[coach-stream] read-tool:', r.name)
-            const out = await resolveReadTool(r.name, (r.input ?? {}) as Record<string, unknown>, sbForTools, userId)
+            console.log('[coach-stream] server-tool:', r.name)
+            const inp = (r.input ?? {}) as Record<string, unknown>
+            const out = MEMORY_TOOL_NAMES.has(r.name)
+              ? await resolveMemoryTool(r.name, inp, sbForTools, userId, tier)
+              : await resolveReadTool(r.name, inp, sbForTools, userId)
             results.push({ type: 'tool_result', tool_use_id: r.id, content: out })
           }
           convMessages = [...convMessages, { role: 'user', content: results }]

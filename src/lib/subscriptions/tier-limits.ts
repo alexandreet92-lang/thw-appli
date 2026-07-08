@@ -12,6 +12,7 @@ export const TIER_LIMITS = {
     plans_per_month: 2,
     tool_use_per_month: 50,
     nutrition_plans_per_month: 1,
+    memories_max: 30,                   // mémoire long terme (faits retenus)
     // ── Briefing ─────────────────────────────────────────────────
     briefings_per_week: 4,
     briefing_web_search: false,
@@ -31,6 +32,7 @@ export const TIER_LIMITS = {
     plans_per_month: 2,
     tool_use_per_month: 50,
     nutrition_plans_per_month: 1,
+    memories_max: 30,                   // mémoire long terme (faits retenus)
     // ── Briefing ─────────────────────────────────────────────────
     briefings_per_week: 4,
     briefing_web_search: false,         // Sonnet sans web_search (~$0.03/appel)
@@ -50,6 +52,7 @@ export const TIER_LIMITS = {
     plans_per_month: 6,
     tool_use_per_month: 150,
     nutrition_plans_per_month: 3,
+    memories_max: 200,                  // mémoire long terme (faits retenus)
     // ── Briefing ─────────────────────────────────────────────────
     briefings_per_week: 7,              // quotidien
     briefing_web_search: true,          // Sonnet + web_search (~$0.10/appel)
@@ -69,6 +72,7 @@ export const TIER_LIMITS = {
     plans_per_month: 20,
     tool_use_per_month: 400,
     nutrition_plans_per_month: 10,
+    memories_max: 1000,                 // mémoire long terme (faits retenus)
     // ── Briefing ─────────────────────────────────────────────────
     briefings_per_week: 7,              // quotidien + prioritaire
     briefing_web_search: true,

@@ -60,6 +60,8 @@ const TOOL_STATUS_LABELS: Record<string, string> = {
   get_personal_records:  'aip.tool.getRecords',
   get_climb_records:     'aip.tool.getClimbRecords',
   get_body_metrics:      'aip.tool.getBody',
+  save_memory:           'aip.tool.saveMemory',
+  forget_memory:         'aip.tool.forgetMemory',
   web_search:            'aip.tool.webSearch',
 }
 function toolStatusLabel(tools: string[] | undefined): string {

@@ -12086,8 +12086,8 @@ function PlusMenu({
   }
   const sepStyle: React.CSSProperties = { height: 1, background: 'var(--border)', margin: '4px 0' }
   const photoTileStyle: React.CSSProperties = {
-    flexShrink: 0, width: 100, height: 92, borderRadius: 14,
-    border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
+    flexShrink: 0, width: 100, height: 92, borderRadius: 16,
+    border: 'none', background: 'var(--surface-neutral)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 7,
     cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
   }
@@ -12244,8 +12244,8 @@ function PlusMenu({
                   onClick={() => { onPickPhoto(url); onClose() }}
                   aria-label={`Photo ${i + 1}`}
                   style={{
-                    flexShrink: 0, width: 92, height: 92, borderRadius: 14, padding: 0,
-                    border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
+                    flexShrink: 0, width: 92, height: 92, borderRadius: 16, padding: 0,
+                    border: 'none', background: 'var(--surface-neutral)',
                     overflow: 'hidden', cursor: 'pointer', position: 'relative',
                   }}
                 >
@@ -22198,9 +22198,12 @@ export default function AIPanel({
                         <CoachQuestionCard
                           data={msg.clarifyingQuestions}
                           onSubmit={(recap) => {
+                            // Le questionnaire DISPARAÎT une fois répondu : on retire la carte,
+                            // et on ne garde que la bulle « Mes réponses » créée par send(recap),
+                            // façon Claude (les réponses listées les unes sous les autres).
                             setConvs(prev => prev.map(c =>
                               c.id === active.id
-                                ? { ...c, msgs: c.msgs.map(mm => mm.id === msg.id && mm.clarifyingQuestions ? { ...mm, clarifyingQuestions: { ...mm.clarifyingQuestions, answered: recap } } : mm) }
+                                ? { ...c, msgs: c.msgs.map(mm => mm.id === msg.id && mm.clarifyingQuestions ? { ...mm, clarifyingQuestions: undefined } : mm) }
                                 : c
                             ))
                             void send(recap)

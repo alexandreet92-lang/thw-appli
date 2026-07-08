@@ -28,6 +28,7 @@ import type { ChatInput } from '@/lib/coach-engine/schemas'
 import { coachTools } from '@/lib/coach/tools-definition'
 import { readTools, READ_TOOL_NAMES, resolveReadTool } from '@/lib/coach/read-tools'
 import { memoryTools, MEMORY_TOOL_NAMES, resolveMemoryTool, buildStructuredMemory } from '@/lib/coach/memory-tools'
+import { writeTools, WRITE_TOOL_NAMES, resolveWriteTool } from '@/lib/coach/write-tools'
 import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
@@ -204,7 +205,19 @@ Tu disposes d'une mémoire durable : la section « MÉMOIRE DURABLE » du contex
 - save_memory : dès que tu apprends un fait STABLE et RÉUTILISABLE d'une conversation à l'autre — une préférence (ex: s'entraîne le matin, déteste le seuil continu), une contrainte (ex: pas de sport le mercredi, home-trainer seulement l'hiver), un objectif de fond, une décision méthodologique prise ensemble, un fait de santé récurrent — enregistre-le en UNE phrase concise. Mentionne-le brièvement (« Je retiens que… »). Ne l'annonce pas comme une base de données.
 - N'enregistre PAS : ce qui est déjà en base (activités, zones, blessures suivies, courses), l'éphémère, ni un simple message. Pas de doublon (le système déduplique).
 - forget_memory : quand l'athlète demande d'oublier quelque chose, ou qu'un fait devient faux.
-- Si save_memory renvoie reason:"limit", explique à l'athlète que sa mémoire est pleine pour son abonnement, propose d'oublier un fait obsolète (forget_memory) ou de passer à un abonnement supérieur — sans insister lourdement.`
+- Si save_memory renvoie reason:"limit", explique à l'athlète que sa mémoire est pleine pour son abonnement, propose d'oublier un fait obsolète (forget_memory) ou de passer à un abonnement supérieur — sans insister lourdement.
+
+OUTILS D'ÉCRITURE — TU PEUX MODIFIER LES PAGES DE L'APP (n' envoie plus jamais « je ne peux pas écrire ») :
+Tu disposes d'outils pour ÉCRIRE directement dans les pages de l'athlète. Utilise-les dès qu'il te demande d'« ajouter », « enregistrer », « noter », « mettre dans » une page :
+- log_nutrition_day : enregistre un plan/apports nutritionnels (kcal, macros, repas) dans la page Nutrition — un jour ou plusieurs d'un coup (ex : « ajoute ce plan nutritionnel pour chaque jour jusqu'à mardi »).
+- log_body_weight / log_hydration / log_recovery_checkin : poids, hydratation, check-in récup (sommeil/fatigue/courbatures/humeur 1–5) dans la page Récupération.
+- add_race : ajoute une course/objectif au Calendrier. add_personal_record : ajoute un record dans la page Records.
+RÈGLES :
+1. N'écris QUE sur demande explicite de l'athlète. En cas de doute sur ce qu'il veut enregistrer, demande d'abord (ask_clarifying_questions), n'invente pas de valeurs.
+2. Utilise EN PRIORITÉ les données que tu viens de calculer/proposer dans la conversation (ne redemande pas ce que tu as déjà).
+3. Après écriture, CONFIRME clairement ce que tu as enregistré et DANS QUELLE PAGE (ex : « C'est enregistré dans ta page Nutrition pour jeudi→mardi »). Précise que c'est modifiable dans l'app.
+4. Ces outils écrivent réellement (résultat ok:true). Si ok:false, explique l'échec sans prétendre que c'est fait.
+5. Pour créer/modifier un PLAN d'entraînement ou une SÉANCE, continue d'utiliser les outils dédiés (create_training_plan, add_session…), pas ces outils-ci.`
 
 // ── Route handler ─────────────────────────────────────────────
 
@@ -631,11 +644,11 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
   //    et la boucle s'arrête (hand-off UI, comportement inchangé) ;
   //  • aucun tool → réponse finale déjà streamée, on s'arrête.
   // ══════════════════════════════════════════════════════════════
-  const allTools = [...coachTools, ...readTools, ...memoryTools]
+  const allTools = [...coachTools, ...readTools, ...memoryTools, ...writeTools]
   const MAX_STEPS = 6
-  // Outils résolus CÔTÉ SERVEUR (lecture + mémoire) → non terminaux : on les
-  // exécute et on reboucle. Tout le reste = outils d'ACTION rendus au front.
-  const SERVER_RESOLVED = (n: string) => READ_TOOL_NAMES.has(n) || MEMORY_TOOL_NAMES.has(n)
+  // Outils résolus CÔTÉ SERVEUR (lecture + mémoire + écriture) → non terminaux :
+  // on les exécute et on reboucle. Tout le reste = outils d'ACTION rendus au front.
+  const SERVER_RESOLVED = (n: string) => READ_TOOL_NAMES.has(n) || MEMORY_TOOL_NAMES.has(n) || WRITE_TOOL_NAMES.has(n)
 
   // ── PROMPT CACHING ──────────────────────────────────────────────
   // Le bloc système (prompt + contexte athlète + doctrine + mémoire) et la
@@ -827,6 +840,8 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
             const inp = (r.input ?? {}) as Record<string, unknown>
             const out = MEMORY_TOOL_NAMES.has(r.name)
               ? await resolveMemoryTool(r.name, inp, sbForTools, userId, tier)
+              : WRITE_TOOL_NAMES.has(r.name)
+              ? await resolveWriteTool(r.name, inp, sbForTools, userId)
               : await resolveReadTool(r.name, inp, sbForTools, userId)
             results.push({ type: 'tool_result', tool_use_id: r.id, content: out })
           }

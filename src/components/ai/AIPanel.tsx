@@ -62,6 +62,12 @@ const TOOL_STATUS_LABELS: Record<string, string> = {
   get_body_metrics:      'aip.tool.getBody',
   save_memory:           'aip.tool.saveMemory',
   forget_memory:         'aip.tool.forgetMemory',
+  log_nutrition_day:     'aip.tool.writePage',
+  log_body_weight:       'aip.tool.writePage',
+  log_hydration:         'aip.tool.writePage',
+  log_recovery_checkin:  'aip.tool.writePage',
+  add_race:              'aip.tool.writePage',
+  add_personal_record:   'aip.tool.writePage',
   web_search:            'aip.tool.webSearch',
 }
 function toolStatusLabel(tools: string[] | undefined): string {

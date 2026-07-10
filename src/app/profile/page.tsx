@@ -1553,12 +1553,7 @@ function RuleCreator({ addRule, onClose }: {
 
 // ── Composant RulesCard ───────────────────────────────────────
 function RulesCard() {
-  const { t } = useI18n()
-  const { rules, loading, addRule, toggleRule, deleteRule, saveInstruction } = useAiRules()
-  const [activeTab,  setActiveTab]  = useState<string>('all')
-  const [showModal,  setShowModal]  = useState(false)
-  const [confirmDel, setConfirmDel] = useState<string|null>(null)
-  const [hoveredId,  setHoveredId]  = useState<string|null>(null)
+  const { rules, saveInstruction } = useAiRules()
 
   // ── Instruction personnelle (champ unique, façon Claude) ──
   const instrRule = rules.find(r => r.category === 'instruction')
@@ -1570,21 +1565,6 @@ function RulesCard() {
     await saveInstruction(instr)
     setInstrDirty(false); setInstrSaved(true); setTimeout(() => setInstrSaved(false), 1800)
   }
-
-  const catMeta = (id: string) => RULE_CATEGORIES.find(c => c.id === id) ?? { label: id, color: '#6b7280', icon: '📌', placeholder: '' }
-  // La règle 'instruction' a son propre champ → on l'exclut de la liste des règles.
-  const listRules = rules.filter(r => r.category !== 'instruction')
-  const filtered = activeTab === 'all' ? listRules : listRules.filter(r => r.category === activeTab)
-
-  async function handleDelete(id: string) {
-    await deleteRule(id)
-    setConfirmDel(null)
-  }
-
-  const TABS = [
-    { id: 'all', label: t('profile.allRules'), color: 'var(--text-mid)' },
-    ...RULE_CATEGORIES.map(c => ({ id: c.id, label: t('profile.ruleCat.'+c.id), color: c.color })),
-  ]
 
   return (
     <>
@@ -1630,90 +1610,6 @@ function RulesCard() {
           >Enregistrer</button>
         </div>
       </Card>
-
-      <Card>
-        {/* Header */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-          <CardTitle icon={<svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="1" width="10" height="14" rx="2"/><path d="M6 1v1a2 2 0 004 0V1M6 7h4M6 10h3"/></svg>}>{t('profile.myRules')}</CardTitle>
-          <button
-            onClick={() => setShowModal(true)}
-            style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, background:'linear-gradient(135deg,#06B6D4,#5b6fff)', border:'none', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}
-          >
-            <span style={{ fontSize:16, lineHeight:1 }}>+</span> {t('profile.add')}
-          </button>
-        </div>
-        <p style={{ fontSize:11, color:'var(--text-dim)', margin:'0 0 14px', lineHeight:1.5 }}>
-          {t('profile.rulesInfo')}
-        </p>
-
-        {/* Tabs catégories */}
-        <div className="rules-tabs" style={{ display:'flex', gap:6, overflowX:'auto', marginBottom:14, paddingBottom:2 }}>
-          {TABS.map(t => {
-            const active = activeTab === t.id
-            return (
-              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ padding:'5px 12px', borderRadius:20, border:`1px solid ${active ? t.color+'66' : 'var(--border)'}`, background: active ? t.color+'18' : 'transparent', color: active ? t.color : 'var(--text-dim)', fontSize:11, fontWeight: active ? 700 : 400, cursor:'pointer', whiteSpace:'nowrap' as const, flexShrink:0, transition:'all 0.15s' }}>{t.label}</button>
-            )
-          })}
-        </div>
-
-        {/* Liste des règles */}
-        {loading ? (
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {[1,2].map(i => <div key={i} style={{ height:44, borderRadius:10, background:'var(--bg-card2)', opacity:0.5 }} />)}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign:'center' as const, padding:'28px 16px', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
-            <svg width={40} height={40} viewBox="0 0 40 40" fill="none" stroke="var(--text-dim)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ opacity:0.4 }}><rect x="8" y="4" width="24" height="32" rx="4"/><path d="M15 4v2a5 5 0 0010 0V4M15 18h10M15 24h8"/></svg>
-            <p style={{ fontSize:12, color:'var(--text-dim)', margin:0, lineHeight:1.55 }}>
-              {activeTab === 'all' ? t('profile.noRules') : t('profile.noRulesCategory')}
-            </p>
-            <p style={{ fontSize:11, color:'var(--text-dim)', margin:0, opacity:0.7 }}>{t('profile.rulesEmptyHint')}</p>
-            {activeTab === 'all' && (
-              <button onClick={() => setShowModal(true)} style={{ marginTop:4, padding:'7px 18px', borderRadius:20, border:'1px solid var(--border)', background:'transparent', color:'var(--text-dim)', fontSize:12, fontWeight:500, cursor:'pointer' }}>
-                {t('profile.addRule')}
-              </button>
-            )}
-          </div>
-        ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-            {filtered.map(rule => {
-              const meta = catMeta(rule.category)
-              return (
-                <div
-                  key={rule.id}
-                  className="rule-row"
-                  onMouseEnter={() => setHoveredId(rule.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, border:`1px solid ${rule.active ? meta.color+'22' : 'var(--border)'}`, background: rule.active ? meta.color+'0a' : 'var(--bg-card2)', transition:'all 0.15s', opacity: rule.active ? 1 : 0.55 }}
-                >
-                  <div style={{ width:8, height:8, borderRadius:'50%', background: meta.color, flexShrink:0 }} />
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize:12, color:'var(--text)', margin:0, lineHeight:1.4, wordBreak:'break-word' as const }}>{rule.rule_text}</p>
-                    <span style={{ display:'inline-flex', alignItems:'center', gap:3, marginTop:3, fontSize:9, fontWeight:600, padding:'2px 8px', borderRadius:10, background: meta.color+'18', color: meta.color }}>
-                      {categoryIcon(rule.category, meta.color, 9)} {RULE_CATEGORIES.some(c => c.id === rule.category) ? t('profile.ruleCat.'+rule.category) : meta.label}
-                    </span>
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-                    <Toggle value={rule.active} onChange={v => void toggleRule(rule.id, v)} />
-                    {(hoveredId === rule.id || confirmDel === rule.id) && (
-                      confirmDel === rule.id ? (
-                        <div style={{ display:'flex', gap:4 }}>
-                          <button onClick={() => void handleDelete(rule.id)} style={{ padding:'3px 8px', borderRadius:6, background:'#ef4444', border:'none', color:'#fff', fontSize:10, fontWeight:700, cursor:'pointer' }}>{t('profile.yes')}</button>
-                          <button onClick={() => setConfirmDel(null)} style={{ padding:'3px 8px', borderRadius:6, background:'var(--bg-card2)', border:'1px solid var(--border)', color:'var(--text-dim)', fontSize:10, cursor:'pointer' }}>{t('profile.no')}</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setConfirmDel(rule.id)} title={t('profile.delete')} style={{ width:22, height:22, borderRadius:6, background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.18)', color:'#ef4444', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>×</button>
-                      )
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </Card>
-
-      {showModal && <RuleCreator addRule={addRule} onClose={() => setShowModal(false)} />}
     </>
   )
 }

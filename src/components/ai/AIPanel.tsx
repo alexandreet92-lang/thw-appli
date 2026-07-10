@@ -22855,10 +22855,12 @@ export default function AIPanel({
               onClick={e => e.stopPropagation()}
               style={{
                 background: 'var(--bg)', color: 'var(--text)',
-                display: 'flex', flexDirection: 'column',
+                display: 'flex', flexDirection: 'column', overflow: 'hidden',
                 ...(isDesktop
                   ? { width: 'min(520px, 92vw)', height: '100%', borderLeft: '1px solid var(--border)', animation: 'iaset_side 0.28s cubic-bezier(0.32,0.72,0,1)' }
-                  : { width: '100%', maxHeight: '92vh', borderTopLeftRadius: 22, borderTopRightRadius: 22, animation: 'iaset_up 0.32s cubic-bezier(0.32,0.72,0,1)' }),
+                  // Sur-page mobile : ancrée en bas, laissant un ESPACE visible en haut
+                  // (fond flouté de l'interface IA), façon « Mon Profil ».
+                  : { position: 'fixed', left: 0, right: 0, bottom: 0, top: 'max(56px, calc(env(safe-area-inset-top, 0px) + 44px))', borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -10px 50px rgba(0,0,0,0.28)', animation: 'iaset_up 0.34s cubic-bezier(0.2,0.8,0.2,1)' }),
               }}
             >
               {/* En-tête */}

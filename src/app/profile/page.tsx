@@ -2367,35 +2367,6 @@ function IASettingsBloc() {
         </div>
       </Section>
 
-      {/* ── Police du chat ────────────────────────────── */}
-      <Section label={t('profile.chatFont')}>
-        <p style={{ fontSize:12.5, color:'var(--text-mid)', margin:'-2px 2px 12px', lineHeight:1.5 }}>
-          {t('profile.chatFontSub')}
-        </p>
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {CHAT_FONTS.map(f => {
-            const active = chatFont === f.id
-            return (
-              <button key={f.id} onClick={() => { setChatFont(f.id); save('thw_ai_chat_font', f.id); window.dispatchEvent(new Event('thw:chat-font-changed')) }}
-                style={{
-                  display:'flex', alignItems:'center', justifyContent:'space-between',
-                  padding:'12px 16px', borderRadius:12,
-                  border:`1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
-                  background: active ? 'var(--primary-dim)' : 'var(--bg-card)',
-                  cursor:'pointer', transition:'all 0.15s', width:'100%', textAlign:'left' as const,
-                }}>
-                <div>
-                  <p style={{ fontFamily:f.family, fontSize:14.5, fontWeight:500, color: active ? 'var(--primary)' : 'var(--text)', margin:'0 0 2px' }}>{f.id === 'system' ? t('profile.fontSystem') : f.label}</p>
-                  <p style={{ fontFamily:f.family, fontSize:12, color:'var(--text-dim)', margin:0 }}>{t('profile.fontPreview')}</p>
-                </div>
-                {active && (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.6" strokeLinecap="round" style={{ flexShrink:0 }}><path d="M20 6L9 17l-5-5"/></svg>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </Section>
 
       {/* ── Mes règles IA ─────────────────────────────── */}
       <RulesCard />

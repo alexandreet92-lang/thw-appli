@@ -31,6 +31,7 @@ import { MODEL_BADGE, quickActionEstimate, fmtEstimate } from '@/lib/quick-actio
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
 import { computeSportMetrics, wpLabelToCanon, type ActivityWithStreams, type SportMetrics } from '@/lib/analysis/sportMetrics'
 import { currentLocale } from '@/lib/i18n'
+import { IASettingsBloc } from '@/app/profile/page'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -12600,8 +12601,8 @@ function HistoryDrawer({
         </span>
         <button
           type="button"
-          onClick={() => { haptic(); try { window.dispatchEvent(new Event('thw:open-profile')) } catch { /* ignore */ } }}
-          aria-label="Profil"
+          onClick={() => { haptic(); try { window.dispatchEvent(new Event('thw:open-ai-settings')) } catch { /* ignore */ } }}
+          aria-label="Réglages IA"
           style={{
             width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -19535,6 +19536,13 @@ export default function AIPanel({
   // Feuille « Processus de réflexion » : id du message dont on affiche le
   // raisonnement étendu (null = fermée).
   const [reasoningMsgId, setReasoningMsgId] = useState<string | null>(null)
+  // Sur-page « Réglages IA » ouverte PAR-DESSUS l'interface IA (depuis l'avatar).
+  const [iaSettingsOpen, setIaSettingsOpen] = useState(false)
+  useEffect(() => {
+    const open = () => setIaSettingsOpen(true)
+    window.addEventListener('thw:open-ai-settings', open)
+    return () => window.removeEventListener('thw:open-ai-settings', open)
+  }, [])
   const [isDesktop,   setIsDesktop]   = useState(false)
   const [model,       setModel]       = useState<THWModel>('athena')
   const [method,      setMethod]      = useState<string>('auto')   // méthode d'entraînement (composer)
@@ -22822,6 +22830,57 @@ export default function AIPanel({
           document.body,
         )
       })()}
+
+      {/* ── Sur-page « Réglages IA » — PAR-DESSUS l'interface IA ── */}
+      {iaSettingsOpen && mounted && createPortal(
+        <>
+          <style>{`
+            @keyframes iaset_in { from { opacity: 0 } to { opacity: 1 } }
+            @keyframes iaset_up { from { transform: translateY(100%) } to { transform: translateY(0) } }
+            @keyframes iaset_side { from { transform: translateX(100%) } to { transform: translateX(0) } }
+          `}</style>
+          <div
+            role="dialog" aria-modal="true" aria-label="Réglages IA"
+            onClick={() => setIaSettingsOpen(false)}
+            style={{
+              ...AI_PORTAL_VARS,
+              position: 'fixed', inset: 0, zIndex: 13000,
+              background: 'rgba(0,0,0,0.32)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
+              animation: 'iaset_in 0.2s ease',
+              display: 'flex', alignItems: isDesktop ? 'stretch' : 'flex-end',
+              justifyContent: isDesktop ? 'flex-end' : 'center',
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'var(--bg)', color: 'var(--text)',
+                display: 'flex', flexDirection: 'column',
+                ...(isDesktop
+                  ? { width: 'min(520px, 92vw)', height: '100%', borderLeft: '1px solid var(--border)', animation: 'iaset_side 0.28s cubic-bezier(0.32,0.72,0,1)' }
+                  : { width: '100%', maxHeight: '92vh', borderTopLeftRadius: 22, borderTopRightRadius: 22, animation: 'iaset_up 0.32s cubic-bezier(0.32,0.72,0,1)' }),
+              }}
+            >
+              {/* En-tête */}
+              <div style={{ flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 18px 12px', borderBottom: '1px solid var(--border)' }}>
+                {!isDesktop && <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)', width: 38, height: 4, borderRadius: 2, background: 'var(--border)' }} />}
+                <span style={{ fontSize: 17, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text)' }}>Réglages IA</span>
+                <button
+                  onClick={() => setIaSettingsOpen(false)} aria-label={t('aip.ui.close')}
+                  style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-4px)', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'var(--bg-alt)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </div>
+              {/* Corps — contenu Réglages IA */}
+              <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '4px 14px 28px' }}>
+                <IASettingsBloc />
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body,
+      )}
 
       {/* ── Modal d'achat de tokens ───────────────────────── */}
       <TopupEmailModal isOpen={topupOpen} onClose={() => setTopupOpen(false)} />

@@ -2075,7 +2075,7 @@ function ModelesContent() {
   )
 }
 
-function IASettingsBloc() {
+export function IASettingsBloc() {
   const { t } = useI18n()
   // Overlays
   const [modelsPageOpen, setModelsPageOpen] = useState(false)

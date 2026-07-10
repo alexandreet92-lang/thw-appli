@@ -19632,6 +19632,36 @@ export default function AIPanel({
 
   const active = convs.find(c => c.id === activeId) ?? null
 
+  // ── PHASE 1 — Reprise d'une réponse générée en arrière-plan ──
+  // Si on rouvre une conversation dont le DERNIER message est de l'utilisateur
+  // (la réponse du coach est arrivée pendant que l'app était fermée), on va la
+  // chercher côté serveur (coach_runs) et on l'affiche. Cas ciblé et sûr :
+  // on n'ajoute une réponse QUE s'il en manque visiblement une.
+  const resumedConvRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!active || loading) return
+    const msgs = active.msgs
+    const last = msgs[msgs.length - 1]
+    if (!last || last.role !== 'user') return          // une réponse manque-t-elle ?
+    if (resumedConvRef.current.has(active.id)) return   // déjà tenté pour cette conv
+    resumedConvRef.current.add(active.id)
+    const convId = active.id
+    void (async () => {
+      try {
+        const res = await fetch(`/api/coach-runs?conv_id=${encodeURIComponent(convId)}`)
+        if (!res.ok) return
+        const { run } = await res.json() as { run: { status: string; content: string } | null }
+        if (!run || run.status !== 'done' || !run.content?.trim()) return
+        setConvs(prev => prev.map(c => {
+          if (c.id !== convId) return c
+          const l = c.msgs[c.msgs.length - 1]
+          if (!l || l.role !== 'user') return c          // re-vérifie (évite tout doublon)
+          return { ...c, msgs: [...c.msgs, { id: genId(), role: 'assistant' as const, content: run.content, ts: Date.now(), modelId: model }], updatedAt: Date.now() }
+        }))
+      } catch { /* silencieux */ }
+    })()
+  }, [active, loading, model])
+
   // ── Effects ────────────────────────────────────────────────
 
   // Ferme le dropdown agent au clic extérieur

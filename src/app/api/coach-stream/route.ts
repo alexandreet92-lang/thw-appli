@@ -713,6 +713,24 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
       // (le raisonnement peut manger tout le budget avant la réponse — voir max_tokens).
       let allowThinking = thinkingEnabled
 
+      // ── PHASE 1 — Génération en arrière-plan (persistance serveur) ──
+      // Chaque réponse du coach central est enregistrée dans coach_runs : la
+      // génération continue et se sauvegarde côté serveur, indépendamment de
+      // l'onglet. Si l'app se ferme, la réponse est retrouvable en base.
+      const persistRun = (chatBody as { agentId?: string }).agentId === 'central'
+      const convIdForRun = (chatBody as { convId?: string }).convId ?? null
+      let runId: string | null = null
+      let fullText = ''
+      let runErrored = false
+      if (persistRun) {
+        try {
+          const { data } = await sbForTools.from('coach_runs')
+            .insert({ user_id: userId, conv_id: convIdForRun, status: 'running', model: chatModel })
+            .select('id').single()
+          runId = (data as { id: string } | null)?.id ?? null
+        } catch (e) { console.error('[coach-stream] coach_runs insert failed:', e) }
+      }
+
       try {
         for (let step = 0; step < MAX_STEPS; step++) {
           const ms = client.messages.stream({
@@ -730,6 +748,7 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
           for await (const ev of ms) {
             if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta' && ev.delta.text) {
               send('text', JSON.stringify(ev.delta.text))
+              fullText += ev.delta.text
             } else if (ev.type === 'content_block_delta' && ev.delta.type === 'thinking_delta' && ev.delta.thinking) {
               // Raisonnement étendu en direct → feuille « Processus de réflexion »
               send('thinking', JSON.stringify(ev.delta.thinking))
@@ -858,7 +877,15 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
         const msg = e instanceof Error ? e.message : String(e)
         console.error('[coach-stream] agentic loop error:', msg)
         send('text', JSON.stringify(`\n\n⚠️ IA : ${msg}`))
+        runErrored = true
+        if (runId) {
+          try { await sbForTools.from('coach_runs').update({ status: 'error', content: fullText, error: msg, updated_at: new Date().toISOString() }).eq('id', runId) } catch { /* best-effort */ }
+        }
       } finally {
+        // Réponse finalisée côté serveur (retrouvable même si l'app s'est fermée).
+        if (runId && !runErrored) {
+          try { await sbForTools.from('coach_runs').update({ status: 'done', content: fullText, updated_at: new Date().toISOString() }).eq('id', runId) } catch { /* best-effort */ }
+        }
         streamClosed = true
         clearInterval(heartbeat)
         controller.close()

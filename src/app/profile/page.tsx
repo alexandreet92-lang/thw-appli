@@ -12,6 +12,7 @@ import { SlideView } from '@/components/ui/SlideView'
 import { useI18n } from '@/lib/i18n'
 import { LanguageSelector } from '@/components/i18n/LanguageSelector'
 import { currentLocale } from '@/lib/i18n'
+import { getPushState, enablePush, disablePush, type PushState } from '@/lib/push/client'
 
 // ══════════════════════════════════════════════════
 // TYPES
@@ -814,6 +815,58 @@ const NOTIF_DEFAULTS: Record<string, boolean> = (() => {
   return d
 })()
 
+// ── Notifications push sur CET appareil (Web Push) ────────────────
+// Toggle distinct des préférences par catégorie : il gère l'abonnement
+// push du navigateur/appareil courant (permission + souscription serveur).
+function DevicePushSection() {
+  const [state, setState] = useState<PushState | 'loading'>('loading')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      const s = await getPushState()
+      if (alive) setState(s)
+    })()
+    return () => { alive = false }
+  }, [])
+
+  const toggle = async () => {
+    if (busy) return
+    setBusy(true)
+    try {
+      const next = state === 'on' ? await disablePush() : await enablePush()
+      setState(next)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // N'affiche rien si le navigateur ne supporte pas le push.
+  if (state === 'unsupported') return null
+
+  const sub =
+    state === 'denied'       ? 'Notifications bloquées par le navigateur. Autorise-les dans les réglages du site.'
+    : state === 'unconfigured' ? 'Bientôt disponible sur ce serveur.'
+    : 'Reçois une notification quand ton coach a fini de répondre, même app fermée.'
+
+  const disabled = state === 'loading' || state === 'denied' || state === 'unconfigured' || busy
+
+  return (
+    <Section label="Cet appareil">
+      <Group>
+        <Line first>
+          <div style={{ flex:1, minWidth:0, paddingRight:4 }}>
+            <p style={{ fontSize:15, fontWeight:500, color:'var(--text)', margin:'0 0 2px' }}>Notifications sur cet appareil</p>
+            <p style={{ fontSize:11.5, color:'var(--text-dim)', margin:0, lineHeight:1.5 }}>{sub}</p>
+          </div>
+          <Toggle value={state === 'on'} onChange={() => { if (!disabled) void toggle() }}/>
+        </Line>
+      </Group>
+    </Section>
+  )
+}
+
 function NotificationsBloc() {
   const { t } = useI18n()
   const [globalOn, setGlobalOn] = useState(true)
@@ -854,6 +907,9 @@ function NotificationsBloc() {
 
   return (
     <div style={{ display:'flex', flexDirection:'column' }}>
+      {/* Push sur cet appareil (Web Push) */}
+      <DevicePushSection />
+
       {/* Toggle global */}
       <Section>
         <Group>

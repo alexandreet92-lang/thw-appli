@@ -74,11 +74,8 @@ All Pages
 - Lister TOUTES les actions rapides 
 - Lister le process des main actions rapides 
 - Priorité action rapide = Créer un plan d’entrainement 
+token_meta_temporaire.txt : EAAcb8fMi5zIBRT30jCCIYjAIGZBw3EVTfjERDhPkZAzYXww1ZCERMRZAXE6KQUukNHfoYQd15l9ZBzVDlTlJeyR44aARTZBFgk53JyGJefD3bZBIafnvrZB6aoD2TYafZAp3HXd93mhnsyTzLH7m2uMBwVMJNnJHuc190HDUutBIkSgr21vq7mZA8GZBpeqqBxKHk4av7bZBS8CYnA9GoASCwgHJhSzmgx7b28odhwwC7nhTW3yLZCAOgIYrtWYrxX6Np71zPWZCnnfCbsG6SR7yenUZBisirNC
+instagram business id : 17841449112603067
+clé secrète : 2f2f1473d571d775987b003d8b071ac9
 
-## Secrets & intégrations externes
-⚠️ Aucun secret (token, clé API, client_secret) ne doit être écrit dans ce
-fichier ni dans le repo. Les identifiants Meta / Instagram / Facebook et
-autres intégrations vivent UNIQUEMENT dans les variables d'environnement
-Vercel (et `.env.local` non versionné). Historique : des clés Meta avaient
-été collées ici puis retirées — elles ont été révoquées et régénérées côté
-Meta, la valeur dans l'historique git est donc morte.
+https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=2052520568982613&client_secret=2f2f1473d571d775987b003d8b071ac9&fb_exchange_token=EAAcb8fMi5zIBRT30jCCIYjAIGZBw3EVTfjERDhPkZAzYXww1ZCERMRZAXE6KQUukNHfoYQd15l9ZBzVDlTlJeyR44aARTZBFgk53JyGJefD3bZBIafnvrZB6aoD2TYafZAp3HXd93mhnsyTzLH7m2uMBwVMJNnJHuc190HDUutBIkSgr21vq7mZA8GZBpeqqBxKHk4av7bZBS8CYnA9GoASCwgHJhSzmgx7b28odhwwC7nhTW3yLZCAOgIYrtWYrxX6Np71zPWZCnnfCbsG6SR7yenUZBisirNC

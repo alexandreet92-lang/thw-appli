@@ -12535,6 +12535,8 @@ function PlusMenu({
 function HistoryDrawer({
   convs,
   activeId,
+  generatingConvs,
+  unreadDone,
   onSelect,
   onDelete,
   onNew,
@@ -12549,6 +12551,8 @@ function HistoryDrawer({
 }: {
   convs: AIConv[]
   activeId: string | null
+  generatingConvs: Set<string>
+  unreadDone: Set<string>
   onSelect: (c: AIConv) => void
   onDelete: (id: string) => void
   onNew: () => void
@@ -12749,6 +12753,27 @@ function HistoryDrawer({
                 onMouseLeave={e => { if (conv.id !== activeId) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
               >
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  {/* Indicateur d'état : réflexion en cours (spinner bleu) ou
+                      réponse terminée non vue (point bleu). Prioritaire sur le pin. */}
+                  {generatingConvs.has(conv.id) ? (
+                    <span
+                      aria-label="Réflexion en cours"
+                      style={{
+                        width: 11, height: 11, borderRadius: '50%', flexShrink: 0, alignSelf: 'center',
+                        border: '1.5px solid rgba(91,111,255,0.25)', borderTopColor: '#5b6fff',
+                        animation: 'spin 0.7s linear infinite',
+                      }}
+                    />
+                  ) : unreadDone.has(conv.id) ? (
+                    <span
+                      aria-label="Réponse terminée"
+                      style={{
+                        width: 7, height: 7, borderRadius: '50%', flexShrink: 0, alignSelf: 'center',
+                        background: '#5b6fff', boxShadow: '0 0 6px rgba(91,111,255,0.7)',
+                        animation: 'ai_dot_pulse 1.6s ease-in-out infinite',
+                      }}
+                    />
+                  ) : null}
                   {conv.isPinned && (
                     <svg width="9" height="9" viewBox="0 0 24 24" fill="var(--ai-accent)" stroke="none" style={{ flexShrink: 0, marginBottom: 1 }}>
                       <path d="M12 2l7 7-7 7-7-7 7-7zM12 16v6"/>
@@ -19510,7 +19535,13 @@ export default function AIPanel({
   const [convs,       setConvs]       = useState<AIConv[]>([])
   const [activeId,    setActiveId]    = useState<string | null>(null)
   const [input,       setInput]       = useState('')
-  const [loading,     setLoading]     = useState(false)
+  // Génération PARALLÈLE : on suit l'état par conversation (plusieurs chats
+  // peuvent tourner en même temps). `generatingConvs` = ids en cours de
+  // génération ; `unreadDone` = ids dont la réponse est terminée alors que le
+  // chat n'était PAS actif (→ point bleu dans la sidebar). `loading` reste
+  // dérivé pour la conversation active (barre d'envoi, bouton Stop…).
+  const [generatingConvs, setGeneratingConvs] = useState<Set<string>>(() => new Set())
+  const [unreadDone,       setUnreadDone]       = useState<Set<string>>(() => new Set())
   const [mounted,     setMounted]     = useState(false)
   const [fullscr,     setFullscr]     = useState(false)
   const [histOpen,    setHistOpen]    = useState(false)
@@ -19616,8 +19647,9 @@ export default function AIPanel({
   const cameraRef  = useRef<HTMLInputElement>(null)
   const photosRef  = useRef<HTMLInputElement>(null)
   const filesRef   = useRef<HTMLInputElement>(null)
-  // AbortController pour annuler la requête en cours
-  const abortRef   = useRef<AbortController | null>(null)
+  // AbortController PAR conversation (génération parallèle) : chaque chat en
+  // cours a son propre controller, indexé par conv id.
+  const abortRefs  = useRef<Map<string, AbortController>>(new Map())
   // Synthèse du dernier plan créé (create_training_plan) → message de restitution riche
   const planSummaryRef = useRef<{ name: string; weeks: number; sessions: number; pointsCles: string[]; conseils: string[] } | null>(null)
   // Synchro conversations entre appareils (Supabase)
@@ -19631,6 +19663,32 @@ export default function AIPanel({
   const agentDropRef = useRef<HTMLDivElement>(null)
 
   const active = convs.find(c => c.id === activeId) ?? null
+
+  // `loading` DÉRIVÉ : vrai uniquement si la conversation ACTIVE génère. Garde
+  // le comportement historique de l'UI (barre d'envoi, bouton Stop, TypedText)
+  // tout en autorisant d'autres chats à tourner en arrière-plan.
+  const loading = activeId != null && generatingConvs.has(activeId)
+
+  // Ref sur l'id actif : lue DANS les callbacks async (fin de génération) pour
+  // savoir si la conversation qui vient de finir est toujours à l'écran.
+  const activeIdRef = useRef<string | null>(null)
+  useEffect(() => { activeIdRef.current = activeId }, [activeId])
+
+  // Démarre la génération d'un chat : l'ajoute aux chats en cours et efface un
+  // éventuel point bleu « terminé » resté d'une génération précédente.
+  const startGen = useCallback((cid: string) => {
+    setGeneratingConvs(prev => { if (prev.has(cid)) return prev; const n = new Set(prev); n.add(cid); return n })
+    setUnreadDone(prev => { if (!prev.has(cid)) return prev; const n = new Set(prev); n.delete(cid); return n })
+  }, [])
+
+  // Termine la génération d'un chat. Si `markUnread` et que le chat n'est PLUS
+  // à l'écran, on pose un point bleu (réponse terminée non vue).
+  const endGen = useCallback((cid: string, markUnread = false) => {
+    setGeneratingConvs(prev => { if (!prev.has(cid)) return prev; const n = new Set(prev); n.delete(cid); return n })
+    if (markUnread && activeIdRef.current !== cid) {
+      setUnreadDone(prev => { if (prev.has(cid)) return prev; const n = new Set(prev); n.add(cid); return n })
+    }
+  }, [])
 
   // ── PHASE 1 — Reprise d'une réponse générée en arrière-plan ──
   // Si on rouvre une conversation dont le DERNIER message est de l'utilisateur
@@ -19955,9 +20013,16 @@ export default function AIPanel({
     setConvs(prev => prev.map(x => x.id === c.id ? { ...x, title: c.title } : x))
     setActiveId(c.id)
     setActiveFlow(null)
+    // Ouvrir un chat efface son point bleu « réponse terminée non vue ».
+    setUnreadDone(prev => { if (!prev.has(c.id)) return prev; const n = new Set(prev); n.delete(c.id); return n })
   }
 
   const deleteConv = (id: string) => {
+    // Coupe une éventuelle génération en cours + nettoie les indicateurs.
+    const c = abortRefs.current.get(id)
+    if (c) { c.abort(); abortRefs.current.delete(id) }
+    setGeneratingConvs(prev => { if (!prev.has(id)) return prev; const n = new Set(prev); n.delete(id); return n })
+    setUnreadDone(prev => { if (!prev.has(id)) return prev; const n = new Set(prev); n.delete(id); return n })
     setConvs(prev => prev.filter(c => c.id !== id))
     if (activeId === id) setActiveId(null)
     // Suppression explicite côté serveur (sinon elle réapparaîtrait à la prochaine fusion)
@@ -20504,10 +20569,10 @@ export default function AIPanel({
   }, [active, model])
 
   const stopGeneration = useCallback(() => {
-    if (abortRef.current) {
-      abortRef.current.abort()
-      abortRef.current = null
-    }
+    const id = activeIdRef.current
+    if (!id) return
+    const c = abortRefs.current.get(id)
+    if (c) { c.abort(); abortRefs.current.delete(id) }
   }, [])
 
   const handleMsgMouseUp = useCallback(() => {
@@ -20775,7 +20840,6 @@ export default function AIPanel({
     setActiveQA(null)
     setQuotedText(null)
     if (areaRef.current) { areaRef.current.style.height = 'auto'; areaRef.current.focus() }
-    setLoading(true)
 
     let conv = active
     let isNew = false
@@ -20811,6 +20875,7 @@ export default function AIPanel({
     if (isNew) setActiveId(updated.id)
 
     const cid      = updated.id
+    startGen(cid)
     // Mode vocal → modèle rapide (Hermès) pour une conversation réactive.
     // Sinon on garde le modèle choisi par l'utilisateur.
     const snapshot: THWModel = opts?.voice ? 'hermes' : model
@@ -20873,6 +20938,9 @@ export default function AIPanel({
 
     // Flag : true si le stream s'est terminé normalement (vs abort/erreur)
     let streamDone = false
+    // Flag : true si l'utilisateur a arrêté volontairement (bouton Stop) — dans
+    // ce cas pas de point bleu « terminé non vu ».
+    let userAborted = false
 
     try {
       // ── Fetch plan context complet si plan-chat ──────────────────
@@ -20883,7 +20951,7 @@ export default function AIPanel({
 
       // AbortController pour permettre l'annulation via le bouton Stop
       const controller = new AbortController()
-      abortRef.current = controller
+      abortRefs.current.set(cid, controller)
 
       // Mode vocal : le TON et la LANGUE choisis (Paramètres vocaux) pilotent
       // réellement l'IA — injectés comme règles dans le prompt système.
@@ -20941,7 +21009,7 @@ export default function AIPanel({
         setConvs(prev => prev.map(c =>
           c.id === cid ? { ...c, msgs: [...c.msgs, quotaErrMsg], updatedAt: Date.now() } : c
         ))
-        setLoading(false)
+        endGen(cid)
         return
       }
 
@@ -20953,7 +21021,7 @@ export default function AIPanel({
           if (td.error) errTxt = td.error
         } catch { /* fallback */ }
         setTokenLimitMsg(errTxt)
-        setLoading(false)
+        endGen(cid)
         return
       }
 
@@ -21112,7 +21180,7 @@ export default function AIPanel({
         processSSEBuffer()
       }
 
-      abortRef.current = null
+      abortRefs.current.delete(cid)
       streamDone = true  // stream complété normalement
       // Sécurité : retire un éventuel statut d'outil resté affiché
       setToolStatusByMsg(prev => { if (!prev[aiMsgId]) return prev; const n = { ...prev }; delete n[aiMsgId]; return n })
@@ -21166,8 +21234,9 @@ export default function AIPanel({
     } catch (e) {
       // Abort volontaire — on garde le texte déjà affiché, pas d'erreur
       if (e instanceof DOMException && e.name === 'AbortError') {
-        abortRef.current = null
-        setLoading(false)
+        userAborted = true
+        abortRefs.current.delete(cid)
+        endGen(cid)
         return
       }
       // G1 — Error message based on error type
@@ -21190,20 +21259,23 @@ export default function AIPanel({
         c.id === cid ? { ...c, msgs: [...c.msgs, err], updatedAt: Date.now() } : c
       ))
     } finally {
-      abortRef.current = null
+      abortRefs.current.delete(cid)
       if (streamDone) {
-        // Stream terminé normalement : on retarde setLoading(false) d'un tick pour
-        // éviter que React batchise ce call avec le dernier setConvs. Sans ce délai,
-        // TypedText reçoit isStreaming=false + texte complet dans le même render et
-        // snape immédiatement au lieu d'animer progressivement.
-        setTimeout(() => setLoading(false), 0)
+        // Stream terminé normalement : on retarde endGen d'un tick pour éviter
+        // que React batchise ce call avec le dernier setConvs. Sans ce délai,
+        // TypedText reçoit isStreaming=false + texte complet dans le même render
+        // et snape immédiatement au lieu d'animer progressivement. On marque la
+        // réponse « terminée non vue » (point bleu) si le chat n'est plus actif.
+        setTimeout(() => endGen(cid, true), 0)
       } else {
-        // Abort ou erreur : nettoyage immédiat
-        setLoading(false)
+        // Abort volontaire → pas de point bleu ; erreur → point bleu (il y a un
+        // message d'erreur à voir). Les retours 429/402 repassent aussi ici mais
+        // endGen est idempotent (déjà retiré des chats en cours).
+        endGen(cid, !userAborted)
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext, webSearchOn])
+  }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext, webSearchOn, startGen, endGen])
 
   // ── Enriched actions — charge les données puis appelle send ──
   const handleEnrichedAction = useCallback(async (id: string, label: string) => {
@@ -21551,6 +21623,8 @@ export default function AIPanel({
               initials={userInitials}
               convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
               activeId={activeId}
+              generatingConvs={generatingConvs}
+              unreadDone={unreadDone}
               onSelect={selectConv}
               onDelete={deleteConv}
               onNew={newConv}
@@ -21569,6 +21643,8 @@ export default function AIPanel({
               initials={userInitials}
               convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
               activeId={activeId}
+              generatingConvs={generatingConvs}
+              unreadDone={unreadDone}
               onSelect={selectConv}
               onDelete={deleteConv}
               onNew={newConv}

@@ -29,6 +29,7 @@ import { coachTools } from '@/lib/coach/tools-definition'
 import { readTools, READ_TOOL_NAMES, resolveReadTool } from '@/lib/coach/read-tools'
 import { memoryTools, MEMORY_TOOL_NAMES, resolveMemoryTool, buildStructuredMemory } from '@/lib/coach/memory-tools'
 import { writeTools, WRITE_TOOL_NAMES, resolveWriteTool } from '@/lib/coach/write-tools'
+import { sendPushToUser, previewForBody } from '@/lib/push/send'
 import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
@@ -885,6 +886,20 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
         // Réponse finalisée côté serveur (retrouvable même si l'app s'est fermée).
         if (runId && !runErrored) {
           try { await sbForTools.from('coach_runs').update({ status: 'done', content: fullText, updated_at: new Date().toISOString() }).eq('id', runId) } catch { /* best-effort */ }
+        }
+        // Notification push : prévient l'athlète que la réponse est prête. Le
+        // service worker ne l'affiche QUE si l'app n'est pas au premier plan.
+        // No-op silencieux si les clés VAPID ne sont pas configurées.
+        if (!runErrored && fullText.trim()) {
+          try {
+            await sendPushToUser(sbForTools, userId, {
+              title: 'Ton coach a répondu',
+              body: previewForBody(fullText),
+              url: '/',
+              convId: convIdForRun ?? undefined,
+              tag: convIdForRun ? `coach-${convIdForRun}` : 'coach-done',
+            })
+          } catch { /* best-effort */ }
         }
         streamClosed = true
         clearInterval(heartbeat)

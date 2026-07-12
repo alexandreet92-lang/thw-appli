@@ -16,6 +16,7 @@ import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import { SegmentCard } from './RaceSegmentCard'
 import { RACE_EDITOR_CSS } from './raceTheme'
 import { useI18n } from '@/lib/i18n'
+import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   race?: Race; initialDate?: string; onClose: () => void
@@ -50,6 +51,26 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave, on
   const [files, setFiles] = useState<File[]>([])
   const [filesBike, setFilesBike] = useState<File[]>([])
   const [filesRun, setFilesRun] = useState<File[]>([])
+  // Parcours déjà enregistrés (édition) — chargés depuis race_files pour être
+  // ré-affichés : sans ça, le parcours semblait « ne pas rester » à la réouverture.
+  const [existRoute, setExistRoute] = useState<{ url: string } | null>(null)
+  const [existBike,  setExistBike]  = useState<{ url: string } | null>(null)
+  const [existRun,   setExistRun]   = useState<{ url: string } | null>(null)
+  useEffect(() => {
+    if (!race?.id) return
+    const supabase = createClient()
+    let cancelled = false
+    void supabase.from('race_files').select('file_url, label').eq('race_id', race.id)
+      .then(({ data }) => {
+        if (cancelled || !data) return
+        for (const f of data as { file_url: string; label: string | null }[]) {
+          if (f.label === 'Parcours vélo') setExistBike({ url: f.file_url })
+          else if (f.label === 'Parcours run') setExistRun({ url: f.file_url })
+          else setExistRoute({ url: f.file_url })
+        }
+      })
+    return () => { cancelled = true }
+  }, [race?.id])
 
   async function handleSave() {
     if (!name.trim() || !date) return
@@ -121,13 +142,17 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave, on
                   bikeParcours={(
                     <div style={{ marginTop: 4 }}>
                       <RaceDropZone label={t('calendar.bikeRoute')} list={filesBike} setter={setFilesBike} />
-                      {findGpx(filesBike) && <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(filesBike)} /></div>}
+                      {findGpx(filesBike)
+                        ? <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(filesBike)} /></div>
+                        : existBike && <div style={{ marginTop: 10 }}><ParcoursViewer fileUrl={existBike.url} /></div>}
                     </div>
                   )}
                   runParcours={(
                     <div style={{ marginTop: 4 }}>
                       <RaceDropZone label={t('calendar.runRoute')} list={filesRun} setter={setFilesRun} />
-                      {findGpx(filesRun) && <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(filesRun)} /></div>}
+                      {findGpx(filesRun)
+                        ? <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(filesRun)} /></div>
+                        : existRun && <div style={{ marginTop: 10 }}><ParcoursViewer fileUrl={existRun.url} /></div>}
                     </div>
                   )}
                 />
@@ -137,7 +162,9 @@ export default function RaceEditorSheet({ race, initialDate, onClose, onSave, on
               <div>
                 <p style={LBL}>{t('calendar.route')}</p>
                 <RaceDropZone list={files} setter={setFiles} />
-                {findGpx(files) && <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(files)} /></div>}
+                {findGpx(files)
+                  ? <div style={{ marginTop: 10 }}><ParcoursViewer file={findGpx(files)} /></div>
+                  : existRoute && <div style={{ marginTop: 10 }}><ParcoursViewer fileUrl={existRoute.url} /></div>}
               </div>
             )}
             {/* Notes */}

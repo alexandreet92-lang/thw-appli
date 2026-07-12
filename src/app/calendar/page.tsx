@@ -255,6 +255,44 @@ function useCalendar() {
     }
   }
 
+  // Édition d'une course : met à jour la course PUIS enregistre les parcours
+  // nouvellement déposés (l'ancienne version ignorait totalement les fichiers en
+  // édition → le parcours ne s'enregistrait jamais). Un créneau (route générale,
+  // vélo, run) est remplacé uniquement si un nouveau fichier est fourni.
+  async function updateRaceWithFiles(
+    r: Race,
+    files: File[], filesBike?: File[], filesRun?: File[],
+  ) {
+    await updateRace(r)
+    const { data: { user } } = await supabase.auth.getUser(); if (!user) return
+    const groups: { list: File[]; label: string | null }[] = [
+      { list: files,           label: null },
+      { list: filesBike ?? [], label: 'Parcours vélo' },
+      { list: filesRun  ?? [], label: 'Parcours run' },
+    ]
+    for (const { list, label } of groups) {
+      if (list.length === 0) continue
+      // Remplace le parcours existant de ce créneau avant de réinsérer.
+      const del = supabase.from('race_files').delete().eq('race_id', r.id)
+      await (label === null ? del.is('label', null) : del.eq('label', label))
+      for (const file of list) {
+        try {
+          const safeName = sanitizeFileName(file.name)
+          const path = `${user.id}/${r.id}/${safeName}`
+          const { data: upData, error: upErr } = await supabase.storage.from('race-files').upload(path, file, { upsert: true })
+          if (upErr) { console.error('[updateRaceWithFiles] storage upload error', upErr); continue }
+          if (!upData) { console.error('[updateRaceWithFiles] storage upload returned no data'); continue }
+          const { data: urlData } = supabase.storage.from('race-files').getPublicUrl(path)
+          const { error: insErr } = await supabase.from('race_files').insert({
+            race_id: r.id, file_url: urlData.publicUrl,
+            file_name: file.name, file_type: file.type, label,
+          })
+          if (insErr) console.error('[updateRaceWithFiles] race_files insert error', insErr)
+        } catch (e) { console.error('[updateRaceWithFiles file]', e) }
+      }
+    }
+  }
+
   async function markCompleted(id: string) {
     await supabase.from('planned_races').update({
       status: 'completed', updated_at: new Date().toISOString(),
@@ -475,7 +513,7 @@ function useCalendar() {
 
   return {
     races, raceStages, eventTypes, events, loading,
-    addRace, addRaceWithFiles, updateRace, deleteRace, markCompleted,
+    addRace, addRaceWithFiles, updateRaceWithFiles, updateRace, deleteRace, markCompleted,
     addRaceStage, updateRaceStage, deleteRaceStage,
     saveStageDayContent, patchStageDayLocal, deleteStageDayLocal,
     addEventType, updateEventType, deleteEventType,
@@ -757,9 +795,10 @@ function RaceEventModal({ month, day, year, onClose, onSave }: {
 // ════════════════════════════════════════════════
 // RACE TAB — new component-based implementation
 // ════════════════════════════════════════════════
-function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, patchStageDayLocal, deleteStageDayLocal }: {
+function RaceTab({ races, raceStages, addRaceWithFiles, updateRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, patchStageDayLocal, deleteStageDayLocal }: {
   races: Race[]; raceStages: RaceStage[]
   addRaceWithFiles: (r: Omit<Race, 'id' | 'validated' | 'validationData'>, files: File[], fb?: File[], fr?: File[]) => Promise<void>
+  updateRaceWithFiles: (r: Race, files: File[], fb?: File[], fr?: File[]) => Promise<void>
   updateRace: (r: Race) => void; deleteRace: (id: string) => void
   markCompleted: (id: string) => void
   addRaceStage: (s: Omit<RaceStage, 'id'>, dayFiles: { date: string; file: File }[]) => Promise<void>
@@ -808,7 +847,7 @@ function RaceTab({ races, raceStages, addRaceWithFiles, updateRace, deleteRace, 
     files: File[], filesBike?: File[], filesRun?: File[],
   ) {
     if (editRace) {
-      updateRace({ ...editRace, ...r })
+      await updateRaceWithFiles({ ...editRace, ...r }, files, filesBike, filesRun)
     } else {
       await addRaceWithFiles(r, files, filesBike, filesRun)
     }
@@ -1580,7 +1619,7 @@ function AllTab({ races, eventTypes, events }: { races: Race[]; eventTypes: CalE
 // ════════════════════════════════════════════════
 export default function CalendarPage() {
   const { t } = useI18n()
-  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, patchStageDayLocal, deleteStageDayLocal, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
+  const { races, raceStages, eventTypes, events, loading, addRaceWithFiles, updateRaceWithFiles, updateRace, deleteRace, markCompleted, addRaceStage, updateRaceStage, deleteRaceStage, patchStageDayLocal, deleteStageDayLocal, addEventType, updateEventType, deleteEventType, addEvent, updateEvent, deleteEvent } = useCalendar()
   const { show, dismiss } = usePageOnboarding(CALENDAR_ONBOARDING.pageId, CALENDAR_ONBOARDING.version)
 
   const aiContext = {
@@ -1618,7 +1657,7 @@ export default function CalendarPage() {
       <SectionLayout
         header={header}
         sections={[
-          { id:'race',  label:t('calendar.tabRace'), subtitle:t('calendar.tabRaceSub'),  icon:Trophy,     content: loading ? loader : <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} deleteRaceStage={deleteRaceStage} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/> },
+          { id:'race',  label:t('calendar.tabRace'), subtitle:t('calendar.tabRaceSub'),  icon:Trophy,     content: loading ? loader : <RaceTab races={races} raceStages={raceStages} addRaceWithFiles={addRaceWithFiles} updateRaceWithFiles={updateRaceWithFiles} updateRace={updateRace} deleteRace={deleteRace} markCompleted={markCompleted} addRaceStage={addRaceStage} updateRaceStage={updateRaceStage} deleteRaceStage={deleteRaceStage} patchStageDayLocal={patchStageDayLocal} deleteStageDayLocal={deleteStageDayLocal}/> },
           { id:'pro',   label:t('calendar.tabPro'),    subtitle:t('calendar.tabProSub'),  icon:Briefcase,  content: loading ? loader : <CategoryTab category="pro"   eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
           { id:'perso', label:t('calendar.tabPerso'),  subtitle:t('calendar.tabPersoSub'),      icon:Heart,      content: loading ? loader : <CategoryTab category="perso" eventTypes={eventTypes} events={events} addEventType={addEventType} updateEventType={updateEventType} deleteEventType={deleteEventType} addEvent={addEvent} deleteEvent={deleteEvent}/> },
           { id:'all',   label:t('calendar.tabAll'),   subtitle:t('calendar.tabAllSub'),    icon:LayoutGrid, content: loading ? loader : <AllTab races={races} eventTypes={eventTypes} events={events}/> },

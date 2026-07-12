@@ -6,7 +6,7 @@
 // + grille 4 stats + section records.
 // ══════════════════════════════════════════════════════════════
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { formatRecordDuration, durationRank } from '@/lib/records/format'
 import { SmSnStat } from '@/components/metrics/SmSnStat'
 import { workoutTypeDefs } from '@/components/activity/WorkoutTypeBadges'
@@ -112,8 +112,11 @@ function TrophyIcon({ color, size = 12 }: { color: string; size?: number }) {
 // ── Main component ─────────────────────────────────────────────────────
 export function ActivityCard({ data, onClick }: Props) {
   const { t } = useI18n()
-  const [active, setActive] = useState(false)
   const [place, setPlace] = useState<string | null>(data.locationName ?? null)
+  // Détection tap vs swipe sur le carrousel (map + photos) : un swipe horizontal
+  // fait défiler les médias sans ouvrir le détail ; un simple tap ouvre l'activité.
+  const carStartX = useRef(0)
+  const carDragged = useRef(false)
 
   // Géocode le lieu de départ (Ville, Région) si pas déjà connu.
   useEffect(() => {
@@ -136,15 +139,17 @@ export function ActivityCard({ data, onClick }: Props) {
   return (
     <div
       onClick={onClick}
-      onTouchStart={() => setActive(true)}
-      onTouchEnd={() => setActive(false)}
-      onTouchCancel={() => setActive(false)}
+      // Feedback d'appui via mutation directe du style (pas de setState) : évite le
+      // re-render à chaque touchstart qui interrompait le scroll horizontal du
+      // carrousel et faisait « sauter » le premier tap (double-tap requis).
+      onTouchStart={e => { e.currentTarget.style.opacity = '0.6' }}
+      onTouchEnd={e => { e.currentTarget.style.opacity = '1' }}
+      onTouchCancel={e => { e.currentTarget.style.opacity = '1' }}
       className="thw-activity-card"
       style={{
         background:    'transparent',
         borderBottom:  '1px solid var(--border)',
         cursor:        'pointer',
-        opacity:       active ? 0.7 : 1,
         transition:    'opacity 0.15s',
         display:       'flex',
         flexDirection: 'column',
@@ -182,7 +187,13 @@ export function ActivityCard({ data, onClick }: Props) {
       {/* ── Carte + médias (défilement horizontal, façon Strava) ── */}
       {slides.length > 0 && (
         <div
-          onClick={e => e.stopPropagation()}
+          onTouchStart={e => { carStartX.current = e.touches[0].clientX; carDragged.current = false }}
+          onTouchMove={e => { if (Math.abs(e.touches[0].clientX - carStartX.current) > 8) carDragged.current = true }}
+          onClick={e => {
+            // Swipe horizontal (défilement des médias) → on bloque l'ouverture.
+            // Simple tap → on laisse remonter au parent qui ouvre l'activité.
+            if (carDragged.current) { e.stopPropagation(); carDragged.current = false }
+          }}
           style={{ display: 'flex', gap: 3, overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], marginBottom: 2 }}
           className="thw-card-carousel"
         >

@@ -20,6 +20,8 @@ const FreeModeScreen   = dynamic(() => import('@/components/record/FreeModeScree
 const RouteCreator     = dynamic(() => import('@/components/record/RouteCreator'),    { ssr: false })
 const YogaLauncher     = dynamic(() => import('@/components/record/YogaLauncher'),    { ssr: false })
 const YogaSession      = dynamic(() => import('@/components/record/YogaSession'),     { ssr: false })
+const BoxeLauncher     = dynamic(() => import('@/components/record/BoxeLauncher'),    { ssr: false })
+const BoxeScreen       = dynamic(() => import('@/components/record/BoxeScreen'),      { ssr: false })
 const ElevationChart   = dynamic(() => import('@/components/record/ElevationChart'),  { ssr: false })
 const SkiScreen        = dynamic(() => import('@/components/record/SkiScreen'),       { ssr: false })
 const PadelForm        = dynamic(() => import('@/components/record/PadelForm'),        { ssr: false })
@@ -59,6 +61,8 @@ export default function RecordPage() {
   const [activeRoute, setActiveRoute] = useState<ActiveRoute | null>(null)
   const [yogaLauncherOpen, setYogaLauncherOpen] = useState(false)
   const [yogaSessionOpen, setYogaSessionOpen] = useState(false)
+  const [boxeLauncherOpen, setBoxeLauncherOpen] = useState(false)
+  const [boxeConfig, setBoxeConfig] = useState<import('@/components/record/BoxeScreen').BoxeConfig | null>(null)
   const [yogaExercises, setYogaExercises] = useState<import('@/types/yoga').YogaSessionExercise[]>([])
   const [yogaTitle, setYogaTitle] = useState('')
 
@@ -132,6 +136,7 @@ export default function RecordPage() {
     else if (sport === 'ski')     setView('ski')
     else if (sport === 'strength' || sport === 'hyrox') openLauncher(sport === 'strength' ? 'gym' : 'hyrox')
     else if (sport === 'yoga')        setYogaLauncherOpen(true)
+    else if (sport === 'boxe')        setBoxeLauncherOpen(true)
     else if (sport === 'padel')       setView('padel')
     else if (sport === 'openwater')   setView('openwater')
     else if (sport === 'hometrainer') setView('hometrainer')
@@ -485,6 +490,22 @@ export default function RecordPage() {
           title={yogaTitle}
           isDark={isDark}
           onClose={() => setYogaSessionOpen(false)}
+        />
+      )}
+
+      {boxeLauncherOpen && (
+        <BoxeLauncher
+          open={boxeLauncherOpen}
+          onClose={() => setBoxeLauncherOpen(false)}
+          onStart={(config) => { setBoxeConfig(config); setBoxeLauncherOpen(false) }}
+        />
+      )}
+
+      {boxeConfig && (
+        <BoxeScreen
+          config={boxeConfig}
+          isDark={isDark}
+          onClose={() => setBoxeConfig(null)}
         />
       )}
 

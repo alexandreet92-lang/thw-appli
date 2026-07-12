@@ -19696,29 +19696,78 @@ export default function AIPanel({
   // chercher côté serveur (coach_runs) et on l'affiche. Cas ciblé et sûr :
   // on n'ajoute une réponse QUE s'il en manque visiblement une.
   const resumedConvRef = useRef<Set<string>>(new Set())
-  useEffect(() => {
-    if (!active || loading) return
-    const msgs = active.msgs
-    const last = msgs[msgs.length - 1]
-    if (!last || last.role !== 'user') return          // une réponse manque-t-elle ?
-    if (resumedConvRef.current.has(active.id)) return   // déjà tenté pour cette conv
-    resumedConvRef.current.add(active.id)
-    const convId = active.id
-    void (async () => {
+  // Vrai tant que le composant est monté : coupe les pollers en cours au démontage.
+  const pollAliveRef = useRef(true)
+  useEffect(() => { pollAliveRef.current = true; return () => { pollAliveRef.current = false } }, [])
+
+  // Ajoute une réponse terminée à une conversation (garde anti-doublon : ne le
+  // fait QUE si le dernier message est encore celui de l'utilisateur).
+  const appendResumedResponse = useCallback((convId: string, content: string) => {
+    setConvs(prev => prev.map(c => {
+      if (c.id !== convId) return c
+      const l = c.msgs[c.msgs.length - 1]
+      if (!l || l.role !== 'user') return c
+      return { ...c, msgs: [...c.msgs, { id: genId(), role: 'assistant' as const, content, ts: Date.now(), modelId: model }], updatedAt: Date.now() }
+    }))
+  }, [model])
+
+  // Interroge coach_runs jusqu'à ce que la génération (démarrée dans une session
+  // précédente, puis retrouvée après un reload) se termine, puis affiche la
+  // réponse et retire le spinner.
+  const pollRunningRun = useCallback((convId: string) => {
+    let attempts = 0
+    const MAX = 80  // ~4 min à 3 s d'intervalle (garde-fou)
+    const tick = async () => {
+      if (!pollAliveRef.current) return
+      attempts++
       try {
         const res = await fetch(`/api/coach-runs?conv_id=${encodeURIComponent(convId)}`)
-        if (!res.ok) return
-        const { run } = await res.json() as { run: { status: string; content: string } | null }
-        if (!run || run.status !== 'done' || !run.content?.trim()) return
-        setConvs(prev => prev.map(c => {
-          if (c.id !== convId) return c
-          const l = c.msgs[c.msgs.length - 1]
-          if (!l || l.role !== 'user') return c          // re-vérifie (évite tout doublon)
-          return { ...c, msgs: [...c.msgs, { id: genId(), role: 'assistant' as const, content: run.content, ts: Date.now(), modelId: model }], updatedAt: Date.now() }
-        }))
-      } catch { /* silencieux */ }
-    })()
-  }, [active, loading, model])
+        if (res.ok) {
+          const { run } = await res.json() as { run: { status: string; content: string } | null }
+          if (run && run.status === 'done') {
+            if (run.content?.trim()) appendResumedResponse(convId, run.content)
+            endGen(convId, true)
+            return
+          }
+          if (run && run.status === 'error') { endGen(convId); return }
+        }
+      } catch { /* réessaie au prochain tick */ }
+      if (attempts >= MAX) { endGen(convId); return }
+      setTimeout(() => void tick(), 3000)
+    }
+    void tick()
+  }, [appendResumedResponse, endGen])
+
+  // Scan au chargement (et après fusion multi-appareils) : pour chaque conv dont
+  // le DERNIER message est de l'utilisateur (réponse manquante), on interroge
+  // coach_runs. Réponse « done » arrivée app fermée → on l'affiche ; génération
+  // encore « running » (reprise après reload) → spinner + poll jusqu'à la fin.
+  useEffect(() => {
+    if (!mounted) return
+    for (const c of convs) {
+      if (generatingConvs.has(c.id)) continue        // déjà suivie cette session
+      if (resumedConvRef.current.has(c.id)) continue // déjà tentée
+      const last = c.msgs[c.msgs.length - 1]
+      if (!last || last.role !== 'user') continue    // réponse présente → rien à faire
+      resumedConvRef.current.add(c.id)
+      const convId = c.id
+      void (async () => {
+        try {
+          const res = await fetch(`/api/coach-runs?conv_id=${encodeURIComponent(convId)}`)
+          if (!res.ok) return
+          const { run } = await res.json() as { run: { status: string; content: string } | null }
+          if (!run) return
+          if (run.status === 'done') {
+            if (run.content?.trim()) appendResumedResponse(convId, run.content)
+          } else if (run.status === 'running') {
+            startGen(convId)          // ré-affiche le spinner « réflexion »
+            pollRunningRun(convId)    // reprend jusqu'à la fin
+          }
+        } catch { /* silencieux */ }
+      })()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convs, mounted])
 
   // ── Effects ────────────────────────────────────────────────
 

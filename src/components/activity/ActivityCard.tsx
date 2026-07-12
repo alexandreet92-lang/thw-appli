@@ -187,6 +187,7 @@ export function ActivityCard({ data, onClick }: Props) {
       {/* ── Carte + médias (défilement horizontal, façon Strava) ── */}
       {slides.length > 0 && (
         <div
+          data-hscroll
           onTouchStart={e => { carStartX.current = e.touches[0].clientX; carDragged.current = false }}
           onTouchMove={e => { if (Math.abs(e.touches[0].clientX - carStartX.current) > 8) carDragged.current = true }}
           onClick={e => {

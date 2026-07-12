@@ -57,10 +57,32 @@ export function SwipeDeck({ index, count, onIndexChange, renderPanel }: Props) {
     }, 80)
   }
 
+  // Scroll horizontal imbriqué : quand le geste démarre sur un carrousel interne
+  // (marqué [data-hscroll], ex. la bande carte+photos d'une ActivityCard), on
+  // désactive momentanément le pan horizontal du deck (overflow-x hidden) pour
+  // que SEUL le carrousel défile. Sinon le pager d'onglets « vole » le geste et
+  // l'utilisateur ne peut jamais faire défiler jusqu'à la photo. Restauré au relâché.
+  const innerLock = useRef(false)
+  const onTouchStartCapture = (e: React.TouchEvent) => {
+    const t = e.target as HTMLElement | null
+    if (t?.closest?.('[data-hscroll]') && ref.current) {
+      innerLock.current = true
+      ref.current.style.overflowX = 'hidden'
+    }
+  }
+  const releaseLock = () => {
+    if (!innerLock.current) return
+    innerLock.current = false
+    if (ref.current) ref.current.style.overflowX = 'auto'
+  }
+
   return (
     <div
       ref={ref}
       onScroll={onScroll}
+      onTouchStartCapture={onTouchStartCapture}
+      onTouchEnd={releaseLock}
+      onTouchCancel={releaseLock}
       className="swipe-deck"
       style={{
         // Pas de hauteur fixe ni de clip vertical : le panneau actif (non plafonné)

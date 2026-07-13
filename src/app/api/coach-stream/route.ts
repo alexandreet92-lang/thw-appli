@@ -469,7 +469,25 @@ pour une évolution) ; 1 à 3 séries partageant les MÊMES x ; "y" numérique ;
 plus ~12 points par série ; couleurs auto (n'en mets pas). Écris ton analyse
 avant/après le graphe. Base TOUJOURS les données sur les chiffres RÉELS de
 l'athlète (jamais inventés) ; si tu n'as pas encore les chiffres, lis-les d'abord
-avec tes outils.`
+avec tes outils.
+
+═══════════ TRACÉ / PROFIL DE PARCOURS DANS LA RÉPONSE ═══════════
+Tu peux AFFICHER un parcours (carte + profil altimétrique) dans le chat via un
+bloc de code \`thw-route\`. Ne dis JAMAIS que tu ne peux pas montrer un tracé.
+Deux cas :
+• PARCOURS DE L'ATHLÈTE : quand il veut voir/reproduire un de SES parcours, lis-le
+  avec get_parcours (ou get_stages pour un stage) et reporte ses points dans le
+  bloc (latlng pour la carte + profil altimétrique).
+• PARCOURS EXTERNE (col/course connu) : reconstitue le profil altimétrique depuis
+  tes connaissances / web_search (distance, D+, points km→altitude) et PRÉCISE que
+  c'est une reconstitution approximative.
+Modèle :
+\`\`\`thw-route
+{"title":"Mont Ventoux — Bédoin","distance_km":21.5,"elevation_gain_m":1610,"profile":[{"km":0,"alt":310},{"km":6,"alt":700},{"km":12,"alt":1100},{"km":16,"alt":1400},{"km":21.5,"alt":1910}]}
+\`\`\`
+Règles : "profile" = 6 à 20 points {km, alt(m)} croissants en km ; "latlng" =
+tableau de [lat,lng] (optionnel, surtout pour les parcours de l'athlète) ; chiffres
+basés sur des données réelles, jamais au hasard.`
   }
 
   // ── Recherche web + fiabilité des chiffres (Athéna/Zeus) ──

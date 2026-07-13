@@ -766,6 +766,20 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
         }
         continue
       }
+      // Parcours IA : ```thw-route {json}``` → carte + profil altimétrique (SVG raw)
+      if (lang === 'thw-route' || lang === 'route') {
+        const spec = parseRouteSpec(codeLines.join('\n'))
+        if (spec) {
+          blocks.push(<RouteCard key={`route-${i}`} spec={spec} />)
+        } else {
+          blocks.push(
+            <div key={`route-ph-${i}`} style={{ marginLeft: 34, margin: '8px 0', fontSize: 13, color: 'var(--ai-dim)' }}>
+              🗺️ {t('aip.route.generating')}
+            </div>
+          )
+        }
+        continue
+      }
       blocks.push(<CodeBlock key={`code-${i}`} lang={lang} code={codeLines.join('\n')} />)
       continue
     }
@@ -5146,6 +5160,73 @@ function RouteMap({ latlng }: { latlng: [number, number][] }) {
         <circle cx={sx} cy={sy} r={4.5} fill="#22c55e" stroke="#fff" strokeWidth={1.4} />
         <circle cx={ex} cy={ey} r={4.5} fill="#ef4444" stroke="#fff" strokeWidth={1.4} />
       </svg>
+    </div>
+  )
+}
+
+// ── Bloc « thw-route » — le coach décrit un parcours (le tien ou un col du web) ──
+// Format : ```thw-route {"title","distance_km","elevation_gain_m","profile":[{"km","alt"}],"latlng":[[lat,lng]]}```
+type RouteSpec = {
+  title?: string
+  distance_km?: number
+  elevation_gain_m?: number
+  profile?: { km: number; alt: number }[]
+  latlng?: [number, number][]
+}
+function parseRouteSpec(raw: string): RouteSpec | null {
+  try {
+    const cleaned = raw.trim().replace(/^```(thw-route|route)?/, '').replace(/```$/, '').trim()
+    const o = JSON.parse(cleaned) as RouteSpec
+    const hasProfile = Array.isArray(o.profile) && o.profile.length >= 2
+    const hasLatlng = Array.isArray(o.latlng) && o.latlng.length >= 2
+    if (!hasProfile && !hasLatlng) return null
+    return o
+  } catch { return null }
+}
+
+// Profil altimétrique (distance → altitude) en SVG raw.
+function ElevationProfile({ profile }: { profile: { km: number; alt: number }[] }) {
+  const pts = profile.filter(p => Number.isFinite(p.km) && Number.isFinite(p.alt))
+  if (pts.length < 2) return null
+  const W = 320, H = 120, PADX = 6, PADT = 8, PADB = 16
+  const kms = pts.map(p => p.km), alts = pts.map(p => p.alt)
+  const minKm = Math.min(...kms), maxKm = Math.max(...kms)
+  const minAlt = Math.min(...alts), maxAlt = Math.max(...alts)
+  const spanKm = (maxKm - minKm) || 1, spanAlt = (maxAlt - minAlt) || 1
+  const x = (km: number) => PADX + ((km - minKm) / spanKm) * (W - PADX * 2)
+  const y = (alt: number) => PADT + (1 - (alt - minAlt) / spanAlt) * (H - PADT - PADB)
+  const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.km).toFixed(1)},${y(p.alt).toFixed(1)}`).join('')
+  const area = `${line}L${x(maxKm).toFixed(1)},${(H - PADB).toFixed(1)}L${x(minKm).toFixed(1)},${(H - PADB).toFixed(1)}Z`
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+      <defs>
+        <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--ai-accent)" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="var(--ai-accent)" stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#elevGrad)" stroke="none" />
+      <path d={line} fill="none" stroke="var(--ai-accent)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      <text x={PADX} y={H - 4} fontSize={9} fill="var(--ai-dim)" fontFamily="DM Mono, monospace">{Math.round(minAlt)}m</text>
+      <text x={W - PADX} y={H - 4} fontSize={9} fill="var(--ai-dim)" fontFamily="DM Mono, monospace" textAnchor="end">{maxKm.toFixed(1)}km · {Math.round(maxAlt)}m</text>
+    </svg>
+  )
+}
+
+function RouteCard({ spec }: { spec: RouteSpec }) {
+  const stats: string[] = []
+  if (spec.distance_km != null) stats.push(`${spec.distance_km} km`)
+  if (spec.elevation_gain_m != null) stats.push(`D+ ${Math.round(spec.elevation_gain_m)} m`)
+  return (
+    <div style={{ margin: '12px 0', marginLeft: 34, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+      <div style={{ padding: '10px 14px 6px' }}>
+        {spec.title && <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne, sans-serif' }}>{spec.title}</p>}
+        {stats.length > 0 && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--ai-mid)', fontFamily: 'DM Mono, monospace' }}>{stats.join(' · ')}</p>}
+      </div>
+      {spec.latlng && spec.latlng.length > 1 && <RouteMap latlng={spec.latlng} />}
+      {spec.profile && spec.profile.length > 1 && (
+        <div style={{ padding: '0 4px 6px' }}><ElevationProfile profile={spec.profile} /></div>
+      )}
     </div>
   )
 }

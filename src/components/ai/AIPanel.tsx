@@ -798,29 +798,31 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
         const headers = rows[0]
         const dataRows = rows.slice(1)
         blocks.push(
-          <div key={`table-${i}`} style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], margin: '10px 0', maxWidth: '100%' }}>
-            <table style={{ width: 'auto', minWidth: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'DM Sans,sans-serif', border: '1px solid #E5E7EB' }}>
-              <thead>
-                <tr style={{ background: '#F9FAFB' }}>
-                  {headers.map((h, hi) => (
-                    <th key={hi} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12, color: 'var(--ai-text)', border: '1px solid #E5E7EB', whiteSpace: 'nowrap' as const, wordBreak: 'normal' as const, overflowWrap: 'normal' as const }}>
-                      {parseBold(h)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {dataRows.map((row, ri) => (
-                  <tr key={ri}>
-                    {row.map((cell, ci) => (
-                      <td key={ci} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--ai-mid)', border: '1px solid #E5E7EB', wordBreak: 'normal' as const, overflowWrap: 'normal' as const, whiteSpace: ci === 0 ? ('nowrap' as const) : ('normal' as const), maxWidth: ci === 0 ? undefined : 280 }}>
-                        {parseBold(cell)}
-                      </td>
+          <div key={`table-${i}`} style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], margin: '12px 0', maxWidth: '100%' }}>
+            <div style={{ minWidth: '100%', width: 'fit-content', border: '1px solid var(--ai-border)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, fontFamily: 'DM Sans,sans-serif' }}>
+                <thead>
+                  <tr style={{ background: 'var(--ai-bg2)' }}>
+                    {headers.map((h, hi) => (
+                      <th key={hi} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 600, fontSize: 11.5, letterSpacing: '0.01em', color: 'var(--ai-text)', borderBottom: '1px solid var(--ai-border)', whiteSpace: 'nowrap' as const }}>
+                        {parseBold(h)}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {dataRows.map((row, ri) => (
+                    <tr key={ri} style={{ background: ri % 2 === 1 ? 'color-mix(in srgb, var(--ai-text) 2.5%, transparent)' : 'transparent' }}>
+                      {row.map((cell, ci) => (
+                        <td key={ci} style={{ padding: '10px 14px', fontSize: 12.5, lineHeight: 1.45, color: ci === 0 ? 'var(--ai-text)' : 'var(--ai-mid)', fontWeight: ci === 0 ? 500 : 400, borderBottom: ri < dataRows.length - 1 ? '1px solid var(--ai-border)' : 'none', wordBreak: 'normal' as const, overflowWrap: 'normal' as const, whiteSpace: ci === 0 ? ('nowrap' as const) : ('normal' as const), maxWidth: ci === 0 ? undefined : 280, verticalAlign: 'top' }}>
+                          {parseBold(cell)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )
       }

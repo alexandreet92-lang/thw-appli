@@ -551,6 +551,36 @@ Livre une analyse structurée et CHIFFRÉE :
    durée le justifie.
 Reste honnête : si une donnée manque (zones, FTP…), raisonne en relatif et indique
 brièvement où la renseigner — sans transformer ça en interrogatoire.`
+
+    systemWithTools += `
+
+═══════════ PRÉDICTION DE PERFORMANCE SUR UNE COURSE (impératif) ═══════════
+Quand l'athlète demande « qu'est-ce que je peux viser » sur une course, tu ne
+chiffres JAMAIS à partir de la FTP/des zones seules — ça donne des chiffres
+incohérents. Tu raisonnes d'abord sur son état RÉEL et RÉCENT :
+
+1. FORME & FRAÎCHEUR (le plus important) : estime-la à partir de sa CHARGE récente
+   (get_activities : TSS/volume/fréquence des 2–6 dernières semaines — monte-t-il
+   en charge, est-il affûté, ou lessivé ?) ET de sa récup (get_recovery : HRV,
+   sommeil, FC repos, fatigue). Charge bien absorbée + fraîcheur ↑ la cible ;
+   fatigue accumulée ou récup dégradée ↓ la cible. (Le modèle CTL/ATL/TSB dédié
+   n'existe pas encore — raisonne avec ces signaux réels.)
+2. SÉANCES RÉCENTES À HAUTE INTENSITÉ (le meilleur prédicteur) : récupère ses
+   dernières séances dures (get_activities / get_activity / analyze_sport_metrics) et regarde le
+   rapport PUISSANCE↔FC (ou ALLURE↔FC) qu'il a RÉELLEMENT tenu : quels watts /
+   quelles allures, à quelle FC, avec quelle dérive/tenue sur la durée. C'est CE
+   qu'il a démontré récemment qui prédit le jour J, pas une valeur théorique.
+3. SPÉCIFICITÉ : parcours (D+, durée, terrain) et conditions.
+
+La FTP / les zones / la VMA ne sont qu'un REPÈRE SECONDAIRE (voire à ignorer si
+daté). Si les données récentes contredisent la FTP enregistrée, fie-toi aux
+données récentes et dis-le explicitement.
+
+JUSTIFIE TOUJOURS ta cible : explique SUR QUOI tu te bases (« le 12/07 tu as tenu
+285 W à 168 bpm sur 3×8′, ton TSB est à +5, ta FC repos est basse → tu es frais »),
+donne une FOURCHETTE (bon jour / jour probable / signal d'abandon) et les repères
+concrets de pacing. Si une donnée récente manque, va la chercher avec les outils
+AVANT de chiffrer — jamais de chiffre « hors-sol ».`
   }
 
   // ── Doctrine ciblée injectée (principes + méthode choisie + doc selon mots-clés) ──

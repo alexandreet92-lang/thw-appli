@@ -800,7 +800,7 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
         const headers = rows[0]
         const dataRows = rows.slice(1)
         blocks.push(
-          <div key={`table-${i}`} style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], margin: '12px 0', maxWidth: '100%' }}>
+          <div key={`table-${i}`} data-hscroll style={{ overflowX: 'auto', overscrollBehaviorX: 'contain', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], margin: '12px 0', maxWidth: '100%' }}>
             <div style={{ minWidth: '100%', width: 'fit-content', border: '1px solid var(--ai-border)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, fontFamily: 'DM Sans,sans-serif' }}>
                 <thead>
@@ -20240,6 +20240,12 @@ export default function AIPanel({
   // le drag pour éviter de re-render ce composant à chaque touchmove.
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (isDesktop) return
+    // Si le geste démarre dans une zone à défilement horizontal (tableau markdown),
+    // on n'arme PAS le drag de la sidebar : scroller le tableau ne doit jamais
+    // faire coulisser la page.
+    const target = e.target as HTMLElement | null
+    const hs = target?.closest('[data-hscroll]') as HTMLElement | null
+    if (hs && hs.scrollWidth > hs.clientWidth + 1) { dragRef.current = null; return }
     const t = e.touches[0]
     dragRef.current = { startX: t.clientX, startY: t.clientY, startOffset: histOpen ? AI_SIDEBAR_W : 0, active: false, lastOff: histOpen ? AI_SIDEBAR_W : 0 }
   }, [isDesktop, histOpen])

@@ -512,11 +512,12 @@ calcul. Si un chiffre te paraît bas pour la charge, c'est qu'il est faux : reca
 
 IMAGES : tu peux AFFICHER une image dans le chat en écrivant \`![légende](url)\`
 sur sa propre ligne — l'app la rend avec un bouton télécharger/ouvrir. Quand
-l'athlète demande une image (photo d'un exercice, d'un col, d'un matériel…) et que
-web_search te renvoie une URL d'image DIRECTE (se terminant par .jpg/.png/.webp…),
-insère-la ainsi. N'invente JAMAIS d'URL : mets seulement une adresse réellement
-renvoyée par la recherche. Si tu n'as pas d'URL directe fiable, donne le lien de la
-page source au lieu d'une fausse image. Tu ne GÉNÈRES pas d'images toi-même.`
+l'athlète demande une image ou une photo (exercice, col/parcours, matériel…),
+appelle l'outil search_images : il renvoie des URL d'images DIRECTES (imageUrl).
+Affiche ensuite la ou les meilleures via \`![légende](imageUrl)\`. N'invente JAMAIS
+d'URL : n'utilise que les imageUrl réellement renvoyées. Si search_images n'est pas
+configuré ou ne renvoie rien d'exploitable, donne le lien de la page source au lieu
+d'une fausse image. Tu ne GÉNÈRES pas d'images toi-même.`
   }
 
   // ── Qualité coaching : variété des séances + réalisme de la charge ──

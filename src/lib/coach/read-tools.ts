@@ -352,6 +352,22 @@ export const readTools: Anthropic.Tool[] = [
       },
     },
   },
+  {
+    name: 'search_images',
+    description:
+      "Recherche des IMAGES sur le web (photos d'exercices, de matériel, de cols/parcours, illustrations…). " +
+      "Renvoie des résultats avec une URL d'image DIRECTE (imageUrl), la page source et une miniature. " +
+      "Utilise-le quand l'athlète demande une image/photo. Ensuite, AFFICHE la meilleure image en écrivant " +
+      "`![légende](imageUrl)` dans ta réponse (l'app la rend avec un bouton télécharger).",
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string',  description: 'Requête de recherche (ex: "gainage planche exercice", "profil Mont Ventoux").' },
+        count: { type: 'integer', description: "Nombre d'images à renvoyer (défaut 4, max 8)." },
+      },
+      required: ['query'],
+    },
+  },
 ]
 
 export const READ_TOOL_NAMES: ReadonlySet<string> = new Set(readTools.map(t => t.name))
@@ -380,6 +396,41 @@ function compactActivity(a: ActRow) {
     paceSecPerKm,
     cadence: a.avg_cadence,
     race: a.is_race ?? false,
+  }
+}
+
+// ── Recherche d'images web — fournisseur configurable par variables d'env ──
+// Priorité : SERPAPI_KEY (Google Images via SerpAPI) puis GOOGLE_CSE_KEY+GOOGLE_CSE_CX.
+// Renvoie une URL d'image DIRECTE (imageUrl) que le coach affiche via ![](imageUrl).
+type ImgResult = { title: string | null; imageUrl: string; sourceUrl: string | null; thumbnail: string | null }
+async function searchImagesWeb(query: string, count: number): Promise<Record<string, unknown>> {
+  const serp = process.env.SERPAPI_KEY
+  const gKey = process.env.GOOGLE_CSE_KEY
+  const gCx  = process.env.GOOGLE_CSE_CX
+  try {
+    if (serp) {
+      const u = `https://serpapi.com/search.json?engine=google_images&num=${count}&q=${encodeURIComponent(query)}&api_key=${serp}`
+      const r = await fetch(u)
+      if (!r.ok) return { error: `SerpAPI ${r.status}` }
+      const j = await r.json() as { images_results?: Array<{ title?: string; original?: string; link?: string; thumbnail?: string }> }
+      const results: ImgResult[] = (j.images_results ?? []).slice(0, count)
+        .filter(im => im.original)
+        .map(im => ({ title: im.title ?? null, imageUrl: im.original as string, sourceUrl: im.link ?? null, thumbnail: im.thumbnail ?? null }))
+      return { provider: 'serpapi', query, count: results.length, results }
+    }
+    if (gKey && gCx) {
+      const u = `https://www.googleapis.com/customsearch/v1?searchType=image&num=${count}&key=${gKey}&cx=${gCx}&q=${encodeURIComponent(query)}`
+      const r = await fetch(u)
+      if (!r.ok) return { error: `Google CSE ${r.status}` }
+      const j = await r.json() as { items?: Array<{ title?: string; link?: string; image?: { contextLink?: string; thumbnailLink?: string } }> }
+      const results: ImgResult[] = (j.items ?? []).slice(0, count)
+        .filter(it => it.link)
+        .map(it => ({ title: it.title ?? null, imageUrl: it.link as string, sourceUrl: it.image?.contextLink ?? null, thumbnail: it.image?.thumbnailLink ?? null }))
+      return { provider: 'google_cse', query, count: results.length, results }
+    }
+    return { error: 'not_configured', message: "Recherche d'images non configurée côté serveur (définir SERPAPI_KEY, ou GOOGLE_CSE_KEY + GOOGLE_CSE_CX)." }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur recherche d'images" }
   }
 }
 
@@ -1058,6 +1109,15 @@ export async function resolveReadTool(
           trendKg,
           points: points.slice(-40),
         })
+      }
+
+      // ── search_images (API externe de recherche d'images) ──────
+      case 'search_images': {
+        const query = String(input.query ?? '').trim()
+        if (!query) return JSON.stringify({ error: 'query manquante' })
+        const count = clamp(Number(input.count) || 4, 1, 8)
+        const res = await searchImagesWeb(query, count)
+        return JSON.stringify(res)
       }
 
       default:

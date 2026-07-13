@@ -4533,7 +4533,9 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
 
 // ── AnalyserEntrainementFlow ───────────────────────────────────
 
-type Streams = { heartrate?: number[]; velocity_smooth?: number[]; watts?: number[]; altitude?: number[]; cadence?: number[] }
+// NB : la sync Strava stocke la vitesse sous la clé `velocity` (et non
+// `velocity_smooth`). On accepte les deux pour ne rien perdre. `temp` = température.
+type Streams = { heartrate?: number[]; velocity_smooth?: number[]; velocity?: number[]; watts?: number[]; altitude?: number[]; cadence?: number[]; temp?: number[] }
 
 interface ActivityRow {
   id: string
@@ -4564,7 +4566,7 @@ function computeCardiacDrift(streams: Streams): number | null {
 function computeEfficiencyIndex(streams: Streams, sport: string): number | null {
   const hr = streams.heartrate
   const power = streams.watts
-  const velocity = streams.velocity_smooth
+  const velocity = streams.velocity_smooth ?? streams.velocity
   if (!hr || hr.length < 10) return null
   const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length
   const avgHr = avg(hr)
@@ -4760,10 +4762,23 @@ Activité B : ${compareAct.started_at.split('T')[0]} · ${fmtDuration(compareAct
 Présente un tableau markdown de comparaison complet puis donne un verdict sur quelle séance était la plus efficace et pourquoi.`
       }
 
+      // Résumés vitesse + température depuis les streams (reduce = sûr sur longs tableaux).
+      const vel = streams ? (streams.velocity_smooth ?? streams.velocity) : null
+      const tmp = streams?.temp ?? null
+      const arrAvg = (a: number[]) => a.reduce((s, v) => s + v, 0) / a.length
+      const arrMax = (a: number[]) => a.reduce((m, v) => (v > m ? v : m), -Infinity)
+      const arrMin = (a: number[]) => a.reduce((m, v) => (v < m ? v : m), Infinity)
+      const speedLine = vel && vel.length
+        ? `\nVitesse : moy ${(arrAvg(vel) * 3.6).toFixed(1)} km/h · max ${(arrMax(vel) * 3.6).toFixed(1)} km/h`
+        : ''
+      const tempLine = tmp && tmp.length
+        ? `\nTempérature : ${Math.round(arrMin(tmp))}–${Math.round(arrMax(tmp))}°C (moy ${Math.round(arrAvg(tmp))}°C)`
+        : ''
+
       const streamsBlock = streams
         ? `\nANALYSE DES DONNÉES BRUTES (streams) :
 Drift cardiaque calculé : ${cardiacDrift ?? 'N/A'}% (norme : <5% en Z2, <3% en Z3+, >8% = dérive significative)
-Efficiency Index : ${ei ?? 'N/A'} (${similar.length} séances similaires disponibles pour comparaison)`
+Efficiency Index : ${ei ?? 'N/A'} (${similar.length} séances similaires disponibles pour comparaison)${speedLine}${tempLine}`
         : `\nNote : pas de données streams disponibles pour cette activité. Analyse basée sur métriques agrégées uniquement.`
 
       const recoveryBlock = recoveryData.length > 0
@@ -5046,9 +5061,11 @@ function StreamProfileChart({ streams, zones, sport }: {
     heartrate?: number[]
     watts?: number[]
     velocity_smooth?: number[]
+    velocity?: number[]
     altitude?: number[]
     distance?: number[]
     cadence?: number[]
+    temp?: number[]
   }
   zones: { z1_max?: number; z2_max?: number; z3_max?: number; z4_max?: number } | null
   sport: string
@@ -5086,9 +5103,10 @@ function StreamProfileChart({ streams, zones, sport }: {
   // ── Raw streams ──────────────────────────────────────────────
   const hr       = streams.heartrate       ?? []
   const watts    = streams.watts           ?? []
-  const velocity = streams.velocity_smooth ?? []
+  const velocity = streams.velocity_smooth ?? streams.velocity ?? []
   const altitude = streams.altitude        ?? []
   const cadence  = streams.cadence         ?? []
+  const temp     = streams.temp            ?? []
   const time     = streams.time            ?? []
   const distance = streams.distance        ?? []
   const N = Math.max(hr.length, watts.length, velocity.length, altitude.length)
@@ -5103,6 +5121,7 @@ function StreamProfileChart({ streams, zones, sport }: {
   const velocityS = velocity.length >= 10 ? smooth(velocity) : null
   const altS      = altitude.length >= 10 ? altitude         : null   // no smooth for fill
   const cadenceS  = cadence.length  >= 10 ? smooth(cadence)  : null
+  const tempS     = temp.length     >= 10 ? smooth(temp)     : null
   const paceS     = velocityS ? velocityS.map(v => v > 0 ? 1000 / v : 0) : null
 
   type TrackDef = {
@@ -5113,8 +5132,10 @@ function StreamProfileChart({ streams, zones, sport }: {
     altS     ? { label: 'Altitude', displayLabel: t('aip.stream.altitude'), data: altS,    color: 'rgba(140,140,140,0.7)', H: 56,                  formatY: (v: number) => `${Math.round(v)}m`    } : null,
     hrS      ? { label: 'FC',       displayLabel: t('aip.stream.hr'),       data: hrS,     color: '#ef4444',               H: 72, isHr: true,      formatY: (v: number) => `${Math.round(v)}bpm`  } : null,
     isBike && wattsS  ? { label: 'Puissance', displayLabel: t('aip.stream.power'), data: wattsS,   color: '#5b6fff', H: 72,                     formatY: (v: number) => `${Math.round(v)}W`    } : null,
+    isBike && velocityS ? { label: 'Vitesse', displayLabel: t('aip.stream.speed'), data: velocityS.map(v => v * 3.6), color: '#22c55e', H: 56,   formatY: (v: number) => `${Math.round(v)}km/h` } : null,
     isRun  && paceS   ? { label: 'Allure',    displayLabel: t('aip.stream.pace'),  data: paceS,    color: '#f97316', H: 72, invertY: true,      formatY: (v: number) => fmtPaceFromSKm(v)      } : null,
     cadenceS ? { label: 'Cadence',  displayLabel: t('aip.stream.cadence'),  data: cadenceS, color: '#8b5cf6',              H: 48,                  formatY: (v: number) => `${Math.round(v)}rpm`  } : null,
+    tempS    ? { label: 'Température', displayLabel: t('aip.stream.temp'),   data: tempS,    color: '#f59e0b',              H: 44,                  formatY: (v: number) => `${Math.round(v)}°`     } : null,
   ] as (TrackDef | null)[]).filter((tr): tr is TrackDef => tr !== null)
 
   // Annotations via useMemo — deps are actual prop arrays, stable references

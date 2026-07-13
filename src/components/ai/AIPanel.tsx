@@ -19,6 +19,7 @@ import { CheckCircle2, XCircle, ChevronDown, ChevronRight, ArrowLeft, Zap, Globe
 import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { haptic } from '@/lib/ui/haptic'
+import { emitNotification } from '@/lib/notifications/emit'
 import { VoiceOverlay } from './VoiceOverlay'
 import { VoiceConversation } from './VoiceConversation'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
@@ -8306,6 +8307,7 @@ function TrainingPlanFlow({
           .limit(1)
           .maybeSingle()
         planId = planRow?.id as string | undefined
+        emitNotification({ key: 'entrainement.nouveau_plan', title: 'Nouveau plan prêt', body: `${planName} a été ajouté à ton planning.`, url: '/planning', dedupKey: planId ? `plan-${planId}` : undefined, once: true })
       }
 
       // 3. Construire la liste des séances à insérer

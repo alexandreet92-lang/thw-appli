@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { emitNotification } from '@/lib/notifications/emit'
 
 export type AIStatus = 'idle' | 'loading' | 'streaming' | 'done' | 'error'
 
@@ -42,6 +43,7 @@ export function useAIAnalysis() {
         setText(prev => prev + decoder.decode(value, { stream: true }))
       }
       setStatus('done')
+      emitNotification({ key: 'coach.analyse_terminee', title: 'Analyse terminée', body: 'Ton analyse est prête à consulter.', url: '/' })
     } catch {
       setStatus('error')
     }

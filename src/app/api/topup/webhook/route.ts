@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe/config'
+import { notifyUser } from '@/lib/notifications/dispatch'
 import type Stripe from 'stripe'
 
 export const dynamic = 'force-dynamic'
@@ -57,6 +58,15 @@ export async function POST(req: Request) {
         .update({ used_at: new Date().toISOString() })
         .eq('user_id', userId)
         .is('used_at', null)
+
+      // Notification : pack de tokens crédité.
+      void notifyUser(userId, 'tokens.pack_credite', {
+        title: 'Tokens ajoutés ✅',
+        body: `${tokensAmount.toLocaleString('fr-FR')} tokens ont été crédités sur ton compte.`,
+        url: '/settings/subscription',
+        dedupKey: `pack-${purchaseId}`,
+        once: true,
+      })
     }
   }
 

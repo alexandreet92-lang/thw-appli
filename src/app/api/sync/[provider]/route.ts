@@ -17,6 +17,7 @@ import {
   syncPolarNightlyRecharge,
 } from '@/lib/sync/polar'
 import { callPolarV4, polarDateRange } from '@/lib/polar'
+import { notifyUser } from '@/lib/notifications/dispatch'
 
 export async function POST(
   req: NextRequest,
@@ -119,6 +120,15 @@ export async function POST(
             .eq('id', log.id)
         }
 
+        if (count > 0) {
+          void notifyUser(userId, 'connexions.activite_synchro', {
+            title: 'Nouvelle activité importée',
+            body: `${count} nouvelle${count > 1 ? 's' : ''} activité${count > 1 ? 's' : ''} importée${count > 1 ? 's' : ''} depuis Polar.`,
+            url: '/data',
+            dedupKey: `sync-polar-${new Date().toISOString().slice(0, 10)}`,
+          })
+        }
+
         return NextResponse.json({
           success:  true,
           synced:   count,
@@ -149,6 +159,15 @@ export async function POST(
         .eq('id', log.id)
     }
 
+    if (count > 0) {
+      void notifyUser(userId, 'connexions.activite_synchro', {
+        title: 'Nouvelle activité importée',
+        body: `${count} nouvelle${count > 1 ? 's' : ''} activité${count > 1 ? 's' : ''} importée${count > 1 ? 's' : ''} depuis ${provider}.`,
+        url: '/data',
+        dedupKey: `sync-${provider}-${new Date().toISOString().slice(0, 10)}`,
+      })
+    }
+
     return NextResponse.json({ success: true, synced: count })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -157,6 +176,12 @@ export async function POST(
         .update({ status: 'error', error_message: msg, completed_at: new Date().toISOString() })
         .eq('id', log.id)
     }
+    void notifyUser(userId, 'connexions.echec_sync', {
+      title: 'Échec de synchronisation',
+      body: `La synchronisation ${provider} a échoué. Réessaie depuis tes connexions.`,
+      url: '/connections',
+      dedupKey: `syncfail-${provider}-${new Date().toISOString().slice(0, 10)}`,
+    })
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

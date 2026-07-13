@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe, getTierFromPriceId } from '@/lib/stripe/config'
 import { createServiceClient } from '@/lib/supabase/server'
+import { notifyUser } from '@/lib/notifications/dispatch'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -171,6 +172,14 @@ export async function POST(req: NextRequest) {
         await sb.from('user_subscriptions').update({
           status: 'past_due',
         }).eq('user_id', subRow.user_id)
+
+        void notifyUser(subRow.user_id, 'tokens.paiement_echoue', {
+          title: 'Paiement échoué',
+          body: 'Ton dernier paiement n’a pas abouti. Mets à jour ton moyen de paiement pour garder ton accès.',
+          url: '/settings/subscription',
+          dedupKey: `payfail-${invoice.id}`,
+          once: true,
+        })
 
         console.log(`[stripe/webhook] invoice.payment_failed → user ${subRow.user_id} → past_due`)
         break

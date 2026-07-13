@@ -6,6 +6,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { notifyUser } from '@/lib/notifications/dispatch'
 
 // d = durée en secondes ; label = distance_label DB ; display = label UI
 export const BIKE_RECORD_DURS: { d: number; label: string; display: string }[] = [
@@ -214,6 +215,19 @@ export async function processBikeActivityRecords(
         processed: false,
         reason:    `insert_failed: ${insErr.message}`,
       }
+    }
+
+    // Notification : nouveau record all-time détecté (le plus valorisant).
+    if (allTimeBeaten.length > 0) {
+      const best = allTimeBeaten[0]
+      const extra = allTimeBeaten.length > 1 ? ` (+${allTimeBeaten.length - 1} autre${allTimeBeaten.length > 2 ? 's' : ''})` : ''
+      void notifyUser(userId, 'performance.progression', {
+        title: 'Nouveau record 💥',
+        body: `${best.display} à ${best.watts} W — nouveau record all-time${extra} !`,
+        url: '/progression',
+        dedupKey: `pr-${activityId}`,
+        once: true,
+      })
     }
   }
 

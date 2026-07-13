@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { emitNotification } from '@/lib/notifications/emit'
 
 export type MealKey = 'petit_dejeuner' | 'collation_matin' | 'dejeuner' | 'collation_apres_midi' | 'diner' | 'collation_soir'
 export type MealTiming = 'pre_training' | 'post_training' | 'rest' | 'morning' | 'evening'
@@ -146,6 +147,7 @@ export function useNutrition() {
     if (!user) return
     await supabase.from('nutrition_plans').update({ actif: false }).eq('user_id', user.id)
     await supabase.from('nutrition_plans').insert({ user_id: user.id, type, plan_data: planData, actif: true })
+    emitNotification({ key: 'nutrition.plan_nutrition', title: 'Plan nutritionnel prêt', body: 'Ton nouveau plan nutrition est disponible.', url: '/nutrition' })
     await load()
   }
 

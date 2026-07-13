@@ -7,6 +7,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { getUserTier, isCreatorAccount } from '@/lib/subscriptions/check-quota'
 import { getModelMultiplier } from './multipliers'
+import { notifyUser } from '@/lib/notifications/dispatch'
 
 export interface TokenLimits {
   monthly:     { used: number; limit: number; resets_at: string }
@@ -164,6 +165,27 @@ export async function recordTokenUsage(userId: string, rawTokens: number, meta: 
         .update({ bonus_tokens: Math.max(0, limits.bonus_tokens - fromBonus), updated_at: new Date().toISOString() })
         .eq('user_id', userId)
     }
+
+    // ── Seuils de quota mensuel → notification (une fois par mois) ──
+    // On détecte le FRANCHISSEMENT d'un seuil (80 / 95 / 100 %) grâce à
+    // l'usage AVANT (limits.monthly.used) et APRÈS cette consommation.
+    try {
+      const limit = limits.monthly.limit
+      if (limit > 0) {
+        const prevUsed = limits.monthly.used
+        const newUsed  = prevUsed + Math.min(weighted, remainingPlan)
+        const prev = prevUsed / limit
+        const next = newUsed / limit
+        const period = new Date().toISOString().slice(0, 7)   // YYYY-MM
+        if (prev < 1 && next >= 1) {
+          void notifyUser(userId, 'tokens.quota_epuise', { title: 'Quota épuisé', body: 'Tu as utilisé tout ton quota mensuel. Achète des tokens ou attends le reset.', url: '/settings/subscription', dedupKey: `quota-epuise-${period}`, once: true })
+        } else if (prev < 0.95 && next >= 0.95) {
+          void notifyUser(userId, 'tokens.quota_95', { title: 'Quota à 95%', body: 'Ta limite mensuelle est presque atteinte.', url: '/settings/subscription', dedupKey: `quota-95-${period}`, once: true })
+        } else if (prev < 0.8 && next >= 0.8) {
+          void notifyUser(userId, 'tokens.quota_80', { title: 'Quota à 80%', body: 'Tu approches de ta limite mensuelle.', url: '/settings/subscription', dedupKey: `quota-80-${period}`, once: true })
+        }
+      }
+    } catch { /* best-effort */ }
   } catch (e) {
     console.error('[recordTokenUsage] error:', e)
   }

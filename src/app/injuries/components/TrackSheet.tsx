@@ -3,25 +3,70 @@
 // les logs), impact, rééducation (exos cochables), journal, actions. Tokens uniquement.
 import { useState } from 'react'
 import { Sheet, primaryBtn } from './Sheet'
+import { AnimatedBar } from '@/components/ui/AnimatedBar'
 import { PHASES, type Injury, type InjuryLog } from '../types'
+import { returnProgress } from '../lib'
 import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const sec: React.CSSProperties = { fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--space-2)' }
 
+const C_REST = 'var(--text-mid)'      // douleur au repos
+const C_EFFORT = 'var(--charge-hard)'  // douleur à l'effort (plus critique)
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+      <span style={{ width: 9, height: 3, borderRadius: 2, background: color, display: 'inline-block' }} />
+      <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-mid)' }}>{label}</span>
+    </span>
+  )
+}
+
 function Curve({ logs }: { logs: InjuryLog[] }) {
   const { t } = useI18n()
-  const pts = logs.filter(l => l.intensity_rest != null || l.intensity_effort != null)
-  if (pts.length < 2) return <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{t('injuries.curveNotEnough')}</p>
-  const W = 300, H = 90, p = 8, n = pts.length
-  const x = (i: number) => p + (i / (n - 1)) * (W - 2 * p)
-  const y = (v: number) => H - p - (v / 10) * (H - 2 * p)
-  const path = (key: 'intensity_rest' | 'intensity_effort') => pts.map((l, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(l[key] ?? 0).toFixed(1)}`).join(' ')
+  const pts = logs
+    .filter(l => l.intensity_rest != null || l.intensity_effort != null)
+    .slice().sort((a, b) => a.log_date.localeCompare(b.log_date))
+  if (pts.length < 1) return <p style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{t('injuries.curveNotEnough')}</p>
+  const W = 300, H = 118, pl = 20, pr = 8, pt = 8, pb = 20, n = pts.length
+  const x = (i: number) => pl + (n === 1 ? (W - pl - pr) / 2 : (i / (n - 1)) * (W - pl - pr))
+  const y = (v: number) => pt + (1 - v / 10) * (H - pt - pb)
+  const line = (key: 'intensity_rest' | 'intensity_effort') =>
+    pts.map((l, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(l[key] ?? 0).toFixed(1)}`).join(' ')
+  const areaEffort = `M${x(0).toFixed(1)},${(H - pb).toFixed(1)} ` +
+    pts.map((l, i) => `L${x(i).toFixed(1)},${y(l.intensity_effort ?? 0).toFixed(1)}`).join(' ') +
+    ` L${x(n - 1).toFixed(1)},${(H - pb).toFixed(1)} Z`
+  const fmtDay = (d: string) => { const p2 = d.slice(5); return `${p2.slice(3)}/${p2.slice(0, 2)}` }
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-      <path d={path('intensity_rest')} fill="none" stroke="var(--text-mid)" strokeWidth={2} strokeLinejoin="round" />
-      <path d={path('intensity_effort')} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinejoin="round" />
-    </svg>
+    <div>
+      <div style={{ display: 'flex', gap: 14, marginBottom: 6 }}>
+        <LegendDot color={C_EFFORT} label="À l'effort" />
+        <LegendDot color={C_REST} label="Au repos" />
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+        {/* grille 0-5-10 */}
+        {[0, 5, 10].map(v => (
+          <g key={v}>
+            <line x1={pl} y1={y(v)} x2={W - pr} y2={y(v)} stroke="var(--border)" strokeWidth={1} opacity={0.6} />
+            <text x={pl - 4} y={y(v) + 3} fontFamily={FB} fontSize={8} fill="var(--text-dim)" textAnchor="end">{v}</text>
+          </g>
+        ))}
+        {n > 1 && <path d={areaEffort} fill={C_EFFORT} opacity={0.1} />}
+        {n > 1 && <path d={line('intensity_rest')} fill="none" stroke={C_REST} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />}
+        {n > 1 && <path d={line('intensity_effort')} fill="none" stroke={C_EFFORT} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />}
+        {pts.map((l, i) => (
+          <g key={l.id}>
+            {l.intensity_rest != null && <circle cx={x(i)} cy={y(l.intensity_rest)} r={2.5} fill={C_REST} />}
+            {l.intensity_effort != null && <circle cx={x(i)} cy={y(l.intensity_effort)} r={2.5} fill={C_EFFORT} />}
+          </g>
+        ))}
+        {/* dates première/dernière */}
+        <text x={pl} y={H - 6} fontFamily={FB} fontSize={8} fill="var(--text-dim)" textAnchor="start">{fmtDay(pts[0].log_date)}</text>
+        {n > 1 && <text x={W - pr} y={H - 6} fontFamily={FB} fontSize={8} fill="var(--text-dim)" textAnchor="end">{fmtDay(pts[n - 1].log_date)}</text>}
+      </svg>
+    </div>
   )
 }
 
@@ -51,6 +96,19 @@ export function TrackSheet({ injury, logs, onClose, onUpdate, onAddLog, onResolv
               </button>
             ))}
           </div>
+          {(() => {
+            const ret = returnProgress(injury)
+            if (!ret) return null
+            return (
+              <div style={{ marginTop: 'var(--space-3)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>Retour au sport</span>
+                  <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, color: ret.overdue ? 'var(--charge-hard)' : 'var(--primary)' }}>{ret.overdue ? `dépassé de ${ret.daysLeft} j` : `dans ${ret.daysLeft} j`}</span>
+                </div>
+                <AnimatedBar pct={ret.pct * 100} color={ret.overdue ? 'var(--charge-hard)' : 'var(--primary)'} height={6} />
+              </div>
+            )
+          })()}
         </div>
 
         <div><p style={sec}>{t('injuries.painCurve')}</p><Curve logs={mine} /></div>

@@ -2,19 +2,25 @@
 // Onglet Aperçu : 3 stats (disponibilité, risque [indisponible V1], dispo 12 mois),
 // liste « En cours », check-in du jour. Sévérité en touche (filet/point/tag).
 import { useState } from 'react'
+import Link from 'next/link'
 import { AnimatedBar } from '@/components/ui/AnimatedBar'
-import { SEV, type Injury } from '../types'
-import { availability12mo, daysSince, phasePct } from '../lib'
+import { SEV, PHASES, type Injury, type Phase } from '../types'
+import { availability12mo, daysSince, phasePct, riskIndex, returnProgress, type RiskLevel } from '../lib'
 import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const lbl: React.CSSProperties = { fontFamily: FB, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: 0 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
+const phaseLabel = (p: Phase) => PHASES.find(x => x.id === p)?.label ?? p
+const RISK_COLOR: Record<RiskLevel, string> = {
+  none: 'var(--text)', low: 'var(--charge-low)', moderate: 'var(--charge-mid)', high: 'var(--charge-hard)',
+}
+
+function Stat({ label, value, sub, valueColor }: { label: string; value: string; sub: string; valueColor?: string }) {
   return (
     <div style={{ flex: 1, minWidth: 150 }}>
       <p style={lbl}>{label}</p>
-      <p className="tnum" style={{ fontFamily: FB, fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 'var(--space-1) 0 0' }}>{value}</p>
+      <p className="tnum" style={{ fontFamily: FB, fontSize: 22, fontWeight: 600, color: valueColor ?? 'var(--text)', margin: 'var(--space-1) 0 0' }}>{value}</p>
       <p style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-mid)', margin: 'var(--space-1) 0 0' }}>{sub}</p>
     </div>
   )
@@ -39,22 +45,31 @@ function Checkin({ inj, onLog }: { inj: Injury; onLog: (r: number, e: number) =>
 function Card({ inj, onOpen }: { inj: Injury; onOpen: () => void }) {
   const { t } = useI18n()
   const side = inj.side && inj.side !== 'central' ? ` · ${inj.side}` : ''
+  const sevC = SEV[inj.severity].varc
+  const ret = returnProgress(inj)
   return (
     <div className="card-interactive" onClick={onOpen} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)', display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
-      <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 999, background: SEV[inj.severity].varc, flexShrink: 0 }} />
+      <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 999, background: sevC, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
           <span style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{inj.zone}{side}</span>
-          <span style={{ fontFamily: FB, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: SEV[inj.severity].varc }}>{SEV[inj.severity].label}</span>
+          <span style={{ fontFamily: FB, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: sevC, background: `color-mix(in srgb, ${sevC} 14%, transparent)`, padding: '2px 7px', borderRadius: 999 }}>{SEV[inj.severity].label}</span>
           {inj.structure && <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>· {inj.structure}</span>}
         </div>
         <p className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', margin: 'var(--space-1) 0' }}>
-          {t('injuries.cardMetrics', { rest: inj.intensity_rest ?? '—', effort: inj.intensity_effort ?? '—', days: daysSince(inj.onset_date) })}{inj.activity ? ` · ${inj.activity}` : ''}
+          {t('injuries.cardMetrics', { rest: inj.intensity_rest ?? '—', effort: inj.intensity_effort ?? '—', days: daysSince(inj.onset_date) })}
+          {inj.activity && <> · <Link href="/activities" onClick={e => e.stopPropagation()} style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>{inj.activity}</Link></>}
         </p>
-        <AnimatedBar pct={phasePct(inj.phase) * 100} color="var(--text-mid)" height={5} />
-        <p style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>
-          {t('injuries.phaseLabel')} {inj.phase}{inj.return_estimate_date ? ` · ${t('injuries.returnEstimate')} ${inj.return_estimate_date}` : ''}
-        </p>
+        {/* Phase (barre colorée par sévérité) + libellé propre */}
+        <AnimatedBar pct={phasePct(inj.phase) * 100} color={sevC} height={6} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, margin: 'var(--space-1) 0 0' }}>
+          <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>{t('injuries.phaseLabel')} {phaseLabel(inj.phase)}</span>
+          {ret && (
+            <span style={{ fontFamily: FB, fontSize: 11, fontWeight: 600, color: ret.overdue ? 'var(--charge-hard)' : 'var(--primary)' }}>
+              {ret.overdue ? `Retour dépassé de ${ret.daysLeft} j` : `Retour dans ${ret.daysLeft} j`}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -68,12 +83,13 @@ export function OverviewTab({ injuries, onOpen, onCheckin }: {
   const hasBlessure = active.some(i => i.severity === 'blessure')
   const avoid = [...new Set(active.flatMap(i => i.impact.avoid))]
   const avail = availability12mo(injuries)
+  const risk = riskIndex(injuries)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' }}>
       <div style={{ display: 'flex', gap: 'var(--space-6)', flexWrap: 'wrap' }}>
         <Stat label={t('injuries.statAvailability')} value={hasBlessure ? t('injuries.availRestAdvised') : active.length ? t('injuries.availAdapted') : t('injuries.availAvailable')} sub={avoid.length ? t('injuries.availAvoid', { list: avoid.join(', ') }) : t('injuries.availNoLimit')} />
-        <Stat label={t('injuries.statRisk')} value="—" sub={t('injuries.statRiskSub')} />
+        <Stat label={t('injuries.statRisk')} value={risk.label} valueColor={RISK_COLOR[risk.level]} sub={risk.drivers.length ? risk.drivers.join(' · ') : (risk.level === 'none' ? 'Aucun épisode actif' : 'Basé sur tes épisodes actifs')} />
         <Stat label={t('injuries.statAvailability12mo')} value={`${avail}%`} sub={t('injuries.statAvailability12moSub')} />
       </div>
 

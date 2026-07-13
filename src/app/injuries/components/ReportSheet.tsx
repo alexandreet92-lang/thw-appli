@@ -12,6 +12,9 @@ const FB = 'var(--font-body)'
 const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--input-bg)', border: '1px solid var(--border-mid)', borderRadius: 'var(--r-sm)', padding: '9px 11px', fontFamily: FB, fontSize: 13, color: 'var(--text)', outline: 'none' }
 const labelStyle: React.CSSProperties = { fontFamily: FB, fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', display: 'block', marginBottom: 'var(--space-1)' }
 const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1)
+// Zones fréquentes — sélection rapide pour fiabiliser la saisie (évite les fautes
+// et les doublons type « Sous le pied ggauche »). Champ libre conservé au-dessous.
+const COMMON_ZONES = ['Cheville', 'Genou', 'Cuisse', 'Ischio-jambiers', 'Mollet', 'Tendon d’Achille', 'Pied', 'Hanche', 'Aine', 'Bas du dos', 'Haut du dos', 'Nuque', 'Épaule', 'Coude', 'Poignet']
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <div style={{ marginBottom: 'var(--space-4)' }}><label style={labelStyle}>{label}</label>{children}</div>
@@ -76,7 +79,17 @@ export function ReportSheet({ onClose, onSave }: { onClose: () => void; onSave: 
     <Sheet title={t('injuries.reportTitle')} onClose={onClose}
       footer={<button onClick={() => void save()} disabled={!zone.trim() || saving} style={{ ...primaryBtn, opacity: zone.trim() && !saving ? 1 : 0.5 }}>{saving ? t('injuries.saving') : t('injuries.saveReport')}</button>}>
       <Field label={t('injuries.fieldSeverity')}><Seg value={severity} onChange={v => setSeverity(v as Severity)} options={(['gene', 'douleur', 'blessure'] as Severity[]).map(v => ({ v, label: SEV[v].label, color: SEV[v].varc }))} /></Field>
-      <Field label={t('injuries.fieldZone')}><input value={zone} onChange={e => setZone(e.target.value)} placeholder={t('injuries.zonePlaceholder')} style={inputStyle} /></Field>
+      <Field label={t('injuries.fieldZone')}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 'var(--space-2)' }}>
+          {COMMON_ZONES.map(z => {
+            const a = zone.trim().toLowerCase() === z.toLowerCase()
+            return (
+              <button key={z} type="button" onClick={() => setZone(z)} style={{ padding: '6px 11px', borderRadius: 999, border: `1px solid ${a ? 'var(--primary)' : 'var(--border)'}`, background: a ? 'color-mix(in srgb, var(--primary) 14%, transparent)' : 'var(--bg-card2)', color: a ? 'var(--primary)' : 'var(--text-mid)', fontFamily: FB, fontSize: 12, fontWeight: a ? 600 : 500, cursor: 'pointer' }}>{z}</button>
+            )
+          })}
+        </div>
+        <input value={zone} onChange={e => setZone(e.target.value)} placeholder={t('injuries.zonePlaceholder')} style={inputStyle} />
+      </Field>
       <Field label={t('injuries.fieldSide')}><Seg value={side} onChange={v => setSide(v as Side)} options={SIDES.map(v => ({ v, label: cap(v) }))} /></Field>
       <Field label={t('injuries.fieldStructure')}><Seg value={structure} onChange={v => setStructure(v as Structure)} options={STRUCTURES.map(v => ({ v, label: cap(v) }))} /></Field>
       <Field label={t('injuries.fieldPrecision')}><input value={precision} onChange={e => setPrecision(e.target.value)} placeholder={t('injuries.precisionPlaceholder')} style={inputStyle} /></Field>

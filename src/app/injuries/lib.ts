@@ -42,6 +42,41 @@ export function availability12mo(inj: Injury[]): number {
   return Math.round((1 - injured.size / 365) * 100)
 }
 
+// Indice de risque — dérivé UNIQUEMENT de données réelles (sévérité des épisodes
+// actifs, évolution, récidive, douleur à l'effort). Aucune charge inventée : le
+// module charge×blessure viendra avec le hook de charge. Score → niveau.
+export type RiskLevel = 'none' | 'low' | 'moderate' | 'high'
+export interface Risk { level: RiskLevel; score: number; label: string; drivers: string[] }
+const SEV_WEIGHT: Record<Injury['severity'], number> = { gene: 1, douleur: 2, blessure: 3 }
+export function riskIndex(all: Injury[]): Risk {
+  const active = all.filter(i => i.status === 'active')
+  if (!active.length) return { level: 'none', score: 0, label: 'Aucun', drivers: [] }
+  let score = 0
+  const drivers: string[] = []
+  for (const i of active) {
+    score += SEV_WEIGHT[i.severity]
+    if (i.evolution === 'aggrave') { score += 2; drivers.push(`${i.zone} s'aggrave`) }
+    if (isRecidive(i, all)) { score += 1; drivers.push(`Récidive ${i.zone}`) }
+    if ((i.intensity_effort ?? 0) >= 7) { score += 1 }
+  }
+  if (active.length >= 2) { score += 1; drivers.push(`${active.length} épisodes actifs`) }
+  const level: RiskLevel = score >= 7 ? 'high' : score >= 4 ? 'moderate' : 'low'
+  const label = level === 'high' ? 'Élevé' : level === 'moderate' ? 'Modéré' : 'Faible'
+  return { level, score, label, drivers: [...new Set(drivers)].slice(0, 3) }
+}
+
+// Progression vers le retour au sport (return-to-play) : % du chemin onset→retour
+// estimé et jours restants. null si pas d'estimation.
+export interface ReturnProgress { pct: number; daysLeft: number; overdue: boolean }
+export function returnProgress(inj: Injury): ReturnProgress | null {
+  if (!inj.return_estimate_date || inj.status === 'resolved') return null
+  const start = t(inj.onset_date), end = t(inj.return_estimate_date), now = Date.now()
+  if (end <= start) return null
+  const pct = Math.max(0, Math.min(1, (now - start) / (end - start)))
+  const daysLeft = Math.ceil((end - now) / DAY)
+  return { pct, daysLeft: Math.abs(daysLeft), overdue: daysLeft < 0 }
+}
+
 export interface Stats12 { count: number; avgDuration: number | null; recidiveRate: number | null; avgReturn: number | null }
 export function stats12mo(inj: Injury[]): Stats12 {
   const start = Date.now() - 365 * DAY

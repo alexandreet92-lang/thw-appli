@@ -17,7 +17,7 @@ import { triggerRecordsProcessing }    from '@/lib/records/triggerRecordsProcess
 import { getValidToken }       from '@/lib/oauth/tokens'
 
 const STRAVA_API  = 'https://www.strava.com/api/v3'
-const STREAM_KEYS = 'time,distance,altitude,heartrate,velocity_smooth,watts,cadence,temp'
+const STREAM_KEYS = 'time,distance,altitude,heartrate,velocity_smooth,watts,cadence,temp,latlng'
 
 // ── Types ─────────────────────────────────────────────────────────
 interface StravaActivity {
@@ -88,7 +88,7 @@ async function fetchPage(
 async function fetchStreams(
   stravaId: number,
   token: string,
-): Promise<Record<string, number[]>> {
+): Promise<Record<string, number[] | number[][]>> {
   try {
     const res = await fetch(
       `${STRAVA_API}/activities/${stravaId}/streams?keys=${STREAM_KEYS}&key_by_type=true`,
@@ -96,15 +96,17 @@ async function fetchStreams(
     )
     if (!res.ok) return {}
     const data = await res.json() as Record<string, StravaStream>
-    const streams: Record<string, number[]> = {}
-    if (data.time)             streams.time             = data.time.data
-    if (data.heartrate)        streams.heartrate        = data.heartrate.data
-    if (data.velocity_smooth)  streams.velocity         = data.velocity_smooth.data
-    if (data.altitude)         streams.altitude         = data.altitude.data
-    if (data.cadence)          streams.cadence          = data.cadence.data
-    if (data.watts)            streams.watts            = data.watts.data
-    if (data.distance)         streams.distance         = data.distance.data
-    if (data.temp)             streams.temp             = data.temp.data
+    const streams: Record<string, number[] | number[][]> = {}
+    if (data.time)             streams.time             = data.time.data as number[]
+    if (data.heartrate)        streams.heartrate        = data.heartrate.data as number[]
+    if (data.velocity_smooth)  streams.velocity         = data.velocity_smooth.data as number[]
+    if (data.altitude)         streams.altitude         = data.altitude.data as number[]
+    if (data.cadence)          streams.cadence          = data.cadence.data as number[]
+    if (data.watts)            streams.watts            = data.watts.data as number[]
+    if (data.distance)         streams.distance         = data.distance.data as number[]
+    if (data.temp)             streams.temp             = data.temp.data as number[]
+    // latlng : tableau de paires [lat, lng] — pour tracer le parcours sur une carte SVG.
+    if (data.latlng)           streams.latlng           = data.latlng.data as unknown as number[][]
     return streams
   } catch {
     return {}
@@ -306,8 +308,9 @@ export async function syncMissingStreams(userId: string): Promise<number> {
 // ── Backfill stream temp sur activités existantes ─────────────────
 
 /**
- * Re-fetche les streams des activités Strava qui ont déjà des streams
- * mais manquent le champ `temp` (car il n'était pas dans STREAM_KEYS avant).
+ * Re-fetche les streams des activités Strava qui ont déjà des streams pour
+ * récupérer les champs ajoutés après coup à STREAM_KEYS (`temp`, puis `latlng`
+ * pour le tracé du parcours). Un re-fetch complet des streams les rapatrie tous.
  * Limité aux 2 dernières années pour rester dans les quotas Strava.
  * Appelé via POST /api/sync/strava?temp=true
  */

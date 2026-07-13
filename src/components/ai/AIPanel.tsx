@@ -36,8 +36,9 @@ import { IASettingsBloc } from '@/app/profile/page'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
-const ACTIVITIES_SELECT = 'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,is_race,avg_watts'
-const ACTIVITIES_SELECT_WITH_STREAMS = ACTIVITIES_SELECT + ',streams'
+const ACTIVITIES_SELECT = 'id,title,sport_type,started_at,moving_time_s,distance_m,elevation_gain_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,is_race,avg_watts'
+// Analyse de séance : on ajoute les streams (courbes) + laps (structure d'intervalles).
+const ACTIVITIES_SELECT_WITH_STREAMS = ACTIVITIES_SELECT + ',streams,laps'
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -4535,7 +4536,24 @@ function AnalyzeTestFlow({ onCancel, onRecordConv }: {
 
 // NB : la sync Strava stocke la vitesse sous la clé `velocity` (et non
 // `velocity_smooth`). On accepte les deux pour ne rien perdre. `temp` = température.
-type Streams = { heartrate?: number[]; velocity_smooth?: number[]; velocity?: number[]; watts?: number[]; altitude?: number[]; cadence?: number[]; temp?: number[] }
+type Streams = { heartrate?: number[]; velocity_smooth?: number[]; velocity?: number[]; watts?: number[]; altitude?: number[]; cadence?: number[]; temp?: number[]; latlng?: [number, number][] }
+
+// Un lap = un segment marqué sur le compteur (Strava). Sert à reconstruire
+// la STRUCTURE de la séance (ex : 6×4′ au seuil).
+interface Lap {
+  lap_index?: number
+  distance_m?: number | null
+  moving_time_s?: number | null
+  elapsed_time_s?: number | null
+  avg_watts?: number | null
+  max_watts?: number | null
+  avg_hr?: number | null
+  avg_heartrate?: number | null
+  max_heartrate?: number | null
+  avg_cadence?: number | null
+  avg_speed_ms?: number | null
+  elevation_gain_m?: number | null
+}
 
 interface ActivityRow {
   id: string
@@ -4543,6 +4561,7 @@ interface ActivityRow {
   sport_type: string
   started_at: string
   distance_m: number | null
+  elevation_gain_m: number | null
   moving_time_s: number | null
   average_heartrate: number | null
   max_heartrate: number | null
@@ -4553,6 +4572,34 @@ interface ActivityRow {
   tss: number | null
   is_race: boolean | null
   streams: Streams | null
+  laps: Lap[] | null
+}
+
+// Résumé texte des laps pour le prompt : l'IA identifie la structure d'intervalles.
+// isBike → puissance mise en avant ; sinon allure/vitesse. Laps triviaux (1 seul,
+// ou tour de mise en route unique) → ignorés en amont par l'appelant.
+function summarizeLaps(laps: Lap[], isBike: boolean): string {
+  const fmtT = (s?: number | null) => {
+    if (!s || s <= 0) return '—'
+    const m = Math.floor(s / 60), sec = Math.round(s % 60)
+    return `${m}:${sec.toString().padStart(2, '0')}`
+  }
+  const rows = laps.slice(0, 40).map((l, i) => {
+    const idx = l.lap_index ?? i + 1
+    const dur = fmtT(l.moving_time_s ?? l.elapsed_time_s)
+    const distKm = l.distance_m != null ? `${(l.distance_m / 1000).toFixed(2)}km` : '—'
+    const hr = l.avg_hr ?? l.avg_heartrate
+    const parts = [
+      `Lap ${idx}`, dur, distKm,
+      isBike && l.avg_watts != null ? `${Math.round(l.avg_watts)}W` : null,
+      hr != null ? `${Math.round(hr)}bpm` : null,
+      l.avg_speed_ms != null ? `${(l.avg_speed_ms * 3.6).toFixed(1)}km/h` : null,
+      l.avg_cadence != null ? `${Math.round(l.avg_cadence)}${isBike ? 'rpm' : 'spm'}` : null,
+    ].filter(Boolean)
+    return parts.join(' · ')
+  })
+  const more = laps.length > 40 ? `\n… (${laps.length - 40} laps supplémentaires)` : ''
+  return rows.join('\n') + more
 }
 
 function computeCardiacDrift(streams: Streams): number | null {
@@ -4781,6 +4828,12 @@ Drift cardiaque calculé : ${cardiacDrift ?? 'N/A'}% (norme : <5% en Z2, <3% en 
 Efficiency Index : ${ei ?? 'N/A'} (${similar.length} séances similaires disponibles pour comparaison)${speedLine}${tempLine}`
         : `\nNote : pas de données streams disponibles pour cette activité. Analyse basée sur métriques agrégées uniquement.`
 
+      // Structure d'intervalles depuis les laps (le cœur de « il doit voir mes 6×4′ »).
+      const isBikeSport = ['bike', 'virtual_bike', 'cycling', 'velo'].some(s => selectedAct.sport_type.toLowerCase().includes(s))
+      const lapsBlock = selectedAct.laps && selectedAct.laps.length >= 3
+        ? `\nSTRUCTURE DE LA SÉANCE — laps marqués sur le compteur. Identifie le format réel (ex : « 6×4′ au seuil » avec échauffement + récups), les intervalles d'effort vs récup, et commente la régularité (puissance/allure/FC qui tient ou décroche d'une rép à l'autre) :\n${summarizeLaps(selectedAct.laps, isBikeSport)}`
+        : ''
+
       const recoveryBlock = recoveryData.length > 0
         ? recoveryData.map((d: Record<string, unknown>) => `${d.date} — HRV: ${d.hrv ?? 'N/A'}ms · Repos HR: ${d.resting_hr ?? 'N/A'}bpm · Readiness: ${d.readiness ?? 'N/A'} · Fatigue: ${d.fatigue ?? 'N/A'} · Énergie: ${d.energy ?? 'N/A'}`).join('\n')
         : 'Pas de données de récupération disponibles'
@@ -4788,9 +4841,10 @@ Efficiency Index : ${ei ?? 'N/A'} (${similar.length} séances similaires disponi
       const apiPrompt = `Tu es un expert en analyse de séances d'entraînement et physiologie sportive.
 
 SÉANCE ANALYSÉE :
-${selectedAct.sport_type} · ${actDate} · ${fmtDuration(selectedAct.moving_time_s)} · ${fmtDist(selectedAct.distance_m)} · TSS: ${selectedAct.tss ?? 'N/A'}
+${selectedAct.sport_type} · ${actDate} · ${fmtDuration(selectedAct.moving_time_s)} · ${fmtDist(selectedAct.distance_m)} · D+ ${selectedAct.elevation_gain_m != null ? `${Math.round(selectedAct.elevation_gain_m)}m` : 'N/A'} · TSS: ${selectedAct.tss ?? 'N/A'}
 FC moy/max : ${selectedAct.average_heartrate ?? 'N/A'}/${selectedAct.max_heartrate ?? 'N/A'}bpm · Watts : ${selectedAct.avg_watts ?? 'N/A'}W · Drift cardiaque : ${selectedAct.cardiac_drift_pct ?? 'N/A'}%
 ${streamsBlock}
+${lapsBlock}
 
 CONTEXTE RÉCUPÉRATION (3 jours avant la séance) :
 ${recoveryBlock}
@@ -5051,6 +5105,49 @@ Niveau de confiance : [élevé/modéré/faible] — [justification courte]
   }
 
   return null
+}
+
+// ── Carte du parcours (tracé GPS) — SVG raw, aucune lib externe ────
+function RouteMap({ latlng }: { latlng: [number, number][] }) {
+  const { t } = useI18n()
+  // Nettoie + sous-échantillonne pour un tracé fluide.
+  const pts = latlng.filter(p => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
+  if (pts.length < 2) return null
+  const step = pts.length > 800 ? pts.length / 800 : 1
+  const sampled = step > 1 ? Array.from({ length: 800 }, (_, i) => pts[Math.floor(i * step)]) : pts
+
+  const lats = sampled.map(p => p[0])
+  const lngs = sampled.map(p => p[1])
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats)
+  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs)
+  const midLat = (minLat + maxLat) / 2
+  const cos = Math.cos((midLat * Math.PI) / 180) || 1
+  // Projection équirectangulaire locale (aspect corrigé par cos(lat)).
+  const spanX = (maxLng - minLng) * cos || 1e-6
+  const spanY = (maxLat - minLat) || 1e-6
+  const W = 320, H = 190, PAD = 14
+  const scale = Math.min((W - PAD * 2) / spanX, (H - PAD * 2) / spanY)
+  const drawW = spanX * scale, drawH = spanY * scale
+  const offX = (W - drawW) / 2, offY = (H - drawH) / 2
+  const project = (p: [number, number]): [number, number] => {
+    const x = offX + ((p[1] - minLng) * cos) * scale
+    const y = offY + (maxLat - p[0]) * scale   // lat ↑ = y ↓
+    return [x, y]
+  }
+  const d = sampled.map((p, i) => { const [x, y] = project(p); return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}` }).join('')
+  const [sx, sy] = project(sampled[0])
+  const [ex, ey] = project(sampled[sampled.length - 1])
+
+  return (
+    <div style={{ margin: '10px 0', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+      <div style={{ padding: '9px 12px 4px', fontSize: 11, fontWeight: 600, color: 'var(--ai-mid)' }}>{t('aip.stream.route')}</div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+        <path d={d} fill="none" stroke="var(--ai-accent)" strokeWidth={2.4} strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx={sx} cy={sy} r={4.5} fill="#22c55e" stroke="#fff" strokeWidth={1.4} />
+        <circle cx={ex} cy={ey} r={4.5} fill="#ef4444" stroke="#fff" strokeWidth={1.4} />
+      </svg>
+    </div>
+  )
 }
 
 // ── Stream chart components ────────────────────────────────────────
@@ -5574,10 +5671,13 @@ interface TrainingActivityRow {
     time?: number[]
     heartrate?: number[]
     velocity_smooth?: number[]
+    velocity?: number[]
     watts?: number[]
     altitude?: number[]
     cadence?: number[]
     distance?: number[]
+    temp?: number[]
+    latlng?: [number, number][]
   } | null
 }
 
@@ -5667,9 +5767,12 @@ interface TrainingReportData {
       heartrate?: number[]
       watts?: number[]
       velocity_smooth?: number[]
+      velocity?: number[]
       altitude?: number[]
       distance?: number[]
       cadence?: number[]
+      temp?: number[]
+      latlng?: [number, number][]
     }
   }>
   zones: { z1_max?: number; z2_max?: number; z3_max?: number; z4_max?: number } | null
@@ -6623,6 +6726,9 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
               zones={ctxZones}
               sport={selected[0].sport_type}
             />
+            {selected[0].streams.latlng && selected[0].streams.latlng.length > 1 && (
+              <RouteMap latlng={selected[0].streams.latlng} />
+            )}
             {selected[0].streams.heartrate && report.cardiac_drift_pct != null && (
               <CardiacDriftChart
                 heartrate={selected[0].streams.heartrate}

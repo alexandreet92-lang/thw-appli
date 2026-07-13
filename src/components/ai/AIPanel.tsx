@@ -741,6 +741,16 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
     // Hidden metadata tag (e.g. sport:running) — skip rendering
     if (/^sport:[a-z_]+$/.test(line.trim())) { i++; continue }
 
+    // ── Image : markdown ![alt](url) ou URL image seule → aperçu + téléchargement ──
+    const mdImg = line.trim().match(/^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/)
+    const bareImg = line.trim().match(/^(https?:\/\/[^\s]+\.(?:png|jpe?g|gif|webp|avif)(?:\?[^\s]*)?)$/i)
+    if (mdImg || bareImg) {
+      const url = (mdImg ? mdImg[2] : bareImg![1])
+      const alt = mdImg ? mdImg[1] : ''
+      blocks.push(<ChatImage key={`img-${i}`} url={url} alt={alt} />)
+      i++; continue
+    }
+
     // ── E2: Fenced code block ``` ─────────────────────────────────
     if (line.trim().startsWith('```')) {
       const lang = line.trim().slice(3).trim()
@@ -5227,6 +5237,38 @@ function RouteCard({ spec }: { spec: RouteSpec }) {
       {spec.profile && spec.profile.length > 1 && (
         <div style={{ padding: '0 4px 6px' }}><ElevationProfile profile={spec.profile} /></div>
       )}
+    </div>
+  )
+}
+
+// ── Image dans le fil du chat — aperçu + téléchargement/ouverture ──
+// L'IA insère une image via ![alt](url) (ex : image trouvée sur le web).
+// Fallback discret si l'hôte bloque le hotlink.
+function ChatImage({ url, alt }: { url: string; alt?: string }) {
+  const { t } = useI18n()
+  const [errored, setErrored] = useState(false)
+  if (errored) {
+    return (
+      <div style={{ marginLeft: 34, margin: '8px 0' }}>
+        <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: 'var(--ai-accent)', textDecoration: 'none', wordBreak: 'break-all' }}>
+          🖼️ {alt || t('aip.image.open')} ↗
+        </a>
+      </div>
+    )
+  }
+  return (
+    <div style={{ marginLeft: 34, margin: '10px 0', maxWidth: 420 }}>
+      <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt={alt ?? ''} loading="lazy" onError={() => setErrored(true)} style={{ display: 'block', width: '100%', height: 'auto', maxHeight: 460, objectFit: 'contain', background: 'var(--ai-bg2)' }} />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 5 }}>
+        {alt ? <span style={{ fontSize: 11.5, color: 'var(--ai-dim)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alt}</span> : <span />}
+        <a href={url} target="_blank" rel="noopener noreferrer" download style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, fontSize: 11.5, fontWeight: 600, color: 'var(--ai-accent)', textDecoration: 'none' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+          {t('aip.image.open')}
+        </a>
+      </div>
     </div>
   )
 }

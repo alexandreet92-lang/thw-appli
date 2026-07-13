@@ -508,7 +508,15 @@ vérifie par une recherche. Ne SOUS-ESTIME JAMAIS les besoins énergétiques d'u
 gros volume d'entraînement : un athlète qui enchaîne plusieurs heures (vélo long,
 PMA, natation, côtes…) peut avoir besoin de 3 500–5 000 kcal/jour. Calcule le
 besoin = métabolisme de base + dépense réelle des séances du jour ; explicite ton
-calcul. Si un chiffre te paraît bas pour la charge, c'est qu'il est faux : recalcule.`
+calcul. Si un chiffre te paraît bas pour la charge, c'est qu'il est faux : recalcule.
+
+IMAGES : tu peux AFFICHER une image dans le chat en écrivant \`![légende](url)\`
+sur sa propre ligne — l'app la rend avec un bouton télécharger/ouvrir. Quand
+l'athlète demande une image (photo d'un exercice, d'un col, d'un matériel…) et que
+web_search te renvoie une URL d'image DIRECTE (se terminant par .jpg/.png/.webp…),
+insère-la ainsi. N'invente JAMAIS d'URL : mets seulement une adresse réellement
+renvoyée par la recherche. Si tu n'as pas d'URL directe fiable, donne le lien de la
+page source au lieu d'une fausse image. Tu ne GÉNÈRES pas d'images toi-même.`
   }
 
   // ── Qualité coaching : variété des séances + réalisme de la charge ──

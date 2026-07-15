@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
 import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
+import { BottomSheet } from '@/components/ui/BottomSheet'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 import { formatDuration } from '@/lib/utils'
 import { TrainingBlockSummary } from '@/app/planning/components/TrainingBlockSummary'
@@ -871,55 +872,57 @@ export function InfoModal({ title, content, onClose }:{ title:string; content:Re
 }
 
 // ── Activité quick-view (clic depuis Planning) ───────────────
-export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActivity; onClose:()=>void }) {
+export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActivity|null; onClose:()=>void }) {
   const { t } = useI18n()
-  const sp = normalizeSportType(activity.sport)
-  const dateObj = new Date(activity.startedAt)
+  // On garde la dernière activité affichée pendant l'animation de fermeture du sheet.
+  const [last, setLast] = useState<TrainingActivity|null>(activity)
+  useEffect(()=>{ if(activity) setLast(activity) },[activity])
+  const a = activity ?? last
+  if (!a) return null
+  const sp = normalizeSportType(a.sport)
+  const dateObj = new Date(a.startedAt)
   const dateStr = dateObj.toLocaleDateString(currentLocale(),{ weekday:'long', day:'numeric', month:'long' })
-  const durationMin = Math.round(activity.elapsedTime/60)
-  const distKm = activity.distance ? (activity.distance/1000).toFixed(1) : null
+  const durationMin = Math.round(a.elapsedTime/60)
+  const distKm = a.distance ? (a.distance/1000).toFixed(1) : null
   const col = SPORT_BORDER[sp]
   return (
-    <div onClick={onClose} style={{ position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(5px)',display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:'var(--bg-card)',borderRadius:18,border:`1px solid ${col}44`,padding:22,maxWidth:380,width:'100%',boxShadow:`0 0 0 1px ${col}22,var(--shadow-card)` }}>
-        {/* En-tête */}
-        <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:18 }}>
-          <div style={{ width:44,height:44,borderRadius:12,background:SPORT_BG[sp],border:`1px solid ${col}44`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-            <SportBadge sport={sp} size="sm"/>
-          </div>
-          <div style={{ flex:1,minWidth:0 }}>
-            <div style={{ marginBottom:3 }}>
-              <span style={{ fontSize:8,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>{t('plnp.activity.completed')}</span>
-            </div>
-            <p style={{ fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{activity.name}</p>
-          </div>
-          <button onClick={onClose} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',borderRadius:8,padding:'4px 10px',cursor:'pointer',color:'var(--text-dim)',fontSize:17,flexShrink:0 }}>×</button>
+    <BottomSheet isOpen={!!activity} onClose={onClose}>
+      {/* En-tête */}
+      <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:18 }}>
+        <div style={{ width:44,height:44,borderRadius:12,background:SPORT_BG[sp],border:`1px solid ${col}44`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+          <SportBadge sport={sp} size="sm"/>
         </div>
-
-        {/* Métriques */}
-        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16 }}>
-          {[
-            { label:t('plnp.field.sport'),   value:SPORT_LABEL[sp] },
-            { label:t('plnp.field.date'),    value:dateStr, small:true },
-            { label:t('plnp.field.time'),   value:`${String(activity.startHour).padStart(2,'0')}:${String(activity.startMin).padStart(2,'0')}`, mono:true },
-            { label:t('plnp.field.duration'),   value:formatDur(durationMin), mono:true },
-            ...(distKm ? [{ label:t('plnp.field.distance'), value:`${distKm} km`, mono:true }] : []),
-            ...(activity.tss ? [{ label:'SM', value:`${Math.round(activity.tss)}`, mono:true, color:'#5b6fff' }] : []),
-          ].map(({ label, value, mono, small, color })=>(
-            <div key={label} style={{ background:'var(--bg-card2)',borderRadius:10,padding:'10px 12px' }}>
-              <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 3px',textTransform:'uppercase' as const,letterSpacing:'0.07em' }}>{label}</p>
-              <p style={{ fontSize:small?11:13,fontWeight:700,margin:0,fontFamily:mono?'DM Mono,monospace':'inherit',color:color??'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{value}</p>
-            </div>
-          ))}
+        <div style={{ flex:1,minWidth:0 }}>
+          <div style={{ marginBottom:3 }}>
+            <span style={{ fontSize:8,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>{t('plnp.activity.completed')}</span>
+          </div>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{a.name}</p>
         </div>
-
-        {/* Bouton vers Training */}
-        <a href={`/activities?id=${activity.id}`}
-          style={{ display:'block',textAlign:'center' as const,padding:'12px 16px',borderRadius:11,background:`linear-gradient(135deg,${col},${col}bb)`,color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,textDecoration:'none',letterSpacing:'0.02em' }}>
-          {t('plnp.activity.viewDetails')}
-        </a>
       </div>
-    </div>
+
+      {/* Métriques */}
+      <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16 }}>
+        {[
+          { label:t('plnp.field.sport'),   value:SPORT_LABEL[sp] },
+          { label:t('plnp.field.date'),    value:dateStr, small:true },
+          { label:t('plnp.field.time'),   value:`${String(a.startHour).padStart(2,'0')}:${String(a.startMin).padStart(2,'0')}`, mono:true },
+          { label:t('plnp.field.duration'),   value:formatDur(durationMin), mono:true },
+          ...(distKm ? [{ label:t('plnp.field.distance'), value:`${distKm} km`, mono:true }] : []),
+          ...(a.tss ? [{ label:'SM', value:`${Math.round(a.tss)}`, mono:true, color:'#5b6fff' }] : []),
+        ].map(({ label, value, mono, small, color })=>(
+          <div key={label} style={{ background:'var(--bg-card2)',borderRadius:10,padding:'10px 12px' }}>
+            <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 3px',textTransform:'uppercase' as const,letterSpacing:'0.07em' }}>{label}</p>
+            <p style={{ fontSize:small?11:13,fontWeight:700,margin:0,fontFamily:mono?'DM Mono,monospace':'inherit',color:color??'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Bouton vers Training */}
+      <a href={`/activities?id=${a.id}`}
+        style={{ display:'block',textAlign:'center' as const,padding:'14px 16px',borderRadius:12,background:`linear-gradient(135deg,${col},${col}bb)`,color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,textDecoration:'none',letterSpacing:'0.02em' }}>
+        {t('plnp.activity.viewDetails')}
+      </a>
+    </BottomSheet>
   )
 }
 
@@ -2682,6 +2685,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
 
   // Multi-week data for range > 1
   const [extraSessions, setExtraSessions] = useState<Record<string,Session[]>>({})
+  // Entraînements RÉALISÉS des autres semaines affichées (la semaine courante vient du hook).
+  const [extraActivities, setExtraActivities] = useState<Record<string,TrainingActivity[]>>({})
   // Intensité (type de jour) par DATE précise : clé `${week_start}_${day_index}` → propre à
   // chaque semaine (modifier un jour n'affecte plus le même jour des autres semaines).
   const [intensityMap, setIntensityMap] = useState<Record<string,DayIntensity>>({})
@@ -2721,6 +2726,38 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     })()
   },[weekRange,weekOffset,planTick])
 
+  // Entraînements RÉALISÉS (table activities) des AUTRES semaines affichées : sans ça,
+  // les activités réalisées n'apparaissaient que sur la semaine courante et « disparaissaient »
+  // quand on scrollait les autres semaines de la vue multi-semaines.
+  useEffect(()=>{
+    const sb=createClient()
+    ;(async()=>{
+      const {data:{user}}=await sb.auth.getUser(); if(!user)return
+      const starts=Array.from({length:weekRange-1},(_,i)=>getWeekStartFromOffset(weekOffset+1+i))
+      if(starts.length===0){ setExtraActivities({}); return }
+      // Fenêtre [premier lundi affiché, dernier lundi + 7 jours[ — une seule requête.
+      const rangeStart=starts[0]
+      const endD=new Date(starts[starts.length-1]); endD.setDate(endD.getDate()+7)
+      const rangeEnd=localDateStr(endD)
+      const {data}=await sb.from('activities')
+        .select('id,sport_type,title,started_at,moving_time_s,elapsed_time_s,distance_m,tss')
+        .eq('user_id',user.id)
+        .gte('started_at',rangeStart+'T00:00:00').lt('started_at',rangeEnd+'T00:00:00')
+      const grouped:Record<string,TrainingActivity[]>={}; starts.forEach(ws=>{grouped[ws]=[]})
+      ;(data??[]).forEach((a:any)=>{
+        const d=new Date(a.started_at)
+        const dow=d.getDay()===0?6:d.getDay()-1
+        const m=new Date(d); m.setDate(d.getDate()-dow); const ws=localDateStr(m)
+        if(!grouped[ws])grouped[ws]=[]
+        grouped[ws].push({ id:a.id, sport:a.sport_type??'run', name:a.title??t('plnp.activityFallback'),
+          startedAt:a.started_at, elapsedTime:a.moving_time_s??a.elapsed_time_s??0,
+          dayIndex:dow, weekStart:ws, distance:a.distance_m,
+          startHour:d.getHours(), startMin:d.getMinutes(), tss:a.tss??undefined })
+      })
+      setExtraActivities(grouped)
+    })()
+  },[weekRange,weekOffset,planTick])  // eslint-disable-line react-hooks/exhaustive-deps
+
   const allWeekStarts = Array.from({length:weekRange},(_,i)=>getWeekStartFromOffset(weekOffset+i))
 
   // Charge les types de jour de TOUTES les semaines affichées (clé week_start_day_index).
@@ -2748,7 +2785,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     return raw.filter(s=>!s.planVariant||s.planVariant===plan)
   }
   function getActivitiesForWeek(ws:string):TrainingActivity[] {
-    return ws===currentWeekStart ? activities : []
+    return ws===currentWeekStart ? activities : (extraActivities[ws]??[])
   }
 
   // Week displayed = based on offset
@@ -3404,7 +3441,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
           onCreateBrick={(run)=>handleAddSession(run.dayIndex, run)}
         />
       )}
-      {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}
+      <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>
 
       {tab === 'training' && (<>
       {/* ── Controls — desktop (ancienne interface) ── */}
@@ -4179,7 +4216,7 @@ function WeekTab({ trainingWeek }:{ trainingWeek:ReturnType<typeof usePlanning>[
       `}</style>
 
       {editModal && <TaskEditModal task={editModal} sections={sections} onClose={()=>setEditModal(null)} onSave={handleUpdateTask} onDelete={handleDeleteTask}/>}
-      {activityDetail && <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>}
+      <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>
 
       {/* ── Modal Nouvelle tâche (grille) ── */}
       {showNewTask && (

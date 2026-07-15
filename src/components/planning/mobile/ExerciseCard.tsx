@@ -34,6 +34,11 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, onChan
   const ct = circuitType ?? 'series'
   const showSets = ct === 'series'
   const showRest = ct !== 'emom' && ct !== 'tabata'
+  // Reps vs Temps (gainage / core) : mode dérivé de targetTimeSec (undefined = reps).
+  // Bascule Temps → seed 30s ; Reps → efface le temps cible.
+  const timeMode = item.targetTimeSec != null
+  const setMode = (m: 'reps' | 'time') =>
+    set(m === 'time' ? { targetTimeSec: item.targetTimeSec ?? 30 } : { targetTimeSec: undefined })
   const rule = variant === 'muscu' ? PATTERN_VAR[item.category] : 'var(--pat-hyrox)'
   const isStation = variant === 'hyrox' && item.exoId !== 'custom'
   const isRun = /run|course|cours/i.test(item.name)
@@ -56,7 +61,31 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, onChan
         <>
           <div className="se-fgrid">
             {showSets && <NumField label={t('planning.sets')} value={item.sets} min={1} onChange={n => set({ sets: n })} />}
-            <NumField label={ct === 'emom' || ct === 'tabata' ? t('planning.repsPerRound') : t('planning.repsShort')} value={item.reps} min={0} onChange={n => set({ reps: n })} />
+            {/* Reps ⇄ Temps : toggle en guise de label (gainage / core = temps) */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, minHeight: 16 }}>
+                <div style={{ display: 'inline-flex', gap: 2, padding: 2, borderRadius: 999, background: 'var(--se-card2)', border: '1px solid var(--se-rule)' }}>
+                  {([['reps', t('planning.repsShort')], ['time', t('planning.time')]] as const).map(([m, label]) => {
+                    const on = (timeMode ? 'time' : 'reps') === m
+                    return (
+                      <button key={m} type="button" onClick={() => setMode(m)}
+                        style={{ border: 'none', cursor: 'pointer', borderRadius: 999, padding: '2px 9px', fontSize: 9, fontWeight: on ? 700 : 600, letterSpacing: '0.04em', textTransform: 'uppercase', background: on ? 'var(--se-card)' : 'transparent', color: on ? accent : 'var(--se-dim)', boxShadow: on ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>{label}</button>
+                    )
+                  })}
+                </div>
+              </div>
+              {timeMode ? (
+                <Stepper value={fmtSec(item.targetTimeSec ?? 0)}
+                  onChange={v => { const mm = v.match(/^(\d+):(\d{1,2})$/); set({ targetTimeSec: mm ? (+mm[1]) * 60 + (+mm[2]) : (parseInt(v) || 0) }) }}
+                  onDec={() => set({ targetTimeSec: Math.max(0, (item.targetTimeSec ?? 0) - 5) })}
+                  onInc={() => set({ targetTimeSec: (item.targetTimeSec ?? 0) + 5 })} />
+              ) : (
+                <Stepper value={String(item.reps ?? 0)}
+                  onChange={v => set({ reps: Math.max(0, parseInt(v) || 0) })}
+                  onDec={() => set({ reps: Math.max(0, (item.reps ?? 0) - 1) })}
+                  onInc={() => set({ reps: (item.reps ?? 0) + 1 })} />
+              )}
+            </div>
             <NumField label={t('planning.load')} unit="kg" value={item.weightKg ?? 0} step={2} onChange={n => set({ weightKg: n })} />
             {showRest && <NumField label={ct === 'series' ? t('planning.rest') : t('planning.restAfter')} unit="s" value={item.restSec} step={15} onChange={n => set({ restSec: n })} />}
           </div>

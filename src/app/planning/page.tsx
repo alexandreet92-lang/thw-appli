@@ -3401,9 +3401,9 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       {/* ── Controls — desktop (ancienne interface) ── */}
       <div id="tr-ctrl-desktop" style={{ display:'flex',alignItems:'center',gap:8,flexWrap:'wrap' as const }}>
         <div style={{ display:'flex',alignItems:'center',gap:4,background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:10,padding:'4px 6px' }}>
-          <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>←</button>
+          <button onClick={()=>setWeekOffset(o=>o-1)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>←</button>
           <span style={{ fontSize:11,fontWeight:600,color:'var(--text)',minWidth:120,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
-          <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>→</button>
+          <button onClick={()=>setWeekOffset(o=>o+1)} style={{ background:'none',border:'none',color:'var(--text-mid)',cursor:'pointer',fontSize:16,padding:'2px 6px',borderRadius:6 }}>→</button>
           {weekOffset!==0&&<button onClick={()=>setWeekOffset(0)} style={{ fontSize:9,padding:'2px 6px',borderRadius:5,background:'rgba(6,182,212,0.10)',border:'1px solid rgba(6,182,212,0.25)',color:'#06B6D4',cursor:'pointer',fontWeight:600 }}>{t('plnp.today')}</button>}
         </div>
         <div style={{ position:'relative' }}>
@@ -3450,9 +3450,9 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       {/* ── Controls — mobile (3 lignes en carte) ── */}
       <div id="tr-ctrl-mobile" style={{ display:'flex',alignItems:'center',gap:6,flexWrap:'wrap' as const }}>
         {/* Navigation semaine — compacte */}
-        <button onClick={()=>setWeekOffset(o=>o-weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius:8,lineHeight:1 }}>←</button>
+        <button onClick={()=>setWeekOffset(o=>o-1)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius:8,lineHeight:1 }}>←</button>
         <span style={{ fontSize:11,fontWeight:700,color:'var(--text)',minWidth:96,textAlign:'center' as const }}>{getWeekLabel(currentWeekStart)}</span>
-        <button onClick={()=>setWeekOffset(o=>o+weekRange)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius:8,lineHeight:1 }}>→</button>
+        <button onClick={()=>setWeekOffset(o=>o+1)} style={{ background:'var(--bg-card2)',border:'1px solid var(--border)',color:'var(--text-mid)',cursor:'pointer',fontSize:14,padding:'4px 9px',borderRadius:8,lineHeight:1 }}>→</button>
         {weekOffset!==0 && <button onClick={()=>setWeekOffset(0)} style={{ fontSize:10,padding:'4px 9px',borderRadius:8,background:'var(--primary-dim)',border:'none',color:'var(--primary)',cursor:'pointer',fontWeight:700 }}>{t('plnp.today')}</button>}
         {/* Sélecteur période — bulle compacte */}
         <div style={{ position:'relative' }}>

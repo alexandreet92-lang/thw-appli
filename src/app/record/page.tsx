@@ -16,6 +16,7 @@ const SwimmingForm     = dynamic(() => import('@/components/record/SwimmingForm'
 const RowingForm       = dynamic(() => import('@/components/record/RowingForm'),       { ssr: false })
 const WorkoutLauncher  = dynamic(() => import('@/components/record/WorkoutLauncher'), { ssr: false })
 const WorkoutSession   = dynamic(() => import('@/components/record/WorkoutSession'),  { ssr: false })
+const SessionRunner    = dynamic(() => import('@/components/record/live/SessionRunner'), { ssr: false })
 const FreeModeScreen   = dynamic(() => import('@/components/record/FreeModeScreen'),  { ssr: false })
 const RouteCreator     = dynamic(() => import('@/components/record/RouteCreator'),    { ssr: false })
 const YogaLauncher     = dynamic(() => import('@/components/record/YogaLauncher'),    { ssr: false })
@@ -249,12 +250,18 @@ export default function RecordPage() {
   }
 
   if (view === 'workout') {
+    const closeWorkout = () => { setView('home'); setActiveLauncherSport(null) }
+    // Muscu → nouveau moteur « Séance en direct » (plein écran, phases colorées).
+    // Hyrox reste sur l'écran existant (hors périmètre de ce lot).
+    if (sport === 'strength') {
+      return <SessionRunner blocks={workoutExercises} planTitle={workoutTitle} onClose={closeWorkout} isDark={isDark} />
+    }
     return (
       <WorkoutSession
-        sport={sport === 'strength' ? 'gym' : 'hyrox'}
+        sport="hyrox"
         exercises={workoutExercises}
         planTitle={workoutTitle}
-        onClose={() => { setView('home'); setActiveLauncherSport(null) }}
+        onClose={closeWorkout}
         isDark={isDark}
       />
     )

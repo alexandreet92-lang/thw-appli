@@ -64,6 +64,16 @@
   --charge-mid:  #eab308;
   --charge-hard: #ef4444;
 
+  /* ── Phases « Séance en direct » — variante A (tricolore) par défaut ──
+     Réutilisées uniquement par le moteur de séance (SessionRunner). Variante B
+     commutable via [data-phase-variant="B"] (effort = cyan marque, repos = violet). */
+  --phase-prepare:      #FFC933;
+  --phase-prepare-ink:  #0A0C10;
+  --phase-effort:       #FF3B4E;
+  --phase-effort-ink:   #ffffff;
+  --phase-rest:         #1FD07C;
+  --phase-rest-ink:     #06110B;
+
   /* ── Macros nutrition (exception assumée : donuts/jauges repas uniquement) ── */
   --macro-prot: #ef4444; /* Protéines */
   --macro-gluc: #eab308; /* Glucides  */
@@ -93,6 +103,11 @@
   --on-primary:   #ffffff;   /* texte sur surface --primary (bouton cyan) */
   --ai-accent:    #9D7DFF;
   --ai-accent-dim:rgba(157,125,255,0.12);
+  /* Variante B des phases (commutable par attribut, sans réécrire les composants) */
+  --phase-variant-b-effort:     #22D3E6;
+  --phase-variant-b-effort-ink: #04171B;
+  --phase-variant-b-rest:       #6C63FF;
+  --phase-variant-b-rest-ink:   #ffffff;
 
   /* ── Récupération — séries Vue d'ensemble (fixes, 2 thèmes) ── */
   --rec-hrv:       #06b6d4;
@@ -126,6 +141,14 @@
   --space-8:  32px;
   --space-10: 40px;
   --space-12: 48px;
+}
+
+/* Variante B des couleurs de phase (effort cyan marque / repos violet). Défaut = A. */
+[data-phase-variant="B"] {
+  --phase-effort:     var(--phase-variant-b-effort);
+  --phase-effort-ink: var(--phase-variant-b-effort-ink);
+  --phase-rest:       var(--phase-variant-b-rest);
+  --phase-rest-ink:   var(--phase-variant-b-rest-ink);
 }
 
 :root, .light {

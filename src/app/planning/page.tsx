@@ -10,6 +10,11 @@ import { useTrainingZones } from '@/hooks/useTrainingZones'
 import { AnimatedBar, CountUp } from '@/components/ui/AnimatedBar'
 import { SkeletonPlanningGrid } from '@/components/ui/Skeleton'
 import { BottomSheet } from '@/components/ui/BottomSheet'
+import { useRacesFull } from '@/components/planning/useRacesFull'
+import RaceEditorSheet from '@/app/calendar/components/RaceEditorSheet'
+import ParcoursViewer from '@/components/gpx/ParcoursViewer'
+import { loadRaceRoutes, type RaceRoutes } from '@/lib/races/raceStore'
+import type { Race as FullRace } from '@/app/calendar/components/types'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
 import { formatDuration } from '@/lib/utils'
 import { TrainingBlockSummary } from '@/app/planning/components/TrainingBlockSummary'
@@ -22,7 +27,7 @@ const AIPanelDynamic = nDynamic(() => import('@/components/ai/AIPanel'), { ssr: 
 import { PageHelp } from '@/onboarding/system/PageHelp'
 import { usePageOnboarding } from '@/onboarding/system/usePageOnboarding'
 import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
-import { Dumbbell, CalendarDays, LayoutDashboard } from 'lucide-react'
+import { Dumbbell, CalendarDays, LayoutDashboard, Flag } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { TrainingSummary } from '@/app/planning/components/training/TrainingSummary'
 import { SportIcon, SPORT_ICON, sportKeyFromType } from '@/components/icons/SportIcon'
@@ -922,6 +927,82 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
         style={{ display:'block',textAlign:'center' as const,padding:'14px 16px',borderRadius:12,background:`linear-gradient(135deg,${col},${col}bb)`,color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,textDecoration:'none',letterSpacing:'0.02em' }}>
         {t('plnp.activity.viewDetails')}
       </a>
+    </BottomSheet>
+  )
+}
+
+// Fiche COURSE (bottom sheet coulissant) : toutes les données dispo (sport, objectif,
+// date, temps visé, distance) + aperçu carte des parcours GPS enregistrés + lien.
+function RaceDetailSheet({ race, onClose, onEdit }: { race: FullRace|null; onClose: ()=>void; onEdit: (r: FullRace)=>void }) {
+  const { t } = useI18n()
+  const [last, setLast] = useState<FullRace|null>(race)
+  const [routes, setRoutes] = useState<RaceRoutes>({})
+  useEffect(()=>{ if(race) setLast(race) },[race])
+  useEffect(()=>{
+    if(!race?.id){ setRoutes({}); return }
+    let alive = true
+    void loadRaceRoutes(createClient(), race.id).then(r=>{ if(alive) setRoutes(r) })
+    return ()=>{ alive=false }
+  },[race?.id])
+  const r = race ?? last
+  if (!r) return null
+  const cfg = RACE_CONFIG[r.level]
+  const col = r.level==='gty' ? 'var(--gty-text)' : cfg.color
+  const dateStr = new Date(r.date+'T00:00:00').toLocaleDateString(currentLocale(),{ weekday:'long', day:'numeric', month:'long' })
+  const distance = r.distance || r.runDistance || r.triDistance
+  const routeList = [
+    { label: t('plnp.race.route'), url: routes.route },
+    { label: t('calendar.bikeRoute'), url: routes.bike },
+    { label: t('calendar.runRoute'), url: routes.run },
+  ].filter(x => x.url)
+  const cells = [
+    { label: t('plnp.field.sport'), value: t('plnp.raceSport.'+r.sport) },
+    { label: t('plnp.field.date'), value: dateStr, small: true },
+    { label: t('plnp.race.objective'), value: cfg.label },
+    ...(r.goalTime ? [{ label: t('plnp.race.goalTime'), value: r.goalTime, mono: true }] : []),
+    ...(distance ? [{ label: t('plnp.field.distance'), value: distance }] : []),
+  ]
+  return (
+    <BottomSheet isOpen={!!race} onClose={onClose}>
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+        <div style={{ width:44, height:44, borderRadius:12, background:cfg.bg, border:`1px solid ${cfg.border}55`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <Flag size={20} color={col} strokeWidth={2.4} />
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ marginBottom:3 }}>
+            <span style={{ fontSize:8, fontWeight:800, background:cfg.border, color:'#fff', padding:'2px 6px', borderRadius:4, letterSpacing:'0.06em', textTransform:'uppercase' as const }}>{cfg.label}</span>
+          </div>
+          <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{r.name}</p>
+        </div>
+      </div>
+
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:16 }}>
+        {cells.map(({ label, value, mono, small })=>(
+          <div key={label} style={{ background:'var(--bg-card2)', borderRadius:10, padding:'10px 12px' }}>
+            <p style={{ fontSize:9, color:'var(--text-dim)', margin:'0 0 3px', textTransform:'uppercase' as const, letterSpacing:'0.07em' }}>{label}</p>
+            <p style={{ fontSize:small?12:14, fontWeight:700, margin:0, fontFamily:mono?'DM Mono,monospace':'inherit', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:small?'normal':'nowrap' as const, textTransform:small?'capitalize' as const:undefined }}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {r.notes && <p style={{ fontSize:12.5, color:'var(--text-mid)', margin:'0 0 16px', lineHeight:1.45 }}>{r.notes}</p>}
+
+      {routeList.length>0 && (
+        <div style={{ display:'flex', flexDirection:'column' as const, gap:12, marginBottom:16 }}>
+          {routeList.map(rt=>(
+            <div key={rt.label}>
+              <p style={{ fontSize:9, fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'0.06em', color:'var(--text-dim)', margin:'0 0 6px' }}>{rt.label}</p>
+              <ParcoursViewer fileUrl={rt.url} />
+              <a href={rt.url} target="_blank" rel="noopener noreferrer" style={{ display:'inline-block', marginTop:6, fontSize:11.5, fontWeight:600, color:col, textDecoration:'none' }}>{t('plnp.race.openRoute')} →</a>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display:'flex', gap:10 }}>
+        <button onClick={()=>onEdit(r)} style={{ flex:1, padding:'13px 16px', borderRadius:12, border:'none', background:cfg.border, color:'#fff', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, cursor:'pointer' }}>{t('plnp.race.edit')}</button>
+        <a href={`/calendar?race=${r.id}`} style={{ flex:1, textAlign:'center' as const, padding:'13px 16px', borderRadius:12, border:'1px solid var(--border)', background:'var(--bg-card2)', color:'var(--text-mid)', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, textDecoration:'none' }}>{t('plnp.race.viewCalendar')}</a>
+      </div>
     </BottomSheet>
   )
 }
@@ -2208,6 +2289,20 @@ function DayBubble({ sport, label, session, done, onClick, draggable, onDragStar
   )
 }
 
+// Bulle COURSE sur la grille du planning : drapeau + nom, couleur = niveau de course.
+// Cliquable → fiche détail. Le drapeau la distingue nettement d'un entraînement.
+function RaceBubble({ race, onClick }: { race: { name: string; level: RaceLevel }; onClick: () => void }) {
+  const cfg = RACE_CONFIG[race.level]
+  const col = race.level === 'gty' ? 'var(--gty-text)' : cfg.color
+  return (
+    <button onClick={onClick}
+      style={{ display:'flex',alignItems:'center',gap:4,padding:'4px 6px',borderRadius:8,border:`1px solid ${cfg.border}55`,borderLeft:`3px solid ${cfg.border}`,background:cfg.bg,cursor:'pointer',width:'100%',boxSizing:'border-box',textAlign:'left' }}>
+      <Flag size={12} color={col} strokeWidth={2.4} style={{ flexShrink:0 }} />
+      <span style={{ flex:1,minWidth:0,fontSize:9.5,fontWeight:800,lineHeight:1.15,color:col,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden',overflowWrap:'anywhere',wordBreak:'break-word' }}>{race.name}</span>
+    </button>
+  )
+}
+
 // Réordonne les séances pour placer chaque course « brick » juste après sa séance vélo,
 // et signale les paires (vélo↔course) à relier par une flèche.
 function orderBrickSessions(sessions: Session[]): { list: Session[]; brickRunIds: Set<string> } {
@@ -2517,6 +2612,15 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const currentWeekStart = getWeekStartFromOffset(weekOffset)
   const { sessions, races, intensities, activities, loading, addSession, updateSession, updateSessionSilent, deleteSession, moveSession, setDayIntensity } = usePlanning(currentWeekStart)
   const nextRace = races.filter(r => daysUntil(r.date) > 0).sort((a, b) => daysUntil(a.date) - daysUntil(b.date))[0] ?? null
+  // Courses complètes (mêmes données que Calendar) affichées SUR la grille du planning.
+  const { races: racesFull, save: saveRace, remove: removeRace } = useRacesFull()
+  const [raceDetail, setRaceDetail] = useState<FullRace|null>(null)
+  const [raceEditor, setRaceEditor] = useState<{ race?: FullRace; date?: string }|null>(null)
+  // Choix "Entraînement / Course" au tap sur le n° du jour.
+  const [addChooser, setAddChooser] = useState<{dayIndex:number;plan:PlanVariant;weekStart:string}|null>(null)
+  function chooserDateISO(c: {dayIndex:number;weekStart:string}): string {
+    const d = new Date(c.weekStart+'T00:00:00'); d.setDate(d.getDate()+c.dayIndex); return localDateStr(d)
+  }
   const [view, setView] = useState<TrainingView>('vertical')
   const [addModal, setAddModal] = useState<{dayIndex:number;plan:PlanVariant;weekStart?:string}|null>(null)
   const [addModalFavorites, setAddModalFavorites] = useState(false)
@@ -2795,12 +2899,18 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
     const wSessions = getSessionsForWeek(ws, plan)
     const wActs = getActivitiesForWeek(ws)
     const dayAbbrs = t('plnp.dayAbbrs').split(',')
-    return DAY_NAMES.map((_day,i)=>({
-      day: dayAbbrs[i], date:wDates[i],
-      intensity:(intensityMap[`${ws}_${i}`]??'low') as DayIntensity,
-      sessions: wSessions.filter(s=>s.dayIndex===i && !isRestSession(s)),
-      activities: wActs.filter(a=>a.dayIndex===i),
-    }))
+    return DAY_NAMES.map((_day,i)=>{
+      // Date ISO locale du jour i de la semaine ws → pour rattacher les courses.
+      const dIso = new Date(ws+'T00:00:00'); dIso.setDate(dIso.getDate()+i)
+      const isoStr = localDateStr(dIso)
+      return {
+        day: dayAbbrs[i], date:wDates[i],
+        intensity:(intensityMap[`${ws}_${i}`]??'low') as DayIntensity,
+        sessions: wSessions.filter(s=>s.dayIndex===i && !isRestSession(s)),
+        activities: wActs.filter(a=>a.dayIndex===i),
+        races: racesFull.filter(r=>r.date===isoStr),
+      }
+    })
   }
   const week = buildWeek(currentWeekStart, compareMode ? undefined : activePlan)
 
@@ -2857,9 +2967,13 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                           onPick={(it) => { void setDayIntensityWeek(ws, i, it); setDayPicker(null) }} />
                       </div>
                       {hoverAdd === hid && (
-                        <button onClick={() => { setAddModalFavorites(false); setAddModal({ dayIndex: i, plan: activePlan, weekStart: ws }) }} title={t('plnp.addSession')}
+                        <button onClick={() => { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan: activePlan, weekStart: ws }) }} title={t('plnp.addSession')}
                           style={{ position: 'absolute' as const, bottom: 4, left: '50%', transform: 'translateX(-50%)', zIndex: 6, background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 2, opacity: 0.7 }}>+</button>
                       )}
+                      {/* Courses du jour (drapeau) */}
+                      {d.races.map(r => (
+                        <RaceBubble key={r.id} race={r} onClick={() => setRaceDetail(r)} />
+                      ))}
                       {/* Bulles unifiées (même présentation que mobile) */}
                       {d.activities.map(a => (
                         <DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime / 60))} done onClick={() => setActivityDetail(a)} />
@@ -2941,7 +3055,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                             <DayHeader abbr={d.day} num={dates[i]} intensity={d.intensity} isToday={isToday}
                               plus onPlus={() => setDayPicker(p => p === `m_${hid}` ? null : `m_${hid}`)} open={dayPicker === `m_${hid}`}
                               onPick={(it) => { void setDayIntensityWeek(ws, i, it); setDayPicker(null) }}
-                              onNum={() => { setAddModalFavorites(false); setAddModal({ dayIndex:i, plan:activePlan, weekStart:ws }) }} />
+                              onNum={() => { setAddModalFavorites(false); setAddChooser({ dayIndex:i, plan:activePlan, weekStart:ws }) }} />
+                            {d.races.map(r => <RaceBubble key={r.id} race={r} onClick={()=>setRaceDetail(r)} />)}
                             {(() => {
                               const { list, brickRunIds } = orderBrickSessions(sess)
                               return list.map(s => (
@@ -3312,6 +3427,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                     <p style={{ fontSize:8,opacity:0.7,margin:'1px 0 0',fontFamily:'DM Mono,monospace' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(Math.round(a.elapsedTime/60))}</p>
                   </div>
                 })}
+                {/* Courses du jour (drapeau) */}
+                {d.races.map(r=><RaceBubble key={r.id} race={r} onClick={()=>setRaceDetail(r)} />)}
                 {/* Planned sessions (hide ones matched by an activity) */}
                 {d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).map(s=>(
                   <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={e=>{e.stopPropagation();onTouchStart(s.id,i,e)}} onTouchMove={onTouchMove} onTouchEnd={onTouchEndPoint} onClick={()=>setDetailModal(s)}
@@ -3442,6 +3559,41 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         />
       )}
       <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>
+      <RaceDetailSheet race={raceDetail} onClose={()=>setRaceDetail(null)} onEdit={(r)=>{ setRaceDetail(null); setRaceEditor({ race:r }) }} />
+
+      {/* Choix Entraînement / Course au tap sur le jour */}
+      <BottomSheet isOpen={addChooser!==null} onClose={()=>setAddChooser(null)} title={t('plnp.add.chooserTitle')}>
+        {addChooser && (
+          <div style={{ display:'flex', flexDirection:'column', gap:10, paddingBottom:8 }}>
+            <button onClick={()=>{ const c=addChooser; setAddChooser(null); setAddModal({ dayIndex:c.dayIndex, plan:c.plan, weekStart:c.weekStart }) }}
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'16px', borderRadius:14, border:'1px solid var(--border)', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const }}>
+              <span style={{ width:44, height:44, borderRadius:12, background:'var(--primary-dim)', color:'var(--primary)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Dumbbell size={22} /></span>
+              <span style={{ flex:1 }}>
+                <span style={{ display:'block', fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text)' }}>{t('plnp.add.training')}</span>
+                <span style={{ display:'block', fontSize:12, color:'var(--text-dim)', marginTop:2 }}>{t('plnp.add.trainingHint')}</span>
+              </span>
+            </button>
+            <button onClick={()=>{ const c=addChooser; setAddChooser(null); setRaceEditor({ date: chooserDateISO(c) }) }}
+              style={{ display:'flex', alignItems:'center', gap:12, padding:'16px', borderRadius:14, border:'1px solid var(--border)', background:'var(--bg-card2)', cursor:'pointer', textAlign:'left' as const }}>
+              <span style={{ width:44, height:44, borderRadius:12, background:'rgba(239,68,68,0.12)', color:'#ef4444', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Flag size={22} /></span>
+              <span style={{ flex:1 }}>
+                <span style={{ display:'block', fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text)' }}>{t('plnp.add.race')}</span>
+                <span style={{ display:'block', fontSize:12, color:'var(--text-dim)', marginTop:2 }}>{t('plnp.add.raceHint')}</span>
+              </span>
+            </button>
+          </div>
+        )}
+      </BottomSheet>
+
+      {raceEditor && (
+        <RaceEditorSheet
+          race={raceEditor.race}
+          initialDate={raceEditor.date}
+          onClose={()=>setRaceEditor(null)}
+          onSave={async (r, files, fb, fr)=>{ await saveRace(r, files, fb, fr, raceEditor.race?.id); setRaceEditor(null) }}
+          onDelete={raceEditor.race ? async ()=>{ await removeRace(raceEditor.race!.id); setRaceEditor(null); setRaceDetail(null) } : undefined}
+        />
+      )}
 
       {tab === 'training' && (<>
       {/* ── Controls — desktop (ancienne interface) ── */}

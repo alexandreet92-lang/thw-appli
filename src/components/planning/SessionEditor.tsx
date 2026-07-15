@@ -820,6 +820,14 @@ function bumpPaceOrWatts(v: string, steps: number): string {
 function durMMSS(min: number): string { const s = Math.max(0, Math.round((min || 0) * 60)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 function mmssToMin(v: string): number { const m = (v || '').match(/^(\d+):(\d{1,2})$/); if (m) return (+m[1]) + (+m[2]) / 60; const n = parseFloat(v || '0'); return isNaN(n) ? 0 : n }
 function bumpDurSec(min: number, steps: number): number { const s = Math.max(0, Math.round((min || 0) * 60) + steps * 15); return Math.round(s) / 60 }
+// Somme des minutes d'une liste de blocs (intervalle = reps × (effort + récup)). Sert à
+// pré-remplir automatiquement la durée de la séance quand on construit les blocs.
+function sumBlockMinutes(blocks: Block[]): number {
+  return Math.round(blocks.reduce((s, b) =>
+    s + (b.mode === 'interval' && b.reps && b.effortMin != null
+      ? b.reps * (b.effortMin + (b.recoveryMin || 0))
+      : (b.durationMin || 0)), 0))
+}
 // Estimation SM (métabolique) / SN (neuromusculaire) « prévu » depuis les blocs (déterministe,
 // proxy par zone — l'app calcule le réel sur l'activité terminée). Remplace l'ancien TSS.
 const SM_COEF = [0.6, 0.85, 1.05, 1.25, 1.45, 1.55, 1.62]
@@ -3605,6 +3613,16 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   const [selPlan, setSelPlan] = useState<PlanVariant>(session?.planVariant ?? plan ?? 'A')
   const [blocks, setBlocks] = useState<Block[]>(session?.blocks ?? [])
   const [exercises, setExercises] = useState<ExerciseItem[]>([])
+  // Durée AUTO : dès qu'on modifie les blocs, la durée se pré-remplit sur la somme des blocs
+  // (2×30 + 15 → 1h15). On saute le 1er rendu pour ne pas écraser la durée d'une séance
+  // existante à l'ouverture ; ensuite l'utilisateur peut toujours ajuster la durée à la main
+  // (jusqu'au prochain changement de bloc).
+  const durAutoInitRef = useRef(true)
+  useEffect(() => {
+    if (durAutoInitRef.current) { durAutoInitRef.current = false; return }
+    const total = sumBlockMinutes(blocks)
+    if (total > 0) setDur(total)
+  }, [blocks])
   // À la création : on ouvre directement sur l'IA (champ d'écriture → blocs).
   const [builderTab, setBuilderTab] = useState<'manual' | 'ai'>(mode === 'create' ? 'ai' : 'manual')
   const [aiPrompt, setAiPrompt] = useState('')

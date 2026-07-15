@@ -20,6 +20,7 @@ import HybridNetworksPanel, { type HNConv } from './HybridNetworksPanel'
 import { MobileSheet } from './MobileSheet'
 import { haptic } from '@/lib/ui/haptic'
 import { emitNotification } from '@/lib/notifications/emit'
+import { localDateStr } from '@/lib/date/weekStart'
 import { VoiceOverlay } from './VoiceOverlay'
 import { VoiceConversation } from './VoiceConversation'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
@@ -20593,7 +20594,7 @@ export default function AIPanel({
       const sd = new Date(r.start_date ?? new Date().toISOString().slice(0, 10))
       const dow = sd.getDay() === 0 ? 6 : sd.getDay() - 1
       sd.setDate(sd.getDate() - dow)
-      const startDate = sd.toISOString().slice(0, 10)
+      const startDate = localDateStr(sd)   // LOCAL (pas UTC) → clé week_start = lundi local
 
       // 2) Rassembler TOUTES les données réelles de l'athlète
       const cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
@@ -21006,7 +21007,7 @@ export default function AIPanel({
       const sd = new Date(req.start_date ?? new Date().toISOString().slice(0, 10))
       const dow = sd.getDay() === 0 ? 6 : sd.getDay() - 1
       sd.setDate(sd.getDate() - dow)
-      const startDate = sd.toISOString().slice(0, 10)
+      const startDate = localDateStr(sd)   // LOCAL (pas UTC) → clé week_start = lundi local
 
       const cutoff = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
       const todayStr = new Date().toISOString().slice(0, 10)
@@ -21070,7 +21071,7 @@ export default function AIPanel({
       const sd = new Date(req.start_date ?? new Date().toISOString().slice(0, 10))
       const dow = sd.getDay() === 0 ? 6 : sd.getDay() - 1
       sd.setDate(sd.getDate() - dow)
-      const startDate = sd.toISOString().slice(0, 10)
+      const startDate = localDateStr(sd)   // LOCAL (pas UTC) → clé week_start = lundi local
 
       const sportMap: Record<string, string> = {
         'Running': 'run', 'Course': 'run', 'Course à pied': 'run', 'Trail': 'run',

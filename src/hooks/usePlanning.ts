@@ -2,14 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { weekStartStr } from '@/lib/date/weekStart'
 
-// Calcule le lundi de la semaine courante
+// Lundi (LOCAL) de la semaine courante — helper canonique (surtout PAS
+// toISOString/UTC, qui décalait la clé au dimanche en fuseau positif).
 function getWeekStart(): string {
-  const now = new Date()
-  const dow = now.getDay() === 0 ? 6 : now.getDay() - 1
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - dow)
-  return monday.toISOString().split('T')[0]
+  return weekStartStr()
 }
 
 export interface PlannedSession {

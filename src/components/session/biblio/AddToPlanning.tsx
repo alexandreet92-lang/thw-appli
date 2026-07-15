@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { IconCalendarPlus, IconCheck, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
+import { weekStartStr, mondayIndex } from '@/lib/date/weekStart'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const WD = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
@@ -26,15 +27,11 @@ interface Props {
 
 const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
 const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-const mondayIndex = (d: Date) => (d.getDay() + 6) % 7   // 0 = lundi
 
-// Lundi (YYYY-MM-DD) + index de jour (0 = lundi). Même formule que le reste de
-// l'app (getWeekStart : monday.toISOString()) → même « bucket » de semaine.
+// Lundi (YYYY-MM-DD, LOCAL) + index de jour (0 = lundi). Utilise le helper
+// canonique — surtout PAS toISOString (UTC) qui décalait la clé au dimanche.
 function weekStartAndDayIndex(d: Date): { weekStart: string; dayIndex: number } {
-  const dayIndex = mondayIndex(d)
-  const monday = new Date(d)
-  monday.setDate(d.getDate() - dayIndex)
-  return { weekStart: monday.toISOString().split('T')[0], dayIndex }
+  return { weekStart: weekStartStr(d), dayIndex: mondayIndex(d) }
 }
 
 export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, computeMeta }: Props) {

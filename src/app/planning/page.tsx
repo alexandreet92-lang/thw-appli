@@ -2689,6 +2689,15 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const [loadedOnce, setLoadedOnce] = useState(false)
   const [datasWeek, setDatasWeek] = useState<string|null>(null)
   useEffect(()=>{ if(!loading) setLoadedOnce(true) },[loading])
+  // Ajout externe (bibliothèque, coach IA, +) sur une semaine ≠ semaine courante :
+  // le hook de la semaine courante se recharge déjà via cet event, mais la grille
+  // multi-semaines (extraSessions + intensityMap) dépend de planTick → on l'incrémente
+  // pour forcer le rechargement, sinon la séance reste invisible jusqu'à un refresh manuel.
+  useEffect(()=>{
+    const h = () => setPlanTick(t=>t+1)
+    window.addEventListener('thw:sessions-changed', h)
+    return () => window.removeEventListener('thw:sessions-changed', h)
+  },[])
   useEffect(()=>{
     const sb=createClient()
     ;(async()=>{

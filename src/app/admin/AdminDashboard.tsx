@@ -4,9 +4,10 @@
 // comme la page Récupération) et la charte de l'app (tokens, fond, logo shuriken).
 // Aucune lib de charts : SVG brut. Données reçues en props (calculées serveur).
 
-import { LayoutDashboard, Euro, Cpu, MousePointerClick, Activity, Plug } from 'lucide-react'
+import { LayoutDashboard, Euro, Cpu, MousePointerClick, Activity, Plug, MessageCircle } from 'lucide-react'
 import { SectionLayout, type SectionDef } from '@/components/navigation/SectionLayout'
 import type { AdminMetrics } from '@/lib/admin/types'
+import type { FeedbackRow } from '@/lib/admin/feedback'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
 
@@ -258,7 +259,38 @@ function Integrations({ m }: { m: AdminMetrics }) {
   )
 }
 
-export function AdminDashboard({ metrics, adminEmail }: { metrics: AdminMetrics; adminEmail: string | null }) {
+// ── Messages utilisateurs → créateur ──────────────────────────────
+const FB_CAT: Record<FeedbackRow['category'], { label: string; color: string }> = {
+  amelioration: { label: 'Amélioration', color: 'var(--primary)' },
+  bug:          { label: 'Bug / problème', color: '#ef4444' },
+  jaime:        { label: "Ce qu'il aime", color: '#22c55e' },
+  autre:        { label: 'Autre', color: '#8b5cf6' },
+}
+function Messages({ rows }: { rows: FeedbackRow[] }) {
+  if (rows.length === 0) {
+    return <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: 'var(--space-8) 0' }}>Aucun message pour l’instant.</p>
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {rows.map(r => {
+        const c = FB_CAT[r.category] ?? FB_CAT.autre
+        return (
+          <div key={r.id} style={{ border: '1px solid var(--border)', borderLeft: `3px solid ${c.color}`, borderRadius: 12, padding: '12px 14px', background: 'var(--bg-card2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: c.color, padding: '2px 7px', borderRadius: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{c.label}</span>
+              <span style={{ fontFamily: FB, fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{r.user_email ?? '—'}</span>
+              <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', marginLeft: 'auto' }}>{new Date(r.created_at).toLocaleString(currentLocale())}</span>
+            </div>
+            <p style={{ fontFamily: FB, fontSize: 13.5, color: 'var(--text)', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{r.message}</p>
+            {r.page && <p style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 0' }}>depuis {r.page}</p>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export function AdminDashboard({ metrics, adminEmail, feedback }: { metrics: AdminMetrics; adminEmail: string | null; feedback: FeedbackRow[] }) {
   const { t } = useI18n()
   const header = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
@@ -289,6 +321,7 @@ export function AdminDashboard({ metrics, adminEmail }: { metrics: AdminMetrics;
     { id: 'product', label: t('admin.tab.product'), subtitle: t('admin.tab.productSub'), icon: MousePointerClick, content: <Product m={metrics} /> },
     { id: 'engagement', label: 'Engagement', subtitle: t('admin.tab.engagementSub'), icon: Activity, content: <Engagement m={metrics} /> },
     { id: 'integrations', label: t('admin.tab.integrations'), short: t('admin.tab.integrationsShort'), subtitle: 'Syncs · sports', icon: Plug, content: <Integrations m={metrics} /> },
+    { id: 'messages', label: 'Messages', subtitle: 'Retours des utilisateurs', icon: MessageCircle, content: <Messages rows={feedback} /> },
   ]
 
   return <SectionLayout header={header} sections={sections} urlParam="tab" />

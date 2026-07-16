@@ -7,6 +7,7 @@
 export type NotifKey =
   | 'entrainement.rappel_seance' | 'entrainement.programme_matin' | 'entrainement.seance_a_venir'
   | 'entrainement.nouveau_plan' | 'entrainement.rappel_enregistrement' | 'entrainement.test_suggere'
+  | 'entrainement.seance_telechargee'
   | 'recuperation.rappel_hrv' | 'recuperation.suivi_sommeil' | 'recuperation.alerte_fatigue'
   | 'recuperation.recup_recommandee' | 'recuperation.conseils_post_seance'
   | 'nutrition.rappel_repas' | 'nutrition.hydratation' | 'nutrition.timing_nutritionnel'
@@ -28,6 +29,7 @@ export const NOTIF_DEFAULTS: Record<NotifKey, boolean> = {
   'entrainement.nouveau_plan': true,
   'entrainement.rappel_enregistrement': false,
   'entrainement.test_suggere': false,
+  'entrainement.seance_telechargee': true,
   'recuperation.rappel_hrv': true,
   'recuperation.suivi_sommeil': false,
   'recuperation.alerte_fatigue': true,

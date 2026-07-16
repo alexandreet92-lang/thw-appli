@@ -224,7 +224,7 @@ export async function processBikeActivityRecords(
       void notifyUser(userId, 'performance.progression', {
         title: 'Nouveau record 💥',
         body: `${best.display} à ${best.watts} W — nouveau record all-time${extra} !`,
-        url: '/progression',
+        url: '/performance',
         dedupKey: `pr-${activityId}`,
         once: true,
       })

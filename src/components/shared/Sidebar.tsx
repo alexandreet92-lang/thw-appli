@@ -436,6 +436,27 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
           active={pathname === '/questionnaire'}
           onClick={onClose}
         />
+        {/* Envoyer un message au créateur (sur-page feedback) */}
+        <button
+          onClick={() => { onClose?.(); window.dispatchEvent(new Event('thw:open-feedback')) }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 10, width: '100%',
+            border: 'none', background: 'transparent', cursor: 'pointer',
+            fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 400,
+            color: 'var(--text-mid)', textAlign: 'left',
+            transition: 'background 0.14s, color 0.14s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(6,182,212,0.06)'; (e.currentTarget as HTMLElement).style.color = 'var(--text)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-mid)' }}
+        >
+          <span style={{ flexShrink: 0, opacity: 0.6, display: 'flex' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </span>
+          {t('nav.feedback')}
+        </button>
         {/* Briefing du jour */}
         <Link
           href="/briefing"

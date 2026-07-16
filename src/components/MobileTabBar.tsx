@@ -11,7 +11,7 @@ import {
   CalendarDays, BarChart3, Grid3x3, ChevronLeft,
   ClipboardList, Calendar, Dumbbell, HeartPulse,
   Activity, Moon, Apple, Trophy,
-  Link as LinkIcon, FileText, User, Settings,
+  Link as LinkIcon, FileText, User, Settings, MessageCircle,
 } from 'lucide-react'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -47,6 +47,7 @@ const SUBS: Record<Exclude<Mode, 'main'>, Sub[]> = {
   plus: [
     { href: '/connections', labelKey: 'nav.connections', Icon: LinkIcon },
     { href: '/briefing',    labelKey: 'nav.briefing',    Icon: FileText },
+    { href: '#feedback',    labelKey: 'nav.feedback',    Icon: MessageCircle },
     { href: '/profile',     labelKey: 'nav.profile',     Icon: User },
     { href: '/parametres',  labelKey: 'nav.settings',    Icon: Settings },
   ],
@@ -56,10 +57,11 @@ const SUBS: Record<Exclude<Mode, 'main'>, Sub[]> = {
 
 function SubItem({ href, labelKey, Icon, active }: Sub & { active: boolean }) {
   const { t } = useI18n()
-  // « Mon Profil » s'ouvre en sur-page (par-dessus la page courante), pas en route.
-  if (href === '/profile') {
+  // « Mon Profil » et « Message » s'ouvrent en sur-page (par-dessus la page courante).
+  if (href === '/profile' || href === '#feedback') {
+    const evt = href === '/profile' ? 'thw:open-profile' : 'thw:open-feedback'
     return (
-      <button onClick={() => window.dispatchEvent(new Event('thw:open-profile'))} style={{ ...BTN, background: 'none', border: 'none', cursor: 'pointer' }}>
+      <button onClick={() => window.dispatchEvent(new Event(evt))} style={{ ...BTN, background: 'none', border: 'none', cursor: 'pointer' }}>
         <Icon size={20} color={active ? ACCENT : DIM} />
         <span style={lbl(active)}>{t(labelKey)}</span>
       </button>

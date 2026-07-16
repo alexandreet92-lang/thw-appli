@@ -751,6 +751,7 @@ const NOTIF_CATEGORIES: NotifCategory[] = [
     { key:'entrainement.programme_matin',      label:'Programme du matin',     sub:'Ton briefing chaque matin', def:true },
     { key:'entrainement.seance_a_venir',       label:'Séance à venir',         sub:'Alerte ~1h avant une séance clé', def:false },
     { key:'entrainement.nouveau_plan',         label:'Nouveau plan',           sub:"Un plan d'entraînement est prêt", def:true },
+    { key:'entrainement.seance_telechargee',   label:'Séance téléchargée',     sub:'Une séance a été ajoutée à ton planning', def:true },
     { key:'entrainement.rappel_enregistrement',label:"Rappel d'enregistrement",sub:'Pense à enregistrer ta séance manuelle', def:false },
     { key:'entrainement.test_suggere',         label:'Test suggéré',           sub:'Un test de performance est recommandé', def:false },
   ]},

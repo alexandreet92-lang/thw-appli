@@ -13,6 +13,7 @@ import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
 import { ProfileSheet } from '@/components/profile/ProfileSheet'
+import { FeedbackSheet } from '@/components/feedback/FeedbackSheet'
 import { haptic } from '@/lib/ui/haptic'
 import { useI18n } from '@/lib/i18n'
 
@@ -46,6 +47,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const [aiOpen, setAiOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const unreadNotifs = useUnreadNotifCount(notifOpen)
   useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
@@ -78,6 +80,12 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   }, [])
   // On replie la sur-page profil à chaque navigation.
   useEffect(() => { setProfileOpen(false) }, [pathname])
+  // « Envoyer un message » ouvert en sur-page (depuis le menu Plus / la sidebar).
+  useEffect(() => {
+    const open = () => { setOpen(false); setFeedbackOpen(true) }
+    window.addEventListener('thw:open-feedback', open)
+    return () => window.removeEventListener('thw:open-feedback', open)
+  }, [])
   useEffect(() => {
     document.body.classList.toggle('drawer-open', open)
     return () => document.body.classList.remove('drawer-open')
@@ -244,6 +252,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />
       <NotificationsOverlay open={notifOpen} onClose={() => setNotifOpen(false)} />
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   )
 }

@@ -7,6 +7,7 @@ import { IconCalendarPlus, IconCheck, IconChevronLeft, IconChevronRight } from '
 import { createClient } from '@/lib/supabase/client'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { weekStartStr, mondayIndex } from '@/lib/date/weekStart'
+import { emitNotification } from '@/lib/notifications/emit'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
 const WD = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
@@ -88,6 +89,14 @@ export function AddToPlanning({ sport, title, objectif, niveaux, defaultNiveau, 
         rpe: meta.rpe, notes, blocks: [], source: 'biblio',
       })
       if (error) { setErrMsg(error.message || 'Ajout impossible. Réessaie.'); setSaving(false); return }
+      // Notifie l'utilisateur qu'une séance vient d'être téléchargée dans son planning.
+      emitNotification({
+        key: 'entrainement.seance_telechargee',
+        title: 'Séance téléchargée',
+        body: `« ${title} » a été ajoutée à ton planning · ${selLabel}`,
+        url: '/planning',
+        dedupKey: `dl:${uid}:${weekStart}:${dayIndex}:${title}`,
+      })
       window.dispatchEvent(new Event('thw:sessions-changed'))
       setDone(true); setSaving(false)
       setTimeout(() => { setOpen(false); setDone(false) }, 1200)

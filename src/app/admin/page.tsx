@@ -5,6 +5,7 @@
 import { redirect } from 'next/navigation'
 import { checkAdmin } from '@/lib/admin/guard'
 import { getAdminMetrics } from '@/lib/admin/metrics'
+import { getUserFeedback } from '@/lib/admin/feedback'
 import { AdminDashboard } from './AdminDashboard'
 
 export const dynamic = 'force-dynamic'
@@ -24,6 +25,6 @@ export default async function AdminPage() {
     )
   }
 
-  const metrics = await getAdminMetrics()
-  return <AdminDashboard metrics={metrics} adminEmail={chk.email} />
+  const [metrics, feedback] = await Promise.all([getAdminMetrics(), getUserFeedback()])
+  return <AdminDashboard metrics={metrics} adminEmail={chk.email} feedback={feedback} />
 }

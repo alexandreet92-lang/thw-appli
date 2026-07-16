@@ -37,9 +37,12 @@ export default function NotificationsPage() {
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
         if (!user) { if (!cancelled) { setNotifs([]); setLoading(false) }; return }
+        // On n'affiche que les notifications datant de 7 jours ou moins.
+        const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
         const { data } = await sb.from('notifications')
           .select('id, type, title, body, link, read, created_at')
-          .eq('user_id', user.id).order('created_at', { ascending: false }).limit(100)
+          .eq('user_id', user.id).gte('created_at', since)
+          .order('created_at', { ascending: false }).limit(100)
         if (cancelled) return
         setNotifs((data ?? []) as Notif[]); setLoading(false)
         const unread = (data ?? []).filter((n: Notif) => !n.read).map((n: Notif) => n.id)

@@ -12,6 +12,7 @@ import { PageTransition } from '@/components/ui/PageTransition'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
+import { FeedbackSheet } from '@/components/feedback/FeedbackSheet'
 import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -26,6 +27,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(true)
   const [aiOpen, setAiOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const unreadNotifs = useUnreadNotifCount(notifOpen)
   useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
@@ -41,6 +43,13 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     const open = () => setAiOpen(true)
     window.addEventListener('thw:open-coach', open)
     return () => window.removeEventListener('thw:open-coach', open)
+  }, [])
+
+  // « Envoyer un message » (menu latéral) → sur-page feedback.
+  useEffect(() => {
+    const open = () => setFeedbackOpen(true)
+    window.addEventListener('thw:open-feedback', open)
+    return () => window.removeEventListener('thw:open-feedback', open)
   }, [])
 
   // /topup : page autonome (lien email), aucun chrome.
@@ -128,6 +137,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
 
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />
       <NotificationsOverlay open={notifOpen} onClose={() => setNotifOpen(false)} />
+      <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   )
 }

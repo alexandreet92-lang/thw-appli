@@ -30,6 +30,7 @@ export interface CompletedSet {
   reps: number
   weightKg: number
   completedAt: number
+  restSec?: number   // récup RÉELLEMENT prise après cette série (chrono ajustable)
 }
 
 export interface WorkoutSummaryData {

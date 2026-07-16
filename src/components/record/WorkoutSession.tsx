@@ -69,6 +69,12 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
   const handleSetDone = useCallback((set: CompletedSet) => {
     setCompletedSets(prev => [...prev, set])
   }, [])
+  // Attache la récup réellement prise aux séries déjà marquées (exos × même tour).
+  const handleRestDone = useCallback((exerciseIds: string[], setIndex: number, restSec: number) => {
+    setCompletedSets(prev => prev.map(s =>
+      exerciseIds.includes(s.exerciseId) && s.setIndex === setIndex ? { ...s, restSec } : s,
+    ))
+  }, [])
   // Enchaînement des circuits : on insère une récup configurable (±15s) entre
   // deux blocs. Démarre à 120s par défaut, ajustable dans le timer.
   const [betweenRest, setBetweenRest] = useState<number | null>(null)
@@ -175,9 +181,9 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
         )}
         {betweenRest == null && current && (
           <>
-            {current.mode === 'series' && <SeriesView key={current.id} exercise={current} onSetDone={handleSetDone} onComplete={goNext} hasNext={currentIdx < exercises.length - 1} isDark={isDark} accent={accent} />}
-            {current.mode === 'circuit' && <LapView key={current.id} exercise={current} onSetDone={handleSetDone} isDark={isDark} accent={accent} />}
-            {current.mode === 'superset' && <SupersetView key={current.id} exercise={current} onSetDone={handleSetDone} isDark={isDark} accent={accent} />}
+            {current.mode === 'series' && <SeriesView key={current.id} exercise={current} onSetDone={handleSetDone} onRestDone={handleRestDone} onComplete={goNext} hasNext={currentIdx < exercises.length - 1} isDark={isDark} accent={accent} />}
+            {current.mode === 'circuit' && <LapView key={current.id} exercise={current} onSetDone={handleSetDone} onRestDone={handleRestDone} isDark={isDark} accent={accent} />}
+            {current.mode === 'superset' && <SupersetView key={current.id} exercise={current} onSetDone={handleSetDone} onRestDone={handleRestDone} isDark={isDark} accent={accent} />}
             {current.mode === 'emom' && <EMOMView key={current.id} exercise={current} onSetDone={handleSetDone} isDark={isDark} accent={accent} />}
             {current.mode === 'tabata' && <TabataView key={current.id} exercise={current} onSetDone={handleSetDone} isDark={isDark} accent={accent} />}
           </>

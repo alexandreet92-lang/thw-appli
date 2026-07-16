@@ -4,7 +4,9 @@ import { useI18n } from '@/lib/i18n'
 
 interface Props {
   seconds: number
-  onDone: () => void
+  /** Reçoit la durée de repos RÉELLEMENT écoulée (chrono mural, ajustements ±15s
+   *  et skip inclus) pour l'attacher à la série. */
+  onDone: (actualRestSec: number) => void
   isDark: boolean
   accent?: string
 }
@@ -13,6 +15,9 @@ export default function RestTimer({ seconds, onDone, isDark, accent = '#06B6D4' 
   const { t } = useI18n()
   const [remaining, setRemaining] = useState(seconds)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Début du repos (mount = un repos) → durée réelle = maintenant − début.
+  const startRef = useRef<number>(Date.now())
+  const elapsedSec = () => Math.max(0, Math.round((Date.now() - startRef.current) / 1000))
   // onDone via ref : sinon chaque re-render du parent (timer global qui tique
   // chaque seconde) recréait la closure → l'effet se relançait et remettait
   // `remaining` à `seconds` → le décompte restait figé sur 90s.
@@ -21,11 +26,12 @@ export default function RestTimer({ seconds, onDone, isDark, accent = '#06B6D4' 
 
   useEffect(() => {
     setRemaining(seconds)
+    startRef.current = Date.now()
     intervalRef.current = setInterval(() => {
       setRemaining(r => {
         if (r <= 1) {
           clearInterval(intervalRef.current!)
-          onDoneRef.current()
+          onDoneRef.current(elapsedSec())
           return 0
         }
         return r - 1
@@ -65,7 +71,7 @@ export default function RestTimer({ seconds, onDone, isDark, accent = '#06B6D4' 
           style={{ padding: '9px 18px', borderRadius: 999, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: text, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>+15s</button>
       </div>
       <button
-        onClick={onDone}
+        onClick={() => onDone(elapsedSec())}
         style={{ padding: '10px 28px', borderRadius: 12, background: accent, border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
       >
         {t('record.restSkip')}

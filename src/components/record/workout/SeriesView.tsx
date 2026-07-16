@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { WorkoutExercise, CompletedSet } from '@/types/workout'
 import { useI18n } from '@/lib/i18n'
 import RestTimer from './RestTimer'
@@ -7,18 +7,20 @@ import RestTimer from './RestTimer'
 interface Props {
   exercise: WorkoutExercise
   onSetDone: (set: CompletedSet) => void
+  onRestDone?: (exerciseIds: string[], setIndex: number, restSec: number) => void
   onComplete?: () => void
   hasNext?: boolean
   isDark: boolean
   accent: string
 }
 
-export default function SeriesView({ exercise, onSetDone, onComplete, hasNext, isDark, accent }: Props) {
+export default function SeriesView({ exercise, onSetDone, onRestDone, onComplete, hasNext, isDark, accent }: Props) {
   const { t } = useI18n()
   const [currentSet, setCurrentSet] = useState(0)
   const [reps, setReps] = useState(exercise.reps)
   const [weight, setWeight] = useState(exercise.weightKg)
   const [resting, setResting] = useState(false)
+  const restForSet = useRef(0)   // n° de la série à laquelle rattacher la récup
   const text = 'var(--text)'
   const dim = 'var(--text-mid)'
   const surface = 'var(--bg-card2)'
@@ -29,6 +31,7 @@ export default function SeriesView({ exercise, onSetDone, onComplete, hasNext, i
   const handleMark = () => {
     onSetDone({ exerciseId: exercise.id, setIndex: currentSet, reps, weightKg: weight, completedAt: Date.now() })
     if (currentSet + 1 < exercise.sets) {
+      restForSet.current = currentSet
       setCurrentSet(s => s + 1)
       setResting(true)
     } else {
@@ -37,7 +40,9 @@ export default function SeriesView({ exercise, onSetDone, onComplete, hasNext, i
   }
 
   if (resting) {
-    return <RestTimer seconds={exercise.restSec} onDone={() => setResting(false)} isDark={isDark} accent={accent} />
+    return <RestTimer seconds={exercise.restSec}
+      onDone={sec => { onRestDone?.([exercise.id], restForSet.current, sec); setResting(false) }}
+      isDark={isDark} accent={accent} />
   }
 
   return (

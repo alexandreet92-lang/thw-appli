@@ -60,11 +60,16 @@ function ExoRow({ e, restLabel, done }: { e: WorkoutExercise; restLabel: string;
       : (e.sets && e.reps ? `${e.sets}×${e.reps}` : e.reps ? `${e.reps}` : '')
     weight = e.weightKg ? `${e.weightKg} kg` : null
   }
-  const detail = [
-    main || null,
-    weight,
-    e.restSec ? `${restLabel} ${fmtSecShort(e.restSec)}` : null,
-  ].filter(Boolean).join(' · ')
+  // Récup réelle si captée (peut varier d'une série à l'autre), sinon le plan.
+  let rest: string | null = null
+  const realRests = (done ?? []).map(s => s.restSec).filter((v): v is number => v != null && v > 0)
+  if (realRests.length) {
+    const mn = Math.min(...realRests), mx = Math.max(...realRests)
+    rest = mn === mx ? `${restLabel} ${fmtSecShort(mx)}` : `${restLabel} ${fmtSecShort(mn)}–${fmtSecShort(mx)}`
+  } else if (e.restSec) {
+    rest = `${restLabel} ${fmtSecShort(e.restSec)}`
+  }
+  const detail = [main || null, weight, rest].filter(Boolean).join(' · ')
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, padding: '7px 0', fontSize: 13 }}>
       <span style={{ color: 'var(--text)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.name}</span>

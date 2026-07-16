@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { WorkoutExercise, CompletedSet } from '@/types/workout'
 import { useI18n } from '@/lib/i18n'
 import RestTimer from './RestTimer'
@@ -7,11 +7,12 @@ import RestTimer from './RestTimer'
 interface Props {
   exercise: WorkoutExercise
   onSetDone: (set: CompletedSet) => void
+  onRestDone?: (exerciseIds: string[], setIndex: number, restSec: number) => void
   isDark: boolean
   accent: string
 }
 
-export default function LapView({ exercise, onSetDone, isDark, accent }: Props) {
+export default function LapView({ exercise, onSetDone, onRestDone, isDark, accent }: Props) {
   const { t } = useI18n()
   const rounds = exercise.circuitRounds ?? 3
   const exercises = exercise.circuitExercises ?? []
@@ -19,6 +20,7 @@ export default function LapView({ exercise, onSetDone, isDark, accent }: Props) 
   const [currentRound, setCurrentRound] = useState(0)
   const [currentEx, setCurrentEx] = useState(0)
   const [resting, setResting] = useState(false)
+  const restForRound = useRef(0)   // n° de tour auquel rattacher la récup inter-tours
   // Valeurs réellement faites (reps/charge), éditables — préremplies depuis le plan.
   const [vals, setVals] = useState<Record<string, { reps: number; weightKg: number }>>(
     () => Object.fromEntries(list.map(e => [e.id, { reps: e.reps, weightKg: e.weightKg }])),
@@ -40,6 +42,7 @@ export default function LapView({ exercise, onSetDone, isDark, accent }: Props) 
     } else {
       setCurrentEx(0)
       if (currentRound + 1 < rounds) {
+        restForRound.current = currentRound
         setCurrentRound(r => r + 1)
         setResting(true)
       } else {
@@ -49,7 +52,12 @@ export default function LapView({ exercise, onSetDone, isDark, accent }: Props) 
   }
 
   if (resting) {
-    return <RestTimer seconds={exercise.circuitRestSec ?? 60} onDone={() => setResting(false)} isDark={isDark} accent={accent} />
+    // La récup inter-tours est rattachée au dernier exo du tour (celui après
+    // lequel elle a réellement lieu).
+    const lastExoId = list[list.length - 1].id
+    return <RestTimer seconds={exercise.circuitRestSec ?? 60}
+      onDone={sec => { onRestDone?.([lastExoId], restForRound.current, sec); setResting(false) }}
+      isDark={isDark} accent={accent} />
   }
 
   const activeEx = exercises.length > 0 ? exercises[currentEx] : exercise

@@ -11,6 +11,7 @@
 import { useLinkedWorkoutSession, type LinkedWorkout } from '@/lib/activity/workoutFusion'
 import { MuscuExerciseLog } from './MuscuExerciseLog'
 import { useI18n } from '@/lib/i18n'
+import type { WorkoutExercise } from '@/types/workout'
 
 const GYM = 'var(--sport-gym)'
 
@@ -20,6 +21,12 @@ function fmtDur(s: number | null): string {
   if (!s) return '—'
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60)
   return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m} min`
+}
+/** Durée courte : « 45s », « 1:30 » ou « 2min ». */
+function fmtSecShort(s: number): string {
+  if (s < 60) return `${s}s`
+  const m = Math.floor(s / 60), r = s % 60
+  return r ? `${m}:${String(r).padStart(2, '0')}` : `${m}min`
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {
@@ -31,10 +38,36 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   )
 }
 
+/** Détail d'un exercice : « 4×6 · 20 kg · récup 60s » (temps si durationSec). */
+function ExoRow({ e, restLabel }: { e: WorkoutExercise; restLabel: string }) {
+  const hasTime = (e.durationSec ?? 0) > 0
+  const main = hasTime
+    ? `${e.sets || 1}×${fmtSecShort(e.durationSec as number)}`
+    : (e.sets && e.reps ? `${e.sets}×${e.reps}` : e.reps ? `${e.reps}` : '')
+  const detail = [
+    main || null,
+    e.weightKg ? `${e.weightKg} kg` : null,
+    e.restSec ? `${restLabel} ${fmtSecShort(e.restSec)}` : null,
+  ].filter(Boolean).join(' · ')
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, padding: '7px 0', fontSize: 13 }}>
+      <span style={{ color: 'var(--text)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.name}</span>
+      {detail && <span style={{ color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>{detail}</span>}
+    </div>
+  )
+}
+
 function SessionCard({ s }: { s: LinkedWorkout }) {
   const { t } = useI18n()
-  const exos = s.exercises_detail ?? []
-  const nbExos = exos.length
+  const groups = s.exercises_detail ?? []
+  // Un exercice est soit « plat » (série simple), soit un groupe (circuit/EMOM/…)
+  // porteur de circuitExercises. Le compteur reflète les vrais exercices.
+  const flat = (e: WorkoutExercise): WorkoutExercise[] =>
+    e.circuitExercises && e.circuitExercises.length
+      ? e.circuitExercises
+      : (e.supersetPartner ? [e, e.supersetPartner] : [e])
+  const nbExos = groups.reduce((n, e) => n + flat(e).length, 0)
+  const restLabel = t('activities.restLabel')
   const vol = s.total_volume_kg != null ? Math.round(Number(s.total_volume_kg)) : null
 
   return (
@@ -54,14 +87,35 @@ function SessionCard({ s }: { s: LinkedWorkout }) {
 
       {nbExos > 0 && (
         <div>
-          {exos.map((e, i) => (
-            <div key={e.id ?? i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--border)', fontSize: 13 }}>
-              <span style={{ color: 'var(--text)', fontWeight: 600 }}>{e.name}</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                {[e.sets && e.reps ? `${e.sets}×${e.reps}` : null, e.weightKg ? `${e.weightKg} kg` : null].filter(Boolean).join(' · ')}
-              </span>
-            </div>
-          ))}
+          {groups.map((g, i) => {
+            const nested = g.circuitExercises && g.circuitExercises.length ? g.circuitExercises : null
+            const rounds = g.circuitRounds ?? g.emomMinutes ?? g.tabataRounds
+            if (nested) {
+              // Groupe (circuit / Lap / EMOM / Tabata) : en-tête + exos imbriqués.
+              const meta = [
+                rounds ? `${rounds} ${t('activities.laps').toLowerCase()}` : null,
+                g.circuitRestSec ? `${restLabel} ${fmtSecShort(g.circuitRestSec)}` : null,
+              ].filter(Boolean).join(' · ')
+              return (
+                <div key={g.id ?? i} style={{ borderTop: '1px solid var(--border)', padding: '10px 0 4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginBottom: 2 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: GYM }}>{g.name}</span>
+                    {meta && <span style={{ fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0 }}>{meta}</span>}
+                  </div>
+                  <div style={{ paddingLeft: 10, borderLeft: '2px solid var(--border)' }}>
+                    {nested.map((x, j) => <ExoRow key={x.id ?? j} e={x} restLabel={restLabel} />)}
+                  </div>
+                </div>
+              )
+            }
+            // Exercice plat (série simple) + éventuel partenaire de superset.
+            const rows = g.supersetPartner ? [g, g.supersetPartner] : [g]
+            return (
+              <div key={g.id ?? i} style={{ borderTop: '1px solid var(--border)' }}>
+                {rows.map((x, j) => <ExoRow key={x.id ?? j} e={x} restLabel={restLabel} />)}
+              </div>
+            )
+          })}
         </div>
       )}
 

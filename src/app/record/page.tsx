@@ -27,7 +27,7 @@ const ElevationChart   = dynamic(() => import('@/components/record/ElevationChar
 const SkiScreen        = dynamic(() => import('@/components/record/SkiScreen'),       { ssr: false })
 const PadelForm        = dynamic(() => import('@/components/record/PadelForm'),        { ssr: false })
 const OpenWaterScreen  = dynamic(() => import('@/components/record/OpenWaterScreen'), { ssr: false })
-const HomeTrainerScreen = dynamic(() => import('@/components/record/HomeTrainerScreen'), { ssr: false })
+const HomeTrainerScreen = dynamic(() => import('@/components/record/ride/RideScreen'), { ssr: false })
 
 type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout' | 'ski' | 'yoga' | 'padel' | 'openwater' | 'hometrainer'
 

@@ -211,6 +211,36 @@
   --gty-border:  rgba(255,255,255,0.15);
 }
 
+/* ── Séance home trainer (RideScreen) — tokens de tracé canvas + lignes ──
+   Les couleurs de courbe DOIVENT être des tokens : en dur elles disparaissent
+   en thème clair (cf. PROMPT_HOME_TRAINER.md §Thème clair). --ride-power réutilise
+   la marque ; les zones réutilisent --zone-1..7. Les états jauge réutilisent
+   --charge-low/mid/hard. Seuls HR, tracé et scrim sont propres à l'écran. */
+:root, .light {
+  --ride-power:    #06B6D4; /* = --primary ; concret car lu tel quel par le canvas */
+  --ride-hr:       #DD2E4E;
+  --ride-grid:     rgba(12,22,44,0.07);
+  --ride-axis:     rgba(12,22,44,0.28);
+  --ride-axis-ink: rgba(12,22,44,0.45);
+  --ride-trace:    rgba(12,22,44,0.55);
+  --ride-fill-a:   rgba(14,154,174,0.26);
+  --ride-fill-b:   rgba(14,154,174,0);
+  --ride-scrim:    rgba(243,246,251,0.93);
+  --ride-zone-ink: #ffffff;
+}
+.dark {
+  --ride-power:    #06B6D4; /* = --primary ; concret car lu tel quel par le canvas */
+  --ride-hr:       #FF4D6A;
+  --ride-grid:     rgba(255,255,255,0.06);
+  --ride-axis:     rgba(255,255,255,0.22);
+  --ride-axis-ink: rgba(255,255,255,0.40);
+  --ride-trace:    rgba(255,255,255,0.80);
+  --ride-fill-a:   rgba(34,211,230,0.32);
+  --ride-fill-b:   rgba(34,211,230,0);
+  --ride-scrim:    rgba(4,7,12,0.90);
+  --ride-zone-ink: #04171B;
+}
+
 * {
   box-sizing: border-box;
   scrollbar-width: thin;

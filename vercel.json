@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/coach/learn", "schedule": "0 3 * * *" },
-    { "path": "/api/notifications/dispatch", "schedule": "0 6 * * *" }
+    { "path": "/api/notifications/dispatch", "schedule": "0 6 * * *" },
+    { "path": "/api/routines/tick", "schedule": "0 * * * *" }
   ]
 }

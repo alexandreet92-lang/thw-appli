@@ -12371,7 +12371,7 @@ function PlusMenu({
   const photoTileLabel: React.CSSProperties = { fontSize: 12, color: 'var(--text)', fontWeight: 500 }
   // ── Style mobile « cartes groupées » (façon Claude) : blocs arrondis,
   //    grande typo, cibles tactiles confortables, séparateurs en retrait. ──
-  const mGroup: React.CSSProperties = { background: 'var(--bg-alt)', borderRadius: 16, overflow: 'hidden', marginBottom: 12 }
+  const mGroup: React.CSSProperties = { background: 'var(--surface-neutral)', borderRadius: 16, overflow: 'hidden', marginBottom: 12 }
   const mRow: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 14, width: '100%',
     padding: '15px 16px', minHeight: 56, boxSizing: 'border-box',
@@ -12381,7 +12381,7 @@ function PlusMenu({
   const mDiv: React.CSSProperties = { height: 1, background: 'var(--border)', marginLeft: 52 }
   const mHint: React.CSSProperties = { fontSize: 13, color: 'var(--text-dim)', flexShrink: 0, fontWeight: 500 }
   const mTile: React.CSSProperties = {
-    flexShrink: 0, width: 106, height: 102, borderRadius: 18, border: 'none', background: 'var(--bg-alt)',
+    flexShrink: 0, width: 106, height: 102, borderRadius: 18, border: 'none', background: 'var(--surface-neutral)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 9,
     cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
   }
@@ -12530,7 +12530,8 @@ function PlusMenu({
               <button key={i} onClick={() => { onPickPhoto(url); onClose() }} aria-label={`Photo ${i + 1}`}
                 style={{ flexShrink: 0, width: 102, height: 102, borderRadius: 18, padding: 0, border: 'none', background: 'var(--surface-neutral)', overflow: 'hidden', cursor: 'pointer' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                <img src={url} alt="" loading="lazy" onError={() => setRecentPhotos(p => p.filter(u => u !== url))}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               </button>
             ))}
           </div>
@@ -12857,7 +12858,7 @@ function PlusMenu({
   )
 
   if (isMobile) {
-    return <MobileSheet title={t('aip.ui.addToChat')} onClose={onClose}>{body}</MobileSheet>
+    return <MobileSheet title={t('aip.ui.addToChat')} onClose={onClose} collapsedMaxVh={0.6}>{body}</MobileSheet>
   }
   return (
     <div ref={ref} className="aip-plus-menu" style={{

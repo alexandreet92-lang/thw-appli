@@ -34,10 +34,16 @@ export function MobileSheet({
   title,
   onClose,
   children,
+  collapsedMaxVh,
 }: {
   title?: string
   onClose: () => void
   children: React.ReactNode
+  /** Plafonne la détente initiale (fraction de la hauteur d'écran, ex. 0.6 =
+   *  ouvre à mi-hauteur). Le contenu reste défilable et on peut tirer vers le
+   *  haut jusqu'à ~94vh. Sans ça, une feuille au contenu long s'ouvre presque
+   *  plein écran. */
+  collapsedMaxVh?: number
 }) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
@@ -63,7 +69,10 @@ export function MobileSheet({
     const vh = window.innerHeight
     const natural = el.getBoundingClientRect().height
     const exp = Math.round(vh * 0.94)
-    const col = Math.min(Math.round(natural), exp)
+    // Détente initiale : hauteur naturelle, éventuellement plafonnée (ouverture
+    // à mi-hauteur). On garde au moins 40vh pour éviter une feuille trop basse.
+    const cap = collapsedMaxVh ? Math.max(Math.round(vh * 0.4), Math.round(vh * collapsedMaxVh)) : exp
+    const col = Math.min(Math.round(natural), cap)
     dimsRef.current = { col, exp }
     el.style.height = col + 'px'
     el.style.transform = 'translateY(100%)'
@@ -71,7 +80,7 @@ export function MobileSheet({
     el.style.transition = SPRING
     el.style.transform = 'translateY(0px)'
     if (backdropRef.current) backdropRef.current.style.opacity = '1'
-  }, [mounted])
+  }, [mounted, collapsedMaxVh])
 
   // Fermeture animée (slide-down) puis démontage réel
   const requestClose = () => {

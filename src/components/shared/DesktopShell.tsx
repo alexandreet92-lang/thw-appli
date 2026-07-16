@@ -111,6 +111,19 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
         </button>
 
+        {/* Démarrer — accès rapide à l'enregistrement d'une séance, juste à
+            gauche de la cloche (CTA plein, se distingue des fabs en verre). */}
+        <Link href="/record" aria-label="Démarrer une séance"
+          style={{
+            position: 'fixed', top: 12, right: 108, height: 38, zIndex: 120,
+            display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px', borderRadius: 12,
+            background: 'var(--primary)', color: 'var(--on-primary)', textDecoration: 'none',
+            boxShadow: 'var(--shadow-card)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
+          }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+          Démarrer
+        </Link>
+
         {/* Cloche notifications — ouvre une surpage centrée (sans quitter la page) */}
         <button aria-label={t('shared.notifications')} onClick={() => setNotifOpen(true)}
           style={{ ...fab, right: 62, left: 'auto' }}>

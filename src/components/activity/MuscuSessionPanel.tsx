@@ -11,7 +11,7 @@
 import { useLinkedWorkoutSession, type LinkedWorkout } from '@/lib/activity/workoutFusion'
 import { MuscuExerciseLog } from './MuscuExerciseLog'
 import { useI18n } from '@/lib/i18n'
-import type { WorkoutExercise } from '@/types/workout'
+import type { WorkoutExercise, CompletedSet } from '@/types/workout'
 
 const GYM = 'var(--sport-gym)'
 
@@ -38,15 +38,31 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   )
 }
 
-/** Détail d'un exercice : « 4×6 · 20 kg · récup 60s » (temps si durationSec). */
-function ExoRow({ e, restLabel }: { e: WorkoutExercise; restLabel: string }) {
+/** Détail d'un exercice : « 4×6 · 20 kg · récup 60s ». Si des séries RÉELLES
+ *  existent (completed_sets), on affiche ce qui a été fait — par ex. « 2 · 3 · 2 »
+ *  quand les reps varient d'un tour à l'autre — plutôt que le plan initial. */
+function ExoRow({ e, restLabel, done }: { e: WorkoutExercise; restLabel: string; done?: CompletedSet[] }) {
   const hasTime = (e.durationSec ?? 0) > 0
-  const main = hasTime
-    ? `${e.sets || 1}×${fmtSecShort(e.durationSec as number)}`
-    : (e.sets && e.reps ? `${e.sets}×${e.reps}` : e.reps ? `${e.reps}` : '')
+  let main = ''
+  let weight: string | null = null
+  if (done && done.length && !hasTime) {
+    const reps = done.map(s => s.reps)
+    const sameReps = reps.every(r => r === reps[0])
+    main = sameReps ? `${done.length}×${reps[0]}` : reps.join(' · ')
+    const ws = done.map(s => s.weightKg).filter(w => w > 0)
+    if (ws.length) {
+      const mn = Math.min(...ws), mx = Math.max(...ws)
+      weight = mn === mx ? `${mx} kg` : `${mn}–${mx} kg`
+    }
+  } else {
+    main = hasTime
+      ? `${e.sets || 1}×${fmtSecShort(e.durationSec as number)}`
+      : (e.sets && e.reps ? `${e.sets}×${e.reps}` : e.reps ? `${e.reps}` : '')
+    weight = e.weightKg ? `${e.weightKg} kg` : null
+  }
   const detail = [
     main || null,
-    e.weightKg ? `${e.weightKg} kg` : null,
+    weight,
     e.restSec ? `${restLabel} ${fmtSecShort(e.restSec)}` : null,
   ].filter(Boolean).join(' · ')
   return (
@@ -69,6 +85,13 @@ function SessionCard({ s }: { s: LinkedWorkout }) {
   const nbExos = groups.reduce((n, e) => n + flat(e).length, 0)
   const restLabel = t('activities.restLabel')
   const vol = s.total_volume_kg != null ? Math.round(Number(s.total_volume_kg)) : null
+  // Séries réellement faites, indexées par exercice (triées par n° de tour).
+  const doneByExo = new Map<string, CompletedSet[]>()
+  for (const cs of s.completed_sets ?? []) {
+    const arr = doneByExo.get(cs.exerciseId) ?? []
+    arr.push(cs); doneByExo.set(cs.exerciseId, arr)
+  }
+  doneByExo.forEach(arr => arr.sort((a, b) => a.setIndex - b.setIndex))
 
   return (
     <div style={{ background: 'var(--bg-card2)', borderRadius: 14, padding: 16, margin: '12px 0' }}>
@@ -103,7 +126,7 @@ function SessionCard({ s }: { s: LinkedWorkout }) {
                     {meta && <span style={{ fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap', flexShrink: 0 }}>{meta}</span>}
                   </div>
                   <div style={{ paddingLeft: 10, borderLeft: '2px solid var(--border)' }}>
-                    {nested.map((x, j) => <ExoRow key={x.id ?? j} e={x} restLabel={restLabel} />)}
+                    {nested.map((x, j) => <ExoRow key={x.id ?? j} e={x} restLabel={restLabel} done={doneByExo.get(x.id)} />)}
                   </div>
                 </div>
               )
@@ -112,7 +135,7 @@ function SessionCard({ s }: { s: LinkedWorkout }) {
             const rows = g.supersetPartner ? [g, g.supersetPartner] : [g]
             return (
               <div key={g.id ?? i} style={{ borderTop: '1px solid var(--border)' }}>
-                {rows.map((x, j) => <ExoRow key={x.id ?? j} e={x} restLabel={restLabel} />)}
+                {rows.map((x, j) => <ExoRow key={x.id ?? j} e={x} restLabel={restLabel} done={doneByExo.get(x.id)} />)}
               </div>
             )
           })}

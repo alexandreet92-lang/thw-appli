@@ -58,30 +58,9 @@ function KpiTile({ label, value, color }: { label: string; value: string; color?
   )
 }
 
-function FcChartSimple({ stream }: { stream: number[] }) {
-  const W = 600, H = 110, pad = 4
-  const data = stream.filter(v => v > 0)
-  if (data.length < 2) return null
-  const min = Math.min(...data), max = Math.max(...data), range = (max - min) || 1
-  const step = Math.max(1, Math.floor(data.length / W))
-  const pts: string[] = []
-  for (let i = 0; i < data.length; i += step) {
-    const x = (i / (data.length - 1)) * W
-    const y = H - pad - ((data[i] - min) / range) * (H - pad * 2)
-    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`)
-  }
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: 110, display: 'block' }}>
-      <polyline points={pts.join(' ')} fill="none" stroke="#f97316" strokeWidth={1.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    </svg>
-  )
-}
-
 export function MuscuActivityView({ activity, z2DurationS, jauges }: Props) {
   const { t } = useI18n()
   const a = activity
-  const hr = a.streams?.heartrate ?? null
-  const hasHr = !!hr && hr.length > 1
   const { benchmarks } = useSmSn()
   const smsn = smSnFromRow({ sport_type: 'gym', moving_time_s: a.moving_time_s ?? null, avg_hr: a.avg_hr ?? null, avg_temp_c: a.avg_temp_c ?? null }, benchmarks)
 
@@ -131,24 +110,8 @@ export function MuscuActivityView({ activity, z2DurationS, jauges }: Props) {
         ))}
       </div>
 
-      {/* Courbe FC simple (pas de toggles Empilé/Superposé/Mono) */}
-      {hasHr && (
-        <div>
-          <div style={sectionTitle}>{t('activities.heartRate')}</div>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
-            <FcChartSimple stream={hr as number[]} />
-          </div>
-        </div>
-      )}
-
-      {/* Détail par exercice — non disponible (données structurées absentes) */}
-      <div>
-        <div style={sectionTitle}>{t('activities.exerciseDetail')}</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-          <span>{t('activities.exerciseDetailNote')}</span>
-        </div>
-      </div>
+      {/* La courbe FC/Température (mêmes toggles que mobile) et le détail par
+          exercice sont rendus par la page (ActivityCurves + MuscuSessionPanel). */}
 
       {notes && (
         <div>

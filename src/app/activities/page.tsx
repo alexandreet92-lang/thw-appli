@@ -7934,6 +7934,17 @@ conseil pour la prochaine séance similaire.`
           />
         )}
 
+        {/* ── MUSCU : courbes FC / Température — identiques au mobile (toggles) ── */}
+        {isGym && a.streams && (
+          <div style={{ marginBottom: 32, paddingTop: 24 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, letterSpacing: 0.9,
+              textTransform: 'uppercase', marginBottom: 16, borderBottom: `1px solid ${T.border}`, paddingBottom: 5, fontFamily: T.fontDisplay }}>
+              {t('actp.curves')}
+            </div>
+            <ActivityCurves activity={a} />
+          </div>
+        )}
+
         {/* ── Autres sports : layout générique ── */}
         {!isGym && (<>
 

@@ -11,7 +11,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { WorkoutExercise } from '@/types/workout'
+import type { WorkoutExercise, CompletedSet } from '@/types/workout'
 
 export interface LinkedWorkout {
   id: string
@@ -19,6 +19,7 @@ export interface LinkedWorkout {
   sport: string
   duration_seconds: number | null
   exercises_detail: WorkoutExercise[] | null
+  completed_sets: CompletedSet[] | null
   total_volume_kg: number | null
   sets_completed: number | null
   training_types: string[] | null
@@ -27,7 +28,7 @@ export interface LinkedWorkout {
   started_at: string | null
 }
 
-const FIELDS = 'id, title, sport, duration_seconds, exercises_detail, total_volume_kg, sets_completed, training_types, rpe, comment, started_at'
+const FIELDS = 'id, title, sport, duration_seconds, exercises_detail, completed_sets, total_volume_kg, sets_completed, training_types, rpe, comment, started_at'
 const WINDOW_MS = 4 * 3600 * 1000
 
 export function useLinkedWorkoutSession(

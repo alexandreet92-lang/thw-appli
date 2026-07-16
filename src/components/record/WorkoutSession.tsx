@@ -118,6 +118,7 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
       exercises_detail: exercises,
       total_volume_kg: totalVolumeKg,
       sets_completed: completedSets.length,
+      completed_sets: completedSets,   // reps/charge RÉELLEMENT faits par série/tour
       avg_hr: hr.avg, max_hr: hr.max, min_hr: hr.min,
       photos: photoUrls.length ? photoUrls : null,
     })

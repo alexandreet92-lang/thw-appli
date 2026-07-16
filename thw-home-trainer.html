@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THW — Home Trainer</title>
+<style>
+:root{
+  --bg:#070A10;--frame:#000;--surface:#111826;--surface-2:#19212F;--surface-3:#232C3D;
+  --line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.14);
+  --text:#F3F7FC;--muted:#8592A6;--muted-2:#586477;
+  --brand:#22D3E6;--brand-2:#188FDE;
+  --hr:#FF4D6A;--pwr:#22D3E6;
+  --z1:#6E7C91;--z2:#3E8FE0;--z3:#22C77E;--z4:#F5C33B;--z5:#FF8A2B;--z6:#FF3B4E;--z7:#B15CFF;
+  --ok:#1FD07C;--warn:#FFC933;--bad:#FF3B4E;
+  /* tokens de tracé (canvas) */
+  --grid:rgba(255,255,255,.06);--axis:rgba(255,255,255,.22);--axis-ink:rgba(255,255,255,.4);
+  --trace:rgba(255,255,255,.8);--fill-a:rgba(34,211,230,.32);--fill-b:rgba(34,211,230,0);
+  --scrim:rgba(4,7,12,.9);--zone-ink:#04171B;
+  --page-a:#141B2A;--page-b:#070A10;
+}
+[data-theme="light"]{
+  --bg:#F3F6FB;--frame:#0A0D12;--surface:#FFFFFF;--surface-2:#EBF0F7;--surface-3:#DCE3EE;
+  --line:rgba(12,22,44,.09);--line-2:rgba(12,22,44,.16);
+  --text:#0C1220;--muted:#5A6779;--muted-2:#9AA6B6;
+  --brand:#0E9AAE;--brand-2:#0F76C0;
+  --hr:#DD2E4E;--pwr:#0E9AAE;
+  --z1:#7A879A;--z2:#2A7ACF;--z3:#12A566;--z4:#C99400;--z5:#E06A0C;--z6:#DB1F30;--z7:#8B3FE0;
+  --ok:#0FA35F;--warn:#C99400;--bad:#DB1F30;
+  --grid:rgba(12,22,44,.07);--axis:rgba(12,22,44,.28);--axis-ink:rgba(12,22,44,.45);
+  --trace:rgba(12,22,44,.55);--fill-a:rgba(14,154,174,.26);--fill-b:rgba(14,154,174,0);
+  --scrim:rgba(243,246,251,.93);--zone-ink:#FFFFFF;
+  --page-a:#FFFFFF;--page-b:#E9EEF6;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:radial-gradient(120% 80% at 50% -10%,var(--page-a),var(--page-b) 55%);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;gap:18px;padding:20px 12px 44px}
+.d{font-family:"Arial Narrow","Roboto Condensed","Helvetica Neue Condensed","Impact",sans-serif;
+  font-weight:800;letter-spacing:-.02em;line-height:.86;font-variant-numeric:tabular-nums;
+  transform:scaleY(1.12);transform-origin:center}
+.lbl{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:800}
+
+/* ---- barre démo ---- */
+.demo{width:100%;max-width:460px;background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:12px;display:flex;flex-direction:column;gap:8px}
+.demo .t{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);font-weight:700}
+.demo .row{display:flex;gap:6px}
+.demo button{flex:1;padding:9px 8px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface-2);
+  color:var(--muted);font-size:12px;font-weight:700;cursor:pointer}
+.demo button.on{background:var(--brand);color:#04171B;border-color:transparent}
+.fld{flex:1;display:flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--line-2);
+  border-radius:10px;padding:7px 10px;font-size:11px;font-weight:800;color:var(--muted)}
+.fld input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);
+  font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;width:100%}
+.fld span{color:var(--muted-2);font-size:10px}
+
+/* ================= MOBILE ================= */
+.phone{width:390px;height:844px;border-radius:44px;background:var(--frame);padding:12px;
+  box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 2px rgba(255,255,255,.06);flex-shrink:0}
+.screen{width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--bg);
+  display:flex;flex-direction:column;position:relative}
+.stat{display:flex;justify-content:space-between;align-items:center;padding:13px 26px 2px;font-size:14px;font-weight:700}
+.batt{border:1.5px solid currentColor;border-radius:4px;padding:1px 3px;font-size:9px;font-weight:800}
+
+.mtop{display:flex;align-items:center;gap:10px;padding:6px 16px 10px;flex-shrink:0}
+.mtop .ic{width:36px;height:36px;border-radius:12px;background:var(--surface);border:1px solid var(--line);
+  display:grid;place-items:center;cursor:pointer;color:var(--text);flex-shrink:0}
+.mtop .mid{flex:1;text-align:center;min-width:0}
+.mtop .nm{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mtop .ck{font-size:18px;font-weight:800;color:var(--brand);font-variant-numeric:tabular-nums}
+.sens{display:flex;gap:4px;align-items:center}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.sdot.off{background:var(--muted-2)}
+
+.pages{flex:1;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;
+  scrollbar-width:none;min-height:0}
+.pages::-webkit-scrollbar{display:none}
+.page{min-width:100%;scroll-snap-align:start;display:flex;flex-direction:column;padding:0 16px;min-height:0}
+.ptitle{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2);font-weight:800;
+  padding:2px 2px 8px}
+.dots{display:flex;justify-content:center;gap:6px;padding:8px 0 4px;flex-shrink:0}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--surface-3);transition:.2s}
+.dot.on{background:var(--brand);width:18px;border-radius:3px}
+.mbot{display:flex;align-items:center;gap:10px;padding:2px 16px 20px;flex-shrink:0}
+.mbot .st{flex:1}
+.mbot .st .n{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+.mbot .st .n small{font-size:10px;color:var(--muted);font-weight:700;margin-left:1px}
+.mbot .end{padding:11px 16px;border-radius:13px;background:var(--surface);border:1px solid var(--line-2);
+  color:var(--text);font-size:13px;font-weight:800;cursor:pointer}
+
+/* --- page 1 pilotage --- */
+.blk{display:flex;justify-content:space-between;align-items:center;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:9px 13px;flex-shrink:0}
+.blk .bn{font-size:14px;font-weight:800}
+.blk .br{font-size:11px;color:var(--brand);font-weight:800;letter-spacing:.06em}
+.ivt{text-align:center;padding:10px 0 2px;flex-shrink:0}
+.ivt .n{font-size:44px;color:var(--text)}
+.pwr{text-align:center;padding:2px 0 0;flex-shrink:0}
+.pwr .n{font-size:118px;line-height:.8}
+.pwr .u{font-size:22px;color:var(--muted);font-weight:800;margin-left:4px}
+.pwr .ftp{font-size:13px;color:var(--muted);font-weight:800;margin-top:8px}
+.pwr .ftp b{color:var(--brand)}
+.gauge{margin:14px 2px 0;flex-shrink:0}
+.gauge .bar{position:relative;height:38px;border-radius:12px;background:var(--surface);
+  border:1px solid var(--line);overflow:hidden}
+.gauge .zone{position:absolute;top:0;bottom:0;left:38%;width:24%;background:rgba(31,208,124,.16);
+  border-left:2px solid rgba(31,208,124,.5);border-right:2px solid rgba(31,208,124,.5)}
+.gauge .cur{position:absolute;top:3px;bottom:3px;width:5px;border-radius:3px;background:var(--text);
+  left:50%;transform:translateX(-50%);transition:left .25s,background .25s;box-shadow:0 0 12px currentColor}
+.gauge .cible{position:absolute;top:0;bottom:0;left:50%;width:1px;background:rgba(255,255,255,.35)}
+.gauge .row{display:flex;justify-content:space-between;margin-top:6px}
+.gauge .ec{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.duo{display:flex;gap:10px;margin-top:14px;flex-shrink:0}
+.duo .c{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:11px 13px}
+.duo .c .v{font-size:38px;margin-top:3px}
+.duo .c .v small{font-size:12px;color:var(--muted);font-weight:700;margin-left:3px}
+.duo .c.hrc .v{color:var(--hr)}
+.mini{margin-top:14px;flex-shrink:0}
+.mini canvas{width:100%;height:54px;display:block;border-radius:10px;background:var(--surface)}
+
+/* --- page 2 flux --- */
+.chartbox{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px;
+  display:flex;flex-direction:column;min-height:0}
+.chartbox canvas{flex:1;width:100%;display:block;min-height:0}
+.leg{display:flex;gap:14px;padding:6px 4px 2px;flex-shrink:0}
+.leg .i{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--muted)}
+.leg .sw{width:14px;height:3px;border-radius:2px}
+.zbar{display:flex;gap:3px;margin-top:12px;flex-shrink:0}
+.zbar .z{flex:1;height:34px;border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:800;
+  color:rgba(255,255,255,.5);background:var(--surface-2);transition:.2s}
+.zbar .z.on{color:var(--zone-ink)}
+.zinfo{display:flex;justify-content:space-between;margin-top:8px;flex-shrink:0}
+.zinfo .v{font-size:13px;font-weight:800}
+
+/* --- page 3 profil --- */
+.profbox{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px;flex-shrink:0}
+.profbox canvas{width:100%;height:130px;display:block}
+.ivlist{flex:1;overflow-y:auto;margin-top:12px;min-height:0;scrollbar-width:none}
+.ivlist::-webkit-scrollbar{display:none}
+.iv{display:flex;align-items:center;gap:11px;padding:10px 3px;border-bottom:1px solid var(--line)}
+.iv .bd{width:4px;height:26px;border-radius:3px;flex-shrink:0}
+.iv .nm{flex:1;font-size:15px;font-weight:700;color:var(--muted)}
+.iv.now .nm{color:var(--text)}
+.iv.done .nm{color:var(--muted-2)}
+.iv .mt{font-size:13px;color:var(--muted);font-weight:800;font-variant-numeric:tabular-nums}
+.iv.now{background:rgba(34,211,230,.06);border-radius:8px;padding-left:8px;padding-right:8px}
+
+/* --- page 4 données --- */
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:9px;flex-shrink:0}
+.cell{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:11px 12px}
+.cell .v{font-size:29px;margin-top:3px;font-variant-numeric:tabular-nums}
+.cell .v small{font-size:11px;color:var(--muted);font-weight:700;margin-left:2px}
+.sensors{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px 12px}
+.srow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.srow:last-child{border-bottom:none}
+.srow .nm{flex:1;font-size:14px;font-weight:700}
+.srow .st{font-size:11px;font-weight:800;color:var(--ok)}
+.srow .st.off{color:var(--muted-2)}
+
+/* ---- overlay pause ---- */
+.pause{position:absolute;inset:0;background:var(--scrim);backdrop-filter:blur(6px);z-index:20;
+  display:none;flex-direction:column;justify-content:center;align-items:center;gap:14px;padding:30px}
+.pause.show{display:flex}
+.pause .pt{font-size:32px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.pause .ps{font-size:13px;color:var(--muted);font-weight:700;margin-bottom:10px}
+.pause button{width:100%;max-width:240px;height:48px;border-radius:14px;font-size:15px;font-weight:800;
+  cursor:pointer;border:none}
+.pause .rs{background:var(--brand);color:#04171B}
+.pause .en{background:transparent;border:1px solid var(--line-2);color:var(--bad)}
+
+/* ================= DESKTOP ================= */
+.desk{display:none;width:1280px;max-width:100%;background:var(--bg);border:1px solid var(--line-2);
+  border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.dhead{display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line);
+  background:var(--surface)}
+.dhead .nm{font-size:17px;font-weight:800}
+.dhead .ck{font-size:22px;font-weight:800;color:var(--brand);font-variant-numeric:tabular-nums}
+.dhead .sp{flex:1}
+.dhead .chip{display:flex;align-items:center;gap:7px;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:20px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--muted)}
+.dhead .btn{padding:9px 16px;border-radius:11px;background:var(--surface-2);border:1px solid var(--line-2);
+  color:var(--text);font-size:13px;font-weight:800;cursor:pointer}
+.dbody{display:grid;grid-template-columns:300px 1fr 210px;gap:14px;padding:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px}
+.dpwr{text-align:center}
+.dpwr .n{font-size:104px;line-height:.82}
+.dpwr .u{font-size:20px;color:var(--muted);font-weight:800}
+.dpwr .ftp{font-size:14px;color:var(--muted);font-weight:800;margin-top:6px}
+.dpwr .ftp b{color:var(--brand)}
+.dcol{display:flex;flex-direction:column;gap:14px}
+.dchart{height:250px}
+.dchart canvas{width:100%;height:100%;display:block}
+.dprof{height:150px}
+.dprof canvas{width:100%;height:118px;display:block}
+.dside{display:flex;flex-direction:column;gap:10px}
+.dcell{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:9px 12px}
+.dcell .v{font-size:26px;margin-top:2px;font-variant-numeric:tabular-nums}
+.dcell .v small{font-size:11px;color:var(--muted);font-weight:700;margin-left:2px}
+.dcell.hrc .v{color:var(--hr)}
+.divs{display:flex;gap:8px;padding:0 14px 14px;overflow-x:auto;scrollbar-width:none}
+.divs::-webkit-scrollbar{display:none}
+.dchip{flex-shrink:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 13px;
+  min-width:118px}
+.dchip.now{border-color:var(--brand);background:rgba(34,211,230,.07)}
+.dchip.done{opacity:.42}
+.dchip .cn{font-size:12px;font-weight:800;display:flex;align-items:center;gap:6px}
+.dchip .cn i{width:3px;height:12px;border-radius:2px;display:block}
+.dchip .cm{font-size:14px;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums}
+.dchip .cd{font-size:11px;color:var(--muted);font-weight:700}
+body[data-view="desk"] .phone{display:none}
+body[data-view="desk"] .desk{display:block}
+</style>
+</head>
+<body data-view="mobile">
+
+<div class="demo">
+  <div class="t">Affichage</div>
+  <div class="row" id="viewRow">
+    <button data-v="mobile" class="on">Mobile · 4 pages</button>
+    <button data-v="desk">Ordinateur</button>
+  </div>
+  <div class="t">Profil athlète (tout se recalcule)</div>
+  <div class="row" id="athRow">
+    <label class="fld">FTP<input type="number" id="inFtp" value="250" min="80" max="600" step="5"><span>W</span></label>
+    <label class="fld">FC max<input type="number" id="inFcm" value="190" min="120" max="230" step="1"><span>bpm</span></label>
+  </div>
+  <div class="t">Thème</div>
+  <div class="row" id="thRow">
+    <button data-th="dark" class="on">Sombre</button>
+    <button data-th="light">Clair</button>
+  </div>
+  <div class="t">Vitesse de simulation</div>
+  <div class="row" id="spdRow">
+    <button data-s="1" class="on">1×</button>
+    <button data-s="15">15×</button>
+    <button data-s="60">60×</button>
+  </div>
+  <div class="t" style="color:var(--muted);text-transform:none;letter-spacing:0;font-size:11px">
+    Mobile : glisse horizontalement entre les 4 pages.
+  </div>
+</div>
+
+<!-- ============ MOBILE ============ -->
+<div class="phone"><div class="screen">
+  <div class="stat">
+    <span>19:42</span>
+    <span style="display:flex;gap:6px;align-items:center">
+      <svg width="17" height="11" viewBox="0 0 18 12" fill="currentColor"><rect y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2" width="3" height="10" rx="1"/><rect x="15" y="8" width="3" height="4" rx="1" opacity=".3"/></svg>
+      <span class="batt">72</span></span>
+  </div>
+
+  <div class="mtop">
+    <div class="ic" onclick="togglePause()">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg></div>
+    <div class="mid"><div class="nm">Seuil · 4 × 8 min</div><div class="ck" id="mClock">00:00</div></div>
+    <div class="ic" style="border:none;background:transparent;width:auto">
+      <div class="sens"><span class="sdot"></span><span class="sdot"></span><span class="sdot"></span></div>
+    </div>
+  </div>
+
+  <div class="pages" id="pages">
+
+    <!-- P1 PILOTAGE -->
+    <div class="page">
+      <div class="ptitle">Pilotage</div>
+      <div class="blk"><div class="bn" id="p1Blk">Seuil</div><div class="br" id="p1Rep">Bloc 1 / 4</div></div>
+      <div class="ivt"><div class="n d" id="p1Iv">08:00</div><div class="lbl" style="margin-top:5px">Restant sur l'intervalle</div></div>
+      <div class="pwr">
+        <div><span class="n d" id="p1W">316</span><span class="u">W</span></div>
+        <div class="ftp">cible <b id="p1Tgt">316 W</b> · <span id="p1Pct">105 %</span> FTP</div>
+      </div>
+      <div class="gauge">
+        <div class="bar"><div class="zone"></div><div class="cible"></div><div class="cur" id="p1Cur"></div></div>
+        <div class="row"><span class="lbl">−40 W</span><span class="ec" id="p1Ec">+2 W</span><span class="lbl">+40 W</span></div>
+      </div>
+      <div class="duo">
+        <div class="c"><div class="lbl">Cadence</div><div class="v d" id="p1Cad">92<small>rpm</small></div></div>
+        <div class="c hrc"><div class="lbl">Fréq. cardiaque</div><div class="v d" id="p1Hr">168<small>bpm</small></div></div>
+      </div>
+      <div class="mini"><canvas id="miniC"></canvas></div>
+    </div>
+
+    <!-- P2 FLUX -->
+    <div class="page">
+      <div class="ptitle">Flux · 5 dernières minutes</div>
+      <div class="chartbox">
+        <canvas id="liveC"></canvas>
+        <div class="leg">
+          <div class="i"><span class="sw" style="background:var(--pwr)"></span>Puissance</div>
+          <div class="i"><span class="sw" style="background:var(--hr)"></span>Cardio</div>
+          <div class="i" style="margin-left:auto;color:var(--muted-2)">lissé 3 s</div>
+        </div>
+      </div>
+      <div class="zbar" id="zbar"></div>
+      <div class="zinfo">
+        <div><div class="lbl">Zone actuelle</div><div class="v" id="p2Z">Z4 · Seuil</div></div>
+        <div style="text-align:right"><div class="lbl">Temps en zone</div><div class="v" id="p2Zt">04:12</div></div>
+      </div>
+      <div style="height:14px"></div>
+    </div>
+
+    <!-- P3 PROFIL -->
+    <div class="page">
+      <div class="ptitle">Profil de séance</div>
+      <div class="profbox"><canvas id="profC"></canvas></div>
+      <div class="ivlist" id="ivList"></div>
+    </div>
+
+    <!-- P4 DONNÉES -->
+    <div class="page">
+      <div class="ptitle">Données</div>
+      <div class="grid4">
+        <div class="cell"><div class="lbl">Puiss. moy</div><div class="v d" id="dAvg">248<small>W</small></div></div>
+        <div class="cell"><div class="lbl">NP</div><div class="v d" id="dNp">271<small>W</small></div></div>
+        <div class="cell"><div class="lbl">IF</div><div class="v d" id="dIf">0.90</div></div>
+        <div class="cell"><div class="lbl">Travail</div><div class="v d" id="dKj">412<small>kJ</small></div></div>
+        <div class="cell"><div class="lbl">FC moy</div><div class="v d" id="dHrA">156<small>bpm</small></div></div>
+        <div class="cell"><div class="lbl">FC max</div><div class="v d" id="dHrM">178<small>bpm</small></div></div>
+        <div class="cell"><div class="lbl">Cadence moy</div><div class="v d" id="dCad">89<small>rpm</small></div></div>
+        <div class="cell"><div class="lbl">Temps restant</div><div class="v d" id="dRem">28:14</div></div>
+      </div>
+      <div class="sensors">
+        <div class="srow"><span class="sdot"></span><span class="nm">Home trainer</span><span class="st">Connecté</span></div>
+        <div class="srow"><span class="sdot"></span><span class="nm">Ceinture cardio</span><span class="st">Connecté</span></div>
+        <div class="srow"><span class="sdot"></span><span class="nm">Cadence</span><span class="st">Via trainer</span></div>
+      </div>
+      <div style="height:14px"></div>
+    </div>
+
+  </div>
+
+  <div class="dots" id="dots"></div>
+  <div class="mbot">
+    <div class="st"><div class="lbl">Écoulé</div><div class="n" id="mEl">00:00</div></div>
+    <div class="st"><div class="lbl">Travail</div><div class="n" id="mKj">0<small>kJ</small></div></div>
+    <div class="st"><div class="lbl">SM est.</div><div class="n" id="mSm">0</div></div>
+    <button class="end" onclick="togglePause()">Terminer</button>
+  </div>
+
+  <div class="pause" id="pauseOv">
+    <div class="pt">En pause</div>
+    <div class="ps">Enregistrement suspendu</div>
+    <button class="rs" onclick="togglePause()">Reprendre</button>
+    <button class="en" onclick="togglePause()">Terminer la séance</button>
+  </div>
+</div></div>
+
+<!-- ============ DESKTOP ============ -->
+<div class="desk">
+  <div class="dhead">
+    <div class="nm">Seuil · 4 × 8 min @ 105 % FTP</div>
+    <div class="ck" id="kClock">00:00</div>
+    <div class="sp"></div>
+    <div class="chip"><span class="sdot"></span>Home trainer</div>
+    <div class="chip"><span class="sdot"></span>Cardio</div>
+    <div class="chip"><span class="sdot"></span>Cadence</div>
+    <button class="btn" onclick="togglePause()">Pause</button>
+    <button class="btn" style="color:var(--bad)">Terminer</button>
+  </div>
+
+  <div class="dbody">
+    <!-- colonne gauche -->
+    <div class="dcol">
+      <div class="panel dpwr">
+        <div class="lbl">Puissance</div>
+        <div style="margin-top:8px"><span class="n d" id="kW">316</span><span class="u">W</span></div>
+        <div class="ftp">cible <b id="kTgt">316 W</b> · <span id="kPct">105 %</span> FTP</div>
+        <div class="gauge" style="margin-top:14px">
+          <div class="bar"><div class="zone"></div><div class="cible"></div><div class="cur" id="kCur"></div></div>
+          <div class="row"><span class="lbl">−40 W</span><span class="ec" id="kEc">+2 W</span><span class="lbl">+40 W</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="lbl">Bloc en cours</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px">
+          <span style="font-size:17px;font-weight:800" id="kBlk">Seuil</span>
+          <span style="font-size:12px;color:var(--brand);font-weight:800" id="kRep">Bloc 1 / 4</span>
+        </div>
+        <div class="d" style="font-size:52px;margin-top:8px;text-align:center" id="kIv">08:00</div>
+        <div class="lbl" style="text-align:center;margin-top:4px">Restant sur l'intervalle</div>
+      </div>
+      <div class="panel">
+        <div class="lbl">Zones</div>
+        <div class="zbar" id="kZbar" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <!-- colonne centre -->
+    <div class="dcol">
+      <div class="panel dchart">
+        <div class="leg" style="padding-top:0">
+          <div class="i"><span class="sw" style="background:var(--pwr)"></span>Puissance</div>
+          <div class="i"><span class="sw" style="background:var(--hr)"></span>Cardio</div>
+          <div class="i" style="margin-left:auto;color:var(--muted-2)">10 dernières minutes</div>
+        </div>
+        <canvas id="kLive"></canvas>
+      </div>
+      <div class="panel dprof">
+        <div class="lbl" style="margin-bottom:6px">Profil de séance · réel vs cible</div>
+        <canvas id="kProf"></canvas>
+      </div>
+    </div>
+
+    <!-- colonne droite -->
+    <div class="dside">
+      <div class="dcell"><div class="lbl">Cadence</div><div class="v d" id="kCad">92<small>rpm</small></div></div>
+      <div class="dcell hrc"><div class="lbl">Fréq. cardiaque</div><div class="v d" id="kHr">168<small>bpm</small></div></div>
+      <div class="dcell"><div class="lbl">Puiss. moy</div><div class="v d" id="kAvg">248<small>W</small></div></div>
+      <div class="dcell"><div class="lbl">NP</div><div class="v d" id="kNp">271<small>W</small></div></div>
+      <div class="dcell"><div class="lbl">IF</div><div class="v d" id="kIf">0.90</div></div>
+      <div class="dcell"><div class="lbl">Travail</div><div class="v d" id="kKj">412<small>kJ</small></div></div>
+      <div class="dcell"><div class="lbl">SM est.</div><div class="v d" id="kSm">0</div></div>
+      <div class="dcell"><div class="lbl">Temps restant</div><div class="v d" id="kRem">28:14</div></div>
+    </div>
+  </div>
+
+  <div class="divs" id="kDivs"></div>
+</div>
+
+<script>
+/* ============ Athlète (valeurs de démo — dans l'app, elles viennent du profil) ============ */
+let FTP=250, LTHR=165, FCMAX=190;
+const ZONES=[
+  {k:'Z1',n:'Récup',   max:.55, c:'--z1'},
+  {k:'Z2',n:'Endurance',max:.75, c:'--z2'},
+  {k:'Z3',n:'Tempo',   max:.90, c:'--z3'},
+  {k:'Z4',n:'Seuil',   max:1.05,c:'--z4'},
+  {k:'Z5',n:'VO2max',  max:1.20,c:'--z5'},
+  {k:'Z6',n:'Anaéro',  max:1.50,c:'--z6'},
+  {k:'Z7',n:'Neuro',   max:9,   c:'--z7'},
+];
+function buildPlan(){
+  const p=[{name:'Échauffement',pct:.60,dur:600}];
+  for(let i=1;i<=4;i++){
+    p.push({name:'Seuil',pct:1.05,dur:480,rep:i,of:4});
+    if(i<4)p.push({name:'Récupération',pct:.55,dur:240});
+  }
+  p.push({name:'Retour au calme',pct:.50,dur:480});
+  let t=0;p.forEach(b=>{b.t0=t;t+=b.dur;b.t1=t;b.w=Math.round(FTP*b.pct);});
+  return p;
+}
+let PLAN=buildPlan();
+const TOTAL=PLAN[PLAN.length-1].t1;
+
+/* ============ État ============ */
+const S={t:0,pw:170,hr:96,cad:88,paused:false,spd:1,
+  hist:[],sumP:0,sumHr:0,sumCad:0,n:0,maxHr:0,kj:0,np4:0,zt:0,lastZ:-1};
+
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt=s=>{const m=Math.floor(Math.max(0,s)/60),x=Math.floor(Math.max(0,s)%60);
+  return String(m).padStart(2,'0')+':'+String(x).padStart(2,'0');};
+const zoneOf=w=>{const r=w/FTP;for(let i=0;i<ZONES.length;i++)if(r<=ZONES[i].max)return i;return 6;};
+const blockAt=t=>PLAN.find(b=>t>=b.t0&&t<b.t1)||PLAN[PLAN.length-1];
+
+/* ============ Simulation ============ */
+function tick(){
+  if(S.paused)return;
+  S.t++;
+  if(S.t>TOTAL){S.t=TOTAL;S.paused=true;}
+  const b=blockAt(S.t);
+  // puissance : cible + dérive lente + bruit
+  const drift=Math.sin(S.t/23)*7+Math.sin(S.t/7)*4;
+  const noise=(Math.random()-.5)*14;
+  const target=b.w;
+  S.pw+= (target+drift+noise - S.pw)*0.35;
+  S.pw=Math.max(0,S.pw);
+  // cardio : réponse retardée
+  const hrT=90+ (S.pw/FTP)*80;
+  S.hr+= (Math.min(FCMAX,hrT) - S.hr)*0.022 + (Math.random()-.5)*.6;
+  // cadence
+  const cadT=b.pct>.9?92:84;
+  S.cad+= (cadT-S.cad)*.1 + (Math.random()-.5)*1.6;
+
+  // agrégats
+  S.n++;S.sumP+=S.pw;S.sumHr+=S.hr;S.sumCad+=S.cad;
+  S.maxHr=Math.max(S.maxHr,S.hr);
+  S.kj+=S.pw/1000;
+  S.np4+=Math.pow(S.pw,4);
+  const z=zoneOf(S.pw);
+  if(z===S.lastZ)S.zt++;else{S.zt=0;S.lastZ=z;}
+  S.hist.push({t:S.t,p:S.pw,h:S.hr});
+  if(S.hist.length>1200)S.hist.shift();
+}
+function smooth(sec){
+  const a=S.hist.slice(-sec);if(!a.length)return S.pw;
+  return a.reduce((s,x)=>s+x.p,0)/a.length;
+}
+
+/* ============ Rendu ============ */
+function render(){
+  const b=blockAt(S.t);
+  const p3=Math.round(smooth(3));
+  const ec=p3-b.w;
+  const z=zoneOf(p3);const zc=css(ZONES[z].c);
+  const pct=Math.round(p3/FTP*100);
+  const np=S.n?Math.round(Math.pow(S.np4/S.n,.25)):0;
+  const avg=S.n?Math.round(S.sumP/S.n):0;
+  const IF=(np/FTP);
+  const sm=Math.round((S.t/3600)*IF*IF*100);
+
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const setH=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
+
+  // clocks
+  set('mClock',fmt(S.t));set('kClock',fmt(S.t));set('mEl',fmt(S.t));
+  set('dRem',fmt(TOTAL-S.t));set('kRem',fmt(TOTAL-S.t));
+
+  // bloc
+  const rep=b.rep?`Bloc ${b.rep} / ${b.of}`:'—';
+  set('p1Blk',b.name);set('kBlk',b.name);set('p1Rep',rep);set('kRep',rep);
+  set('p1Iv',fmt(b.t1-S.t));set('kIv',fmt(b.t1-S.t));
+
+  // puissance
+  set('p1W',p3);set('kW',p3);
+  set('p1Tgt',b.w+' W');set('kTgt',b.w+' W');
+  set('p1Pct',pct+' %');set('kPct',pct+' %');
+
+  // jauge d'écart
+  const pos=Math.max(2,Math.min(98,50+(ec/40)*50));
+  const col=Math.abs(ec)<=12?css('--ok'):Math.abs(ec)<=25?css('--warn'):css('--bad');
+  ['p1Cur','kCur'].forEach(id=>{const e=document.getElementById(id);
+    if(e){e.style.left=pos+'%';e.style.background=col;e.style.color=col;}});
+  const ecs=(ec>=0?'+':'')+Math.round(ec)+' W';
+  ['p1Ec','kEc'].forEach(id=>{const e=document.getElementById(id);if(e){e.textContent=ecs;e.style.color=col;}});
+
+  // duo / side
+  set('p1Cad',Math.round(S.cad));setH('p1Cad',Math.round(S.cad)+'<small>rpm</small>');
+  setH('kCad',Math.round(S.cad)+'<small>rpm</small>');
+  setH('p1Hr',Math.round(S.hr)+'<small>bpm</small>');
+  setH('kHr',Math.round(S.hr)+'<small>bpm</small>');
+
+  // données
+  setH('dAvg',avg+'<small>W</small>');setH('kAvg',avg+'<small>W</small>');
+  setH('dNp',np+'<small>W</small>');setH('kNp',np+'<small>W</small>');
+  set('dIf',IF.toFixed(2));set('kIf',IF.toFixed(2));
+  setH('dKj',Math.round(S.kj)+'<small>kJ</small>');setH('kKj',Math.round(S.kj)+'<small>kJ</small>');
+  setH('dHrA',(S.n?Math.round(S.sumHr/S.n):0)+'<small>bpm</small>');
+  setH('dHrM',Math.round(S.maxHr)+'<small>bpm</small>');
+  setH('dCad',(S.n?Math.round(S.sumCad/S.n):0)+'<small>rpm</small>');
+  setH('mKj',Math.round(S.kj)+'<small>kJ</small>');
+  set('mSm',sm);set('kSm',sm);
+
+  // zones
+  set('p2Z',ZONES[z].k+' · '+ZONES[z].n);set('p2Zt',fmt(S.zt));
+  ['zbar','kZbar'].forEach(id=>{const el=document.getElementById(id);if(!el)return;
+    [...el.children].forEach((c,i)=>{c.classList.toggle('on',i===z);
+      c.style.background=i===z?css(ZONES[i].c):css('--surface-2');});});
+
+  drawMini();drawLive('liveC',300);drawLive('kLive',600);drawProf('profC');drawProf('kProf');
+  renderIvs();
+}
+
+/* ---- canvas helpers ---- */
+function prep(id){const c=document.getElementById(id);if(!c)return null;
+  const r=c.getBoundingClientRect();if(!r.width)return null;
+  const d=window.devicePixelRatio||1;
+  c.width=r.width*d;c.height=r.height*d;
+  const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);
+  return {x,w:r.width,h:r.height};}
+
+function drawMini(){const o=prep('miniC');if(!o)return;const{x,w,h}=o;
+  x.clearRect(0,0,w,h);
+  const a=S.hist.slice(-180);if(a.length<2)return;
+  const mx=Math.max(FTP*1.3,...a.map(p=>p.p));
+  x.beginPath();
+  a.forEach((p,i)=>{const px=i/(a.length-1)*w,py=h-(p.p/mx)*h*.92;
+    i?x.lineTo(px,py):x.moveTo(px,py);});
+  x.lineTo(w,h);x.lineTo(0,h);x.closePath();
+  const g=x.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,css('--fill-a'));g.addColorStop(1,css('--fill-b'));
+  x.fillStyle=g;x.fill();
+  x.beginPath();
+  a.forEach((p,i)=>{const px=i/(a.length-1)*w,py=h-(p.p/mx)*h*.92;i?x.lineTo(px,py):x.moveTo(px,py);});
+  x.strokeStyle=css('--pwr');x.lineWidth=1.6;x.stroke();}
+
+function drawLive(id,win){const o=prep(id);if(!o)return;const{x,w,h}=o;
+  x.clearRect(0,0,w,h);
+  const a=S.hist.slice(-win);if(a.length<2)return;
+  const pad=6,H=h-pad*2;
+  const pmax=Math.max(FTP*1.35,...a.map(p=>p.p));
+  const hmin=80,hmax=FCMAX;
+  // grille
+  x.strokeStyle=css('--grid');x.lineWidth=1;
+  for(let i=1;i<4;i++){const y=pad+H*i/4;x.beginPath();x.moveTo(0,y);x.lineTo(w,y);x.stroke();}
+  // ligne FTP
+  const yF=pad+H-(FTP/pmax)*H;
+  x.setLineDash([4,4]);x.strokeStyle=css('--axis');
+  x.beginPath();x.moveTo(0,yF);x.lineTo(w,yF);x.stroke();x.setLineDash([]);
+  x.fillStyle=css('--axis-ink');x.font='700 9px system-ui';x.fillText('FTP',4,yF-4);
+  // aire puissance
+  x.beginPath();
+  a.forEach((p,i)=>{const px=i/(a.length-1)*w,py=pad+H-(p.p/pmax)*H;i?x.lineTo(px,py):x.moveTo(px,py);});
+  x.lineTo(w,h);x.lineTo(0,h);x.closePath();
+  const g=x.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,css('--fill-a'));g.addColorStop(1,css('--fill-b'));
+  x.fillStyle=g;x.fill();
+  // trait puissance
+  x.beginPath();
+  a.forEach((p,i)=>{const px=i/(a.length-1)*w,py=pad+H-(p.p/pmax)*H;i?x.lineTo(px,py):x.moveTo(px,py);});
+  x.strokeStyle=css('--pwr');x.lineWidth=1.8;x.stroke();
+  // trait cardio
+  x.beginPath();
+  a.forEach((p,i)=>{const px=i/(a.length-1)*w,py=pad+H-((p.h-hmin)/(hmax-hmin))*H;
+    i?x.lineTo(px,py):x.moveTo(px,py);});
+  x.strokeStyle=css('--hr');x.lineWidth=1.8;x.stroke();}
+
+function drawProf(id){const o=prep(id);if(!o)return;const{x,w,h}=o;
+  x.clearRect(0,0,w,h);
+  const pad=4,H=h-pad*2;
+  const pmax=FTP*1.35;
+  // barres cibles par zone
+  PLAN.forEach(b=>{
+    const x0=b.t0/TOTAL*w, x1=b.t1/TOTAL*w;
+    const bh=(b.w/pmax)*H;
+    const z=zoneOf(b.w);
+    x.fillStyle=css(ZONES[z].c)+'55';
+    x.fillRect(x0,pad+H-bh,Math.max(1,x1-x0-1),bh);
+    x.fillStyle=css(ZONES[z].c);
+    x.fillRect(x0,pad+H-bh,Math.max(1,x1-x0-1),2);
+  });
+  // trace réelle
+  if(S.hist.length>1){
+    x.beginPath();
+    S.hist.forEach((p,i)=>{const px=p.t/TOTAL*w,py=pad+H-(p.p/pmax)*H;i?x.lineTo(px,py):x.moveTo(px,py);});
+    x.strokeStyle=css('--trace');x.lineWidth=1;x.stroke();
+  }
+  // curseur
+  const cx=S.t/TOTAL*w;
+  x.strokeStyle=css('--brand');x.lineWidth=2;
+  x.beginPath();x.moveTo(cx,0);x.lineTo(cx,h);x.stroke();
+  x.fillStyle=css('--brand');x.beginPath();x.arc(cx,4,3.5,0,7);x.fill();}
+
+/* ---- listes d'intervalles ---- */
+let ivBuilt=false;
+function renderIvs(){
+  const el=document.getElementById('ivList'),dk=document.getElementById('kDivs');
+  if(!ivBuilt){
+    PLAN.forEach((b,i)=>{
+      const z=zoneOf(b.w);
+      const r=document.createElement('div');r.className='iv';r.dataset.i=i;
+      r.innerHTML=`<span class="bd" style="background:${css(ZONES[z].c)}"></span>
+        <span class="nm">${b.name}${b.rep?' '+b.rep+'/'+b.of:''}</span>
+        <span class="mt">${b.w} W · ${Math.round(b.dur/60)} min</span>`;
+      el.appendChild(r);
+      const c=document.createElement('div');c.className='dchip';c.dataset.i=i;
+      c.innerHTML=`<div class="cn"><i style="background:${css(ZONES[z].c)}"></i>${b.name}${b.rep?' '+b.rep+'/'+b.of:''}</div>
+        <div class="cm">${b.w} W</div><div class="cd">${Math.round(b.dur/60)} min · ${Math.round(b.pct*100)} % FTP</div>`;
+      dk.appendChild(c);
+    });
+    ivBuilt=true;
+  }
+  const cur=PLAN.indexOf(blockAt(S.t));
+  [...el.children].forEach((r,i)=>{r.className='iv'+(i===cur?' now':i<cur?' done':'');});
+  [...dk.children].forEach((c,i)=>{c.className='dchip'+(i===cur?' now':i<cur?' done':'');});
+  const active=dk.children[cur];
+  if(active&&document.body.dataset.view==='desk')
+    active.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
+}
+
+/* ---- zones bar ---- */
+['zbar','kZbar'].forEach(id=>{const el=document.getElementById(id);
+  ZONES.forEach(z=>{const d=document.createElement('div');d.className='z';d.textContent=z.k;el.appendChild(d);});});
+
+/* ---- pagination ---- */
+const pagesEl=document.getElementById('pages'),dotsEl=document.getElementById('dots');
+for(let i=0;i<4;i++){const d=document.createElement('div');d.className='dot'+(i?'':' on');dotsEl.appendChild(d);}
+pagesEl.addEventListener('scroll',()=>{
+  const i=Math.round(pagesEl.scrollLeft/pagesEl.clientWidth);
+  [...dotsEl.children].forEach((d,j)=>d.classList.toggle('on',j===i));
+});
+
+/* ---- contrôles ---- */
+function togglePause(){S.paused=!S.paused;
+  document.getElementById('pauseOv').classList.toggle('show',S.paused&&document.body.dataset.view==='mobile');}
+document.getElementById('viewRow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  document.body.dataset.view=b.dataset.v;
+  document.querySelectorAll('#viewRow button').forEach(x=>x.classList.toggle('on',x===b));
+  document.getElementById('pauseOv').classList.remove('show');
+  setTimeout(render,50);});
+document.getElementById('spdRow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  S.spd=+b.dataset.s;
+  document.querySelectorAll('#spdRow button').forEach(x=>x.classList.toggle('on',x===b));});
+document.getElementById('inFtp').addEventListener('input',e=>{
+  const v=+e.target.value; if(!v||v<80)return;
+  FTP=v; LTHR=Math.round(FCMAX*.87); PLAN=buildPlan();
+  ivBuilt=false;
+  document.getElementById('ivList').innerHTML='';document.getElementById('kDivs').innerHTML='';
+  render();});
+document.getElementById('inFcm').addEventListener('input',e=>{
+  const v=+e.target.value; if(!v||v<120)return;
+  FCMAX=v; LTHR=Math.round(FCMAX*.87); render();});
+document.getElementById('thRow').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.th==='light')document.body.dataset.theme='light';else delete document.body.dataset.theme;
+  document.querySelectorAll('#thRow button').forEach(x=>x.classList.toggle('on',x===b));
+  ivBuilt=false;
+  document.getElementById('ivList').innerHTML='';document.getElementById('kDivs').innerHTML='';
+  render();});
+
+/* ---- boucle ---- */
+setInterval(()=>{for(let i=0;i<S.spd;i++)tick();},1000);
+setInterval(render,250);
+window.addEventListener('resize',render);
+for(let i=0;i<40;i++)tick();
+render();
+</script>
+</body>
+</html>

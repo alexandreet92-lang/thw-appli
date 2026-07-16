@@ -15,6 +15,7 @@ export interface SyncConv {
   updatedAt: number
   isPinned?: boolean
   agent?: string
+  projectId?: string | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   msgs: any[]
 }

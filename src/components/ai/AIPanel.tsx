@@ -21,10 +21,13 @@ import { MobileSheet } from './MobileSheet'
 import { haptic } from '@/lib/ui/haptic'
 import { emitNotification } from '@/lib/notifications/emit'
 import { localDateStr } from '@/lib/date/weekStart'
+import RoutinesView from '@/components/ai/RoutinesView'
 import { VoiceOverlay } from './VoiceOverlay'
 import { VoiceConversation } from './VoiceConversation'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
 import { fetchRemoteConvs, pushConvs, deleteRemoteConv, mergeConvs, type SyncConv } from '@/lib/ai/conversations-sync'
+import { fetchProjects, createProject as createProjectRemote, updateProject as updateProjectRemote, deleteProject as deleteProjectRemote, type AIProject } from '@/lib/ai/projects-sync'
+import { TIER_LIMITS } from '@/lib/subscriptions/tier-limits'
 import { PlanProposalCard, type PlanProposal, type GenProgram, type PlanRequirements } from './PlanProposalCard'
 import { MethodPicker } from './MethodPicker'
 import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
@@ -121,6 +124,8 @@ interface AIConv {
   msgs: AIMsg[]
   isPinned?: boolean
   agent?: 'training' | 'networks'
+  // Rattachement à un projet (dossier de conversations). null/absent = hors projet.
+  projectId?: string | null
 }
 
 type FlowId = 'weakpoints' | 'nutrition' | 'recharge' | 'analyzetest' | 'sessionbuilder' | 'training_plan' | 'rule_helper' | 'analyser_entrainement' | 'estimer_zones' | 'analyser_progression' | 'strategie_course' | 'app_guide' | 'analyze_training' | 'analyser_semaine' | 'analyser_recuperation' | 'conseils_sommeil' | null
@@ -12792,6 +12797,14 @@ function HistoryDrawer({
   activeId,
   generatingConvs,
   unreadDone,
+  projects,
+  activeProjectId,
+  onSelectProject,
+  onCreateProject,
+  onUpdateProject,
+  onDeleteProject,
+  onMoveConvToProject,
+  onOpenRoutines,
   onSelect,
   onDelete,
   onNew,
@@ -12808,6 +12821,14 @@ function HistoryDrawer({
   activeId: string | null
   generatingConvs: Set<string>
   unreadDone: Set<string>
+  projects: AIProject[]
+  activeProjectId: string | null
+  onSelectProject: (id: string | null) => void
+  onCreateProject: (name: string, instructions: string) => Promise<AIProject | null>
+  onUpdateProject: (id: string, patch: { name?: string; instructions?: string }) => void
+  onDeleteProject: (id: string) => void
+  onMoveConvToProject: (convId: string, projectId: string | null) => void
+  onOpenRoutines: () => void
   onSelect: (c: AIConv) => void
   onDelete: (id: string) => void
   onNew: () => void
@@ -12826,6 +12847,14 @@ function HistoryDrawer({
   const [renVal,   setRenVal]   = useState('')
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [searchQ]                 = useState('')
+  // ── Projets ──
+  const [projectsOpen, setProjectsOpen] = useState(true)
+  // Modale projet : création (id absent) ou édition (id présent).
+  const [projModal, setProjModal] = useState<{ id?: string; name: string; instructions: string } | null>(null)
+  const [projSaving, setProjSaving] = useState(false)
+  // Sous-menu « Déplacer vers projet » ouvert pour une conversation.
+  const [moveMenuId, setMoveMenuId] = useState<string | null>(null)
+  const activeProject = projects.find(p => p.id === activeProjectId) ?? null
   // Gate SSR-safety pour fmtDate() qui utilise Date.now() au render.
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
@@ -12900,19 +12929,98 @@ function HistoryDrawer({
           Nouvelle conversation
         </button>
         )}
-        <div
+        {/* En-tête Projets (dépliable) */}
+        <button
+          onClick={() => setProjectsOpen(o => !o)}
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
             width: '100%', padding: '8px 8px', borderRadius: 8,
+            border: 'none', background: 'transparent', cursor: 'pointer',
             color: 'var(--text-mid)', fontSize: 14, fontWeight: 400,
-            fontFamily: 'DM Sans,sans-serif',
+            fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
           }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
             <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
           </svg>
-          Projets
-        </div>
+          <span style={{ flex: 1 }}>Projets</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: projectsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </button>
+
+        {/* Liste des projets + création */}
+        {projectsOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, paddingLeft: 6 }}>
+            {projects.map(p => {
+              const isActive = p.id === activeProjectId
+              const count = convs.filter(c => c.projectId === p.id).length
+              return (
+                <div key={p.id} className="aip-proj-row" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <button
+                    onClick={() => onSelectProject(isActive ? null : p.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0,
+                      padding: '6px 8px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                      background: isActive ? 'var(--bg-hover)' : 'transparent',
+                      color: 'var(--text)', fontSize: 13, fontWeight: isActive ? 600 : 450,
+                      fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+                    }}
+                    onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                    {count > 0 && <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>{count}</span>}
+                  </button>
+                  <button
+                    onClick={() => setProjModal({ id: p.id, name: p.name, instructions: p.instructions })}
+                    aria-label="Modifier le projet"
+                    className="aip-proj-edit"
+                    style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 5, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
+                  </button>
+                </div>
+              )
+            })}
+            <button
+              onClick={() => setProjModal({ name: '', instructions: '' })}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                padding: '6px 8px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                background: 'transparent', color: 'var(--text-dim)', fontSize: 12.5,
+                fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M12 5v14M5 12h14"/></svg>
+              Nouveau projet
+            </button>
+          </div>
+        )}
+
+        {/* Routine — ouvre l'interface dédiée */}
+        <button
+          onClick={() => { haptic(); onOpenRoutines() }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            width: '100%', padding: '8px 8px', borderRadius: 8,
+            border: 'none', background: 'transparent', cursor: 'pointer',
+            color: 'var(--text-mid)', fontSize: 14, fontWeight: 400,
+            fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8" />
+          </svg>
+          <span style={{ flex: 1 }}>Routine</span>
+        </button>
       </div>
 
       <div style={dividerStyle} />
@@ -12955,9 +13063,30 @@ function HistoryDrawer({
 
       <div style={dividerStyle} />
 
-      {/* DISCUSSIONS label */}
+      {/* DISCUSSIONS label — ou en-tête du projet actif */}
       <div style={{ padding: '0 8px', flexShrink: 0 }}>
-        <div style={sectionLabelStyle}>Discussions</div>
+        {activeProject ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '10px 0 4px', padding: '0 4px' }}>
+            <button
+              onClick={() => onSelectProject(null)}
+              aria-label="Retour"
+              style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', padding: 2 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: activeProject.color, flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeProject.name}</span>
+            <button
+              onClick={() => setProjModal({ id: activeProject.id, name: activeProject.name, instructions: activeProject.instructions })}
+              aria-label="Instructions du projet"
+              style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', padding: 2 }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
+            </button>
+          </div>
+        ) : (
+          <div style={sectionLabelStyle}>Discussions</div>
+        )}
       </div>
 
       {/* Conversation list */}
@@ -12967,6 +13096,9 @@ function HistoryDrawer({
             Aucune conversation.<br />Pose une question pour commencer.
           </div>
         ) : [...convs]
+            // Projet actif → uniquement ses conversations. Sinon → conversations
+            // hors projet (les convs rangées dans un projet n'encombrent pas la liste).
+            .filter(c => activeProjectId ? c.projectId === activeProjectId : !c.projectId)
             .filter(c => !searchQ.trim() || c.title.toLowerCase().includes(searchQ.toLowerCase()))
             .sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0))
             .map(conv => (
@@ -13090,6 +13222,38 @@ function HistoryDrawer({
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                       >Renommer</button>
+                      {/* Déplacer vers un projet */}
+                      <button onClick={() => setMoveMenuId(moveMenuId === conv.id ? null : conv.id)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%', padding: '8px 12px', border: 'none', borderTop: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                      >
+                        <span>Déplacer vers…</span>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: moveMenuId === conv.id ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}><path d="M9 6l6 6-6 6"/></svg>
+                      </button>
+                      {moveMenuId === conv.id && (
+                        <div style={{ borderTop: '1px solid var(--ai-border)', maxHeight: 180, overflowY: 'auto', background: 'var(--ai-bg2)' }}>
+                          {projects.length === 0 && (
+                            <div style={{ padding: '8px 12px', fontSize: 11, color: 'var(--ai-dim)' }}>Aucun projet. Crée-en un d’abord.</div>
+                          )}
+                          {projects.map(p => (
+                            <button key={p.id}
+                              onClick={() => { onMoveConvToProject(conv.id, p.id); setMoveMenuId(null); setMenuId(null) }}
+                              style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '7px 12px 7px 18px', border: 'none', background: conv.projectId === p.id ? 'var(--ai-bg)' : 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                            >
+                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
+                              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                              {conv.projectId === p.id && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
+                            </button>
+                          ))}
+                          {conv.projectId && (
+                            <button
+                              onClick={() => { onMoveConvToProject(conv.id, null); setMoveMenuId(null); setMenuId(null) }}
+                              style={{ display: 'block', width: '100%', padding: '7px 12px 7px 18px', border: 'none', borderTop: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer', color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                            >Retirer du projet</button>
+                          )}
+                        </div>
+                      )}
                       {confirmId === conv.id ? (
                         <div style={{ padding: '8px 12px', borderTop: '1px solid var(--ai-border)' }}>
                           <p style={{ margin: '0 0 7px', fontSize: 11, color: 'var(--ai-mid)' }}>{t('aip.ui.deleteConvConfirm')}</p>
@@ -13141,6 +13305,63 @@ function HistoryDrawer({
           </svg>
           Nouvelle conversation
         </button>
+      )}
+
+      {/* ── Modale projet (création / édition) ── */}
+      {projModal && (
+        <div
+          onClick={() => { if (!projSaving) setProjModal(null) }}
+          style={{ position: 'fixed', inset: 0, zIndex: 14000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 380, background: 'var(--bg-card)', borderRadius: 16, border: '0.5px solid var(--border)', padding: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column', gap: 12 }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>
+              {projModal.id ? 'Modifier le projet' : 'Nouveau projet'}
+            </div>
+            <input
+              autoFocus
+              value={projModal.name}
+              onChange={e => setProjModal(m => m ? { ...m, name: e.target.value } : m)}
+              placeholder="Nom du projet (ex. Prépa Ironman)"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, fontFamily: 'DM Sans,sans-serif', outline: 'none' }}
+            />
+            <textarea
+              value={projModal.instructions}
+              onChange={e => setProjModal(m => m ? { ...m, instructions: e.target.value } : m)}
+              placeholder="Contexte / instructions partagés — le coach en tiendra compte dans toutes les conversations de ce projet. (ex. objectif, échéance, contraintes)"
+              rows={5}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif', outline: 'none', resize: 'vertical' }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {projModal.id && (
+                <button
+                  onClick={() => { const id = projModal.id!; setProjModal(null); onDeleteProject(id) }}
+                  style={{ padding: '9px 12px', borderRadius: 9, border: 'none', background: 'transparent', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+                >Supprimer</button>
+              )}
+              <div style={{ flex: 1 }} />
+              <button
+                onClick={() => { if (!projSaving) setProjModal(null) }}
+                style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+              >Annuler</button>
+              <button
+                disabled={!projModal.name.trim() || projSaving}
+                onClick={async () => {
+                  if (!projModal.name.trim()) return
+                  setProjSaving(true)
+                  try {
+                    if (projModal.id) onUpdateProject(projModal.id, { name: projModal.name.trim(), instructions: projModal.instructions.trim() })
+                    else await onCreateProject(projModal.name.trim(), projModal.instructions.trim())
+                    setProjModal(null)
+                  } finally { setProjSaving(false) }
+                }}
+                style={{ padding: '9px 16px', borderRadius: 9, border: 'none', background: (!projModal.name.trim() || projSaving) ? 'var(--border)' : 'var(--text)', color: 'var(--bg-card)', fontSize: 13, fontWeight: 700, cursor: (!projModal.name.trim() || projSaving) ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+              >{projSaving ? '…' : projModal.id ? 'Enregistrer' : 'Créer'}</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -19789,6 +20010,11 @@ export default function AIPanel({
   // ── State ──────────────────────────────────────────────────
   const [convs,       setConvs]       = useState<AIConv[]>([])
   const [activeId,    setActiveId]    = useState<string | null>(null)
+  // Projets (dossiers de conversations + contexte partagé).
+  const [projects,        setProjects]        = useState<AIProject[]>([])
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
+  // Interface dédiée « Routines » (ouverte depuis la sidebar ou ?routines=1).
+  const [routinesOpen,    setRoutinesOpen]    = useState(false)
   const [input,       setInput]       = useState('')
   // Génération PARALLÈLE : on suit l'état par conversation (plusieurs chats
   // peuvent tourner en même temps). `generatingConvs` = ids en cours de
@@ -20056,7 +20282,13 @@ export default function AIPanel({
         const merged = mergeConvs(localNow, remote, MAX_CONVS)
         setConvs(merged as unknown as AIConv[])
         void pushConvs(sb, user.id, merged)
+        // Projets (dossiers de conversations) — chargés en parallèle.
+        void fetchProjects(sb, user.id).then(setProjects).catch(() => {})
       } catch { /* hors-ligne / non connecté → on garde le local */ }
+    })()
+    // Lien de notification « /?routines=1 » → ouvre l'interface Routines.
+    void (() => {
+      try { if (new URLSearchParams(window.location.search).get('routines') === '1') setRoutinesOpen(true) } catch { /* ignore */ }
     })()
   }, [])
 
@@ -20340,6 +20572,51 @@ export default function AIPanel({
   const pinConv = (id: string) => {
     setConvs(prev => prev.map(c => c.id === id ? { ...c, isPinned: !c.isPinned } : c))
   }
+
+  // ── Projets (dossiers de conversations) ──────────────────────
+  const withSb = async () => {
+    const { createClient } = await import('@/lib/supabase/client')
+    return createClient()
+  }
+
+  const handleCreateProject = useCallback(async (name: string, instructions: string): Promise<AIProject | null> => {
+    const uid = syncUserIdRef.current
+    if (!uid || !name.trim()) return null
+    const { createClient } = await import('@/lib/supabase/client')
+    const sb = createClient()
+    // Limite par abonnement (soft cap UX).
+    try {
+      const { data: sub } = await sb.from('user_subscriptions').select('tier').eq('user_id', uid).maybeSingle()
+      const tier = ((sub as { tier?: string } | null)?.tier ?? 'premium') as keyof typeof TIER_LIMITS
+      const max = TIER_LIMITS[tier]?.projects_max ?? TIER_LIMITS.premium.projects_max
+      if (projects.length >= max) {
+        setTokenLimitMsg(`Ton abonnement autorise ${max} projet${max > 1 ? 's' : ''}. Passe à un plan supérieur pour en créer davantage.`)
+        return null
+      }
+    } catch { /* si la lecture échoue, on laisse créer */ }
+    const p = await createProjectRemote(sb, uid, { name: name.trim(), instructions: instructions.trim() })
+    if (p) { setProjects(prev => [p, ...prev]); setActiveProjectId(p.id) }
+    return p
+  }, [projects.length])
+
+  const handleUpdateProject = useCallback(async (id: string, patch: { name?: string; instructions?: string; color?: string }) => {
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, ...patch, updatedAt: Date.now() } : p))
+    const uid = syncUserIdRef.current
+    if (uid) { const sb = await withSb(); void updateProjectRemote(sb, uid, id, patch) }
+  }, [])
+
+  const handleDeleteProject = useCallback(async (id: string) => {
+    // Détache les conversations du projet (on ne les supprime pas).
+    setConvs(prev => prev.map(c => c.projectId === id ? { ...c, projectId: null, updatedAt: Date.now() } : c))
+    setProjects(prev => prev.filter(p => p.id !== id))
+    setActiveProjectId(prev => prev === id ? null : prev)
+    const uid = syncUserIdRef.current
+    if (uid) { const sb = await withSb(); void deleteProjectRemote(sb, uid, id) }
+  }, [])
+
+  const moveConvToProject = useCallback((convId: string, projectId: string | null) => {
+    setConvs(prev => prev.map(c => c.id === convId ? { ...c, projectId, updatedAt: Date.now() } : c))
+  }, [])
 
   // G2 — Export conversation as Markdown
   const exportMarkdown = () => {
@@ -21160,6 +21437,8 @@ export default function AIPanel({
         title: displayText.slice(0, 46) + (displayText.length > 46 ? '…' : ''),
         createdAt: Date.now(), updatedAt: Date.now(), msgs: [],
         agent: activeAgent,
+        // Nouvelle conversation créée dans le projet actif (le cas échéant).
+        projectId: activeProjectId ?? null,
       }
       isNew = true
     }
@@ -21275,6 +21554,16 @@ export default function AIPanel({
             : 'doux, calme et bienveillant'
           effectiveRules = [...aiRules, { category: 'voice', rule_text: `Tu réponds à l'ORAL dans une conversation parlée. Réponds IMPÉRATIVEMENT en ${langName}. Adopte un ton ${tone}. Fais des phrases courtes et naturelles, comme si tu parlais à voix haute.` }]
         } catch { /* ignore */ }
+      }
+
+      // Contexte du PROJET : si la conversation appartient à un projet, ses
+      // instructions partagées sont injectées comme consigne prioritaire.
+      const convProjectId = conv?.projectId ?? null
+      if (convProjectId) {
+        const proj = projects.find(p => p.id === convProjectId)
+        if (proj && proj.instructions.trim()) {
+          effectiveRules = [...effectiveRules, { category: 'instruction', rule_text: `Contexte du projet « ${proj.name} » (l'utilisateur travaille dans ce dossier) : ${proj.instructions.trim()}` }]
+        }
       }
 
       const res = await fetch('/api/coach-stream', {
@@ -21585,7 +21874,7 @@ export default function AIPanel({
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext, webSearchOn, startGen, endGen])
+  }, [input, loading, active, context, model, activeQA, quotedText, planId, planContext, webSearchOn, startGen, endGen, activeProjectId, projects])
 
   // ── Enriched actions — charge les données puis appelle send ──
   const handleEnrichedAction = useCallback(async (id: string, label: string) => {
@@ -21935,6 +22224,14 @@ export default function AIPanel({
               activeId={activeId}
               generatingConvs={generatingConvs}
               unreadDone={unreadDone}
+              projects={projects}
+              activeProjectId={activeProjectId}
+              onSelectProject={setActiveProjectId}
+              onCreateProject={handleCreateProject}
+              onUpdateProject={handleUpdateProject}
+              onDeleteProject={handleDeleteProject}
+              onMoveConvToProject={moveConvToProject}
+              onOpenRoutines={() => setRoutinesOpen(true)}
               onSelect={selectConv}
               onDelete={deleteConv}
               onNew={newConv}
@@ -21955,6 +22252,14 @@ export default function AIPanel({
               activeId={activeId}
               generatingConvs={generatingConvs}
               unreadDone={unreadDone}
+              projects={projects}
+              activeProjectId={activeProjectId}
+              onSelectProject={setActiveProjectId}
+              onCreateProject={handleCreateProject}
+              onUpdateProject={handleUpdateProject}
+              onDeleteProject={handleDeleteProject}
+              onMoveConvToProject={moveConvToProject}
+              onOpenRoutines={() => setRoutinesOpen(true)}
               onSelect={selectConv}
               onDelete={deleteConv}
               onNew={newConv}
@@ -23246,6 +23551,12 @@ export default function AIPanel({
           document.body,
         )
       })()}
+
+      {/* ── Interface dédiée « Routines » ── */}
+      {routinesOpen && mounted && createPortal(
+        <RoutinesView onClose={() => setRoutinesOpen(false)} />,
+        document.body,
+      )}
 
       {/* ── Sur-page « Réglages IA » — PAR-DESSUS l'interface IA ── */}
       {iaSettingsOpen && mounted && createPortal(

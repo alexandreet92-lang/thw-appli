@@ -12369,6 +12369,22 @@ function PlusMenu({
     cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
   }
   const photoTileLabel: React.CSSProperties = { fontSize: 12, color: 'var(--text)', fontWeight: 500 }
+  // ── Style mobile « cartes groupées » (façon Claude) : blocs arrondis,
+  //    grande typo, cibles tactiles confortables, séparateurs en retrait. ──
+  const mGroup: React.CSSProperties = { background: 'var(--bg-alt)', borderRadius: 16, overflow: 'hidden', marginBottom: 12 }
+  const mRow: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+    padding: '15px 16px', minHeight: 56, boxSizing: 'border-box',
+    fontSize: 16, fontWeight: 500, color: 'var(--text)', textAlign: 'left',
+    background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+  }
+  const mDiv: React.CSSProperties = { height: 1, background: 'var(--border)', marginLeft: 52 }
+  const mHint: React.CSSProperties = { fontSize: 13, color: 'var(--text-dim)', flexShrink: 0, fontWeight: 500 }
+  const mTile: React.CSSProperties = {
+    flexShrink: 0, width: 106, height: 102, borderRadius: 18, border: 'none', background: 'var(--bg-alt)',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 9,
+    cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
+  }
 
   // État vide (thème « Et d'autres sports » — à venir)
   const themeEmptyState = (
@@ -12495,9 +12511,107 @@ function PlusMenu({
   const body = (
     <>
 
-      {/* ════ ÉCRAN PRINCIPAL ════ */}
-      {activeScreen === 'main' && (
-        <div style={{ maxHeight: isMobile ? undefined : '72vh', overflowY: isMobile ? undefined : 'auto' }}>
+      {/* ════ ÉCRAN PRINCIPAL — MOBILE (cartes groupées façon Claude) ════ */}
+      {activeScreen === 'main' && isMobile && (
+        <div style={{ padding: '2px 4px 6px' }}>
+          {/* Caméra + Photothèque + dernières photos */}
+          <div style={{ display: 'flex', gap: 10, padding: '2px 0 14px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+            <button onClick={() => { onClose(); setTimeout(onCamera, 80) }} style={mTile}>
+              <Camera size={24} color="var(--text)" />
+              <span style={photoTileLabel}>{t('aip.ui.camera')}</span>
+            </button>
+            <button onClick={() => { onClose(); setTimeout(onPhotos, 80) }} style={mTile}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8.5" cy="8.5" r="1.6" /><path d="M21 15l-5-5L5 21" />
+              </svg>
+              <span style={photoTileLabel}>{t('aip.ui.photoLibrary')}</span>
+            </button>
+            {recentPhotos.map((url, i) => (
+              <button key={i} onClick={() => { onPickPhoto(url); onClose() }} aria-label={`Photo ${i + 1}`}
+                style={{ flexShrink: 0, width: 102, height: 102, borderRadius: 18, padding: 0, border: 'none', background: 'var(--surface-neutral)', overflow: 'hidden', cursor: 'pointer' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              </button>
+            ))}
+          </div>
+
+          {/* Groupe : fichiers */}
+          <div style={mGroup}>
+            <button style={mRow} onClick={() => { onClose(); setTimeout(onFiles, 80) }}>
+              <Paperclip size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>Ajouter des fichiers</span>
+            </button>
+          </div>
+
+          {/* Groupe : Actions rapides · Connecteurs · Compétences */}
+          <div style={mGroup}>
+            <button style={mRow} onClick={() => { setMobileTheme(null); goTo('actions') }}>
+              <Zap size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>Actions rapides</span>
+              <ChevronRight size={18} color="var(--text-dim)" style={{ flexShrink: 0 }} />
+            </button>
+            <div style={mDiv} />
+            <button style={mRow} onClick={() => goTo('connecteurs')}>
+              <Plug size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>Connecteurs</span>
+              <ChevronRight size={18} color="var(--text-dim)" style={{ flexShrink: 0 }} />
+            </button>
+            <div style={mDiv} />
+            <button style={{ ...mRow, alignItems: 'center' }} onClick={() => { onClose(); onClosePanel(); router.push('/competences') }}>
+              <Brain size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span>{t('aip.ui.skills')}</span>
+                <span style={{ fontSize: 12.5, color: 'var(--text-dim)', fontWeight: 400 }}>
+                  {compCount === null ? 'Personnaliser le coach' : compCount === 0 ? 'Aucune compétence active' : `${compCount} / ${compLimit} active${compCount > 1 ? 's' : ''}`}
+                </span>
+              </span>
+              <ChevronRight size={18} color="var(--text-dim)" style={{ flexShrink: 0 }} />
+            </button>
+          </div>
+
+          {/* Groupe : parcours */}
+          <div style={mGroup}>
+            <button style={mRow} onClick={() => { onPrepare('Créer un parcours', CREATE_ROUTE_PROMPT); onClose() }}>
+              <MapIcon size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>Créer un parcours</span>
+              <span style={mHint}>IA</span>
+            </button>
+            <div style={mDiv} />
+            <button style={mRow} onClick={() => { onClose(); setTimeout(onFiles, 80) }}>
+              <MapPin size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>Analyser un parcours</span>
+              <span style={mHint}>GPX / TCX</span>
+            </button>
+          </div>
+
+          {/* Groupe : recherche */}
+          <div style={mGroup}>
+            <div style={{ ...mRow, opacity: 0.45, cursor: 'not-allowed' }} title={t('aip.ui.comingSoon')}>
+              <Search size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>Recherche</span>
+              <span style={mHint}>{t('aip.ui.soon')}</span>
+            </div>
+            <div style={mDiv} />
+            <button style={mRow} onClick={() => { onWebSearch() }}>
+              <Globe size={20} color="var(--text-mid)" style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>Recherche Web</span>
+              <span style={{
+                width: 46, height: 28, borderRadius: 999, flexShrink: 0, position: 'relative',
+                background: webSearchOn ? '#06B6D4' : 'var(--border)', transition: 'background 0.18s',
+              }}>
+                <span style={{
+                  position: 'absolute', top: 2, left: webSearchOn ? 20 : 2, width: 24, height: 24,
+                  borderRadius: '50%', background: '#fff', transition: 'left 0.18s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                }} />
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ════ ÉCRAN PRINCIPAL — DESKTOP ════ */}
+      {activeScreen === 'main' && !isMobile && (
+        <div style={{ maxHeight: '72vh', overflowY: 'auto' }}>
           {/* Rangée Caméra + Photothèque + 10 dernières photos (style Claude) */}
           {(isMobile || recentPhotos.length > 0) && (
             <div style={{ display: 'flex', gap: 8, padding: '2px 4px 12px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>

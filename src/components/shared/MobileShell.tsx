@@ -82,7 +82,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   useEffect(() => { setProfileOpen(false) }, [pathname])
   // « Envoyer un message » ouvert en sur-page (depuis le menu Plus / la sidebar).
   useEffect(() => {
-    const open = () => { setOpen(false); setFeedbackOpen(true) }
+    // Garde viewport : DesktopShell écoute aussi cet event (les deux shells sont
+    // montés). Sans ça, deux BottomSheet s'empilaient → double tap pour fermer.
+    const open = () => { if (window.innerWidth < 768) { setOpen(false); setFeedbackOpen(true) } }
     window.addEventListener('thw:open-feedback', open)
     return () => window.removeEventListener('thw:open-feedback', open)
   }, [])

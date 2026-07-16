@@ -46,8 +46,11 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   }, [])
 
   // « Envoyer un message » (menu latéral) → sur-page feedback.
+  // MobileShell et DesktopShell sont montés en même temps et écoutent tous deux
+  // cet event : sans ce garde, DEUX BottomSheet (portals sur body) s'empilaient
+  // sur mobile → il fallait deux taps pour fermer. On n'ouvre que sur desktop.
   useEffect(() => {
-    const open = () => setFeedbackOpen(true)
+    const open = () => { if (window.innerWidth >= 768) setFeedbackOpen(true) }
     window.addEventListener('thw:open-feedback', open)
     return () => window.removeEventListener('thw:open-feedback', open)
   }, [])

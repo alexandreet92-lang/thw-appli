@@ -849,6 +849,20 @@ function getPowerZone(watts: number, ftp: number | null): typeof MMP_POWER_ZONES
   return MMP_POWER_ZONES.find(z => ratio < z.max) ?? MMP_POWER_ZONES[MMP_POWER_ZONES.length - 1]
 }
 
+// Petit trophée SVG (remplace l'émoji 🏆) — couleur = doré (all-time) / cyan (année).
+function TrophyMark({ color, size = 13 }: { color: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+      <path d="M4 22h16" />
+      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+    </svg>
+  )
+}
+
 // Courbe lissée (Catmull-Rom → Bézier) pour un rendu fluide, façon graphique streams.
 function smoothLinePath(pts: [number, number][]): string {
   if (pts.length === 0) return ''
@@ -1004,13 +1018,15 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
 
   const W = 1000, H = 220
 
-  // Sqrt scale: T_MIN=5s, T_MAX=activity duration
-  // Donne plus d'espace aux efforts longs que l'échelle log
+  // Échelle X = puissance quasi-linéaire (exposant 0.72). Plus l'écart de durée
+  // est faible, plus les points sont resserrés (5s↔10s bien plus serré que 1h↔2h),
+  // et les efforts longs occupent l'essentiel de la largeur → défilement sur mobile.
+  const XEXP = 0.72
   const actMax = Math.max(activityDurationS, DURATIONS.length > 0 ? DURATIONS[DURATIONS.length - 1] : 5, 5)
-  const sqrtMin = Math.sqrt(5)
-  const sqrtMax = Math.sqrt(actMax)
+  const powMin = Math.pow(5, XEXP)
+  const powMax = Math.pow(actMax, XEXP)
   function sqrtX(t: number): number {
-    return (Math.sqrt(t) - sqrtMin) / (sqrtMax - sqrtMin) * W
+    return (Math.pow(t, XEXP) - powMin) / (powMax - powMin) * W
   }
 
   // ── Y axis ÉCHELLE LOGARITHMIQUE (style Strava / TrainingPeaks) ───────
@@ -1059,17 +1075,16 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
     .map(d => DURATIONS.indexOf(d))
     .filter(idx => idx >= 0 && mmp[idx] > 0)
 
-  // Sqrt-aware hit detection: find nearest DURATION to cursor position in sqrt space
+  // Détection du point le plus proche du curseur, dans l'espace de l'échelle X.
   const sqrtIdx = useMemo((): number | null => {
     if (pct === null || DURATIONS.length === 0) return null
     // SVG viewBox is "0 0 {W} {H}" → svgX = pct*W
     const svgX = pct * W
     const xClamped = Math.max(0, Math.min(W, svgX))
-    const sqrtT = xClamped / W * (sqrtMax - sqrtMin) + sqrtMin
-    const dCursor = sqrtT * sqrtT
+    const powT = xClamped / W * (powMax - powMin) + powMin
     let best = 0, bestDist = Infinity
     DURATIONS.forEach((d, i) => {
-      const dist = Math.abs(Math.sqrt(d) - Math.sqrt(dCursor))
+      const dist = Math.abs(Math.pow(d, XEXP) - powT)
       if (dist < bestDist) { bestDist = dist; best = i }
     })
     return best
@@ -1090,15 +1105,22 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
 
   // Hauteur du graphique (px) + labels X non chevauchants (filtrés par écart en %).
   const CHART_H = isMobileMmp ? 236 : 264
+  // Mobile : la zone de tracé est plus large que l'écran → défilement horizontal
+  // (les efforts longs occupent l'espace). Desktop : ajusté à la largeur (pas de scroll).
+  const PLOT_W: number | string = isMobileMmp ? Math.max(560, DURATIONS.length * 72) : '100%'
+  const PAD_TOP = 34   // espace au-dessus du tracé pour les pastilles / trophées
   const xLabels = (() => {
     const out: { d: number; label: string }[] = []
     let lastPct = -100
+    const gap = isMobileMmp ? 5.5 : 7
     DURATIONS.forEach((d, i) => {
       const p = (sqrtX(d) / W) * 100
-      if (p - lastPct >= 9) { out.push({ d, label: LABELS[i] }); lastPct = p }
+      if (p - lastPct >= gap) { out.push({ d, label: LABELS[i] }); lastPct = p }
     })
     return out
   })()
+  // Alignement des éléments proches des bords (évite le rognage du 1er / dernier).
+  const edgeTx = (pct: number) => pct < 3 ? 'translateX(0)' : pct > 97 ? 'translateX(-100%)' : 'translateX(-50%)'
 
   return (
     <div style={{ marginBottom: 20 }}>
@@ -1128,13 +1150,23 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
         ) : null}
       </div>
 
-<div ref={mmpContainerRef} style={{ position: 'relative', cursor: 'crosshair', padding: `4px 6px 26px 40px`, touchAction: 'none' }}>
-        {/* Boîte du graphique : SVG (géométrie, étirée) + calque HTML (texte NET) */}
-        <div style={{ position: 'relative', width: '100%', height: CHART_H }}>
+<div ref={mmpContainerRef} style={{ position: 'relative', cursor: 'crosshair', display: 'flex', alignItems: 'flex-start' }}>
+        {/* Axe Y FIXE (ne défile pas) */}
+        <div style={{ flexShrink: 0, width: 38, paddingTop: PAD_TOP, paddingBottom: 26 }}>
+          <div style={{ position: 'relative', height: CHART_H }}>
+            {yTicks.map(w => (
+              <span key={`yl-${w}`} style={{ position: 'absolute', right: 6, top: `${(yOf(w) / H) * 100}%`, transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{w}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Zone de tracé — défilable horizontalement sur mobile */}
+        <div style={{ flex: 1, minWidth: 0, overflowX: isMobileMmp ? 'auto' : 'visible', overflowY: 'visible', paddingTop: PAD_TOP, paddingBottom: 26, WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], touchAction: isMobileMmp ? 'pan-x' : 'auto' }}>
+        <div style={{ position: 'relative', width: PLOT_W, height: CHART_H }}>
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', overflow: 'visible' }}
           onMouseMove={handleMmpMove} onMouseLeave={handleMmpLeave}
-          onTouchStart={handleMmpMove} onTouchMove={e => { e.preventDefault(); handleMmpMove(e) }} onTouchEnd={handleMmpLeave}>
+          onTouchStart={handleMmpMove} onTouchMove={handleMmpMove} onTouchEnd={handleMmpLeave}>
           <defs>
             <linearGradient id="mmpFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#6366f1" stopOpacity="0.28"/>
@@ -1176,25 +1208,38 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
         </svg>
 
         {/* ── Calque HTML : texte net (hors du SVG étiré) ── */}
-        {/* Labels Y (gauche) */}
-        {yTicks.map(w => (
-          <span key={`yl-${w}`} style={{ position: 'absolute', right: '100%', marginRight: 8, top: `${(yOf(w) / H) * 100}%`, transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{w}</span>
-        ))}
-        {/* Trophées 🏆 au-dessus des points battus */}
+        {/* Trophées au-dessus des points battus (SVG, sans émoji) */}
         {trophies.map(({ i, kind }) => (
-          <span key={`tr-${i}`} style={{ position: 'absolute', left: `${(sqrtX(DURATIONS[i]) / W) * 100}%`, top: `${(yOf(mmp[i]) / H) * 100}%`, transform: 'translate(-50%, calc(-100% - 4px))', fontSize: 15, lineHeight: 1, filter: `drop-shadow(0 0 1.5px ${kind === 'allTime' ? '#eab308' : '#06B6D4'})`, pointerEvents: 'none' }}>🏆</span>
+          <span key={`tr-${i}`} style={{ position: 'absolute', left: `${(sqrtX(DURATIONS[i]) / W) * 100}%`, top: `${(yOf(mmp[i]) / H) * 100}%`, transform: 'translate(-50%, calc(-100% - 4px))', lineHeight: 0, pointerEvents: 'none' }}>
+            <TrophyMark color={kind === 'allTime' ? '#eab308' : '#06B6D4'} size={15} />
+          </span>
         ))}
-        {/* Pastilles valeur (au-dessus des points clés) */}
-        {keyDurIndices.map(i => {
-          const isBeaten = trophies.some(tr => tr.i === i)
+        {/* Pastilles valeur (au-dessus des points clés) — on saute celles qui se
+            chevaucheraient (durées courtes resserrées) ; valeurs dispo au survol. */}
+        {(() => {
+          let lastPct = -100
+          const minGap = isMobileMmp ? 8 : 11
+          return keyDurIndices.filter(i => {
+            const p = (sqrtX(DURATIONS[i]) / W) * 100
+            if (p - lastPct >= minGap) { lastPct = p; return true }
+            return false
+          }).map(i => {
+            const isBeaten = trophies.some(tr => tr.i === i)
+            const pct = (sqrtX(DURATIONS[i]) / W) * 100
+            const tx = pct < 3 ? '0%' : pct > 97 ? '-100%' : '-50%'
+            return (
+              <span key={`vp-${i}`} style={{ position: 'absolute', left: `${pct}%`, top: `${(yOf(mmp[i]) / H) * 100}%`, transform: `translate(${tx}, calc(-100% - ${isBeaten ? 26 : 10}px))`, padding: '2px 8px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 5px rgba(0,0,0,0.10)', fontSize: 12, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{mmp[i]}<span style={{ fontSize: 8.5, fontWeight: 600, opacity: 0.6, marginLeft: 2 }}>W</span></span>
+            )
+          })
+        })()}
+        {/* Labels X (durées) — sous le graphique, nets et lisibles */}
+        {xLabels.map(({ d, label }) => {
+          const pct = (sqrtX(d) / W) * 100
           return (
-            <span key={`vp-${i}`} style={{ position: 'absolute', left: `${(sqrtX(DURATIONS[i]) / W) * 100}%`, top: `${(yOf(mmp[i]) / H) * 100}%`, transform: `translate(-50%, calc(-100% - ${isBeaten ? 26 : 10}px))`, padding: '2px 8px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 5px rgba(0,0,0,0.10)', fontSize: 12, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{mmp[i]}<span style={{ fontSize: 8.5, fontWeight: 600, opacity: 0.6, marginLeft: 2 }}>W</span></span>
+            <span key={`xl-${d}`} style={{ position: 'absolute', left: `${pct}%`, top: '100%', marginTop: 7, transform: edgeTx(pct), fontSize: 11.5, fontWeight: 600, color: 'var(--text-mid)', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{label}</span>
           )
         })}
-        {/* Labels X (durées) — sous le graphique, nets et lisibles */}
-        {xLabels.map(({ d, label }) => (
-          <span key={`xl-${d}`} style={{ position: 'absolute', left: `${(sqrtX(d) / W) * 100}%`, top: '100%', marginTop: 7, transform: 'translateX(-50%)', fontSize: 11.5, fontWeight: 600, color: 'var(--text-mid)', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{label}</span>
-        ))}
+        </div>
         </div>
 
         {/* MMP tooltip — refondu : header large + Séance + Record + Δ + zone FTP */}
@@ -1240,7 +1285,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
                     background: '#10b981', color: '#fff',
                     padding: '2px 6px', borderRadius: 4,
                     textTransform: 'uppercase', letterSpacing: '0.05em',
-                  }}>🏆 Record</span>
+                  }}>Record</span>
                 )}
               </div>
 
@@ -1331,10 +1376,10 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ color: '#06B6D4' }}>🏆</span> {t('actp.year')}
+          <TrophyMark color="#06B6D4" size={12} /> {t('actp.year')}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ color: '#eab308' }}>🏆</span> All Time
+          <TrophyMark color="#eab308" size={12} /> All Time
         </div>
         {ftp && ftp > 0 && (
           <div style={{

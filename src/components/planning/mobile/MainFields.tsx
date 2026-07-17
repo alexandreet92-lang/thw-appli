@@ -6,14 +6,14 @@
 // ══════════════════════════════════════════════════════════════════
 import { SportIcon } from '@/components/icons/SportIcon'
 import {
-  type SportType, type CyclingSub,
-  SPORT_SHORT, CYCLING_SUB_LABEL, TRAINING_TYPES,
+  type SportType, type CyclingSub, type RunningSub,
+  SPORT_SHORT, CYCLING_SUB_LABEL, RUNNING_SUB_LABEL, TRAINING_TYPES,
 } from '@/app/planning/page'
 import { sportColor, fmtDur, parseDurInput } from './editorial'
 import { Card, FieldLabel, Gauge } from './ui'
 import { useI18n } from '@/lib/i18n'
 
-const SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique']
+const SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique', 'hybrid', 'boxe']
 // Clés i18n des descripteurs d'effort perçu (RPE 1→10).
 const RPE_DESC = ['planning.rpeVeryEasy', 'planning.rpeVeryEasy', 'planning.rpeEasy', 'planning.rpeEasy', 'planning.rpeModerate', 'planning.rpeModerate', 'planning.rpeSustained', 'planning.rpeHard', 'planning.rpeVeryHard', 'planning.rpeMaximal']
 
@@ -21,6 +21,7 @@ export function MainFields(p: {
   reserveMode?: boolean
   sport: SportType; accent: string; onSportChange: (s: SportType) => void
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
+  runningSub: RunningSub; setRunningSub: (s: RunningSub) => void
   brickRun: boolean; setBrickRun: (b: boolean) => void
   trainingTypes: string[]; setTrainingTypes: (t: string[]) => void
   date: string; setDate: (v: string) => void; time: string; setTime: (v: string) => void
@@ -70,6 +71,16 @@ export function MainFields(p: {
           {(Object.keys(CYCLING_SUB_LABEL) as CyclingSub[]).map(k => {
             const on = k === p.cyclingSub
             return <button key={k} type="button" onClick={() => p.setCyclingSub(k)} style={{ flex: 1, padding: '11px 8px', borderRadius: 'var(--se-r-sm)', cursor: 'pointer', fontSize: 13, fontWeight: 600, border: `1px solid ${on ? p.accent : 'var(--se-rule)'}`, background: 'var(--se-card)', color: on ? p.accent : 'var(--se-dim)' }}>{CYCLING_SUB_LABEL[k]}</button>
+          })}
+        </div>
+      )}
+
+      {/* Sous-discipline (running) : Dehors / Tapis */}
+      {p.sport === 'run' && (
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(Object.keys(RUNNING_SUB_LABEL) as RunningSub[]).map(k => {
+            const on = k === p.runningSub
+            return <button key={k} type="button" onClick={() => p.setRunningSub(k)} style={{ flex: 1, padding: '11px 8px', borderRadius: 'var(--se-r-sm)', cursor: 'pointer', fontSize: 13, fontWeight: 600, border: `1px solid ${on ? p.accent : 'var(--se-rule)'}`, background: 'var(--se-card)', color: on ? p.accent : 'var(--se-dim)' }}>{RUNNING_SUB_LABEL[k]}</button>
           })}
         </div>
       )}

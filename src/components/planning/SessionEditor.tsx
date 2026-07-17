@@ -4834,10 +4834,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     const panelProps: SessionEditorPanelProps = {
       mode, reserveMode,
       sport, accent: 'var(--primary)', sportAccent: mobileSportColor(sport), onSportChange: handleSportChange,
-      cyclingSub, setCyclingSub, brickRun, setBrickRun, trainingTypes, setTrainingTypes,
+      cyclingSub, setCyclingSub, runningSub, setRunningSub, brickRun, setBrickRun, trainingTypes, setTrainingTypes,
       title, setTitle, date, setDate, time, setTime,
       dur, setDur, rpe, setRpe, desc, setDesc, selPlan,
       blocks, setBlocks,
+      isComposed, composedMoves, setComposedMoves,
       sm: isStrength ? strengthSmsn.sm : smsn.sm, sn: isStrength ? strengthSmsn.sn : smsn.sn,
       exercises, setExercises, circuits: mCircuits, setCircuits: setMCircuits, exoMap: mMap, setExoMap: setMMap,
       athlete: athleteData ? {

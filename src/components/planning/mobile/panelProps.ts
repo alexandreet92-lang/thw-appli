@@ -1,9 +1,10 @@
 // Props partagées par les coquilles SessionEditor mobile & desktop (même
 // contenu éditorial, seule la mise en page diffère). Défini à part pour
 // éviter toute dépendance circulaire entre les deux coquilles.
-import type { SportType, CyclingSub, PlanVariant, Block } from '@/app/planning/page'
+import type { SportType, CyclingSub, RunningSub, PlanVariant, Block } from '@/app/planning/page'
 import type { AthleteRefs } from './editorial'
 import type { ExerciseItem, ExoCircuit } from './strength'
+import type { ComposedMove, ComposedSport } from '../composedSports'
 
 // Parcours déjà parsé (parcours_data d'une séance, ex. liée à un stage).
 export interface PanelParcours {
@@ -19,6 +20,7 @@ export interface SessionEditorPanelProps {
   reserveMode?: boolean   // réserve Builder : masque Sport / Date / Heure
   sport: SportType; accent: string; sportAccent: string; onSportChange: (s: SportType) => void
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
+  runningSub: RunningSub; setRunningSub: (s: RunningSub) => void
   brickRun: boolean; setBrickRun: (b: boolean) => void
   trainingTypes: string[]; setTrainingTypes: (t: string[]) => void
   title: string; setTitle: (v: string) => void
@@ -40,4 +42,7 @@ export interface SessionEditorPanelProps {
   exercises: ExerciseItem[]; setExercises: (e: ExerciseItem[]) => void
   circuits: ExoCircuit[]; setCircuits: (c: ExoCircuit[]) => void
   exoMap: Record<string, string>; setExoMap: (m: Record<string, string>) => void
+  // Sports composés (Hybrid / Boxe)
+  isComposed: boolean
+  composedMoves: ComposedMove[]; setComposedMoves: (m: ComposedMove[]) => void
 }

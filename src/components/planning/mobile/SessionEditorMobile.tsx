@@ -36,6 +36,7 @@ export function SessionEditorMobile(p: SessionEditorPanelProps) {
             reserveMode={p.reserveMode}
             sport={p.sport} accent={p.accent} onSportChange={p.onSportChange}
             cyclingSub={p.cyclingSub} setCyclingSub={p.setCyclingSub}
+            runningSub={p.runningSub} setRunningSub={p.setRunningSub}
             brickRun={p.brickRun} setBrickRun={p.setBrickRun}
             trainingTypes={p.trainingTypes} setTrainingTypes={p.setTrainingTypes}
             date={p.date} setDate={p.setDate} time={p.time} setTime={p.setTime}

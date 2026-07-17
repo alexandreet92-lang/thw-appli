@@ -1140,8 +1140,9 @@ function LocalisationBloc() {
 function ConfidentialiteBloc() {
   const { t } = useI18n()
   const PRIVACY_LINKS: { label: string; sub: string; href: string }[] = [
-    { label: t('profile.privacyPolicy'), sub: t('profile.privacyPolicySub'), href: '/decouvrir/theme.html#confidentialite' },
-    { label: t('profile.terms'),     sub: t('profile.termsSub'), href: '/decouvrir/theme.html#cgu' },
+    { label: t('profile.privacyPolicy'), sub: t('profile.privacyPolicySub'), href: '/decouvrir/confidentialite.html' },
+    { label: t('profile.terms'),     sub: t('profile.termsSub'), href: '/decouvrir/cgu.html' },
+    { label: t('profile.legalNotice'), sub: t('profile.legalNoticeSub'), href: '/decouvrir/mentions-legales.html' },
   ]
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Conditions d'utilisation — THW Coaching</title>
+  <meta name="description" content="Conditions générales d'utilisation et de vente de THW Coaching."/>
+  <link rel="icon" href="/logo.png"/>
+  <link rel="stylesheet" href="/colors_and_type.css"/>
+  <link rel="stylesheet" href="/site.css"/>
+  <script>
+    (function () {
+      var K = 'thw-theme-mode';
+      function g() { try { return localStorage.getItem(K) || 'auto'; } catch (e) { return 'auto'; } }
+      function r(m) { if (m === 'light') return 'light'; if (m === 'dark') return 'dark'; var h = new Date().getHours(); return (h >= 7 && h < 20) ? 'light' : 'dark'; }
+      function a(m) { var e = r(m), el = document.documentElement; el.classList.toggle('light', e === 'light'); el.classList.toggle('dark', e === 'dark'); }
+      a(g()); setInterval(function () { if (g() === 'auto') a(g()); }, 60000);
+      window.THWTheme = { get: g, set: function (m) { try { localStorage.setItem(K, m); } catch (e) {} a(m); } };
+    })();
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .atmosphere { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(ellipse 70% 60% at 15% 10%, rgba(0,200,224,0.06) 0%, transparent 60%), radial-gradient(ellipse 60% 60% at 85% 90%, rgba(91,111,255,0.07) 0%, transparent 60%); }
+    .legal-topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 22px; background: var(--nav-bg); border-bottom: 1px solid var(--nav-border); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .legal-topbar .brand-word { font-family: var(--font-display); font-weight: 800; font-size: 18px; letter-spacing: -0.04em; color: var(--text); }
+    .legal-topbar .brand-word span { color: var(--brand); }
+    .legal-back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-pill); background: var(--bg-card); border: 1px solid var(--border-mid); color: var(--text-mid); font-family: var(--font-body); font-size: 13px; font-weight: 500; text-decoration: none; cursor: pointer; transition: color .16s, border-color .16s; }
+    .legal-back:hover { color: var(--brand); border-color: color-mix(in oklab, var(--brand) 45%, transparent); }
+    .legal-main { position: relative; z-index: 1; padding: 40px 0 60px; }
+    .legal-wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+    .legal-breadcrumb { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; font-family: var(--font-body); font-size: 13px; color: var(--text-dim); margin-bottom: 34px; }
+    .legal-breadcrumb a { color: var(--text-mid); text-decoration: none; transition: color .16s; }
+    .legal-breadcrumb a:hover { color: var(--brand); }
+    .legal-crumb-current { color: var(--text); }
+    .legal-header { margin-bottom: 34px; padding-bottom: 26px; border-bottom: 1px solid var(--border); }
+    .legal-header h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(30px, 6vw, 46px); letter-spacing: -0.045em; line-height: 1.04; margin: 0; color: var(--text); text-wrap: balance; }
+    .legal-updated { margin: 14px 0 0; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-dim); }
+    .legal-content { font-family: var(--font-body); color: var(--text-mid); }
+    .legal-lead { font-size: clamp(15px, 2.4vw, 17px); line-height: 1.7; color: var(--text); margin: 0 0 8px; text-wrap: pretty; }
+    .legal-block { margin: 30px 0; }
+    .legal-block:first-child { margin-top: 4px; }
+    .legal-block h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(17px, 3vw, 21px); letter-spacing: -0.02em; color: var(--text); margin: 0 0 12px; }
+    .legal-content p { font-size: 15px; line-height: 1.72; margin: 0 0 12px; text-wrap: pretty; }
+    .legal-content p:last-child { margin-bottom: 0; }
+    .legal-content strong { color: var(--text); font-weight: 600; }
+    .legal-content ul { list-style: none; margin: 0; padding: 0; }
+    .legal-content ul li { position: relative; padding-left: 22px; margin: 0 0 11px; font-size: 15px; line-height: 1.66; text-wrap: pretty; }
+    .legal-content ul li::before { content: ''; position: absolute; left: 3px; top: 10px; width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
+    .legal-content a { color: var(--brand); text-decoration: none; border-bottom: 1px solid color-mix(in oklab, var(--brand) 40%, transparent); transition: color .16s, border-color .16s; }
+    .legal-content a:hover { color: var(--brand-vivid); border-bottom-color: var(--brand-vivid); }
+    .legal-callout { background: color-mix(in oklab, var(--warning) 9%, var(--bg-card)); border: 1px solid color-mix(in oklab, var(--warning) 34%, transparent); border-radius: var(--radius-lg); padding: 22px 24px; }
+    .legal-callout h2 { color: color-mix(in oklab, var(--warning) 78%, var(--text)); }
+    .legal-todo { display: inline-block; padding: 1px 8px; border-radius: 6px; font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; color: color-mix(in oklab, var(--warning) 80%, var(--text)); background: color-mix(in oklab, var(--warning) 14%, transparent); border: 1px dashed color-mix(in oklab, var(--warning) 45%, transparent); }
+    .legal-contact { margin-top: 26px; }
+    .legal-other { margin-top: 52px; padding-top: 26px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 14px; }
+    .legal-other-label { font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
+    .legal-other-links { display: flex; flex-wrap: wrap; gap: 10px; }
+    .legal-other-links a { display: inline-flex; align-items: center; padding: 9px 15px; border-radius: var(--radius-pill); background: var(--bg-card); border: 1px solid var(--border); font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--text-mid); text-decoration: none; transition: color .16s, border-color .16s, background .16s; }
+    .legal-other-links a:hover { color: var(--brand); border-color: color-mix(in oklab, var(--brand) 45%, transparent); background: var(--bg-hover); }
+    @media (max-width: 600px) { .legal-main { padding-top: 26px; } .legal-wrap { padding: 0 18px; } .legal-callout { padding: 18px 18px; } }
+  </style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+
+  <header class="legal-topbar">
+    <span class="brand-word">THW<span>.</span></span>
+    <a class="legal-back" href="/" onclick="if(history.length>1){history.back();return false;}">← Retour</a>
+  </header>
+
+  <main class="legal-main">
+    <div class="legal-wrap">
+      <nav class="legal-breadcrumb" aria-label="Fil d'ariane">
+        <a href="/">Accueil</a><span aria-hidden="true">/</span><span class="legal-crumb-current">Conditions d'utilisation</span>
+      </nav>
+
+      <header class="legal-header">
+        <h1>Conditions d'utilisation</h1>
+        <p class="legal-updated">Dernière mise à jour : 6 juillet 2026</p>
+      </header>
+
+      <article class="legal-content">
+        <section class="legal-block">
+          <h2>1. Objet et éditeur</h2>
+          <p>Les présentes conditions régissent l'utilisation de l'application et du site THW, édités par Alexandre Ettori (micro-entreprise), 3 rue Maréchal Joffre, <span class="legal-todo">[code postal + ville]</span> — <a href="mailto:alexandre.et92@gmail.com">alexandre.et92@gmail.com</a>. En créant un compte ou en utilisant le service, tu acceptes ces conditions.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>2. Le service</h2>
+          <p>THW fournit un accompagnement sportif (planification, suivi, nutrition, récupération, assistant IA). Le service est proposé « en l'état » et évolue régulièrement.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>3. Compte</h2>
+          <p>Tu dois avoir au moins <strong>16 ans</strong> pour utiliser le service. Tu es responsable de la confidentialité de tes identifiants et de l'exactitude des informations fournies.</p>
+        </section>
+
+        <section class="legal-block legal-callout">
+          <h2>4. Avertissement santé — IMPORTANT</h2>
+          <p>THW n'est <strong>pas un service médical</strong>. Les recommandations d'entraînement, de nutrition et de l'assistant IA sont fournies à titre informatif et ne remplacent pas l'avis d'un professionnel de santé. Consulte un médecin avant de démarrer un programme, notamment en cas de pathologie, de blessure ou de doute. Tu pratiques sous ta propre responsabilité.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>5. Abonnements et prix (CGV)</h2>
+          <p>Trois formules mensuelles sont proposées, avec un <strong>essai gratuit de 14 jours</strong> :</p>
+          <ul>
+            <li><strong>Premium</strong> — 14 €/mois</li>
+            <li><strong>Pro</strong> — 26 €/mois</li>
+            <li><strong>Expert</strong> — 49 €/mois</li>
+          </ul>
+          <p>Prix en euros, TVA non applicable (article 293 B du CGI). Les paiements sont traités par <strong>Stripe</strong> ; nous ne conservons pas tes données bancaires.</p>
+        </section>
+
+        <section class="legal-block" id="resiliation">
+          <h2>6. Reconduction et résiliation</h2>
+          <p>L'abonnement est mensuel et <strong>reconduit tacitement</strong> à chaque échéance. Tu peux <strong>résilier à tout moment</strong> depuis l'application ; l'accès reste actif jusqu'à la fin de la période déjà payée. Aucun remboursement au prorata pour une période entamée, sauf disposition légale contraire.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>7. Droit de rétractation</h2>
+          <p>Conformément à l'article L221-28 du Code de la consommation, en demandant l'accès immédiat au service numérique tu reconnais renoncer à ton droit de rétractation une fois l'exécution commencée. L'<strong>essai gratuit de 14 jours</strong> te permet de tester le service sans engagement avant tout paiement.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>8. Utilisation acceptable</h2>
+          <p>Tu t'engages à ne pas détourner le service, le revendre, tenter d'y accéder frauduleusement, ni y publier de contenu illicite.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>9. Propriété intellectuelle</h2>
+          <p>Le contenu, la marque, le design et les algorithmes de THW restent la propriété de l'éditeur. Tes données personnelles t'appartiennent.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>10. Responsabilité</h2>
+          <p>Dans les limites permises par la loi, l'éditeur n'est pas responsable des dommages indirects liés à l'utilisation du service ni d'une interruption temporaire.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>11. Médiation de la consommation</h2>
+          <p>En cas de litige non résolu, tu peux recourir gratuitement à un médiateur de la consommation : <span class="legal-todo">[nom + coordonnées du médiateur à désigner]</span>. Plateforme européenne de règlement des litiges : <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener">ec.europa.eu/consumers/odr</a>.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>12. Droit applicable</h2>
+          <p>Les présentes conditions sont régies par le droit français. À défaut de résolution amiable, les tribunaux français sont compétents.</p>
+        </section>
+
+        <p class="legal-contact"><strong>Contact</strong> : <a href="mailto:alexandre.et92@gmail.com">alexandre.et92@gmail.com</a>.</p>
+      </article>
+
+      <nav class="legal-other" aria-label="Autres pages légales">
+        <span class="legal-other-label">Voir aussi</span>
+        <div class="legal-other-links">
+          <a href="/decouvrir/confidentialite.html">Politique de confidentialité</a>
+          <a href="/decouvrir/mentions-legales.html">Mentions légales</a>
+          <a href="/decouvrir/exporter-donnees.html">Exporter mes données</a>
+        </div>
+      </nav>
+    </div>
+  </main>
+</body>
+</html>

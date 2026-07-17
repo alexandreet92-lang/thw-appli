@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Politique de confidentialité — THW Coaching</title>
+  <meta name="description" content="Comment THW Coaching collecte, utilise et protège tes données personnelles (RGPD)."/>
+  <link rel="icon" href="/logo.png"/>
+  <link rel="stylesheet" href="/colors_and_type.css"/>
+  <link rel="stylesheet" href="/site.css"/>
+  <script>
+    (function () {
+      var K = 'thw-theme-mode';
+      function g() { try { return localStorage.getItem(K) || 'auto'; } catch (e) { return 'auto'; } }
+      function r(m) { if (m === 'light') return 'light'; if (m === 'dark') return 'dark'; var h = new Date().getHours(); return (h >= 7 && h < 20) ? 'light' : 'dark'; }
+      function a(m) { var e = r(m), el = document.documentElement; el.classList.toggle('light', e === 'light'); el.classList.toggle('dark', e === 'dark'); }
+      a(g()); setInterval(function () { if (g() === 'auto') a(g()); }, 60000);
+      window.THWTheme = { get: g, set: function (m) { try { localStorage.setItem(K, m); } catch (e) {} a(m); } };
+    })();
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .atmosphere { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(ellipse 70% 60% at 15% 10%, rgba(0,200,224,0.06) 0%, transparent 60%), radial-gradient(ellipse 60% 60% at 85% 90%, rgba(91,111,255,0.07) 0%, transparent 60%); }
+
+    .legal-topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 22px; background: var(--nav-bg); border-bottom: 1px solid var(--nav-border); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .legal-topbar .brand-word { font-family: var(--font-display); font-weight: 800; font-size: 18px; letter-spacing: -0.04em; color: var(--text); }
+    .legal-topbar .brand-word span { color: var(--brand); }
+    .legal-back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-pill); background: var(--bg-card); border: 1px solid var(--border-mid); color: var(--text-mid); font-family: var(--font-body); font-size: 13px; font-weight: 500; text-decoration: none; cursor: pointer; transition: color .16s, border-color .16s; }
+    .legal-back:hover { color: var(--brand); border-color: color-mix(in oklab, var(--brand) 45%, transparent); }
+
+    .legal-main { position: relative; z-index: 1; padding: 40px 0 60px; }
+    .legal-wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+    .legal-breadcrumb { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; font-family: var(--font-body); font-size: 13px; color: var(--text-dim); margin-bottom: 34px; }
+    .legal-breadcrumb a { color: var(--text-mid); text-decoration: none; transition: color .16s; }
+    .legal-breadcrumb a:hover { color: var(--brand); }
+    .legal-crumb-current { color: var(--text); }
+    .legal-header { margin-bottom: 34px; padding-bottom: 26px; border-bottom: 1px solid var(--border); }
+    .legal-header h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(30px, 6vw, 46px); letter-spacing: -0.045em; line-height: 1.04; margin: 0; color: var(--text); text-wrap: balance; }
+    .legal-updated { margin: 14px 0 0; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-dim); }
+    .legal-content { font-family: var(--font-body); color: var(--text-mid); }
+    .legal-lead { font-size: clamp(15px, 2.4vw, 17px); line-height: 1.7; color: var(--text); margin: 0 0 8px; text-wrap: pretty; }
+    .legal-block { margin: 30px 0; }
+    .legal-block:first-child { margin-top: 4px; }
+    .legal-block h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(17px, 3vw, 21px); letter-spacing: -0.02em; color: var(--text); margin: 0 0 12px; }
+    .legal-content p { font-size: 15px; line-height: 1.72; margin: 0 0 12px; text-wrap: pretty; }
+    .legal-content p:last-child { margin-bottom: 0; }
+    .legal-content strong { color: var(--text); font-weight: 600; }
+    .legal-content ul { list-style: none; margin: 0; padding: 0; }
+    .legal-content ul li { position: relative; padding-left: 22px; margin: 0 0 11px; font-size: 15px; line-height: 1.66; text-wrap: pretty; }
+    .legal-content ul li::before { content: ''; position: absolute; left: 3px; top: 10px; width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
+    .legal-content a { color: var(--brand); text-decoration: none; border-bottom: 1px solid color-mix(in oklab, var(--brand) 40%, transparent); transition: color .16s, border-color .16s; }
+    .legal-content a:hover { color: var(--brand-vivid); border-bottom-color: var(--brand-vivid); }
+    .legal-callout { background: color-mix(in oklab, var(--warning) 9%, var(--bg-card)); border: 1px solid color-mix(in oklab, var(--warning) 34%, transparent); border-radius: var(--radius-lg); padding: 22px 24px; }
+    .legal-callout h2 { color: color-mix(in oklab, var(--warning) 78%, var(--text)); }
+    .legal-todo { display: inline-block; padding: 1px 8px; border-radius: 6px; font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; color: color-mix(in oklab, var(--warning) 80%, var(--text)); background: color-mix(in oklab, var(--warning) 14%, transparent); border: 1px dashed color-mix(in oklab, var(--warning) 45%, transparent); }
+    .legal-contact { margin-top: 26px; }
+    .legal-note { margin-top: 22px; font-size: 13.5px; color: var(--text-dim); font-style: italic; }
+    .legal-other { margin-top: 52px; padding-top: 26px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 14px; }
+    .legal-other-label { font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
+    .legal-other-links { display: flex; flex-wrap: wrap; gap: 10px; }
+    .legal-other-links a { display: inline-flex; align-items: center; padding: 9px 15px; border-radius: var(--radius-pill); background: var(--bg-card); border: 1px solid var(--border); font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--text-mid); text-decoration: none; transition: color .16s, border-color .16s, background .16s; }
+    .legal-other-links a:hover { color: var(--brand); border-color: color-mix(in oklab, var(--brand) 45%, transparent); background: var(--bg-hover); }
+    @media (max-width: 600px) { .legal-main { padding-top: 26px; } .legal-wrap { padding: 0 18px; } .legal-callout { padding: 18px 18px; } }
+  </style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+
+  <header class="legal-topbar">
+    <span class="brand-word">THW<span>.</span></span>
+    <a class="legal-back" href="/" onclick="if(history.length>1){history.back();return false;}">← Retour</a>
+  </header>
+
+  <main class="legal-main">
+    <div class="legal-wrap">
+      <nav class="legal-breadcrumb" aria-label="Fil d'ariane">
+        <a href="/">Accueil</a><span aria-hidden="true">/</span><span class="legal-crumb-current">Politique de confidentialité</span>
+      </nav>
+
+      <header class="legal-header">
+        <h1>Politique de confidentialité</h1>
+        <p class="legal-updated">Dernière mise à jour : 6 juillet 2026 (à actualiser à chaque modification)</p>
+      </header>
+
+      <article class="legal-content">
+        <section class="legal-block">
+          <h2>1. Qui sommes-nous ?</h2>
+          <p>THW (« The Hybrid Way ») est une application de coaching sportif hybride (endurance + force) proposant un suivi d'entraînement, de la nutrition, de la récupération et un assistant IA. L'éditeur est Alexandre Ettori (micro-entreprise), 3 rue Maréchal Joffre, <span class="legal-todo">[code postal + ville]</span>. Pour toute question relative à tes données : <a href="mailto:alexandre.et92@gmail.com">alexandre.et92@gmail.com</a>.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>2. Quelles données nous collectons</h2>
+          <ul>
+            <li><strong>Compte &amp; identité</strong> : email, nom/prénom (facultatif), photo de profil (facultative), mot de passe (chiffré, jamais lisible par nous).</li>
+            <li><strong>Données de profil sportif</strong> : taille, poids, sports pratiqués, objectifs, bio, préférences d'unités.</li>
+            <li><strong>Données d'entraînement &amp; santé</strong> : séances, distances, durées, fréquence cardiaque, puissance, allure, récupération, blessures. Ces données peuvent constituer des <strong>données de santé</strong> ; elles sont traitées avec ton consentement explicite et pour te fournir le service.</li>
+            <li><strong>Connexions tierces</strong> : si tu connectes un service externe (ex. Strava), les données que tu autorises à importer.</li>
+            <li><strong>Paiement</strong> : gérées par notre prestataire <strong>Stripe</strong>. Nous ne stockons jamais ton numéro de carte.</li>
+            <li><strong>Données d'usage &amp; techniques</strong> : logs, appareil, statistiques d'utilisation de l'assistant IA.</li>
+          </ul>
+        </section>
+
+        <section class="legal-block">
+          <h2>3. Pourquoi nous utilisons ces données (bases légales)</h2>
+          <ul>
+            <li>Fournir et personnaliser le service (exécution du contrat).</li>
+            <li>Générer des recommandations et plans via l'assistant IA (exécution du contrat / consentement).</li>
+            <li>Gérer l'abonnement et la facturation (obligation légale / contrat).</li>
+            <li>Améliorer l'application et la sécurité (intérêt légitime).</li>
+            <li>Traiter les données de santé/sport (<strong>consentement explicite</strong>, retirable à tout moment).</li>
+          </ul>
+        </section>
+
+        <section class="legal-block">
+          <h2>4. Assistant IA</h2>
+          <p>Tes messages et le contexte d'entraînement pertinents sont transmis à notre fournisseur de modèles d'IA pour générer les réponses du coach. Ces échanges ne sont pas utilisés pour entraîner des modèles tiers sans ton accord.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>5. Hébergement &amp; transferts</h2>
+          <p>L'application est hébergée par Vercel ; les données sont stockées via Supabase dans l'Union européenne. Certains prestataires (paiement, IA) peuvent traiter des données hors UE avec des garanties appropriées (clauses contractuelles types).</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>6. Durée de conservation</h2>
+          <p>Tes données sont conservées tant que ton compte est actif. À la suppression du compte, elles sont effacées sous 30 jours, sauf obligations légales (facturation : durée légale de conservation comptable).</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>7. Tes droits (RGPD)</h2>
+          <p>Tu disposes des droits d'accès, de rectification, d'effacement, de portabilité, de limitation, d'opposition, et du retrait du consentement à tout moment. Tu peux exporter tes données depuis l'application (« <a href="/decouvrir/exporter-donnees.html">Exporter mes données</a> ») ou nous écrire à <a href="mailto:alexandre.et92@gmail.com">alexandre.et92@gmail.com</a>. Tu peux aussi introduire une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>8. Sécurité</h2>
+          <p>Chiffrement en transit et au repos, contrôle d'accès par utilisateur (chaque personne n'accède qu'à ses propres données), mots de passe hachés.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>9. Cookies</h2>
+          <p>Nous n'utilisons que des cookies strictement nécessaires au fonctionnement du service. Si des outils de mesure d'audience sont ajoutés, un consentement te sera demandé.</p>
+        </section>
+
+        <section class="legal-block">
+          <h2>10. Modifications</h2>
+          <p>Nous pouvons mettre à jour cette politique ; la date en haut indique la dernière version.</p>
+        </section>
+      </article>
+
+      <nav class="legal-other" aria-label="Autres pages légales">
+        <span class="legal-other-label">Voir aussi</span>
+        <div class="legal-other-links">
+          <a href="/decouvrir/mentions-legales.html">Mentions légales</a>
+          <a href="/decouvrir/cgu.html">Conditions d'utilisation</a>
+          <a href="/decouvrir/exporter-donnees.html">Exporter mes données</a>
+        </div>
+      </nav>
+    </div>
+  </main>
+</body>
+</html>

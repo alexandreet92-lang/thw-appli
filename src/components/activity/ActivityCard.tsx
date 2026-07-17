@@ -47,6 +47,7 @@ export interface ActivityCardData {
   locationName?:  string | null   // « Ville, Région » (si déjà géocodé)
   media?:         Array<{ url: string; type: 'image' | 'video'; path: string }> | null
   comment?:       string | null
+  isRace?:        boolean         // true = Compétition · false/undefined = Entraînement
 }
 
 interface Props {
@@ -195,27 +196,50 @@ export function ActivityCard({ data, onClick }: Props) {
             // Simple tap → on laisse remonter au parent qui ouvre l'activité.
             if (carDragged.current) { e.stopPropagation(); carDragged.current = false }
           }}
-          style={{ display: 'flex', gap: 3, overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], marginBottom: 2 }}
+          style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollSnapType: 'x mandatory', scrollPaddingLeft: 16, WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], padding: '0 16px', marginBottom: 4 }}
           className="thw-card-carousel"
         >
           {slides.map((s, i) => (
-            <div key={i} style={{ flex: slides.length > 1 ? '0 0 92%' : '0 0 100%', scrollSnapAlign: 'start', height: 210, background: 'var(--bg-card2)' }}>
+            <div key={i} style={{
+              flex: slides.length > 1 ? '0 0 90%' : '0 0 100%', scrollSnapAlign: 'start',
+              height: 232, background: 'var(--bg-card2)', borderRadius: 18, overflow: 'hidden',
+              border: '1px solid var(--border)', position: 'relative',
+            }}>
               {s.kind === 'video'
                 ? <video src={s.url} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} muted playsInline preload="metadata" />
                 : <img src={s.url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} className={s.kind === 'map' ? 'thw-card-map' : undefined} />}
+              {/* Étiquette Entraînement / Compétition (neutre, sans couleur) — sur la carte */}
+              {s.kind === 'map' && (
+                <span style={{
+                  position: 'absolute', top: 10, left: 10,
+                  padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                  color: 'var(--text)', background: 'color-mix(in srgb, var(--bg) 82%, transparent)',
+                  backdropFilter: 'blur(6px)', border: '1px solid var(--border)',
+                }}>
+                  {data.isRace ? t('activities.race') : t('activities.training')}
+                </span>
+              )}
             </div>
           ))}
         </div>
       )}
+      {/* Étiquette Entraînement / Compétition aussi sous la carte (activités sans carte) */}
+      {slides.length === 0 && (
+        <div style={{ padding: '0 16px 4px' }}>
+          <span style={{ padding: '3px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700, color: 'var(--text-mid)', border: '1px solid var(--border)' }}>
+            {data.isRace ? t('activities.race') : t('activities.training')}
+          </span>
+        </div>
+      )}
 
-      {/* ── Type d'entraînement (Force, PMA, EF…) ── */}
+      {/* ── Type d'entraînement (Force, PMA, EF…) — puces sobres monochromes ── */}
       {(data.trainingTypes?.length ?? 0) > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, padding: '0 16px 2px' }}>
-          {workoutTypeDefs(data.sportType, data.trainingTypes ?? []).map(t => (
-            <span key={t.id} style={{
-              fontSize: 9.5, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-              color: t.color, background: `${t.color}1a`, border: `1px solid ${t.color}55`,
-            }}>{t.label}</span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 16px 2px' }}>
+          {workoutTypeDefs(data.sportType, data.trainingTypes ?? []).map(tp => (
+            <span key={tp.id} style={{
+              fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 7,
+              color: 'var(--text-mid)', background: 'transparent', border: '1px solid var(--border)',
+            }}>{tp.label}</span>
           ))}
         </div>
       )}

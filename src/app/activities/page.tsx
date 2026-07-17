@@ -849,6 +849,20 @@ function getPowerZone(watts: number, ftp: number | null): typeof MMP_POWER_ZONES
   return MMP_POWER_ZONES.find(z => ratio < z.max) ?? MMP_POWER_ZONES[MMP_POWER_ZONES.length - 1]
 }
 
+// Courbe lissée (Catmull-Rom → Bézier) pour un rendu fluide, façon graphique streams.
+function smoothLinePath(pts: [number, number][]): string {
+  if (pts.length === 0) return ''
+  if (pts.length < 3) return `M${pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join('L')}`
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] ?? p2
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6
+    d += `C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`
+  }
+  return d
+}
+
 function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
   watts:             number[]
   activityId:        string
@@ -992,10 +1006,12 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
   const yTicks = [100, 200, 300, 500, 1000, 1500].filter(t => t >= Y_MIN && t <= Y_MAX)
 
   function buildCurvePaths(vals: number[]): { fill: string; line: string } {
-    const pts = DURATIONS.map((d, i) => `${sqrtX(d).toFixed(1)},${yOf(vals[i]).toFixed(1)}`)
+    const pts: [number, number][] = DURATIONS.map((d, i) => [sqrtX(d), yOf(vals[i])])
+    const line = smoothLinePath(pts)
+    const x0 = pts[0][0].toFixed(1), xN = pts[pts.length - 1][0].toFixed(1)
     return {
-      fill: `M${sqrtX(DURATIONS[0]).toFixed(1)},${H}L${pts.join('L')}L${sqrtX(DURATIONS[DURATIONS.length-1]).toFixed(1)},${H}Z`,
-      line: `M${pts.join('L')}`,
+      fill: `${line}L${xN},${H}L${x0},${H}Z`,
+      line,
     }
   }
 
@@ -1014,22 +1030,6 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
 
   const { fill: fillPath, line: linePath } = buildCurvePaths(mmp)
   const recPaths = recordCurveSmooth ? buildCurvePaths(recordCurveSmooth) : null
-
-  // Zones où mmp[i] > recordCurve[i] → mise en valeur visuelle (segments verts)
-  const recordBeatSegments = useMemo(() => {
-    if (!recordCurve) return []
-    const segs: { x: number; y: number }[][] = []
-    let cur: { x: number; y: number }[] = []
-    for (let i = 0; i < DURATIONS.length; i++) {
-      if (mmp[i] > (recordCurve[i] ?? 0) && recordCurve[i] > 0) {
-        cur.push({ x: sqrtX(DURATIONS[i]), y: yOf(mmp[i]) })
-      } else {
-        if (cur.length > 0) { segs.push(cur); cur = [] }
-      }
-    }
-    if (cur.length > 0) segs.push(cur)
-    return segs
-  }, [mmp, recordCurve]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Durées clés pour marqueurs : 5s, 1', 5', 20', 1h (les indices à highlight)
   const KEY_DURATIONS_S = [5, 60, 300, 1200, 3600]
@@ -1106,82 +1106,44 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
             </linearGradient>
           </defs>
 
-          {/* Zones FTP en arrière-plan (bandes horizontales subtiles) */}
-          {ftp && ftp > 0 && MMP_POWER_ZONES.map(z => {
-            const wMin = z.min * ftp
-            const wMax = Math.min(z.max * ftp, Y_MAX)
-            if (wMax <= Y_MIN) return null
-            const yTop    = yOf(Math.min(wMax, Y_MAX))
-            const yBottom = yOf(Math.max(wMin, Y_MIN))
-            const h = yBottom - yTop
-            if (h < 1) return null
-            return (
-              <rect
-                key={z.z}
-                x={0} y={yTop} width={W} height={h}
-                fill={z.color} fillOpacity={0.07}
-              />
-            )
-          })}
-
-          {/* Gridlines Y (échelle log) : 100, 200, 300, 500, 1000, 1500 */}
+          {/* Gridlines Y (échelle log) — discrètes */}
           {yTicks.map(w => {
             const y = yOf(w)
             return (
               <g key={w}>
-                <line x1={0} y1={y} x2={W} y2={y} stroke="var(--border)" strokeWidth="1" strokeDasharray="3,3" opacity={0.5}/>
-                <text x={-6} y={y + 3} textAnchor="end" style={{ fontSize: 8, fill: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{w}</text>
+                <line x1={0} y1={y} x2={W} y2={y} stroke="var(--border)" strokeWidth="1" opacity={0.35}/>
+                <text x={-8} y={y + 3} textAnchor="end" style={{ fontSize: 9, fill: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{w}</text>
               </g>
             )
           })}
 
-          {/* Zone record All Time (opacity 0.08), derrière la zone séance */}
-          {recPaths && (
-            <path d={recPaths.fill} fill="#ef4444" fillOpacity="0.08"/>
-          )}
-          {/* Zone séance (devant) */}
+          {/* Aire séance — dégradé doux */}
           <path d={fillPath} fill="url(#mmpFill)"/>
-          {/* Ligne record All Time pointillée */}
+          {/* Record All Time — ligne pointillée discrète (pas d'aire, pour rester lisible) */}
           {recPaths && (
-            <path d={recPaths.line} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="5,3"
-              strokeLinecap="round" strokeLinejoin="round"/>
+            <path d={recPaths.line} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="5,4"
+              strokeLinecap="round" strokeLinejoin="round" opacity={0.7}/>
           )}
-          {/* Mise en valeur des segments où séance > record (trait vert épais sous la ligne séance) */}
-          {recordBeatSegments.map((seg, si) => {
-            if (seg.length < 2) return null
-            const d = `M${seg.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L')}`
-            return (
-              <path key={`beat-${si}`} d={d} fill="none" stroke="#10b981" strokeWidth="5"
-                strokeLinecap="round" strokeLinejoin="round" opacity={0.45} />
-            )
-          })}
-
-          {/* Ligne séance pleine — au-dessus de tout */}
-          <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="2.5"
+          {/* Ligne séance — pleine, lissée */}
+          <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="3"
             strokeLinecap="round" strokeLinejoin="round"/>
 
-          {/* Marqueurs sur les durées CLÉS (5s, 1', 5', 20', 1h) — point + label valeur */}
+          {/* Marqueurs durées CLÉS (5s, 1', 5', 20', 1h) — point + valeur dans une pastille
+              posée AU-DESSUS du point (jamais sur la ligne, non chevauchante). */}
           {keyDurIndices.map(i => {
             const cx = sqrtX(DURATIONS[i])
             const cy = yOf(mmp[i])
             const w  = mmp[i]
-            // Position du label : au-dessus si record battu (déjà trophée), sinon à droite
-            const isBeaten = trophies.some(t => t.i === i)
-            const labelY = isBeaten ? cy - 28 : cy - 10
+            const isBeaten = trophies.some(tr => tr.i === i)
+            const pillW = String(w).length * 8 + 14
+            const pillDy = isBeaten ? -34 : -16   // au-dessus du trophée si record battu
             return (
-              <g key={`key-${i}`}>
-                <circle cx={cx} cy={cy} r={3.5} fill="#6366f1" stroke="var(--bg)" strokeWidth={1.5} />
-                <text
-                  x={cx} y={labelY}
-                  textAnchor="middle"
-                  fontSize={9.5}
-                  fontWeight={700}
-                  fill="#6366f1"
-                  style={{ fontFamily: 'DM Mono, monospace', fontVariantNumeric: 'tabular-nums' }}
-                  pointerEvents="none"
-                >
-                  {w}
-                </text>
+              <g key={`key-${i}`} pointerEvents="none">
+                <circle cx={cx} cy={cy} r={3.5} fill="#6366f1" stroke="var(--bg)" strokeWidth={2} />
+                <g transform={`translate(${cx}, ${cy + pillDy})`}>
+                  <rect x={-pillW / 2} y={-11} width={pillW} height={17} rx={6} fill="var(--bg-card)" stroke="var(--border)" strokeWidth={1} />
+                  <text x={0} y={1.5} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="var(--text)" style={{ fontFamily: 'DM Mono, monospace', fontVariantNumeric: 'tabular-nums' }}>{w}</text>
+                </g>
               </g>
             )
           })}
@@ -1351,12 +1313,6 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
               background:               'repeating-linear-gradient(to right, #ef4444 0, #ef4444 4px, transparent 4px, transparent 7px)',
             }}/>
             Record All Time
-          </div>
-        )}
-        {recordBeatSegments.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 16, height: 4, background: '#10b981', display: 'inline-block', borderRadius: 2, opacity: 0.55 }}/>
-            {t('actp.record_beaten')}
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -9565,6 +9521,7 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
         locationName:     a.location_name ?? null,
         media:            (a.media as ActivityCardData['media']) ?? null,
         comment:          a.comment ?? null,
+        isRace:           !!a.is_race,
       } satisfies ActivityCardData
     })
   }, [activities, recordsByActivity, bestPerLabel, smSnBench, metaByActivity])

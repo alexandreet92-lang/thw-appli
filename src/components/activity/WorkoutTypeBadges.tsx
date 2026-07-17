@@ -129,19 +129,18 @@ export function WorkoutTypeBadges({ activityId, sport }: { activityId: string; s
         const active = selected.includes(t.id)
         return (
           <button key={t.id} onClick={() => toggle(t.id)} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999,
+            display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 13px', borderRadius: 9,
             cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'DM Sans,sans-serif',
-            border: `1px solid ${active ? t.color : 'var(--border)'}`,
-            background: active ? `${t.color}1a` : 'var(--bg-card2)',
-            color: active ? t.color : 'var(--text-dim)', transition: 'all 0.15s',
+            border: `1px solid ${active ? 'var(--text)' : 'var(--border)'}`,
+            background: active ? 'var(--text)' : 'transparent',
+            color: active ? 'var(--bg)' : 'var(--text-mid)', transition: 'all 0.15s',
           }}>
-            {active && <span style={{ width: 7, height: 7, borderRadius: '50%', background: t.color }} />}
             {t.label}
           </button>
         )
       })}
       <button onClick={() => setModalOpen(true)} style={{
-        padding: '6px 12px', borderRadius: 999, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+        padding: '6px 13px', borderRadius: 9, cursor: 'pointer', fontSize: 12, fontWeight: 600,
         fontFamily: 'DM Sans,sans-serif', border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-dim)',
       }}>{t('activities.addBadge')}</button>
 

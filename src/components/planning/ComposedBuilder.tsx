@@ -5,7 +5,7 @@
 import { useState } from 'react'
 import { IconPlus, IconTrash, IconChevronUp, IconChevronDown } from '@tabler/icons-react'
 import {
-  type ComposedSport, type ComposedMove, type Measure, type RoundSupport, type Punch,
+  type ComposedSport, type ComposedMove, type ComposedCircuit, type Measure, type RoundSupport, type Punch,
   movesForSport, moveDef, elevationFromIncline, runDistanceM, moveMinutes,
   ROUND_SUPPORT_LABEL, PUNCH_LABEL, SUPPORTS_WITH_COMBOS,
 } from './composedSports'
@@ -38,13 +38,16 @@ function Seg<T extends string>({ value, options, onChange }: { value: T; options
   )
 }
 
-export function ComposedBuilder({ sport, moves, accent, onChange }: {
+export function ComposedBuilder({ sport, moves, accent, onChange, circuit, onCircuitChange }: {
   sport: ComposedSport
   moves: ComposedMove[]
   accent: string
   onChange: (m: ComposedMove[]) => void
+  circuit: ComposedCircuit
+  onCircuitChange: (c: ComposedCircuit) => void
 }) {
   const defs = movesForSport(sport)
+  const isCircuit = circuit.rounds > 1
 
   function add(kind: string) {
     const d = moveDef(sport, kind); if (!d) return
@@ -77,6 +80,20 @@ export function ComposedBuilder({ sport, moves, accent, onChange }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Circuit : tours + récup entre tours (toute la liste répétée) */}
+      <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 12, background: 'var(--bg-card2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ flex: 1, fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Circuit</span>
+          <Seg value={isCircuit ? 'on' : 'off'} options={[{ v: 'off', label: 'Non' }, { v: 'on', label: 'Oui' }]} onChange={v => onCircuitChange(v === 'on' ? { rounds: Math.max(2, circuit.rounds), restSec: circuit.restSec || 60 } : { rounds: 1, restSec: 0 })} />
+        </div>
+        {isCircuit && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginTop: 10 }}>
+            <Field label="Nb de tours"><input type="number" defaultValue={circuit.rounds} key={circuit.rounds} onBlur={e => onCircuitChange({ ...circuit, rounds: Math.max(1, +e.target.value || 1) })} style={inp} /></Field>
+            <Field label="Récup / tour"><input defaultValue={mmss(circuit.restSec)} key={circuit.restSec} onBlur={e => onCircuitChange({ ...circuit, restSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} /></Field>
+          </div>
+        )}
+      </div>
+
       {moves.map((m, i) => {
         const d = moveDef(sport, m.kind); if (!d) return null
         return (
@@ -154,6 +171,11 @@ export function ComposedBuilder({ sport, moves, accent, onChange }: {
               {d.fields.doubleUnders && (
                 <Field label="Type"><Seg value={m.doubleUnders ? 'double' : 'simple'} options={[{ v: 'simple', label: 'Simple' }, { v: 'double', label: 'Double' }]} onChange={v => patch(m.id, { doubleUnders: v === 'double' })} /></Field>
               )}
+            </div>
+
+            {/* Récup après l'exo (entre exos) */}
+            <div style={{ marginTop: 10, maxWidth: 180 }}>
+              <Field label="Récup après"><input defaultValue={mmss(m.restAfterSec ?? 0)} key={m.restAfterSec} onBlur={e => patch(m.id, { restAfterSec: parseMmss(e.target.value) })} placeholder="0:00" style={inp} /></Field>
             </div>
 
             {/* Support de round + combos */}

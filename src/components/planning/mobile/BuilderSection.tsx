@@ -13,7 +13,7 @@ import type { SessionEditorPanelProps } from './panelProps'
 
 export function BuilderSection({ p }: { p: SessionEditorPanelProps }) {
   if (p.isComposed) {
-    return <ComposedBuilder sport={p.sport as ComposedSport} moves={p.composedMoves} accent={p.accent} onChange={p.setComposedMoves} />
+    return <ComposedBuilder sport={p.sport as ComposedSport} moves={p.composedMoves} accent={p.accent} onChange={p.setComposedMoves} circuit={p.composedCircuit} onCircuitChange={p.setComposedCircuit} />
   }
   if (p.sport === 'gym') {
     return (

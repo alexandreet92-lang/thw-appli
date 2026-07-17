@@ -51,7 +51,12 @@ export interface ComposedMove {
   restSec?: number
   roundSupport?: RoundSupport
   combos?: string[]       // ex : ["Jab-Direct-Crochet"]
+  // récup APRÈS cet exo (entre exos d'un même tour)
+  restAfterSec?: number
 }
+
+// Circuit : la liste des moves est répétée N tours, avec une récup entre tours.
+export interface ComposedCircuit { rounds: number; restSec: number }
 
 // Définition d'un type de move (drive l'UI du builder).
 export interface MoveDef {
@@ -69,6 +74,7 @@ export interface MoveDef {
 
 export const HYBRID_MOVES: MoveDef[] = [
   { kind: 'bike',    label: 'Bike',            sport: 'hybrid', fields: { watts: true, hr: true }, measures: ['time'], defaultMeasure: 'time' },
+  { kind: 'assault', label: 'Assault bike',    sport: 'hybrid', fields: { watts: true, hr: true }, measures: ['time', 'distance'], defaultMeasure: 'time' },
   { kind: 'ellip',   label: 'Elliptique bike', sport: 'hybrid', fields: { hr: true },             measures: ['time'], defaultMeasure: 'time' },
   { kind: 'climber', label: 'Climber step',    sport: 'hybrid', fields: { speedLevel: true },     measures: ['floors', 'time'], defaultMeasure: 'floors' },
   { kind: 'rower',   label: 'Rameur',          sport: 'hybrid', fields: { paceWatts: true, hr: true }, measures: ['time', 'distance'], defaultMeasure: 'time' },
@@ -110,6 +116,10 @@ export function moveMinutes(m: ComposedMove): number {
   return 0
 }
 
-export function sumComposedMinutes(moves: ComposedMove[]): number {
-  return Math.round(moves.reduce((s, m) => s + moveMinutes(m), 0))
+// Durée totale (min) : (Σ moves + récup inter-exos) × tours + récup inter-tours.
+export function sumComposedMinutes(moves: ComposedMove[], circuit?: ComposedCircuit): number {
+  const perRound = moves.reduce((s, m) => s + moveMinutes(m) + (m.restAfterSec ?? 0) / 60, 0)
+  const rounds = Math.max(1, circuit?.rounds ?? 1)
+  const restBetween = (rounds - 1) * ((circuit?.restSec ?? 0) / 60)
+  return Math.round(perRound * rounds + restBetween)
 }

@@ -4,7 +4,7 @@
 import type { SportType, CyclingSub, RunningSub, PlanVariant, Block } from '@/app/planning/page'
 import type { AthleteRefs } from './editorial'
 import type { ExerciseItem, ExoCircuit } from './strength'
-import type { ComposedMove, ComposedSport } from '../composedSports'
+import type { ComposedMove, ComposedSport, ComposedCircuit } from '../composedSports'
 
 // Parcours déjà parsé (parcours_data d'une séance, ex. liée à un stage).
 export interface PanelParcours {
@@ -45,4 +45,5 @@ export interface SessionEditorPanelProps {
   // Sports composés (Hybrid / Boxe)
   isComposed: boolean
   composedMoves: ComposedMove[]; setComposedMoves: (m: ComposedMove[]) => void
+  composedCircuit: ComposedCircuit; setComposedCircuit: (c: ComposedCircuit) => void
 }

@@ -49,6 +49,8 @@ import {
 } from '@/app/planning/page'
 
 import { type ExoCategory, type ExoDefinition, type ExerciseItem, type ExoCircuit, EXO_CATEGORY_COLOR, EXO_CATEGORY_LABEL, EXERCISE_DATABASE, searchExercises } from './exercises'
+import { ComposedBuilder } from './ComposedBuilder'
+import { type ComposedMove, type ComposedSport, sumComposedMinutes } from './composedSports'
 import { currentLocale } from '@/lib/i18n'
 
 // ════════════════════════════════════════════════
@@ -3634,6 +3636,16 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   const [sport, setSport] = useState<SportType>(session?.sport ?? initialSport ?? 'run')
   const [cyclingSub, setCyclingSub] = useState<CyclingSub>(session?.cyclingSub ?? 'velo')
   const [runningSub, setRunningSub] = useState<RunningSub>(session?.runningSub ?? 'outdoor')
+  // Sports composés (Hybrid / Boxe) : liste de moves.
+  const [composedMoves, setComposedMoves] = useState<ComposedMove[]>(session?.composed ?? [])
+  const isComposed = sport === 'hybrid' || sport === 'boxe'
+  // La durée se met à jour auto depuis les moves (comme les blocs).
+  const composedInitRef = useRef(true)
+  useEffect(() => {
+    if (composedInitRef.current) { composedInitRef.current = false; return }
+    const total = sumComposedMinutes(composedMoves)
+    if (isComposed && total > 0) setDur(total)
+  }, [composedMoves]) // eslint-disable-line react-hooks/exhaustive-deps
   const [brickRun, setBrickRun] = useState<boolean>(!!session?.brickId)
   const [trainingTypes, setTrainingTypes] = useState<string[]>(session?.trainingTypes ?? [])
   const [title, setTitle] = useState(session?.title ?? '')
@@ -4233,7 +4245,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   }
 
   function handleSportChange(s: SportType) {
-    setSport(s); setTrainingTypes([]); setBlocks([]); setExercises([])
+    setSport(s); setTrainingTypes([]); setBlocks([]); setExercises([]); setComposedMoves([])
   }
 
   // Convertit les circuits + exercices du ExerciseListBuilder en Block[] avec circuit_headers
@@ -4278,7 +4290,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     const subLabel = sport === 'bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}`
       : sport === 'run' && runningSub === 'treadmill' ? ` — ${RUNNING_SUB_LABEL[runningSub]}` : ''
     const parcoursMin = parseDurationToMin(totalDuration)
-    const finalDur = aiFlowStep === 'parcours' && parcoursMin > 0 ? parcoursMin : dur || 60
+    const composedMin = isComposed ? sumComposedMinutes(composedMoves) : 0
+    const finalDur = aiFlowStep === 'parcours' && parcoursMin > 0 ? parcoursMin : (composedMin > 0 ? composedMin : dur || 60)
     const parcoursFlowTss = computeParcoursFlowTSS()
     const finalTss = (aiFlowStep === 'parcours' && parcoursFlowTss ? parcoursFlowTss.tss : sessionStats.tssHigh) || undefined
     const finalBlocks = isStrength && exercises.length > 0
@@ -4304,6 +4317,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       brickId,
       cyclingSub: sport === 'bike' ? cyclingSub : undefined,
       runningSub: sport === 'run' ? runningSub : undefined,
+      composed: isComposed && composedMoves.length > 0 ? composedMoves : undefined,
     }
     onSave(savedSession)
     // Création auto de la course d'enchaînement (uniquement quand on active le brick).
@@ -6000,7 +6014,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             </div>
           )}
 
-          {builderTab === 'manual' && !parcoursData ? (
+          {isComposed ? (
+            /* Sports composés (Hybrid / Boxe) : builder de moves dédié */
+            <ComposedBuilder sport={sport as ComposedSport} moves={composedMoves} accent={accent} onChange={setComposedMoves} />
+          ) : builderTab === 'manual' && !parcoursData ? (
             isStrength && !isEdit && blocks.length === 0 ? (
               /* Mode création manuel : constructeur par exercices (circuits) */
               <ExerciseListBuilder

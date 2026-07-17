@@ -8,6 +8,8 @@ import {
   IconTreadmill,
   IconMountain,    // VTT
   IconHome,        // Home Trainer (vélo d'intérieur)
+  IconBolt,        // Hybrid (multi-modalité)
+  IconKarate,      // Boxe
 } from '@tabler/icons-react'
 import type { ComponentType } from 'react'
 
@@ -23,7 +25,7 @@ export function subSportIcon(sub?: string | null): SportIconComponent | null {
 }
 
 export type SportKey =
-  | 'run' | 'bike' | 'swim' | 'rowing' | 'muscu' | 'hyrox' | 'ellip'
+  | 'run' | 'bike' | 'swim' | 'rowing' | 'muscu' | 'hyrox' | 'ellip' | 'hybrid' | 'boxe'
 
 // Mapping depuis les SportType de l'app (run|bike|swim|hyrox|rowing|gym|elliptique)
 // + alias éventuels (running, cycling…). Inconnu → null.
@@ -35,6 +37,7 @@ const SPORT_TYPE_TO_KEY: Record<string, SportKey> = {
   gym: 'muscu', muscu: 'muscu',
   hyrox: 'hyrox',
   elliptique: 'ellip', ellip: 'ellip',
+  hybrid: 'hybrid', boxe: 'boxe', boxing: 'boxe',
 }
 
 export function sportKeyFromType(sport: string): SportKey | null {
@@ -51,6 +54,8 @@ const SPORT_ICON: Record<SportKey, { Icon: ComponentType<{ size?: number; color?
   muscu:  { Icon: IconBarbell,    color: '#f97316', label: 'Muscu'      },
   hyrox:  { Icon: IconStretching2,color: '#ef4444', label: 'Hyrox'      }, // IconStretching2 (mouvement fonctionnel)
   ellip:  { Icon: IconTreadmill,  color: '#ec4899', label: 'Elliptique' },
+  hybrid: { Icon: IconBolt,       color: '#f59e0b', label: 'Hybrid'     },
+  boxe:   { Icon: IconKarate,     color: '#e11d48', label: 'Boxe'       },
 }
 
 export function SportIcon({

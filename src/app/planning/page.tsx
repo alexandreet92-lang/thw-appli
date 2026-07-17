@@ -33,6 +33,7 @@ import { TrainingSummary } from '@/app/planning/components/training/TrainingSumm
 import { SportIcon, SPORT_ICON, sportKeyFromType, subSportIcon } from '@/components/icons/SportIcon'
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import type { NutritionItem, ParcoursData } from '@/components/planning/SessionEditor'
+import type { ComposedMove } from '@/components/planning/composedSports'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
 
@@ -40,7 +41,7 @@ import { currentLocale } from '@/lib/i18n'
 export type PlanVariant   = 'A' | 'B'
 export type WeekRange     = 5 | 10 | 20
 export type DayIntensity  = 'recovery' | 'low' | 'mid' | 'hard'
-export type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym' | 'elliptique'
+export type SportType     = 'run' | 'bike' | 'swim' | 'hyrox' | 'rowing' | 'gym' | 'elliptique' | 'hybrid' | 'boxe'
 type SessionStatus = 'planned' | 'done'
 export type BlockType     = 'warmup' | 'effort' | 'recovery' | 'cooldown' | 'circuit_header'
 export type CircuitType   = 'series' | 'circuit' | 'superset' | 'emom' | 'tabata'
@@ -54,13 +55,13 @@ export type CyclingSub    = 'velo' | 'vtt' | 'ht'
 export type RunningSub    = 'outdoor' | 'treadmill'
 
 // ── Constants ─────────────────────────────────────
-export const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.13)', run:'rgba(249,115,22,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(239,68,68,0.13)', gym:'rgba(139,92,246,0.13)', rowing:'rgba(20,184,166,0.13)', elliptique:'rgba(168,85,247,0.13)' }
-export const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#22c55e', bike:'#3b82f6', hyrox:'#ef4444', gym:'#f97316', rowing:'#14b8a6', elliptique:'#a855f7' }
+export const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.13)', run:'rgba(249,115,22,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(239,68,68,0.13)', gym:'rgba(139,92,246,0.13)', rowing:'rgba(20,184,166,0.13)', elliptique:'rgba(168,85,247,0.13)', hybrid:'rgba(245,158,11,0.13)', boxe:'rgba(225,29,72,0.13)' }
+export const SPORT_BORDER: Record<SportType,string> = { swim:'#06b6d4', run:'#22c55e', bike:'#3b82f6', hyrox:'#ef4444', gym:'#f97316', rowing:'#14b8a6', elliptique:'#a855f7', hybrid:'#f59e0b', boxe:'#e11d48' }
 
-export const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron', elliptique:'Elliptique' }
-export const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW', elliptique:'ELLIP' }
+export const SPORT_LABEL: Record<SportType,string>  = { run:'Running', bike:'Cyclisme', swim:'Natation', hyrox:'Hyrox', gym:'Musculation', rowing:'Aviron', elliptique:'Elliptique', hybrid:'Hybrid', boxe:'Boxe' }
+export const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', swim:'SWIM', hyrox:'HRX', gym:'GYM', rowing:'ROW', elliptique:'ELLIP', hybrid:'HYB', boxe:'BOX' }
 // Label court (maquette grille semaine) : Run/Bike/Swim/Gym/Hyrox…
-export const SPORT_SHORT: Record<SportType,string>  = { run:'Run', bike:'Bike', swim:'Swim', hyrox:'Hyrox', gym:'Gym', rowing:'Row', elliptique:'Ellip' }
+export const SPORT_SHORT: Record<SportType,string>  = { run:'Run', bike:'Bike', swim:'Swim', hyrox:'Hyrox', gym:'Gym', rowing:'Row', elliptique:'Ellip', hybrid:'Hybrid', boxe:'Boxe' }
 export const CYCLING_SUB_LABEL: Record<CyclingSub,string> = { velo:'Vélo route', vtt:'VTT', ht:'Home Trainer' }
 export const RUNNING_SUB_LABEL: Record<RunningSub,string> = { outdoor:'Dehors', treadmill:'Tapis' }
 export const TRAINING_TYPES: Partial<Record<SportType,string[]>> = {
@@ -158,6 +159,8 @@ export interface Session {
   // Sous-types (persistés dans validation_data) — différenciation dans la grille.
   cyclingSub?: CyclingSub
   runningSub?: RunningSub
+  // Sports composés (Hybrid / Boxe) : liste de moves, persistée dans validation_data.
+  composed?: ComposedMove[]
 }
 interface WeekTask {
   id:string; title:string; type:TaskType; dayIndex:number
@@ -355,6 +358,7 @@ export function getWeekStart():string {
 export const SPORT_TO_BUILDER: Record<SportType, string> = {
   run: 'running', bike: 'cycling', swim: 'natation',
   hyrox: 'hyrox', gym: 'gym', rowing: 'rowing', elliptique: 'cycling',
+  hybrid: 'hybrid', boxe: 'boxe',
 }
 
 // Convertit une zone string (Z1-Z7, SL1, SL2, EF, VMA, PMA…) → numéro 1-7
@@ -582,10 +586,13 @@ export function normalizeSportType(s:string):SportType {
     elliptical:'elliptique', elliptique:'elliptique',
     // Hyrox
     hyrox:'hyrox', hrx:'hyrox',
+    // Hybrid / Boxe (sports composés)
+    hybrid:'hybrid', hybride:'hybrid', 'cross training':'hybrid', crosstraining:'hybrid',
+    boxe:'boxe', boxing:'boxe', boxing_training:'boxe',
     // Multisport
     triathlon:'run',
   }
-  return m[lower]??((['run','bike','swim','hyrox','gym','rowing','elliptique'] as SportType[]).includes(lower as SportType)?lower as SportType:'run')
+  return m[lower]??((['run','bike','swim','hyrox','gym','rowing','elliptique','hybrid','boxe'] as SportType[]).includes(lower as SportType)?lower as SportType:'run')
 }
 
 // Retourne true si la séance est une séance repos/off (durée 0 ou sport/titre repos).
@@ -734,7 +741,7 @@ function usePlanning(weekStartParam?:string) {
       sport:s.sport, title:s.title, time:s.time, duration_min:s.durationMin,
       tss:s.tss??null, status:s.status, notes:s.notes??null,
       rpe:s.rpe??null, blocks:s.blocks??[],
-      validation_data: { ...(s.brickId ? { brickId:s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub:s.cyclingSub } : {}), ...(s.runningSub ? { runningSub:s.runningSub } : {}) },
+      validation_data: { ...(s.brickId ? { brickId:s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub:s.cyclingSub } : {}), ...(s.runningSub ? { runningSub:s.runningSub } : {}), ...(s.composed ? { composed:s.composed } : {}) },
       plan_variant:s.planVariant??'A',
       parcours_data: s.parcoursData ?? null,
       parcours_id:   s.parcoursId   ?? null,
@@ -751,7 +758,7 @@ function usePlanning(weekStartParam?:string) {
       title:upd.title, time:upd.time, duration_min:upd.durationMin,
       notes:upd.notes??null, rpe:upd.rpe??null, blocks:upd.blocks??[],
       tss:upd.tss??null, status:upd.status,
-      validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed, ...(upd.brickId ? { brickId:upd.brickId } : {}), ...(upd.cyclingSub ? { cyclingSub:upd.cyclingSub } : {}), ...(upd.runningSub ? { runningSub:upd.runningSub } : {}) },
+      validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed, ...(upd.brickId ? { brickId:upd.brickId } : {}), ...(upd.cyclingSub ? { cyclingSub:upd.cyclingSub } : {}), ...(upd.runningSub ? { runningSub:upd.runningSub } : {}), ...(upd.composed ? { composed:upd.composed } : {}) },
       updated_at:new Date().toISOString(),
     }
     if (upd.sport) patch.sport = upd.sport
@@ -2565,7 +2572,7 @@ function isoWeekNum(ds: string): number {
   const ys = new Date(Date.UTC(t.getUTCFullYear(), 0, 1))
   return Math.ceil(((t.getTime() - ys.getTime()) / 86400000 + 1) / 7)
 }
-const PLAN_SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique']
+const PLAN_SPORTS: SportType[] = ['run', 'bike', 'swim', 'hyrox', 'gym', 'rowing', 'elliptique', 'hybrid', 'boxe']
 // Couleur sport alignée sur les logos SportIcon (run=vert, muscu=orange, etc.)
 function iconColor(sp: string): string { const k = sportKeyFromType(sp); return k ? SPORT_ICON[k].color : (SPORT_BORDER[sp as SportType] ?? '#94a3b8') }
 // Type de journée (Récup / Low / Mid / Hard) — normalise les vocabulaires possibles
@@ -3187,7 +3194,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         sport: s.sport, title: s.title, time: s.time, duration_min: s.durationMin,
         tss: s.tss ?? null, status: s.status, notes: s.notes ?? null,
         rpe: s.rpe ?? null, blocks: s.blocks ?? [],
-        validation_data: { ...(s.brickId ? { brickId: s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub: s.cyclingSub } : {}), ...(s.runningSub ? { runningSub: s.runningSub } : {}) },
+        validation_data: { ...(s.brickId ? { brickId: s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub: s.cyclingSub } : {}), ...(s.runningSub ? { runningSub: s.runningSub } : {}), ...(s.composed ? { composed: s.composed } : {}) },
         plan_variant: s.planVariant ?? activePlan,
         parcours_data: s.parcoursData ?? null,
         nutrition_data: typedS.nutritionItems ?? null,

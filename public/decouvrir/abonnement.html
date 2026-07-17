@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Abonnements — THW Coaching</title>
+  <meta name="description" content="Choisis ta formule THW Coaching : Premium, Pro ou Expert. 14 jours gratuits."/>
+  <link rel="icon" href="/logo.png"/>
+  <link rel="stylesheet" href="/colors_and_type.css"/>
+  <link rel="stylesheet" href="/site.css"/>
+  <script>
+    (function () {
+      var K = 'thw-theme-mode';
+      function g() { try { return localStorage.getItem(K) || 'auto'; } catch (e) { return 'auto'; } }
+      function r(m) { if (m === 'light') return 'light'; if (m === 'dark') return 'dark'; var h = new Date().getHours(); return (h >= 7 && h < 20) ? 'light' : 'dark'; }
+      function a(m) { var e = r(m), el = document.documentElement; el.classList.toggle('light', e === 'light'); el.classList.toggle('dark', e === 'dark'); }
+      a(g()); setInterval(function () { if (g() === 'auto') a(g()); }, 60000);
+      window.THWTheme = { get: g, set: function (m) { try { localStorage.setItem(K, m); } catch (e) {} a(m); } };
+    })();
+  </script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; font-family: var(--font-body); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    :root { --card-solid: #070b0f; }
+    .light { --card-solid: #ffffff; }
+    a { color: var(--brand); }
+
+    .atmosphere { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(ellipse 70% 60% at 15% 20%, rgba(0,200,224,0.07) 0%, transparent 60%), radial-gradient(ellipse 60% 60% at 85% 80%, rgba(91,111,255,0.09) 0%, transparent 60%); }
+    #app { position: relative; z-index: 1; }
+
+    .topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 22px; background: var(--nav-bg); border-bottom: 1px solid var(--nav-border); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .brand-word { font-family: var(--font-display); font-weight: 800; font-size: 18px; letter-spacing: -0.04em; color: var(--text); }
+    .brand-word span { color: var(--brand); }
+    .back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-pill); background: var(--bg-card); border: 1px solid var(--border-mid); color: var(--text-mid); font-size: 13px; font-weight: 500; text-decoration: none; cursor: pointer; }
+    .back:hover { color: var(--brand); border-color: color-mix(in oklab, var(--brand) 45%, transparent); }
+
+    .hero { text-align: center; padding: 56px 24px 44px; max-width: 860px; margin: 0 auto; }
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 5px 14px; border-radius: 999px; margin-bottom: 22px; border: 1px solid rgba(0,200,224,0.22); background: rgba(0,200,224,0.06); }
+    .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: #00c8e0; }
+    .pill span { font-family: var(--font-mono); font-size: 10px; color: #00c8e0; letter-spacing: 0.14em; text-transform: uppercase; }
+    .hero h1 { font-family: var(--font-display); font-size: clamp(38px, 6vw, 60px); font-weight: 800; letter-spacing: -0.055em; line-height: 1.0; margin: 0 0 20px; }
+    .hero h1 em { font-style: normal; background: linear-gradient(135deg, #00c8e0 20%, #5b6fff 80%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .billing { display: inline-flex; align-items: center; background: var(--bg-card); border: 1px solid var(--border-mid); border-radius: 999px; padding: 4px; gap: 2px; }
+    .billing button { display: flex; align-items: center; gap: 8px; padding: 9px 20px; border-radius: 999px; border: none; background: transparent; color: var(--text-dim); font-family: var(--font-body); font-size: 13px; font-weight: 400; cursor: pointer; transition: all .2s; }
+    .billing button.on { background: var(--bg-hover); color: var(--text); font-weight: 600; }
+    .billing .save { padding: 3px 9px; border-radius: 999px; background: linear-gradient(135deg,#00c8e0,#5b6fff); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+
+    .cards { display: grid; grid-template-columns: 1fr 1.05fr 1fr; gap: 14px; align-items: stretch; max-width: 1080px; margin: 0 auto; padding: 0 24px 40px; }
+    .card { position: relative; border-radius: 16px; border: 1px solid var(--border); background: var(--bg-card-2); overflow: hidden; align-self: stretch; }
+    .card.feat { border: none; padding: 1px; background: linear-gradient(145deg,#00c8e0,#5b6fff); border-radius: 20px; box-shadow: 0 0 40px rgba(0,200,224,0.16); }
+    .card-inner { background: var(--bg-card-2); border-radius: 15px; padding: 26px 26px 22px; height: 100%; display: flex; flex-direction: column; position: relative; }
+    .card.feat .card-inner { border-radius: 19px; background: linear-gradient(180deg, rgba(0,200,224,0.055) 0%, var(--card-solid) 36%); }
+    .bar { position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+    .badge { position: absolute; top: 14px; right: 14px; padding: 4px 11px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #fff; }
+    .badge.pop { background: linear-gradient(135deg,#00c8e0,#5b6fff); box-shadow: 0 2px 14px rgba(0,200,224,0.38); }
+    .badge.cur { background: var(--success); box-shadow: 0 2px 14px rgba(34,197,94,0.34); }
+    .ai { display: inline-flex; align-items: center; gap: 9px; padding: 7px 12px; border-radius: 10px; margin-bottom: 18px; align-self: flex-start; }
+    .ai .glyph { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 13px; }
+    .ai .nm { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; line-height: 1; }
+    .ai .md { font-size: 10px; color: var(--text-dim); margin-top: 3px; line-height: 1; }
+    .pname { font-family: var(--font-display); font-size: 24px; font-weight: 800; letter-spacing: -0.04em; color: var(--text); margin-bottom: 18px; }
+    .price { margin-bottom: 20px; }
+    .price .row { display: flex; align-items: flex-end; gap: 3px; }
+    .price .eu { font-size: 18px; font-weight: 600; color: var(--text-mid); margin-bottom: 9px; }
+    .price .amt { font-family: var(--font-display); font-size: 52px; font-weight: 800; letter-spacing: -0.06em; line-height: 1; color: var(--text); }
+    .price .per { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-bottom: 10px; padding-left: 2px; }
+    .price .billed { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+    .divider { height: 1px; margin-bottom: 14px; }
+    .feats { flex: 1; margin-bottom: 20px; }
+    .feat-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 0; gap: 12px; border-bottom: 1px solid var(--border); }
+    .feat-row:last-child { border-bottom: none; }
+    .feat-row .l { font-size: 12px; color: var(--text-dim); flex-shrink: 0; line-height: 1.4; }
+    .feat-row .v { font-family: var(--font-mono); font-size: 12px; font-weight: 500; line-height: 1.3; text-align: right; }
+    .feat-row .s { font-size: 10px; color: var(--text-dim); margin-top: 2px; text-align: right; }
+    .cta { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 20px; border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .18s; }
+    .cta.current { background: color-mix(in oklab, var(--success) 14%, transparent); border: 1px solid color-mix(in oklab, var(--success) 40%, transparent); color: var(--success); cursor: default; }
+    .cta-note { text-align: center; margin-top: 10px; font-size: 11px; color: var(--text-dim); }
+
+    .trust { display: flex; justify-content: center; gap: 28px; margin: 12px auto 0; flex-wrap: wrap; max-width: 1080px; padding: 0 24px 70px; }
+    .trust div { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); }
+
+    .faq { max-width: 700px; margin: 0 auto; padding: 0 24px 80px; }
+    .faq-head { text-align: center; margin-bottom: 36px; }
+    .faq-head .lbl { font-family: var(--font-mono); font-size: 10px; color: #00c8e0; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 12px; }
+    .faq-head h2 { font-family: var(--font-display); font-size: clamp(26px,4vw,38px); font-weight: 800; letter-spacing: -0.04em; }
+    .faq-list { background: var(--bg-card-2); border: 1px solid var(--border); border-radius: 16px; padding: 0 26px; }
+    .faq-item { border-bottom: 1px solid var(--border); }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-q { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 20px 0; background: none; border: none; cursor: pointer; gap: 16px; text-align: left; font-family: var(--font-body); font-size: 14px; font-weight: 500; color: var(--text-mid); }
+    .faq-item.open .faq-q { color: var(--text); }
+    .faq-plus { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; background: var(--bg-hover); border: 1px solid var(--border-mid); display: flex; align-items: center; justify-content: center; color: var(--text-mid); font-size: 18px; transition: all .22s; }
+    .faq-item.open .faq-plus { background: linear-gradient(135deg,#00c8e0,#5b6fff); border: none; color: #fff; transform: rotate(45deg); }
+    .faq-a { max-height: 0; overflow: hidden; transition: max-height .32s cubic-bezier(0.4,0,0.2,1); }
+    .faq-item.open .faq-a { max-height: 260px; }
+    .faq-a p { font-size: 13px; color: var(--text-mid); line-height: 1.72; padding-bottom: 22px; }
+
+    .foot { border-top: 1px solid var(--border); padding: 22px 24px 30px; text-align: center; }
+    .foot .links { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-bottom: 12px; }
+    .foot .links a { font-size: 12px; color: var(--text-dim); text-decoration: none; }
+    .foot .links a:hover { color: #00c8e0; }
+    .foot .cp { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+
+    @media (max-width: 960px) { .cards { grid-template-columns: 1fr; max-width: 520px; } }
+    @media (max-width: 600px) { .hero { padding: 40px 18px 34px; } }
+  </style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div id="app">
+    <header class="topbar">
+      <span class="brand-word">THW<span>.</span></span>
+      <a class="back" href="/" onclick="if(history.length>1){history.back();return false;}">← Retour</a>
+    </header>
+
+    <section class="hero">
+      <div class="pill"><span class="dot"></span><span>Saison 2026 · 14 jours gratuits</span></div>
+      <h1>Choisissez votre <em>formule</em></h1>
+      <div class="billing" id="billing">
+        <button data-b="monthly" class="on">Mensuel</button>
+        <button data-b="annual">Annuel <span class="save">2 mois offerts</span></button>
+      </div>
+    </section>
+
+    <div class="cards" id="cards"></div>
+
+    <div class="trust">
+      <div>🔒 Paiement sécurisé</div>
+      <div>♻︎ Résiliable à tout moment</div>
+      <div>🛡 Données hébergées en Europe</div>
+    </div>
+
+    <section class="faq">
+      <div class="faq-head"><div class="lbl">FAQ</div><h2>Questions fréquentes</h2></div>
+      <div class="faq-list" id="faq"></div>
+    </section>
+
+    <footer class="foot">
+      <div class="links">
+        <a href="/decouvrir/cgu.html">Conditions générales</a>
+        <a href="/decouvrir/confidentialite.html">Politique de confidentialité</a>
+      </div>
+      <div class="cp">© 2026 THW Coaching</div>
+    </footer>
+  </div>
+
+  <script>
+  (function () {
+    var PLANS = [
+      { id: 'premium', name: 'Premium', ai: { name: 'Hermes', model: 'Claude Haiku', glyph: 'H' },
+        price: { monthly: 14, annual: 132 }, accent: '#00c8e0', accentB: '#0099b8', featured: false,
+        stripe: { monthly: 'https://buy.stripe.com/dRm00kflNfCR9cz68sf3a11', annual: 'https://buy.stripe.com/bJefZi3D5duJ88vcwQf3a12' },
+        features: [
+          { l: 'Messages chat', v: '30/mois', s: '15 par conversation' },
+          { l: 'Plans entraînement', v: '2/mois' },
+          { l: 'Plans nutrition', v: '1/mois' },
+          { l: 'Tool use', v: '50/mois' },
+          { l: 'Briefing', v: '4×/semaine', s: 'Sans web search' },
+          { l: 'Histo. activités', v: '6 mois' },
+          { l: 'Histo. conversations', v: '90 jours' },
+          { l: 'Sync Strava', v: '100/mois' },
+          { l: 'Stockage', v: '1 Go' },
+        ] },
+      { id: 'pro', name: 'Pro', ai: { name: 'Athena', model: 'Claude Sonnet 4.6', glyph: 'A' },
+        price: { monthly: 26, annual: 249 }, accent: '#00c8e0', accentB: '#5b6fff', featured: true,
+        stripe: { monthly: 'https://buy.stripe.com/9B6dRa7TlgGVcoLgN6f3a13', annual: 'https://buy.stripe.com/7sY7sM6Ph62hcoL0O8f3a14' },
+        features: [
+          { l: 'Messages chat', v: '100/mois', s: '25 par conversation' },
+          { l: 'Plans entraînement', v: '6/mois' },
+          { l: 'Plans nutrition', v: '3/mois' },
+          { l: 'Tool use', v: '150/mois' },
+          { l: 'Briefing', v: 'Quotidien', s: 'Web search inclus' },
+          { l: 'Histo. activités', v: '24 mois' },
+          { l: 'Histo. conversations', v: '180 jours' },
+          { l: 'Sync Strava', v: 'Illimité' },
+          { l: 'Stockage', v: '5 Go' },
+        ] },
+      { id: 'expert', name: 'Expert', ai: { name: 'Zeus', model: 'Claude Sonnet 4.6', glyph: 'Z', sub: 'Contexte max 16k' },
+        price: { monthly: 49, annual: 468 }, accent: '#f59e0b', accentB: '#d97706', featured: false,
+        stripe: { monthly: 'https://buy.stripe.com/3cI7sM4H9aixcoL54of3a15', annual: 'https://buy.stripe.com/cNi28sehJfCR60n7cwf3a16' },
+        features: [
+          { l: 'Messages chat', v: '300/mois', s: '50 par conversation' },
+          { l: 'Plans entraînement', v: '20/mois' },
+          { l: 'Plans nutrition', v: '10/mois' },
+          { l: 'Tool use', v: '400/mois' },
+          { l: 'Briefing', v: 'Prioritaire', s: 'Web search · 7×/sem' },
+          { l: 'Histo. activités', v: 'Illimité' },
+          { l: 'Histo. conversations', v: 'Illimité' },
+          { l: 'Sync Strava', v: 'Illimité' },
+          { l: 'Stockage', v: '20 Go' },
+        ] },
+    ];
+    var FAQ = [
+      { q: "Comment fonctionne l'essai gratuit ?", a: "Tu accèdes à toutes les fonctionnalités de la formule choisie pendant 14 jours, sans carte bancaire requise. À la fin de la période, tu choisis de continuer ou non — aucun prélèvement automatique." },
+      { q: "Puis-je changer de formule ?", a: "Oui, à tout moment depuis ton espace personnel. Le changement prend effet immédiatement et est calculé au prorata de la période restante." },
+      { q: "Comment résilier ?", a: "En un clic depuis les réglages de ton compte. Aucun préavis, aucune pénalité. Tu gardes l'accès jusqu'à la fin de la période payée." },
+      { q: "Mes données sont-elles sécurisées ?", a: "Tes données sportives et personnelles sont hébergées en Europe (RGPD), chiffrées en transit et au repos. Nous ne les partageons jamais avec des tiers." },
+    ];
+
+    var billing = 'monthly';
+    var currentTier = null;
+    var cardsEl = document.getElementById('cards');
+
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+    function render() {
+      cardsEl.innerHTML = PLANS.map(function (p) {
+        var isCur = currentTier === p.id;
+        var monthly = billing === 'annual' ? Math.round(p.price.annual / 12) : p.price.monthly;
+        var billed = billing === 'annual' ? ('Facturé ' + p.price.annual + ' €/an') : 'Facturé mensuellement';
+        var href = billing === 'annual' ? p.stripe.annual : p.stripe.monthly;
+        var feats = p.features.map(function (f) {
+          return '<div class="feat-row"><span class="l">' + esc(f.l) + '</span><div><div class="v" style="color:' + p.accent + '">' + esc(f.v) + '</div>' + (f.s ? '<div class="s">' + esc(f.s) + '</div>' : '') + '</div></div>';
+        }).join('');
+        var badge = isCur ? '<div class="badge cur">Ton plan</div>' : (p.featured ? '<div class="badge pop">Le plus populaire</div>' : '');
+        var cta = isCur
+          ? '<span class="cta current">✓ Ton plan actuel</span>'
+          : '<a class="cta" href="' + href + '" style="' + (p.featured ? 'background:linear-gradient(135deg,' + p.accent + ',' + p.accentB + ');color:#fff;box-shadow:0 4px 22px ' + p.accent + '40' : 'background:' + p.accent + '14;border:1px solid ' + p.accent + '28;color:' + p.accent) + '">S\'abonner →</a>';
+        var inner =
+          '<div class="card-inner">' +
+            '<div class="bar" style="background:linear-gradient(90deg,' + p.accent + ',' + (p.featured ? p.accentB : 'transparent 60%') + ')"></div>' +
+            badge +
+            '<div class="ai" style="background:' + p.accent + '10;border:1px solid ' + p.accent + '28">' +
+              '<div class="glyph" style="background:' + p.accent + '1a;border:1px solid ' + p.accent + '38;color:' + p.accent + '">' + p.ai.glyph + '</div>' +
+              '<div><div class="nm" style="color:' + p.accent + '">' + esc(p.ai.name) + '</div><div class="md">' + esc(p.ai.model) + (p.ai.sub ? ' · ' + esc(p.ai.sub) : '') + '</div></div>' +
+            '</div>' +
+            '<div class="pname">' + esc(p.name) + '</div>' +
+            '<div class="price"><div class="row"><span class="eu">€</span><span class="amt">' + monthly + '</span><span class="per">/mois</span></div><div class="billed">' + billed + '</div></div>' +
+            '<div class="divider" style="background:linear-gradient(90deg,' + p.accent + '22,transparent 70%)"></div>' +
+            '<div class="feats">' + feats + '</div>' +
+            cta +
+            '<div class="cta-note">14 jours gratuits · Sans carte bancaire</div>' +
+          '</div>';
+        return '<div class="card' + (p.featured ? ' feat' : '') + '">' + inner + '</div>';
+      }).join('');
+    }
+
+    // Billing toggle
+    document.getElementById('billing').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      billing = b.getAttribute('data-b');
+      [].forEach.call(this.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); });
+      render();
+    });
+
+    // FAQ
+    document.getElementById('faq').innerHTML = FAQ.map(function (f) {
+      return '<div class="faq-item"><button class="faq-q">' + esc(f.q) + '<span class="faq-plus">+</span></button><div class="faq-a"><p>' + esc(f.a) + '</p></div></div>';
+    }).join('');
+    document.getElementById('faq').addEventListener('click', function (e) {
+      var q = e.target.closest('.faq-q'); if (!q) return;
+      q.parentElement.classList.toggle('open');
+    });
+
+    render();
+
+    // Real data — highlight current plan
+    fetch('/api/subscription/details', { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && d.tier) { currentTier = d.tier; render(); } })
+      .catch(function () {});
+  })();
+  </script>
+</body>
+</html>

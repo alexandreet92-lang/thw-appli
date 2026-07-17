@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Recharger en tokens — THW Coaching</title>
+  <meta name="description" content="Recharge ton solde de tokens THW Coaching. Packs sans engagement, tokens sans expiration."/>
+  <link rel="icon" href="/logo.png"/>
+  <link rel="stylesheet" href="/colors_and_type.css"/>
+  <link rel="stylesheet" href="/site.css"/>
+  <script>
+    (function () {
+      var K = 'thw-theme-mode';
+      function g() { try { return localStorage.getItem(K) || 'auto'; } catch (e) { return 'auto'; } }
+      function r(m) { if (m === 'light') return 'light'; if (m === 'dark') return 'dark'; var h = new Date().getHours(); return (h >= 7 && h < 20) ? 'light' : 'dark'; }
+      function a(m) { var e = r(m), el = document.documentElement; el.classList.toggle('light', e === 'light'); el.classList.toggle('dark', e === 'dark'); }
+      a(g()); setInterval(function () { if (g() === 'auto') a(g()); }, 60000);
+      window.THWTheme = { get: g, set: function (m) { try { localStorage.setItem(K, m); } catch (e) {} a(m); } };
+    })();
+  </script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; font-family: var(--font-body); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    a { color: var(--brand); }
+    .atmosphere { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(ellipse 70% 60% at 15% 10%, rgba(0,200,224,0.06) 0%, transparent 60%), radial-gradient(ellipse 60% 60% at 85% 90%, rgba(91,111,255,0.07) 0%, transparent 60%); }
+    #app { position: relative; z-index: 1; }
+
+    .topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 22px; background: var(--nav-bg); border-bottom: 1px solid var(--nav-border); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .brand-word { font-family: var(--font-display); font-weight: 800; font-size: 18px; letter-spacing: -0.04em; color: var(--text); }
+    .brand-word span { color: var(--brand); }
+    .back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-pill); background: var(--bg-card); border: 1px solid var(--border-mid); color: var(--text-mid); font-size: 13px; font-weight: 500; text-decoration: none; cursor: pointer; }
+    .back:hover { color: var(--brand); border-color: color-mix(in oklab, var(--brand) 45%, transparent); }
+
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    .hero { text-align: center; padding-top: 54px; }
+    .connect-note { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 24px; padding: 12px 16px; border-radius: var(--radius-md); background: var(--bg-card); border: 1px dashed var(--border-mid); max-width: 560px; font-size: 13px; color: var(--text-mid); }
+    .connect-note a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 15px; border-radius: var(--radius-btn); text-decoration: none; background: var(--brand-gradient); color: #fff; font-size: 12.5px; font-weight: 600; }
+
+    .gauge-box { display: flex; flex-direction: column; align-items: center; }
+    .gauge { position: relative; width: 248px; height: 248px; }
+    .gauge .glow { position: absolute; inset: -18%; background: radial-gradient(circle at 50% 50%, rgba(0,200,224,0.22), rgba(91,111,255,0.10) 45%, transparent 70%); filter: blur(26px); }
+    .gauge svg { position: relative; transform: rotate(-90deg); }
+    .gauge .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    .gauge .lbl { font-size: 10px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
+    .gauge .val { font-family: var(--font-display); font-size: 44px; font-weight: 800; letter-spacing: -0.045em; line-height: .95; color: var(--text); }
+    .gauge .sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+    .chip { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border-mid); background: var(--bg-card); margin-top: 22px; }
+    .chip .plan { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 12px; color: var(--brand); }
+    .chip .plan .d { width: 5px; height: 5px; border-radius: 50%; background: var(--brand); }
+    .chip .sep { width: 1px; height: 12px; background: var(--border-mid); }
+    .chip .reset { font-size: 12.5px; color: var(--text-mid); }
+
+    .sec { padding-top: 72px; }
+    .sec-head { text-align: center; max-width: 540px; margin: 0 auto 40px; }
+    .eyebrow2 { font-family: var(--font-mono); font-size: 10px; color: var(--brand); letter-spacing: .14em; text-transform: uppercase; }
+    .sec-head h2 { font-family: var(--font-display); font-size: clamp(26px,3.6vw,38px); font-weight: 800; letter-spacing: -0.04em; margin-top: 10px; }
+    .sec-head p { font-size: 15px; line-height: 1.6; color: var(--text-mid); margin-top: 14px; }
+
+    .packs { display: grid; grid-template-columns: 1fr 1.05fr 1fr; gap: 16px; max-width: 940px; margin: 0 auto; align-items: stretch; }
+    .pack { position: relative; align-self: stretch; }
+    .pack.feat { background: var(--brand-gradient); border-radius: 19px; padding: 1.5px; box-shadow: 0 0 36px rgba(0,200,224,0.16); }
+    .pack-in { position: relative; overflow: hidden; height: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 26px 24px 22px; display: flex; flex-direction: column; }
+    .pack.feat .pack-in { border: none; border-radius: 17px; background: linear-gradient(180deg, rgba(0,200,224,0.06) 0%, var(--card-solid, #070b0f) 42%); }
+    .pack .bar { position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+    .pack .reco { position: absolute; top: 14px; right: 14px; padding: 4px 11px; border-radius: 999px; background: var(--brand-gradient); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .pack .nm { font-size: 13px; font-weight: 600; color: var(--text-mid); margin-bottom: 14px; }
+    .pack .tok { display: flex; align-items: baseline; gap: 7px; }
+    .pack .tok .n { font-family: var(--font-display); font-size: 27px; font-weight: 800; letter-spacing: -0.04em; color: var(--text); line-height: 1; }
+    .pack .tok .u { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+    .pack .volbar { margin: 14px 0 18px; }
+    .pack .volbar .track { height: 5px; border-radius: 999px; background: rgba(127,127,127,0.12); overflow: hidden; border: 1px solid var(--border); }
+    .pack .volbar .fill { height: 100%; border-radius: 999px; }
+    .pack .volbar .per { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); margin-top: 8px; }
+    .pack .pr { display: flex; align-items: baseline; gap: 9px; margin-bottom: 6px; }
+    .pack .pr .p { font-family: var(--font-display); font-size: 38px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; background: var(--brand-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .pack .pr .save { padding: 3px 9px; border-radius: 999px; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; font-family: var(--font-mono); font-size: 11px; }
+    .pack .desc { font-size: 13px; line-height: 1.5; color: var(--text-mid); flex: 1; margin: 6px 0 20px; }
+    .pack .buy { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px 18px; border-radius: var(--radius-btn); text-decoration: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+    .usage-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 780px; margin: 0 auto; }
+    .usage { position: relative; overflow: hidden; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px 22px; }
+    .usage .bar { position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+    .usage .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .usage .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .usage .amt { font-family: var(--font-mono); font-size: 14px; font-weight: 500; }
+    .usage .amt small { color: var(--text-dim); font-size: 10px; margin-left: 3px; }
+    .usage .t { font-family: var(--font-display); font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); margin-bottom: 5px; }
+    .usage .d { font-size: 12.5px; line-height: 1.5; color: var(--text-mid); }
+
+    .steps { position: relative; display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; max-width: 820px; margin: 0 auto; }
+    .steps .line { position: absolute; top: 30px; left: 16%; right: 16%; height: 2px; background: linear-gradient(90deg, transparent, rgba(0,200,224,0.4), rgba(91,111,255,0.4), transparent); z-index: 0; }
+    .step { text-align: center; position: relative; z-index: 1; }
+    .step .circ { width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 18px; display: flex; align-items: center; justify-content: center; background: var(--bg-card); border: 1px solid rgba(0,200,224,0.4); color: var(--brand); font-size: 22px; box-shadow: 0 0 28px rgba(0,200,224,0.22), 0 0 0 6px var(--bg); }
+    .step .t { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 7px; }
+    .step .d { font-size: 12.5px; line-height: 1.55; color: var(--text-mid); max-width: 220px; margin: 0 auto; }
+
+    .foot { border-top: 1px solid var(--border); background: var(--bg-alt); margin-top: 90px; }
+    .foot .in { text-align: center; padding: 30px 24px 34px; }
+    .foot .links { display: flex; justify-content: center; gap: 22px; flex-wrap: wrap; margin-bottom: 16px; }
+    .foot .links a { font-size: 12.5px; color: var(--text-mid); text-decoration: none; }
+    .foot .links a:hover { color: var(--brand); }
+    .foot .note { font-size: 12px; color: var(--text-dim); }
+
+    @media (max-width: 860px) { .packs { grid-template-columns: 1fr; max-width: 440px; } .usage-grid { grid-template-columns: 1fr; } .steps { grid-template-columns: 1fr; gap: 30px; } .steps .line { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="atmosphere"></div>
+  <div id="app">
+    <header class="topbar">
+      <span class="brand-word">THW<span>.</span></span>
+      <a class="back" href="/" onclick="if(history.length>1){history.back();return false;}">← Retour</a>
+    </header>
+
+    <section class="hero">
+      <div class="wrap" style="display:flex;flex-direction:column;align-items:center;">
+        <div class="connect-note" id="connect-note" style="display:none;">
+          <span>🔒 Solde de démonstration — <strong style="color:var(--text)">connecte-toi</strong> pour voir tes vraies données.</span>
+          <a href="/">Se connecter →</a>
+        </div>
+
+        <div class="gauge-box">
+          <div class="gauge">
+            <div class="glow"></div>
+            <svg width="248" height="248" viewBox="0 0 248 248">
+              <circle cx="124" cy="124" r="110" fill="none" stroke="rgba(127,127,127,0.12)" stroke-width="14"/>
+              <circle id="gauge-arc" cx="124" cy="124" r="110" fill="none" stroke="url(#gg)" stroke-width="14" stroke-linecap="round" stroke-dasharray="691.15" stroke-dashoffset="691.15" style="transition:stroke-dashoffset 1.2s cubic-bezier(0.34,1,0.5,1);filter:drop-shadow(0 0 8px rgba(0,200,224,0.45))"/>
+              <defs><linearGradient id="gg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00c8e0"/><stop offset="100%" stop-color="#5b6fff"/></linearGradient></defs>
+            </svg>
+            <div class="center">
+              <div class="lbl">Ton solde actuel</div>
+              <div class="val" id="gauge-val">—</div>
+              <div class="sub" id="gauge-sub">quota mensuel</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chip">
+          <span class="plan"><span class="d"></span><span id="chip-plan">Plan —</span></span>
+          <span class="sep"></span>
+          <span class="reset" id="chip-reset">Réinitialisation à venir</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="wrap">
+        <div class="sec-head">
+          <h1 style="font-family:var(--font-display);font-size:clamp(30px,4.4vw,44px);font-weight:800;letter-spacing:-0.04em;line-height:1.02;margin-bottom:16px;">Recharge ton <span style="background:var(--brand-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">carburant</span></h1>
+          <p>Des tokens supplémentaires, sans engagement. Ils s'ajoutent à ton quota mensuel et n'expirent jamais.</p>
+        </div>
+        <div class="packs" id="packs"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="wrap">
+        <div class="sec-head"><div class="eyebrow2">Repères</div><h2>À quoi correspondent ces tokens ?</h2></div>
+        <div class="usage-grid" id="usages"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="wrap">
+        <div class="sec-head"><div class="eyebrow2">3 étapes</div><h2>Comment ça marche</h2></div>
+        <div class="steps">
+          <div class="line"></div>
+          <div class="step"><div class="circ">✓</div><div class="t">Choisis ton pack</div><div class="d">Sélectionne le pack qui te convient.</div></div>
+          <div class="step"><div class="circ">🔒</div><div class="t">Paie en sécurité</div><div class="d">Paiement chiffré via Stripe, aucune donnée bancaire stockée.</div></div>
+          <div class="step"><div class="circ">⚡</div><div class="t">Crédité instantanément</div><div class="d">Retourne dans l'app, ton solde est à jour.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <div class="in">
+        <div class="links">
+          <a href="/decouvrir/cgu.html">Conditions de vente</a>
+          <a href="/decouvrir/confidentialite.html">Politique de confidentialité</a>
+        </div>
+        <div class="note">🛡 Paiement sécurisé par Stripe · Tokens sans expiration</div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+  (function () {
+    var fmt = function (n) { return Number(n).toLocaleString('fr-FR'); };
+    var PACKS = [
+      { name: 'Découverte', tokens: '100 000', price: 4, vol: 0.10, per: null, save: null, desc: "Quelques jours d'usage intensif.", feat: false, accent: '#00c8e0' },
+      { name: 'Performance', tokens: '500 000', price: 15, vol: 0.50, per: '3 €/100k', save: '−25%', desc: "Le meilleur rapport pour tenir tout le mois.", feat: true, accent: '#00c8e0' },
+      { name: 'Elite', tokens: '1 000 000', price: 25, vol: 1.0, per: '2,50 €/100k', save: '−37%', desc: "Pour un usage prolongé, sans compromis.", feat: false, accent: '#5b6fff' },
+    ];
+    var USAGES = [
+      { ic: '💬', title: 'Question au coach', amt: '≈ 3 000', desc: "Conseils, recommandations, échanges courts.", c: '#00c8e0' },
+      { ic: '📈', title: "Analyse d'une séance", amt: '≈ 8 000', desc: "Lecture des données + interprétation détaillée.", c: '#ef4444' },
+      { ic: '🗓', title: "Plan d'entraînement", amt: '≈ 25 000', desc: "Programme structuré sur plusieurs semaines.", c: '#5b6fff' },
+      { ic: '🌅', title: 'Briefing matinal', amt: '≈ 10 000', desc: "Avec recherche web et données du jour.", c: '#f59e0b' },
+    ];
+
+    document.getElementById('packs').innerHTML = PACKS.map(function (p) {
+      var buyStyle = p.feat ? 'background:var(--brand-gradient);color:#fff;box-shadow:0 4px 22px rgba(0,200,224,0.36)' : 'background:rgba(0,200,224,0.08);border:1px solid var(--brand);color:var(--brand)';
+      var fill = p.feat ? 'background:var(--brand-gradient-h)' : 'background:linear-gradient(90deg,' + p.accent + ',' + p.accent + '88)';
+      return '<div class="pack' + (p.feat ? ' feat' : '') + '"><div class="pack-in">' +
+        '<div class="bar" style="' + (p.feat ? 'background:var(--brand-gradient-h)' : 'background:linear-gradient(90deg,' + p.accent + '70,transparent 65%)') + '"></div>' +
+        (p.feat ? '<div class="reco">★ Recommandé</div>' : '') +
+        '<div class="nm">' + p.name + '</div>' +
+        '<div class="tok"><span class="n">' + p.tokens + '</span><span class="u">tokens</span></div>' +
+        '<div class="volbar"><div class="track"><div class="fill" style="width:' + (p.vol * 100) + '%;' + fill + ';box-shadow:0 0 10px ' + p.accent + '66"></div></div>' + (p.per ? '<div class="per">' + p.per + ' tokens</div>' : '') + '</div>' +
+        '<div class="pr"><span class="p">' + p.price + ' €</span>' + (p.save ? '<span class="save">' + p.save + '</span>' : '') + '</div>' +
+        '<div class="desc">' + p.desc + '</div>' +
+        '<a class="buy" href="/topup" style="' + buyStyle + '">Choisir ce pack →</a>' +
+        '</div></div>';
+    }).join('');
+
+    document.getElementById('usages').innerHTML = USAGES.map(function (u) {
+      return '<div class="usage"><div class="bar" style="background:linear-gradient(90deg,' + u.c + ',transparent 70%)"></div>' +
+        '<div class="top"><div class="ic" style="background:' + u.c + '12;border:1px solid ' + u.c + '30">' + u.ic + '</div>' +
+        '<span class="amt" style="color:' + u.c + '">' + u.amt + '<small>tok</small></span></div>' +
+        '<div class="t">' + u.title + '</div><div class="d">' + u.desc + '</div></div>';
+    }).join('');
+
+    // Gauge — demo default, replaced by real data if authenticated
+    var CIRC = 691.15;
+    function setGauge(remaining, total) {
+      var pct = total > 0 ? Math.min(1, remaining / total) : 0;
+      document.getElementById('gauge-arc').style.strokeDashoffset = String(CIRC * (1 - pct));
+      document.getElementById('gauge-val').textContent = fmt(remaining);
+    }
+    // demo
+    setGauge(250000, 1000000);
+
+    function fmtReset(iso) {
+      try {
+        var ms = new Date(iso).getTime() - Date.now();
+        var days = Math.ceil(ms / 86400000);
+        if (days <= 0) return 'Réinitialisation imminente';
+        if (days === 1) return 'Réinitialisation dans 1 jour';
+        return 'Réinitialisation dans ' + days + ' jours';
+      } catch (e) { return 'Réinitialisation à venir'; }
+    }
+
+    fetch('/api/tokens/limits', { credentials: 'include' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.monthly) { document.getElementById('connect-note').style.display = 'inline-flex'; return; }
+        var limit = d.monthly.limit || 0;
+        var used = d.monthly.used || 0;
+        var bonus = d.bonus_tokens || 0;
+        var remaining = Math.max(0, limit - used) + bonus;
+        setTimeout(function () { setGauge(remaining, limit + bonus); }, 120);
+        var plan = (d.plan || '').charAt(0).toUpperCase() + (d.plan || '').slice(1);
+        document.getElementById('chip-plan').textContent = 'Plan ' + (plan || '—');
+        if (d.monthly.resets_at) document.getElementById('chip-reset').textContent = fmtReset(d.monthly.resets_at);
+      })
+      .catch(function () { document.getElementById('connect-note').style.display = 'inline-flex'; });
+  })();
+  </script>
+</body>
+</html>

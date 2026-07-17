@@ -1923,7 +1923,7 @@ function AbonnementContent() {
 
           {/* En savoir plus */}
           <a
-            href="/decouvrir/theme.html#abonnements"
+            href="/decouvrir/abonnement.html"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '14px', background: 'transparent', border: '0.5px solid var(--border)', borderRadius: 12, color: 'var(--text)', fontSize: 14, fontWeight: 500, textDecoration: 'none', cursor: 'pointer' }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2099,7 +2099,7 @@ function ModelesContent() {
 
         {/* Bouton En savoir plus */}
         <a
-          href="/decouvrir/theme.html#tokens"
+          href="/decouvrir/recharge-tokens.html"
           style={{
             display:        'flex',
             alignItems:     'center',

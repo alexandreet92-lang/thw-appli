@@ -6,8 +6,21 @@ import {
   IconBarbell,
   IconStretching2, // IconStretching existe aussi, mais Stretching2 est plus dynamique
   IconTreadmill,
+  IconMountain,    // VTT
+  IconHome,        // Home Trainer (vélo d'intérieur)
 } from '@tabler/icons-react'
 import type { ComponentType } from 'react'
+
+type SportIconComponent = ComponentType<{ size?: number; color?: string; stroke?: number }>
+
+// Icône SPÉCIFIQUE d'un sous-type (VTT / Home Trainer / Tapis) — pour différencier
+// dans la grille du planning. null → on garde l'icône générique du sport.
+export function subSportIcon(sub?: string | null): SportIconComponent | null {
+  if (sub === 'vtt') return IconMountain
+  if (sub === 'ht') return IconHome
+  if (sub === 'treadmill') return IconTreadmill
+  return null
+}
 
 export type SportKey =
   | 'run' | 'bike' | 'swim' | 'rowing' | 'muscu' | 'hyrox' | 'ellip'

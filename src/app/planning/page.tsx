@@ -30,7 +30,7 @@ import { PLANNING_ONBOARDING } from '@/onboarding/configs/planning.config'
 import { Dumbbell, CalendarDays, LayoutDashboard, Flag } from 'lucide-react'
 import { SectionLayout } from '@/components/navigation/SectionLayout'
 import { TrainingSummary } from '@/app/planning/components/training/TrainingSummary'
-import { SportIcon, SPORT_ICON, sportKeyFromType } from '@/components/icons/SportIcon'
+import { SportIcon, SPORT_ICON, sportKeyFromType, subSportIcon } from '@/components/icons/SportIcon'
 import { SessionEditor } from '@/components/planning/SessionEditor'
 import type { NutritionItem, ParcoursData } from '@/components/planning/SessionEditor'
 import { useI18n } from '@/lib/i18n'
@@ -51,6 +51,7 @@ type CalView       = 'year' | 'month'
 export type TrainingView  = 'horizontal' | 'vertical'
 type RaceSport     = 'run' | 'trail' | 'bike' | 'swim' | 'hyrox' | 'triathlon' | 'rowing'
 export type CyclingSub    = 'velo' | 'vtt' | 'ht'
+export type RunningSub    = 'outdoor' | 'treadmill'
 
 // ── Constants ─────────────────────────────────────
 export const SPORT_BG: Record<SportType,string>     = { swim:'rgba(6,182,212,0.13)', run:'rgba(249,115,22,0.13)', bike:'rgba(59,130,246,0.13)', hyrox:'rgba(239,68,68,0.13)', gym:'rgba(139,92,246,0.13)', rowing:'rgba(20,184,166,0.13)', elliptique:'rgba(168,85,247,0.13)' }
@@ -61,6 +62,7 @@ export const SPORT_ABBR: Record<SportType,string>   = { run:'RUN', bike:'BIKE', 
 // Label court (maquette grille semaine) : Run/Bike/Swim/Gym/Hyrox…
 export const SPORT_SHORT: Record<SportType,string>  = { run:'Run', bike:'Bike', swim:'Swim', hyrox:'Hyrox', gym:'Gym', rowing:'Row', elliptique:'Ellip' }
 export const CYCLING_SUB_LABEL: Record<CyclingSub,string> = { velo:'Vélo route', vtt:'VTT', ht:'Home Trainer' }
+export const RUNNING_SUB_LABEL: Record<RunningSub,string> = { outdoor:'Dehors', treadmill:'Tapis' }
 export const TRAINING_TYPES: Partial<Record<SportType,string[]>> = {
   run:        ['EF','SL1','SL2','VMA','Strides','Heat Training','Mixte'],
   bike:       ['EF','SL1','SL2','PMA','Sprints','Heat Training','Mixte'],
@@ -153,6 +155,9 @@ export interface Session {
   nutritionItems?: NutritionItem[]
   // Brick (enchaînement vélo→course) : id partagé entre la séance vélo et sa course.
   brickId?: string
+  // Sous-types (persistés dans validation_data) — différenciation dans la grille.
+  cyclingSub?: CyclingSub
+  runningSub?: RunningSub
 }
 interface WeekTask {
   id:string; title:string; type:TaskType; dayIndex:number
@@ -728,7 +733,8 @@ function usePlanning(weekStartParam?:string) {
       user_id:user.id, week_start:weekStart, day_index:s.dayIndex,
       sport:s.sport, title:s.title, time:s.time, duration_min:s.durationMin,
       tss:s.tss??null, status:s.status, notes:s.notes??null,
-      rpe:s.rpe??null, blocks:s.blocks??[], validation_data: s.brickId ? { brickId:s.brickId } : {},
+      rpe:s.rpe??null, blocks:s.blocks??[],
+      validation_data: { ...(s.brickId ? { brickId:s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub:s.cyclingSub } : {}), ...(s.runningSub ? { runningSub:s.runningSub } : {}) },
       plan_variant:s.planVariant??'A',
       parcours_data: s.parcoursData ?? null,
       parcours_id:   s.parcoursId   ?? null,
@@ -745,7 +751,7 @@ function usePlanning(weekStartParam?:string) {
       title:upd.title, time:upd.time, duration_min:upd.durationMin,
       notes:upd.notes??null, rpe:upd.rpe??null, blocks:upd.blocks??[],
       tss:upd.tss??null, status:upd.status,
-      validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed, ...(upd.brickId ? { brickId:upd.brickId } : {}) },
+      validation_data:{ vDuration:upd.vDuration, vDistance:upd.vDistance, vHrAvg:upd.vHrAvg, vSpeed:upd.vSpeed, ...(upd.brickId ? { brickId:upd.brickId } : {}), ...(upd.cyclingSub ? { cyclingSub:upd.cyclingSub } : {}), ...(upd.runningSub ? { runningSub:upd.runningSub } : {}) },
       updated_at:new Date().toISOString(),
     }
     if (upd.sport) patch.sport = upd.sport
@@ -2253,7 +2259,8 @@ function DayBubble({ sport, label, session, done, onClick, draggable, onDragStar
   const key = sportKeyFromType(sport)
   const cfg = key ? SPORT_ICON[key] : null
   const color = cfg?.color ?? 'var(--text-mid)'
-  const Ico = cfg?.Icon
+  // Icône spécifique du sous-type (VTT / Home Trainer / Tapis) si présent, sinon générique.
+  const Ico = subSportIcon(session?.cyclingSub ?? session?.runningSub) ?? cfg?.Icon
   const [tip, setTip] = useState<DOMRect | null>(null)
 
   // Bulle riche (séance planifiée) : titre + durée · RPE, + sur-bulle au survol (desktop).
@@ -3179,7 +3186,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         user_id: user.id, week_start: targetWeekStart, day_index: dayIdx,
         sport: s.sport, title: s.title, time: s.time, duration_min: s.durationMin,
         tss: s.tss ?? null, status: s.status, notes: s.notes ?? null,
-        rpe: s.rpe ?? null, blocks: s.blocks ?? [], validation_data: s.brickId ? { brickId: s.brickId } : {},
+        rpe: s.rpe ?? null, blocks: s.blocks ?? [],
+        validation_data: { ...(s.brickId ? { brickId: s.brickId } : {}), ...(s.cyclingSub ? { cyclingSub: s.cyclingSub } : {}), ...(s.runningSub ? { runningSub: s.runningSub } : {}) },
         plan_variant: s.planVariant ?? activePlan,
         parcours_data: s.parcoursData ?? null,
         nutrition_data: typedS.nutritionItems ?? null,

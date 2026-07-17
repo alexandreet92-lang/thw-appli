@@ -31,11 +31,11 @@ import type { SessionEditorPanelProps } from './mobile/panelProps'
 import {
   // Types
   type SportType, type BlockMode, type BlockType, type Block, type Session,
-  type PlanVariant, type CircuitType, type CyclingSub, type DayIntensity,
+  type PlanVariant, type CircuitType, type CyclingSub, type RunningSub, type DayIntensity,
   type TrainingActivity, type Race,
   // Constantes
   SPORT_LABEL, SPORT_ABBR, SPORT_BG, SPORT_BORDER, SPORT_SHORT,
-  CYCLING_SUB_LABEL, TRAINING_TYPES, ZONE_COLORS,
+  CYCLING_SUB_LABEL, RUNNING_SUB_LABEL, TRAINING_TYPES, ZONE_COLORS,
   BLOCK_TYPE_LABEL, CIRCUIT_TYPES, SPORT_TO_BUILDER, ATHLETE,
   RACE_CONFIG, INTENSITY_CONFIG, INTENSITY_ORDER, DAY_NAMES,
   // Helpers
@@ -3632,7 +3632,8 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   const { t } = useI18n()
   const isEdit = mode === 'edit'
   const [sport, setSport] = useState<SportType>(session?.sport ?? initialSport ?? 'run')
-  const [cyclingSub, setCyclingSub] = useState<CyclingSub>('velo')
+  const [cyclingSub, setCyclingSub] = useState<CyclingSub>(session?.cyclingSub ?? 'velo')
+  const [runningSub, setRunningSub] = useState<RunningSub>(session?.runningSub ?? 'outdoor')
   const [brickRun, setBrickRun] = useState<boolean>(!!session?.brickId)
   const [trainingTypes, setTrainingTypes] = useState<string[]>(session?.trainingTypes ?? [])
   const [title, setTitle] = useState(session?.title ?? '')
@@ -4274,7 +4275,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   function handleSubmit() {
     const ttStr = trainingTypes.join('+')
     const finalTitle = title || (ttStr ? `${SPORT_LABEL[sport]} ${ttStr}` : SPORT_LABEL[sport])
-    const subLabel = sport === 'bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}` : ''
+    const subLabel = sport === 'bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}`
+      : sport === 'run' && runningSub === 'treadmill' ? ` — ${RUNNING_SUB_LABEL[runningSub]}` : ''
     const parcoursMin = parseDurationToMin(totalDuration)
     const finalDur = aiFlowStep === 'parcours' && parcoursMin > 0 ? parcoursMin : dur || 60
     const parcoursFlowTss = computeParcoursFlowTSS()
@@ -4300,6 +4302,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       parcoursId: parcoursData?.parcoursId ?? undefined,
       nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
       brickId,
+      cyclingSub: sport === 'bike' ? cyclingSub : undefined,
+      runningSub: sport === 'run' ? runningSub : undefined,
     }
     onSave(savedSession)
     // Création auto de la course d'enchaînement (uniquement quand on active le brick).
@@ -5082,6 +5086,19 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                   )
                 })}
               </div>
+
+              {sport === 'run' && (
+                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>
+                  {(Object.keys(RUNNING_SUB_LABEL) as RunningSub[]).map(sub => (
+                    <button key={sub} onClick={() => setRunningSub(sub)} style={{
+                      padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                      border: runningSub === sub ? `1px solid ${accent}` : '1px solid var(--border)',
+                      background: runningSub === sub ? `${accent}15` : 'transparent',
+                      color: runningSub === sub ? accent : 'var(--text-dim)',
+                    }}>{RUNNING_SUB_LABEL[sub]}</button>
+                  ))}
+                </div>
+              )}
 
               {sport === 'bike' && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>

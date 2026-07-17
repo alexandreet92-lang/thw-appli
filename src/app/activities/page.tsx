@@ -43,6 +43,8 @@ import { WeeklyGoals } from '@/components/activity/WeeklyGoals'
 import { MonthlySummary } from '@/components/activity/MonthlySummary'
 import { WeeklySummary } from '@/components/activity/WeeklySummary'
 import { ActivityMedia } from '@/components/activity/ActivityMedia'
+import { ActivityMediaHero } from '@/components/activity/ActivityMediaHero'
+import { TrainingRaceSelector } from '@/components/activity/TrainingRaceSelector'
 import { shareCard } from '@/lib/share/shareCard'
 import { useSmSn } from '@/hooks/useSmSn'
 import { smSnFromRow } from '@/lib/metrics/smSn'
@@ -6939,6 +6941,13 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
   const { showToast: fdToast } = useToast()
   const [localFeeling,    setLocalFeeling]    = useState<number | null>(typeof a.feeling    === 'number' ? a.feeling    : null)
   const [localDifficulty, setLocalDifficulty] = useState<number | null>(typeof a.difficulty === 'number' ? a.difficulty : null)
+  // Entraînement (false) ou Course (true) — tag is_race, éditable via le sélecteur.
+  const [localIsRace, setLocalIsRace] = useState<boolean>(!!a.is_race)
+  async function saveIsRace(v: boolean) {
+    setLocalIsRace(v)
+    try { await createClient().from('activities').update({ is_race: v }).eq('id', a.id) }
+    catch (e) { console.error('[is_race] save', e) }
+  }
   const [fdEditing,       setFdEditing]       = useState<null | 'feeling' | 'difficulty'>(null)
   const [lapsViewOpen,    setLapsViewOpen]    = useState(false)
   const [lapsViewInitial, setLapsViewInitial] = useState(0)
@@ -7477,7 +7486,21 @@ conseil pour la prochaine séance similaire.`
           )}
         </div>
 
-        {/* ── Bouton retour flottant (par-dessus la carte) ── */}
+        {/* ── Média façon Strava : photo en vignette sur la carte, clic = swap ── */}
+        {polylinePoints && polylinePoints.length >= 2 && (
+          <ActivityMediaHero
+            variant="overlay"
+            activityId={a.id}
+            initialMedia={a.media}
+            points={polylinePoints}
+            bottomInset={mapBottomInset}
+          />
+        )}
+
+        <style>{'@keyframes thwHeadFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}'}</style>
+        {/* ── Bouton retour flottant (par-dessus la carte) — masqué en plein écran
+            (la barre sticky ∨ prend le relais) ── */}
+        {sheetPos !== 'full' && (
         <button
           onClick={onClose}
           aria-label={t('actp.back')}
@@ -7491,6 +7514,7 @@ conseil pour la prochaine séance similaire.`
         >
           <ChevronLeft size={20} strokeWidth={2.5} />
         </button>
+        )}
 
         {/* ── SHEET draggable plein écran (transform via ref, 60fps) ── */}
         <div
@@ -7508,26 +7532,46 @@ conseil pour la prochaine séance similaire.`
             transform: `translateY(${snapTy(sheetPos)}px)`,
           }}
         >
-          {/* Handle (drag) — sticky en haut de la sheet. Le geste est géré sur
-              toute la feuille (listener natif), plus seulement ici. */}
+          {/* Handle (drag) — sticky en haut de la sheet. En plein écran, il devient
+              une barre façon Strava (∨ fermer · sport centré · partager). */}
           <div
             className="thw-activity-sheet-handle"
-            style={{ position: 'sticky', top: 0, zIndex: 3, background: 'var(--bg)', borderRadius: '20px 20px 0 0', display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}
+            style={{ position: 'sticky', top: 0, zIndex: 3, background: 'var(--bg)', borderRadius: sheetPos === 'full' ? 0 : '20px 20px 0 0' }}
           >
-            <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'var(--info-border)' }} />
+            {sheetPos === 'full' ? (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                padding: '10px 12px', borderBottom: '1px solid var(--info-border)',
+                animation: 'thwHeadFade 0.22s ease',
+              }}>
+                <button onClick={onClose} aria-label={t('actp.back')} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                  <ChevronDown size={24} strokeWidth={2.4} />
+                </button>
+                <span style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {sportLabel(a.sport_type, t)}
+                </span>
+                <button onClick={() => shareThisActivity()} aria-label={t('actp.share')} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
+                <div style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: 'var(--info-border)' }} />
+              </div>
+            )}
           </div>
 
           {/* Nom + sport + date */}
           <div style={{ padding: '0 16px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div data-activity-title="">
-                <ActivityTitle activityId={a.id} initialName={a.title} />
+                <ActivityTitle activityId={a.id} initialName={a.title} variant="hero" />
               </div>
-              <p data-activity-subtitle="" style={{ fontSize: 13, color: T.textMuted, margin: '4px 0 0', lineHeight: 1.4 }}>
+              <p data-activity-subtitle="" style={{ fontSize: 13, color: T.textMuted, margin: '6px 0 0', lineHeight: 1.4 }}>
                 {sportLabel(a.sport_type, t)}
                 {' · '}
                 {fmtDate(a.started_at)}
-                {a.is_race ? ` · ${t('actp.competition')}` : ''}
+                {localIsRace ? ` · ${t('actp.competition')}` : ''}
               </p>
             </div>
             <button onClick={() => shareThisActivity()} aria-label={t('actp.share')} style={{
@@ -7538,10 +7582,18 @@ conseil pour la prochaine séance similaire.`
             </button>
           </div>
 
-          {/* Type d'entraînement (mobile, tous sports) — sélection manuelle */}
-          <div style={{ padding: '0 16px' }}>
-            <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />
+          {/* Entraînement / Course (mobile) — masque les badges de type si Course */}
+          <div style={{ padding: '0 16px 12px' }}>
+            <TrainingRaceSelector value={localIsRace} onChange={saveIsRace} />
           </div>
+
+          {/* Type d'entraînement (mobile, tous sports) — sélection manuelle.
+              Masqué pour une course (une course n'est pas un entraînement). */}
+          {!localIsRace && (
+            <div style={{ padding: '0 16px' }}>
+              <WorkoutTypeBadges activityId={a.id} sport={a.sport_type} />
+            </div>
+          )}
 
           {/* Muscu : séance enregistrée (fusion in-app) ou saisie manuelle */}
           {isGym && (
@@ -7562,9 +7614,15 @@ conseil pour la prochaine séance similaire.`
             <FeelingDifficultyCard feeling={localFeeling} difficulty={localDifficulty} onEdit={setFdEditing} />
           </div>
 
-          {/* Photos & vidéos (mobile) */}
+          {/* Sans carte GPS : galerie média inline (avec carte, elle est dans le héros) */}
+          {!(polylinePoints && polylinePoints.length >= 2) && (
+            <div style={{ marginTop: 8 }}>
+              <ActivityMediaHero variant="inline" activityId={a.id} initialMedia={a.media} points={polylinePoints} />
+            </div>
+          )}
+          {/* Commentaire (les photos/vidéos sont gérées dans le héros) */}
           <div style={{ padding: '14px 16px 0' }}>
-            <ActivityMedia activityId={a.id} initialMedia={a.media} initialComment={a.comment} />
+            <ActivityMedia activityId={a.id} initialComment={a.comment} showPhotos={false} />
           </div>
 
           {/* Records battus — sous la carte (mobile) */}

@@ -13,7 +13,7 @@ import { useI18n } from '@/lib/i18n'
 
 export interface MediaItem { url: string; type: 'image' | 'video'; path: string }
 
-export function ActivityMedia({ activityId, initialMedia, initialComment }: { activityId: string; initialMedia?: MediaItem[] | null; initialComment?: string | null }) {
+export function ActivityMedia({ activityId, initialMedia, initialComment, showPhotos = true }: { activityId: string; initialMedia?: MediaItem[] | null; initialComment?: string | null; showPhotos?: boolean }) {
   const { t } = useI18n()
   const [media, setMedia] = useState<MediaItem[]>(Array.isArray(initialMedia) ? initialMedia : [])
   const [busy, setBusy] = useState(false)
@@ -94,6 +94,7 @@ export function ActivityMedia({ activityId, initialMedia, initialComment }: { ac
           style={{ width: '100%', resize: 'vertical', minHeight: 44, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', fontSize: 14, lineHeight: 1.5, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
         />
       </div>
+      {showPhotos && (<>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>{t('lo.photosVideos')}</span>
         <button onClick={() => inputRef.current?.click()} disabled={busy} style={{
@@ -143,6 +144,7 @@ export function ActivityMedia({ activityId, initialMedia, initialComment }: { ac
         </div>,
         document.body,
       )}
+      </>)}
     </div>
   )
 }

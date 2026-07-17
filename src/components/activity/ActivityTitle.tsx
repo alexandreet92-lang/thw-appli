@@ -9,14 +9,19 @@ import { useI18n } from '@/lib/i18n'
 interface Props {
   activityId: string
   initialName: string | null
+  variant?: 'default' | 'hero'
 }
 
-export function ActivityTitle({ activityId, initialName }: Props) {
+export function ActivityTitle({ activityId, initialName, variant = 'default' }: Props) {
   const { t } = useI18n()
   const [editing, setEditing] = useState(false)
   const [value,   setValue]   = useState(initialName ?? '')
   const [saving,  setSaving]  = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Hero = grand titre éditorial (façon Strava) ; default = titre compact (desktop, header fixe).
+  const hero = variant === 'hero'
+  const fontSize = hero ? 27 : 14
+  const fontWeight = hero ? 800 : 700
 
   const save = async () => {
     if (saving) return
@@ -55,8 +60,10 @@ export function ActivityTitle({ activityId, initialName }: Props) {
           border: 'none',
           borderBottom: '1px solid var(--accent, #06B6D4)',
           outline: 'none',
-          fontSize: 14,
-          fontWeight: 700,
+          fontSize,
+          fontWeight,
+          lineHeight: hero ? 1.15 : 1.3,
+          letterSpacing: hero ? '-0.01em' : undefined,
           color: 'var(--text)',
           padding: '2px 0',
           fontFamily: 'inherit',
@@ -71,12 +78,14 @@ export function ActivityTitle({ activityId, initialName }: Props) {
       onClick={() => setEditing(true)}
       style={{
         display: 'block',
-        fontSize: 14,
-        fontWeight: 700,
+        fontSize,
+        fontWeight,
+        lineHeight: hero ? 1.15 : 1.3,
+        letterSpacing: hero ? '-0.01em' : undefined,
         color: 'var(--text)',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
+        whiteSpace: hero ? 'normal' : 'nowrap',
         cursor: 'text',
         userSelect: 'none',
       }}

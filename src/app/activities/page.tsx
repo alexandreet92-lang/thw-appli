@@ -893,6 +893,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
   // Records: personal_records table (same source as Performance page)
   const [yearMmp,      setYearMmp]      = useState<number[] | null>(null)
   const [allTimeMmp,   setAllTimeMmp]   = useState<number[] | null>(null)
+  const [allTimeDates, setAllTimeDates] = useState<(string | null)[] | null>(null)  // date du record all-time par durée (table)
   const [recordFilter, setRecordFilter] = useState<'year' | 'alltime'>('alltime')
   const [prLoading,    setPrLoading]    = useState(false)
 
@@ -911,16 +912,18 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
         const recs = (data ?? []) as RecRow[]
         const yearBest = MMP_TABLE_DURATIONS.map(() => 0)
         const allBest  = MMP_TABLE_DURATIONS.map(() => 0)
+        const allDate: (string | null)[] = MMP_TABLE_DURATIONS.map(() => null)
         for (const rec of recs) {
           const idx = BIKE_DUR_TO_IDX[rec.distance_label]
           if (idx === undefined) continue
           const w = parseInt(rec.performance) || 0
           if (w <= 0) continue
-          if (w > allBest[idx]) allBest[idx] = w
+          if (w > allBest[idx]) { allBest[idx] = w; allDate[idx] = rec.achieved_at }
           if (rec.achieved_at >= yearStart && w > yearBest[idx]) yearBest[idx] = w
         }
         setYearMmp(yearBest)
         setAllTimeMmp(allBest)
+        setAllTimeDates(allDate)
         setPrLoading(false)
       } catch { setPrLoading(false) }
     })()
@@ -952,6 +955,23 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
   // Courbe année séparée pour différencier les trophées (cyan vs doré)
   const yearCurve   = useMemo(() => interpolateCurve(yearMmp),    [yearMmp])   // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Date du record all-time pour une durée donnée (exacte, sinon durée-table la plus proche).
+  function recordDateFor(durationS: number): string | null {
+    if (!allTimeDates) return null
+    const ei = MMP_TABLE_DURATIONS.indexOf(durationS)
+    if (ei >= 0 && allTimeDates[ei]) return allTimeDates[ei]
+    let best: string | null = null, bestDist = Infinity
+    MMP_TABLE_DURATIONS.forEach((d, i) => {
+      if (!allTimeDates[i]) return
+      const dist = Math.abs(Math.log(d) - Math.log(Math.max(1, durationS)))
+      if (dist < bestDist) { bestDist = dist; best = allTimeDates[i] }
+    })
+    return best
+  }
+  function fmtRecordDate(iso: string): string {
+    return new Date(iso).toLocaleDateString(currentLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
   // Trophées : 🏆 par durée selon le type de record battu
   const trophies = useMemo((): { i: number; kind: 'allTime' | 'year' }[] => {
     const result: { i: number; kind: 'allTime' | 'year' }[] = []
@@ -971,10 +991,12 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
   const mmpContainerRef = useRef<HTMLDivElement>(null)
   const [mmpMousePos,   setMmpMousePos] = useState<{ x: number; y: number } | null>(null)
 
-  function handleMmpMove(e: React.MouseEvent) {
+  function handleMmpMove(e: React.MouseEvent | React.TouchEvent) {
+    const cx = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const cy = 'touches' in e ? e.touches[0].clientY : e.clientY
     if (mmpContainerRef.current) {
       const r = mmpContainerRef.current.getBoundingClientRect()
-      setMmpMousePos({ x: e.clientX - r.left, y: e.clientY - r.top })
+      setMmpMousePos({ x: cx - r.left, y: cy - r.top })
     }
     onMove(e)
   }
@@ -1040,8 +1062,8 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
   // Sqrt-aware hit detection: find nearest DURATION to cursor position in sqrt space
   const sqrtIdx = useMemo((): number | null => {
     if (pct === null || DURATIONS.length === 0) return null
-    // SVG viewBox is "-32 0 {W+32} {H}", so svgX = -32 + pct*(W+32)
-    const svgX = -32 + pct * (W + 32)
+    // SVG viewBox is "0 0 {W} {H}" → svgX = pct*W
+    const svgX = pct * W
     const xClamped = Math.max(0, Math.min(W, svgX))
     const sqrtT = xClamped / W * (sqrtMax - sqrtMin) + sqrtMin
     const dCursor = sqrtT * sqrtT
@@ -1054,7 +1076,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
   }, [pct]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // cursorX in SVG coords: linear follow of mouse (visual feedback)
-  const cursorX = pct !== null ? (-32 + pct * (W + 32)) : null
+  const cursorX = pct !== null ? pct * W : null
   const avgW = watts.reduce((a, b) => a + b, 0) / N
 
   function fmtDuration(s: number): string {
@@ -1065,6 +1087,18 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
   }
 
   const recordMmp = recordFilter === 'year' ? yearMmp : allTimeMmp
+
+  // Hauteur du graphique (px) + labels X non chevauchants (filtrés par écart en %).
+  const CHART_H = isMobileMmp ? 236 : 264
+  const xLabels = (() => {
+    const out: { d: number; label: string }[] = []
+    let lastPct = -100
+    DURATIONS.forEach((d, i) => {
+      const p = (sqrtX(d) / W) * 100
+      if (p - lastPct >= 9) { out.push({ d, label: LABELS[i] }); lastPct = p }
+    })
+    return out
+  })()
 
   return (
     <div style={{ marginBottom: 20 }}>
@@ -1094,96 +1128,74 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
         ) : null}
       </div>
 
-<div ref={mmpContainerRef} style={{ position: 'relative', cursor: 'crosshair', paddingLeft: isMobileMmp ? 0 : 32 }}>
-        <svg ref={svgRef} viewBox={`-32 0 ${W + 32} ${H}`} style={{ width: '100%', height: isMobileMmp ? 260 : 280, display: 'block', overflow: 'visible' }}
-          preserveAspectRatio="none"
+<div ref={mmpContainerRef} style={{ position: 'relative', cursor: 'crosshair', padding: `4px 6px 26px 40px`, touchAction: 'none' }}>
+        {/* Boîte du graphique : SVG (géométrie, étirée) + calque HTML (texte NET) */}
+        <div style={{ position: 'relative', width: '100%', height: CHART_H }}>
+        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', overflow: 'visible' }}
           onMouseMove={handleMmpMove} onMouseLeave={handleMmpLeave}
-          onTouchMove={e => { e.preventDefault(); onMove(e) }} onTouchEnd={onLeave}>
+          onTouchStart={handleMmpMove} onTouchMove={e => { e.preventDefault(); handleMmpMove(e) }} onTouchEnd={handleMmpLeave}>
           <defs>
             <linearGradient id="mmpFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.25"/>
+              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.28"/>
               <stop offset="100%" stopColor="#6366f1" stopOpacity="0.02"/>
             </linearGradient>
           </defs>
 
-          {/* Gridlines Y (échelle log) — discrètes */}
-          {yTicks.map(w => {
-            const y = yOf(w)
-            return (
-              <g key={w}>
-                <line x1={0} y1={y} x2={W} y2={y} stroke="var(--border)" strokeWidth="1" opacity={0.35}/>
-                <text x={-8} y={y + 3} textAnchor="end" style={{ fontSize: 9, fill: 'var(--text-dim)', fontFamily: 'DM Mono, monospace' }}>{w}</text>
-              </g>
-            )
-          })}
+          {/* Gridlines Y (échelle log) — discrètes. Traits d'épaisseur constante. */}
+          {yTicks.map(w => (
+            <line key={w} x1={0} y1={yOf(w)} x2={W} y2={yOf(w)} stroke="var(--border)" strokeWidth={1} opacity={0.35} vectorEffect="non-scaling-stroke"/>
+          ))}
 
           {/* Aire séance — dégradé doux */}
           <path d={fillPath} fill="url(#mmpFill)"/>
-          {/* Record All Time — ligne pointillée discrète (pas d'aire, pour rester lisible) */}
+          {/* Record All Time — ligne pointillée discrète */}
           {recPaths && (
-            <path d={recPaths.line} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="5,4"
-              strokeLinecap="round" strokeLinejoin="round" opacity={0.7}/>
+            <path d={recPaths.line} fill="none" stroke="#ef4444" strokeWidth={2} strokeDasharray="6,5"
+              strokeLinecap="round" strokeLinejoin="round" opacity={0.7} vectorEffect="non-scaling-stroke"/>
           )}
           {/* Ligne séance — pleine, lissée */}
-          <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="3"
-            strokeLinecap="round" strokeLinejoin="round"/>
+          <path d={linePath} fill="none" stroke="#6366f1" strokeWidth={3}
+            strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/>
 
-          {/* Marqueurs durées CLÉS (5s, 1', 5', 20', 1h) — point + valeur dans une pastille
-              posée AU-DESSUS du point (jamais sur la ligne, non chevauchante). */}
-          {keyDurIndices.map(i => {
-            const cx = sqrtX(DURATIONS[i])
-            const cy = yOf(mmp[i])
-            const w  = mmp[i]
-            const isBeaten = trophies.some(tr => tr.i === i)
-            const pillW = String(w).length * 8 + 14
-            const pillDy = isBeaten ? -34 : -16   // au-dessus du trophée si record battu
-            return (
-              <g key={`key-${i}`} pointerEvents="none">
-                <circle cx={cx} cy={cy} r={3.5} fill="#6366f1" stroke="var(--bg)" strokeWidth={2} />
-                <g transform={`translate(${cx}, ${cy + pillDy})`}>
-                  <rect x={-pillW / 2} y={-11} width={pillW} height={17} rx={6} fill="var(--bg-card)" stroke="var(--border)" strokeWidth={1} />
-                  <text x={0} y={1.5} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="var(--text)" style={{ fontFamily: 'DM Mono, monospace', fontVariantNumeric: 'tabular-nums' }}>{w}</text>
-                </g>
-              </g>
-            )
-          })}
+          {/* Points sur les durées clés */}
+          {keyDurIndices.map(i => (
+            <circle key={`kp-${i}`} cx={sqrtX(DURATIONS[i])} cy={yOf(mmp[i])} r={4} fill="#6366f1" stroke="var(--bg)" strokeWidth={2} vectorEffect="non-scaling-stroke"/>
+          ))}
 
-          {/* Trophées 🏆 (gold = All Time, cyan = Année) sur la courbe séance */}
-          {trophies.map(({ i, kind }) => {
-            const cx     = sqrtX(DURATIONS[i])
-            const cy     = yOf(mmp[i])
-            const border = kind === 'allTime' ? '#eab308' : '#06B6D4'
-            return (
-              <g key={i} transform={`translate(${cx},${cy - 14})`}>
-                <circle r="9" fill="var(--bg-card)" stroke={border} strokeWidth="1.5"/>
-                <text x={0} y={3} textAnchor="middle" fontSize="10">🏆</text>
-              </g>
-            )
-          })}
-
-          {/* X axis labels in SVG — sqrt-aware spacing */}
-          {DURATIONS.map((d, i) => {
-            const x = sqrtX(d)
-            // Avoid crowding: show label only if enough horizontal room from neighbors
-            if (i > 0 && sqrtX(DURATIONS[i-1]) > x - 28) return null
-            return (
-              <text key={d} x={x} y={H + 14} textAnchor="middle"
-                fontSize={isMobileMmp ? 9 : 8} fill="var(--text-dim)" style={{ fontFamily: 'DM Mono, monospace' }}>
-                {LABELS[i]}
-              </text>
-            )
-          })}
-
+          {/* Curseur + points survolés */}
           {cursorX !== null && (
-            <line x1={cursorX} y1={0} x2={cursorX} y2={H} stroke="var(--border-mid)" strokeWidth="1" strokeDasharray="2 3" opacity={0.7}/>
+            <line x1={cursorX} y1={0} x2={cursorX} y2={H} stroke="var(--border-mid)" strokeWidth={1} strokeDasharray="3 3" opacity={0.8} vectorEffect="non-scaling-stroke"/>
           )}
           {sqrtIdx !== null && (
-            <circle cx={sqrtX(DURATIONS[sqrtIdx])} cy={yOf(mmp[sqrtIdx])} r="4" fill="#6366f1"/>
+            <circle cx={sqrtX(DURATIONS[sqrtIdx])} cy={yOf(mmp[sqrtIdx])} r={5} fill="#6366f1" stroke="#fff" strokeWidth={2} vectorEffect="non-scaling-stroke"/>
           )}
           {sqrtIdx !== null && recordCurve && recordCurve[sqrtIdx] > 0 && (
-            <circle cx={sqrtX(DURATIONS[sqrtIdx])} cy={yOf(recordCurve[sqrtIdx])} r="3.5" fill="#ef4444" opacity="0.8"/>
+            <circle cx={sqrtX(DURATIONS[sqrtIdx])} cy={yOf(recordCurve[sqrtIdx])} r={4.5} fill="#ef4444" stroke="#fff" strokeWidth={2} vectorEffect="non-scaling-stroke"/>
           )}
         </svg>
+
+        {/* ── Calque HTML : texte net (hors du SVG étiré) ── */}
+        {/* Labels Y (gauche) */}
+        {yTicks.map(w => (
+          <span key={`yl-${w}`} style={{ position: 'absolute', right: '100%', marginRight: 8, top: `${(yOf(w) / H) * 100}%`, transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono, monospace', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{w}</span>
+        ))}
+        {/* Trophées 🏆 au-dessus des points battus */}
+        {trophies.map(({ i, kind }) => (
+          <span key={`tr-${i}`} style={{ position: 'absolute', left: `${(sqrtX(DURATIONS[i]) / W) * 100}%`, top: `${(yOf(mmp[i]) / H) * 100}%`, transform: 'translate(-50%, calc(-100% - 4px))', fontSize: 15, lineHeight: 1, filter: `drop-shadow(0 0 1.5px ${kind === 'allTime' ? '#eab308' : '#06B6D4'})`, pointerEvents: 'none' }}>🏆</span>
+        ))}
+        {/* Pastilles valeur (au-dessus des points clés) */}
+        {keyDurIndices.map(i => {
+          const isBeaten = trophies.some(tr => tr.i === i)
+          return (
+            <span key={`vp-${i}`} style={{ position: 'absolute', left: `${(sqrtX(DURATIONS[i]) / W) * 100}%`, top: `${(yOf(mmp[i]) / H) * 100}%`, transform: `translate(-50%, calc(-100% - ${isBeaten ? 26 : 10}px))`, padding: '2px 8px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 5px rgba(0,0,0,0.10)', fontSize: 12, fontWeight: 800, color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{mmp[i]}<span style={{ fontSize: 8.5, fontWeight: 600, opacity: 0.6, marginLeft: 2 }}>W</span></span>
+          )
+        })}
+        {/* Labels X (durées) — sous le graphique, nets et lisibles */}
+        {xLabels.map(({ d, label }) => (
+          <span key={`xl-${d}`} style={{ position: 'absolute', left: `${(sqrtX(d) / W) * 100}%`, top: '100%', marginTop: 7, transform: 'translateX(-50%)', fontSize: 11.5, fontWeight: 600, color: 'var(--text-mid)', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{label}</span>
+        ))}
+        </div>
 
         {/* MMP tooltip — refondu : header large + Séance + Record + Δ + zone FTP */}
         {sqrtIdx !== null && mmpMousePos && (() => {
@@ -1194,6 +1206,7 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
           const isBeat = recW > 0 && sessW > recW
           const zone   = getPowerZone(sessW, ftp ?? null)
           const ftpPct = ftp && ftp > 0 ? Math.round((sessW / ftp) * 100) : null
+          const recDate = recW > 0 ? recordDateFor(DURATIONS[sqrtIdx]) : null
           return (
             <div style={{
               position:      'absolute',
@@ -1241,11 +1254,13 @@ function PowerCurveChart({ watts, activityId, activityDurationS, ftp }: {
                 }}>{sessW} W</span>
               </div>
 
-              {/* Record */}
+              {/* Record + date à laquelle il a été établi */}
               {recW > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444' }} />
-                  <span style={{ flex: 1, color: 'var(--text-dim)', opacity: 0.8 }}>Record</span>
+                  <span style={{ flex: 1, color: 'var(--text-dim)', opacity: 0.8 }}>
+                    Record{recDate ? <span style={{ opacity: 0.7 }}> · {fmtRecordDate(recDate)}</span> : null}
+                  </span>
                   <span style={{
                     color: '#ef4444', fontWeight: 700,
                     fontVariantNumeric: 'tabular-nums', fontSize: 13,

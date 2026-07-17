@@ -127,6 +127,15 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           Démarrer
         </Link>
 
+        {/* Démarrer une activité — à gauche de la cloche (parité avec la barre mobile) */}
+        <Link href="/record" aria-label={t('nav.startActivity')}
+          style={{ ...fab, right: 108, left: 'auto', textDecoration: 'none' }}>
+          <svg width="22" height="22" viewBox="0 0 26 26" fill="none">
+            <circle cx="13" cy="13" r="10" stroke="#06B6D4" strokeWidth="1.7" />
+            <circle cx="13" cy="13" r="5" fill="#06B6D4" />
+          </svg>
+        </Link>
+
         {/* Cloche notifications — ouvre une surpage centrée (sans quitter la page) */}
         <button aria-label={t('shared.notifications')} onClick={() => setNotifOpen(true)}
           style={{ ...fab, right: 62, left: 'auto' }}>

@@ -828,6 +828,37 @@ function sumBlockMinutes(blocks: Block[]): number {
       ? b.reps * (b.effortMin + (b.recoveryMin || 0))
       : (b.durationMin || 0)), 0))
 }
+
+// Première durée d'un fragment texte, en minutes : « 1h », « 1h30 », « 20' », « 90 min ».
+// Ignore les valeurs de puissance/allure (« 210w », « 4:30 ») qui n'ont pas d'unité de temps.
+function firstDurationMin(s: string): number {
+  const h = s.match(/(\d+)\s*h\s*(\d{1,2})?/i)
+  if (h) return (+h[1]) * 60 + (h[2] ? +h[2] : 0)
+  const m = s.match(/(\d+)\s*(?:'|’|min\b)/i)
+  if (m) return +m[1]
+  return 0
+}
+
+// Total (min) d'une description de séance endurance saisie en texte, façon cycliste :
+//   1h@185w
+//   2x20'@210w - récup : 10'@180w   → 2 × (20 + 10) = 60
+//   2x7' - 3'                        → 2 × (7 + 3)  = 14
+// Les intervalles comptent reps × (effort + récup). Robuste aux notations « @…w », « récup : ».
+export function parseSessionTextMinutes(text: string): number {
+  let total = 0
+  for (const raw of text.split('\n')) {
+    const line = raw.trim()
+    if (!line) continue
+    const repsM = line.match(/^\s*(\d+)\s*[x×]/i)
+    const reps = repsM ? parseInt(repsM[1], 10) : 1
+    // « effort - récup » : on coupe au 1er tiret ; tout ce qui suit = récup.
+    const dash = line.split(/[-–]/)
+    const effortMin = firstDurationMin(dash[0])
+    const recMin = dash.length > 1 ? firstDurationMin(dash.slice(1).join(' ')) : 0
+    total += reps > 1 ? reps * (effortMin + recMin) : effortMin + recMin
+  }
+  return Math.round(total)
+}
 // Estimation SM (métabolique) / SN (neuromusculaire) « prévu » depuis les blocs (déterministe,
 // proxy par zone — l'app calcule le réel sur l'activité terminée). Remplace l'ancien TSS.
 const SM_COEF = [0.6, 0.85, 1.05, 1.25, 1.45, 1.55, 1.62]
@@ -6619,6 +6650,13 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                     }}>{t('sed.backToRouteFlow')}</button>
                   )}
                   <div style={{ position: 'relative' as const }}>
+                    {/* Total de séance calculé en direct depuis le texte (endurance) */}
+                    {!isStrength && (() => {
+                      const tot = parseSessionTextMinutes(aiPrompt)
+                      return tot > 0 ? (
+                        <span style={{ position: 'absolute', top: 10, right: 10, zIndex: 3, padding: '3px 10px', borderRadius: 999, background: accent, color: '#fff', fontSize: 11.5, fontWeight: 800, fontFamily: '"DM Mono", monospace', boxShadow: '0 1px 5px rgba(0,0,0,0.18)', pointerEvents: 'none' }}>{formatHM(tot)}</span>
+                      ) : null
+                    })()}
                     <textarea value={aiPrompt}
                       onChange={e => {
                         const val = e.target.value

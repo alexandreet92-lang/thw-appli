@@ -45,6 +45,9 @@ export function durFromDistance(sport: SportType, distanceM: number, paceStr: st
 export function recalc(sport: SportType, b: MBlock): MBlock {
   const nb = { ...b }
   // Tapis : vitesse km/h → distance = vitesse × temps → dénivelé auto (pente %).
+  // La zone est calculée sur la vitesse ÉQUIVALENTE PLAT : courir en pente coûte
+  // bien plus cher (éq. ACSM : v_eq = v·(1 + 4,5·pente)). Ainsi 11 km/h à 10 %
+  // n'est PAS de la Z1 — l'effort réel équivaut à ~16 km/h sur plat.
   if (nb.effortUnit === 'kmh') {
     const kmh = parseFloat(nb.value || '0') || 0
     const isIv = nb.mode === 'interval' && !!nb.reps
@@ -52,7 +55,8 @@ export function recalc(sport: SportType, b: MBlock): MBlock {
     const distM = kmh > 0 ? Math.round((kmh / 3.6) * effMin * 60) : 0
     nb.distanceM = distM
     nb.elevationM = elevationFromIncline(distM, nb.inclinePct ?? 0)
-    if (kmh > 0) nb.zone = getZone(sport, kmhToPace(kmh))
+    const kmhEq = kmh * (1 + 4.5 * Math.max(0, nb.inclinePct ?? 0) / 100)
+    if (kmh > 0) nb.zone = getZone(sport, kmhToPace(kmhEq))
     if (isIv && nb.reps != null) nb.durationMin = nb.reps * ((nb.effortMin ?? 0) + (nb.recoveryMin ?? 0))
     return nb
   }

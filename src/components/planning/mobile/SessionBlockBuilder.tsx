@@ -8,7 +8,7 @@ import { useState, useRef } from 'react'
 import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical } from '@tabler/icons-react'
 import type { SportType, RunningSub } from '@/app/planning/page'
 import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editorial'
-import { toBars, totalMin, totalDistance, newSingle, newInterval, type MBlock } from './blocks'
+import { toBars, totalMin, totalDistance, newSingle, newInterval, recalc, type MBlock, type EffortUnit } from './blocks'
 import { BlockCard } from './BlockCard'
 import { Segmented } from './ui'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
@@ -139,7 +139,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
       const res = await fetch('/api/coach-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [{ role: 'user', content: aiPrompt }], sport }),
+        body: JSON.stringify({ messages: [{ role: 'user', content: aiPrompt }], sport, runningSub }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`)
       const reader = res.body?.getReader()
@@ -167,6 +167,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
       }
       if (!jsonStr) { setAiError(tr('planning.aiInvalidResponse', { r: raw.slice(0, 200) || tr('planning.empty') })); return }
       const parsed = JSON.parse(jsonStr) as Record<string, unknown>[]
+      const isTreadmill = sport === 'run' && runningSub === 'treadmill'
       const newBlocks: MBlock[] = parsed.map((b, i) => {
         const value = String(b.value ?? '')
         const mode = (typeof b.mode === 'string' ? b.mode : 'single') as 'single' | 'interval'
@@ -174,15 +175,23 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
         const effortMin = typeof b.effortMin === 'number' ? b.effortMin : 0
         const recoveryMin = typeof b.recoveryMin === 'number' ? b.recoveryMin : 0
         const durationMin = typeof b.durationMin === 'number' ? b.durationMin : 0
-        const zone = Math.max(1, Math.min(7, typeof b.zone === 'number' ? b.zone : 3))
-        return {
+        const zone = Math.max(1, Math.min(7, typeof b.zone === 'number' && b.zone > 0 ? b.zone : 3))
+        // Tapis : l'IA renvoie vitesse km/h + pente → effortUnit 'kmh', la zone
+        // (et le dénivelé) sont recalculés en tenant compte de la pente.
+        const effortUnit: EffortUnit | undefined = typeof b.effortUnit === 'string'
+          ? (b.effortUnit as EffortUnit)
+          : (isTreadmill ? 'kmh' : undefined)
+        const inclinePct = typeof b.inclinePct === 'number' ? b.inclinePct : (isTreadmill ? 0 : undefined)
+        const base: MBlock = {
           id: `ai_${Date.now()}_${i}`, mode, type: (typeof b.type === 'string' ? b.type : 'effort') as MBlock['type'],
           durationMin: mode === 'interval' ? Math.round(reps * (effortMin + recoveryMin) * 100) / 100 : durationMin,
           zone, value, hrAvg: typeof b.hrAvg === 'string' ? b.hrAvg : '',
           label: typeof b.label === 'string' ? b.label : tr('planning.bloc'),
           reps: reps || undefined, effortMin: effortMin || undefined, recoveryMin: recoveryMin || undefined,
           recoveryZone: typeof b.recoveryZone === 'number' ? b.recoveryZone : 1,
+          effortUnit, inclinePct, inputMode: effortUnit === 'kmh' ? 'time' : undefined,
         }
+        return effortUnit === 'kmh' ? recalc(sport, base) : base
       })
       if (newBlocks.length === 0) { setAiError(tr('planning.aiEmptyArray')); return }
       onChange(newBlocks)

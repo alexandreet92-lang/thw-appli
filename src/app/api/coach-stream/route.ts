@@ -49,9 +49,10 @@ const SESSION_SYSTEM_PROMPT = `Tu es un coach sportif expert. Tu reçois une des
 
 FORMAT ENDURANCE : [{"mode":"single|interval","type":"warmup|effort|recovery|cooldown","label":"Nom","zone":1-5,"value":"watts ou allure","durationMin":nombre,"reps":nombre,"effortMin":nombre,"recoveryMin":nombre,"recoveryZone":1-5,"hrAvg":""}]
 FORMAT MUSCU / HYROX : {"mode":"single","type":"effort|circuit_header","label":"Nom EN ANGLAIS","zone":SÉRIES,"value":"CHARGE_KG","reps":REPS,"durationMin":0,"hrAvg":"","effortMin":0,"recoveryMin":REPOS}
+FORMAT TAPIS (running INDOOR sur tapis) : chaque bloc a "value" = VITESSE en km/h SANS unité (ex "11"), "effortUnit":"kmh", et "inclinePct" = pente % (nombre, 0 si plat). NE convertis JAMAIS la vitesse en allure min/km. Mets "zone":0 → l'app recalcule la zone en tenant compte de la pente (une pente forte rend un bloc intense même à vitesse modérée).
 
 ZONES ENDURANCE : Z1=récup, Z2=endurance, Z3=tempo/SL1, Z4=seuil/SL2, Z5=VO2max/PMA
-INTENSITÉS : VÉLO/ELLIPTIQUE=watts, RUNNING=allure/km, NATATION=allure/100m, AVIRON=allure/500m
+INTENSITÉS : VÉLO/ELLIPTIQUE=watts, RUNNING (extérieur)=allure/km, RUNNING (tapis)=vitesse km/h + pente %, NATATION=allure/100m, AVIRON=allure/500m
 
 MUSCU / HYROX :
 - zone = nombre de SÉRIES (pas une zone cardio)
@@ -74,12 +75,18 @@ RÈGLES CRITIQUES :
 5. Ajouter échauffement (warmup) + retour calme (cooldown) si absents pour l'endurance
 6. Pyramide = un bloc interval par palier (montée + descente séparément)
 7. durationMin d'un interval = reps × (effortMin + recoveryMin)
+8. PRÉFIXE "Nx" / "N tours" / "×N" EN TÊTE d'une LISTE de blocs DIFFÉRENTS (plusieurs lignes = paliers/intensités qui changent) = RÉPÉTER TOUT LE GROUPE N fois, en ALTERNANT les blocs dans l'ordre donné. Tu DÉPLIES le groupe : tu ré-émets la suite complète des blocs N fois d'affilée (single après single). Tu NE mets JAMAIS reps:N sur chaque bloc séparément — ça enchaînerait le MÊME palier N fois de suite (4'+4'+4' puis 2'+2'+2'…), ce qui est FAUX et n'alterne pas. Le "Nx" ne devient un interval (reps:N) QUE si le groupe ne contient qu'UN SEUL type de bloc effort (+éventuelle récup) identique répété.
 
 EXEMPLES ENDURANCE :
 "2x30' (30=5'@250w/5'@220w x3) - 10' récup @170w" →
   interval reps:2 effortMin:30 → DÉCOMPOSÉ en : interval reps:3 effortMin:5 zone:5 value:"250w" / interval reps:3 effortMin:5 zone:4 value:"220w" / single 10' zone:2 value:"170w"
 
 "5×1000m @3:45/km R:90s" → interval reps:5 effortMin:3.75 zone:5 value:"3:45" recoveryMin:1.5 durationMin:26.25
+
+EXEMPLE TAPIS avec GROUPE RÉPÉTÉ (règle 8) — "3x / 4' 6% / 2' 8% / 1' 10% / 2' récup" à 11 km/h →
+  Le "3x" chapeaute un groupe de 4 blocs DIFFÉRENTS (pentes qui changent) → on RÉPÈTE le groupe 3 fois EN ALTERNANT. Résultat = 12 blocs single, dans cet ordre EXACT :
+  single 4' value:"11" effortUnit:"kmh" inclinePct:6 zone:0 / single 2' value:"11" effortUnit:"kmh" inclinePct:8 zone:0 / single 1' value:"11" effortUnit:"kmh" inclinePct:10 zone:0 / single 2' type:"recovery" value:"11" effortUnit:"kmh" inclinePct:0 zone:0 / [PUIS on répète ces 4 blocs une 2ᵉ fois] / [PUIS une 3ᵉ fois]
+  → INTERDIT : mettre reps:3 sur le bloc 4'@6% puis reps:3 sur le 2'@8%… (ça n'alterne pas).
 
 EXEMPLES MUSCU :
 "Bench @60kg + Pull up 12 reps /superset x4" →
@@ -259,8 +266,9 @@ export async function POST(req: NextRequest) {
   // MODE 1 — SESSION PARSER (sport présent, pas d'agentId)
   // ══════════════════════════════════════════════════════════════
   if (body.sport !== undefined && !body.agentId) {
-    const sport    = (body.sport as string) || ''
-    const mode     = (body.mode as string | undefined) || 'session'
+    const sport      = (body.sport as string) || ''
+    const runningSub = (body.runningSub as string | undefined) || ''
+    const mode       = (body.mode as string | undefined) || 'session'
     const messages = body.messages as Array<{ role: string; content: string }> | undefined
     const userMessage = messages?.[0]?.content ?? ''
 
@@ -296,7 +304,9 @@ export async function POST(req: NextRequest) {
         climbCtx = `\n\nPARCOURS : ${parcoursName}${parcoursTotalKm ? ` (${parcoursTotalKm} km)` : ''}\nMontées significatives :\n${climbLines}\n→ Génère des blocs calés sur ces montées. Les descentes/plats entre elles sont inférés automatiquement.`
       }
 
-      const sportCtx = SPORT_CONTEXT[sport] ?? ''
+      const sportCtx = (sport === 'run' && runningSub === 'treadmill')
+        ? 'Sport : Running sur TAPIS (indoor). Intensités en VITESSE km/h — JAMAIS en allure min/km. Chaque bloc peut avoir une PENTE (inclinePct, en %) qui augmente fortement l\'intensité réelle. Utilise le FORMAT TAPIS (value=km/h, effortUnit:"kmh", inclinePct, zone:0).'
+        : (SPORT_CONTEXT[sport] ?? '')
       fullMessage = [sportCtx, climbCtx, `\nSÉANCE DEMANDÉE :\n${userMessage}`]
         .filter(Boolean).join('')
     }

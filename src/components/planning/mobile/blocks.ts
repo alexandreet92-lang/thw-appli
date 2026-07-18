@@ -16,6 +16,12 @@ export function kmhToPace(kmh: number): string {
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
 }
 
+/** Vitesse équivalente plat (km/h) tenant compte de la pente (éq. ACSM :
+ *  courir en pente coûte plus cher — v_eq = v·(1 + 4,5·pente)). */
+export function kmhEquivalent(kmh: number, inclinePct: number): number {
+  return kmh * (1 + 4.5 * Math.max(0, inclinePct || 0) / 100)
+}
+
 export type EffortUnit = 'watts' | 'zone' | 'pace' | 'pctvma' | 'kmh'
 export type InputMode = 'time' | 'distance'
 
@@ -55,8 +61,7 @@ export function recalc(sport: SportType, b: MBlock): MBlock {
     const distM = kmh > 0 ? Math.round((kmh / 3.6) * effMin * 60) : 0
     nb.distanceM = distM
     nb.elevationM = elevationFromIncline(distM, nb.inclinePct ?? 0)
-    const kmhEq = kmh * (1 + 4.5 * Math.max(0, nb.inclinePct ?? 0) / 100)
-    if (kmh > 0) nb.zone = getZone(sport, kmhToPace(kmhEq))
+    if (kmh > 0) nb.zone = getZone(sport, kmhToPace(kmhEquivalent(kmh, nb.inclinePct ?? 0)))
     if (isIv && nb.reps != null) nb.durationMin = nb.reps * ((nb.effortMin ?? 0) + (nb.recoveryMin ?? 0))
     return nb
   }
@@ -101,18 +106,20 @@ export function newInterval(sport: SportType, treadmill = false): MBlock {
   return recalc(sport, base)
 }
 
-export interface Bar { id: string; min: number; zone: number; recovery: boolean; value?: string }
+export interface Bar { id: string; min: number; zone: number; recovery: boolean; value?: string; speedKmhEq?: number }
 /** Aplatit les blocs en barres (1 par effort + 1 par récup d'intervalle). */
 export function toBars(blocks: MBlock[]): Bar[] {
   const out: Bar[] = []
   for (const b of blocks) {
+    // Tapis : hauteur de barre pilotée par la vitesse ÉQUIVALENTE PLAT (pente incluse).
+    const eq = b.effortUnit === 'kmh' ? kmhEquivalent(parseFloat(b.value || '0') || 0, b.inclinePct ?? 0) : undefined
     if (b.mode === 'interval' && b.reps && b.effortMin) {
       for (let r = 0; r < b.reps; r++) {
-        out.push({ id: `${b.id}_e${r}`, min: b.effortMin, zone: b.zone, recovery: false, value: b.value })
+        out.push({ id: `${b.id}_e${r}`, min: b.effortMin, zone: b.zone, recovery: false, value: b.value, speedKmhEq: eq })
         if (b.recoveryMin && b.recoveryMin > 0) out.push({ id: `${b.id}_r${r}`, min: b.recoveryMin, zone: b.recoveryZone ?? 1, recovery: true, value: b.recoveryValue })
       }
     } else {
-      out.push({ id: b.id, min: b.durationMin, zone: b.zone, recovery: false, value: b.value })
+      out.push({ id: b.id, min: b.durationMin, zone: b.zone, recovery: false, value: b.value, speedKmhEq: eq })
     }
   }
   return out

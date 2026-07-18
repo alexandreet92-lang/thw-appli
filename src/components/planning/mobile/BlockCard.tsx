@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { IconDotsVertical, IconCopy, IconTrash } from '@tabler/icons-react'
 import type { SportType, RunningSub } from '@/app/planning/page'
 import { zColor, fmtMMSS, mmssToMin, bumpPaceOrWatts, pctFtp, pctOfThreshold, pctOfCss, type AthleteRefs } from './editorial'
-import { recalc, BLOCK_NAME_KEY, type MBlock } from './blocks'
+import { recalc, kmhEquivalent, BLOCK_NAME_KEY, type MBlock } from './blocks'
 import { Stepper, Segmented, FieldLabel } from './ui'
 import { useI18n } from '@/lib/i18n'
 
@@ -31,19 +31,26 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
 
   const name = b.label || (BLOCK_NAME_KEY[b.type] ? tr(BLOCK_NAME_KEY[b.type]) : '') || (isIv ? tr('planning.interval') : tr('planning.bloc'))
   const z = b.zone
-  // Cible affichée (détail discret)
+  // Vitesse km/h → équivalent plat (pente incluse), pour l'affichage tapis.
+  const kmhVal = parseFloat(b.value || '0') || 0
+  const kmhEq = b.effortUnit === 'kmh' && kmhVal > 0 ? kmhEquivalent(kmhVal, b.inclinePct ?? 0) : 0
+  const fr1 = (n: number) => n.toFixed(1).replace('.', ',')
+  // Cible affichée (détail discret). Tapis : vitesse · pente · équivalent plat.
   const target = sport === 'bike'
     ? (b.value ? `${b.value} W` : `Z${z}`)
     : sport === 'swim'
       ? (b.value ? `${b.value}/100m` : `Z${z}`)
       : b.effortUnit === 'kmh'
-        ? (b.value ? `${b.value} km/h` : `Z${z}`)
+        ? (b.value ? `${b.value} km/h${b.inclinePct ? ` · ${fr1(b.inclinePct)}% · ≈${fr1(kmhEq)} km/h` : ''}` : `Z${z}`)
         : (b.value ? `${b.value}/km` : `Z${z}`)
   const repsLabel = isIv && b.reps ? ` · ${b.reps} × ${b.inputMode === 'distance' && b.distanceM ? `${b.distanceM}m` : fmtMMSS(b.effortMin ?? 0)}` : ''
-  // Valeur de droite : distance (par rép) si mode distance, sinon durée totale
+  // Valeur de droite : distance (par rép) si mode distance, mm:ss si durée
+  // fractionnée (1:30 ≠ « 2 min »), sinon minutes entières.
   const rightVal = b.inputMode === 'distance' && b.distanceM
     ? { num: String(b.distanceM), unit: 'm' }
-    : { num: String(Math.round(b.durationMin)), unit: 'min' }
+    : Number.isInteger(b.durationMin)
+      ? { num: String(b.durationMin), unit: 'min' }
+      : { num: fmtMMSS(b.durationMin), unit: '' }
 
   // ── Champs adaptatifs (dépliés) ─────────────────────────────────
   const effortUnit = b.effortUnit ?? (sport === 'bike' ? 'watts' : isTreadmill ? 'kmh' : 'pace')
@@ -64,7 +71,8 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
     // tapis : vitesse en km/h (priorité) — dérive dénivelé via la pente
     if (sport === 'run' && effortUnit === 'kmh') {
       const kmh = parseFloat(b.value || '0') || 0
-      return <Field label="Vitesse" eq={`Z${z}`}>
+      const eqTxt = b.inclinePct ? `≈ ${fr1(kmhEq)} km/h à plat · Z${z}` : `Z${z}`
+      return <Field label="Vitesse" eq={eqTxt}>
         <Stepper value={b.value} unit="km/h" onChange={v => set({ value: v })}
           onDec={() => set({ value: String(Math.max(0, Math.round((kmh - 0.5) * 10) / 10)) })}
           onInc={() => set({ value: String(Math.round((kmh + 0.5) * 10) / 10) })} />

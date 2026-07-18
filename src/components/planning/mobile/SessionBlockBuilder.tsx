@@ -47,13 +47,17 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
   const refCss = refs.cssSecPer100m ?? 88
   const ZONE_TOPS = sport === 'bike' || sport === 'elliptique'
     ? [0.55, 0.75, 0.87, 1.05, 1.20, 1.50, 1.85]   // % FTP (7 zones)
-    : [0.78, 0.87, 0.94, 1.02, 1.15]               // % allure seuil (5 zones)
-  function barHeightPct(bar: { zone: number; value?: string }): number {
+    : [0.78, 0.87, 0.94, 1.02, 1.35]               // % allure seuil (5 zones — rab Z5 pour différencier les efforts supra-seuil, ex. tapis en pente)
+  function barHeightPct(bar: { zone: number; value?: string; speedKmhEq?: number }): number {
     // ratio intensité / seuil
     let ratio: number | null = null
     if (sport === 'bike' || sport === 'elliptique') {
       const w = parseInt(bar.value ?? '') || 0
       if (w > 0) ratio = w / refFtp
+    } else if (bar.speedKmhEq != null && bar.speedKmhEq > 0) {
+      // Tapis : la barre reflète la vitesse ÉQUIVALENTE PLAT (pente incluse) —
+      // à vitesse égale, plus la pente est forte, plus la barre est haute.
+      ratio = bar.speedKmhEq * refRun / 3600
     } else {
       const p = paceToSec(bar.value ?? '')
       if (!isNaN(p) && p > 0) ratio = (isSwim ? refCss : refRun) / p

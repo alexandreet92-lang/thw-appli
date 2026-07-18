@@ -7,8 +7,16 @@
 // ══════════════════════════════════════════════════════════════════
 import { getZone, type Block, type SportType } from '@/app/planning/page'
 import { paceToSec } from './editorial'
+import { elevationFromIncline } from '../composedSports'
 
-export type EffortUnit = 'watts' | 'zone' | 'pace' | 'pctvma'
+/** km/h → allure « m:ss » /km (pour dériver la zone en mode tapis). */
+export function kmhToPace(kmh: number): string {
+  if (!kmh || kmh <= 0) return ''
+  const sec = Math.round(3600 / kmh)
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
+}
+
+export type EffortUnit = 'watts' | 'zone' | 'pace' | 'pctvma' | 'kmh'
 export type InputMode = 'time' | 'distance'
 
 export type MBlock = Block & {
@@ -36,6 +44,18 @@ export function durFromDistance(sport: SportType, distanceM: number, paceStr: st
 /** Recalcule durationMin / effortMin si le bloc est en mode distance. */
 export function recalc(sport: SportType, b: MBlock): MBlock {
   const nb = { ...b }
+  // Tapis : vitesse km/h → distance = vitesse × temps → dénivelé auto (pente %).
+  if (nb.effortUnit === 'kmh') {
+    const kmh = parseFloat(nb.value || '0') || 0
+    const isIv = nb.mode === 'interval' && !!nb.reps
+    const effMin = isIv ? (nb.effortMin ?? 0) : nb.durationMin
+    const distM = kmh > 0 ? Math.round((kmh / 3.6) * effMin * 60) : 0
+    nb.distanceM = distM
+    nb.elevationM = elevationFromIncline(distM, nb.inclinePct ?? 0)
+    if (kmh > 0) nb.zone = getZone(sport, kmhToPace(kmh))
+    if (isIv && nb.reps != null) nb.durationMin = nb.reps * ((nb.effortMin ?? 0) + (nb.recoveryMin ?? 0))
+    return nb
+  }
   if (nb.inputMode === 'distance' && (sport === 'run' || sport === 'swim')) {
     if (nb.mode === 'interval' && nb.reps) {
       nb.effortMin = durFromDistance(sport, nb.distanceM ?? 0, nb.value)
@@ -55,21 +75,23 @@ export function recalc(sport: SportType, b: MBlock): MBlock {
 }
 
 /** Bloc simple par défaut, calibré par sport (cf. maquettes). */
-export function newSingle(sport: SportType): MBlock {
+export function newSingle(sport: SportType, treadmill = false): MBlock {
   const base: MBlock = { id: uid(), mode: 'single', type: 'effort', durationMin: 20, zone: 2, value: '', hrAvg: '', label: 'Bloc' }
   if (sport === 'bike') return recalc(sport, { ...base, value: '190', effortUnit: 'watts', durationMin: 30 })
+  if (sport === 'run' && treadmill) return recalc(sport, { ...base, inputMode: 'time', value: '10', durationMin: 15, effortUnit: 'kmh', inclinePct: 0 })
   if (sport === 'run') return recalc(sport, { ...base, inputMode: 'time', value: '5:30', durationMin: 15, effortUnit: 'pace' })
   if (sport === 'swim') return recalc(sport, { ...base, inputMode: 'distance', distanceM: 400, value: '2:10', effortUnit: 'pace' })
   return recalc(sport, base)
 }
 
 /** Bloc intervalle / série par défaut, calibré par sport. */
-export function newInterval(sport: SportType): MBlock {
+export function newInterval(sport: SportType, treadmill = false): MBlock {
   const base: MBlock = {
     id: uid(), mode: 'interval', type: 'effort', durationMin: 0, zone: 5, value: '', hrAvg: '', label: '',
     reps: 6, effortMin: 1, recoveryMin: 1, recoveryZone: 1, recoveryValue: '',
   }
   if (sport === 'bike') return recalc(sport, { ...base, reps: 10, effortMin: 0.5, value: '360', effortUnit: 'watts', recoveryValue: '150', recoveryMin: 1 })
+  if (sport === 'run' && treadmill) return recalc(sport, { ...base, inputMode: 'time', value: '15', effortMin: 1, effortUnit: 'kmh', inclinePct: 0, recoveryMin: 1.5, recoveryStyle: 'trot' })
   if (sport === 'run') return recalc(sport, { ...base, inputMode: 'distance', distanceM: 800, value: '3:45', effortUnit: 'pace', recoveryMin: 1.5, recoveryStyle: 'trot' })
   if (sport === 'swim') return recalc(sport, { ...base, inputMode: 'distance', distanceM: 100, reps: 8, zone: 4, value: '1:35', effortUnit: 'pace', nage: 'Crawl', recoveryMin: 0.25 })
   return recalc(sport, base)

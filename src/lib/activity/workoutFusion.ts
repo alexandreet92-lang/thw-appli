@@ -36,7 +36,8 @@ export function useLinkedWorkoutSession(
 ) {
   const [session, setSession] = useState<LinkedWorkout | null>(null)
   const [loaded, setLoaded] = useState(false)
-  const isGymLike = activity.sport_type === 'gym' || activity.sport_type === 'hyrox'
+  // Sports enregistrés in-app pouvant être fusionnés avec l'activité montre (pour la FC).
+  const isGymLike = ['gym', 'hyrox', 'hybrid', 'boxe'].includes(activity.sport_type)
   const providerId = typeof activity.provider_id === 'string' ? activity.provider_id : null
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export function useLinkedWorkoutSession(
         const hi = new Date(t + WINDOW_MS).toISOString()
         const { data: cands } = await sb.from('workout_sessions')
           .select(FIELDS)
-          .in('sport', ['gym', 'hyrox'])
+          .in('sport', ['gym', 'hyrox', 'hybrid', 'boxe'])
           .is('strava_activity_id', null)
           .gte('started_at', lo).lte('started_at', hi)
         const best = (cands as LinkedWorkout[] | null)?.slice().sort((a, b) =>

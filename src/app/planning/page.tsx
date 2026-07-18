@@ -135,6 +135,8 @@ export interface TrainingActivity {
 export interface Block {
   id:string; mode:BlockMode; type:BlockType; durationMin:number; zone:number; value:string; hrAvg:string; label:string
   reps?:number; effortMin?:number; recoveryMin?:number; recoveryZone?:number; recoveryValue?:string
+  // Tapis (running indoor) — pente % → dénivelé auto (m)
+  inclinePct?: number; elevationM?: number
   // Terrain planning — km sur le parcours (overlay ElevationChart)
   _startKm?: number; _endKm?: number
 }

@@ -6,7 +6,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useState, useRef } from 'react'
 import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical } from '@tabler/icons-react'
-import type { SportType } from '@/app/planning/page'
+import type { SportType, RunningSub } from '@/app/planning/page'
 import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editorial'
 import { toBars, totalMin, totalDistance, newSingle, newInterval, type MBlock } from './blocks'
 import { BlockCard } from './BlockCard'
@@ -15,8 +15,8 @@ import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import type { PanelParcours } from './panelProps'
 import { useI18n } from '@/lib/i18n'
 
-export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, refs, parcoursData, builderTab, onBuilderTab }: {
-  sport: SportType; accent: string; blocks: MBlock[]; onChange: (b: MBlock[]) => void
+export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChange, sm, sn, refs, parcoursData, builderTab, onBuilderTab }: {
+  sport: SportType; runningSub?: RunningSub; accent: string; blocks: MBlock[]; onChange: (b: MBlock[]) => void
   sm: number; sn: number; refs: AthleteRefs; parcoursData?: PanelParcours
   builderTab: 'manual' | 'ai'; onBuilderTab: (t: 'manual' | 'ai') => void
 }) {
@@ -249,7 +249,7 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
               <IconGripVertical size={16} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <BlockCard block={b} sport={sport} accent={accent} refs={refs}
+              <BlockCard block={b} sport={sport} runningSub={runningSub} accent={accent} refs={refs}
                 expanded={openId === b.id} onToggle={() => setOpenId(id => id === b.id ? null : b.id)}
                 onChange={update} onRemove={() => remove(b.id)} onDuplicate={() => duplicate(b.id)} />
             </div>
@@ -259,8 +259,8 @@ export function SessionBlockBuilder({ sport, accent, blocks, onChange, sm, sn, r
 
       {/* Boutons d'ajout */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <button type="button" onClick={() => add(newSingle(sport))} style={addBtn}><IconPlus size={15} /> {tr('planning.simpleBlock')}</button>
-        <button type="button" onClick={() => add(newInterval(sport))} style={addBtn}><IconRefresh size={15} /> {isSwim ? tr('planning.series') : tr('planning.interval')}</button>
+        <button type="button" onClick={() => add(newSingle(sport, runningSub === 'treadmill'))} style={addBtn}><IconPlus size={15} /> {tr('planning.simpleBlock')}</button>
+        <button type="button" onClick={() => add(newInterval(sport, runningSub === 'treadmill'))} style={addBtn}><IconRefresh size={15} /> {isSwim ? tr('planning.series') : tr('planning.interval')}</button>
       </div>
 
       {/* IA : champ d'écriture → génération des blocs d'intensité */}

@@ -7,7 +7,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { useState } from 'react'
 import { IconDotsVertical, IconCopy, IconTrash } from '@tabler/icons-react'
-import type { SportType } from '@/app/planning/page'
+import type { SportType, RunningSub } from '@/app/planning/page'
 import { zColor, fmtMMSS, mmssToMin, bumpPaceOrWatts, pctFtp, pctOfThreshold, pctOfCss, type AthleteRefs } from './editorial'
 import { recalc, BLOCK_NAME_KEY, type MBlock } from './blocks'
 import { Stepper, Segmented, FieldLabel } from './ui'
@@ -18,14 +18,15 @@ function pctVmaToZone(p: number): number {
   if (p < 102) return 4; if (p < 110) return 5; if (p < 120) return 6; return 7
 }
 
-export function BlockCard({ block: b, sport, accent, refs, expanded, onToggle, onChange, onRemove, onDuplicate }: {
-  block: MBlock; sport: SportType; accent: string; refs: AthleteRefs
+export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded, onToggle, onChange, onRemove, onDuplicate }: {
+  block: MBlock; sport: SportType; runningSub?: RunningSub; accent: string; refs: AthleteRefs
   expanded: boolean; onToggle: () => void
   onChange: (b: MBlock) => void; onRemove: () => void; onDuplicate: () => void
 }) {
   const { t: tr } = useI18n()
   const [menu, setMenu] = useState(false)
   const isIv = b.mode === 'interval'
+  const isTreadmill = sport === 'run' && runningSub === 'treadmill'
   const set = (patch: Partial<MBlock>) => onChange(recalc(sport, { ...b, ...patch }))
 
   const name = b.label || (BLOCK_NAME_KEY[b.type] ? tr(BLOCK_NAME_KEY[b.type]) : '') || (isIv ? tr('planning.interval') : tr('planning.bloc'))
@@ -35,7 +36,9 @@ export function BlockCard({ block: b, sport, accent, refs, expanded, onToggle, o
     ? (b.value ? `${b.value} W` : `Z${z}`)
     : sport === 'swim'
       ? (b.value ? `${b.value}/100m` : `Z${z}`)
-      : (b.value ? `${b.value}/km` : `Z${z}`)
+      : b.effortUnit === 'kmh'
+        ? (b.value ? `${b.value} km/h` : `Z${z}`)
+        : (b.value ? `${b.value}/km` : `Z${z}`)
   const repsLabel = isIv && b.reps ? ` · ${b.reps} × ${b.inputMode === 'distance' && b.distanceM ? `${b.distanceM}m` : fmtMMSS(b.effortMin ?? 0)}` : ''
   // Valeur de droite : distance (par rép) si mode distance, sinon durée totale
   const rightVal = b.inputMode === 'distance' && b.distanceM
@@ -43,7 +46,7 @@ export function BlockCard({ block: b, sport, accent, refs, expanded, onToggle, o
     : { num: String(Math.round(b.durationMin)), unit: 'min' }
 
   // ── Champs adaptatifs (dépliés) ─────────────────────────────────
-  const effortUnit = b.effortUnit ?? (sport === 'bike' ? 'watts' : 'pace')
+  const effortUnit = b.effortUnit ?? (sport === 'bike' ? 'watts' : isTreadmill ? 'kmh' : 'pace')
   const distMode = b.inputMode === 'distance'
 
   const eqWatts = sport === 'bike' && effortUnit === 'watts' ? pctFtp(parseInt(b.value || '0') || 0, refs) : null
@@ -57,6 +60,15 @@ export function BlockCard({ block: b, sport, accent, refs, expanded, onToggle, o
         : <Field label={tr('planning.watts')} eq={eqWatts != null ? `≈ ${eqWatts}% FTP · Z${z}` : `Z${z}`}>
             <Stepper value={b.value} unit="W" onChange={v => set({ value: v })} onDec={() => set({ value: String(Math.max(0, (parseInt(b.value || '0') || 0) - 5)) })} onInc={() => set({ value: String((parseInt(b.value || '0') || 0) + 5) })} />
           </Field>
+    }
+    // tapis : vitesse en km/h (priorité) — dérive dénivelé via la pente
+    if (sport === 'run' && effortUnit === 'kmh') {
+      const kmh = parseFloat(b.value || '0') || 0
+      return <Field label="Vitesse" eq={`Z${z}`}>
+        <Stepper value={b.value} unit="km/h" onChange={v => set({ value: v })}
+          onDec={() => set({ value: String(Math.max(0, Math.round((kmh - 0.5) * 10) / 10)) })}
+          onInc={() => set({ value: String(Math.round((kmh + 0.5) * 10) / 10) })} />
+      </Field>
     }
     // course / natation : allure
     if (sport === 'run' && effortUnit === 'pctvma') {
@@ -129,17 +141,26 @@ export function BlockCard({ block: b, sport, accent, refs, expanded, onToggle, o
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{isIv ? (sport === 'swim' ? tr('planning.series') : tr('planning.interval')) : tr('planning.effort')}</span>
             {sport === 'bike' && <Segmented accent={accent} value={effortUnit === 'zone' ? 'zone' : 'watts'} onChange={u => set({ effortUnit: u })} options={[{ key: 'watts', label: tr('planning.watts') }, { key: 'zone', label: tr('planning.zone') }]} />}
-            {sport === 'run' && <Segmented accent={accent} value={effortUnit === 'pctvma' ? 'pctvma' : 'pace'} onChange={u => set({ effortUnit: u })} options={[{ key: 'pace', label: tr('planning.pace') }, { key: 'pctvma', label: '%VMA' }]} />}
+            {sport === 'run' && (isTreadmill
+              ? <Segmented accent={accent} value={effortUnit === 'pctvma' ? 'pctvma' : effortUnit === 'pace' ? 'pace' : 'kmh'} onChange={u => set({ effortUnit: u, value: '' })} options={[{ key: 'kmh', label: 'km/h' }, { key: 'pace', label: tr('planning.pace') }, { key: 'pctvma', label: '%VMA' }]} />
+              : <Segmented accent={accent} value={effortUnit === 'pctvma' ? 'pctvma' : 'pace'} onChange={u => set({ effortUnit: u })} options={[{ key: 'pace', label: tr('planning.pace') }, { key: 'pctvma', label: '%VMA' }]} />)}
             {sport === 'swim' && showDistToggle && <Segmented accent={accent} value={distMode ? 'distance' : 'time'} onChange={m => set({ inputMode: m })} options={[{ key: 'distance', label: tr('planning.distance') }, { key: 'time', label: tr('planning.time') }]} />}
           </div>
 
           <div className="se-fgrid">
             {isIv && <Field label={tr('planning.reps')}><Stepper value={String(b.reps ?? 1)} onChange={v => set({ reps: Math.max(1, parseInt(v) || 1) })} onDec={() => set({ reps: Math.max(1, (b.reps ?? 1) - 1) })} onInc={() => set({ reps: (b.reps ?? 1) + 1 })} /></Field>}
             {amountField()}
-            {!isIv && sport !== 'bike' && showDistToggle && (
+            {!isIv && sport !== 'bike' && showDistToggle && !(isTreadmill && effortUnit === 'kmh') && (
               <Field label={tr('planning.mode')}><Segmented accent={accent} value={distMode ? 'distance' : 'time'} onChange={m => set({ inputMode: m })} options={[{ key: 'distance', label: tr('planning.distance') }, { key: 'time', label: tr('planning.time') }]} /></Field>
             )}
             {effortField()}
+            {isTreadmill && (
+              <Field label="Pente" eq={(b.elevationM ?? 0) > 0 ? `D+ ${b.elevationM} m` : undefined}>
+                <Stepper value={String(b.inclinePct ?? 0)} unit="%" onChange={v => set({ inclinePct: Math.max(0, parseFloat(v.replace(',', '.')) || 0) })}
+                  onDec={() => set({ inclinePct: Math.max(0, Math.round(((b.inclinePct ?? 0) - 0.5) * 10) / 10) })}
+                  onInc={() => set({ inclinePct: Math.round(((b.inclinePct ?? 0) + 0.5) * 10) / 10 })} />
+              </Field>
+            )}
             {sport === 'swim'
               ? <Field label={tr('planning.stroke')} opt><Segmented accent={accent} value={(b.nage ?? 'Crawl') as 'Crawl'} onChange={n => set({ nage: n })} options={[{ key: 'Crawl', label: 'Crawl' }, { key: 'Dos', label: 'Dos' }]} /></Field>
               : <Field label={tr('planning.targetHr')} opt><Stepper value={b.hrAvg} unit="bpm" placeholder="—" onChange={v => set({ hrAvg: v })} onDec={() => set({ hrAvg: String(Math.max(0, (parseInt(b.hrAvg || '0') || 0) - 1)) })} onInc={() => set({ hrAvg: String((parseInt(b.hrAvg || '0') || 0) + 1) })} /></Field>}

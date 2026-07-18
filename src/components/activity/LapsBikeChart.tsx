@@ -271,7 +271,7 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
         {/* Average watts line */}
         {avgY !== null && (
           <line x1={PAD_L} y1={avgY} x2={PAD_L + innerW} y2={avgY}
-            stroke="#475569" strokeWidth="1" strokeDasharray="4 3"
+            stroke="var(--border-mid)" strokeWidth="1" strokeDasharray="4 3"
             vectorEffect="non-scaling-stroke" />
         )}
 

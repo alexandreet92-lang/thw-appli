@@ -7860,25 +7860,27 @@ conseil pour la prochaine séance similaire.`
                 pointillée, clic → panneau détail). Même composant que celui
                 rendu sous la courbe MMP sur desktop.
                Pour les sports sans watts (run, swim, gym) : fallback tableau. */}
-            {a.laps && a.laps.length > 1 && (
-              <Section title={`Intervalles — ${a.laps.length} tours`}>
-                {isBike && a.streams?.watts && a.streams.watts.length >= 2 ? (
-                  <>
-                    <LapsBikeChart
-                      activityId={a.id}
-                      cachedLaps={a.laps}
-                      avgWatts={a.avg_watts}
-                      streams={a.streams}
-                      ftp={bikeZoneRow?.ftp_watts ?? null}
-                      onLapTap={i => {
+            {/* LAPS vélo — IDENTIQUE au desktop : on monte le composant, qui va
+                CHERCHER les laps lui-même (self-fetch + cache) et se masque seul
+                s'il n'y a qu'un tour. Plus de garde `a.laps.length > 1` en amont :
+                c'était la cause du graphe manquant sur mobile (les laps n'étant
+                jamais re-fetchés après ouverture de la fiche). */}
+            {isBike && a.streams?.watts && a.streams.watts.length >= 2 && (
+              <LapsBikeChart
+                activityId={a.id}
+                cachedLaps={a.laps}
+                avgWatts={a.avg_watts}
+                streams={a.streams}
+                ftp={bikeZoneRow?.ftp_watts ?? null}
+                onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
+              />
+            )}
 
-                        console.log('[LAPS-FORCE] Callback page reçue, ouvre la vue pour lap', i)
-                        setLapsViewInitial(i)
-                        setLapsViewOpen(true)
-                      }}
-                    />
-                  </>
-                ) : isRun ? (
+            {/* LAPS course + tableau de repli — nécessitent des laps déjà présents.
+                Exclut le cas vélo-avec-watts déjà couvert au-dessus (pas de doublon). */}
+            {a.laps && a.laps.length > 1 && !(isBike && a.streams?.watts && a.streams.watts.length >= 2) && (
+              <Section title={`Intervalles — ${a.laps.length} tours`}>
+                {isRun ? (
                   <RunningLapsSection
                     activityId={a.id}
                     cachedLaps={a.laps}

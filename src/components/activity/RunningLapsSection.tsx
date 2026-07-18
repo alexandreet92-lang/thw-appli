@@ -111,7 +111,7 @@ export function RunningLapsSection({ activityId, cachedLaps, streams, avgSpeedMs
 
       <svg viewBox={`0 0 ${VBW} ${SVG_H}`} style={{ width: '100%', height: 'auto', display: 'block', touchAction: 'manipulation' }} preserveAspectRatio="xMidYMid meet">
         {avgY !== null && (
-          <line x1={4} y1={avgY} x2={VBW - 4} y2={avgY} stroke="#475569" strokeWidth="1" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" />
+          <line x1={4} y1={avgY} x2={VBW - 4} y2={avgY} stroke="var(--border-mid)" strokeWidth="1" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" />
         )}
         {laps.map((l, i) => {
           const sp = speeds[i]
@@ -145,7 +145,7 @@ export function RunningLapsSection({ activityId, cachedLaps, streams, avgSpeedMs
       <div style={{ display: 'flex', gap: 16, margin: '6px 0 14px', fontSize: 10, color: 'var(--text-dim)' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: GREEN }} />{t('activities.paceLegend')}</span>
         {hasHr && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 2, background: '#64748b' }} />{t('activities.hrAvgDot')}</span>}
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 2, background: '#475569', borderTop: '1px dashed' }} />{t('activities.avgPaceLegend')} {avgPace > 0 ? `${formatPace(avgPace)}/km` : ''}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 2, background: 'var(--border-mid)', borderTop: '1px dashed' }} />{t('activities.avgPaceLegend')} {avgPace > 0 ? `${formatPace(avgPace)}/km` : ''}</span>
       </div>
 
       {/* Tableau détaillé */}

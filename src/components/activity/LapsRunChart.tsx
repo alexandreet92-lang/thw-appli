@@ -181,7 +181,7 @@ export function LapsRunChart({ activityId, cachedLaps, avgSpeedMs, onLapTap }: P
           <text x={8} y={PAD_T + CH / 2} textAnchor="middle" fontSize="8" fill="var(--text-dim)" transform={`rotate(-90, 8, ${PAD_T + CH / 2})`}>min/km</text>
 
           {avgY !== null && (
-            <line x1={PAD_L} y1={avgY} x2={PAD_L + innerW} y2={avgY} stroke="#475569" strokeWidth="1" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" />
+            <line x1={PAD_L} y1={avgY} x2={PAD_L + innerW} y2={avgY} stroke="var(--border-mid)" strokeWidth="1" strokeDasharray="4 3" vectorEffect="non-scaling-stroke" />
           )}
 
           {laps.map((lap, i) => {

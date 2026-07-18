@@ -150,7 +150,7 @@ export function LapsChart({ laps, streams, avgWatts, hoveredLap, onHoverLap }: P
         {/* Average watts horizontal dashed line */}
         {avgY !== null && (
           <line x1={0} y1={avgY} x2={W} y2={avgY}
-            stroke="#475569" strokeWidth="1" strokeDasharray="4 3" />
+            stroke="var(--border-mid)" strokeWidth="1" strokeDasharray="4 3" />
         )}
       </svg>
 

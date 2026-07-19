@@ -204,7 +204,6 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
             const dists = laps.map((_, i) => Math.abs(xs[i] + widths[i] / 2 - xViewBox))
             lapIdx = dists.indexOf(Math.min(...dists))
           }
-          console.log('[LAPS] Click (mouse) idx:', lapIdx)
           if (lapIdx >= 0) onLapTap?.(lapIdx)
         }}
         onTouchEnd={e => {
@@ -224,7 +223,6 @@ export function LapsBikeChart({ activityId, cachedLaps, avgWatts, ftp, onLapTap 
             const dists = laps.map((_, i) => Math.abs(xs[i] + widths[i] / 2 - xViewBox))
             lapIdx = dists.indexOf(Math.min(...dists))
           }
-          console.log('[LAPS] TouchEnd (mobile) idx:', lapIdx)
           if (lapIdx >= 0) onLapTap?.(lapIdx)
         }}
         style={{

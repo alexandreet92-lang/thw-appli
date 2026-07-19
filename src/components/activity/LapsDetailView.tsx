@@ -547,14 +547,6 @@ export function LapsDetailView(props: LapsDetailViewProps) {
   // Valeur d'un tour pilotant la hauteur des barres : vitesse (run) ou watts (vélo).
   const metricOf = (l: LapData): number => isRun ? lapSpeedMs(l) : (l.avg_watts ?? 0)
 
-
-  console.log('[LAPS-FORCE] LapsDetailView render, props:', {
-    open, initialActiveLap,
-    lapsCount: laps?.length ?? 0,
-    hasStreams: !!streams,
-    hasAltitude: !!streams?.altitude,
-  })
-
   // Dark mode detection (best-effort, recompute au mount)
   const [isDark, setIsDark] = useState(false)
   useEffect(() => {
@@ -676,7 +668,10 @@ export function LapsDetailView(props: LapsDetailViewProps) {
       `}</style>
       <div
         style={{
-          position: 'fixed', inset: 0, zIndex: 1000,
+          // z-index 3000 : DOIT passer au-dessus de la fiche activité mobile
+          // plein écran (portal body, z-index 2000). Sinon la vue détaillée du
+          // tour s'ouvrait DERRIÈRE la fiche sur mobile → tap sans effet visible.
+          position: 'fixed', inset: 0, zIndex: 3000,
           background: 'var(--bg)',
           display: 'flex', flexDirection: 'column',
           animation: `${closing ? 'lapsViewOut 0.32s cubic-bezier(0.4,0,0.2,1) forwards' : 'lapsViewIn 0.3s cubic-bezier(0.4,0,0.2,1)'}`,
@@ -804,10 +799,7 @@ export function LapsDetailView(props: LapsDetailViewProps) {
                   return (
                     <button
                       key={i}
-                      onClick={() => {
-                        console.log('[LAPS] Tap sur barre index:', i)
-                        setActiveLap(i)
-                      }}
+                      onClick={() => setActiveLap(i)}
                       aria-label={`Tour ${i + 1}`}
                       style={{
                         // Hit target : couvre TOUTE la hauteur de la colonne (240 px)

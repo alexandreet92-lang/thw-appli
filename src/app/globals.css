@@ -6,9 +6,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&family=Nunito:wght@700&family=Barlow+Condensed:wght@600;700&family=Bebas+Neue&family=Roboto+Mono:wght@700&display=swap');
 @import 'leaflet/dist/leaflet.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4 : le package installé est @tailwindcss/postcss v4, mais le projet
+   utilisait encore les directives v3 (@tailwind base/components/utilities) SANS
+   charger le thème v4 → aucun breakpoint défini → les variants responsive
+   (md:, lg:…) n'étaient jamais générés. Résultat : `hidden md:flex` restait en
+   display:none sur ordinateur (DesktopShell entièrement masqué), et `md:hidden`
+   ne masquait pas le MobileShell. On charge donc Tailwind v4 correctement
+   (thème + breakpoints par défaut) tout en conservant la config JS existante
+   (couleurs brand, polices, darkMode class…) via @config. */
+@import 'tailwindcss';
+@config '../../tailwind.config.js';
 
 @keyframes scale-in {
   from { transform: scale(0.9); opacity: 0; }

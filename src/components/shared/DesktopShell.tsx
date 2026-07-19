@@ -118,7 +118,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
             gauche de la cloche (CTA plein, se distingue des fabs en verre). */}
         <Link href="/record" aria-label="Démarrer une séance"
           style={{
-            position: 'fixed', top: 12, right: 108, height: 38, zIndex: 120,
+            position: 'fixed', top: 12, right: 108, height: 38, zIndex: 130,
             display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px', borderRadius: 12,
             background: 'var(--primary)', color: 'var(--on-primary)', textDecoration: 'none',
             boxShadow: 'var(--shadow-card)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,

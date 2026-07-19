@@ -7944,6 +7944,24 @@ conseil pour la prochaine séance similaire.`
       </div>
 
       {sharedModals}
+
+      {/* Vue détaillée des laps (slide droite, portal sur body) — AUSSI sur
+          mobile : sans ça, taper un tour changeait l'état sans rien afficher. */}
+      <LapsDetailView
+        open={lapsViewOpen}
+        onClose={() => setLapsViewOpen(false)}
+        initialActiveLap={lapsViewInitial}
+        laps={a.laps ?? []}
+        streams={a.streams ?? null}
+        sportLabel={sportLabel(a.sport_type, t)}
+        totalDistanceM={a.distance_m ?? null}
+        totalDurationS={a.moving_time_s ?? null}
+        ftp={bikeZoneRow?.ftp_watts ?? null}
+        bikeZones={bikeZones}
+        hrZones={hrZones}
+        maxHrEst={estimateMaxHr(profile.birth_date)}
+        sport={isRun ? 'running' : 'cycling'}
+      />
     </>
   ), document.body) : (
     /* ══════════════════════════════════════════

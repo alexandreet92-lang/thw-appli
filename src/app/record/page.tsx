@@ -28,8 +28,10 @@ const SkiScreen        = dynamic(() => import('@/components/record/SkiScreen'), 
 const PadelForm        = dynamic(() => import('@/components/record/PadelForm'),        { ssr: false })
 const OpenWaterScreen  = dynamic(() => import('@/components/record/OpenWaterScreen'), { ssr: false })
 const HomeTrainerScreen = dynamic(() => import('@/components/record/ride/RideScreen'), { ssr: false })
+const TreadmillScreen  = dynamic(() => import('@/components/record/treadmill/TreadmillScreen'), { ssr: false })
+const ManualActivityForm = dynamic(() => import('@/components/record/ManualActivityForm'), { ssr: false })
 
-type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout' | 'ski' | 'yoga' | 'padel' | 'openwater' | 'hometrainer'
+type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout' | 'ski' | 'yoga' | 'padel' | 'openwater' | 'hometrainer' | 'treadmill'
 
 interface ActiveRoute {
   snapped_points: { lat: number; lng: number }[]
@@ -66,6 +68,10 @@ export default function RecordPage() {
   const [boxeConfig, setBoxeConfig] = useState<import('@/components/record/BoxeScreen').BoxeConfig | null>(null)
   const [yogaExercises, setYogaExercises] = useState<import('@/types/yoga').YogaSessionExercise[]>([])
   const [yogaTitle, setYogaTitle] = useState('')
+  // Course à pied : choix Dehors (GPS) / Tapis (séance guidée) avant de lancer.
+  const [runChoiceOpen, setRunChoiceOpen] = useState(false)
+  // Création manuelle d'activité (tous sports).
+  const [manualOpen, setManualOpen] = useState(false)
 
   // Sheet du bas (façon Strava) : replié = 3 boutons ; déplié = paramètres.
   // Drag qui suit le doigt en temps réel (hauteur pilotée en DOM, 0 re-render).
@@ -128,7 +134,7 @@ export default function RecordPage() {
 
   const handleStart = () => {
     if (sport === 'cycling') setView('cycling')
-    else if (sport === 'running') setView('running')
+    else if (sport === 'running') setRunChoiceOpen(true)   // Dehors ou Tapis ?
     else if (sport === 'trail')   setView('trail')
     else if (sport === 'hiking')  setView('hiking')
     else if (sport === 'mtb')     setView('mtb')
@@ -162,6 +168,18 @@ export default function RecordPage() {
       <>
         <RunningScreen
           route={activeRoute}
+          onExit={() => setView('home')}
+          onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
+        />
+        {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+      </>
+    )
+  }
+
+  if (view === 'treadmill') {
+    return (
+      <>
+        <TreadmillScreen
           onExit={() => setView('home')}
           onFinished={() => { setToast(t('record.pageWorkoutSaved')); setView('home') }}
         />
@@ -451,6 +469,7 @@ export default function RecordPage() {
         onClose={() => setSportSheetOpen(false)}
         onSelect={handleSelectSport}
         selectedSport={sport}
+        onManual={() => setManualOpen(true)}
       />
 
       {routeCreatorOpen && (
@@ -513,6 +532,38 @@ export default function RecordPage() {
           config={boxeConfig}
           isDark={isDark}
           onClose={() => setBoxeConfig(null)}
+        />
+      )}
+
+      {/* Course à pied : choix Dehors (GPS) ou Tapis (séance guidée) */}
+      {runChoiceOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10040, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={() => setRunChoiceOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'relative', width: '100%', maxWidth: 520, background: 'var(--bg-card)', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: '18px 18px calc(env(safe-area-inset-bottom) + 20px)', color: 'var(--text)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+              <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
+            </div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, margin: '0 0 14px' }}>Course à pied</h2>
+            {[
+              { id: 'outdoor', label: 'Dehors', desc: 'Suivi GPS en extérieur', go: () => { setRunChoiceOpen(false); setView('running') } },
+              { id: 'treadmill', label: 'Tapis', desc: 'Séance guidée · allure & pente', go: () => { setRunChoiceOpen(false); setView('treadmill') } },
+            ].map(o => (
+              <button key={o.id} onClick={o.go} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 14, padding: '16px', marginBottom: 10, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 14, cursor: 'pointer', textAlign: 'left', color: 'var(--text)', fontFamily: 'var(--font-body)' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700 }}>{o.label}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 2 }}>{o.desc}</div>
+                </div>
+                <span style={{ fontSize: 20, color: 'var(--text-dim)' }}>›</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {manualOpen && (
+        <ManualActivityForm
+          onClose={() => setManualOpen(false)}
+          onSaved={() => setToast(t('record.pageWorkoutSaved'))}
         />
       )}
 

@@ -140,9 +140,10 @@ interface Props {
   onClose: () => void
   selectedSport: SportId
   onSelect: (sport: SportId) => void
+  onManual?: () => void
 }
 
-export default function SportSelector({ open, onClose, selectedSport, onSelect }: Props) {
+export default function SportSelector({ open, onClose, selectedSport, onSelect, onManual }: Props) {
   const { t } = useI18n()
   const [closing, setClosing] = useState(false)
   const [search, setSearch] = useState('')
@@ -332,6 +333,24 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect }
             </p>
           )}
         </div>
+
+        {/* Créer une activité manuellement (tous sports) */}
+        {onManual && (
+          <div style={{ padding: '10px 16px calc(env(safe-area-inset-bottom) + 14px)', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+            <button
+              onClick={() => { handleClose(); onManual() }}
+              style={{
+                width: '100%', height: 46, borderRadius: 12,
+                background: 'var(--bg-card2)', border: '1px solid var(--border)',
+                color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              {t('record.sportSelectorManual') || 'Créer une activité manuellement'}
+            </button>
+          </div>
+        )}
       </div>
       <style>{`
         @keyframes sportsel-fade-in  { from { opacity: 0 } to { opacity: 1 } }

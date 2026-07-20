@@ -37,20 +37,24 @@ interface SportDef {
   builderSport?: SportType   // sport passé au builder planning (trail→run…)
   deniv?: boolean            // champ dénivelé disponible
 }
+// `sportType` = valeur pour activities.sport_type. DOIT appartenir à la contrainte
+// CHECK de la table : run|trail_run|bike|virtual_bike|swim|open_water_swim|rowing|
+// hyrox|triathlon|duathlon|aquathlon|gym|crossfit|hiit|yoga|ski|other. Les sports
+// non couverts retombent sur 'other'. workout_sessions.sport (libre) garde l'id.
 const SPORTS: SportDef[] = [
-  { id: 'running',  label: 'Course à pied', sportType: 'running',   mode: 'endurance', builderSport: 'run',        deniv: true },
-  { id: 'cycling',  label: 'Vélo',          sportType: 'cycling',    mode: 'endurance', builderSport: 'bike',       deniv: true },
-  { id: 'swimming', label: 'Natation',      sportType: 'swimming',   mode: 'endurance', builderSport: 'swim' },
+  { id: 'running',  label: 'Course à pied', sportType: 'run',        mode: 'endurance', builderSport: 'run',        deniv: true },
+  { id: 'cycling',  label: 'Vélo',          sportType: 'bike',       mode: 'endurance', builderSport: 'bike',       deniv: true },
+  { id: 'swimming', label: 'Natation',      sportType: 'swim',       mode: 'endurance', builderSport: 'swim' },
   { id: 'gym',      label: 'Musculation',   sportType: 'gym',        mode: 'muscu' },
   { id: 'hyrox',    label: 'Hyrox',         sportType: 'hyrox',      mode: 'hyrox' },
-  { id: 'boxe',     label: 'Boxe',          sportType: 'boxe',       mode: 'boxe' },
+  { id: 'boxe',     label: 'Boxe',          sportType: 'other',      mode: 'boxe' },
   { id: 'rowing',   label: 'Aviron',        sportType: 'rowing',     mode: 'endurance', builderSport: 'rowing' },
-  { id: 'elliptique', label: 'Elliptique',  sportType: 'elliptique', mode: 'endurance', builderSport: 'elliptique' },
-  { id: 'trail',    label: 'Trail',         sportType: 'trail',      mode: 'endurance', builderSport: 'run',        deniv: true },
-  { id: 'hiking',   label: 'Randonnée',     sportType: 'hiking',     mode: 'simple',    deniv: true },
+  { id: 'elliptique', label: 'Elliptique',  sportType: 'other',      mode: 'endurance', builderSport: 'elliptique' },
+  { id: 'trail',    label: 'Trail',         sportType: 'trail_run',  mode: 'endurance', builderSport: 'run',        deniv: true },
+  { id: 'hiking',   label: 'Randonnée',     sportType: 'other',      mode: 'simple',    deniv: true },
   { id: 'ski',      label: 'Ski',           sportType: 'ski',        mode: 'simple',    deniv: true },
   { id: 'yoga',     label: 'Yoga',          sportType: 'yoga',       mode: 'simple' },
-  { id: 'padel',    label: 'Padel',         sportType: 'padel',      mode: 'simple' },
+  { id: 'padel',    label: 'Padel',         sportType: 'other',      mode: 'simple' },
   { id: 'other',    label: 'Autre',         sportType: 'other',      mode: 'simple' },
 ]
 
@@ -134,7 +138,9 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
       const denivN = deniv ? intv(deniv) : 0
 
       const act: Record<string, unknown> = { user_id: user.id, sport_type: def.sportType, title: autoTitle, started_at: startedAt, provider: 'manual' }
-      const ws: Record<string, unknown> = { user_id: user.id, sport: def.sportType, started_at: startedAt, ended_at: startedAt, status: 'completed', title: autoTitle, rpe: rpeN, comment: commentN }
+      // workout_sessions.sport est libre (pas de contrainte) → on garde l'id
+      // descriptif (running/cycling/boxe…) comme les écrans d'enregistrement.
+      const ws: Record<string, unknown> = { user_id: user.id, sport: def.id, started_at: startedAt, ended_at: startedAt, status: 'completed', title: autoTitle, rpe: rpeN, comment: commentN }
 
       if (isTreadmill) {
         const plan = buildTreadmillPlan(blocks as never, autoTitle)
@@ -153,9 +159,11 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
           avgHr = Math.round(importedHr.reduce((a, b) => a + b, 0) / importedHr.length)
         }
         Object.assign(act, {
+          // NB : `activities` n'a PAS de colonne training_types (contrairement à
+          // workout_sessions) — ne pas l'insérer ici, sinon l'insert échoue.
           moving_time_s: sum.durationS, elapsed_time_s: sum.durationS, distance_m: sum.distanceM,
           elevation_gain_m: sum.elevationM, avg_speed_ms: sum.avgSpeedMs, average_heartrate: avgHr,
-          training_types: ['tapis'], streams,
+          streams,
         })
         Object.assign(ws, { duration_seconds: sum.durationS, distance_m: sum.distanceM, elevation_gain_m: sum.elevationM, avg_speed_kmh: sum.avgSpeedMs * 3.6, avg_hr: avgHr, training_types: ['tapis'], laps: blocks })
       } else if (mode === 'endurance') {

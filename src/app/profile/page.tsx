@@ -1167,7 +1167,7 @@ function ConfidentialiteBloc() {
 
       <Section label={t('profile.myData')}>
         <Group>
-          <a href="/api/export/data" style={{ textDecoration: 'none', display: 'block', color: 'var(--text)' }}>
+          <a href="/site/exporter-mes-donnees.html" style={{ textDecoration: 'none', display: 'block', color: 'var(--text)' }}>
             <Line first>
               <BarChart3 size={19} strokeWidth={1.8} style={{ flexShrink: 0, color: 'var(--text-mid)' }} />
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -2099,7 +2099,7 @@ function ModelesContent() {
 
         {/* Bouton En savoir plus */}
         <a
-          href="/decouvrir/recharge-tokens.html"
+          href="/site/theme.html#coach-ia"
           style={{
             display:        'flex',
             alignItems:     'center',

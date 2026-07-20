@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Recharger en tokens — Hybrid Training</title>
+  <link rel="icon" href="assets/logo.png"/>
+  <link rel="stylesheet" href="colors_and_type.css"/>
+  <link rel="stylesheet" href="landing.css"/>
+  <link rel="stylesheet" href="site.css"/>
+
+  <!-- Theme controller — applied before first paint to avoid any flash -->
+  <script>
+    window.THWTheme = (function () {
+      var KEY = 'thw-theme-mode';
+      var listeners = [];
+      function getMode() { try { return localStorage.getItem(KEY) || 'auto'; } catch (e) { return 'auto'; } }
+      function resolve(mode) {
+        if (mode === 'light') return 'light';
+        if (mode === 'dark') return 'dark';
+        var h = new Date().getHours();
+        return (h >= 7 && h < 20) ? 'light' : 'dark';
+      }
+      function apply(mode) {
+        var eff = resolve(mode);
+        var el = document.documentElement;
+        el.classList.toggle('light', eff === 'light');
+        el.classList.toggle('dark', eff === 'dark');
+        for (var i = 0; i < listeners.length; i++) { try { listeners[i](mode, eff); } catch (e) {} }
+      }
+      function setMode(mode) { try { localStorage.setItem(KEY, mode); } catch (e) {} apply(mode); }
+      function onChange(fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
+      apply(getMode());
+      setInterval(function () { if (getMode() === 'auto') apply('auto'); }, 60000);
+      return { getMode: getMode, setMode: setMode, resolve: resolve, apply: apply, onChange: onChange, effective: function () { return resolve(getMode()); } };
+    })();
+  </script>
+  <style>
+    /* ── Page-specific ─────────────────────────────────────────────── */
+    .topup-shell { position: relative; z-index: 1; }
+
+    .grid-overlay-fixed {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, black 5%, transparent 65%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, black 5%, transparent 65%);
+    }
+
+    .wrap { max-width: 1080px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+
+    @keyframes riseIn { from { transform: translateY(14px); } to { transform: none; } }
+    /* Transform-only entrance — opacity is never touched, so content can never be hidden,
+       even if the animation is throttled/pinned in a backgrounded iframe. */
+    .reveal { animation: riseIn 0.6s cubic-bezier(0.4,0,0.2,1) both; }
+
+    @keyframes proGlow {
+      0%,100% { box-shadow: 0 0 30px rgba(0,200,224,0.16), 0 0 60px rgba(91,111,255,0.08); }
+      50%     { box-shadow: 0 0 46px rgba(0,200,224,0.30), 0 0 90px rgba(91,111,255,0.16); }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes drawCircle { to { stroke-dashoffset: 0; } }
+    @keyframes drawCheck  { to { stroke-dashoffset: 0; } }
+    @keyframes popIn { 0% { opacity: 0; transform: scale(0.9); } 60% { transform: scale(1.03); } 100% { opacity: 1; transform: scale(1); } }
+
+    .spinner {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff;
+      animation: spin 0.7s linear infinite;
+    }
+
+    .pack-card { transition: transform 0.22s cubic-bezier(0.4,0,0.2,1), box-shadow 0.22s ease, border-color 0.22s ease; }
+    .pack-card:hover { transform: translateY(-4px); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+      .reveal { animation: none !important; }
+    }
+
+    @media (max-width: 860px) {
+      .packs-grid { grid-template-columns: 1fr !important; max-width: 440px !important; }
+      .usage-grid { grid-template-columns: 1fr !important; }
+      .steps-grid { grid-template-columns: 1fr !important; gap: 30px !important; }
+      .steps-line { display: none !important; }
+      .hdr-back-txt { display: none; }
+    }
+  </style>
+</head>
+<body>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1a1a1a"/><text x="50" y="58" font-family="sans-serif" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">THW</text></svg></template>
+  <div class="atmosphere"></div>
+  <div class="grid-overlay-fixed"></div>
+  <div id="root"></div>
+
+  <script src="vendor/react.development.js"></script>
+  <script src="vendor/react-dom.development.js"></script>
+  <script src="vendor/babel.min.js"></script>
+
+  <script type="text/babel" src="components/branding/ThwLogo.jsx"></script>
+  <script type="text/babel" src="components/branding/ThemeToggle.jsx"></script>
+  <script type="text/babel" src="components/site/Icons.jsx"></script>
+  <script type="text/babel" src="components/site/SiteChrome.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    const APP_URL = 'https://app.thwcoaching.com';
+    const GRAD = 'linear-gradient(135deg, #00c8e0, #5b6fff)';
+
+    // ── Icons (lucide) ────────────────────────────────────────────────────────
+    const Icon = ({ size = 24, sw = 1.7, children, ...rest }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" {...rest}>{children}</svg>
+    );
+    const IcMessage  = (p) => <Icon {...p}><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></Icon>;
+    const IcActivity = (p) => <Icon {...p}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></Icon>;
+    const IcCalendar = (p) => <Icon {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></Icon>;
+    const IcSunrise  = (p) => <Icon {...p}><path d="M12 2v6M4.2 10.2l1.4 1.4M1 18h2M21 18h2M18.4 11.6l1.4-1.4M23 22H1M16 18a4 4 0 0 0-8 0M8 6l4-4 4 4"/></Icon>;
+    const IcCheck    = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></Icon>;
+    const IcLock     = (p) => <Icon {...p}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></Icon>;
+    const IcZap      = (p) => <Icon {...p}><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></Icon>;
+    const IcArrow    = (p) => <Icon {...p}><path d="M5 12h14M13 5l7 7-7 7"/></Icon>;
+    const IcAlert    = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></Icon>;
+    const IcReceipt  = (p) => <Icon {...p}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"/><path d="M8 7h8M8 11h8M8 15h5"/></Icon>;
+    const IcShield   = (p) => <Icon {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></Icon>;
+
+    // ── Menu déroulant partagé (mêmes entrées sur toutes les pages) ─────────────
+    const MENU_ITEMS = [
+      { label: 'Politique de confidentialité', href: 'confidentialite.html' },
+      { label: 'Mentions légales',            href: 'mentions-legales.html' },
+      { label: "Conditions d'utilisation",     href: 'conditions-utilisation.html' },
+      { label: 'Exporter mes données',        href: 'exporter-mes-donnees.html' },
+      { label: 'Abonnement',                  href: 'Abonnements.html', group: 'shop' },
+      { label: 'Recharge Tokens',             href: 'Achat de tokens.html', group: 'shop' },
+    ];
+
+    function PageMenu() {
+      const [open, setOpen] = useState(false);
+      const ref = useRef(null);
+      useEffect(() => {
+        function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+        function onKey(e) { if (e.key === 'Escape') setOpen(false); }
+        document.addEventListener('mousedown', onDoc);
+        document.addEventListener('keydown', onKey);
+        return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+      }, []);
+      return (
+        <div ref={ref} style={{ position: 'relative' }}>
+          <button type="button" onClick={() => setOpen(o => !o)} aria-haspopup="true" aria-expanded={open} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7, cursor: 'pointer',
+            padding: '9px 14px', borderRadius: 'var(--radius-btn)',
+            background: 'var(--bg-card)', border: '1px solid var(--border-mid)',
+            color: open ? 'var(--brand)' : 'var(--text-mid)',
+            fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, transition: 'all 0.18s',
+          }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            <span className="hdr-back-txt">Menu</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          {open && (
+            <div role="menu" style={{
+              position: 'absolute', top: 'calc(100% + 8px)', right: 0, minWidth: 250, zIndex: 200,
+              background: 'rgba(7,11,15,0.92)', border: '1px solid var(--border-mid)', borderRadius: 14,
+              padding: 6, boxShadow: 'var(--shadow)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+            }}>
+              {MENU_ITEMS.map((m, i) => {
+                const divider = m.group === 'shop' && (i === 0 || MENU_ITEMS[i - 1].group !== 'shop');
+                return (
+                  <React.Fragment key={m.href}>
+                    {divider && <div style={{ height: 1, background: 'var(--border)', margin: '6px 8px' }}/>}
+                    <a role="menuitem" href={m.href} style={{
+                      display: 'block', padding: '10px 12px', borderRadius: 9,
+                      fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, fontWeight: 500,
+                      color: 'var(--text-mid)', textDecoration: 'none', transition: 'background .14s, color .14s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--brand)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-mid)'; }}>
+                      {m.label}
+                    </a>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Data ───────────────────────────────────────────────────────────────────
+    const MONTHLY_QUOTA = 1000000;
+    const BALANCE = 250000;
+
+    const PACKS = [
+      { id: 'discovery',   name: 'Découverte',  tokens: 100000,   tokensLabel: '100 000',   price: 4,  vol: 0.10,
+        per: null,                   desc: "Quelques jours d'usage intensif.", featured: false, accent: '#00c8e0' },
+      { id: 'performance', name: 'Performance', tokens: 500000,   tokensLabel: '500 000',   price: 15, vol: 0.50,
+        per: '3 €/100k', save: '−25%', desc: "Le meilleur rapport pour tenir tout le mois.", featured: true, accent: '#00c8e0' },
+      { id: 'elite',       name: 'Elite',       tokens: 1000000,  tokensLabel: '1 000 000', price: 25, vol: 1.0,
+        per: '2,50 €/100k', save: '−37%', desc: "Pour un usage prolongé, sans compromis.", featured: false, accent: '#5b6fff' },
+    ];
+
+    const USAGES = [
+      { Ic: IcMessage,  title: 'Question au coach',    amt: '≈ 3 000',  desc: "Conseils, recommandations, échanges courts.", c: '#00c8e0' },
+      { Ic: IcActivity, title: "Analyse d'une séance", amt: '≈ 8 000',  desc: "Lecture des données + interprétation détaillée.", c: '#ef4444' },
+      { Ic: IcCalendar, title: "Plan d'entraînement",  amt: '≈ 25 000', desc: "Programme structuré sur plusieurs semaines.", c: '#5b6fff' },
+      { Ic: IcSunrise,  title: 'Briefing matinal',     amt: '≈ 10 000', desc: "Avec recherche web et données du jour.", c: '#f59e0b' },
+    ];
+
+    const STEPS = [
+      { Ic: IcCheck, title: 'Choisis ton pack', desc: "Sélectionne le pack qui te convient." },
+      { Ic: IcLock,  title: 'Paie en sécurité', desc: "Paiement chiffré via Stripe, aucune donnée bancaire stockée." },
+      { Ic: IcZap,   title: 'Crédité instantanément', desc: "Retourne dans l'app, ton solde est à jour." },
+    ];
+
+    // ── Hooks ───────────────────────────────────────────────────────────────────
+    function useReveal() {
+      const ref = useRef(null);
+      useEffect(() => {
+        const els = Array.from(ref.current ? ref.current.querySelectorAll('.reveal') : []);
+        const reveal = (el) => el.classList.add('in');
+        const check = () => {
+          const h = window.innerHeight || document.documentElement.clientHeight;
+          els.forEach(el => {
+            if (el.classList.contains('in')) return;
+            const r = el.getBoundingClientRect();
+            if (r.top < h * 0.92) reveal(el);
+          });
+        };
+        check(); // reveal whatever is already in view immediately
+        let io;
+        try {
+          io = new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) { reveal(e.target); io.unobserve(e.target); } });
+          }, { threshold: 0.08 });
+          els.forEach(el => { if (!el.classList.contains('in')) io.observe(el); });
+        } catch (e) {}
+        window.addEventListener('scroll', check, { passive: true });
+        const t = setTimeout(check, 400);
+        // Safety net: never leave content permanently hidden if scroll/IO misbehaves.
+        const safety = setTimeout(() => els.forEach(reveal), 2000);
+        return () => { if (io) io.disconnect(); window.removeEventListener('scroll', check); clearTimeout(t); clearTimeout(safety); };
+      }, []);
+      return ref;
+    }
+
+    function useCountUp(target, { duration = 1300, delay = 200, run = true } = {}) {
+      const [val, setVal] = useState(0);
+      useEffect(() => {
+        if (!run) { setVal(target); return; }
+        let raf, t0, to;
+        const tick = (t) => {
+          if (!t0) t0 = t;
+          const p = Math.min(1, (t - t0) / duration);
+          const eased = 1 - Math.pow(1 - p, 3);
+          setVal(Math.round(target * eased));
+          if (p < 1) raf = requestAnimationFrame(tick);
+        };
+        to = setTimeout(() => { raf = requestAnimationFrame(tick); }, delay);
+        // Safety: guarantee the final value even if rAF is throttled (backgrounded iframe).
+        const safety = setTimeout(() => setVal(target), delay + duration + 300);
+        return () => { clearTimeout(to); clearTimeout(safety); cancelAnimationFrame(raf); };
+      }, [target, run]);
+      return val;
+    }
+
+    const fmt = (n) => n.toLocaleString('fr-FR');
+
+    // ── Token gauge (radial) ────────────────────────────────────────────────────
+    function TokenGauge({ value, total, size = 248, label, sub, run = true, delayFill = 200 }) {
+      const stroke = 14;
+      const r = size / 2 - stroke;
+      const circ = 2 * Math.PI * r;
+      const pct = Math.min(1, value / total);
+      const [off, setOff] = useState(circ);
+      const shown = useCountUp(value, { duration: 1400, delay: delayFill, run });
+
+      useEffect(() => {
+        if (!run) { setOff(circ * (1 - pct)); return; }
+        const to = setTimeout(() => setOff(circ * (1 - pct)), delayFill);
+        return () => clearTimeout(to);
+      }, [pct, circ, run]);
+
+      return (
+        <div style={{ position: 'relative', width: size, height: size }}>
+          {/* glow halo */}
+          <div style={{
+            position: 'absolute', inset: '-18%', zIndex: 0,
+            background: 'radial-gradient(circle at 50% 50%, rgba(0,200,224,0.22), rgba(91,111,255,0.10) 45%, transparent 70%)',
+            filter: 'blur(26px)',
+          }}/>
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ position: 'relative', zIndex: 1, transform: 'rotate(-90deg)' }}>
+            <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke}/>
+            <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="url(#gaugeGrad)" strokeWidth={stroke} strokeLinecap="round"
+              strokeDasharray={circ} strokeDashoffset={off}
+              style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(0.34,1,0.5,1)', filter: 'drop-shadow(0 0 8px rgba(0,200,224,0.45))' }}/>
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#00c8e0"/><stop offset="100%" stopColor="#5b6fff"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div style={{ position: 'absolute', inset: 0, zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>{label}</div>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 46, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 0.95, color: 'var(--text)' }}>{fmt(shown)}</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>{sub}</div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Header — shared site header (identique sur toutes les pages) ──────────────
+    function Header() {
+      return <SiteHeader />;
+    }
+
+    // ── Footer ───────────────────────────────────────────────────────────────────
+    function Footer() {
+      const link = { fontSize: 12.5, color: 'var(--text-mid)', transition: 'color 0.15s' };
+      const hov = e => e.currentTarget.style.color = 'var(--brand)';
+      const out = e => e.currentTarget.style.color = 'var(--text-mid)';
+      return (
+        <footer style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-alt)' }}>
+          <div className="wrap" style={{ paddingTop: 30, paddingBottom: 34, textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 22, flexWrap: 'wrap', marginBottom: 18 }}>
+              <a href="#" style={link} onMouseEnter={hov} onMouseLeave={out}>Conditions de vente</a>
+              <a href="#" style={link} onMouseEnter={hov} onMouseLeave={out}>FAQ</a>
+              <a href="mailto:support@thwcoaching.com" style={link} onMouseEnter={hov} onMouseLeave={out}>support@thwcoaching.com</a>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+              {['Stripe', 'Visa', 'Mastercard', 'Apple Pay', 'G Pay'].map(m => (
+                <span key={m} style={{
+                  fontFamily: "'DM Mono', monospace", fontSize: 10.5, color: 'var(--text-dim)',
+                  padding: '4px 9px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)',
+                }}>{m}</span>
+              ))}
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-dim)' }}>
+              <IcShield size={13}/> Paiement sécurisé par Stripe · Tokens sans expiration
+            </div>
+          </div>
+        </footer>
+      );
+    }
+
+    // ── Pack card ─────────────────────────────────────────────────────────────────
+    function PackCard({ pack, loading, onChoose }) {
+      const [hover, setHover] = useState(false);
+      const feat = pack.featured;
+
+      const inner = (
+        <div className="pack-card" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+          style={{
+            position: 'relative', overflow: 'hidden', height: '100%',
+            background: feat
+              ? 'linear-gradient(180deg, rgba(0,200,224,0.06) 0%, rgba(7,11,15,0.98) 42%)'
+              : 'var(--bg-card)',
+            borderRadius: feat ? 17 : 'var(--radius-lg)',
+            border: feat ? 'none' : '1px solid var(--border)',
+            borderColor: !feat && hover ? 'rgba(0,200,224,0.35)' : 'var(--border)',
+            padding: '26px 24px 22px',
+            display: 'flex', flexDirection: 'column', gap: 0,
+            boxShadow: hover && !feat ? '0 16px 40px -16px rgba(0,200,224,0.28)' : 'var(--shadow-card)',
+          }}>
+          {/* top accent stripe */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: feat ? 3 : 2,
+            background: feat ? 'var(--brand-gradient-h)' : `linear-gradient(90deg, ${pack.accent}70, transparent 65%)` }}/>
+
+          {feat && (
+            <div style={{
+              position: 'absolute', top: 14, right: 14,
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '4px 11px', borderRadius: 999, background: GRAD, color: '#fff',
+              fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.05em', textTransform: 'uppercase',
+              boxShadow: '0 2px 14px rgba(0,200,224,0.4)',
+            }}>★ Recommandé</div>
+          )}
+
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: 'var(--text-mid)', letterSpacing: '0.02em', marginBottom: 14 }}>{pack.name}</div>
+
+          {/* tokens */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 27, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', lineHeight: 1 }}>{pack.tokensLabel}</span>
+            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--text-dim)' }}>tokens</span>
+          </div>
+
+          {/* volume bar */}
+          <div style={{ marginTop: 14, marginBottom: 18 }}>
+            <div style={{ height: 5, borderRadius: 999, background: 'rgba(255,255,255,0.05)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+              <div style={{ height: '100%', width: `${pack.vol * 100}%`, borderRadius: 999,
+                background: feat ? 'var(--brand-gradient-h)' : `linear-gradient(90deg, ${pack.accent}, ${pack.accent}88)`,
+                boxShadow: `0 0 10px ${pack.accent}66` }}/>
+            </div>
+            {pack.per && (
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10.5, color: 'var(--text-dim)', marginTop: 8 }}>{pack.per} tokens</div>
+            )}
+          </div>
+
+          {/* price */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginBottom: 6 }}>
+            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 38, fontWeight: 800, letterSpacing: '-0.05em', lineHeight: 1,
+              background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{pack.price} €</span>
+            {pack.save && (
+              <span style={{ padding: '3px 9px', borderRadius: 999, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)',
+                color: '#22c55e', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 500 }}>{pack.save}</span>
+            )}
+          </div>
+
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.5, color: 'var(--text-mid)', flex: 1, margin: '6px 0 20px', textWrap: 'pretty' }}>{pack.desc}</p>
+
+          <button onClick={() => onChoose(pack)} disabled={!!loading} aria-label={`Choisir le pack ${pack.name}`}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
+              padding: '13px 18px', borderRadius: 'var(--radius-btn)', border: feat ? 'none' : '1px solid var(--brand)',
+              background: feat ? GRAD : 'rgba(0,200,224,0.08)',
+              color: feat ? '#fff' : 'var(--brand)',
+              fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600,
+              cursor: loading ? 'default' : 'pointer',
+              opacity: loading && loading !== pack.id ? 0.5 : 1,
+              boxShadow: feat ? '0 4px 22px rgba(0,200,224,0.36)' : 'none',
+              transition: 'all 0.16s',
+            }}
+            onMouseDown={e => { if (!loading) e.currentTarget.style.transform = 'scale(0.98)'; }}
+            onMouseUp={e => { e.currentTarget.style.transform = ''; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = ''; if (!feat && !loading) { e.currentTarget.style.background = 'rgba(0,200,224,0.08)'; } }}
+            onMouseEnter={e => { if (!feat && !loading) e.currentTarget.style.background = 'rgba(0,200,224,0.14)'; if (feat) e.currentTarget.style.filter = 'brightness(1.08)'; }}
+          >
+            {loading === pack.id ? <><span className="spinner"/> Redirection…</> : <>Choisir ce pack <IcArrow size={15}/></>}
+          </button>
+        </div>
+      );
+
+      if (feat) {
+        return (
+          <div className="reveal" style={{ background: GRAD, borderRadius: 19, padding: 1.5, animation: 'proGlow 4s ease-in-out infinite', alignSelf: 'stretch' }}>{inner}</div>
+        );
+      }
+      return <div className="reveal" style={{ alignSelf: 'stretch' }}>{inner}</div>;
+    }
+
+    // ── Main top-up view ──────────────────────────────────────────────────────────
+    function TopUpView({ onPaid }) {
+      const [loading, setLoading] = useState(null);
+
+      function choose(pack) {
+        if (loading) return;
+        setLoading(pack.id);
+        // Simulate POST /api/topup/create-checkout → Stripe redirect → success
+        setTimeout(() => onPaid(pack), 1300);
+      }
+
+      return (
+        <div className="topup-shell">
+          <Header/>
+
+          {/* Hero balance */}
+          <section style={{ paddingTop: 64, paddingBottom: 8 }}>
+            <div className="wrap" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div className="reveal eyebrow" style={{ marginBottom: 26 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--brand)', boxShadow: '0 0 8px var(--brand)', animation: 'pulse-glow 2s infinite', display: 'inline-block' }}/>
+                Lien sécurisé · expire dans 24h
+              </div>
+
+              <div className="reveal" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
+                marginBottom: 26, padding: '12px 16px 12px 18px', borderRadius: 'var(--radius-md)',
+                background: 'var(--bg-card)', border: '1px dashed var(--border-mid)', maxWidth: 560,
+              }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: 'var(--text-mid)', textAlign: 'left', textWrap: 'pretty' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--brand)', flexShrink: 0 }}><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                  Solde de démonstration — <strong style={{ color: 'var(--text)', fontWeight: 600 }}>connecte-toi</strong> pour voir tes vraies données.
+                </span>
+                <a href={APP_URL} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                  padding: '8px 15px', borderRadius: 'var(--radius-btn)', textDecoration: 'none',
+                  background: 'var(--brand-gradient)', color: '#fff', fontSize: 12.5, fontWeight: 600,
+                  boxShadow: '0 3px 14px rgba(0,200,224,0.3)',
+                }}>
+                  Se connecter
+                  <IcArrow size={13}/>
+                </a>
+              </div>
+
+              <div className="reveal" style={{ marginBottom: 22 }}>
+                <TokenGauge value={BALANCE} total={MONTHLY_QUOTA} label="Ton solde actuel" sub="quota mensuel" />
+              </div>
+
+              <div className="reveal" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '8px 16px', borderRadius: 999,
+                border: '1px solid var(--border-mid)', background: 'var(--bg-card)' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--brand)' }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--brand)', display: 'inline-block' }}/> Plan Pro
+                </span>
+                <span style={{ width: 1, height: 12, background: 'var(--border-mid)' }}/>
+                <span style={{ fontSize: 12.5, color: 'var(--text-mid)' }}>Réinitialisation dans 5 jours</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Choose pack */}
+          <section style={{ paddingTop: 72, paddingBottom: 8 }}>
+            <div className="wrap">
+              <div className="reveal" style={{ textAlign: 'center', maxWidth: 500, margin: '0 auto 44px' }}>
+                <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(30px, 4.4vw, 44px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.02, color: 'var(--text)', marginBottom: 16 }}>
+                  Recharge ton <span style={{ background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>carburant</span>
+                </h1>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, lineHeight: 1.6, color: 'var(--text-mid)', textWrap: 'pretty' }}>
+                  Des tokens supplémentaires, sans engagement. Ils s'ajoutent à ton quota mensuel et n'expirent jamais.
+                </p>
+              </div>
+
+              <div className="packs-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.05fr 1fr', gap: 16, maxWidth: 940, margin: '0 auto', alignItems: 'stretch' }}>
+                {PACKS.map(p => <PackCard key={p.id} pack={p} loading={loading} onChoose={choose}/>)}
+              </div>
+            </div>
+          </section>
+
+          {/* What tokens correspond to */}
+          <section style={{ paddingTop: 96, paddingBottom: 8 }}>
+            <div className="wrap">
+              <div className="reveal" style={{ textAlign: 'center', marginBottom: 36 }}>
+                <span className="eyebrow" style={{ justifyContent: 'center' }}>Repères</span>
+                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(24px, 3.4vw, 34px)', fontWeight: 800, letterSpacing: '-0.035em', color: 'var(--text)' }}>
+                  À quoi correspondent ces tokens ?
+                </h2>
+              </div>
+              <div className="usage-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, maxWidth: 780, margin: '0 auto' }}>
+                {USAGES.map(({ Ic, title, amt, desc, c }, i) => (
+                  <div key={i} className="reveal" style={{ position: 'relative', overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '20px 22px' }}>
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${c}, transparent 70%)` }}/>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${c}12`, border: `1px solid ${c}30`, color: c, boxShadow: `0 0 12px ${c}22` }}><Ic size={20}/></div>
+                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, fontWeight: 500, color: c }}>{amt}<span style={{ color: 'var(--text-dim)', fontSize: 10, marginLeft: 3 }}>tok</span></span>
+                    </div>
+                    <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text)', marginBottom: 5 }}>{title}</div>
+                    <div style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--text-mid)', textWrap: 'pretty' }}>{desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* How it works */}
+          <section style={{ paddingTop: 96, paddingBottom: 96 }}>
+            <div className="wrap">
+              <div className="reveal" style={{ textAlign: 'center', marginBottom: 44 }}>
+                <span className="eyebrow" style={{ justifyContent: 'center' }}>3 étapes</span>
+                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(24px, 3.4vw, 34px)', fontWeight: 800, letterSpacing: '-0.035em', color: 'var(--text)' }}>
+                  Comment ça marche
+                </h2>
+              </div>
+              <div className="steps-grid" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, maxWidth: 820, margin: '0 auto' }}>
+                <div className="steps-line" style={{ position: 'absolute', top: 30, left: '16%', right: '16%', height: 2, background: 'linear-gradient(90deg, transparent, rgba(0,200,224,0.4), rgba(91,111,255,0.4), transparent)', zIndex: 0 }}/>
+                {STEPS.map(({ Ic, title, desc }, i) => (
+                  <div key={i} className="reveal" style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
+                    <div style={{ width: 60, height: 60, borderRadius: '50%', margin: '0 auto 18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'var(--bg-card)', border: '1px solid rgba(0,200,224,0.4)', color: 'var(--brand)',
+                      boxShadow: '0 0 28px rgba(0,200,224,0.22), 0 0 0 6px var(--bg)' }}><Ic size={24}/></div>
+                    <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text)', marginBottom: 7 }}>{title}</div>
+                    <div style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--text-mid)', maxWidth: 220, margin: '0 auto', textWrap: 'pretty' }}>{desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <Footer/>
+        </div>
+      );
+    }
+
+    // ── Success view ────────────────────────────────────────────────────────────
+    function SuccessView({ pack }) {
+      const p = pack || PACKS[1];
+      const newBalance = BALANCE + p.tokens;
+      const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+      const shownBalance = useCountUp(newBalance, { duration: 1500, delay: 700 });
+
+      const row = (label, value, strong) => (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 0', borderBottom: '1px solid var(--border)' }}>
+          <span style={{ fontSize: 13, color: 'var(--text-mid)' }}>{label}</span>
+          <span style={{ fontSize: 14, fontWeight: strong ? 700 : 500, color: strong ? 'var(--brand)' : 'var(--text)', fontFamily: strong ? "'Syne', sans-serif" : "'DM Sans', sans-serif" }}>{value}</span>
+        </div>
+      );
+
+      return (
+        <div className="topup-shell" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <Header/>
+          <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '56px 24px' }}>
+            <div style={{ maxWidth: 470, width: '100%', textAlign: 'center', animation: 'popIn 0.55s cubic-bezier(0.34,1.3,0.6,1) both' }}>
+              {/* Animated check */}
+              <svg width="84" height="84" viewBox="0 0 84 84" style={{ marginBottom: 22 }}>
+                <circle cx="42" cy="42" r="38" fill="rgba(34,197,94,0.06)" stroke="none"/>
+                <circle cx="42" cy="42" r="38" fill="none" stroke="#22c55e" strokeWidth="4" strokeLinecap="round"
+                  strokeDasharray="239" strokeDashoffset="239" transform="rotate(-90 42 42)"
+                  style={{ animation: 'drawCircle 0.6s 0.1s cubic-bezier(0.4,0,0.2,1) forwards' }}/>
+                <path d="M27 43 l11 11 l20 -22" fill="none" stroke="#22c55e" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"
+                  strokeDasharray="58" strokeDashoffset="58" style={{ animation: 'drawCheck 0.4s 0.66s cubic-bezier(0.4,0,0.2,1) forwards' }}/>
+              </svg>
+
+              <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>Paiement confirmé !</h1>
+              <p style={{ fontSize: 16, color: 'var(--text-mid)', marginBottom: 8, lineHeight: 1.5 }}>
+                <strong style={{ color: 'var(--text)' }}>{p.tokensLabel}</strong> tokens ajoutés à ton compte.
+              </p>
+
+              {/* New balance */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 500, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 6 }}>Nouveau solde</div>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 40, fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1,
+                  background: GRAD, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{fmt(shownBalance)}</div>
+              </div>
+
+              {/* Recap */}
+              <div className="l-card" style={{ padding: '6px 22px 16px', textAlign: 'left', marginBottom: 24 }}>
+                {row('Pack acheté', p.name)}
+                {row('Tokens ajoutés', `+ ${p.tokensLabel}`, true)}
+                {row('Montant payé', `${p.price},00 €`)}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 0' }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-mid)' }}>Date</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{today}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <a href={APP_URL} className="btn-primary-lg" style={{ justifyContent: 'center' }}>Retourner à l'app <IcArrow size={15}/></a>
+                <a href="#" className="btn-ghost-lg" style={{ justifyContent: 'center' }}><IcReceipt size={15}/> Voir mon reçu</a>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 18 }}>Un reçu a été envoyé à ton email.</p>
+            </div>
+          </main>
+          <Footer/>
+        </div>
+      );
+    }
+
+    // ── Expired view ──────────────────────────────────────────────────────────────
+    function ExpiredView() {
+      return (
+        <div className="topup-shell" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <Header/>
+          <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '56px 24px' }}>
+            <div style={{ maxWidth: 430, width: '100%', textAlign: 'center', animation: 'fadeUpSlow 0.5s cubic-bezier(0.4,0,0.2,1) both' }}>
+              <div style={{ width: 74, height: 74, borderRadius: '50%', margin: '0 auto 24px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(249,115,22,0.1)', color: 'var(--warning)', border: '1px solid rgba(249,115,22,0.3)', boxShadow: '0 0 28px rgba(249,115,22,0.18)' }}><IcAlert size={36}/></div>
+              <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(26px, 4vw, 32px)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)', marginBottom: 12 }}>Lien expiré</h1>
+              <p style={{ fontSize: 15, color: 'var(--text-mid)', lineHeight: 1.6, marginBottom: 28, textWrap: 'pretty' }}>
+                Ce lien d'achat a expiré. Retourne dans l'app et demande un nouveau lien pour recharger en tokens.
+              </p>
+              <a href={APP_URL} className="btn-primary-lg" style={{ justifyContent: 'center' }}>Retour à l'app <IcArrow size={15}/></a>
+            </div>
+          </main>
+          <Footer/>
+        </div>
+      );
+    }
+
+    // ── Router ──────────────────────────────────────────────────────────────────
+    function App() {
+      const params = new URLSearchParams(window.location.search);
+      const initial = params.get('error') === 'session_expired' ? 'expired'
+        : params.get('state') === 'success' ? 'success' : 'topup';
+      const [view, setView] = useState(initial);
+      const [paidPack, setPaidPack] = useState(() => PACKS.find(p => p.id === params.get('pack')) || PACKS[1]);
+
+      function handlePaid(pack) { setPaidPack(pack); setView('success'); window.scrollTo(0, 0); }
+      useEffect(() => { window.scrollTo(0, 0); }, [view]);
+
+      if (view === 'expired') return <ExpiredView/>;
+      if (view === 'success') return <SuccessView pack={paidPack}/>;
+      return <TopUpView onPaid={handlePaid}/>;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

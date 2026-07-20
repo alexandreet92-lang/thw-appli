@@ -29,7 +29,7 @@ const PadelForm        = dynamic(() => import('@/components/record/PadelForm'), 
 const OpenWaterScreen  = dynamic(() => import('@/components/record/OpenWaterScreen'), { ssr: false })
 const HomeTrainerScreen = dynamic(() => import('@/components/record/ride/RideScreen'), { ssr: false })
 const TreadmillScreen  = dynamic(() => import('@/components/record/treadmill/TreadmillScreen'), { ssr: false })
-const ManualActivityForm = dynamic(() => import('@/components/record/ManualActivityForm'), { ssr: false })
+const ManualEntrySheet = dynamic(() => import('@/components/record/ManualEntrySheet'), { ssr: false })
 
 type View = 'home' | 'cycling' | 'running' | 'trail' | 'hiking' | 'mtb' | 'swimming' | 'rowing' | 'workout' | 'ski' | 'yoga' | 'padel' | 'openwater' | 'hometrainer' | 'treadmill'
 
@@ -300,6 +300,22 @@ export default function RecordPage() {
         <MapBackground activeRoute={activeRoute} />
       </div>
 
+      {/* Bulle « + » — saisie manuelle d'une activité (tous sports). Alignée en
+          hauteur sur le hamburger du shell, mais en haut à DROITE. */}
+      <button
+        aria-label="Créer une activité manuellement"
+        onClick={() => setManualOpen(true)}
+        style={{
+          position: 'fixed', top: 'calc(env(safe-area-inset-top) + 10px)', right: 12,
+          width: 38, height: 38, borderRadius: 12, zIndex: 6,
+          background: 'var(--bg)', border: '1px solid var(--border)',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.07)', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+        }}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+
       {/* Pas de bouton retour ici : la navigation passe par le hamburger
           (sidebar) du shell. Le retour réapparaît dans l'écran « créer un
           itinéraire » (RouteCreator), qui remplace le hamburger. */}
@@ -469,7 +485,6 @@ export default function RecordPage() {
         onClose={() => setSportSheetOpen(false)}
         onSelect={handleSelectSport}
         selectedSport={sport}
-        onManual={() => setManualOpen(true)}
       />
 
       {routeCreatorOpen && (
@@ -561,7 +576,7 @@ export default function RecordPage() {
       )}
 
       {manualOpen && (
-        <ManualActivityForm
+        <ManualEntrySheet
           onClose={() => setManualOpen(false)}
           onSaved={() => setToast(t('record.pageWorkoutSaved'))}
         />

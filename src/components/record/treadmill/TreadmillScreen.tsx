@@ -20,6 +20,7 @@ import {
   type TreadmillPlan, type TreadStep,
   zoneBg, zoneInk, fmtPaceSec, kmhToPaceSec,
 } from './treadmillPlan'
+import { buildTreadmillStreams, type TreadInterval } from './treadmillProfile'
 
 interface Props { onExit: () => void; onFinished: () => void }
 
@@ -111,17 +112,28 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
         const distanceM = Math.round(distRef.current)
         const start = new Date(Date.now() - durationSec * 1000).toISOString()
         const avgSpeedMs = durationSec > 0 ? distanceM / durationSec : 0
+        // Profil altimétrique + streams à partir des blocs planifiés (vitesse +
+        // pente). Montée monotone : le tapis ne descend pas.
+        const intervals: TreadInterval[] = plan.steps.map(st => ({
+          durationS: st.durationS,
+          speedKmh: st.targetKmh ?? (st.targetPaceSecPerKm ? 3600 / st.targetPaceSecPerKm : 0),
+          inclinePct: st.inclinePct,
+        }))
+        const streams = buildTreadmillStreams(intervals)
+        const elevationM = intervals.reduce((s2, iv) => s2 + (iv.speedKmh / 3.6) * iv.durationS * Math.max(0, iv.inclinePct) / 100, 0)
         await sb.from('workout_sessions').insert({
           user_id: user.id, sport: 'running',
           started_at: start, ended_at: new Date().toISOString(),
           duration_seconds: durationSec, distance_m: distanceM,
+          elevation_gain_m: Math.round(elevationM),
           avg_speed_kmh: avgSpeedMs * 3.6, calories: kcal, status: 'completed',
           title: plan.title, training_types: ['tapis'],
         })
         await sb.from('activities').insert({
           user_id: user.id, sport_type: 'running', title: plan.title,
           started_at: start, moving_time_s: durationSec, elapsed_time_s: durationSec,
-          distance_m: distanceM, avg_speed_ms: avgSpeedMs, calories: kcal,
+          distance_m: distanceM, elevation_gain_m: Math.round(elevationM),
+          avg_speed_ms: avgSpeedMs, calories: kcal, streams,
         })
       }
     } catch (e) { console.error('[treadmill] save error:', e) }

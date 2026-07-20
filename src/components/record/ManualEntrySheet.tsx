@@ -26,7 +26,8 @@ import { defaultCircuit, type ExerciseItem, type ExoCircuit } from '@/components
 import type { ComposedMove, ComposedCircuit } from '@/components/planning/composedSports'
 import type { SportType, RunningSub } from '@/app/planning/page'
 import { buildTreadmillPlan } from './treadmill/treadmillPlan'
-import { buildTreadmillStreams, summarizeIntervals, type TreadInterval } from './treadmill/treadmillProfile'
+import { buildTreadmillStreams, summarizeIntervals, resampleHr, type TreadInterval } from './treadmill/treadmillProfile'
+import { TreadmillProfilePreview } from './treadmill/TreadmillProfilePreview'
 
 interface Props { onClose: () => void; onSaved?: () => void }
 
@@ -96,6 +97,10 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
   const [moves, setMoves] = useState<ComposedMove[]>([])
   const [composedCircuit, setComposedCircuit] = useState<ComposedCircuit>({ rounds: 1, restSec: 0 })
   const [builderTab, setBuilderTab] = useState<'manual' | 'ai'>('manual')
+  // FC importée depuis un fichier montre (.fit/.gpx) — série à fusionner.
+  const [importedHr, setImportedHr] = useState<number[] | null>(null)
+  const [importInfo, setImportInfo] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -141,12 +146,18 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
         }))
         const sum = summarizeIntervals(intervals)
         const streams = buildTreadmillStreams(intervals)
+        // FC importée d'une montre → rééchantillonnée sur la timeline tapis.
+        let avgHr = sum.avgHr
+        if (streams && importedHr && importedHr.length > 1) {
+          streams.heartrate = resampleHr(importedHr, streams.time.length)
+          avgHr = Math.round(importedHr.reduce((a, b) => a + b, 0) / importedHr.length)
+        }
         Object.assign(act, {
           moving_time_s: sum.durationS, elapsed_time_s: sum.durationS, distance_m: sum.distanceM,
-          elevation_gain_m: sum.elevationM, avg_speed_ms: sum.avgSpeedMs, average_heartrate: sum.avgHr,
+          elevation_gain_m: sum.elevationM, avg_speed_ms: sum.avgSpeedMs, average_heartrate: avgHr,
           training_types: ['tapis'], streams,
         })
-        Object.assign(ws, { duration_seconds: sum.durationS, distance_m: sum.distanceM, elevation_gain_m: sum.elevationM, avg_speed_kmh: sum.avgSpeedMs * 3.6, avg_hr: sum.avgHr, training_types: ['tapis'], laps: blocks })
+        Object.assign(ws, { duration_seconds: sum.durationS, distance_m: sum.distanceM, elevation_gain_m: sum.elevationM, avg_speed_kmh: sum.avgSpeedMs * 3.6, avg_hr: avgHr, training_types: ['tapis'], laps: blocks })
       } else if (mode === 'endurance') {
         const durS = Math.round(totalMin(blocks) * 60) || durationSecManual
         if (durS <= 0) { setError('Ajoute au moins un bloc (ou une durée).'); setSaving(false); return }
@@ -182,12 +193,46 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
     }
   }
 
+  async function handleImportHr(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true); setImportInfo(null)
+    try {
+      const fd = new FormData(); fd.append('file', file)
+      const res = await fetch('/api/parse-activity-file', { method: 'POST', body: fd })
+      const json = await res.json() as { activity?: { hr_stream?: number[] | null; hr_avg?: number | null }; error?: string }
+      if (!res.ok || !json.activity) throw new Error(json.error ?? 'Fichier illisible')
+      const hr = json.activity.hr_stream
+      if (!hr || hr.length < 2) { setImportInfo("Aucune fréquence cardiaque trouvée dans ce fichier."); setImportedHr(null) }
+      else { setImportedHr(hr); setImportInfo(`FC importée · ${hr.length} points · moy ${json.activity.hr_avg ?? '—'} bpm`) }
+    } catch (err) {
+      setImportInfo(err instanceof Error ? err.message : "Échec de l'import.")
+    } finally {
+      setImporting(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
   function renderBuilder() {
     if (mode === 'endurance') return (
-      <SessionBlockBuilder
-        sport={builderSport} runningSub={def?.id === 'running' ? runSurface : undefined}
-        accent={accent} blocks={blocks} onChange={setBlocks}
-        sm={0} sn={0} refs={NO_REFS} builderTab={builderTab} onBuilderTab={setBuilderTab} />
+      <>
+        <SessionBlockBuilder
+          sport={builderSport} runningSub={def?.id === 'running' ? runSurface : undefined}
+          accent={accent} blocks={blocks} onChange={setBlocks}
+          sm={0} sn={0} refs={NO_REFS} builderTab={builderTab} onBuilderTab={setBuilderTab} />
+        {isTreadmill && blocks.length > 0 && <TreadmillProfilePreview blocks={blocks} />}
+        {isTreadmill && (
+          <div style={{ marginTop: 12 }}>
+            <label style={lab}>Fréquence cardiaque (lier un fichier montre)</label>
+            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, borderRadius: 12, background: 'var(--bg-card2)', border: '1px dashed var(--border-mid)', color: 'var(--text)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+              {importing ? 'Lecture…' : 'Importer un .fit / .gpx (montre)'}
+              <input type="file" accept=".fit,.gpx" onChange={handleImportHr} style={{ display: 'none' }} />
+            </label>
+            {importInfo && <div style={{ fontSize: 12, color: importedHr ? 'var(--zone-2, #22c55e)' : 'var(--text-mid)', fontWeight: 600, marginTop: 6 }}>{importInfo}</div>}
+          </div>
+        )}
+      </>
     )
     if (mode === 'muscu') return (
       <StrengthBuilder accent={accent} exercises={exercises} setExercises={setExercises}

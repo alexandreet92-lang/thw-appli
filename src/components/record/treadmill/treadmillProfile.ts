@@ -94,6 +94,20 @@ export function buildTreadmillStreams(intervals: TreadInterval[]): TreadStreams 
   return out
 }
 
+/** Rééchantillonne une série FC (issue d'une montre) sur `targetLen` points,
+ *  par proportion temporelle. Sert à aligner la FC importée sur la timeline
+ *  tapis (les deux couvrant la même séance). */
+export function resampleHr(hrSeries: number[], targetLen: number): number[] {
+  if (hrSeries.length === 0 || targetLen <= 0) return []
+  const out: number[] = []
+  const last = hrSeries.length - 1
+  for (let i = 0; i < targetLen; i++) {
+    const src = last <= 0 ? 0 : Math.min(last, Math.round((i / Math.max(1, targetLen - 1)) * last))
+    out.push(hrSeries[src])
+  }
+  return out
+}
+
 /** Résumé agrégé d'une liste d'intervalles (pour l'enregistrement). */
 export function summarizeIntervals(intervals: TreadInterval[]): {
   durationS: number; distanceM: number; elevationM: number; avgSpeedMs: number; avgHr: number | null

@@ -21,6 +21,7 @@ export interface ParsedActivity {
   tss: number | null
   if_score: number | null
   has_power: boolean
+  hr_stream: number[] | null      // série FC par enregistrement (pour importer la fluctuation)
   source: 'gpx' | 'fit'
 }
 
@@ -121,6 +122,7 @@ function parseFitBuffer(buffer: ArrayBuffer): ParsedActivity {
   const sessionData  = new Map<string, number>()
   const powerStream: number[] = []
   const altitudes:   number[] = []
+  const hrStream:    number[] = []
 
   while (offset < endOffset && offset < bytes.length) {
     if (offset >= bytes.length) break
@@ -194,6 +196,10 @@ function parseFitBuffer(buffer: ArrayBuffer): ParsedActivity {
               : view.getUint16(pos, f.isLittleEndian)
             if (raw !== 0xFFFF && raw !== 0xFFFFFFFF) altitudes.push(raw / 5 - 500)
           }
+          if (f.fieldNum === 3 && f.size >= 1) {
+            const hr = view.getUint8(pos)
+            if (hr > 0 && hr < 250 && hr !== 0xFF) hrStream.push(hr)
+          }
           pos += f.size
         }
       }
@@ -248,6 +254,7 @@ function parseFitBuffer(buffer: ArrayBuffer): ParsedActivity {
     tss: rawTSS && rawTSS > 0 ? +(rawTSS / 10).toFixed(1) : null,
     if_score: rawIF && rawIF > 0 ? +(rawIF / 1000).toFixed(3) : null,
     has_power: (avgPwr != null && avgPwr > 0) || powerStream.length > 0,
+    hr_stream: hrStream.length > 1 ? hrStream : null,
     source: 'fit',
   }
 }
@@ -352,6 +359,7 @@ function parseGPXBuffer(text: string): ParsedActivity {
     tss: null,
     if_score: null,
     has_power: powers.length > 0,
+    hr_stream: hrs.length > 1 ? hrs : null,
     source: 'gpx',
   }
 }

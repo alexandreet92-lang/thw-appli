@@ -15,6 +15,7 @@ export type NotifKey =
   | 'performance.resume_hebdo' | 'performance.resume_mensuel' | 'performance.progression'
   | 'performance.evolution_charge' | 'performance.zones_maj'
   | 'coach.suggestions' | 'coach.briefing' | 'coach.analyse_terminee' | 'coach.competences'
+  | 'coach.reponse_terminee'
   | 'tokens.quota_80' | 'tokens.quota_95' | 'tokens.quota_epuise' | 'tokens.pack_credite'
   | 'tokens.plan_expiration' | 'tokens.paiement_echoue'
   | 'connexions.activite_synchro' | 'connexions.donnee_importee' | 'connexions.reconnexion'
@@ -49,6 +50,7 @@ export const NOTIF_DEFAULTS: Record<NotifKey, boolean> = {
   'coach.briefing': true,
   'coach.analyse_terminee': false,
   'coach.competences': false,
+  'coach.reponse_terminee': true,
   'tokens.quota_80': true,
   'tokens.quota_95': true,
   'tokens.quota_epuise': true,

@@ -1,10 +1,9 @@
 'use client'
 // ══════════════════════════════════════════════════════════════
-// Surpage « Paramètres » de l'IA (style Claude) : navigation à gauche,
-// contenu à droite. Sections : Général (Profil, Instructions, Modèle,
-// Voix, Notifications), Agents (Training), Connecteurs, Abonnement.
-// Réutilise les backends existants (profiles, ai_rules, préférences de
-// notifications, réglages voix localStorage, push Web).
+// Surpage « Paramètres » de l'IA — navigation à gauche, contenu à droite.
+// Design system THW : tokens uniquement (--primary, --bg-*, --text-*,
+// --font-display/body, --r-*), zéro couleur en dur hors logos de marque,
+// menus déroulants custom, feedback « Enregistré » à chaque sauvegarde.
 // ══════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -16,12 +15,11 @@ import {
   PERIODISATION_OPTS, UNITES_OPTS, MATERIEL_OPTS,
 } from '@/lib/ai/agent-settings'
 import { getPushState, enablePush, disablePush, type PushState } from '@/lib/push/client'
+import { ConnectorLogo, type ConnectorId } from '@/components/ai/ConnectorLogos'
 
 export type SettingsSection =
   | 'profil' | 'instructions' | 'modele' | 'voix' | 'notifications'
   | 'agent_training' | 'agent_networks' | 'connecteurs' | 'abonnement'
-
-const ACCENT = '#5b6fff'
 
 const SPORTS: [string, string][] = [
   ['running', 'Course à pied'], ['cycling', 'Vélo'], ['swimming', 'Natation'],
@@ -29,40 +27,85 @@ const SPORTS: [string, string][] = [
   ['gym', 'Muscu / gym'], ['crossfit', 'CrossFit'],
 ]
 
+// ── Styles partagés (tokens uniquement) ──
+const FB = 'var(--font-body)'
 const inputStyle: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 9,
-  border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)',
-  fontSize: 14, fontFamily: 'DM Sans,sans-serif', outline: 'none',
+  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 'var(--r-sm)',
+  border: '1px solid var(--border-mid)', background: 'var(--bg-alt)', color: 'var(--text)',
+  fontSize: 14, fontFamily: FB, outline: 'none', transition: 'border-color 0.15s, box-shadow 0.15s',
 }
-const fieldLabel: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 6, display: 'block' }
-const sectionTitle: React.CSSProperties = { fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', marginBottom: 16 }
+const fieldLabel: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: 'var(--text-mid)', marginBottom: 7, display: 'block', fontFamily: FB }
+const sectionTitleStyle: React.CSSProperties = { fontSize: 20, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em', marginBottom: 4 }
+const sectionLead: React.CSSProperties = { fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, margin: '0 0 20px', maxWidth: 560, fontFamily: FB }
 
-function Toggle({ value, onChange, color = ACCENT }: { value: boolean; onChange: (v: boolean) => void; color?: string }) {
+function onFocusRing(e: React.FocusEvent<HTMLElement>) { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--primary-dim)' }
+function onBlurRing(e: React.FocusEvent<HTMLElement>) { e.currentTarget.style.borderColor = 'var(--border-mid)'; e.currentTarget.style.boxShadow = 'none' }
+
+function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button onClick={() => onChange(!value)} aria-pressed={value}
-      style={{ flexShrink: 0, width: 42, height: 25, borderRadius: 999, border: 'none', cursor: 'pointer', background: value ? color : 'var(--border)', position: 'relative', transition: 'background 0.15s' }}>
-      <span style={{ position: 'absolute', top: 3, left: value ? 20 : 3, width: 19, height: 19, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
+    <button onClick={() => onChange(!value)} aria-pressed={value} type="button"
+      style={{ flexShrink: 0, width: 44, height: 26, borderRadius: 999, border: 'none', cursor: 'pointer', background: value ? 'var(--primary)' : 'var(--border-mid)', position: 'relative', transition: 'background 0.18s' }}>
+      <span style={{ position: 'absolute', top: 3, left: value ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.18s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
     </button>
   )
 }
 
-function Select({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: readonly (readonly [string, string])[] }) {
+// Menu déroulant custom (remplace <select> natif).
+function Dropdown({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: readonly (readonly [string, string])[] }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  const current = options.find(o => o[0] === value)?.[1] ?? '—'
   return (
-    <select value={value} onChange={e => onChange(e.target.value)} style={inputStyle}>
-      {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-    </select>
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        style={{ ...inputStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer', textAlign: 'left', borderColor: open ? 'var(--primary)' : 'var(--border-mid)', boxShadow: open ? '0 0 0 3px var(--primary-dim)' : 'none' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{current}</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }}><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 5px)', left: 0, right: 0, zIndex: 20, maxHeight: 240, overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 12px 34px rgba(0,0,0,0.28)', padding: 5 }}>
+          {options.map(([v, l]) => {
+            const on = v === value
+            return (
+              <button key={v} type="button" onClick={() => { onChange(v); setOpen(false) }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderRadius: 'var(--r-sm)', background: on ? 'var(--primary-dim)' : 'transparent', color: on ? 'var(--primary)' : 'var(--text)', fontSize: 13.5, fontWeight: on ? 600 : 450, cursor: 'pointer', fontFamily: FB }}
+                onMouseEnter={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                onMouseLeave={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                <span style={{ flex: 1 }}>{l}</span>
+                {on && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }
 
-// Ligne de notification (style image 5) : titre + description + toggle.
-function NotifRow({ title, desc, value, onChange, disabled }: { title: string; desc: string; value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+// Pilule sélectionnable (sports, matériel).
+function Pill({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 0', borderBottom: '0.5px solid var(--border)', opacity: disabled ? 0.5 : 1 }}>
+    <button type="button" onClick={onClick}
+      style={{ padding: '8px 14px', borderRadius: 999, border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-alt)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 12.5, fontWeight: on ? 600 : 500, cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s' }}>
+      {children}
+    </button>
+  )
+}
+
+function NotifRow({ title, desc, value, onChange }: { title: string; desc: string; value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '15px 0', borderBottom: '1px solid var(--border)' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.5 }}>{desc}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFamily: FB }}>{title}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.5, fontFamily: FB }}>{desc}</div>
       </div>
-      <Toggle value={value} onChange={disabled ? () => {} : onChange} />
+      <Toggle value={value} onChange={onChange} />
     </div>
   )
 }
@@ -73,21 +116,27 @@ type ProfileState = {
   sports: string[]
 }
 
-// Notifications curées affichées ici (clés alignées sur le catalogue).
-const CURATED_NOTIFS: { key: string; title: string; desc: string }[] = [
-  { key: 'coach.reponse_terminee', title: 'Complétions de réponse', desc: 'Sois averti lorsque Hybrid a terminé une réponse. Utile pour les longues analyses.' },
-  { key: 'entrainement.nouveau_plan', title: 'Nouveau plan', desc: 'Quand un plan d’entraînement est prêt.' },
-  { key: 'coach.analyse_terminee', title: 'Analyse terminée', desc: 'Quand ton analyse de séance est prête.' },
-  { key: 'performance.resume_hebdo', title: 'Résumé hebdomadaire', desc: 'Ton bilan de la semaine, chaque lundi.' },
-  { key: 'performance.progression', title: 'Nouveau record', desc: 'Quand une nouvelle perf / un record est détecté.' },
-  { key: 'competitions.j1', title: 'Compétition J-1', desc: 'La veille de ta compétition.' },
-  { key: 'tokens.quota_epuise', title: 'Quota épuisé', desc: 'Quand tu as utilisé tout ton quota IA du mois.' },
+const CURATED_NOTIFS: { key: string; title: string; desc: string; def: boolean }[] = [
+  { key: 'coach.reponse_terminee', title: 'Complétions de réponse', desc: 'Sois averti lorsque Hybrid a terminé une réponse. Utile pour les longues analyses.', def: true },
+  { key: 'entrainement.nouveau_plan', title: 'Nouveau plan', desc: 'Quand un plan d’entraînement est prêt.', def: true },
+  { key: 'coach.analyse_terminee', title: 'Analyse terminée', desc: 'Quand ton analyse de séance est prête.', def: false },
+  { key: 'performance.resume_hebdo', title: 'Résumé hebdomadaire', desc: 'Ton bilan de la semaine, chaque lundi.', def: true },
+  { key: 'performance.progression', title: 'Nouveau record', desc: 'Quand une nouvelle perf est détectée.', def: true },
+  { key: 'competitions.j1', title: 'Compétition J-1', desc: 'La veille de ta compétition.', def: true },
+  { key: 'tokens.quota_epuise', title: 'Quota épuisé', desc: 'Quand tu as utilisé tout ton quota IA du mois.', def: true },
 ]
 
 export default function AISettingsModal({ open, initialSection = 'profil', onClose }: { open: boolean; initialSection?: SettingsSection; onClose: () => void }) {
   const [section, setSection] = useState<SettingsSection>(initialSection)
   const [isWide, setIsWide] = useState(true)
-  const [showNav, setShowNav] = useState(true)   // mobile : liste vs contenu
+  const [showNav, setShowNav] = useState(false)
+  const [savedAt, setSavedAt] = useState(0)
+  const flashSaved = useCallback(() => setSavedAt(Date.now()), [])
+  useEffect(() => {
+    if (!savedAt) return
+    const id = setTimeout(() => setSavedAt(0), 1700)
+    return () => clearTimeout(id)
+  }, [savedAt])
 
   useEffect(() => { if (open) { setSection(initialSection); setShowNav(false) } }, [open, initialSection])
   useEffect(() => {
@@ -97,7 +146,6 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
     return () => mq.removeEventListener('change', on)
   }, [])
 
-  // ── Données ──
   const [profile, setProfile] = useState<ProfileState>({ full_name: '', preferred_name: '', work_profession: '', work_hours_per_week: '', ideal_sleep_hours: '', sport_hours_per_week: '', sports: [] })
   const [instruction, setInstruction] = useState('')
   const [defaultModel, setDefaultModel] = useState('athena')
@@ -108,7 +156,6 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
   const [agent, setAgent] = useState<TrainingAgentSettings>(DEFAULT_TRAINING_SETTINGS)
   const uidRef = useRef<string | null>(null)
 
-  // Chargement à l'ouverture.
   useEffect(() => {
     if (!open) return
     try {
@@ -141,29 +188,38 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
     })()
   }, [open])
 
-  // ── Persistance ──
-  const saveProfile = useCallback((patch: Record<string, unknown>) => {
+  const saveProfile = useCallback(async (patch: Record<string, unknown>) => {
     const uid = uidRef.current; if (!uid) return
-    void createClient().from('profiles').update(patch).eq('id', uid)
-  }, [])
+    try { await createClient().from('profiles').update(patch).eq('id', uid); flashSaved() } catch { /* ignore */ }
+  }, [flashSaved])
   const saveInstruction = useCallback(async (text: string) => {
     const uid = uidRef.current; if (!uid) return
     const sb = createClient()
     const { data: existing } = await sb.from('ai_rules').select('id').eq('user_id', uid).eq('category', 'instruction').maybeSingle()
     if (existing) await sb.from('ai_rules').update({ rule_text: text.trim(), active: true }).eq('id', existing.id)
     else await sb.from('ai_rules').insert({ user_id: uid, category: 'instruction', rule_text: text.trim(), active: true })
-  }, [])
+    flashSaved()
+  }, [flashSaved])
   const saveVoice = useCallback((next: { lang: string; style: string; speed: string }) => {
-    setVoice(next); try { localStorage.setItem('thw_voice_settings', JSON.stringify(next)) } catch { /* ignore */ }
-  }, [])
+    setVoice(next); try { localStorage.setItem('thw_voice_settings', JSON.stringify(next)) } catch { /* ignore */ }; flashSaved()
+  }, [flashSaved])
+  const saveModel = useCallback((m: string) => {
+    setDefaultModel(m); try { localStorage.setItem('thw_ai_default_model', m) } catch { /* ignore */ }; flashSaved()
+  }, [flashSaved])
   const saveAgent = useCallback((next: TrainingAgentSettings) => {
-    setAgent(next); const uid = uidRef.current; if (uid) void createClient().from('profiles').update({ ai_agent_training: next }).eq('id', uid)
+    setAgent(next); const uid = uidRef.current
+    if (uid) void createClient().from('profiles').update({ ai_agent_training: next }).eq('id', uid)
     try { localStorage.setItem('thw_agent_training', JSON.stringify(next)) } catch { /* ignore */ }
-  }, [])
+    flashSaved()
+  }, [flashSaved])
   const patchPref = useCallback((key: string, val: boolean) => {
     setPrefs(p => ({ ...p, [key]: val }))
-    void fetch('/api/notifications/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ preferences: { [key]: val } }) })
-  }, [])
+    void fetch('/api/notifications/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ preferences: { [key]: val } }) }).then(() => flashSaved())
+  }, [flashSaved])
+  const setGlobal = useCallback((v: boolean) => {
+    setGlobalNotif(v)
+    void fetch('/api/notifications/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ global_enabled: v }) }).then(() => flashSaved())
+  }, [flashSaved])
 
   if (!open) return null
 
@@ -177,53 +233,66 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
   ]
 
   const nav = (
-    <div style={{ width: isWide ? 230 : '100%', flexShrink: 0, borderRight: isWide ? '0.5px solid var(--border)' : 'none', padding: '10px 8px', overflowY: 'auto' }}>
+    <div style={{ width: isWide ? 244 : '100%', flexShrink: 0, borderRight: isWide ? '1px solid var(--border)' : 'none', padding: '14px 12px', overflowY: 'auto', background: isWide ? 'var(--bg-card2)' : 'transparent' }}>
       {NAV.map(g => (
-        <div key={g.group} style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '6px 10px' }}>{g.group}</div>
-          {g.items.map(it => (
-            <button key={it.id} disabled={it.disabled}
-              onClick={() => { if (it.disabled) return; setSection(it.id); if (!isWide) setShowNav(false) }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 10px', borderRadius: 8, border: 'none', cursor: it.disabled ? 'not-allowed' : 'pointer', background: section === it.id && isWide ? 'var(--bg-hover)' : 'transparent', color: it.disabled ? 'var(--text-dim)' : 'var(--text)', fontSize: 14, fontWeight: section === it.id ? 600 : 450, fontFamily: 'DM Sans,sans-serif' }}>
-              {it.label}
-            </button>
-          ))}
+        <div key={g.group} style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '6px 12px', fontFamily: FB }}>{g.group}</div>
+          {g.items.map(it => {
+            const active = section === it.id && isWide
+            return (
+              <button key={it.id} disabled={it.disabled} type="button"
+                onClick={() => { if (it.disabled) return; setSection(it.id); if (!isWide) setShowNav(false) }}
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--r-sm)', border: 'none', cursor: it.disabled ? 'not-allowed' : 'pointer', background: active ? 'var(--primary-dim)' : 'transparent', color: it.disabled ? 'var(--text-dim)' : active ? 'var(--primary)' : 'var(--text-mid)', fontSize: 14, fontWeight: active ? 600 : 500, fontFamily: FB, transition: 'background 0.12s' }}
+                onMouseEnter={e => { if (!active && !it.disabled) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                onMouseLeave={e => { if (!active && !it.disabled) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                {it.label}
+              </button>
+            )
+          })}
         </div>
       ))}
     </div>
   )
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 13800, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isWide ? 24 : 0 }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 13800, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isWide ? 28 : 0, fontFamily: FB }}>
       <div onClick={e => e.stopPropagation()}
-        style={{ width: '100%', maxWidth: 880, height: isWide ? '86vh' : '100%', background: 'var(--bg-card)', borderRadius: isWide ? 18 : 0, border: '0.5px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        style={{ position: 'relative', width: '100%', maxWidth: 920, height: isWide ? '85vh' : '100%', background: 'var(--bg-card)', borderRadius: isWide ? 'var(--r-lg)' : 0, border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(0,0,0,0.4)' }}>
         {/* Header */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: 'max(12px, env(safe-area-inset-top)) 16px 12px', borderBottom: '0.5px solid var(--border)' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: 'max(16px, env(safe-area-inset-top)) 20px 14px', borderBottom: '1px solid var(--border)' }}>
           {!isWide && !showNav && (
-            <button onClick={() => setShowNav(true)} aria-label="Retour" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', padding: 4 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            <button type="button" onClick={() => setShowNav(true)} aria-label="Retour" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', padding: 4 }}>
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             </button>
           )}
-          <div style={{ flex: 1, fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>Paramètres</div>
-          <button onClick={onClose} aria-label="Fermer" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 22, lineHeight: 1, padding: '2px 6px' }}>×</button>
+          <div style={{ flex: 1, fontSize: 19, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>Paramètres</div>
+          <button type="button" onClick={onClose} aria-label="Fermer" style={{ border: 'none', background: 'var(--bg-alt)', cursor: 'pointer', color: 'var(--text-mid)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
         </div>
 
         {/* Body */}
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           {(isWide || showNav) && nav}
           {(isWide || !showNav) && (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 22px', paddingBottom: 'calc(28px + env(safe-area-inset-bottom))' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: isWide ? '26px 32px' : '22px 20px', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))' }}>
               {section === 'profil' && <ProfilSection profile={profile} setProfile={setProfile} saveProfile={saveProfile} />}
               {section === 'instructions' && <InstructionsSection value={instruction} setValue={setInstruction} save={saveInstruction} />}
-              {section === 'modele' && <ModeleSection value={defaultModel} onChange={(m) => { setDefaultModel(m); try { localStorage.setItem('thw_ai_default_model', m) } catch { /* ignore */ } }} />}
+              {section === 'modele' && <ModeleSection value={defaultModel} onChange={saveModel} />}
               {section === 'voix' && <VoixSection voice={voice} save={saveVoice} />}
-              {section === 'notifications' && <NotificationsSection prefs={prefs} globalNotif={globalNotif} pushState={pushState} setPushState={setPushState} patchPref={patchPref} setGlobal={(v) => { setGlobalNotif(v); void fetch('/api/notifications/preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ global_enabled: v }) }) }} />}
+              {section === 'notifications' && <NotificationsSection prefs={prefs} globalNotif={globalNotif} pushState={pushState} setPushState={setPushState} patchPref={patchPref} setGlobal={setGlobal} />}
               {section === 'agent_training' && <AgentTrainingSection agent={agent} save={saveAgent} />}
-              {section === 'agent_networks' && <div style={sectionTitle}>Networks — bientôt disponible</div>}
+              {section === 'agent_networks' && <div style={sectionTitleStyle}>Networks — bientôt disponible</div>}
               {section === 'connecteurs' && <ConnecteursSection />}
               {section === 'abonnement' && <AbonnementSection />}
             </div>
           )}
+        </div>
+
+        {/* Toast « Enregistré » */}
+        <div aria-live="polite" style={{ position: 'absolute', bottom: 18, left: '50%', transform: `translateX(-50%) translateY(${savedAt ? 0 : 12}px)`, opacity: savedAt ? 1 : 0, pointerEvents: 'none', transition: 'opacity 0.25s, transform 0.25s', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 15px', borderRadius: 999, background: 'var(--text)', color: 'var(--bg)', fontSize: 13, fontWeight: 600, fontFamily: FB, boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          Enregistré
         </div>
       </div>
     </div>
@@ -235,11 +304,9 @@ function ProfilSection({ profile, setProfile, saveProfile }: { profile: ProfileS
   const [profQuery, setProfQuery] = useState('')
   const [profOpen, setProfOpen] = useState(false)
   const matches = matchProfessions(profQuery || profile.work_profession, 40)
-
   const toggleSport = (s: string) => {
     setProfile(p => {
-      const has = p.sports.includes(s)
-      const sports = has ? p.sports.filter(x => x !== s) : [...p.sports, s]
+      const sports = p.sports.includes(s) ? p.sports.filter(x => x !== s) : [...p.sports, s]
       saveProfile({ sports })
       return { ...p, sports }
     })
@@ -248,59 +315,47 @@ function ProfilSection({ profile, setProfile, saveProfile }: { profile: ProfileS
 
   return (
     <div>
-      <div style={sectionTitle}>Profil</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 520 }}>
+      <div style={sectionTitleStyle}>Profil</div>
+      <p style={sectionLead}>Ces informations aident Hybrid à personnaliser ses conseils.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 540 }}>
         <div>
           <label style={fieldLabel}>Nom complet</label>
-          <input style={inputStyle} value={profile.full_name} onChange={e => setProfile(p => ({ ...p, full_name: e.target.value }))} onBlur={() => saveProfile({ full_name: profile.full_name.trim() || null })} placeholder="Ton nom" />
+          <input style={inputStyle} onFocus={onFocusRing} onBlur={e => { onBlurRing(e); saveProfile({ full_name: profile.full_name.trim() || null }) }} value={profile.full_name} onChange={e => setProfile(p => ({ ...p, full_name: e.target.value }))} placeholder="Ton nom" />
         </div>
         <div>
           <label style={fieldLabel}>Comment souhaites-tu que Hybrid t’appelle ?</label>
-          <input style={inputStyle} value={profile.preferred_name} onChange={e => setProfile(p => ({ ...p, preferred_name: e.target.value }))} onBlur={() => saveProfile({ preferred_name: profile.preferred_name.trim() || null })} placeholder="Ex. Alex, Coach…" />
+          <input style={inputStyle} onFocus={onFocusRing} onBlur={e => { onBlurRing(e); saveProfile({ preferred_name: profile.preferred_name.trim() || null }) }} value={profile.preferred_name} onChange={e => setProfile(p => ({ ...p, preferred_name: e.target.value }))} placeholder="Ex. Alex, Coach…" />
         </div>
         <div style={{ position: 'relative' }}>
           <label style={fieldLabel}>Quelle est la meilleure description de ton travail ?</label>
-          <input style={inputStyle} value={profOpen ? profQuery : profile.work_profession}
-            onFocus={() => { setProfOpen(true); setProfQuery('') }}
-            onChange={e => setProfQuery(e.target.value)}
-            onBlur={() => setTimeout(() => setProfOpen(false), 150)}
-            placeholder="Rechercher un métier…" />
+          <input style={inputStyle} onFocus={e => { onFocusRing(e); setProfOpen(true); setProfQuery('') }} onBlur={e => { onBlurRing(e); setTimeout(() => setProfOpen(false), 150) }} value={profOpen ? profQuery : profile.work_profession} onChange={e => setProfQuery(e.target.value)} placeholder="Rechercher un métier…" />
           {profOpen && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 5, marginTop: 4, maxHeight: 220, overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+            <div style={{ position: 'absolute', top: 'calc(100% + 5px)', left: 0, right: 0, zIndex: 20, maxHeight: 240, overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 12px 34px rgba(0,0,0,0.28)', padding: 5 }}>
               {matches.map(m => (
-                <button key={m} onMouseDown={() => { setProfile(p => ({ ...p, work_profession: m })); saveProfile({ work_profession: m }); setProfOpen(false) }}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', fontSize: 13.5, fontFamily: 'DM Sans,sans-serif' }}
+                <button key={m} type="button" onMouseDown={() => { setProfile(p => ({ ...p, work_profession: m })); saveProfile({ work_profession: m }); setProfOpen(false) }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', cursor: 'pointer', color: 'var(--text)', fontSize: 13.5, fontFamily: FB }}
                   onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>{m}</button>
               ))}
-              {matches.length === 0 && <div style={{ padding: '9px 12px', fontSize: 13, color: 'var(--text-dim)' }}>Aucun résultat</div>}
+              {matches.length === 0 && <div style={{ padding: '9px 11px', fontSize: 13, color: 'var(--text-dim)' }}>Aucun résultat</div>}
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 140px' }}>
-            <label style={fieldLabel}>Heures de travail / semaine</label>
-            <input style={inputStyle} inputMode="numeric" value={profile.work_hours_per_week} onChange={e => setProfile(p => ({ ...p, work_hours_per_week: e.target.value }))} onBlur={() => saveProfile({ work_hours_per_week: num(profile.work_hours_per_week) })} placeholder="Ex. 40" />
-          </div>
-          <div style={{ flex: '1 1 140px' }}>
-            <label style={fieldLabel}>Heures de sommeil idéales</label>
-            <input style={inputStyle} inputMode="decimal" value={profile.ideal_sleep_hours} onChange={e => setProfile(p => ({ ...p, ideal_sleep_hours: e.target.value }))} onBlur={() => saveProfile({ ideal_sleep_hours: num(profile.ideal_sleep_hours) })} placeholder="Ex. 8" />
-          </div>
-          <div style={{ flex: '1 1 140px' }}>
-            <label style={fieldLabel}>Heures de sport / semaine</label>
-            <input style={inputStyle} inputMode="decimal" value={profile.sport_hours_per_week} onChange={e => setProfile(p => ({ ...p, sport_hours_per_week: e.target.value }))} onBlur={() => saveProfile({ sport_hours_per_week: num(profile.sport_hours_per_week) })} placeholder="Ex. 10" />
-          </div>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          {([['work_hours_per_week', 'Travail / semaine', 'Ex. 40'], ['ideal_sleep_hours', 'Sommeil idéal', 'Ex. 8'], ['sport_hours_per_week', 'Sport / semaine', 'Ex. 10']] as const).map(([k, label, ph]) => (
+            <div key={k} style={{ flex: '1 1 140px' }}>
+              <label style={fieldLabel}>{label}</label>
+              <div style={{ position: 'relative' }}>
+                <input style={{ ...inputStyle, paddingRight: 34 }} inputMode="decimal" onFocus={onFocusRing} onBlur={e => { onBlurRing(e); saveProfile({ [k]: num(profile[k]) }) }} value={profile[k]} onChange={e => setProfile(p => ({ ...p, [k]: e.target.value }))} placeholder={ph} />
+                <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--text-dim)', fontFamily: FB }}>h</span>
+              </div>
+            </div>
+          ))}
         </div>
         <div>
           <label style={fieldLabel}>Sports pratiqués</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-            {SPORTS.map(([v, l]) => {
-              const on = profile.sports.includes(v)
-              return (
-                <button key={v} onClick={() => toggleSport(v)}
-                  style={{ padding: '7px 12px', borderRadius: 999, border: `1px solid ${on ? ACCENT : 'var(--border)'}`, background: on ? 'rgba(91,111,255,0.12)' : 'transparent', color: on ? ACCENT : 'var(--text-mid)', fontSize: 12.5, fontWeight: on ? 600 : 500, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{l}</button>
-              )
-            })}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {SPORTS.map(([v, l]) => <Pill key={v} on={profile.sports.includes(v)} onClick={() => toggleSport(v)}>{l}</Pill>)}
           </div>
         </div>
       </div>
@@ -311,47 +366,40 @@ function ProfilSection({ profile, setProfile, saveProfile }: { profile: ProfileS
 // ── Instructions ───────────────────────────────────────────────
 const INSTRUCTION_PRESETS = [
   { label: 'Coach exigeant', text: 'Sois direct et exigeant. Ne me ménage pas, dis-moi la vérité sur ma forme et mes efforts, quitte à être cash. Priorité à la performance.' },
-  { label: 'Pédagogue', text: 'Explique-moi toujours le pourquoi de tes recommandations, avec des mots simples. Je veux comprendre et progresser dans ma compréhension.' },
+  { label: 'Pédagogue', text: 'Explique-moi toujours le pourquoi de tes recommandations, avec des mots simples. Je veux comprendre et progresser.' },
   { label: 'Bref et efficace', text: 'Réponds de façon concise et actionnable. Va droit au but, pas de blabla. Des listes claires quand c’est utile.' },
   { label: 'Motivateur', text: 'Sois positif et motivant. Encourage-moi, célèbre mes progrès, garde-moi engagé même les jours difficiles.' },
 ]
 function InstructionsSection({ value, setValue, save }: { value: string; setValue: (v: string) => void; save: (v: string) => void }) {
   return (
     <div>
-      <div style={sectionTitle}>Instructions</div>
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 14, maxWidth: 560 }}>
-        Un prompt qui dit à Hybrid comment se comporter et répondre. Il en tiendra compte dans toutes tes conversations.
-      </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 12 }}>
-        {INSTRUCTION_PRESETS.map(p => (
-          <button key={p.label} onClick={() => { setValue(p.text); save(p.text) }}
-            style={{ padding: '7px 12px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{p.label}</button>
-        ))}
+      <div style={sectionTitleStyle}>Instructions</div>
+      <p style={sectionLead}>Un prompt qui dit à Hybrid comment se comporter et répondre. Il en tiendra compte dans toutes tes conversations.</p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+        {INSTRUCTION_PRESETS.map(p => <Pill key={p.label} on={false} onClick={() => { setValue(p.text); save(p.text) }}>{p.label}</Pill>)}
       </div>
-      <textarea value={value} onChange={e => setValue(e.target.value)} onBlur={() => save(value)} rows={7}
+      <textarea value={value} onChange={e => setValue(e.target.value)} onFocus={onFocusRing} onBlur={e => { onBlurRing(e); save(value) }} rows={7}
         placeholder="Ex. Tu es mon coach hybride. Sois technique mais accessible…"
-        style={{ ...inputStyle, fontSize: 13.5, lineHeight: 1.55, resize: 'vertical', maxWidth: 620 }} />
+        style={{ ...inputStyle, fontSize: 14, lineHeight: 1.55, resize: 'vertical', maxWidth: 640 }} />
     </div>
   )
 }
 
 // ── Modèle par défaut ──────────────────────────────────────────
 function ModeleSection({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const MODELS: [string, string, string, string][] = [
-    ['hermes', 'Hermès', 'Rapide', '#d4a017'], ['athena', 'Athéna', 'Équilibré', ACCENT], ['zeus', 'Zeus', 'Maximum', '#8b5cf6'],
-  ]
+  const MODELS: [string, string, string][] = [['hermes', 'Hermès', 'Rapide'], ['athena', 'Athéna', 'Équilibré'], ['zeus', 'Zeus', 'Maximum']]
   return (
     <div>
-      <div style={sectionTitle}>Modèle par défaut</div>
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 16, maxWidth: 560 }}>Le modèle utilisé par défaut pour tes nouvelles conversations.</p>
-      <div style={{ display: 'flex', gap: 10, maxWidth: 480 }}>
-        {MODELS.map(([id, label, speed, color]) => {
+      <div style={sectionTitleStyle}>Modèle par défaut</div>
+      <p style={sectionLead}>Le modèle utilisé par défaut pour tes nouvelles conversations.</p>
+      <div style={{ display: 'flex', gap: 12, maxWidth: 500 }}>
+        {MODELS.map(([id, label, speed]) => {
           const on = value === id
           return (
-            <button key={id} onClick={() => onChange(id)}
-              style={{ flex: 1, padding: '14px 8px', borderRadius: 12, border: `1.5px solid ${on ? color : 'var(--border)'}`, background: on ? `${color}18` : 'transparent', color: on ? color : 'var(--text-mid)', cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.8, marginBottom: 3 }}>{speed}</div>
-              <div style={{ fontSize: 15, fontWeight: on ? 700 : 600 }}>{label}</div>
+            <button key={id} type="button" onClick={() => onChange(id)}
+              style={{ flex: 1, padding: '18px 10px', borderRadius: 'var(--r-md)', border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-alt)', color: on ? 'var(--primary)' : 'var(--text-mid)', cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s', outline: on ? '1.5px solid var(--primary)' : 'none' }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', opacity: 0.75, marginBottom: 5 }}>{speed}</div>
+              <div style={{ fontSize: 16, fontWeight: on ? 700 : 600 }}>{label}</div>
             </button>
           )
         })}
@@ -364,20 +412,12 @@ function ModeleSection({ value, onChange }: { value: string; onChange: (v: strin
 function VoixSection({ voice, save }: { voice: { lang: string; style: string; speed: string }; save: (v: { lang: string; style: string; speed: string }) => void }) {
   return (
     <div>
-      <div style={sectionTitle}>Voix</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 420 }}>
-        <div>
-          <label style={fieldLabel}>Langue</label>
-          <Select value={voice.lang} onChange={v => save({ ...voice, lang: v })} options={[['fr-FR', 'Français'], ['en-US', 'Anglais'], ['es-ES', 'Espagnol']]} />
-        </div>
-        <div>
-          <label style={fieldLabel}>Style</label>
-          <Select value={voice.style} onChange={v => save({ ...voice, style: v })} options={[['douce', 'Douce'], ['neutre', 'Neutre'], ['energique', 'Énergique']]} />
-        </div>
-        <div>
-          <label style={fieldLabel}>Vitesse</label>
-          <Select value={voice.speed} onChange={v => save({ ...voice, speed: v })} options={[['lent', 'Lent'], ['normal', 'Normal'], ['rapide', 'Rapide']]} />
-        </div>
+      <div style={sectionTitleStyle}>Voix</div>
+      <p style={sectionLead}>Comment Hybrid te parle en mode vocal.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 420 }}>
+        <div><label style={fieldLabel}>Langue</label><Dropdown value={voice.lang} onChange={v => save({ ...voice, lang: v })} options={[['fr-FR', 'Français'], ['en-US', 'Anglais'], ['es-ES', 'Espagnol']]} /></div>
+        <div><label style={fieldLabel}>Style</label><Dropdown value={voice.style} onChange={v => save({ ...voice, style: v })} options={[['douce', 'Douce'], ['neutre', 'Neutre'], ['energique', 'Énergique']]} /></div>
+        <div><label style={fieldLabel}>Vitesse</label><Dropdown value={voice.speed} onChange={v => save({ ...voice, speed: v })} options={[['lent', 'Lent'], ['normal', 'Normal'], ['rapide', 'Rapide']]} /></div>
       </div>
     </div>
   )
@@ -389,41 +429,34 @@ function NotificationsSection({ prefs, globalNotif, pushState, setPushState, pat
   setPushState: (s: PushState) => void; patchPref: (k: string, v: boolean) => void; setGlobal: (v: boolean) => void
 }) {
   const [busy, setBusy] = useState(false)
-  const DEFAULTS: Record<string, boolean> = { 'coach.reponse_terminee': true, 'entrainement.nouveau_plan': true, 'coach.analyse_terminee': false, 'performance.resume_hebdo': true, 'performance.progression': true, 'competitions.j1': true, 'tokens.quota_epuise': true }
   const togglePush = async () => {
     if (busy) return; setBusy(true)
     try { setPushState(pushState === 'on' ? await disablePush() : await enablePush()) } finally { setBusy(false) }
   }
   return (
     <div>
-      <div style={sectionTitle}>Notifications</div>
-      {/* Push appareil */}
+      <div style={sectionTitleStyle}>Notifications</div>
+      <p style={sectionLead}>Choisis ce qui mérite de te déranger.</p>
       {pushState !== 'unsupported' && (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 0', borderBottom: '0.5px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '15px 0', borderBottom: '1px solid var(--border)' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Notifications sur cet appareil</div>
             <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3, lineHeight: 1.5 }}>
               {pushState === 'denied' ? 'Bloquées par le navigateur — autorise-les dans les réglages du site.'
                 : pushState === 'unconfigured' ? 'Bientôt disponible sur ce serveur.'
-                : 'Reçois les notifications push sur cet appareil, même app fermée.'}
+                : 'Reçois les notifications push, même app fermée.'}
             </div>
           </div>
           <Toggle value={pushState === 'on'} onChange={() => { if (pushState === 'off' || pushState === 'on') void togglePush() }} />
         </div>
       )}
-      {/* Toggle global */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: '0.5px solid var(--border)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '15px 0', borderBottom: '1px solid var(--border)' }}>
         <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Toutes les notifications</div>
         <Toggle value={globalNotif} onChange={setGlobal} />
       </div>
       <div style={{ opacity: globalNotif ? 1 : 0.45, pointerEvents: globalNotif ? 'auto' : 'none' }}>
-        {CURATED_NOTIFS.map(n => (
-          <NotifRow key={n.key} title={n.title} desc={n.desc} value={prefs[n.key] ?? DEFAULTS[n.key] ?? false} onChange={(v) => patchPref(n.key, v)} />
-        ))}
+        {CURATED_NOTIFS.map(n => <NotifRow key={n.key} title={n.title} desc={n.desc} value={prefs[n.key] ?? n.def} onChange={(v) => patchPref(n.key, v)} />)}
       </div>
-      <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 14, lineHeight: 1.5 }}>
-        Retrouve toutes les catégories de notifications détaillées dans Profil → Notifications.
-      </p>
     </div>
   )
 }
@@ -433,55 +466,53 @@ function AgentTrainingSection({ agent, save }: { agent: TrainingAgentSettings; s
   const set = (patch: Partial<TrainingAgentSettings>) => save({ ...agent, ...patch })
   const toggleIn = (arr: string[], v: string) => arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]
   const DAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div style={{ flex: '1 1 210px' }}><label style={fieldLabel}>{label}</label>{children}</div>
+  )
   return (
     <div>
-      <div style={sectionTitle}>Agent Training</div>
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 18, maxWidth: 560 }}>
-        Ces réglages pilotent le comportement du coach Training dans tes conversations.
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 520 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 200px' }}><label style={fieldLabel}>Discipline prioritaire</label><Select value={agent.focus} onChange={v => set({ focus: v })} options={FOCUS_OPTS} /></div>
-          <div style={{ flex: '1 1 200px' }}><label style={fieldLabel}>Objectif principal</label><Select value={agent.objectif} onChange={v => set({ objectif: v })} options={OBJECTIF_OPTS} /></div>
+      <div style={sectionTitleStyle}>Agent Training</div>
+      <p style={sectionLead}>Ces réglages pilotent le comportement du coach Training dans tes conversations.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 540 }}>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          <Field label="Discipline prioritaire"><Dropdown value={agent.focus} onChange={v => set({ focus: v })} options={FOCUS_OPTS} /></Field>
+          <Field label="Objectif principal"><Dropdown value={agent.objectif} onChange={v => set({ objectif: v })} options={OBJECTIF_OPTS} /></Field>
         </div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 200px' }}><label style={fieldLabel}>Ton du coach</label><Select value={agent.ton} onChange={v => set({ ton: v })} options={TON_OPTS} /></div>
-          <div style={{ flex: '1 1 200px' }}><label style={fieldLabel}>Niveau de détail</label><Select value={agent.detail} onChange={v => set({ detail: v })} options={DETAIL_OPTS} /></div>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          <Field label="Ton du coach"><Dropdown value={agent.ton} onChange={v => set({ ton: v })} options={TON_OPTS} /></Field>
+          <Field label="Niveau de détail"><Dropdown value={agent.detail} onChange={v => set({ detail: v })} options={DETAIL_OPTS} /></Field>
         </div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 200px' }}><label style={fieldLabel}>Niveau de l’athlète</label><Select value={agent.niveau} onChange={v => set({ niveau: v })} options={NIVEAU_OPTS} /></div>
-          <div style={{ flex: '1 1 200px' }}><label style={fieldLabel}>Format des réponses</label><Select value={agent.format} onChange={v => set({ format: v })} options={FORMAT_OPTS} /></div>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          <Field label="Niveau de l’athlète"><Dropdown value={agent.niveau} onChange={v => set({ niveau: v })} options={NIVEAU_OPTS} /></Field>
+          <Field label="Format des réponses"><Dropdown value={agent.format} onChange={v => set({ format: v })} options={FORMAT_OPTS} /></Field>
         </div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 200px' }}><label style={fieldLabel}>Périodisation préférée</label><Select value={agent.periodisation} onChange={v => set({ periodisation: v })} options={PERIODISATION_OPTS} /></div>
-          <div style={{ flex: '1 1 200px' }}><label style={fieldLabel}>Unités</label><Select value={agent.unites} onChange={v => set({ unites: v })} options={UNITES_OPTS} /></div>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          <Field label="Périodisation préférée"><Dropdown value={agent.periodisation} onChange={v => set({ periodisation: v })} options={PERIODISATION_OPTS} /></Field>
+          <Field label="Unités"><Dropdown value={agent.unites} onChange={v => set({ unites: v })} options={UNITES_OPTS} /></Field>
         </div>
         <div>
           <label style={fieldLabel}>Matériel disponible</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-            {MATERIEL_OPTS.map(([v, l]) => {
-              const on = agent.materiel.includes(v)
-              return <button key={v} onClick={() => set({ materiel: toggleIn(agent.materiel, v) })} style={{ padding: '6px 11px', borderRadius: 999, border: `1px solid ${on ? ACCENT : 'var(--border)'}`, background: on ? 'rgba(91,111,255,0.12)' : 'transparent', color: on ? ACCENT : 'var(--text-mid)', fontSize: 12, fontWeight: on ? 600 : 500, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{l}</button>
-            })}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {MATERIEL_OPTS.map(([v, l]) => <Pill key={v} on={agent.materiel.includes(v)} onClick={() => set({ materiel: toggleIn(agent.materiel, v) })}>{l}</Pill>)}
           </div>
         </div>
         <div>
           <label style={fieldLabel}>Jours d’entraînement préférés</label>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 7 }}>
             {DAYS.map((d, i) => {
               const on = agent.jours.includes(i)
-              return <button key={i} onClick={() => set({ jours: agent.jours.includes(i) ? agent.jours.filter(x => x !== i) : [...agent.jours, i] })} style={{ width: 36, height: 36, borderRadius: 9, border: `1px solid ${on ? ACCENT : 'var(--border)'}`, background: on ? 'rgba(91,111,255,0.12)' : 'transparent', color: on ? ACCENT : 'var(--text-mid)', fontSize: 13, fontWeight: on ? 700 : 500, cursor: 'pointer' }}>{d}</button>
+              return <button key={i} type="button" onClick={() => set({ jours: on ? agent.jours.filter(x => x !== i) : [...agent.jours, i] })} style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-alt)', color: on ? 'var(--primary)' : 'var(--text-mid)', fontSize: 13, fontWeight: on ? 700 : 500, cursor: 'pointer', fontFamily: FB }}>{d}</button>
             })}
           </div>
         </div>
         <div>
           <label style={fieldLabel}>Contraintes / blessures à toujours considérer</label>
-          <textarea value={agent.contraintes} onChange={e => set({ contraintes: e.target.value })} rows={3} placeholder="Ex. genou droit fragile, pas de sauts…" style={{ ...inputStyle, fontSize: 13, lineHeight: 1.5, resize: 'vertical' }} />
+          <textarea value={agent.contraintes} onChange={e => set({ contraintes: e.target.value })} onFocus={onFocusRing} onBlur={onBlurRing} rows={3} placeholder="Ex. genou droit fragile, pas de sauts…" style={{ ...inputStyle, fontSize: 14, lineHeight: 1.5, resize: 'vertical' }} />
         </div>
-        {[['proactivite', 'Suggestions proactives', 'Hybrid propose des idées utiles sans que tu le demandes.'], ['science', 'Appuyer sur la science', 'Justifie les conseils par des références scientifiques quand pertinent.'], ['emoji', 'Emojis', 'Autoriser quelques emojis dans les réponses.']].map(([k, title, desc]) => (
-          <div key={k} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '10px 0', borderTop: '0.5px solid var(--border)' }}>
+        {([['proactivite', 'Suggestions proactives', 'Hybrid propose des idées utiles sans que tu le demandes.'], ['science', 'Appuyer sur la science', 'Justifie les conseils par des références quand pertinent.'], ['emoji', 'Emojis', 'Autoriser quelques emojis dans les réponses.']] as const).map(([k, title, desc]) => (
+          <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderTop: '1px solid var(--border)' }}>
             <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</div><div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{desc}</div></div>
-            <Toggle value={agent[k as 'proactivite' | 'science' | 'emoji']} onChange={(v) => set({ [k]: v } as Partial<TrainingAgentSettings>)} />
+            <Toggle value={agent[k]} onChange={(v) => set({ [k]: v } as Partial<TrainingAgentSettings>)} />
           </div>
         ))}
       </div>
@@ -491,30 +522,31 @@ function AgentTrainingSection({ agent, save }: { agent: TrainingAgentSettings; s
 
 // ── Connecteurs ────────────────────────────────────────────────
 function ConnecteursSection() {
-  const CONNECTORS: { name: string; desc: string; ready: boolean }[] = [
-    { name: 'Strava', desc: 'Importe automatiquement tes activités.', ready: true },
-    { name: 'Polar', desc: 'Séances, sommeil et récupération.', ready: true },
-    { name: 'Wahoo', desc: 'Séances vélo et home-trainer.', ready: true },
-    { name: 'Withings', desc: 'Poids, sommeil, métriques santé.', ready: true },
-    { name: 'Google Agenda', desc: 'Synchronise tes séances avec ton agenda.', ready: false },
-    { name: 'Apple Agenda', desc: 'Synchronise tes séances avec ton agenda.', ready: false },
-    { name: 'Excel', desc: 'Exporte / importe tes données en tableur.', ready: false },
+  const CONNECTORS: { id: ConnectorId; name: string; desc: string; ready: boolean }[] = [
+    { id: 'strava', name: 'Strava', desc: 'Importe automatiquement tes activités.', ready: true },
+    { id: 'polar', name: 'Polar', desc: 'Séances, sommeil et récupération.', ready: true },
+    { id: 'wahoo', name: 'Wahoo', desc: 'Séances vélo et home-trainer.', ready: true },
+    { id: 'withings', name: 'Withings', desc: 'Poids, sommeil, métriques santé.', ready: true },
+    { id: 'gcal', name: 'Google Agenda', desc: 'Synchronise tes séances avec ton agenda.', ready: false },
+    { id: 'acal', name: 'Apple Agenda', desc: 'Synchronise tes séances avec ton agenda.', ready: false },
+    { id: 'excel', name: 'Excel', desc: 'Exporte / importe tes données en tableur.', ready: false },
   ]
   return (
     <div>
-      <div style={sectionTitle}>Connecteurs</div>
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 16, maxWidth: 560 }}>Connecte Hybrid à tes applications pour qu’il travaille avec toutes tes données.</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 560 }}>
+      <div style={sectionTitleStyle}>Connecteurs</div>
+      <p style={sectionLead}>Connecte Hybrid à tes applications pour qu’il travaille avec toutes tes données.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 580 }}>
         {CONNECTORS.map(c => (
-          <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 15px', borderRadius: 12, border: '0.5px solid var(--border)', background: 'var(--bg-card)' }}>
+          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-alt)' }}>
+            <ConnectorLogo id={c.id} size={40} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text)' }}>{c.name}</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{c.name}</div>
               <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{c.desc}</div>
             </div>
             {c.ready ? (
-              <a href="/connections" style={{ padding: '7px 13px', borderRadius: 8, background: ACCENT, color: '#fff', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', fontFamily: 'DM Sans,sans-serif' }}>Connecter</a>
+              <a href="/connections" style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none', fontFamily: FB, whiteSpace: 'nowrap' }}>Connecter</a>
             ) : (
-              <span style={{ padding: '7px 11px', borderRadius: 8, background: 'var(--bg-alt)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 600 }}>Bientôt</span>
+              <span style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>Bientôt</span>
             )}
           </div>
         ))}
@@ -527,9 +559,9 @@ function ConnecteursSection() {
 function AbonnementSection() {
   return (
     <div>
-      <div style={sectionTitle}>Abonnement</div>
-      <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 16, maxWidth: 560 }}>Gère ton plan, tes tokens et ta facturation.</p>
-      <a href="/settings/subscription" style={{ display: 'inline-block', padding: '11px 18px', borderRadius: 10, background: ACCENT, color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none', fontFamily: 'DM Sans,sans-serif' }}>Voir mon abonnement</a>
+      <div style={sectionTitleStyle}>Abonnement</div>
+      <p style={sectionLead}>Gère ton plan, tes tokens et ta facturation.</p>
+      <a href="/settings/subscription" style={{ display: 'inline-block', padding: '12px 20px', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: '#fff', fontSize: 14, fontWeight: 600, textDecoration: 'none', fontFamily: FB }}>Voir mon abonnement</a>
     </div>
   )
 }

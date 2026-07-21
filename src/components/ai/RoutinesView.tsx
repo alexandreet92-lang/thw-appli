@@ -11,7 +11,7 @@ import {
   scheduleLabel, type Routine, type RoutineRun, type RoutineInput,
 } from '@/lib/routines/client'
 
-const ACCENT = '#5b6fff'
+const ACCENT = 'var(--primary)'
 
 const TEMPLATES: { label: string; name: string; prompt: string; frequency: RoutineInput['frequency']; hour: number }[] = [
   { label: 'Brief matinal', name: 'Brief matinal', frequency: 'daily', hour: 7,
@@ -121,7 +121,7 @@ function ListView({ routines, loading, err, onNew, onOpen, onToggle }: {
       {routines.map(r => (
         <div key={r.id} onClick={() => onOpen(r.id)}
           style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 12, border: '0.5px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer' }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: r.enabled ? 'rgba(91,111,255,0.12)' : 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: r.enabled ? 'var(--primary-dim)' : 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={r.enabled ? ACCENT : 'var(--text-dim)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>

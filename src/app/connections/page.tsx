@@ -546,6 +546,101 @@ function Toast({ message, type = 'info', onDismiss }: { message: string; type?: 
   )
 }
 
+// ── CalendarSyncCard ─────────────────────────────────────────────
+// Abonnement calendrier (flux ICS / webcal). Sens unique app → Apple /
+// Google / Outlook : séances, courses et objectifs remontent automatiquement.
+function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
+  const [state, setState] = useState<'idle' | 'loading' | 'ready'>('idle')
+  const [urls, setUrls] = useState<{ url: string; webcal: string } | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/calendar/subscribe')
+        if (!res.ok) return
+        const d = await res.json()
+        if (d.connected && d.webcal) { setUrls({ url: d.url, webcal: d.webcal }); setState('ready'); setOpen(true) }
+      } catch { /* silencieux */ }
+    })()
+  }, [])
+
+  async function connect() {
+    setState('loading')
+    try {
+      const res = await fetch('/api/calendar/subscribe', { method: 'POST' })
+      const d = await res.json()
+      if (res.ok && d.webcal) { setUrls({ url: d.url, webcal: d.webcal }); setState('ready'); setOpen(true) }
+      else setState('idle')
+    } catch { setState('idle') }
+  }
+
+  async function copyLink() {
+    if (!urls) return
+    try { await navigator.clipboard.writeText(urls.url); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { /* noop */ }
+  }
+
+  const CalIcon = (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="3" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" />
+    </svg>
+  )
+
+  return (
+    <div style={{ border: `1px solid ${ACCENT}40`, background: `linear-gradient(180deg, ${ACCENT}0d, transparent)`, borderRadius: 16, padding: isMobile ? 14 : 18, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 2px 12px ${ACCENT_GLOW}` }}>
+          {CalIcon}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: isMobile ? 14 : 15, color: 'var(--text)', lineHeight: 1.25 }}>
+            Calendrier — Apple · Google · Outlook
+          </div>
+          <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.45, marginTop: 2 }}>
+            Tes séances, courses et objectifs apparaissent automatiquement dans ton calendrier.
+          </div>
+        </div>
+        {state !== 'ready' && (
+          <button onClick={connect} disabled={state === 'loading'}
+            style={{ flexShrink: 0, padding: '7px 14px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontFamily: 'DM Sans, sans-serif', fontSize: 12.5, fontWeight: 700, cursor: state === 'loading' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+            {state === 'loading' ? <Spinner size={12} color="#fff" /> : null}
+            {state === 'loading' ? 'Connexion…' : 'Connecter'}
+          </button>
+        )}
+        {state === 'ready' && (
+          <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'rgba(34,197,94,0.13)', color: '#22c55e', fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 5px #22c55e' }} />
+            Connecté
+          </span>
+        )}
+      </div>
+
+      {state === 'ready' && urls && open && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <a href={urls.webcal}
+              style={{ flex: '1 1 auto', textAlign: 'center', padding: '10px 14px', borderRadius: 10, background: ACCENT, color: '#fff', textDecoration: 'none', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 700, boxShadow: `0 2px 12px ${ACCENT_GLOW}` }}>
+              S’abonner dans le calendrier
+            </a>
+            <button onClick={copyLink}
+              style={{ flex: '0 0 auto', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              {copied ? '✓ Copié' : 'Copier le lien'}
+            </button>
+          </div>
+          <ol style={{ margin: '12px 0 0', paddingLeft: 18, fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.7 }}>
+            <li><strong>Apple / iPhone</strong> : touche « S’abonner dans le calendrier » → Apple Calendar s’ouvre → confirme.</li>
+            <li><strong>Google / Outlook</strong> : « Copier le lien », puis dans le calendrier → Ajouter un calendrier → <em>Depuis une URL</em> → colle le lien.</li>
+          </ol>
+          <p style={{ margin: '10px 0 0', fontFamily: 'DM Sans, sans-serif', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+            Mise à jour automatique. Le calendrier se rafraîchit à intervalle régulier (côté Apple/Google, quelques minutes à quelques heures). Lien privé — ne le partage pas.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Inner page (needs useSearchParams) ───────────────────────────
 
 function ConnectionsInner() {
@@ -917,6 +1012,7 @@ function ConnectionsInner() {
 
           {/* ── Right content ──────────────────────────────────── */}
           <div style={{ flex: 1, minWidth: 0, paddingTop: 24, paddingLeft: isMobile ? 16 : 0, paddingRight: isMobile ? 16 : 0 }}>
+            <CalendarSyncCard isMobile={isMobile} />
             {filteredApps.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-dim)', fontFamily: 'DM Sans, sans-serif', fontSize: 14 }}>
                 {t('connections.noResults')}

@@ -672,6 +672,6 @@
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
   </script>
-<script>/*reveal-safety-net*/setTimeout(function(){document.querySelectorAll(".reveal").forEach(function(e){e.classList.add("in")});},400);</script>
+<script>/*reveal-safety-net*/(function(){function r(){document.querySelectorAll(".reveal:not(.in)").forEach(function(e){e.classList.add("in")});}var n=0,t=setInterval(function(){r();if(++n>=40)clearInterval(t);},250);document.addEventListener("DOMContentLoaded",r);window.addEventListener("load",r);})();</script>
 </body>
 </html>

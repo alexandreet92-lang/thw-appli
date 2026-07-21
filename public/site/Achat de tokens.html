@@ -106,6 +106,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
     const APP_URL = 'https://thw-appli.vercel.app';
+    const LOGIN_URL = APP_URL + '/auth';
     const GRAD = 'linear-gradient(135deg, #00c8e0, #5b6fff)';
 
     // ── Icons (lucide) ────────────────────────────────────────────────────────
@@ -471,7 +472,7 @@
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--brand)', flexShrink: 0 }}><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
                   Solde de démonstration — <strong style={{ color: 'var(--text)', fontWeight: 600 }}>connecte-toi</strong> pour voir tes vraies données.
                 </span>
-                <a href={APP_URL} style={{
+                <a href={LOGIN_URL} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
                   padding: '8px 15px', borderRadius: 'var(--radius-btn)', textDecoration: 'none',
                   background: 'var(--brand-gradient)', color: '#fff', fontSize: 12.5, fontWeight: 600,

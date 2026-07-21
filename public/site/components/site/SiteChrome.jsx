@@ -4,6 +4,7 @@
    Liens app non connectés pour ce livrable → APP_URL.
    ════════════════════════════════════════════════════════════════ */
 var APP_URL = 'https://thw-appli.vercel.app';
+var LOGIN_URL = APP_URL + '/auth';
 
 /* Menu déroulant partagé — présent sur la page principale et sur chaque page listée. */
 var MENU_ITEMS = [
@@ -81,7 +82,7 @@ function SiteHeader(props) {
   var navLinks = [
     { label: 'Découvrir', href: 'Découvrir.html', key: 'discover' },
     { label: 'Plans', href: 'Thème.html#abonnements', key: 'plans' },
-    { label: 'Connexion', href: APP_URL, key: 'login' },
+    { label: 'Connexion', href: LOGIN_URL, key: 'login' },
   ];
   return (
     <header className="site-header">
@@ -106,7 +107,7 @@ function SiteHeader(props) {
         <div className="header-right">
           {props && props.extra ? props.extra : null}
           <ThemeToggle/>
-          <a className="btn btn-cyan" href={APP_URL}>
+          <a className="btn btn-cyan" href={LOGIN_URL}>
             <UIIcon name="spark" size={15}/>
             <span className="header-cta-label">Essai gratuit 14 jours</span>
           </a>
@@ -180,7 +181,7 @@ function SiteFooter() {
             <p>Ton entraînement hybride — endurance + force — piloté par une IA qui te connaît.</p>
           </div>
           {col('Découvrir', [['Toutes les fonctionnalités', 'Découvrir.html'], ['Coach IA', 'Thème.html#coach-ia'], ['Performances', 'Thème.html#performances'], ['Compétences', 'Thème.html#competences']])}
-          {col('Produit', [['Plans & tarifs', 'Thème.html#abonnements'], ['Système de tokens', 'Thème.html#tokens'], ['Connexion', APP_URL], ['Essai gratuit', APP_URL]])}
+          {col('Produit', [['Plans & tarifs', 'Thème.html#abonnements'], ['Système de tokens', 'Thème.html#tokens'], ['Connexion', LOGIN_URL], ['Essai gratuit', LOGIN_URL]])}
           {col('Support & légal', [['Mentions légales', 'mentions-legales.html'], ['Conditions d\'utilisation', 'conditions-utilisation.html'], ['Confidentialité', 'confidentialite.html'], ['Exporter mes données', 'exporter-mes-donnees.html']])}
         </div>
         <div className="footer-bottom">

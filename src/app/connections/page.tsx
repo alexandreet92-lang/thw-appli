@@ -549,10 +549,19 @@ function Toast({ message, type = 'info', onDismiss }: { message: string; type?: 
 // ── CalendarSyncCard ─────────────────────────────────────────────
 // Abonnement calendrier (flux ICS / webcal). Sens unique app → Apple /
 // Google / Outlook : séances, courses et objectifs remontent automatiquement.
+// Un calendrier (couleur) par catégorie — les couleurs par-événement sont
+// ignorées par Apple pour un flux abonné, d'où 4 calendriers distincts.
+const CAL_KINDS: { kind: string; label: string; color: string }[] = [
+  { kind: 'training', label: 'Entraînements', color: '#1D6FF2' },
+  { kind: 'races',    label: 'Courses',       color: '#FF3B30' },
+  { kind: 'pro',      label: 'Professionnel', color: '#34C759' },
+  { kind: 'perso',    label: 'Personnel',     color: '#AF52DE' },
+]
+
 function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
   const [state, setState] = useState<'idle' | 'loading' | 'ready'>('idle')
   const [urls, setUrls] = useState<{ url: string; webcal: string } | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [copiedKind, setCopiedKind] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -576,9 +585,9 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
     } catch { setState('idle') }
   }
 
-  async function copyLink() {
+  async function copyLink(kind: string) {
     if (!urls) return
-    try { await navigator.clipboard.writeText(urls.url); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { /* noop */ }
+    try { await navigator.clipboard.writeText(`${urls.url}?cal=${kind}`); setCopiedKind(kind); setTimeout(() => setCopiedKind(null), 2000) } catch { /* noop */ }
   }
 
   const CalIcon = (
@@ -598,7 +607,7 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
             Calendrier — Apple · Google · Outlook
           </div>
           <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.45, marginTop: 2 }}>
-            Tes séances, courses et objectifs apparaissent automatiquement dans ton calendrier.
+            4 calendriers colorés : entraînements, courses, pro, perso — mis à jour automatiquement.
           </div>
         </div>
         {state !== 'ready' && (
@@ -617,23 +626,27 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
       </div>
 
       {state === 'ready' && urls && open && (
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <a href={urls.webcal}
-              style={{ flex: '1 1 auto', textAlign: 'center', padding: '10px 14px', borderRadius: 10, background: ACCENT, color: '#fff', textDecoration: 'none', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 700, boxShadow: `0 2px 12px ${ACCENT_GLOW}` }}>
-              S’abonner dans le calendrier
-            </a>
-            <button onClick={copyLink}
-              style={{ flex: '0 0 auto', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-mid)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              {copied ? '✓ Copié' : 'Copier le lien'}
-            </button>
-          </div>
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+          {CAL_KINDS.map(c => (
+            <div key={c.kind} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ width: 12, height: 12, borderRadius: 3, background: c.color, flexShrink: 0 }} />
+              <span style={{ flex: 1, minWidth: 0, fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.label}</span>
+              <button onClick={() => copyLink(c.kind)} title="Copier le lien (Google / Outlook)"
+                style={{ flexShrink: 0, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
+                {copiedKind === c.kind ? '✓' : 'Copier'}
+              </button>
+              <a href={`${urls.webcal}?cal=${c.kind}`}
+                style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, background: c.color, color: '#fff', textDecoration: 'none', fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 700 }}>
+                S’abonner
+              </a>
+            </div>
+          ))}
           <ol style={{ margin: '12px 0 0', paddingLeft: 18, fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.7 }}>
-            <li><strong>Apple / iPhone</strong> : touche « S’abonner dans le calendrier » → Apple Calendar s’ouvre → confirme.</li>
-            <li><strong>Google / Outlook</strong> : « Copier le lien », puis dans le calendrier → Ajouter un calendrier → <em>Depuis une URL</em> → colle le lien.</li>
+            <li><strong>Apple / iPhone</strong> : touche « S’abonner » sur chaque ligne → Apple Calendar s’ouvre avec la bonne couleur → confirme. (4 calendriers = 4 couleurs.)</li>
+            <li><strong>Google / Outlook</strong> : « Copier », puis Ajouter un calendrier → <em>Depuis une URL</em> → colle le lien, et choisis la couleur.</li>
           </ol>
           <p style={{ margin: '10px 0 0', fontFamily: 'DM Sans, sans-serif', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
-            Mise à jour automatique. Le calendrier se rafraîchit à intervalle régulier (côté Apple/Google, quelques minutes à quelques heures). Lien privé — ne le partage pas.
+            La couleur est pré-réglée (Apple) ; tu peux la modifier en un tap par calendrier. Rafraîchi automatiquement (quelques minutes à quelques heures, côté Apple/Google). Liens privés — ne les partage pas.
           </p>
         </div>
       )}

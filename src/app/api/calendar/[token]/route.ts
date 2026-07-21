@@ -10,8 +10,18 @@ import { createServiceClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-const CAL_NAME = 'Hybrid — Entraînements'
 const DOMAIN = 'thw-coaching'
+
+// Un flux par catégorie → une couleur par calendrier dans Apple (les couleurs
+// par-événement sont ignorées pour un calendrier abonné). `cal` (query param)
+// sélectionne le sous-ensemble ; X-APPLE-CALENDAR-COLOR fixe la couleur par défaut.
+const CATS: Record<string, { label: string; color: string }> = {
+  all:      { label: 'Entraînements', color: '#1D6FF2' }, // combiné (rétro-compat)
+  training: { label: 'Entraînements', color: '#1D6FF2' }, // bleu
+  races:    { label: 'Courses',       color: '#FF3B30' }, // rouge
+  pro:      { label: 'Professionnel', color: '#34C759' }, // vert
+  perso:    { label: 'Personnel',     color: '#AF52DE' }, // violet
+}
 
 const SPORT_EMOJI: Record<string, string> = {
   running: '🏃', run: '🏃', trail: '⛰️', cycling: '🚴', bike: '🚴', velo: '🚴',
@@ -81,11 +91,15 @@ function vevent(e: VEventInput, stamp: string): string {
   return lines.map(fold).join('\r\n')
 }
 
-export async function GET(_req: Request, ctx: { params: Promise<{ token: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ token: string }> }) {
   try {
     const { token: raw } = await ctx.params
     const token = (raw || '').replace(/\.ics$/i, '').trim()
     if (!token) return new Response('Not found', { status: 404 })
+
+    let cal = (new URL(req.url).searchParams.get('cal') || 'all').toLowerCase()
+    if (!CATS[cal]) cal = 'all'
+    const catCfg = CATS[cal]
 
     const sb = createServiceClient()
     const { data: feed } = await sb.from('calendar_feeds').select('user_id').eq('token', token).maybeSingle()
@@ -97,13 +111,29 @@ export async function GET(_req: Request, ctx: { params: Promise<{ token: string 
     const past180 = new Date(today.getTime() - 180 * 86400000).toISOString().slice(0, 10)
     const past365 = new Date(today.getTime() - 365 * 86400000).toISOString().slice(0, 10)
 
+    // Sélection des sources selon la catégorie du flux.
+    const needSessions = cal === 'all' || cal === 'training'
+    const needRaces = cal === 'all' || cal === 'races'
+    const needEvents = cal === 'all' || cal === 'races' || cal === 'pro' || cal === 'perso'
+    // Filtre catégorie sur calendar_events : races→'race', pro→'pro', perso→'perso', all→tout.
+    const eventCat = cal === 'races' ? 'race' : cal === 'pro' ? 'pro' : cal === 'perso' ? 'perso' : null
+
+    const eventsQuery = () => {
+      const q = sb.from('calendar_events').select('id, category, date, title, description')
+        .eq('user_id', uid).gte('date', past365).limit(1000)
+      return eventCat ? q.eq('category', eventCat) : q
+    }
+
     const [sessionsRes, racesRes, eventsRes] = await Promise.all([
-      sb.from('planned_sessions').select('id, week_start, day_index, sport, title, time, duration_min, tss, intensity, notes')
-        .eq('user_id', uid).gte('week_start', past180).limit(2000),
-      sb.from('planned_races').select('id, name, sport, date, level, goal, goal_time, distance, notes')
-        .eq('user_id', uid).gte('date', past365).limit(500),
-      sb.from('calendar_events').select('id, category, date, title, description')
-        .eq('user_id', uid).gte('date', past365).limit(1000),
+      needSessions
+        ? sb.from('planned_sessions').select('id, week_start, day_index, sport, title, time, duration_min, tss, intensity, notes')
+            .eq('user_id', uid).gte('week_start', past180).limit(2000)
+        : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+      needRaces
+        ? sb.from('planned_races').select('id, name, sport, date, level, goal, goal_time, distance, notes')
+            .eq('user_id', uid).gte('date', past365).limit(500)
+        : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+      needEvents ? eventsQuery() : Promise.resolve({ data: [] as Record<string, unknown>[] }),
     ])
 
     const stamp = dtstampNow()
@@ -154,7 +184,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ token: string 
       'PRODID:-//THW Coaching//Hybrid//FR',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      `X-WR-CALNAME:${esc(CAL_NAME)}`,
+      `X-WR-CALNAME:${esc('Hybrid — ' + catCfg.label)}`,
+      `NAME:${esc('Hybrid — ' + catCfg.label)}`,
+      `X-APPLE-CALENDAR-COLOR:${catCfg.color}`,
       'X-PUBLISHED-TTL:PT1H',
       'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
       ...events,
@@ -165,7 +197,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ token: string 
       status: 200,
       headers: {
         'Content-Type': 'text/calendar; charset=utf-8',
-        'Content-Disposition': 'inline; filename="hybrid.ics"',
+        'Content-Disposition': `inline; filename="hybrid-${cal}.ics"`,
         'Cache-Control': 'public, max-age=1800',
       },
     })

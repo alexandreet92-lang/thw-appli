@@ -69,7 +69,7 @@ function Dropdown({ value, onChange, options }: { value: string; onChange: (v: s
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }}><path d="M6 9l6 6 6-6"/></svg>
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 5px)', left: 0, right: 0, zIndex: 20, maxHeight: 240, overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 12px 34px rgba(0,0,0,0.28)', padding: 5 }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 5px)', left: 0, right: 0, zIndex: 20, maxHeight: 240, overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 12px 34px rgba(0,0,0,0.28)', padding: 5, transformOrigin: 'top', animation: 'thwDDin 0.15s cubic-bezier(0.2,0.9,0.3,1)' }}>
           {options.map(([v, l]) => {
             const on = v === value
             return (
@@ -256,6 +256,10 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 13800, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isWide ? 28 : 0, fontFamily: FB }}>
+      <style>{`
+        @keyframes thwDDin { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .thw-conn-row:hover { background: var(--bg-hover); }
+      `}</style>
       <div onClick={e => e.stopPropagation()}
         style={{ position: 'relative', width: '100%', maxWidth: 920, height: isWide ? '85vh' : '100%', background: 'var(--bg-card)', borderRadius: isWide ? 'var(--r-lg)' : 0, border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(0,0,0,0.4)' }}>
         {/* Header */}
@@ -330,7 +334,7 @@ function ProfilSection({ profile, setProfile, saveProfile }: { profile: ProfileS
           <label style={fieldLabel}>Quelle est la meilleure description de ton travail ?</label>
           <input style={inputStyle} onFocus={e => { onFocusRing(e); setProfOpen(true); setProfQuery('') }} onBlur={e => { onBlurRing(e); setTimeout(() => setProfOpen(false), 150) }} value={profOpen ? profQuery : profile.work_profession} onChange={e => setProfQuery(e.target.value)} placeholder="Rechercher un métier…" />
           {profOpen && (
-            <div style={{ position: 'absolute', top: 'calc(100% + 5px)', left: 0, right: 0, zIndex: 20, maxHeight: 240, overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 12px 34px rgba(0,0,0,0.28)', padding: 5 }}>
+            <div style={{ position: 'absolute', top: 'calc(100% + 5px)', left: 0, right: 0, zIndex: 20, maxHeight: 240, overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', boxShadow: '0 12px 34px rgba(0,0,0,0.28)', padding: 5, transformOrigin: 'top', animation: 'thwDDin 0.15s cubic-bezier(0.2,0.9,0.3,1)' }}>
               {matches.map(m => (
                 <button key={m} type="button" onMouseDown={() => { setProfile(p => ({ ...p, work_profession: m })); saveProfile({ work_profession: m }); setProfOpen(false) }}
                   style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 11px', border: 'none', borderRadius: 'var(--r-sm)', background: 'transparent', cursor: 'pointer', color: 'var(--text)', fontSize: 13.5, fontFamily: FB }}
@@ -392,14 +396,14 @@ function ModeleSection({ value, onChange }: { value: string; onChange: (v: strin
     <div>
       <div style={sectionTitleStyle}>Modèle par défaut</div>
       <p style={sectionLead}>Le modèle utilisé par défaut pour tes nouvelles conversations.</p>
-      <div style={{ display: 'flex', gap: 12, maxWidth: 500 }}>
+      <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-alt)', border: '1px solid var(--border)' }}>
         {MODELS.map(([id, label, speed]) => {
           const on = value === id
           return (
             <button key={id} type="button" onClick={() => onChange(id)}
-              style={{ flex: 1, padding: '18px 10px', borderRadius: 'var(--r-md)', border: 'none', background: on ? 'var(--primary-dim)' : 'var(--bg-alt)', color: on ? 'var(--primary)' : 'var(--text-mid)', cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s', outline: on ? '1.5px solid var(--primary)' : 'none' }}>
-              <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', opacity: 0.75, marginBottom: 5 }}>{speed}</div>
-              <div style={{ fontSize: 16, fontWeight: on ? 700 : 600 }}>{label}</div>
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: on ? 'var(--bg-card)' : 'transparent', color: on ? 'var(--text)' : 'var(--text-dim)', cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.2)' : 'none' }}>
+              <span style={{ fontSize: 14, fontWeight: on ? 600 : 500 }}>{label}</span>
+              <span style={{ fontSize: 10.5, color: on ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 500 }}>{speed}</span>
             </button>
           )
         })}
@@ -535,18 +539,18 @@ function ConnecteursSection() {
     <div>
       <div style={sectionTitleStyle}>Connecteurs</div>
       <p style={sectionLead}>Connecte Hybrid à tes applications pour qu’il travaille avec toutes tes données.</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 580 }}>
-        {CONNECTORS.map(c => (
-          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'var(--bg-alt)' }}>
-            <ConnectorLogo id={c.id} size={40} />
+      <div style={{ maxWidth: 560 }}>
+        {CONNECTORS.map((c, i) => (
+          <div key={c.id} className="thw-conn-row" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 6px', borderTop: i === 0 ? 'none' : '1px solid var(--border)', borderRadius: 'var(--r-sm)', transition: 'background 0.12s' }}>
+            <ConnectorLogo id={c.id} size={28} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{c.name}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{c.desc}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{c.name}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.desc}</div>
             </div>
             {c.ready ? (
-              <a href="/connections" style={{ padding: '9px 16px', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none', fontFamily: FB, whiteSpace: 'nowrap' }}>Connecter</a>
+              <a href="/connections" style={{ padding: '5px 12px', borderRadius: 999, background: 'var(--bg-alt)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontSize: 12, fontWeight: 600, textDecoration: 'none', fontFamily: FB, whiteSpace: 'nowrap' }}>Connecter</a>
             ) : (
-              <span style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', background: 'var(--bg-card2)', color: 'var(--text-dim)', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>Bientôt</span>
+              <span style={{ padding: '5px 10px', fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Bientôt</span>
             )}
           </div>
         ))}

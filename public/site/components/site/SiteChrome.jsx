@@ -6,6 +6,12 @@
 var APP_URL = 'https://thw-appli.vercel.app';
 var LOGIN_URL = APP_URL + '/auth';
 
+/* Si une page fournit une surpage de connexion locale (ex. page tokens), le clic
+   « Connexion » l'ouvre au lieu de partir vers l'app. Sinon → /auth normal. */
+function thwMaybeLogin(e) {
+  if (typeof window.THW_LOGIN === 'function') { e.preventDefault(); window.THW_LOGIN(); }
+}
+
 /* Menu déroulant partagé — présent sur la page principale et sur chaque page listée. */
 var MENU_ITEMS = [
   { label: 'Politique de confidentialité', href: 'confidentialite.html' },
@@ -96,6 +102,7 @@ function SiteHeader(props) {
           {navLinks.map(function (l) {
             return (
               <a key={l.key} className="header-link" href={l.href}
+                 onClick={l.key === 'login' ? thwMaybeLogin : null}
                  style={l.key === active ? { color: 'var(--text)', background: 'var(--bg-hover)' } : null}>
                 {l.label}
               </a>
@@ -125,7 +132,7 @@ function SiteHeader(props) {
           display: 'flex', flexDirection: 'column', gap: 2,
         }}>
           {navLinks.map(function (l) {
-            return <a key={l.key} className="header-link" href={l.href} style={{ padding: '12px 6px', fontSize: 15 }}>{l.label}</a>;
+            return <a key={l.key} className="header-link" href={l.href} onClick={l.key === 'login' ? thwMaybeLogin : null} style={{ padding: '12px 6px', fontSize: 15 }}>{l.label}</a>;
           })}
           <div style={{ height: 1, background: 'var(--border)', margin: '8px 6px' }}/>
           {MENU_ITEMS.map(function (m) {

@@ -192,6 +192,62 @@
     const MONTHLY_QUOTA = 1000000;
     const BALANCE = 250000;
 
+    // ── Connexion (Supabase) — reste 100% sur le site, aucune redirection app ────
+    // Clé publique « anon » (conçue pour être exposée côté client ; les données
+    // sont protégées par RLS : chaque utilisateur ne lit que les siennes).
+    const SUPA_URL = 'https://sfrcnyzntgrxlwlmwifi.supabase.co';
+    const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmcmNueXpudGdyeGx3bG13aWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODAxMzksImV4cCI6MjA5MDM1NjEzOX0.vJW4eGaXauxiWdhTHYYnhZRehqCrPEgFAiVTUqqk1mc';
+    const PLAN_QUOTAS = { trial: 120000, premium: 700000, pro: 3000000, expert: 8000000 };
+    const PLAN_LABELS = { trial: 'Essai', premium: 'Premium', pro: 'Pro', expert: 'Expert' };
+    const WEEK_MS = 7 * 24 * 3600 * 1000;
+
+    async function thwSignIn(email, password) {
+      const res = await fetch(SUPA_URL + '/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, password: password }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const m = j.error_description || j.msg || j.error || '';
+        if (/invalid|credential|grant/i.test(m)) throw new Error('Email ou mot de passe incorrect.');
+        throw new Error(m || 'Connexion impossible. Réessaie.');
+      }
+      return j; // { access_token, user: { id, email } }
+    }
+
+    async function thwRest(path, token) {
+      const r = await fetch(SUPA_URL + '/rest/v1/' + path, {
+        headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + token },
+      });
+      if (!r.ok) return null;
+      return r.json().catch(() => null);
+    }
+
+    // Reconstitue le solde réel comme l'app (plan − conso période + bonus).
+    async function thwLoadAccount(token, user) {
+      const uid = user.id;
+      let tier = 'trial', periodStart = null;
+      const sub = await thwRest('user_subscriptions?select=tier,current_period_start&user_id=eq.' + uid, token);
+      if (Array.isArray(sub) && sub[0]) { tier = sub[0].tier || 'trial'; periodStart = sub[0].current_period_start; }
+      const quota = PLAN_QUOTAS[tier] || PLAN_QUOTAS.trial;
+      const startISO = new Date(periodStart ? new Date(periodStart).getTime() : Date.now() - WEEK_MS).toISOString();
+      let used = 0;
+      const usage = await thwRest('token_usage?select=tokens_used&user_id=eq.' + uid + '&source=eq.plan&created_at=gte.' + encodeURIComponent(startISO), token);
+      if (Array.isArray(usage)) used = usage.reduce((a, b) => a + (b.tokens_used || 0), 0);
+      let bonus = 0;
+      const wal = await thwRest('user_token_wallet?select=bonus_tokens&user_id=eq.' + uid, token);
+      if (Array.isArray(wal) && wal[0]) bonus = wal[0].bonus_tokens || 0;
+      const resetAt = (periodStart ? new Date(periodStart).getTime() : Date.now()) + WEEK_MS;
+      return {
+        email: user.email,
+        planLabel: PLAN_LABELS[tier] || tier,
+        balance: Math.max(0, quota - used) + bonus,
+        quota: quota,
+        resetDays: Math.max(0, Math.ceil((resetAt - Date.now()) / 86400000)),
+      };
+    }
+
     const PACKS = [
       { id: 'discovery',   name: 'Découverte',  tokens: 100000,   tokensLabel: '100 000',   price: 4,  vol: 0.10,
         per: null,                   desc: "Quelques jours d'usage intensif.", featured: false, accent: '#00c8e0' },
@@ -440,9 +496,106 @@
       return <div className="reveal" style={{ alignSelf: 'stretch' }}>{inner}</div>;
     }
 
+    // ── Surpage de connexion (reste sur le site, aucune redirection) ──────────────
+    function LoginModal({ open, onClose, onSuccess }) {
+      const [email, setEmail] = useState('');
+      const [pw, setPw] = useState('');
+      const [busy, setBusy] = useState(false);
+      const [err, setErr] = useState('');
+      const emailRef = useRef(null);
+      useEffect(() => { if (open && emailRef.current) emailRef.current.focus(); }, [open]);
+      useEffect(() => {
+        if (!open) return;
+        const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [open, onClose]);
+      if (!open) return null;
+
+      async function submit(e) {
+        e.preventDefault();
+        if (busy) return;
+        setErr(''); setBusy(true);
+        try {
+          const sess = await thwSignIn(email.trim(), pw);
+          const acct = await thwLoadAccount(sess.access_token, sess.user);
+          onSuccess(acct);
+        } catch (ex) {
+          setErr(ex.message || 'Connexion impossible.');
+          setBusy(false);
+        }
+      }
+
+      const field = {
+        width: '100%', height: 46, borderRadius: 'var(--radius-btn)', padding: '0 14px',
+        background: 'var(--bg-alt)', border: '1px solid var(--border-mid)', color: 'var(--text)',
+        fontFamily: "'DM Sans', sans-serif", fontSize: 14.5, outline: 'none',
+      };
+      const lbl = { fontFamily: "'DM Mono', monospace", fontSize: 11, letterSpacing: '0.06em',
+        textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 7, display: 'block' };
+
+      return (
+        <div onMouseDown={onClose} style={{
+          position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 20, background: 'rgba(3,6,10,0.62)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        }}>
+          <form onMouseDown={(e) => e.stopPropagation()} onSubmit={submit} style={{
+            width: '100%', maxWidth: 400, background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)', padding: '30px 28px 28px', boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
+            position: 'relative',
+          }}>
+            <button type="button" aria-label="Fermer" onClick={onClose} style={{
+              position: 'absolute', top: 16, right: 16, width: 30, height: 30, borderRadius: 9, cursor: 'pointer',
+              border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, lineHeight: 1,
+            }}>×</button>
+
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 25, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text)', marginBottom: 6 }}>Connexion</div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13.5, color: 'var(--text-mid)', marginBottom: 22 }}>
+              Connecte-toi pour voir ton vrai solde de tokens.
+            </div>
+
+            <label style={lbl}>Email</label>
+            <input ref={emailRef} type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username" name="email" inputMode="email" placeholder="ton@email.com"
+              style={{ ...field, marginBottom: 16 }} />
+
+            <label style={lbl}>Mot de passe</label>
+            <input type="password" value={pw} onChange={(e) => setPw(e.target.value)}
+              autoComplete="current-password" name="password" placeholder="••••••••"
+              style={{ ...field, marginBottom: err ? 10 : 20 }} />
+
+            {err && (
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: '#ef4444', marginBottom: 16 }}>{err}</div>
+            )}
+
+            <button type="submit" disabled={busy || !email || !pw} style={{
+              width: '100%', height: 48, borderRadius: 'var(--radius-btn)', border: 'none', cursor: busy ? 'wait' : 'pointer',
+              background: (busy || !email || !pw) ? 'var(--border-mid)' : 'var(--brand-gradient)',
+              color: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              boxShadow: (busy || !email || !pw) ? 'none' : '0 6px 18px rgba(0,200,224,0.28)',
+            }}>
+              {busy ? 'Connexion…' : 'Se connecter'}
+              {!busy && <IcArrow size={15} />}
+            </button>
+          </form>
+        </div>
+      );
+    }
+
     // ── Main top-up view ──────────────────────────────────────────────────────────
     function TopUpView({ onPaid }) {
       const [loading, setLoading] = useState(null);
+      const [loginOpen, setLoginOpen] = useState(false);
+      const [account, setAccount] = useState(null);
+
+      // Le header partagé (SiteHeader) déclenche cette surpage au lieu de partir
+      // vers l'app : « Connexion » et « Se connecter » restent sur la page token.
+      useEffect(() => {
+        window.THW_LOGIN = () => setLoginOpen(true);
+        return () => { if (window.THW_LOGIN) delete window.THW_LOGIN; };
+      }, []);
 
       function choose(pack) {
         if (loading) return;
@@ -463,37 +616,57 @@
                 Lien sécurisé · expire dans 24h
               </div>
 
-              <div className="reveal" style={{
-                display: 'inline-flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
-                marginBottom: 26, padding: '12px 16px 12px 18px', borderRadius: 'var(--radius-md)',
-                background: 'var(--bg-card)', border: '1px dashed var(--border-mid)', maxWidth: 560,
-              }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: 'var(--text-mid)', textAlign: 'left', textWrap: 'pretty' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--brand)', flexShrink: 0 }}><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-                  Solde de démonstration — <strong style={{ color: 'var(--text)', fontWeight: 600 }}>connecte-toi</strong> pour voir tes vraies données.
-                </span>
-                <a href={LOGIN_URL} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
-                  padding: '8px 15px', borderRadius: 'var(--radius-btn)', textDecoration: 'none',
-                  background: 'var(--brand-gradient)', color: '#fff', fontSize: 12.5, fontWeight: 600,
-                  boxShadow: '0 3px 14px rgba(0,200,224,0.3)',
+              {account ? (
+                <div className="reveal" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
+                  marginBottom: 26, padding: '12px 16px 12px 18px', borderRadius: 'var(--radius-md)',
+                  background: 'var(--bg-card)', border: '1px solid var(--brand)', maxWidth: 560,
                 }}>
-                  Se connecter
-                  <IcArrow size={13}/>
-                </a>
-              </div>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: 'var(--text-mid)', textAlign: 'left', textWrap: 'pretty' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--brand)', flexShrink: 0 }}><path d="M20 6 9 17l-5-5"/></svg>
+                    Connecté en tant que <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{account.email}</strong>
+                  </span>
+                  <button type="button" onClick={() => setAccount(null)} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, cursor: 'pointer',
+                    padding: '8px 15px', borderRadius: 'var(--radius-btn)', border: '1px solid var(--border-mid)',
+                    background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 600,
+                  }}>
+                    Se déconnecter
+                  </button>
+                </div>
+              ) : (
+                <div className="reveal" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
+                  marginBottom: 26, padding: '12px 16px 12px 18px', borderRadius: 'var(--radius-md)',
+                  background: 'var(--bg-card)', border: '1px dashed var(--border-mid)', maxWidth: 560,
+                }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: 'var(--text-mid)', textAlign: 'left', textWrap: 'pretty' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--brand)', flexShrink: 0 }}><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                    Solde de démonstration — <strong style={{ color: 'var(--text)', fontWeight: 600 }}>connecte-toi</strong> pour voir tes vraies données.
+                  </span>
+                  <button type="button" onClick={() => setLoginOpen(true)} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, cursor: 'pointer', border: 'none',
+                    padding: '8px 15px', borderRadius: 'var(--radius-btn)',
+                    background: 'var(--brand-gradient)', color: '#fff', fontSize: 12.5, fontWeight: 600,
+                    boxShadow: '0 3px 14px rgba(0,200,224,0.3)',
+                  }}>
+                    Se connecter
+                    <IcArrow size={13}/>
+                  </button>
+                </div>
+              )}
 
               <div className="reveal" style={{ marginBottom: 22 }}>
-                <TokenGauge value={BALANCE} total={MONTHLY_QUOTA} label="Ton solde actuel" sub="quota mensuel" />
+                <TokenGauge value={account ? account.balance : BALANCE} total={account ? account.quota : MONTHLY_QUOTA} label="Ton solde actuel" sub="quota mensuel" />
               </div>
 
               <div className="reveal" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '8px 16px', borderRadius: 999,
                 border: '1px solid var(--border-mid)', background: 'var(--bg-card)' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--brand)' }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--brand)', display: 'inline-block' }}/> Plan Pro
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--brand)', display: 'inline-block' }}/> Plan {account ? account.planLabel : 'Pro'}
                 </span>
                 <span style={{ width: 1, height: 12, background: 'var(--border-mid)' }}/>
-                <span style={{ fontSize: 12.5, color: 'var(--text-mid)' }}>Réinitialisation dans 5 jours</span>
+                <span style={{ fontSize: 12.5, color: 'var(--text-mid)' }}>Réinitialisation dans {account ? account.resetDays : 5} jours</span>
               </div>
             </div>
           </section>
@@ -566,6 +739,12 @@
           </section>
 
           <Footer/>
+
+          <LoginModal
+            open={loginOpen}
+            onClose={() => setLoginOpen(false)}
+            onSuccess={(acct) => { setAccount(acct); setLoginOpen(false); }}
+          />
         </div>
       );
     }

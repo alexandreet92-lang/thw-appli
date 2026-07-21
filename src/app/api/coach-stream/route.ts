@@ -30,6 +30,8 @@ import { readTools, READ_TOOL_NAMES, resolveReadTool } from '@/lib/coach/read-to
 import { memoryTools, MEMORY_TOOL_NAMES, resolveMemoryTool, buildStructuredMemory } from '@/lib/coach/memory-tools'
 import { writeTools, WRITE_TOOL_NAMES, resolveWriteTool } from '@/lib/coach/write-tools'
 import { sendPushToUser, previewForBody } from '@/lib/push/send'
+import { isNotifEnabled } from '@/lib/notifications/dispatch'
+import { buildTrainingAgentInstruction, DEFAULT_TRAINING_SETTINGS } from '@/lib/ai/agent-settings'
 import { createClient } from '@/lib/supabase/server'
 import { enforceQuota } from '@/lib/subscriptions/quota-middleware'
 import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
@@ -657,6 +659,15 @@ AVANT de chiffrer — jamais de chiffre « hors-sol ».`
       if (durableMemory)    systemWithTools = `${systemWithTools}\n\n${durableMemory}`
       if (memory)           systemWithTools = `${systemWithTools}\n\n${memory}`
       if (insights)         systemWithTools = `${systemWithTools}\n\n${insights}`
+      // Réglages de l'agent Training (Paramètres → Agents → Training).
+      try {
+        const { data: prof } = await sbCtx.from('profiles').select('ai_agent_training').eq('id', userId).maybeSingle()
+        const agentCfg = (prof as { ai_agent_training?: Record<string, unknown> } | null)?.ai_agent_training
+        if (agentCfg && typeof agentCfg === 'object') {
+          const instr = buildTrainingAgentInstruction({ ...DEFAULT_TRAINING_SETTINGS, ...(agentCfg as Partial<typeof DEFAULT_TRAINING_SETTINGS>) })
+          systemWithTools = `${systemWithTools}\n\n${instr}`
+        }
+      } catch { /* fail-open */ }
     } catch (e) {
       console.error('[coach-stream] central context injection failed:', e)
     }
@@ -959,13 +970,16 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
         // No-op silencieux si les clés VAPID ne sont pas configurées.
         if (!runErrored && fullText.trim()) {
           try {
-            await sendPushToUser(sbForTools, userId, {
-              title: 'Ton coach a répondu',
-              body: previewForBody(fullText),
-              url: '/',
-              convId: convIdForRun ?? undefined,
-              tag: convIdForRun ? `coach-${convIdForRun}` : 'coach-done',
-            })
+            // Respecte le réglage « Complétions de réponse » (Paramètres → Notifications).
+            if (await isNotifEnabled(userId, 'coach.reponse_terminee')) {
+              await sendPushToUser(sbForTools, userId, {
+                title: 'Ton coach a répondu',
+                body: previewForBody(fullText),
+                url: '/',
+                convId: convIdForRun ?? undefined,
+                tag: convIdForRun ? `coach-${convIdForRun}` : 'coach-done',
+              })
+            }
           } catch { /* best-effort */ }
         }
         streamClosed = true

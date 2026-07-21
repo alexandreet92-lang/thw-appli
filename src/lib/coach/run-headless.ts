@@ -17,6 +17,7 @@ import { writeTools, WRITE_TOOL_NAMES, resolveWriteTool } from '@/lib/coach/writ
 import { getActiveCompetencesPrompt } from '@/lib/ai/competences'
 import { buildAthleteContext } from '@/lib/coach/athlete-context'
 import { recordTokenUsage } from '@/lib/tokens/limits'
+import { buildTrainingAgentInstruction, DEFAULT_TRAINING_SETTINGS } from '@/lib/ai/agent-settings'
 
 const MODEL_BY_KEY: Record<string, string> = {
   hermes: MODELS.fast,
@@ -54,6 +55,13 @@ export async function runCoachHeadless(opts: {
     if (comp) system += `\n\n${comp}`
     if (athlete) system += `\n\n${athlete}`
     if (mem) system += `\n\n${mem}`
+    try {
+      const { data: prof } = await sb.from('profiles').select('ai_agent_training').eq('id', userId).maybeSingle()
+      const agentCfg = (prof as { ai_agent_training?: Record<string, unknown> } | null)?.ai_agent_training
+      if (agentCfg && typeof agentCfg === 'object') {
+        system += `\n\n${buildTrainingAgentInstruction({ ...DEFAULT_TRAINING_SETTINGS, ...(agentCfg as Partial<typeof DEFAULT_TRAINING_SETTINGS>) })}`
+      }
+    } catch { /* fail-open */ }
   } catch { /* fail-open : la routine tourne même sans contexte */ }
 
   const tools = allowWrite

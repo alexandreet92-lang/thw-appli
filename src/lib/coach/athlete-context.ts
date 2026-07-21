@@ -85,6 +85,11 @@ interface ProfileRow {
   height_cm?: number | null
   main_goal?: string | null
   sports?: string[] | null
+  preferred_name?: string | null
+  work_profession?: string | null
+  work_hours_per_week?: number | null
+  ideal_sleep_hours?: number | null
+  sport_hours_per_week?: number | null
 }
 interface PerfRow {
   ftp_watts?: number | null
@@ -176,7 +181,7 @@ export async function buildAthleteContext(
   const since56 = new Date(weekStart); since56.setDate(since56.getDate() - 56)
 
   const [profile, perf, zones, activities56, plannedWeek, races, metrics, injuries, plan] = await Promise.all([
-    single<ProfileRow>(sb.from('profiles').select('first_name,age,weight_kg,height_cm,main_goal,sports').eq('id', userId).maybeSingle()),
+    single<ProfileRow>(sb.from('profiles').select('first_name,age,weight_kg,height_cm,main_goal,sports,preferred_name,work_profession,work_hours_per_week,ideal_sleep_hours,sport_hours_per_week').eq('id', userId).maybeSingle()),
     single<PerfRow>(sb.from('athlete_performance_profile').select('*').eq('user_id', userId).maybeSingle()),
     many<ZoneRow>(sb.from('training_zones').select('sport,ftp_watts,sl1,sl2,z1_value,z2_value,z3_value,z4_value,z5_value').eq('user_id', userId).eq('is_current', true)),
     many<ActivityRow>(sb.from('activities').select(ACT_SELECT).eq('user_id', userId).gte('started_at', since56.toISOString()).order('started_at', { ascending: true })),
@@ -197,11 +202,17 @@ export async function buildAthleteContext(
 
   // Profil
   const pParts: string[] = []
-  if (profile?.first_name) pParts.push(`Prénom : ${profile.first_name}`)
+  if (profile?.preferred_name) pParts.push(`Appeler l'athlète : ${profile.preferred_name}`)
+  else if (profile?.first_name) pParts.push(`Prénom : ${profile.first_name}`)
+  if (profile?.first_name && profile?.preferred_name && profile.preferred_name !== profile.first_name) pParts.push(`Prénom : ${profile.first_name}`)
   if (profile?.age) pParts.push(`${profile.age} ans`)
   if (profile?.weight_kg) pParts.push(`${profile.weight_kg} kg`)
   if (profile?.height_cm) pParts.push(`${profile.height_cm} cm`)
   if (profile?.main_goal) pParts.push(`Objectif : ${profile.main_goal}`)
+  if (profile?.work_profession) pParts.push(`Métier : ${profile.work_profession}`)
+  if (profile?.work_hours_per_week) pParts.push(`Travail : ${profile.work_hours_per_week} h/sem`)
+  if (profile?.ideal_sleep_hours) pParts.push(`Sommeil idéal : ${profile.ideal_sleep_hours} h`)
+  if (profile?.sport_hours_per_week) pParts.push(`Sport visé : ${profile.sport_hours_per_week} h/sem`)
   if (sportsUsed.length) pParts.push(`Sports pratiqués (8 sem.) : ${sportsUsed.join(', ')}`)
   else if (profile?.sports?.length) pParts.push(`Sports : ${profile.sports.join(', ')}`)
   if (pParts.length) L.push(`\nPROFIL — ${pParts.join(' · ')}`)

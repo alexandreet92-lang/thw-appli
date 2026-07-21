@@ -22,6 +22,7 @@ import { haptic } from '@/lib/ui/haptic'
 import { emitNotification } from '@/lib/notifications/emit'
 import { localDateStr } from '@/lib/date/weekStart'
 import RoutinesView from '@/components/ai/RoutinesView'
+import AISettingsModal, { type SettingsSection } from '@/components/ai/AISettingsModal'
 import { VoiceOverlay } from './VoiceOverlay'
 import { VoiceConversation } from './VoiceConversation'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
@@ -36,7 +37,6 @@ import { MODEL_BADGE, quickActionEstimate, fmtEstimate } from '@/lib/quick-actio
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
 import { computeSportMetrics, wpLabelToCanon, type ActivityWithStreams, type SportMetrics } from '@/lib/analysis/sportMetrics'
 import { currentLocale } from '@/lib/i18n'
-import { IASettingsBloc } from '@/app/profile/page'
 
 // ── Colonnes activities — source de vérité unique ──────────────
 /** Colonnes SAFE de la table activities — ne JAMAIS ajouter sans vérifier Supabase */
@@ -12920,6 +12920,7 @@ function HistoryDrawer({
   onDeleteProject,
   onMoveConvToProject,
   onOpenRoutines,
+  onToggleCollapse,
   onSelect,
   onDelete,
   onNew,
@@ -12944,6 +12945,7 @@ function HistoryDrawer({
   onDeleteProject: (id: string) => void
   onMoveConvToProject: (convId: string, projectId: string | null) => void
   onOpenRoutines: () => void
+  onToggleCollapse?: () => void
   onSelect: (c: AIConv) => void
   onDelete: (id: string) => void
   onNew: () => void
@@ -12956,12 +12958,26 @@ function HistoryDrawer({
   activeAgent: 'training' | 'networks'
   onAgentChange: (a: 'training' | 'networks') => void
 }) {
-  const { t } = useI18n()
+  const { t, lang, setLang } = useI18n()
   const [menuId,   setMenuId]   = useState<string | null>(null)
   const [renId,    setRenId]    = useState<string | null>(null)
   const [renVal,   setRenVal]   = useState('')
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [searchQ]                 = useState('')
+  // Menu avatar (compte / paramètres) + sous-menu langue.
+  const [avatarMenu, setAvatarMenu] = useState(false)
+  const [langMenu,   setLangMenu]   = useState(false)
+  const avatarRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!avatarMenu) { setLangMenu(false); return }
+    const h = (e: MouseEvent) => { if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) { setAvatarMenu(false); setLangMenu(false) } }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [avatarMenu])
+  const openSettings = (section: string) => {
+    setAvatarMenu(false)
+    try { window.dispatchEvent(new CustomEvent('thw:open-ai-settings', { detail: { section } })) } catch { /* ignore */ }
+  }
   // ── Projets ──
   const [projectsOpen, setProjectsOpen] = useState(true)
   // Modale projet : création (id absent) ou édition (id présent).
@@ -12997,29 +13013,74 @@ function HistoryDrawer({
 
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Titre Hybrid + photo de profil (style Claude) */}
-      <div style={{ padding: '18px 16px 8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-        <span style={{ fontSize: 24, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>
-          Hybrid
-        </span>
-        <button
-          type="button"
-          onClick={() => { haptic(); try { window.dispatchEvent(new Event('thw:open-ai-settings')) } catch { /* ignore */ } }}
-          aria-label="Réglages IA"
-          style={{
-            width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            overflow: 'hidden', cursor: 'pointer', padding: 0,
-            border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
-            color: 'var(--text)', fontSize: 13, fontWeight: 600,
-            fontFamily: 'DM Sans,sans-serif',
-          }}
-        >
-          {avatarUrl
-            ? /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={avatarUrl} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : (initials || '?')}
-        </button>
+      {/* Titre Hybrid + bouton repli (desktop) + photo de profil (style Claude) */}
+      <div style={{ padding: '18px 16px 8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          <span style={{ fontSize: 24, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>
+            Hybrid
+          </span>
+          {persistent && onToggleCollapse && (
+            <button type="button" onClick={() => { haptic(); onToggleCollapse() }} aria-label="Replier la barre latérale"
+              style={{ width: 28, height: 28, borderRadius: 7, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+            </button>
+          )}
+        </div>
+        <div ref={avatarRef} style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => { haptic(); setAvatarMenu(o => !o) }}
+            aria-label="Compte et paramètres"
+            style={{
+              width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden', cursor: 'pointer', padding: 0,
+              border: '0.5px solid var(--border)', background: 'var(--bg-alt)',
+              color: 'var(--text)', fontSize: 13, fontWeight: 600,
+              fontFamily: 'DM Sans,sans-serif',
+            }}
+          >
+            {avatarUrl
+              ? /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={avatarUrl} alt="Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : (initials || '?')}
+          </button>
+          {avatarMenu && (
+            <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 100, minWidth: 190, background: 'var(--bg-card)', border: '0.5px solid var(--border)', borderRadius: 12, boxShadow: '0 10px 34px rgba(0,0,0,0.22)', overflow: 'hidden', padding: 4 }}>
+              {[
+                { label: 'Paramètres', section: 'profil' },
+                { label: 'Modèles', section: 'modele' },
+                { label: 'Abonnement', section: 'abonnement' },
+              ].map(it => (
+                <button key={it.section} onClick={() => openSettings(it.section)}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', fontSize: 13.5, fontFamily: 'DM Sans,sans-serif', borderRadius: 8 }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>{it.label}</button>
+              ))}
+              {/* Langue — sous-menu inline */}
+              <button onClick={() => setLangMenu(o => !o)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%', textAlign: 'left', padding: '9px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', fontSize: 13.5, fontFamily: 'DM Sans,sans-serif', borderRadius: 8 }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                <span>Langue</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: langMenu ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}><path d="M9 6l6 6-6 6"/></svg>
+              </button>
+              {langMenu && (
+                <div style={{ padding: '2px 0 2px 8px' }}>
+                  {([['fr', 'Français'], ['en', 'English'], ['es', 'Español']] as const).map(([code, label]) => (
+                    <button key={code} onClick={() => { setLang(code); setAvatarMenu(false); setLangMenu(false) }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', textAlign: 'left', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-mid)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', borderRadius: 8 }}>
+                      {lang === code && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={ '#5b6fff' } strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
+                      <span style={{ marginLeft: lang === code ? 0 : 19 }}>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Nouvelle conversation (desktop) + Projets */}
@@ -20164,14 +20225,29 @@ export default function AIPanel({
   // raisonnement étendu (null = fermée).
   const [reasoningMsgId, setReasoningMsgId] = useState<string | null>(null)
   // Sur-page « Réglages IA » ouverte PAR-DESSUS l'interface IA (depuis l'avatar).
-  const [iaSettingsOpen, setIaSettingsOpen] = useState(false)
+  // Nouvelle surpage Paramètres (style Claude) — section ciblée par l'avatar.
+  const [settingsOpen,    setSettingsOpen]    = useState(false)
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>('profil')
+  // Sidebar desktop repliable.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   useEffect(() => {
-    const open = () => setIaSettingsOpen(true)
+    const open = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { section?: SettingsSection } | undefined
+      setSettingsSection(detail?.section ?? 'profil')
+      setSettingsOpen(true)
+    }
     window.addEventListener('thw:open-ai-settings', open)
     return () => window.removeEventListener('thw:open-ai-settings', open)
   }, [])
   const [isDesktop,   setIsDesktop]   = useState(false)
   const [model,       setModel]       = useState<THWModel>('athena')
+  // Modèle par défaut choisi dans Paramètres → applique à l'ouverture.
+  useEffect(() => {
+    try {
+      const m = localStorage.getItem('thw_ai_default_model')
+      if (m === 'hermes' || m === 'athena' || m === 'zeus') setModel(m)
+    } catch { /* ignore */ }
+  }, [])
   const [method,      setMethod]      = useState<string>('auto')   // méthode d'entraînement (composer)
   const [selPopup,    setSelPopup]    = useState<{ text: string; x: number; y: number } | null>(null)
   const [attachment,    setAttachment]    = useState<AttachedFile | null>(null)
@@ -22329,10 +22405,11 @@ export default function AIPanel({
              de l'interface et qu'il n'y ait plus de bande vide en haut à droite. */}
         <div className="aip-body">
 
-          {/* ── Sidebar desktop (persistante, toujours visible) ── */}
-          {isDesktop && (
+          {/* ── Sidebar desktop (persistante, repliable) ── */}
+          {isDesktop && !sidebarCollapsed && (
             <HistoryDrawer
               persistent
+              onToggleCollapse={() => setSidebarCollapsed(true)}
               avatarUrl={userAvatarUrl}
               initials={userInitials}
               convs={convs.filter(c => (c.agent ?? 'training') === activeAgent)}
@@ -22355,6 +22432,18 @@ export default function AIPanel({
               activeAgent={activeAgent}
               onAgentChange={setActiveAgent}
             />
+          )}
+          {/* Bouton flottant pour rouvrir la sidebar quand elle est repliée */}
+          {isDesktop && sidebarCollapsed && (
+            <button
+              onClick={() => { haptic(); setSidebarCollapsed(false) }}
+              aria-label="Ouvrir la barre latérale"
+              style={{ position: 'absolute', top: 16, left: 12, zIndex: 40, width: 34, height: 34, borderRadius: 9, border: '0.5px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-card)' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+            </button>
           )}
 
           {/* ── Sidebar mobile (underlay : la colonne chat coulisse dessus) ── */}
@@ -23673,56 +23762,9 @@ export default function AIPanel({
         document.body,
       )}
 
-      {/* ── Sur-page « Réglages IA » — PAR-DESSUS l'interface IA ── */}
-      {iaSettingsOpen && mounted && createPortal(
-        <>
-          <style>{`
-            @keyframes iaset_in { from { opacity: 0 } to { opacity: 1 } }
-            @keyframes iaset_up { from { transform: translateY(100%) } to { transform: translateY(0) } }
-            @keyframes iaset_side { from { transform: translateX(100%) } to { transform: translateX(0) } }
-          `}</style>
-          <div
-            role="dialog" aria-modal="true" aria-label="Réglages IA"
-            onClick={() => setIaSettingsOpen(false)}
-            style={{
-              ...AI_PORTAL_VARS,
-              position: 'fixed', inset: 0, zIndex: 13000,
-              background: 'rgba(0,0,0,0.32)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
-              animation: 'iaset_in 0.2s ease',
-              display: 'flex', alignItems: isDesktop ? 'stretch' : 'flex-end',
-              justifyContent: isDesktop ? 'flex-end' : 'center',
-            }}
-          >
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{
-                background: 'var(--bg)', color: 'var(--text)',
-                display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                ...(isDesktop
-                  ? { width: 'min(520px, 92vw)', height: '100%', borderLeft: '1px solid var(--border)', animation: 'iaset_side 0.28s cubic-bezier(0.32,0.72,0,1)' }
-                  // Sur-page mobile : ancrée en bas, laissant un ESPACE visible en haut
-                  // (fond flouté de l'interface IA), façon « Mon Profil ».
-                  : { position: 'fixed', left: 0, right: 0, bottom: 0, top: 'max(56px, calc(env(safe-area-inset-top, 0px) + 44px))', borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -10px 50px rgba(0,0,0,0.28)', animation: 'iaset_up 0.34s cubic-bezier(0.2,0.8,0.2,1)' }),
-              }}
-            >
-              {/* En-tête */}
-              <div style={{ flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 18px 12px', borderBottom: '1px solid var(--border)' }}>
-                {!isDesktop && <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)', width: 38, height: 4, borderRadius: 2, background: 'var(--border)' }} />}
-                <span style={{ fontSize: 17, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text)' }}>Réglages IA</span>
-                <button
-                  onClick={() => setIaSettingsOpen(false)} aria-label={t('aip.ui.close')}
-                  style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-4px)', width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'var(--bg-alt)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-                </button>
-              </div>
-              {/* Corps — contenu Réglages IA */}
-              <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '4px 14px 28px' }}>
-                <IASettingsBloc />
-              </div>
-            </div>
-          </div>
-        </>,
+      {/* ── Surpage « Paramètres » (style Claude) — PAR-DESSUS l'interface IA ── */}
+      {mounted && createPortal(
+        <AISettingsModal open={settingsOpen} initialSection={settingsSection} onClose={() => setSettingsOpen(false)} />,
         document.body,
       )}
 

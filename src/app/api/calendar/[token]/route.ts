@@ -187,8 +187,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
       `X-WR-CALNAME:${esc('Hybrid — ' + catCfg.label)}`,
       `NAME:${esc('Hybrid — ' + catCfg.label)}`,
       `X-APPLE-CALENDAR-COLOR:${catCfg.color}`,
-      'X-PUBLISHED-TTL:PT1H',
-      'REFRESH-INTERVAL;VALUE=DURATION:PT1H',
+      'X-PUBLISHED-TTL:PT15M',
+      'REFRESH-INTERVAL;VALUE=DURATION:PT15M',
       ...events,
       'END:VCALENDAR',
     ].join('\r\n')
@@ -198,7 +198,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
       headers: {
         'Content-Type': 'text/calendar; charset=utf-8',
         'Content-Disposition': `inline; filename="hybrid-${cal}.ics"`,
-        'Cache-Control': 'public, max-age=1800',
+        'Cache-Control': 'public, max-age=300',
       },
     })
   } catch (e) {

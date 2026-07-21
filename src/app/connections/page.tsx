@@ -92,11 +92,6 @@ const SECTION_ID: Record<CategoryId, string> = {
   sleep:      'sommeil',
 }
 
-function scrollToSection(catId: CategoryId) {
-  const el = document.getElementById(SECTION_ID[catId])
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
 // ── Apps ────────────────────────────────────────────────────────
 
 const APPS: AppDef[] = [
@@ -562,6 +557,7 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
   const [state, setState] = useState<'idle' | 'loading' | 'ready'>('idle')
   const [urls, setUrls] = useState<{ url: string; webcal: string } | null>(null)
   const [copiedKind, setCopiedKind] = useState<string | null>(null)
+  const [showCopy, setShowCopy] = useState(false)
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -591,23 +587,23 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
   }
 
   const CalIcon = (
-    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="var(--text-mid)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="3" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" />
     </svg>
   )
 
   return (
-    <div style={{ border: `1px solid ${ACCENT}40`, background: `linear-gradient(180deg, ${ACCENT}0d, transparent)`, borderRadius: 16, padding: isMobile ? 14 : 18, marginBottom: 4 }}>
+    <div style={{ border: '1px solid var(--border)', background: 'var(--bg-card)', borderRadius: 14, padding: isMobile ? 14 : 16, marginBottom: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 2px 12px ${ACCENT_GLOW}` }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: 'var(--bg-card2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {CalIcon}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: isMobile ? 14 : 15, color: 'var(--text)', lineHeight: 1.25 }}>
-            Calendrier — Apple · Google · Outlook
+            Calendrier
           </div>
-          <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.45, marginTop: 2 }}>
-            4 calendriers colorés : entraînements, courses, pro, perso — mis à jour automatiquement.
+          <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.4, marginTop: 2 }}>
+            Séances, courses et objectifs dans Apple, Google ou Outlook — à jour automatiquement.
           </div>
         </div>
         {state !== 'ready' && (
@@ -618,8 +614,8 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
           </button>
         )}
         {state === 'ready' && (
-          <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'rgba(34,197,94,0.13)', color: '#22c55e', fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 5px #22c55e' }} />
+          <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: 11, fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
             Connecté
           </span>
         )}
@@ -627,26 +623,46 @@ function CalendarSyncCard({ isMobile }: { isMobile: boolean }) {
 
       {state === 'ready' && urls && open && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+          <p style={{ margin: '0 0 6px', fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5 }}>
+            Ajoute tes calendriers — chaque type a déjà sa couleur.
+          </p>
           {CAL_KINDS.map(c => (
-            <div key={c.kind} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ width: 12, height: 12, borderRadius: 3, background: c.color, flexShrink: 0 }} />
-              <span style={{ flex: 1, minWidth: 0, fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.label}</span>
-              <button onClick={() => copyLink(c.kind)} title="Copier le lien (Google / Outlook)"
-                style={{ flexShrink: 0, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
-                {copiedKind === c.kind ? '✓' : 'Copier'}
-              </button>
+            <div key={c.kind} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
+              <span style={{ flex: 1, minWidth: 0, fontFamily: 'DM Sans, sans-serif', fontSize: 13.5, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.label}</span>
               <a href={`${urls.webcal}?cal=${c.kind}`}
-                style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, background: c.color, color: '#fff', textDecoration: 'none', fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 700 }}>
+                style={{ flexShrink: 0, fontFamily: 'DM Sans, sans-serif', fontSize: 12.5, fontWeight: 700, color: ACCENT, textDecoration: 'none' }}>
                 S’abonner
               </a>
             </div>
           ))}
-          <ol style={{ margin: '12px 0 0', paddingLeft: 18, fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.7 }}>
-            <li><strong>Apple / iPhone</strong> : touche « S’abonner » sur chaque ligne → Apple Calendar s’ouvre avec la bonne couleur → confirme. (4 calendriers = 4 couleurs.)</li>
-            <li><strong>Google / Outlook</strong> : « Copier », puis Ajouter un calendrier → <em>Depuis une URL</em> → colle le lien, et choisis la couleur.</li>
-          </ol>
-          <p style={{ margin: '10px 0 0', fontFamily: 'DM Sans, sans-serif', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
-            La couleur est pré-réglée (Apple) ; tu peux la modifier en un tap par calendrier. Rafraîchi automatiquement (quelques minutes à quelques heures, côté Apple/Google). Liens privés — ne les partage pas.
+
+          {/* Google / Outlook : copier les liens (secondaire, replié) */}
+          <button onClick={() => setShowCopy(v => !v)}
+            style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontSize: 12, color: 'var(--text-dim)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 10, transform: showCopy ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▸</span>
+            Google / Outlook — copier les liens
+          </button>
+          {showCopy && (
+            <div style={{ marginTop: 8 }}>
+              {CAL_KINDS.map(c => (
+                <div key={c.kind} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontFamily: 'DM Sans, sans-serif', fontSize: 12.5, color: 'var(--text-mid)' }}>{c.label}</span>
+                  <button onClick={() => copyLink(c.kind)}
+                    style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                    {copiedKind === c.kind ? '✓ Copié' : 'Copier'}
+                  </button>
+                </div>
+              ))}
+              <p style={{ margin: '6px 0 0', fontFamily: 'DM Sans, sans-serif', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+                Ajouter un calendrier → <em>Depuis une URL</em> → colle le lien.
+              </p>
+            </div>
+          )}
+
+          <p style={{ margin: '12px 0 0', fontFamily: 'DM Sans, sans-serif', fontSize: 11, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+            Liens privés — ne les partage pas.
           </p>
         </div>
       )}
@@ -667,7 +683,8 @@ function ConnectionsInner() {
   const [syncingAll, setSyncingAll] = useState(false)
   const [connectModal, setConnectModal] = useState<ConnectModalState | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const [activeCategory, setActiveCategory] = useState<CategoryId>('training')
+  // Filtre catégorie : un tap sur une puce n'affiche que cette section (null = tout).
+  const [catFilter, setCatFilter] = useState<CategoryId | null>(null)
   const [logoErrors, setLogoErrors] = useState<Set<string>>(new Set())
   const [toasts, setToasts] = useState<{ id: number; message: string; type: 'info'|'success'|'error' }[]>([])
   const [toastCounter, setToastCounter] = useState(0)
@@ -682,22 +699,6 @@ function ConnectionsInner() {
     const check = () => setIsMobile(window.innerWidth < 768)
     check(); window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
-  }, [])
-
-  // IntersectionObserver — highlight active sidebar item while scrolling
-  useEffect(() => {
-    const observers: IntersectionObserver[] = []
-    CATEGORIES.forEach(cat => {
-      const el = document.getElementById(SECTION_ID[cat.id])
-      if (!el) return
-      const obs = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setActiveCategory(cat.id) },
-        { threshold: 0.25, rootMargin: '-80px 0px -60% 0px' }
-      )
-      obs.observe(el)
-      observers.push(obs)
-    })
-    return () => observers.forEach(o => o.disconnect())
   }, [])
 
   function addToast(message: string, type: 'info'|'success'|'error' = 'info') {
@@ -972,10 +973,10 @@ function ConnectionsInner() {
             }}>
               {CATEGORIES.map(cat => {
                 const catConnected = APPS.filter(a => a.category === cat.id && a.provider && connectedProviders[a.provider]).length
-                const isActive = activeCategory === cat.id
+                const isActive = catFilter === cat.id
                 return (
                   <button key={cat.id}
-                    onClick={() => scrollToSection(cat.id)}
+                    onClick={() => setCatFilter(prev => prev === cat.id ? null : cat.id)}
                     style={{
                       width: '100%', textAlign: 'left',
                       padding: '7px 10px', borderRadius: 8, border: 'none',
@@ -1004,10 +1005,10 @@ function ConnectionsInner() {
           {isMobile && (
             <div style={{ overflowX: 'auto', display: 'flex', gap: 8, padding: '14px 16px 0', scrollbarWidth: 'none' as const, width: '100%', flexShrink: 0 }}>
               {CATEGORIES.map(cat => {
-                const isActive = activeCategory === cat.id
+                const isActive = catFilter === cat.id
                 return (
                   <button key={cat.id}
-                    onClick={() => scrollToSection(cat.id)}
+                    onClick={() => setCatFilter(prev => prev === cat.id ? null : cat.id)}
                     style={{
                       flexShrink: 0, padding: '5px 12px', borderRadius: 20,
                       border: isActive ? 'none' : '1px solid var(--border-mid)',
@@ -1032,6 +1033,7 @@ function ConnectionsInner() {
               </div>
             ) : (
               CATEGORIES.map(cat => {
+                if (catFilter && catFilter !== cat.id) return null
                 const catApps = filteredApps.filter(a => a.category === cat.id)
                 if (catApps.length === 0) return null
                 const connCount = catApps.filter(a => a.provider && connectedProviders[a.provider]).length

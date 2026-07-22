@@ -12938,6 +12938,8 @@ function HistoryDrawer({
   initials = '',
   activeAgent,
   onAgentChange,
+  onConvDragStart,
+  onConvDragEnd,
 }: {
   convs: AIConv[]
   activeId: string | null
@@ -12963,6 +12965,8 @@ function HistoryDrawer({
   initials?: string
   activeAgent: 'training' | 'networks'
   onAgentChange: (a: 'training' | 'networks') => void
+  onConvDragStart?: (id: string) => void
+  onConvDragEnd?: () => void
 }) {
   const { t, lang, setLang } = useI18n()
   const [menuId,   setMenuId]   = useState<string | null>(null)
@@ -13311,6 +13315,14 @@ function HistoryDrawer({
             ) : (
               <div
                 onClick={() => { onSelect(conv); if (!persistent) onClose() }}
+                draggable={!!onConvDragStart}
+                onDragStart={onConvDragStart ? (e) => {
+                  e.dataTransfer.effectAllowed = 'copy'
+                  e.dataTransfer.setData('text/thw-conv', conv.id)
+                  e.dataTransfer.setData('text/plain', conv.id)
+                  onConvDragStart(conv.id)
+                } : undefined}
+                onDragEnd={onConvDragEnd}
                 style={{
                   padding: '7px 8px 7px 10px', borderRadius: 8, cursor: 'pointer',
                   background: conv.id === activeId ? 'rgba(255,255,255,0.08)' : 'transparent',
@@ -20186,6 +20198,116 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// VOLET SECONDAIRE — split-view desktop (Option B)
+// ──────────────────────────────────────────────────────────────
+// Colonne de chat autonome : rend le fil d'UNE conversation et possède son
+// PROPRE composer texte. Les fonctions avancées (pièces jointes, vocal, flows,
+// tools, citation) restent réservées à la colonne principale — ici, texte pur.
+// Le streaming passe par le `send({ targetConv })` du composant parent, qui
+// écrit dans `convs` par id ; ce volet ne fait que lire `conv.msgs`.
+// ══════════════════════════════════════════════════════════════
+function SecondaryChatColumn({
+  conv, generating, onSendText, onStop, onClose,
+}: {
+  conv: AIConv
+  generating: boolean
+  onSendText: (text: string) => void
+  onStop: () => void
+  onClose: () => void
+}) {
+  const [text, setText] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const taRef = useRef<HTMLTextAreaElement>(null)
+
+  // Auto-scroll bas au fil des messages / du streaming.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [conv.msgs])
+
+  const submit = () => {
+    const v = text.trim()
+    if (!v || generating) return
+    onSendText(v)
+    setText('')
+    if (taRef.current) taRef.current.style.height = 'auto'
+  }
+
+  const canSend = !!text.trim()
+
+  return (
+    <div style={{
+      flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+      borderLeft: '1px solid var(--ai-border)', background: 'var(--ai-bg)',
+      minHeight: 0, overflow: 'hidden',
+    }}>
+      {/* Header volet — titre + fermeture */}
+      <div style={{ height: 50, padding: '10px 10px 10px 14px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {conv.title}
+        </span>
+        <button onClick={onClose} title="Fermer le volet" aria-label="Fermer le volet"
+          style={{ width: 26, height: 26, borderRadius: 8, border: '0.5px solid var(--ai-border)', background: 'var(--ai-bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--ai-dim)', flexShrink: 0 }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} className="aip-messages" style={{ flex: 1, overflowY: 'auto', padding: '8px 14px 0' }}>
+        {conv.msgs.map(m => (
+          m.role === 'user' ? (
+            <div key={m.id} style={{ display: 'flex', justifyContent: 'flex-end', margin: '10px 0' }}>
+              <div style={{ maxWidth: '85%', background: 'var(--ai-bg2)', color: 'var(--ai-text)', padding: '8px 12px', borderRadius: 14, fontSize: 14, lineHeight: 1.45, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                {m.content}
+              </div>
+            </div>
+          ) : (
+            <div key={m.id} style={{ margin: '10px 0' }}>
+              <MsgContent text={m.content} />
+            </div>
+          )
+        ))}
+        {generating && conv.msgs[conv.msgs.length - 1]?.role === 'user' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0 14px' }}>
+            {(['aip-dot-1','aip-dot-2','aip-dot-3'] as const).map(cls => (
+              <span key={cls} className={cls} style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--ai-dim)' }} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Composer texte pur */}
+      <div style={{ padding: '10px 12px 14px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, border: '1px solid var(--ai-border)', borderRadius: 16, padding: '8px 8px 8px 14px', background: 'var(--ai-bg)' }}>
+          <textarea
+            ref={taRef}
+            value={text}
+            onChange={e => { setText(e.target.value); const el = e.target; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
+            placeholder="Message…"
+            rows={1}
+            className="aip-textarea"
+            style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.4, maxHeight: 120, padding: 0 }}
+          />
+          {generating ? (
+            <button onClick={onStop} title="Arrêter" aria-label="Arrêter la génération"
+              style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, border: 'none', background: '#374151', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="none"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            </button>
+          ) : (
+            <button onClick={submit} disabled={!canSend} aria-label="Envoyer"
+              style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, border: 'none', background: canSend ? '#06B6D4' : 'var(--border)', color: canSend ? '#fff' : 'var(--text-dim)', cursor: canSend ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ══════════════════════════════════════════════════════════════
 
@@ -20223,6 +20345,12 @@ export default function AIPanel({
   const [fullscr,     setFullscr]     = useState(false)
   const [histOpen,    setHistOpen]    = useState(false)
   const [plusOpen,    setPlusOpen]    = useState(false)
+  // Split-view desktop (Option B) : jusqu'à 2 VOLETS secondaires (ids de conv)
+  // affichés à droite de la colonne principale. Chaque volet a son propre
+  // composer texte ; le total de colonnes est donc plafonné à 3.
+  const [splitIds,    setSplitIds]    = useState<string[]>([])
+  const [splitPickerOpen, setSplitPickerOpen] = useState(false)
+  const [dragOverSplit,   setDragOverSplit]   = useState(false)
   const [topupOpen,   setTopupOpen]   = useState(false)
   const [tokenLimitMsg, setTokenLimitMsg] = useState<string | null>(null)
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
@@ -21375,6 +21503,38 @@ export default function AIPanel({
     if (c) { c.abort(); abortRefs.current.delete(id) }
   }, [])
 
+  // Arrête la génération d'UNE conversation précise (volet secondaire).
+  const stopConv = useCallback((cid: string) => {
+    const c = abortRefs.current.get(cid)
+    if (c) { c.abort(); abortRefs.current.delete(cid) }
+  }, [])
+
+  // Split-view : ouvre une conversation dans un volet secondaire (max 2). On
+  // ne duplique pas la conversation active, ni un volet déjà ouvert.
+  const openSplit = useCallback((convId: string) => {
+    setSplitIds(prev => {
+      if (convId === activeIdRef.current) return prev
+      if (prev.includes(convId)) return prev
+      if (prev.length >= 2) return prev
+      return [...prev, convId]
+    })
+    setSplitPickerOpen(false)
+  }, [])
+
+  const closeSplit = useCallback((convId: string) => {
+    setSplitIds(prev => prev.filter(id => id !== convId))
+  }, [])
+
+  // Réconcilie les volets : retire ceux qui n'existent plus, celui devenu actif,
+  // ceux d'un autre agent, et ferme tout hors desktop (split = ordinateur only).
+  useEffect(() => {
+    if (!isDesktop) { setSplitIds(prev => (prev.length ? [] : prev)); return }
+    setSplitIds(prev => {
+      const next = prev.filter(id => id !== activeId && convs.some(c => c.id === id && (c.agent ?? 'training') === activeAgent))
+      return next.length === prev.length && next.every((v, i) => v === prev[i]) ? prev : next
+    })
+  }, [isDesktop, activeId, activeAgent, convs])
+
   const handleMsgMouseUp = useCallback(() => {
     const sel = window.getSelection()
     const txt = sel?.toString().trim() ?? ''
@@ -21621,27 +21781,34 @@ export default function AIPanel({
   }, [model])
 
   // SEND MESSAGE
-  const send = useCallback(async (presetDisplay?: string, presetApi?: string, opts?: { voice?: boolean; onOral?: (oral: string) => void }) => {
+  const send = useCallback(async (presetDisplay?: string, presetApi?: string, opts?: { voice?: boolean; onOral?: (oral: string) => void; targetConv?: AIConv }) => {
+    // Split view : `targetConv` cible un VOLET SECONDAIRE (texte simple), sans
+    // toucher au composer principal (pièces jointes, QA, citation, refs DOM).
+    const targeted = opts?.targetConv ?? null
     const txt = (presetDisplay ?? input).trim()
-    const hasAttachment = !!attachment
-    if (!txt && !hasAttachment && !activeQA || loading) return
+    const hasAttachment = !targeted && !!attachment
+    const busy = targeted ? generatingConvs.has(targeted.id) : loading
+    if (busy) return
+    if (targeted ? !txt : (!txt && !hasAttachment && !activeQA)) return
 
-    const displayText = txt || (activeQA ? activeQA.label : '') || (attachment ? `[${attachment.name}]` : '')
+    const qaForSend    = targeted ? null : activeQA    // capture before clearing
+    const quoteForSend = targeted ? null : quotedText
+    const displayText = txt || (qaForSend ? qaForSend.label : '') || (attachment && !targeted ? `[${attachment.name}]` : '')
     if (!displayText && !hasAttachment) return
 
-    setInput('')
-    setAttachment(null)
-    setActiveFlow(null)
-    setPendingToolCalls([])
-    setToolApplyStatus('idle')
-    setToolApplyError(null)
-    const qaForSend   = activeQA    // capture before clearing
-    const quoteForSend = quotedText // capture before clearing
-    setActiveQA(null)
-    setQuotedText(null)
-    if (areaRef.current) { areaRef.current.style.height = 'auto'; areaRef.current.focus() }
+    if (!targeted) {
+      setInput('')
+      setAttachment(null)
+      setActiveFlow(null)
+      setPendingToolCalls([])
+      setToolApplyStatus('idle')
+      setToolApplyError(null)
+      setActiveQA(null)
+      setQuotedText(null)
+      if (areaRef.current) { areaRef.current.style.height = 'auto'; areaRef.current.focus() }
+    }
 
-    let conv = active
+    let conv = targeted ?? active
     let isNew = false
 
     if (!conv) {
@@ -22433,6 +22600,8 @@ export default function AIPanel({
           {isDesktop && !sidebarCollapsed && (
             <HistoryDrawer
               persistent
+              onConvDragStart={(id) => { if (id !== activeId && !splitIds.includes(id) && splitIds.length < 2) setDragOverSplit(true) }}
+              onConvDragEnd={() => setDragOverSplit(false)}
               onToggleCollapse={() => setSidebarCollapsed(true)}
               avatarUrl={userAvatarUrl}
               initials={userInitials}
@@ -22543,6 +22712,62 @@ export default function AIPanel({
 
             {/* Actions droite */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+
+              {/* Diviser l'écran — ouvre une conversation dans un volet côte à côte
+                  (max 3 colonnes). Piloté par un sélecteur ; on peut aussi glisser
+                  une conversation depuis l'historique. */}
+              {activeAgent === 'training' && splitIds.length < 2 && (() => {
+                const candidates = convs.filter(c => (c.agent ?? 'training') === activeAgent && c.id !== activeId && !splitIds.includes(c.id))
+                if (candidates.length === 0) return null
+                return (
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <button
+                      onClick={() => setSplitPickerOpen(o => !o)}
+                      title="Diviser l'écran (ouvrir une conversation en volet)"
+                      aria-label="Diviser l'écran"
+                      style={{
+                        width: 26, height: 26, borderRadius: 8,
+                        border: '0.5px solid var(--border)', background: splitPickerOpen ? 'var(--bg-alt)' : 'var(--bg-hover)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
+                        transition: 'background 150ms',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
+                      onMouseLeave={e => { if (!splitPickerOpen) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>
+                      </svg>
+                    </button>
+                    {splitPickerOpen && (
+                      <>
+                        <div onClick={() => setSplitPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 70 }} />
+                        <div style={{
+                          position: 'absolute', right: 0, top: '100%', marginTop: 6, zIndex: 71,
+                          background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
+                          borderRadius: 12, boxShadow: '0 14px 40px rgba(0,0,0,0.22)',
+                          padding: 6, minWidth: 240, maxHeight: 320, overflowY: 'auto',
+                        }}>
+                          <div style={{ padding: '5px 9px 7px', fontSize: 11, fontWeight: 600, color: 'var(--ai-dim)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            Ouvrir en volet
+                          </div>
+                          {candidates.slice(0, 40).map(c => (
+                            <button key={c.id}
+                              onClick={() => openSplit(c.id)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 9px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13, textAlign: 'left' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M8 10h8M8 14h5"/><path d="M21 12a9 9 0 11-3.5-7.1"/></svg>
+                              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Export Markdown (si conversation active) */}
               {active && (
@@ -23682,6 +23907,47 @@ export default function AIPanel({
           </>}
           {/* /chat-col */}
           </div>
+
+          {/* ── Volets secondaires (split-view desktop) ──────────────────
+               Chaque volet est une conversation autonome avec son propre
+               composer texte. Le streaming réutilise `send({ targetConv })`. */}
+          {isDesktop && activeAgent === 'training' && splitIds.map(id => {
+            const c = convs.find(cc => cc.id === id)
+            if (!c) return null
+            return (
+              <SecondaryChatColumn
+                key={c.id}
+                conv={c}
+                generating={generatingConvs.has(c.id)}
+                onSendText={(txt) => { void send(txt, undefined, { targetConv: c }) }}
+                onStop={() => stopConv(c.id)}
+                onClose={() => closeSplit(c.id)}
+              />
+            )
+          })}
+
+          {/* Zone de dépôt (glisser une conversation depuis l'historique) —
+               visible seulement pendant un drag, si un volet reste disponible. */}
+          {isDesktop && activeAgent === 'training' && dragOverSplit && splitIds.length < 2 && (
+            <div
+              onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' }}
+              onDrop={e => {
+                e.preventDefault()
+                const id = e.dataTransfer.getData('text/thw-conv') || e.dataTransfer.getData('text/plain')
+                if (id) openSplit(id)
+                setDragOverSplit(false)
+              }}
+              onDragLeave={() => setDragOverSplit(false)}
+              style={{
+                flex: '0 0 220px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderLeft: '2px dashed var(--ai-accent, #06B6D4)', background: 'rgba(6,182,212,0.06)',
+                color: 'var(--ai-accent, #06B6D4)', fontSize: 13, fontWeight: 600, fontFamily: 'DM Sans,sans-serif',
+                textAlign: 'center', padding: 16,
+              }}
+            >
+              Déposer ici pour ouvrir en volet
+            </div>
+          )}
         {/* /body */}
         </div>
       </div>

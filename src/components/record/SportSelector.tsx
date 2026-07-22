@@ -143,14 +143,29 @@ interface Props {
   onManual?: () => void
 }
 
+// Sur ORDINATEUR, une activité live ne peut être lancée que pour les sports
+// « sur place » (on ne déplace pas son ordinateur pour courir/rouler dehors).
+// Les sports de déplacement (vélo/VTT/trail/rando/natation/eau libre/ski, aviron
+// dehors) sont masqués ici. Le running desktop = tapis (géré dans record/page).
+// NB : ce filtre ne concerne QUE le lancement live ; la création/génération d'un
+// entraînement (ManualEntrySheet) garde tous les sports.
+const DESKTOP_ALLOWED: SportId[] = ['hometrainer', 'running', 'strength', 'hyrox', 'boxe', 'rowing', 'padel']
+
 export default function SportSelector({ open, onClose, selectedSport, onSelect, onManual }: Props) {
   const { t } = useI18n()
   const [closing, setClosing] = useState(false)
   const [search, setSearch] = useState('')
+  const [isDesktop, setIsDesktop] = useState(false)
   useEffect(() => {
     if (open) setClosing(false)
     else setSearch('')
   }, [open])
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    const upd = () => setIsDesktop(mq.matches); upd()
+    mq.addEventListener('change', upd)
+    return () => mq.removeEventListener('change', upd)
+  }, [])
   if (!open) return null
 
   const ACCENT = '#06B6D4'
@@ -159,7 +174,9 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect, 
   const catNameText = (name: string) => t(SPORT_CAT_KEY[name] ?? '') || name
   const filteredCats = SPORT_CATEGORIES.map(c => ({
     ...c,
-    sports: c.sports.filter(s => sportLabelText(s).toLowerCase().includes(search.toLowerCase())),
+    sports: c.sports.filter(s =>
+      sportLabelText(s).toLowerCase().includes(search.toLowerCase())
+      && (!isDesktop || DESKTOP_ALLOWED.includes(s.id))),
   })).filter(c => c.sports.length > 0)
 
   return (
@@ -242,7 +259,7 @@ export default function SportSelector({ open, onClose, selectedSport, onSelect, 
             padding: '0 16px 12px', overflowX: 'auto',
             display: 'flex', gap: 12, flexShrink: 0,
           }}>
-            {RECENT_SPORTS.map(sport => {
+            {RECENT_SPORTS.filter(s => !isDesktop || DESKTOP_ALLOWED.includes(s.id)).map(sport => {
               const active = selectedSport === sport.id
               return (
                 <button

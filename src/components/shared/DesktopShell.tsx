@@ -24,6 +24,7 @@ const SCROLL: React.CSSProperties['WebkitOverflowScrolling'] = 'touch'
 
 export function DesktopShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const isRecord = pathname === '/record'
   const { t } = useI18n()
   const { profile } = useProfile()
   const [railOpen, setRailOpen] = useState(false)   // sidebar principale : survol → ouvre
@@ -101,7 +102,9 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     <div className="hidden md:flex" style={{ height: '100vh', overflow: 'hidden' }}>
       {/* Sidebar principale : rail d'icônes (RAIL px), s'ouvre AU SURVOL en
           overlay (le contenu ne se recompose pas). Un spacer réserve RAIL px. */}
-      <div style={{ width: RAIL, flexShrink: 0, position: 'relative', zIndex: 60 }}>
+      {/* zIndex 1000 : la sidebar (au survol) doit passer AU-DESSUS des overlays
+          de contenu comme le bandeau bas de la page Démarrer (zIndex 999). */}
+      <div style={{ width: RAIL, flexShrink: 0, position: 'relative', zIndex: 1000 }}>
         <aside
           onMouseEnter={() => setRailOpen(true)}
           onMouseLeave={() => setRailOpen(false)}
@@ -141,6 +144,9 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           Démarrer
         </Link>
 
+        {/* Cloche + IA masquées sur /record (immersion carte) : le coin haut-droite
+            est réservé au sélecteur de fond de carte + Démarrer, sinon collision. */}
+        {!isRecord && (<>
         {/* Cloche notifications — ouvre une surpage centrée (sans quitter la page) */}
         <button aria-label={t('shared.notifications')} onClick={() => setNotifOpen(true)}
           style={{ ...fab, right: 62, left: 'auto' }}>
@@ -161,6 +167,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logos/logo_4bras.png" alt={t('shared.aiCoach')} style={{ width: 24, height: 24, objectFit: 'contain' }} />
         </button>
+        </>)}
 
         <PageTransition>{children}</PageTransition>
       </main>

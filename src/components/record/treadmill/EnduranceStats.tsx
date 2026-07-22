@@ -4,9 +4,19 @@
 // vitesse (km/h, vélo/aviron/elliptique) ou /100m (natation), et dénivelé si
 // renseigné. Marche pour les blocs saisis à la main OU générés par l'IA.
 import { useMemo } from 'react'
-import { totalMin, totalDistance, type MBlock } from '@/components/planning/mobile/blocks'
+import { totalMin, totalDistance, toBars, type MBlock } from '@/components/planning/mobile/blocks'
 
 type Kind = 'run' | 'bike' | 'swim' | 'rowing' | 'elliptique'
+
+/** Watts moyens pondérés par la durée (vélo). */
+function avgWatts(blocks: MBlock[]): number | null {
+  let num = 0, den = 0
+  for (const b of toBars(blocks)) {
+    const w = parseFloat((b.value ?? '').toString())
+    if (isFinite(w) && w > 0 && b.min > 0) { num += w * b.min; den += b.min }
+  }
+  return den > 0 ? Math.round(num / den) : null
+}
 
 function fmtPace(secPerUnit: number): string {
   if (!isFinite(secPerUnit) || secPerUnit <= 0) return '—'
@@ -41,6 +51,7 @@ export function EnduranceStats({ blocks, sport, denivM }: { blocks: MBlock[]; sp
     { label: 'Distance', value: distDisplay },
     { label: paceLabel, value: paceValue },
   ]
+  if (sport === 'bike') { const w = avgWatts(blocks); if (w != null) cells.push({ label: 'Watts moy.', value: `${w} W` }) }
   if (denivM > 0) cells.push({ label: 'Dénivelé +', value: `${denivM} m` })
 
   return (

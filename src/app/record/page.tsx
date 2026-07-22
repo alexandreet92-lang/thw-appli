@@ -116,6 +116,21 @@ export default function RecordPage() {
   }, [])
   const persist = (key: string, v: boolean) => { try { localStorage.setItem(key, String(v)) } catch { /* ignore */ } }
 
+  // Ordinateur (≥768px) : on ne lance pas d'activité de déplacement (vélo, trail…).
+  const [isDesktopRec, setIsDesktopRec] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    const u = () => setIsDesktopRec(mq.matches); u()
+    mq.addEventListener('change', u)
+    return () => mq.removeEventListener('change', u)
+  }, [])
+  // Défaut desktop : bascule un sport de déplacement vers Home Trainer.
+  useEffect(() => {
+    if (isDesktopRec && ['cycling', 'mtb', 'trail', 'hiking', 'swim', 'openwater', 'ski'].includes(sport)) {
+      setSport('hometrainer')
+    }
+  }, [isDesktopRec]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Suit le thème réel de l'app (classe html.dark) au lieu d'être figé en noir.
   const [isDark, setIsDark] = useState(false)
   useEffect(() => {
@@ -134,7 +149,9 @@ export default function RecordPage() {
 
   const handleStart = () => {
     if (sport === 'cycling') setView('cycling')
-    else if (sport === 'running') setRunChoiceOpen(true)   // Dehors ou Tapis ?
+    // Running : desktop → tapis direct (pas de sortie GPS possible sur ordi) ;
+    // mobile → choix Dehors / Tapis.
+    else if (sport === 'running') { if (isDesktopRec) setView('treadmill'); else setRunChoiceOpen(true) }
     else if (sport === 'trail')   setView('trail')
     else if (sport === 'hiking')  setView('hiking')
     else if (sport === 'mtb')     setView('mtb')

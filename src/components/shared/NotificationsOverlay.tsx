@@ -23,11 +23,14 @@ export function useUnreadNotifCount(signal: unknown): number {
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
         if (!user) { if (!cancelled) setCount(0); return }
+        // On ne compte / n'affiche que les notifications des 7 derniers jours.
+        const since = new Date(Date.now() - 7 * 86400000).toISOString()
         const { count: c } = await sb
           .from('notifications')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', user.id)
           .eq('read', false)
+          .gte('created_at', since)
         if (!cancelled) setCount(c ?? 0)
       } catch { /* ignore */ }
     })()
@@ -74,10 +77,13 @@ export function NotificationsOverlay({ open, onClose }: { open: boolean; onClose
         const sb = createClient()
         const { data: { user } } = await sb.auth.getUser()
         if (!user) { if (!cancelled) { setNotifs([]); setLoading(false) }; return }
+        // Fenêtre de 7 jours : au-delà, on n'affiche plus les notifications.
+        const since = new Date(Date.now() - 7 * 86400000).toISOString()
         const { data } = await sb
           .from('notifications')
           .select('id, type, title, body, link, read, created_at')
           .eq('user_id', user.id)
+          .gte('created_at', since)
           .order('created_at', { ascending: false })
           .limit(50)
         if (cancelled) return

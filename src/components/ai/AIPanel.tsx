@@ -13379,79 +13379,93 @@ function HistoryDrawer({
                   </button>
                   {menuId === conv.id && (
                     <div style={{
-                      position: 'absolute', right: 0, top: '100%', zIndex: 60,
+                      position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 60,
                       background: 'var(--ai-bg)', border: '1px solid var(--ai-border)',
-                      borderRadius: 8, boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
-                      overflow: 'hidden', minWidth: 148,
+                      borderRadius: 12, boxShadow: '0 14px 40px rgba(0,0,0,0.22)',
+                      padding: 5, minWidth: 214,
                     }}>
-                      {/* Pin (G3) */}
+                      {/* Ligne de menu générique (icône · libellé · raccourci) façon menu contextuel. */}
+                      {/* Épingler */}
                       <button onClick={() => { onPin(conv.id); setMenuId(null) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '8px 12px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                       >
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill={conv.isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2l7 7-7 7-7-7 7-7zM12 16v6"/></svg>
-                        {conv.isPinned ? 'Désépingler' : 'Épingler'}
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill={conv.isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l7 7-7 7-7-7 7-7zM12 16v6"/></svg>
+                        <span style={{ flex: 1 }}>{conv.isPinned ? 'Désépingler' : 'Épingler'}</span>
+                        <span style={{ fontSize: 12, color: 'var(--ai-dim)', fontWeight: 600 }}>P</span>
                       </button>
+                      {/* Renommer */}
                       <button onClick={() => { setRenId(conv.id); setRenVal(conv.title); setMenuId(null) }}
-                        style={{ display: 'block', width: '100%', padding: '8px 12px', border: 'none', borderTop: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                      >Renommer</button>
-                      {/* Déplacer vers un projet */}
-                      <button onClick={() => setMoveMenuId(moveMenuId === conv.id ? null : conv.id)}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%', padding: '8px 12px', border: 'none', borderTop: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                       >
-                        <span>Déplacer vers…</span>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: moveMenuId === conv.id ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}><path d="M9 6l6 6-6 6"/></svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                        <span style={{ flex: 1 }}>Renommer</span>
+                        <span style={{ fontSize: 12, color: 'var(--ai-dim)', fontWeight: 600 }}>R</span>
+                      </button>
+                      {/* Ajouter au projet */}
+                      <button onClick={() => setMoveMenuId(moveMenuId === conv.id ? null : conv.id)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: moveMenuId === conv.id ? 'var(--ai-bg2)' : 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+                        onMouseLeave={e => { if (moveMenuId !== conv.id) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                        <span style={{ flex: 1 }}>Ajouter au projet</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ai-dim)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: moveMenuId === conv.id ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}><path d="M9 6l6 6-6 6"/></svg>
                       </button>
                       {moveMenuId === conv.id && (
-                        <div style={{ borderTop: '1px solid var(--ai-border)', maxHeight: 180, overflowY: 'auto', background: 'var(--ai-bg2)' }}>
+                        <div style={{ margin: '2px 0', maxHeight: 180, overflowY: 'auto', background: 'var(--ai-bg2)', borderRadius: 8 }}>
                           {projects.length === 0 && (
-                            <div style={{ padding: '8px 12px', fontSize: 11, color: 'var(--ai-dim)' }}>Aucun projet. Crée-en un d’abord.</div>
+                            <div style={{ padding: '8px 12px', fontSize: 11.5, color: 'var(--ai-dim)' }}>Aucun projet. Crée-en un d’abord.</div>
                           )}
                           {projects.map(p => (
                             <button key={p.id}
                               onClick={() => { onMoveConvToProject(conv.id, p.id); setMoveMenuId(null); setMenuId(null) }}
-                              style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', padding: '7px 12px 7px 18px', border: 'none', background: conv.projectId === p.id ? 'var(--ai-bg)' : 'transparent', cursor: 'pointer', color: 'var(--ai-mid)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 12px 8px 16px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13, textAlign: 'left' }}
                             >
-                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
+                              <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
                               <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                              {conv.projectId === p.id && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
+                              {conv.projectId === p.id && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
                             </button>
                           ))}
                           {conv.projectId && (
                             <button
                               onClick={() => { onMoveConvToProject(conv.id, null); setMoveMenuId(null); setMenuId(null) }}
-                              style={{ display: 'block', width: '100%', padding: '7px 12px 7px 18px', border: 'none', borderTop: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer', color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
+                              style={{ display: 'block', width: '100%', padding: '8px 12px 8px 16px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-dim)', fontFamily: 'DM Sans,sans-serif', fontSize: 12.5, textAlign: 'left' }}
                             >Retirer du projet</button>
                           )}
                         </div>
                       )}
+                      {/* séparateur */}
+                      <div style={{ height: 1, background: 'var(--ai-border)', margin: '4px 6px' }} />
                       {confirmId === conv.id ? (
-                        <div style={{ padding: '8px 12px', borderTop: '1px solid var(--ai-border)' }}>
-                          <p style={{ margin: '0 0 7px', fontSize: 11, color: 'var(--ai-mid)' }}>{t('aip.ui.deleteConvConfirm')}</p>
+                        <div style={{ padding: '8px 10px' }}>
+                          <p style={{ margin: '0 0 7px', fontSize: 11.5, color: 'var(--ai-mid)' }}>{t('aip.ui.deleteConvConfirm')}</p>
                           <div style={{ display: 'flex', gap: 5 }}>
                             <button
                               onClick={() => { setConfirmId(null); setMenuId(null) }}
-                              style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                              style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: '1px solid var(--ai-border)', background: 'transparent', color: 'var(--ai-dim)', fontSize: 11.5, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
                               Annuler
                             </button>
                             <button
                               onClick={() => { onDelete(conv.id); setConfirmId(null); setMenuId(null) }}
-                              style={{ flex: 1, padding: '5px 0', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                              Oui
+                              style={{ flex: 1, padding: '6px 0', borderRadius: 7, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                              Supprimer
                             </button>
                           </div>
                         </div>
                       ) : (
                         <button onClick={() => setConfirmId(conv.id)}
-                          style={{ display: 'block', width: '100%', padding: '8px 12px', border: 'none', borderTop: '1px solid var(--ai-border)', background: 'transparent', cursor: 'pointer', color: '#ef4444', fontFamily: 'DM Sans,sans-serif', fontSize: 12, textAlign: 'left' }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)' }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.12)' }}
                           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                        >{t('aip.ui.deleteEllipsis')}</button>
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M10 11v6M14 11v6"/></svg>
+                          <span style={{ flex: 1 }}>Supprimer</span>
+                          <span style={{ fontSize: 12, color: '#ef4444', opacity: 0.7, fontWeight: 600 }}>D</span>
+                        </button>
                       )}
                     </div>
                   )}
@@ -22180,15 +22194,17 @@ export default function AIPanel({
         }
 
         /* Panneau */
+        /* Interface IA : TOUJOURS plein écran (le mode panneau 640px a été retiré,
+           il ne servait à rien). */
         .aip-root {
           position: fixed;
-          top: 0; right: 0; bottom: 0;
-          width: 640px; max-width: 100vw;
+          top: 0; right: 0; bottom: 0; left: 0;
+          width: 100vw; max-width: 100vw;
           z-index: 1200;
           background: var(--ai-bg);
-          border-left: 1px solid var(--ai-border);
+          border-left: none;
           display: flex; flex-direction: column; overflow: hidden;
-          box-shadow: -16px 0 48px rgba(0,0,0,0.18);
+          box-shadow: none;
           transition: transform 0.3s cubic-bezier(0.32,1.06,0.64,1);
           color: var(--ai-text);
           padding-top: env(safe-area-inset-top, 0px);
@@ -22541,30 +22557,7 @@ export default function AIPanel({
                 </button>
               )}
 
-              {/* Plein écran — desktop uniquement */}
-              <button
-                onClick={() => setFullscr(f => !f)}
-                title={fullscr ? 'Réduire' : 'Plein écran'}
-                style={{
-                  width: 26, height: 26, borderRadius: 8,
-                  border: '0.5px solid var(--border)', background: 'var(--bg-hover)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: 'var(--text-mid)', flexShrink: 0,
-                  transition: 'background 150ms',
-                }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-alt)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-              >
-                {fullscr ? (
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
-                  </svg>
-                ) : (
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-                  </svg>
-                )}
-              </button>
+              {/* (bouton bascule plein écran/panneau retiré : l'IA est toujours en plein écran) */}
 
               {/* Fermer */}
               <button
@@ -23762,8 +23755,10 @@ export default function AIPanel({
         document.body,
       )}
 
-      {/* ── Surpage « Paramètres » (style Claude) — PAR-DESSUS l'interface IA ── */}
-      {mounted && createPortal(
+      {/* ── Surpage « Paramètres » (style Claude) — PAR-DESSUS l'interface IA ──
+          Portal gaté sur settingsOpen : monté en permanence, il « avalait » le
+          1er clic (fond figé + hit-test), d'où le double-clic pour fermer. */}
+      {mounted && settingsOpen && createPortal(
         <AISettingsModal open={settingsOpen} initialSection={settingsSection} onClose={() => setSettingsOpen(false)} />,
         document.body,
       )}

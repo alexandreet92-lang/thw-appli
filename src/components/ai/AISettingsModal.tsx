@@ -255,7 +255,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
   )
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 13800, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isWide ? 28 : 0, fontFamily: FB }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 13800, background: 'rgba(15,23,42,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isWide ? 28 : 0, fontFamily: FB }}>
       <style>{`
         @keyframes thwDDin { from { opacity: 0; transform: translateY(-6px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .thw-conn-row:hover { background: var(--bg-hover); }
@@ -535,25 +535,57 @@ function ConnecteursSection() {
     { id: 'acal', name: 'Apple Agenda', desc: 'Synchronise tes séances avec ton agenda.', ready: false },
     { id: 'excel', name: 'Excel', desc: 'Exporte / importe tes données en tableur.', ready: false },
   ]
+  // État de connexion réel (oauth_tokens) : un toggle par app, comme les
+  // notifications. Activer = OAuth direct vers le fournisseur (pas de détour par
+  // /connections) ; si déjà connecté, le toggle est ON. Désactiver = disconnect.
+  const [connected, setConnected] = useState<Set<string>>(new Set())
+  const [busy, setBusy] = useState<string | null>(null)
+  const refresh = useCallback(async () => {
+    try {
+      const res = await fetch('/api/oauth/status')
+      const json = await res.json() as { connected?: { provider: string }[] }
+      setConnected(new Set((json.connected ?? []).map(c => c.provider)))
+    } catch { /* ignore */ }
+  }, [])
+  useEffect(() => { void refresh() }, [refresh])
+
+  async function onToggle(id: string, on: boolean) {
+    if (on) {
+      // Connexion : redirection OAuth directe vers le fournisseur (nécessaire).
+      window.location.href = `/api/oauth/connect?provider=${id}`
+    } else {
+      setBusy(id)
+      try { await fetch(`/api/oauth/disconnect?provider=${id}`, { method: 'POST' }); await refresh() }
+      catch { /* ignore */ } finally { setBusy(null) }
+    }
+  }
+
   return (
     <div>
       <div style={sectionTitleStyle}>Connecteurs</div>
       <p style={sectionLead}>Connecte Hybrid à tes applications pour qu’il travaille avec toutes tes données.</p>
       <div style={{ maxWidth: 560 }}>
-        {CONNECTORS.map((c, i) => (
-          <div key={c.id} className="thw-conn-row" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 6px', borderTop: i === 0 ? 'none' : '1px solid var(--border)', borderRadius: 'var(--r-sm)', transition: 'background 0.12s' }}>
-            <ConnectorLogo id={c.id} size={28} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{c.name}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.desc}</div>
+        {CONNECTORS.map((c, i) => {
+          const isOn = connected.has(c.id)
+          return (
+            <div key={c.id} className="thw-conn-row" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 6px', borderTop: i === 0 ? 'none' : '1px solid var(--border)', borderRadius: 'var(--r-sm)', transition: 'background 0.12s' }}>
+              <ConnectorLogo id={c.id} size={28} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{c.name}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {isOn ? 'Connecté · synchronisation active' : c.desc}
+                </div>
+              </div>
+              {c.ready ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, opacity: busy === c.id ? 0.5 : 1 }}>
+                  <Toggle value={isOn} onChange={v => onToggle(c.id, v)} />
+                </div>
+              ) : (
+                <span style={{ padding: '5px 10px', fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Bientôt</span>
+              )}
             </div>
-            {c.ready ? (
-              <a href="/connections" style={{ padding: '5px 12px', borderRadius: 999, background: 'var(--bg-alt)', border: '1px solid var(--border-mid)', color: 'var(--text)', fontSize: 12, fontWeight: 600, textDecoration: 'none', fontFamily: FB, whiteSpace: 'nowrap' }}>Connecter</a>
-            ) : (
-              <span style={{ padding: '5px 10px', fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>Bientôt</span>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

@@ -23,8 +23,7 @@ import { emitNotification } from '@/lib/notifications/emit'
 import { localDateStr } from '@/lib/date/weekStart'
 import RoutinesView from '@/components/ai/RoutinesView'
 import AISettingsModal, { type SettingsSection } from '@/components/ai/AISettingsModal'
-import { QuickActionIntake } from '@/components/ai/QuickActionIntake'
-import { QUICK_ACTION_SPECS } from '@/lib/quick-actions/specs'
+import { QUICK_ACTION_SPECS, buildActionPrompt } from '@/lib/quick-actions/specs'
 import { VoiceOverlay } from './VoiceOverlay'
 import { VoiceConversation } from './VoiceConversation'
 import { CoachQuestionCard, type ClarifyingQuestions } from './CoachQuestionCard'
@@ -12156,7 +12155,6 @@ function PlusMenu({
   onPrepare,
   onEnriched,
   onFlow,
-  onSpec,
   onClose,
   onClosePanel,
   onCamera,
@@ -12171,7 +12169,6 @@ function PlusMenu({
   onPrepare:    (label: string, apiPrompt: string) => void
   onEnriched:   (id: string, label: string) => void
   onFlow:       (f: FlowId) => void
-  onSpec:       (key: string, label: string, model: THWModel) => void
   onClose:      () => void
   onClosePanel: () => void
   onCamera:     () => void
@@ -12323,8 +12320,9 @@ function PlusMenu({
         onClick={() => {
           onForceModel(qa.model)
           onClose()
-          // Nouveau système déclaratif (moteur unique) : prioritaire si l'action a une spec.
-          if (QUICK_ACTION_SPECS[qa.key]) onSpec(qa.key, qa.label, qa.model)
+          // Nouveau système déclaratif : l'action pose ses questions via les
+          // cartes du coach (ask_clarifying_questions) puis génère. Prioritaire.
+          if (QUICK_ACTION_SPECS[qa.key]) onPrepare(qa.label, buildActionPrompt(QUICK_ACTION_SPECS[qa.key]))
           else if (qa.flow) onFlow(qa.flow)
           else if (qa.enrichedId) onEnriched(qa.enrichedId, qa.label)
           else if (qa.prompt) onPrepare(qa.label, qa.prompt)
@@ -20355,8 +20353,6 @@ export default function AIPanel({
   const [tokenLimitMsg, setTokenLimitMsg] = useState<string | null>(null)
   const [activeFlow,  setActiveFlow]  = useState<FlowId>(null)
   const [activeQA,    setActiveQA]    = useState<ActiveQuickAction | null>(null)
-  // Intake déclaratif (nouveau moteur d'actions rapides).
-  const [intake,      setIntake]      = useState<{ key: string; label: string; model: THWModel } | null>(null)
   // Recherche Web : réglage PERSISTANT (activé/désactivé), activé PAR DÉFAUT.
   // Quand actif, le coach peut chercher sur le web quand c'est pertinent (il
   // décide lui-même) — sans indicateur « activé » dans le fil. Désactivé → outil coupé.
@@ -23764,7 +23760,6 @@ export default function AIPanel({
                       onPrepare={(label, p) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void send(label, p) }}
                       onEnriched={(id, label) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); void handleEnrichedAction(id, label) }}
                       onFlow={f => { setPlusOpen(false); setActiveQA(null); setActiveFlow(f) }}
-                      onSpec={(key, label, model) => { setPlusOpen(false); setActiveFlow(null); setActiveQA(null); setIntake({ key, label, model }) }}
                       onClose={() => setPlusOpen(false)}
                       onClosePanel={onClose}
                       onForceModel={setModel}
@@ -23783,17 +23778,6 @@ export default function AIPanel({
                     />
                   )}
                 </div>
-
-                {/* Intake déclaratif (moteur unique des actions rapides) */}
-                {intake && QUICK_ACTION_SPECS[intake.key] && (
-                  <QuickActionIntake
-                    spec={QUICK_ACTION_SPECS[intake.key]}
-                    label={intake.label}
-                    isMobile={!isDesktop}
-                    onClose={() => setIntake(null)}
-                    onSubmit={prompt => { setModel(intake.model); const l = intake.label; setIntake(null); void send(l, prompt) }}
-                  />
-                )}
 
                 {/* Sélecteur modèle */}
                 <ModelPicker model={model} onChange={setModel} disabled={loading} isMobile={!isDesktop} />

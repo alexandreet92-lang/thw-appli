@@ -1,63 +1,64 @@
 // ══════════════════════════════════════════════════════════════════
-// Format DÉCLARATIF des actions rapides (nouveau système unifié).
-//   Une action = des questions spécifiques + un assembleur de prompt.
-//   Le moteur (QuickActionIntake) choisit le rendu selon le nombre de
-//   questions : 0 → envoi direct · 1-4 → guidé (une question à la fois)
-//   · 5+ → mini-formulaire compact. Puis il envoie le prompt assemblé au
-//   coach (send → /api/coach-stream), comme une action « prompt » classique.
+// Format DÉCLARATIF unique des actions rapides.
+//   Une action = un objectif + les questions spécifiques à poser + la
+//   directive de génération. `buildActionPrompt` assemble un prompt qui
+//   dit au coach de poser CES questions via son outil de cartes
+//   (ask_clarifying_questions → CoachQuestionCard, cf. la photo), en
+//   sautant celles dont il connaît déjà la réponse, puis de générer.
+//   → même mécanisme d'affichage in-chat pour les 53 actions, mais des
+//     questions propres à chacune. Aucune modale, aucun wizard sur-mesure.
 //
-//   Migration progressive : tant qu'une action n'a pas de spec ici, elle
-//   garde son comportement actuel (flow wizard ou prompt simple).
+//   Migration progressive : sans spec ici, l'action garde son comportement
+//   actuel (flow wizard ou prompt libre).
 // ══════════════════════════════════════════════════════════════════
 
-export type QAQuestionType = 'choice' | 'multi' | 'number' | 'text'
-
-export interface QAQuestion {
-  id: string
-  q: string                    // libellé de la question
-  type: QAQuestionType
-  options?: string[]           // choice / multi
-  min?: number; max?: number; step?: number; unit?: string  // number
-  placeholder?: string         // text
-  optional?: boolean           // peut être laissée vide
-  default?: string             // valeur pré-remplie (choice/number/text)
-  hint?: string                // petite aide sous la question
+export interface QAItem {
+  q: string                    // la question
+  options?: string[]           // propositions (cartes) ; absent = réponse libre
+  note?: string                // précision optionnelle pour le coach
 }
 
 export interface QuickActionSpec {
   key: string                  // = QuickAction.key
-  intro?: string               // phrase d'accroche en tête de l'intake
-  questions: QAQuestion[]
-  /** Construit le prompt final envoyé au coach à partir des réponses. */
-  assemble: (a: Record<string, string>) => string
+  objective: string            // ce que l'action produit (1 phrase)
+  questions: QAItem[]          // questions décisives, spécifiques à l'action
+  produce: string              // directive de génération finale
+}
+
+/** Assemble le prompt envoyé au coach : pose les questions via cartes, puis génère. */
+export function buildActionPrompt(spec: QuickActionSpec): string {
+  const qs = spec.questions.map((x, i) => {
+    const opts = x.options?.length ? ` — propositions : ${x.options.join(' · ')}` : ' — réponse libre'
+    const note = x.note ? ` (${x.note})` : ''
+    return `${i + 1}. ${x.q}${opts}${note}`
+  }).join('\n')
+
+  return [
+    `[ACTION RAPIDE] Objectif : ${spec.objective}`,
+    '',
+    "Avant de générer, pose-moi les questions décisives ci-dessous VIA ton outil de cartes de clarification (ask_clarifying_questions), regroupées en UN SEUL appel.",
+    "Règles : propose les options indiquées + « Autre » en réponse libre ; SAUTE toute question dont tu connais déjà la réponse dans mon profil / mes données ; ne redemande jamais une donnée déjà connue.",
+    '',
+    'Questions à poser :',
+    qs,
+    '',
+    `Une fois mes réponses reçues : ${spec.produce}`,
+  ].join('\n')
 }
 
 // ── Registre des actions migrées ────────────────────────────────────
 export const QUICK_ACTION_SPECS: Record<string, QuickActionSpec> = {
-  // Action de référence (validation du moteur auto).
+  // Action de référence (validation du mécanisme in-chat).
   prise_de_masse: {
     key: 'prise_de_masse',
-    intro: 'On cale ta prise de masse. Quelques précisions et je te génère le tout.',
+    objective: "un programme complet de PRISE DE MASSE (hypertrophie) + les apports nutritionnels associés",
     questions: [
-      { id: 'niveau', q: 'Ton niveau en musculation ?', type: 'choice',
-        options: ['Débutant', 'Intermédiaire', 'Avancé'], default: 'Intermédiaire' },
-      { id: 'jours', q: 'Combien de séances par semaine ?', type: 'number',
-        min: 2, max: 7, step: 1, unit: 'séances', default: '4' },
-      { id: 'materiel', q: 'Quel matériel as-tu ?', type: 'multi',
-        options: ['Salle complète', 'Haltères', 'Barre', 'Poids du corps', 'Élastiques'],
-        hint: 'Plusieurs choix possibles.' },
-      { id: 'contraintes', q: 'Une contrainte ou une précision ? (optionnel)', type: 'text',
-        optional: true, placeholder: 'Ex : dos sensible, max 1 h par séance, objectif +5 kg…' },
+      { q: 'Quel est ton niveau en musculation ?', options: ['Débutant', 'Intermédiaire', 'Avancé'] },
+      { q: 'Combien de séances par semaine peux-tu faire ?', options: ['3', '4', '5', '6'] },
+      { q: 'Quel matériel as-tu ?', options: ['Salle complète', 'Haltères', 'Barre', 'Poids du corps', 'Élastiques'], note: 'plusieurs choix possibles' },
+      { q: 'Une contrainte ou une préférence à respecter ?', note: 'ex : dos sensible, max 1 h/séance, objectif de poids…' },
     ],
-    assemble: (a) => [
-      'Construis-moi un programme complet de PRISE DE MASSE (hypertrophie) avec les apports nutritionnels associés.',
-      `Niveau : ${a.niveau || 'intermédiaire'}.`,
-      `Séances par semaine : ${a.jours || '4'}.`,
-      a.materiel ? `Matériel disponible : ${a.materiel}.` : '',
-      a.contraintes ? `Contraintes / précisions : ${a.contraintes}.` : '',
-      "Appuie-toi sur mes données déjà connues (profil, historique d'entraînement, zones).",
-      'Structure clairement : répartition des séances sur la semaine, exercices avec séries/répétitions/repos, schéma de progression, et un plan nutritionnel (calories + macros) cohérent avec l\'objectif.',
-    ].filter(Boolean).join('\n'),
+    produce: "génère un programme structuré (répartition des séances sur la semaine, exercices avec séries/répétitions/repos, schéma de progression) + un plan nutritionnel cohérent (calories + macros). Appuie-toi sur mes données déjà connues (profil, historique, zones).",
   },
 }
 

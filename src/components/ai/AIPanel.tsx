@@ -20198,24 +20198,35 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
 // ══════════════════════════════════════════════════════════════
 // VOLET SECONDAIRE — split-view desktop (Option B)
 // ──────────────────────────────────────────────────────────────
-// Colonne de chat autonome : rend le fil d'UNE conversation et possède son
-// PROPRE composer texte. Les fonctions avancées (pièces jointes, vocal, flows,
-// tools, citation) restent réservées à la colonne principale — ici, texte pur.
-// Le streaming passe par le `send({ targetConv })` du composant parent, qui
-// écrit dans `convs` par id ; ce volet ne fait que lire `conv.msgs`.
+// Colonne de chat autonome, avec son PROPRE composer : brouillon, modèle IA,
+// méthode, recherche web et pièce jointe lui sont propres, envoyés au parent
+// via `onSend`. Les fonctions liées au fil PRINCIPAL (flows guidés, actions
+// rapides, citation de passage, conversation vocale) restent côté colonne
+// principale — elles s'affichent et agissent dans le thread principal.
 // ══════════════════════════════════════════════════════════════
 function SecondaryChatColumn({
-  conv, generating, onSendText, onStop, onClose,
+  conv, generating, defaultModel, onSend, onStop, onClose, onBuyTokens,
 }: {
   conv: AIConv
   generating: boolean
-  onSendText: (text: string) => void
+  defaultModel: THWModel
+  onSend: (text: string, cfg: { model: THWModel; method: string; webSearch: boolean; attachment: AttachedFile | null }) => void
   onStop: () => void
   onClose: () => void
+  onBuyTokens: () => void
 }) {
   const [text, setText] = useState('')
+  const [model, setModel] = useState<THWModel>(defaultModel)
+  const [method, setMethod] = useState<string>('auto')
+  const [webSearchOn, setWebSearchOn] = useState(true)
+  const [attachment, setAttachment] = useState<AttachedFile | null>(null)
+  const [attErr, setAttErr] = useState<string | null>(null)
+  const [attBusy, setAttBusy] = useState(false)
+  const [plusOpen, setPlusOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
+  const photoRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   // Auto-scroll bas au fil des messages / du streaming.
   useEffect(() => {
@@ -20223,15 +20234,28 @@ function SecondaryChatColumn({
     if (el) el.scrollTop = el.scrollHeight
   }, [conv.msgs])
 
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    setAttErr(null); setAttBusy(true)
+    try {
+      const att = await fileToAttachment(f)
+      setAttachment(att)
+    } catch {
+      setAttErr('Fichier non pris en charge.')
+    } finally { setAttBusy(false) }
+  }
+
   const submit = () => {
     const v = text.trim()
-    if (!v || generating) return
-    onSendText(v)
-    setText('')
+    if ((!v && !attachment) || generating) return
+    onSend(v, { model, method, webSearch: webSearchOn, attachment })
+    setText(''); setAttachment(null)
     if (taRef.current) taRef.current.style.height = 'auto'
   }
 
-  const canSend = !!text.trim()
+  const canSend = !!(text.trim() || attachment)
 
   return (
     <div style={{
@@ -20275,30 +20299,99 @@ function SecondaryChatColumn({
         )}
       </div>
 
-      {/* Composer texte pur */}
-      <div style={{ padding: '10px 12px 14px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, border: '1px solid var(--ai-border)', borderRadius: 16, padding: '8px 8px 8px 14px', background: 'var(--ai-bg)' }}>
+      {/* Composer — parité : pièce jointe · modèle · méthode · web · envoi */}
+      <div style={{ padding: '8px 12px 12px', flexShrink: 0 }}>
+        <input ref={photoRef} type="file" accept="image/*" onChange={onFile} style={{ display: 'none' }} />
+        <input ref={fileRef} type="file" accept=".pdf,.txt,.csv,.md,.json,image/*" onChange={onFile} style={{ display: 'none' }} />
+
+        <div style={{ border: '1px solid var(--ai-border)', borderRadius: 16, background: 'var(--ai-bg)' }}>
+          {/* Aperçu pièce jointe */}
+          {attachment && (
+            <div style={{ padding: '8px 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {attachment.isImage && attachment.preview
+                ? <img src={attachment.preview} alt={attachment.name} style={{ height: 48, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--ai-border)' }} />
+                : <div style={{ padding: '6px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <span>📄</span><span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachment.name}</span>
+                  </div>}
+              <button onClick={() => setAttachment(null)} aria-label="Retirer"
+                style={{ width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'var(--ai-mid)', color: 'var(--ai-bg)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+            </div>
+          )}
+          {attBusy && <p style={{ fontSize: 11, color: 'var(--ai-mid)', margin: '6px 12px 0' }}>Chargement…</p>}
+          {attErr && <p style={{ fontSize: 11, color: '#ef4444', margin: '6px 12px 0' }}>{attErr}</p>}
+
           <textarea
             ref={taRef}
             value={text}
-            onChange={e => { setText(e.target.value); const el = e.target; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }}
+            onChange={e => { setText(e.target.value); const el = e.target; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 160) + 'px' }}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
-            placeholder="Message…"
+            placeholder="Écrire un message…"
             rows={1}
             className="aip-textarea"
-            style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.4, maxHeight: 120, padding: 0 }}
+            style={{ display: 'block', width: '100%', resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.5, padding: '12px 14px 4px', minHeight: 44, maxHeight: 160, boxSizing: 'border-box' }}
           />
-          {generating ? (
-            <button onClick={onStop} title="Arrêter" aria-label="Arrêter la génération"
-              style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, border: 'none', background: '#374151', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="none"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-            </button>
-          ) : (
-            <button onClick={submit} disabled={!canSend} aria-label="Envoyer"
-              style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, border: 'none', background: canSend ? '#06B6D4' : 'var(--border)', color: canSend ? '#fff' : 'var(--text-dim)', cursor: canSend ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
-            </button>
-          )}
+
+          {/* Ligne basse : + · modèle · méthode · spacer · envoyer */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '4px 8px 8px', gap: 5 }}>
+            {/* + menu compact (pièces jointes + recherche web) */}
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <button onClick={() => setPlusOpen(o => !o)} title="Actions" className="aip-icon-btn"
+                style={{ width: 28, height: 28, borderRadius: 6, color: plusOpen ? 'var(--ai-text)' : 'var(--ai-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              {plusOpen && (
+                <>
+                  <div onClick={() => setPlusOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 70 }} />
+                  <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, zIndex: 71, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', borderRadius: 12, boxShadow: '0 14px 40px rgba(0,0,0,0.22)', padding: 5, minWidth: 210 }}>
+                    <button onClick={() => { setPlusOpen(false); photoRef.current?.click() }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
+                      <span style={{ flex: 1 }}>Ajouter une photo</span>
+                    </button>
+                    <button onClick={() => { setPlusOpen(false); fileRef.current?.click() }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+                      <span style={{ flex: 1 }}>Ajouter un fichier</span>
+                    </button>
+                    <div style={{ height: 1, background: 'var(--ai-border)', margin: '4px 6px' }} />
+                    <button onClick={() => setWebSearchOn(v => !v)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ai-text)', fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, textAlign: 'left' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-bg2)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20"/></svg>
+                      <span style={{ flex: 1 }}>Recherche web</span>
+                      <span style={{ width: 30, height: 18, borderRadius: 9, background: webSearchOn ? '#06B6D4' : 'var(--ai-border)', position: 'relative', transition: 'background 0.15s', flexShrink: 0 }}>
+                        <span style={{ position: 'absolute', top: 2, left: webSearchOn ? 14 : 2, width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
+                      </span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <ModelPicker model={model} onChange={setModel} disabled={generating} isMobile={false} />
+            <MethodPicker method={method} onChange={setMethod} disabled={generating} isMobile={false} />
+
+            <div style={{ flex: 1 }} />
+
+            <TokenUsageBubble onBuyTokens={onBuyTokens} currentModel={model} isMobile={false} />
+
+            {generating ? (
+              <button onClick={onStop} title="Arrêter" aria-label="Arrêter la génération"
+                style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, border: 'none', background: '#374151', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="none"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+              </button>
+            ) : (
+              <button onClick={submit} disabled={!canSend} aria-label="Envoyer"
+                style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, border: 'none', background: canSend ? '#06B6D4' : 'var(--border)', color: canSend ? '#fff' : 'var(--text-dim)', cursor: canSend ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -21777,19 +21870,24 @@ export default function AIPanel({
   }, [model])
 
   // SEND MESSAGE
-  const send = useCallback(async (presetDisplay?: string, presetApi?: string, opts?: { voice?: boolean; onOral?: (oral: string) => void; targetConv?: AIConv }) => {
-    // Split view : `targetConv` cible un VOLET SECONDAIRE (texte simple), sans
-    // toucher au composer principal (pièces jointes, QA, citation, refs DOM).
+  const send = useCallback(async (presetDisplay?: string, presetApi?: string, opts?: { voice?: boolean; onOral?: (oral: string) => void; targetConv?: AIConv; model?: THWModel; method?: string; webSearch?: boolean; attachment?: AttachedFile | null }) => {
+    // Split view : `targetConv` cible un VOLET SECONDAIRE, qui possède son propre
+    // composer (modèle, méthode, recherche web, pièce jointe passés via `opts`).
+    // Les fonctions liées au fil PRINCIPAL (QA, citation, flows, refs DOM) restent
+    // désactivées pour une cible.
     const targeted = opts?.targetConv ?? null
     const txt = (presetDisplay ?? input).trim()
-    const hasAttachment = !targeted && !!attachment
+    // Pièce jointe : celle du volet ciblé (opts.attachment) ou, sinon, celle du
+    // composer principal (état global `attachment`).
+    const effAttachment: AttachedFile | null = targeted ? (opts?.attachment ?? null) : attachment
+    const hasAttachment = !!effAttachment
     const busy = targeted ? generatingConvs.has(targeted.id) : loading
     if (busy) return
-    if (targeted ? !txt : (!txt && !hasAttachment && !activeQA)) return
+    if (targeted ? (!txt && !hasAttachment) : (!txt && !hasAttachment && !activeQA)) return
 
     const qaForSend    = targeted ? null : activeQA    // capture before clearing
     const quoteForSend = targeted ? null : quotedText
-    const displayText = txt || (qaForSend ? qaForSend.label : '') || (attachment && !targeted ? `[${attachment.name}]` : '')
+    const displayText = txt || (qaForSend ? qaForSend.label : '') || (effAttachment ? `[${effAttachment.name}]` : '')
     if (!displayText && !hasAttachment) return
 
     if (!targeted) {
@@ -21843,7 +21941,7 @@ export default function AIPanel({
     startGen(cid)
     // Mode vocal → modèle rapide (Hermès) pour une conversation réactive.
     // Sinon on garde le modèle choisi par l'utilisateur.
-    const snapshot: THWModel = opts?.voice ? 'hermes' : model
+    const snapshot: THWModel = opts?.voice ? 'hermes' : (opts?.model ?? model)
 
     // Construire le contenu du dernier message utilisateur
     // Les messages précédents restent en texte ; le dernier peut avoir un bloc image/doc
@@ -21870,27 +21968,27 @@ export default function AIPanel({
     // serveur via le flag webSearch. Aucun indicateur « activé » dans le fil.
     const apiContentText = quotedApiText
 
-    if (hasAttachment && attachment && attachment.kind === 'parcours') {
+    if (hasAttachment && effAttachment && effAttachment.kind === 'parcours') {
       // Parcours : pas de fichier binaire — on injecte le profil analysé en texte.
       // On n'ajoute le texte utilisateur que s'il a réellement écrit quelque chose
       // (sinon apiContentText vaut juste le placeholder "[nom.gpx]").
       const extra = (txt || quoteForSend) ? apiContentText : ''
-      const parcoursText = [attachment.analysisText, extra].filter(Boolean).join('\n\n')
+      const parcoursText = [effAttachment.analysisText, extra].filter(Boolean).join('\n\n')
       apiMsgs.push({ role: 'user', content: parcoursText })
       // Persiste la trace sur la page Parcours (best-effort, n'interrompt jamais l'envoi).
-      if (attachment.parcoursSave) {
+      if (effAttachment.parcoursSave) {
         void fetch('/api/parcours', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(attachment.parcoursSave),
+          body: JSON.stringify(effAttachment.parcoursSave),
         }).catch(() => { /* silencieux : l'analyse reste prioritaire */ })
       }
-    } else if (hasAttachment && attachment) {
+    } else if (hasAttachment && effAttachment) {
       const blocks: { type: string; [k: string]: unknown }[] = []
-      if (attachment.isImage) {
-        blocks.push({ type: 'image', mediaType: attachment.mediaType, data: attachment.data })
+      if (effAttachment.isImage) {
+        blocks.push({ type: 'image', mediaType: effAttachment.mediaType, data: effAttachment.data })
       } else {
-        blocks.push({ type: 'document', mediaType: attachment.mediaType, data: attachment.data, name: attachment.name })
+        blocks.push({ type: 'document', mediaType: effAttachment.mediaType, data: effAttachment.data, name: effAttachment.name })
       }
       if (apiContentText) blocks.push({ type: 'text', text: apiContentText })
       apiMsgs.push({ role: 'user', content: blocks })
@@ -21949,9 +22047,9 @@ export default function AIPanel({
         body: JSON.stringify({
           agentId:  isPlanChat ? 'plan_coach' : activeAgent === 'networks' ? 'hybrid_networks' : 'central',
           modelId:  snapshot,
-          method:   method !== 'auto' ? method : undefined,
+          method:   (opts?.method ?? method) !== 'auto' ? (opts?.method ?? method) : undefined,
           voice:    opts?.voice ? true : undefined,
-          webSearch: webSearchOn,
+          webSearch: opts?.webSearch ?? webSearchOn,
           convId:   cid,
           messages: apiMsgs,
           aiRules:  effectiveRules.length > 0 ? effectiveRules : undefined,
@@ -23903,9 +24001,11 @@ export default function AIPanel({
                 key={c.id}
                 conv={c}
                 generating={generatingConvs.has(c.id)}
-                onSendText={(txt) => { void send(txt, undefined, { targetConv: c }) }}
+                defaultModel={model}
+                onSend={(txt, cfg) => { void send(txt, undefined, { targetConv: c, model: cfg.model, method: cfg.method, webSearch: cfg.webSearch, attachment: cfg.attachment }) }}
                 onStop={() => stopConv(c.id)}
                 onClose={() => closeSplit(c.id)}
+                onBuyTokens={() => setTopupOpen(true)}
               />
             )
           })}

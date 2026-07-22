@@ -300,14 +300,21 @@ export default function RecordPage() {
         <MapBackground activeRoute={activeRoute} />
       </div>
 
-      {/* Bulle « + » — saisie manuelle d'une activité (tous sports). Alignée en
-          hauteur sur le hamburger du shell, mais en haut à DROITE. */}
+      {/* Bulle « + » — saisie manuelle d'une activité (tous sports).
+          Mobile : haut à DROITE (à hauteur du hamburger, le coin est libre).
+          Desktop : à GAUCHE du bouton « Démarrer » du shell (qui occupe ~right
+          108→228) pour ne PAS être caché par le bouton IA (shuriken, right 16).
+          Visible uniquement sur /record (ce composant n'existe que là). */}
+      <style>{`
+        .thw-record-plus { position: fixed; top: calc(env(safe-area-inset-top) + 10px); right: 12px; }
+        @media (min-width: 768px) { .thw-record-plus { top: 12px; right: 240px; } }
+      `}</style>
       <button
+        className="thw-record-plus"
         aria-label="Créer une activité manuellement"
         onClick={() => setManualOpen(true)}
         style={{
-          position: 'fixed', top: 'calc(env(safe-area-inset-top) + 10px)', right: 12,
-          width: 38, height: 38, borderRadius: 12, zIndex: 6,
+          width: 38, height: 38, borderRadius: 12, zIndex: 121,
           background: 'var(--bg)', border: '1px solid var(--border)',
           boxShadow: '0 2px 10px rgba(0,0,0,0.07)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,

@@ -28,6 +28,8 @@ import type { SportType, RunningSub } from '@/app/planning/page'
 import { buildTreadmillPlan } from './treadmill/treadmillPlan'
 import { buildTreadmillStreams, summarizeIntervals, resampleHr, type TreadInterval } from './treadmill/treadmillProfile'
 import { TreadmillProfilePreview } from './treadmill/TreadmillProfilePreview'
+import { EnduranceStats } from './treadmill/EnduranceStats'
+import { FeelingDifficultyInput } from './FeelingDifficultyInput'
 
 interface Props { onClose: () => void; onSaved?: () => void }
 
@@ -85,7 +87,8 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
   // Communs
   const [title, setTitle] = useState('')
   const [when, setWhen] = useState(todayLocalISO)
-  const [rpe, setRpe] = useState('')
+  const [feeling, setFeeling] = useState<number | null>(null)      // ressenti /5
+  const [difficulty, setDifficulty] = useState<number | null>(null) // difficulté (RPE) /10
   const [desc, setDesc] = useState('')
   const [deniv, setDeniv] = useState('')
   const [avgHr, setAvgHr] = useState('')
@@ -132,12 +135,17 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
       if (!user) { setError('Session expirée.'); setSaving(false); return }
       const startedAt = new Date(when).toISOString()
       const autoTitle = title.trim() || `${def.label}${isTreadmill ? ' (tapis)' : ''}`
-      const rpeN = rpe ? intv(rpe) : null
+      const rpeN = difficulty != null ? Math.round(difficulty) : null
       const commentN = desc.trim() || null
       const hrN = avgHr ? intv(avgHr) : null
       const denivN = deniv ? intv(deniv) : 0
 
-      const act: Record<string, unknown> = { user_id: user.id, sport_type: def.sportType, title: autoTitle, started_at: startedAt, provider: 'manual' }
+      // feeling (/5) + difficulty (/10) → colonnes activities ; la fiche affiche
+      // les mêmes jauges donut Ressenti / Difficulté.
+      const act: Record<string, unknown> = {
+        user_id: user.id, sport_type: def.sportType, title: autoTitle, started_at: startedAt, provider: 'manual',
+        feeling: feeling, difficulty: difficulty, rpe: rpeN,
+      }
       // workout_sessions.sport est libre (pas de contrainte) → on garde l'id
       // descriptif (running/cycling/boxe…) comme les écrans d'enregistrement.
       const ws: Record<string, unknown> = { user_id: user.id, sport: def.id, started_at: startedAt, ended_at: startedAt, status: 'completed', title: autoTitle, rpe: rpeN, comment: commentN }
@@ -229,6 +237,9 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
           accent={accent} blocks={blocks} onChange={setBlocks}
           sm={0} sn={0} refs={NO_REFS} builderTab={builderTab} onBuilderTab={setBuilderTab} />
         {isTreadmill && blocks.length > 0 && <TreadmillProfilePreview blocks={blocks} />}
+        {!isTreadmill && blocks.length > 0 && (builderSport === 'run' || builderSport === 'bike' || builderSport === 'swim' || builderSport === 'rowing' || builderSport === 'elliptique') && (
+          <EnduranceStats blocks={blocks} sport={builderSport as 'run' | 'bike' | 'swim' | 'rowing' | 'elliptique'} denivM={deniv ? intv(deniv) : 0} />
+        )}
         {isTreadmill && (
           <div style={{ marginTop: 12 }}>
             <label style={lab}>Fréquence cardiaque (lier un fichier montre)</label>
@@ -356,7 +367,10 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
               {!isTreadmill && (
                 <div style={{ padding: '0 2px' }}><label style={lab}>FC moyenne (bpm)</label><input type="number" inputMode="numeric" value={avgHr} onChange={e => setAvgHr(e.target.value)} placeholder="—" style={input} /></div>
               )}
-              <div style={{ padding: '0 2px' }}><label style={lab}>RPE /10</label><input type="number" inputMode="numeric" value={rpe} onChange={e => setRpe(e.target.value)} placeholder="—" style={input} /></div>
+              <div style={{ padding: '0 2px' }}>
+                <label style={lab}>Ressenti & difficulté</label>
+                <FeelingDifficultyInput feeling={feeling} difficulty={difficulty} onFeeling={setFeeling} onDifficulty={setDifficulty} />
+              </div>
               <div style={{ padding: '0 2px' }}><label style={lab}>Description</label><textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} placeholder="Ce que tu as ressenti, le contexte…" style={{ ...input, resize: 'vertical' }} /></div>
 
               {error && <div style={{ fontSize: 13, color: 'var(--zone-5, #ef4444)', fontWeight: 600, padding: '0 2px' }}>{error}</div>}

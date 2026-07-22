@@ -7963,11 +7963,12 @@ conseil pour la prochaine séance similaire.`
         sport={isRun ? 'running' : 'cycling'}
       />
     </>
-  ), document.body) : (
+  ), document.body) : createPortal((
     /* ══════════════════════════════════════════
-       DESKTOP — layout existant inchangé
+       DESKTOP — sur-page plein écran PAR-DESSUS la sidebar globale
+       (portal + fixed inset 0, au-dessus du z-index de la sidebar).
     ══════════════════════════════════════════ */
-    <div style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1200, overflowY: 'auto', WebkitOverflowScrolling: 'touch', background: 'var(--bg)', color: 'var(--text)' }}>
 
       {/* ── PARTIE 2 : Header bar ── */}
       <div style={{
@@ -8729,7 +8730,7 @@ conseil pour la prochaine séance similaire.`
         sport={isRun ? 'running' : 'cycling'}
       />
     </div>
-  )
+  ), document.body)
 }
 
 // ─────────────────────────────────────────────────────────────

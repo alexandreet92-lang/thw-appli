@@ -87,10 +87,12 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
   if (isDesktop) {
     return (
       <div style={{ display: 'flex', width: '100%', alignItems: 'flex-start', overflowX: 'hidden' }}>
-        <div style={{ width: 56, flexShrink: 0, position: 'relative', alignSelf: 'stretch' }}>
+        {/* Le trait vertical vit sur le conteneur (pleine hauteur du contenu),
+            pour qu'il descende jusqu'en bas de la page, pas seulement 1 écran. */}
+        <div style={{ width: 56, flexShrink: 0, position: 'relative', alignSelf: 'stretch', borderRight: '0.5px solid var(--border)' }}>
           <aside onMouseEnter={() => setRailOpen(true)} onMouseLeave={() => setRailOpen(false)}
             style={{ position: 'sticky', top: 0, left: 0, zIndex: 5, width: railOpen ? 220 : 56, overflow: 'hidden',
-              background: 'var(--bg)', borderRight: '0.5px solid var(--border)', padding: '14px 8px',
+              background: 'var(--bg)', borderRight: railOpen ? '0.5px solid var(--border)' : 'none', padding: '14px 8px',
               minHeight: 'calc(100vh - var(--header-height))', boxShadow: railOpen ? 'var(--shadow)' : 'none',
               transition: 'width 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms' }}>
             {tabs.map(t => {

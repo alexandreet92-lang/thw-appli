@@ -17,14 +17,15 @@ import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
 const FD = 'var(--font-display)'
-const W = 248
+const W = 248          // largeur ouverte
+const RAIL = 62        // largeur repliée (icônes) — s'ouvre au survol
 const SCROLL: React.CSSProperties['WebkitOverflowScrolling'] = 'touch'
 
 export function DesktopShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { t } = useI18n()
   const { profile } = useProfile()
-  const [open, setOpen] = useState(true)
+  const [railOpen, setRailOpen] = useState(false)   // sidebar principale : survol → ouvre
   const [aiOpen, setAiOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -67,12 +68,13 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
 
   const ease = reduce ? 'none' : '0.3s cubic-bezier(0.4,0,0.2,1)'
 
+  // Avatar à GAUCHE (visible même replié) ; « Hybrid » en fondu à l'ouverture.
   const hybridHeader = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 14px', flexShrink: 0 }}>
-      <span style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>Hybrid</span>
-      <Link href="/profile" style={{ display: 'flex', textDecoration: 'none' }}>
-        <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={38} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 14px 12px', flexShrink: 0 }}>
+      <Link href="/profile" style={{ display: 'flex', textDecoration: 'none', flexShrink: 0 }}>
+        <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={36} />
       </Link>
+      <span style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease', whiteSpace: 'nowrap' }}>Hybrid</span>
     </div>
   )
 
@@ -87,32 +89,34 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="hidden md:flex" style={{ height: '100vh', overflow: 'hidden' }}>
-      {/* Sidebar ancrée — fond identique à la page, séparée par une ombre douce */}
-      <aside style={{
-        width: open ? W : 0, flexShrink: 0, height: '100vh', overflow: 'hidden',
-        background: 'var(--bg)', borderRight: open ? '1px solid var(--border)' : 'none',
-        boxShadow: open ? '3px 0 16px rgba(0,0,0,0.05)' : 'none',
-        transition: reduce ? 'none' : `width ${ease}, box-shadow ${ease}`,
-      }}>
-        {/* Largeur interne fixe : le contenu ne se comprime pas pendant l'animation */}
-        <div style={{ width: W, height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <SidebarContent headerSlot={hybridHeader} onOpenAI={() => setAiOpen(true)} />
-        </div>
-      </aside>
+      {/* Sidebar principale : rail d'icônes (RAIL px), s'ouvre AU SURVOL en
+          overlay (le contenu ne se recompose pas). Un spacer réserve RAIL px. */}
+      <div style={{ width: RAIL, flexShrink: 0, position: 'relative', zIndex: 60 }}>
+        <aside
+          onMouseEnter={() => setRailOpen(true)}
+          onMouseLeave={() => setRailOpen(false)}
+          style={{
+            position: 'absolute', top: 0, left: 0, height: '100vh', overflow: 'hidden',
+            width: railOpen ? W : RAIL,
+            background: 'var(--bg)', borderRight: '1px solid var(--border)',
+            boxShadow: railOpen ? '6px 0 28px rgba(0,0,0,0.14)' : 'none',
+            transition: reduce ? 'none' : `width ${ease}, box-shadow ${ease}`,
+          }}
+        >
+          {/* Largeur interne fixe : le contenu ne se comprime pas pendant l'animation */}
+          <div style={{ width: W, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <SidebarContent headerSlot={hybridHeader} onOpenAI={() => setAiOpen(true)} expanded={railOpen} />
+          </div>
+        </aside>
+      </div>
 
-      {/* Contenu — reprend toute la largeur au repli (push, jamais recouvert) */}
+      {/* Contenu */}
       <main style={{
         flex: 1, minWidth: 0, height: '100vh', overflowY: 'auto', overflowX: 'hidden',
         position: 'relative', background: 'var(--bg)', scrollBehavior: 'smooth', WebkitOverflowScrolling: SCROLL,
       }}>
         {/* Scrim léger en haut */}
-        <div aria-hidden style={{ position: 'fixed', top: 0, left: open ? W : 0, right: 0, height: 62, zIndex: 50, pointerEvents: 'none', background: 'linear-gradient(var(--bg), transparent)', transition: reduce ? 'none' : `left ${ease}` }} />
-
-        {/* ☰ repli — suit le bord de la sidebar */}
-        <button aria-label={t('shared.collapseMenu')} onClick={() => setOpen(o => !o)}
-          style={{ ...fab, left: open ? W + 12 : 12, flexDirection: 'column', gap: 4 }}>
-          {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
-        </button>
+        <div aria-hidden style={{ position: 'fixed', top: 0, left: RAIL, right: 0, height: 62, zIndex: 50, pointerEvents: 'none', background: 'linear-gradient(var(--bg), transparent)' }} />
 
         {/* Démarrer — accès rapide à l'enregistrement d'une séance, juste à
             gauche de la cloche (CTA plein, se distingue des fabs en verre). */}

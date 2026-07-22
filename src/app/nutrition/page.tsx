@@ -1149,7 +1149,7 @@ export default function NutritionPage() {
 
       {/* Desktop : rail latéral gauche (comme Planning) + contenu pleine largeur.
           Mobile : onglets en haut (inchangés). */}
-      <div style={{ display: isDesktop ? 'flex' : 'block', alignItems: 'flex-start', width: '100%', maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box' }}>
+      <div style={{ display: isDesktop ? 'flex' : 'block', alignItems: 'flex-start', width: '100%', maxWidth: '100%', overflowX: 'clip', boxSizing: 'border-box' }}>
         {isDesktop && <NutritionRail tab={tab} onChange={changeTab} />}
         <div className="pt-[14px] md:pt-7" style={{ paddingBottom: 0, paddingLeft: isDesktop ? 32 : 'max(22px, env(safe-area-inset-left))', paddingRight: isDesktop ? 32 : 'max(22px, env(safe-area-inset-right))', flex: 1, minWidth: 0, width: '100%', maxWidth: 1100, margin: '0 auto', boxSizing: 'border-box' }}>
 

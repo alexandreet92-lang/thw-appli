@@ -228,10 +228,10 @@ export function Avatar({ url, name, size = 40 }: { url: string | null; name: str
 // ── Nav link ───────────────────────────────────────────────────
 
 function NavItem({
-  href, label, icon, active, onClick,
+  href, label, icon, active, onClick, expanded = true,
 }: {
   href: string; label: string; icon: React.ReactNode
-  active: boolean; onClick?: () => void
+  active: boolean; onClick?: () => void; expanded?: boolean
 }) {
   function press(el: HTMLElement) {
     el.style.transform = 'scale(0.93)'
@@ -279,14 +279,16 @@ function NavItem({
       <span style={{ flexShrink: 0, opacity: active ? 1 : 0.6, display: 'flex' }}>
         {icon}
       </span>
-      {label}
+      <span style={{ opacity: expanded ? 1 : 0, transition: 'opacity 150ms ease', whiteSpace: 'nowrap' }}>{label}</span>
     </Link>
   )
 }
 
 // ── Sidebar content (shared desktop + mobile drawer) ───────────
 
-export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: () => void; onOpenAI?: () => void; headerSlot?: React.ReactNode }) {
+export function SidebarContent({ onClose, onOpenAI, headerSlot, expanded = true }: { onClose?: () => void; onOpenAI?: () => void; headerSlot?: React.ReactNode; expanded?: boolean }) {
+  // Libellés masqués (fondu) quand le rail est replié — icônes toujours visibles.
+  const lblStyle: React.CSSProperties = { opacity: expanded ? 1 : 0, transition: 'opacity 150ms ease', whiteSpace: 'nowrap' }
   const pathname = usePathname()
   const { mode, toggleTheme } = useTheme()
   const { t } = useI18n()
@@ -394,6 +396,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
             icon={item.icon}
             active={pathname === item.href}
             onClick={onClose}
+            expanded={expanded}
           />
         ))}
       </nav>
@@ -419,12 +422,14 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
             }
             active={pathname === '/admin'}
             onClick={onClose}
+            expanded={expanded}
           />
         )}
         {/* Candidatures */}
         <NavItem
           href="/questionnaire"
           label={t('nav.applications')}
+          expanded={expanded}
           icon={
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
               <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
@@ -455,7 +460,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
           </span>
-          {t('nav.feedback')}
+          <span style={lblStyle}>{t('nav.feedback')}</span>
         </button>
         {/* Briefing du jour */}
         <Link
@@ -494,8 +499,8 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
               <line x1="8" y1="17" x2="13" y2="17" />
             </svg>
           </span>
-          <span style={{ flex: 1 }}>{t('nav.dailyBriefing')}</span>
-          {!briefing.lu && briefing.unreadCount > 0 && (
+          <span style={{ flex: 1, ...lblStyle }}>{t('nav.dailyBriefing')}</span>
+          {expanded && !briefing.lu && briefing.unreadCount > 0 && (
             <span style={{
               flexShrink: 0,
               minWidth: 18,
@@ -539,6 +544,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
               background: 'linear-gradient(90deg,#06B6D4,#5b6fff)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
+              ...lblStyle,
             }}>
               {t('nav.aiAssistant')}
             </span>
@@ -571,7 +577,7 @@ export function SidebarContent({ onClose, onOpenAI, headerSlot }: { onClose?: ()
               </svg>
             )}
           </span>
-          {t(mode === 'dark' ? 'nav.themeDark' : 'nav.themeLight')}
+          <span style={lblStyle}>{t(mode === 'dark' ? 'nav.themeDark' : 'nav.themeLight')}</span>
         </button>
 
       </div>

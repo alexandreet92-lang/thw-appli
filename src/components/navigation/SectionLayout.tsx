@@ -44,7 +44,6 @@ export function SectionLayout({
   )
   const [dir, setDir] = useState<'right' | 'left'>('right')
   const [isDesktop, setIsDesktop] = useState(false)
-  const [railOpen, setRailOpen] = useState(false)
 
   // Responsive
   useEffect(() => {
@@ -106,48 +105,43 @@ export function SectionLayout({
   // ── DESKTOP : rail collé au bord gauche ────────────────────────
   if (isDesktop) {
     return (
-      <div style={{ display: 'flex', width: '100%', alignItems: 'flex-start', overflowX: 'hidden' }}>
+      <div style={{ display: 'flex', width: '100%', alignItems: 'flex-start', overflowX: 'clip' }}>
         {styleBlock}
-        {/* Spacer 56px : réserve la place, l'aside s'étend en overlay vers la droite */}
-        <div style={{ width: 56, flexShrink: 0, position: 'relative', alignSelf: 'stretch' }}>
-          <aside
-            onMouseEnter={() => setRailOpen(true)}
-            onMouseLeave={() => setRailOpen(false)}
-            style={{
-              position: 'sticky', top: 0, left: 0, zIndex: 5,
-              width: railOpen ? 220 : 56, overflow: 'hidden',
-              background: 'var(--bg)', borderRight: '0.5px solid var(--border)',
-              padding: '14px 8px', minHeight: 'calc(100vh - var(--header-height))',
-              boxShadow: railOpen ? '8px 0 28px rgba(0,0,0,0.16)' : 'none',
-              transition: 'width 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms',
-            }}
-          >
-            {sections.map(s => {
-              const active = activeId === s.id
-              const Icon = s.icon
-              return (
-                <button key={s.id} onClick={() => go(s.id)} title={s.label}
-                  style={{
-                    position: 'relative', display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                    padding: '11px 11px', borderRadius: 10, marginBottom: 4, cursor: 'pointer',
-                    border: 'none', textAlign: 'left', fontFamily: 'DM Sans,sans-serif',
-                    background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
-                    transition: 'background 0.14s', whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-                >
-                  {active && <span style={{ position: 'absolute', left: -8, top: 8, bottom: 8, width: 3, borderRadius: '0 3px 3px 0', background: CYAN }} />}
-                  <Icon size={18} color={active ? CYAN : 'var(--text-mid)'} style={{ flexShrink: 0 }} />
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease' }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 600, color: active ? CYAN : 'var(--text)' }}>{s.label}</span>
-                    {s.subtitle && <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{s.subtitle}</span>}
-                  </span>
-                </button>
-              )
-            })}
-          </aside>
-        </div>
+        {/* Rail TOUJOURS ouvert, épinglé (sticky) : reste visible au scroll. */}
+        <aside
+          style={{
+            width: 206, flexShrink: 0, alignSelf: 'flex-start',
+            position: 'sticky', top: 0, zIndex: 5,
+            maxHeight: 'calc(100vh - var(--header-height))', overflowY: 'auto',
+            background: 'var(--bg)', borderRight: '0.5px solid var(--border)',
+            padding: '14px 8px',
+          }}
+        >
+          {sections.map(s => {
+            const active = activeId === s.id
+            const Icon = s.icon
+            return (
+              <button key={s.id} onClick={() => go(s.id)} title={s.label}
+                style={{
+                  position: 'relative', display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                  padding: '8px 10px', borderRadius: 9, marginBottom: 3, cursor: 'pointer',
+                  border: 'none', textAlign: 'left', fontFamily: 'DM Sans,sans-serif',
+                  background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
+                  transition: 'background 0.14s', whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+              >
+                {active && <span style={{ position: 'absolute', left: -8, top: 7, bottom: 7, width: 3, borderRadius: '0 3px 3px 0', background: CYAN }} />}
+                <Icon size={16} color={active ? CYAN : 'var(--text-mid)'} style={{ flexShrink: 0 }} />
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: active ? CYAN : 'var(--text)', letterSpacing: '-0.01em' }}>{s.label}</span>
+                  {s.subtitle && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{s.subtitle}</span>}
+                </span>
+              </button>
+            )
+          })}
+        </aside>
         <main style={{ flex: 1, minWidth: 0, padding: '28px 28px 80px' }}>
           {header && <div style={{ marginBottom: 18 }}>{header}</div>}
           <div style={containerStyle}>{content}</div>

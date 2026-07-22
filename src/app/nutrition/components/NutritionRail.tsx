@@ -8,7 +8,6 @@
 // (nécessaire pour les liens croisés type « Relié à Mon plan »).
 // ══════════════════════════════════════════════════════════════════
 
-import { useState } from 'react'
 import { CalendarDays, ClipboardList, TrendingUp, Scale } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useI18n } from '@/lib/i18n'
@@ -25,46 +24,41 @@ const RAIL_SECTIONS: { id: NutritionTab; subKey: string; icon: LucideIcon }[] = 
 
 export function NutritionRail({ tab, onChange }: { tab: NutritionTab; onChange: (t: NutritionTab) => void }) {
   const { t } = useI18n()
-  const [railOpen, setRailOpen] = useState(false)
   return (
-    <div style={{ width: 56, flexShrink: 0, position: 'relative', alignSelf: 'stretch' }}>
-      <aside
-        onMouseEnter={() => setRailOpen(true)}
-        onMouseLeave={() => setRailOpen(false)}
-        style={{
-          position: 'sticky', top: 0, left: 0, zIndex: 5,
-          width: railOpen ? 220 : 56, overflow: 'hidden',
-          background: 'var(--bg)', borderRight: '0.5px solid var(--border)',
-          padding: '14px 8px', minHeight: 'calc(100vh - var(--header-height))',
-          boxShadow: railOpen ? '8px 0 28px rgba(0,0,0,0.16)' : 'none',
-          transition: 'width 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms',
-        }}
-      >
-        {RAIL_SECTIONS.map(s => {
-          const active = tab === s.id
-          const Icon = s.icon
-          return (
-            <button key={s.id} onClick={() => onChange(s.id)} title={t(`nutrition.tab.${s.id}`)}
-              style={{
-                position: 'relative', display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                padding: '11px 11px', borderRadius: 10, marginBottom: 4, cursor: 'pointer',
-                border: 'none', textAlign: 'left', fontFamily: 'DM Sans,sans-serif',
-                background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
-                transition: 'background 0.14s', whiteSpace: 'nowrap',
-              }}
-              onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-              onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
-            >
-              {active && <span style={{ position: 'absolute', left: -8, top: 8, bottom: 8, width: 3, borderRadius: '0 3px 3px 0', background: CYAN }} />}
-              <Icon size={18} color={active ? CYAN : 'var(--text-mid)'} style={{ flexShrink: 0 }} />
-              <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease' }}>
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: active ? CYAN : 'var(--text)' }}>{t(`nutrition.tab.${s.id}`)}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t(s.subKey)}</span>
-              </span>
-            </button>
-          )
-        })}
-      </aside>
-    </div>
+    // Toujours ouvert, épinglé (sticky) : reste visible quand on descend la page.
+    <aside
+      style={{
+        width: 206, flexShrink: 0, alignSelf: 'flex-start',
+        position: 'sticky', top: 0, zIndex: 5,
+        maxHeight: 'calc(100vh - var(--header-height))', overflowY: 'auto',
+        background: 'var(--bg)', borderRight: '0.5px solid var(--border)',
+        padding: '14px 8px',
+      }}
+    >
+      {RAIL_SECTIONS.map(s => {
+        const active = tab === s.id
+        const Icon = s.icon
+        return (
+          <button key={s.id} onClick={() => onChange(s.id)} title={t(`nutrition.tab.${s.id}`)}
+            style={{
+              position: 'relative', display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+              padding: '8px 10px', borderRadius: 9, marginBottom: 3, cursor: 'pointer',
+              border: 'none', textAlign: 'left', fontFamily: 'DM Sans,sans-serif',
+              background: active ? 'rgba(6,182,212,0.10)' : 'transparent',
+              transition: 'background 0.14s', whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+            onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+          >
+            {active && <span style={{ position: 'absolute', left: -8, top: 7, bottom: 7, width: 3, borderRadius: '0 3px 3px 0', background: CYAN }} />}
+            <Icon size={16} color={active ? CYAN : 'var(--text-mid)'} style={{ flexShrink: 0 }} />
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: active ? CYAN : 'var(--text)', letterSpacing: '-0.01em' }}>{t(`nutrition.tab.${s.id}`)}</span>
+              <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t(s.subKey)}</span>
+            </span>
+          </button>
+        )
+      })}
+    </aside>
   )
 }

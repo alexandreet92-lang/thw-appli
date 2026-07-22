@@ -13,6 +13,7 @@ import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
 import { FeedbackSheet } from '@/components/feedback/FeedbackSheet'
+import { ProfileModalDesktop } from '@/components/profile/ProfileModalDesktop'
 import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -29,6 +30,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   const [aiOpen, setAiOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
   const unreadNotifs = useUnreadNotifCount(notifOpen)
   useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
@@ -56,6 +58,14 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('thw:open-feedback', open)
   }, [])
 
+  // « Mon profil » en sur-page centrée (desktop) — MobileShell gère la version
+  // mobile (sheet) ; garde viewport pour ne pas ouvrir les deux.
+  useEffect(() => {
+    const open = () => { if (window.innerWidth >= 768) setProfileOpen(true) }
+    window.addEventListener('thw:open-profile', open)
+    return () => window.removeEventListener('thw:open-profile', open)
+  }, [])
+
   // /topup : page autonome (lien email), aucun chrome.
   if (pathname?.startsWith('/topup')) {
     return <div className="hidden md:block" style={{ height: '100vh', overflowY: 'auto', background: 'var(--bg)' }}>{children}</div>
@@ -71,9 +81,9 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   // Avatar à GAUCHE (visible même replié) ; « Hybrid » en fondu à l'ouverture.
   const hybridHeader = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 14px 12px', flexShrink: 0 }}>
-      <Link href="/profile" style={{ display: 'flex', textDecoration: 'none', flexShrink: 0 }}>
+      <button onClick={() => setProfileOpen(true)} aria-label={t('nav.myProfile')} style={{ display: 'flex', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', flexShrink: 0 }}>
         <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={36} />
-      </Link>
+      </button>
       <span style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease', whiteSpace: 'nowrap' }}>Hybrid</span>
     </div>
   )
@@ -158,6 +168,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />
       <NotificationsOverlay open={notifOpen} onClose={() => setNotifOpen(false)} />
       <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      <ProfileModalDesktop open={profileOpen} onClose={() => setProfileOpen(false)} />
     </div>
   )
 }

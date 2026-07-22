@@ -1110,8 +1110,8 @@ export default function NutritionPage() {
         />
       )}
 
-      {/* ── HEADER ─────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 24, paddingLeft: isDesktop ? 32 : 'max(22px, env(safe-area-inset-left))', paddingRight: isDesktop ? 32 : 'max(22px, env(safe-area-inset-right))', width: '100%', maxWidth: 1100, margin: '0 auto', boxSizing: 'border-box' }}>
+      {/* ── HEADER (mobile) — sur desktop le titre est dans le rail ─── */}
+      <div style={{ display: isDesktop ? 'none' : 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 24, paddingLeft: 'max(22px, env(safe-area-inset-left))', paddingRight: 'max(22px, env(safe-area-inset-right))', width: '100%', maxWidth: 1100, margin: '0 auto', boxSizing: 'border-box' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, margin: 0 }}>{t('nutrition.title')}</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Bouton scanner — visible mobile uniquement (md:hidden via Tailwind) */}

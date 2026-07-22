@@ -110,13 +110,15 @@ export function SectionLayout({
         {/* Rail TOUJOURS ouvert, épinglé (sticky) : reste visible au scroll. */}
         <aside
           style={{
-            width: 206, flexShrink: 0, alignSelf: 'flex-start',
+            width: 214, flexShrink: 0, alignSelf: 'flex-start',
             position: 'sticky', top: 0, zIndex: 5,
             maxHeight: 'calc(100vh - var(--header-height))', overflowY: 'auto',
             background: 'var(--bg)', borderRight: '0.5px solid var(--border)',
-            padding: '14px 8px',
+            padding: '20px 10px 14px',
           }}
         >
+          {/* Titre de la page AU-DESSUS des bulles (aligné, façon Supabase). */}
+          {header && <div style={{ padding: '0 6px 14px', marginBottom: 6, borderBottom: '1px solid var(--border)' }}>{header}</div>}
           {sections.map(s => {
             const active = activeId === s.id
             const Icon = s.icon
@@ -142,8 +144,7 @@ export function SectionLayout({
             )
           })}
         </aside>
-        <main style={{ flex: 1, minWidth: 0, padding: '28px 28px 80px' }}>
-          {header && <div style={{ marginBottom: 18 }}>{header}</div>}
+        <main style={{ flex: 1, minWidth: 0, padding: '24px 28px 80px' }}>
           <div style={containerStyle}>{content}</div>
         </main>
       </div>

@@ -28,13 +28,17 @@ export function NutritionRail({ tab, onChange }: { tab: NutritionTab; onChange: 
     // Toujours ouvert, épinglé (sticky) : reste visible quand on descend la page.
     <aside
       style={{
-        width: 206, flexShrink: 0, alignSelf: 'flex-start',
+        width: 214, flexShrink: 0, alignSelf: 'flex-start',
         position: 'sticky', top: 0, zIndex: 5,
         maxHeight: 'calc(100vh - var(--header-height))', overflowY: 'auto',
         background: 'var(--bg)', borderRight: '0.5px solid var(--border)',
-        padding: '14px 8px',
+        padding: '20px 10px 14px',
       }}
     >
+      {/* Titre de la page au-dessus des bulles (aligné, façon Supabase). */}
+      <div style={{ padding: '0 6px 14px', marginBottom: 6, borderBottom: '1px solid var(--border)' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 22, margin: 0, color: 'var(--text)' }}>{t('nutrition.title')}</h1>
+      </div>
       {RAIL_SECTIONS.map(s => {
         const active = tab === s.id
         const Icon = s.icon

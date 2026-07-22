@@ -22,6 +22,7 @@ import { haptic } from '@/lib/ui/haptic'
 import { emitNotification } from '@/lib/notifications/emit'
 import { localDateStr } from '@/lib/date/weekStart'
 import RoutinesView from '@/components/ai/RoutinesView'
+import StudioView from '@/components/studio/StudioView'
 import AISettingsModal, { type SettingsSection } from '@/components/ai/AISettingsModal'
 import { QUICK_ACTION_SPECS, buildActionPrompt } from '@/lib/quick-actions/specs'
 import { VoiceOverlay } from './VoiceOverlay'
@@ -12924,6 +12925,7 @@ function HistoryDrawer({
   onDeleteProject,
   onMoveConvToProject,
   onOpenRoutines,
+  onOpenStudio,
   onToggleCollapse,
   onSelect,
   onDelete,
@@ -12951,6 +12953,7 @@ function HistoryDrawer({
   onDeleteProject: (id: string) => void
   onMoveConvToProject: (convId: string, projectId: string | null) => void
   onOpenRoutines: () => void
+  onOpenStudio: () => void
   onToggleCollapse?: () => void
   onSelect: (c: AIConv) => void
   onDelete: (id: string) => void
@@ -13204,6 +13207,27 @@ function HistoryDrawer({
             <path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8" />
           </svg>
           <span style={{ flex: 1 }}>Routine</span>
+        </button>
+
+        {/* Studio — orchestration multi-agents (canvas façon Make + run) */}
+        <button
+          onClick={() => { haptic(); onOpenStudio() }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            width: '100%', padding: '8px 8px', borderRadius: 8,
+            border: 'none', background: 'transparent', cursor: 'pointer',
+            color: 'var(--text-mid)', fontSize: 14, fontWeight: 400,
+            fontFamily: 'DM Sans,sans-serif', textAlign: 'left',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/>
+            <path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/>
+          </svg>
+          <span style={{ flex: 1 }}>Studio</span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: '#8B5CF6', background: 'rgba(139,92,246,0.12)', padding: '2px 6px', borderRadius: 6, letterSpacing: '0.03em' }}>NOUVEAU</span>
         </button>
       </div>
 
@@ -20424,6 +20448,8 @@ export default function AIPanel({
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
   // Interface dédiée « Routines » (ouverte depuis la sidebar ou ?routines=1).
   const [routinesOpen,    setRoutinesOpen]    = useState(false)
+  // Interface dédiée « Studio » (orchestration multi-agents, façon Make).
+  const [studioOpen,      setStudioOpen]      = useState(false)
   const [input,       setInput]       = useState('')
   // Génération PARALLÈLE : on suit l'état par conversation (plusieurs chats
   // peuvent tourner en même temps). `generatingConvs` = ids en cours de
@@ -22711,6 +22737,7 @@ export default function AIPanel({
               onDeleteProject={handleDeleteProject}
               onMoveConvToProject={moveConvToProject}
               onOpenRoutines={() => setRoutinesOpen(true)}
+              onOpenStudio={() => setStudioOpen(true)}
               onSelect={selectConv}
               onDelete={deleteConv}
               onNew={newConv}
@@ -22751,6 +22778,7 @@ export default function AIPanel({
               onDeleteProject={handleDeleteProject}
               onMoveConvToProject={moveConvToProject}
               onOpenRoutines={() => setRoutinesOpen(true)}
+              onOpenStudio={() => setStudioOpen(true)}
               onSelect={selectConv}
               onDelete={deleteConv}
               onNew={newConv}
@@ -24122,6 +24150,12 @@ export default function AIPanel({
       {/* ── Interface dédiée « Routines » ── */}
       {routinesOpen && mounted && createPortal(
         <RoutinesView onClose={() => setRoutinesOpen(false)} />,
+        document.body,
+      )}
+
+      {/* ── Interface dédiée « Studio » (orchestration multi-agents) ── */}
+      {studioOpen && mounted && createPortal(
+        <StudioView onClose={() => setStudioOpen(false)} />,
         document.body,
       )}
 

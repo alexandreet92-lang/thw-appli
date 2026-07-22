@@ -375,7 +375,9 @@ export function VoiceOverlay({
         aria-modal="true"
         aria-label={t('ai.voiceDictation')}
         style={{
-          position: 'fixed', inset: 0, zIndex: 1500,
+          // zIndex 14500 : la dictée doit passer AU-DESSUS des sur-pages
+          // (Routines 13500, Studio 13600) — elle était à 1500.
+          position: 'fixed', inset: 0, zIndex: 14500,
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           justifyContent: isDesktop ? 'center' : 'flex-end',
           animation: 'vo_in 0.2s ease',

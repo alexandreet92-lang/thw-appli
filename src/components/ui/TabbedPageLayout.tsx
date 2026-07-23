@@ -37,7 +37,6 @@ interface Props<T extends string> {
 export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, active, onChange, children, renderPanel }: Props<T>) {
   const reduce = useReducedMotion()
   const isDesktop = useWidth() >= 1024
-  const [railOpen, setRailOpen] = useState(false)
 
   // Sens du glissement selon l'ordre des onglets (mouvement directionnel).
   const activeIdx = tabs.findIndex(t => t.id === active)
@@ -83,40 +82,46 @@ export function TabbedPageLayout<T extends string>({ title, headerExtra, tabs, a
     return <div style={{ padding: isDesktop ? '28px 28px 80px' : '20px 16px 80px' }}>{header}{content}</div>
   }
 
-  // ── Desktop : rail collé au bord gauche (overlay au survol) ──
+  // ── Desktop : rail TOUJOURS OUVERT (identique à Planning/Calendar) ──
   if (isDesktop) {
     return (
-      <div style={{ display: 'flex', width: '100%', alignItems: 'flex-start', overflowX: 'hidden' }}>
-        {/* Le trait vertical vit sur le conteneur (pleine hauteur du contenu),
-            pour qu'il descende jusqu'en bas de la page, pas seulement 1 écran. */}
-        <div style={{ width: 56, flexShrink: 0, position: 'relative', alignSelf: 'stretch', borderRight: '0.5px solid var(--border)' }}>
-          <aside onMouseEnter={() => setRailOpen(true)} onMouseLeave={() => setRailOpen(false)}
-            style={{ position: 'sticky', top: 0, left: 0, zIndex: 5, width: railOpen ? 220 : 56, overflow: 'hidden',
-              background: 'var(--bg)', borderRight: railOpen ? '0.5px solid var(--border)' : 'none', padding: '14px 8px',
-              minHeight: 'calc(100vh - var(--header-height))', boxShadow: railOpen ? 'var(--shadow)' : 'none',
-              transition: 'width 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms' }}>
-            {tabs.map(t => {
-              const on = t.id === active, Icon = t.icon
-              return (
-                <button key={t.id} onClick={() => onChange(t.id)} title={t.label}
-                  style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '11px 11px',
-                    borderRadius: 10, marginBottom: 4, cursor: 'pointer', border: 'none', textAlign: 'left', fontFamily: FB,
-                    background: on ? 'var(--primary-dim)' : 'transparent', transition: 'background 0.14s', whiteSpace: 'nowrap' }}
-                  onMouseEnter={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-                  onMouseLeave={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
-                  {on && <span style={{ position: 'absolute', left: -8, top: 8, bottom: 8, width: 3, borderRadius: '0 3px 3px 0', background: 'var(--primary)' }} />}
-                  <Icon size={18} color={on ? 'var(--primary)' : 'var(--text-mid)'} style={{ flexShrink: 0 }} />
-                  <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease' }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 600, color: on ? 'var(--primary)' : 'var(--text)' }}>{t.label}</span>
-                    {t.subtitle && <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{t.subtitle}</span>}
-                  </span>
-                </button>
-              )
-            })}
-          </aside>
-        </div>
-        <main style={{ flex: 1, minWidth: 0, padding: '28px 28px 80px' }}>
-          {header}
+      <div style={{ display: 'flex', width: '100%', alignItems: 'flex-start', overflowX: 'clip' }}>
+        <aside
+          style={{
+            width: 214, flexShrink: 0, alignSelf: 'stretch',
+            position: 'sticky', top: 0, zIndex: 5,
+            maxHeight: 'calc(100vh - var(--header-height))', overflowY: 'auto',
+            background: 'var(--bg)', borderRight: '0.5px solid var(--border)',
+            padding: '20px 10px 14px',
+          }}
+        >
+          {/* Titre de la page AU-DESSUS des bulles (façon Planning/Calendar). */}
+          {title && (
+            <div style={{ padding: '0 6px 14px', marginBottom: 6, borderBottom: '1px solid var(--border)' }}>
+              <h1 style={{ fontFamily: FD, fontSize: 19, fontWeight: 600, color: 'var(--text)', margin: 0, letterSpacing: '-0.01em' }}>{title}</h1>
+            </div>
+          )}
+          {tabs.map(t => {
+            const on = t.id === active, Icon = t.icon
+            return (
+              <button key={t.id} onClick={() => onChange(t.id)} title={t.label}
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 10px',
+                  borderRadius: 9, marginBottom: 3, cursor: 'pointer', border: 'none', textAlign: 'left', fontFamily: FB,
+                  background: on ? 'var(--primary-dim)' : 'transparent', transition: 'background 0.14s', whiteSpace: 'nowrap' }}
+                onMouseEnter={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                onMouseLeave={e => { if (!on) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                {on && <span style={{ position: 'absolute', left: -8, top: 7, bottom: 7, width: 3, borderRadius: '0 3px 3px 0', background: 'var(--primary)' }} />}
+                <Icon size={16} color={on ? 'var(--primary)' : 'var(--text-mid)'} style={{ flexShrink: 0 }} />
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: on ? 'var(--primary)' : 'var(--text)', letterSpacing: '-0.01em' }}>{t.label}</span>
+                  {t.subtitle && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{t.subtitle}</span>}
+                </span>
+              </button>
+            )
+          })}
+        </aside>
+        <main style={{ flex: 1, minWidth: 0, padding: '24px 28px 80px' }}>
+          {headerExtra && <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-4)' }}>{headerExtra}</div>}
           {content}
         </main>
       </div>

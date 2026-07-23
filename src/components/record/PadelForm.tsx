@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
 import { useI18n } from '@/lib/i18n'
 import RPESlider from './RPESlider'
 import MatchScoreInput, { type MatchSet } from './MatchScoreInput'
@@ -72,6 +73,7 @@ export default function PadelForm({ onClose }: Props) {
           court_surface: surface, court_location: location || null,
           training_types: ['match'],
         })
+        notifyActivitySaved({ sport, title: autoTitle(sport) })
       }
     } catch (e) { console.error('[padel] save error:', e) }
     setSaving(false)

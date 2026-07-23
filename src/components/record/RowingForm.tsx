@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
 import RPESlider from './RPESlider'
 import RowingTypeSelector from './RowingTypeSelector'
 import RowingPieces from './RowingPieces'
@@ -87,6 +88,7 @@ export default function RowingForm({ onClose }: Props) {
           status: 'completed',
         }).select('id').single()
         savedId = data?.id ?? null
+        notifyActivitySaved({ sport: 'rowing', title: title.trim() || autoTitle(t) })
       }
     } catch (e) { console.error('[rowing] save error:', e) }
     setSaving(false)

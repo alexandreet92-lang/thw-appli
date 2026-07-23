@@ -632,7 +632,7 @@ function WebSearchBadge({ queries }: { queries: string[] }) {
         <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 5 }}>
           {queries.map((q, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-mid)', padding: '4px 2px' }}>
-              <span style={{ color: '#06B6D4', flexShrink: 0 }}>🔍</span>
+              <span style={{ color: '#06B6D4', flexShrink: 0, display: 'inline-flex' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
               <span style={{ fontStyle: 'italic' }}>« {q} »</span>
             </div>
           ))}
@@ -778,7 +778,7 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
           // JSON incomplet (en cours de streaming) ou invalide → placeholder discret
           blocks.push(
             <div key={`chart-ph-${i}`} style={{ marginLeft: 34, margin: '8px 0', fontSize: 13, color: 'var(--ai-dim)' }}>
-              📊 {t('aip.chart.generating')}
+              {t('aip.chart.generating')}
             </div>
           )
         }
@@ -792,7 +792,7 @@ function MsgContent({ text, fontFamily }: { text: string; fontFamily?: string })
         } else {
           blocks.push(
             <div key={`route-ph-${i}`} style={{ marginLeft: 34, margin: '8px 0', fontSize: 13, color: 'var(--ai-dim)' }}>
-              🗺️ {t('aip.route.generating')}
+              {t('aip.route.generating')}
             </div>
           )
         }
@@ -1520,7 +1520,7 @@ function AddToLibraryModal({ session, onClose }: { session: ParsedSession; onClo
       }}>
         {done ? (
           <div style={{ textAlign: 'center', padding: '8px 0' }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+            <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg></div>
             <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 15, fontWeight: 700, margin: '0 0 5px', color: 'var(--ai-text)' }}>{t('aip.lib.added')}</p>
             <p style={{ fontSize: 12, color: 'var(--ai-dim)', margin: '0 0 16px' }}>
               {t('aip.lib.findInLibrary')}
@@ -3445,12 +3445,12 @@ RÈGLES IMPÉRATIVES :
 
 FORMATAGE OBLIGATOIRE :
 - Utilise des titres ## pour chaque jour (## J-3, ## J-2, ## J-1, ## Jour J, ## Pendant l'effort, ## Récupération, ## Prochaines étapes)
-- Utilise des titres ### pour chaque repas (### 🌅 Petit-déjeuner, ### ⚡ Collation matin, ### ☀️ Déjeuner, ### ⚡ Collation après-midi, ### 🌙 Dîner)
+- Utilise des titres ### pour chaque repas (### Petit-déjeuner, ### Collation matin, ### Déjeuner, ### Collation après-midi, ### Dîner)
 - Pour chaque repas, liste chaque aliment avec sa quantité et ses glucides : **Riz blanc cuit** — 200g — 58g gluc.
 - À la fin de chaque jour, une ligne récapitulative : **TOTAL : XXXg glucides · XXg protéines · XXg lipides · XXXXkcal**
 - Mets en **gras** les aliments clés et les totaux
 - Utilise > pour les alertes et points de vigilance importants (ex : > ⚠ Pas de fibres la veille)
-- Utilise des emojis pour rendre le plan visuel : 🏁 Jour J, 🚴 pendant l'effort, 💪 récupération`
+- N'utilise AUCUN emoji dans le plan.`
   }
 
   // ── Step: gate ──────────────────────────────────────────────
@@ -3945,7 +3945,7 @@ FORMATAGE OBLIGATOIRE :
                 cursor: 'pointer', fontFamily: 'DM Sans,sans-serif',
               }}
             >
-              📄 {t('aip.downloadPdf')}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: '-2px' }}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>{t('aip.downloadPdf')}
             </button>
             {onRecordConv && (
               <button
@@ -3959,7 +3959,7 @@ FORMATAGE OBLIGATOIRE :
                   color: 'var(--ai-mid)', fontSize: 11, cursor: 'pointer',
                 }}
               >
-                💾 {t('aip.save')}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: '-2px' }}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>{t('aip.save')}
               </button>
             )}
             <button onClick={onCancel} style={{
@@ -5259,7 +5259,7 @@ function ChatImage({ url, alt }: { url: string; alt?: string }) {
     return (
       <div style={{ marginLeft: 34, margin: '8px 0' }}>
         <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: 'var(--ai-accent)', textDecoration: 'none', wordBreak: 'break-all' }}>
-          🖼️ {alt || t('aip.image.open')} ↗
+          {alt || t('aip.image.open')} ↗
         </a>
       </div>
     )
@@ -6575,10 +6575,10 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
           {([
-            { id: 'training' as const, label: t('aip.at.typeTraining'), desc: t('aip.at.typeTrainingDesc'), icon: '🏋️' },
-            { id: 'race' as const, label: t('aip.at.typeRace'), desc: t('aip.at.typeRaceDesc'), icon: '🏆' },
-            { id: 'period' as const, label: t('aip.at.typePeriod'), desc: t('aip.at.typePeriodDesc'), icon: '📊' },
-            { id: 'year' as const, label: t('aip.at.typeYear'), desc: t('aip.at.typeYearDesc'), icon: '📅' },
+            { id: 'training' as const, label: t('aip.at.typeTraining'), desc: t('aip.at.typeTrainingDesc'), icon: <path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11" /> },
+            { id: 'race' as const, label: t('aip.at.typeRace'), desc: t('aip.at.typeRaceDesc'), icon: <><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 01-10 0zM7 5H4v2a3 3 0 003 3M17 5h3v2a3 3 0 01-3 3" /></> },
+            { id: 'period' as const, label: t('aip.at.typePeriod'), desc: t('aip.at.typePeriodDesc'), icon: <path d="M3 3v18h18M7 14l4-4 3 3 5-6" /> },
+            { id: 'year' as const, label: t('aip.at.typeYear'), desc: t('aip.at.typeYearDesc'), icon: <><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></> },
           ]).map(opt => (
             <button key={opt.id} onClick={() => setAnalysisType(opt.id)} style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10,
@@ -6586,7 +6586,9 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
               background: analysisType === opt.id ? 'rgba(6,182,212,0.06)' : 'var(--ai-bg2)',
               cursor: 'pointer', textAlign: 'left' as const, width: '100%',
             }}>
-              <span style={{ fontSize: 18 }}>{opt.icon}</span>
+              <span style={{ display: 'flex', flexShrink: 0, color: analysisType === opt.id ? 'var(--ai-accent)' : 'var(--ai-dim)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{opt.icon}</svg>
+              </span>
               <div>
                 <p style={{ fontSize: 12, fontWeight: 600, color: analysisType === opt.id ? 'var(--ai-accent)' : 'var(--ai-text)', margin: 0 }}>{opt.label}</p>
                 <p style={{ fontSize: 10, color: 'var(--ai-dim)', margin: '2px 0 0' }}>{opt.desc}</p>
@@ -6807,7 +6809,7 @@ IMPORTANT: Réponds UNIQUEMENT en JSON valide (commence par {, finit par }). For
 
   if (phase === 'result' && report && selected.length > 0) {
     const verdictColors: Record<string, string> = { excellent: '#22c55e', bon: '#3b82f6', passable: '#f97316', a_revoir: '#ef4444' }
-    const verdictLabels: Record<string, string> = { excellent: `🏆 ${t('aip.at.verdictExcellent')}`, bon: `✓ ${t('aip.at.verdictGood')}`, passable: `~ ${t('aip.at.verdictOk')}`, a_revoir: `⚠ ${t('aip.at.verdictReview')}` }
+    const verdictLabels: Record<string, string> = { excellent: t('aip.at.verdictExcellent'), bon: t('aip.at.verdictGood'), passable: t('aip.at.verdictOk'), a_revoir: t('aip.at.verdictReview') }
     const vColor = verdictColors[report.verdict] ?? '#3b82f6'
     const mainAct = selected[0]
     const confidenceColor = report.confiance === 'élevée' ? '#22c55e' : report.confiance === 'modérée' ? '#f97316' : '#ef4444'
@@ -7257,7 +7259,7 @@ function TrainingReportView({ data }: { data: TrainingReportData }) {
   if (!mainAct) return null
 
   const verdictColors: Record<string, string> = { excellent: '#22c55e', bon: '#3b82f6', passable: '#f97316', a_revoir: '#ef4444' }
-  const verdictLabels: Record<string, string> = { excellent: `🏆 ${t('aip.at.verdictExcellent')}`, bon: `✓ ${t('aip.at.verdictGood')}`, passable: `~ ${t('aip.at.verdictOk')}`, a_revoir: `⚠ ${t('aip.at.verdictReview')}` }
+  const verdictLabels: Record<string, string> = { excellent: t('aip.at.verdictExcellent'), bon: t('aip.at.verdictGood'), passable: t('aip.at.verdictOk'), a_revoir: t('aip.at.verdictReview') }
   const vColor = verdictColors[report.verdict] ?? '#3b82f6'
   const confidenceColor = report.confiance === 'élevée' ? '#22c55e' : report.confiance === 'modérée' ? '#f97316' : '#ef4444'
 
@@ -8667,7 +8669,7 @@ function TrainingPlanFlow({
           padding: 20,
           marginBottom: 16,
         }}>
-          <div style={{ fontSize: 28, marginBottom: 12 }}>⚡</div>
+          <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--ai-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
           <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--ai-text)', margin: '0 0 8px', fontFamily: 'Syne,sans-serif' }}>
             Zeus requis
           </p>
@@ -11659,7 +11661,7 @@ function SessionBuilderFlow({ onCancel, onRecordConv }: {
   if (phase === 'saved') {
     return (
       <div style={{ padding: '16px 0', textAlign: 'center' }}>
-        <div style={{ fontSize: 28, marginBottom: 10 }}>✅</div>
+        <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg></div>
         <p style={{ fontFamily: 'Syne,sans-serif', fontSize: 14, fontWeight: 700, margin: '0 0 6px', color: 'var(--ai-text)' }}>
           Séance ajoutée ✓
         </p>
@@ -19289,7 +19291,7 @@ FORMAT JSON STRICT :
                     ? 'Analyse du parcours…'
                     : courseProfile
                       ? `✓ ${courseProfile.total_distance_km}km · D+ ${courseProfile.total_denivele_pos}m · ${courseProfile.segments.length} segments`
-                      : '📁 Importer un fichier GPX, TCX ou KML'}
+                      : 'Importer un fichier GPX, TCX ou KML'}
                 </button>
                 {courseProfile && (
                   <button onClick={() => setCourseProfile(null)} style={{ fontSize: 10, color: 'var(--ai-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0 0', display: 'block' }}>
@@ -20212,7 +20214,7 @@ function RaceStrategyView({ data }: { data: RaceStrategyData }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
           }}
         >
-          📄 Exporter le tableau de marche (PDF)
+          Exporter le tableau de marche (PDF)
         </button>
       )}
     </div>
@@ -20335,7 +20337,7 @@ function SecondaryChatColumn({
               {attachment.isImage && attachment.preview
                 ? <img src={attachment.preview} alt={attachment.name} style={{ height: 48, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--ai-border)' }} />
                 : <div style={{ padding: '6px 12px', borderRadius: 10, background: 'var(--ai-bg2)', border: '1px solid var(--ai-border)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <span>📄</span><span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachment.name}</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg><span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachment.name}</span>
                   </div>}
               <button onClick={() => setAttachment(null)} aria-label="Retirer"
                 style={{ width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'var(--ai-mid)', color: 'var(--ai-bg)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
@@ -23752,7 +23754,7 @@ export default function AIPanel({
                     : attachment.kind === 'parcours'
                     ? (
                       <div style={{ padding: '6px 12px', borderRadius: 10, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.35)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <span>🗺️</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 6l-6 3v12l6-3 6 3 6-3V6l-6 3-6-3zM9 6v12M15 9v12"/></svg>
                         <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
                           <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{attachment.name}</span>
                           {attachment.meta && <span style={{ fontSize: 10, color: 'var(--ai-mid)' }}>{attachment.meta}</span>}
@@ -23761,7 +23763,7 @@ export default function AIPanel({
                     )
                     : (
                       <div style={{ padding: '6px 12px', borderRadius: 10, background: 'var(--ai-bg)', border: '1px solid var(--ai-border)', fontSize: 12, color: 'var(--ai-text)', display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <span>📄</span><span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachment.name}</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg><span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachment.name}</span>
                       </div>
                     )
                   }

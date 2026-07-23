@@ -5,6 +5,7 @@ import type { SnappedPoint } from '@/lib/openrouteservice'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
 import { staticRouteMapUrl } from '@/lib/staticMap'
+import { routeToGpx, downloadGpx } from '@/lib/gpxExport'
 import { FinishFlag } from './finishFlag'
 
 type RouteType = 'training' | 'race'
@@ -158,6 +159,13 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
     if (data) setRoutes(r => [data as Route, ...r])
   }
 
+  const handleExport = (route: Route) => {
+    setMenuId(null)
+    const pts = (route.snapped_points ?? route.waypoints ?? []).map(p => ({ lat: p.lat, lng: p.lng, altitude: (p as { altitude?: number }).altitude }))
+    if (pts.length < 2) return
+    downloadGpx(route.name, routeToGpx(route.name, pts, route.elevation_profile ?? undefined))
+  }
+
   const useRoute = (route: Route) => onUseRoute({
     snapped_points: (route.snapped_points ?? route.waypoints).map(p => ({ lat: p.lat, lng: p.lng })),
     elevation_profile: route.elevation_profile ?? [],
@@ -274,6 +282,10 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
                     <button onClick={e => { e.stopPropagation(); void handleDuplicate(route) }} style={menuItem(text)}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
                       {t('record.routeLibraryDuplicate')}
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); handleExport(route) }} style={menuItem(text)}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12M8 11l4 4 4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+                      {t('record.routeLibraryExport')}
                     </button>
                     <button onClick={e => { e.stopPropagation(); void handleDelete(route.id) }} style={menuItem('#EF4444')}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>

@@ -50,6 +50,9 @@ async function callAgent(
       agentId: 'central',
       modelId: model,
       messages: [{ role: 'user', content: userContent }],
+      // Comptabilité SÉPARÉE : les runs Studio débitent le solde Studio,
+      // jamais le quota chat (voir coach-stream).
+      studio: true,
     }),
   })
 
@@ -212,7 +215,7 @@ export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<Ru
         cb.onStatus(n.id, 'error')
         failed.add(n.id)
         errors.push({ nodeId: n.id, title: n.title, message })
-        cb.onLog({ nodeId: n.id, title: `⚠️ ${n.title} — en erreur`, text: message })
+        cb.onLog({ nodeId: n.id, title: `${n.title} — en erreur`, text: message })
       }
     }))
   }

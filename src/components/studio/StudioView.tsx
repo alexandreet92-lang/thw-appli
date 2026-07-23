@@ -13,12 +13,16 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  loadGraph, saveGraph, resetGraph, emptyGraph, genId, autoLayout, validateGraph,
+  emptyGraph, sampleGraph, genId, autoLayout, validateGraph,
   MODEL_LABEL, KIND_LABEL, SOURCE_LABEL, ACTION_LABEL,
   type StudioGraph, type StudioNode, type StudioNodeKind, type StudioModel, type StudioSourceKey, type StudioActionKey, type GraphIssues,
 } from '@/lib/studio/graph'
 import { runGraph, terminalNodeIds, type NodeStatus } from '@/lib/studio/runner'
 import { buildGraphFromDescription } from '@/lib/studio/architect'
+import { listSystems, createSystem, updateSystem, deleteSystem, duplicateSystem, migrateLocalGraphIfAny, type StudioSystemRow } from '@/lib/studio/store'
+import { STUDIO_TEMPLATES } from '@/lib/studio/templates'
+import { STUDIO_PACKS, estimateRunTokens, formatTokens, type StudioAccess } from '@/lib/studio/offers'
+import { createClient } from '@/lib/supabase/client'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
 
 const NODE_W = 216
@@ -93,13 +97,32 @@ function AppIcon({ id, size = 14 }: { id: string; size?: number }) {
   }
 }
 
-type Tab = 'canvas' | 'chat' | 'rendu'
+type Tab = 'canvas' | 'chat' | 'rendu' | 'runs'
 type LogEntry = { nodeId: string; title: string; text: string }
 type Approval = { node: StudioNode; content: string; resolve: (ok: boolean) => void }
+interface RunRow {
+  id: string
+  system_name: string
+  status: 'done' | 'error' | 'stopped'
+  renders: { title: string; text: string }[]
+  tokens_est: number | null
+  created_at: string
+}
 
 export default function StudioView({ onClose }: { onClose: () => void }) {
-  const [graph, setGraph] = useState<StudioGraph>(() => (typeof window !== 'undefined' ? loadGraph() : { id: '', name: '', nodes: [], edges: [], updatedAt: 0 }))
+  const [graph, setGraph] = useState<StudioGraph>(() => emptyGraph())
   const [tab, setTab] = useState<Tab>('canvas')
+  // ── Accueil multi-systèmes + accès (offre Pro/Expert) ────────
+  const [view, setView] = useState<'home' | 'canvas'>('home')
+  const [systems, setSystems] = useState<StudioSystemRow[]>([])
+  const [systemId, setSystemId] = useState<string | null>(null)
+  const [homeLoading, setHomeLoading] = useState(true)
+  const [homeErr, setHomeErr] = useState<string | null>(null)
+  const [access, setAccess] = useState<StudioAccess | null>(null)
+  const [walletOpen, setWalletOpen] = useState(false)
+  const [buying, setBuying] = useState<string | null>(null)
+  const [runs, setRuns] = useState<RunRow[] | null>(null)
+  const [openRunId, setOpenRunId] = useState<string | null>(null)
   const [selId, setSelId] = useState<string | null>(null)
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -141,7 +164,51 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const drag = useRef<null | { mode: 'node' | 'pan' | 'conn'; id?: string; dx: number; dy: number }>(null)
   const [pending, setPending] = useState<null | { fromId: string; x: number; y: number }>(null)
 
-  const persist = useCallback((g: StudioGraph) => { setGraph(g); saveGraph(g) }, [])
+  // ── Persistance SERVEUR (debounce) — remplace le localStorage ──
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const systemIdRef = useRef<string | null>(null)
+  useEffect(() => { systemIdRef.current = systemId }, [systemId])
+  const scheduleSave = useCallback((g: StudioGraph) => {
+    const id = systemIdRef.current
+    if (!id) return
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      void updateSystem(id, { graph: g, name: g.name }).catch(() => { /* réessaiera à la prochaine modif */ })
+    }, 700)
+  }, [])
+  const persist = useCallback((g: StudioGraph) => { setGraph(g); scheduleSave(g) }, [scheduleSave])
+
+  const refreshAccess = useCallback(() => {
+    void fetch('/api/studio/access')
+      .then(r => (r.ok ? (r.json() as Promise<StudioAccess>) : null))
+      .then(a => { if (a) setAccess(a) })
+      .catch(() => { /* silencieux */ })
+  }, [])
+
+  // Démontage : sauvegarde immédiate du système ouvert (sinon les 700 ms de
+  // debounce peuvent se perdre à la fermeture du Studio).
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    const id = systemIdRef.current
+    if (id) void updateSystem(id, { graph: graphRef.current, name: graphRef.current.name }).catch(() => {})
+  }, [])
+
+  // Boot : accès (offre) + liste des systèmes + migration localStorage.
+  useEffect(() => {
+    refreshAccess()
+    void (async () => {
+      try {
+        let list = await listSystems()
+        const migrated = await migrateLocalGraphIfAny(list)
+        if (migrated) list = [migrated, ...list]
+        setSystems(list)
+      } catch {
+        setHomeErr('Impossible de charger tes systèmes — vérifie ta connexion.')
+      } finally {
+        setHomeLoading(false)
+      }
+    })()
+  }, [refreshAccess])
 
   const sel = graph.nodes.find(n => n.id === selId) ?? null
   const trigger = graph.nodes.find(n => n.kind === 'trigger') ?? null
@@ -189,7 +256,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
   const onPointerUp = useCallback((e: PointerEvent) => {
     const d = drag.current
-    if (d?.mode === 'node') saveGraph(graphRef.current)
+    if (d?.mode === 'node') scheduleSave(graphRef.current)
     if (d?.mode === 'conn') {
       const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
       const toId = el?.closest('[data-portin]')?.getAttribute('data-portin') ?? null
@@ -197,7 +264,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         setGraph(g => {
           if (g.edges.some(x => x.from === d.id && x.to === toId)) return g
           const next = { ...g, edges: [...g.edges, { id: genId(), from: d.id!, to: toId }] }
-          saveGraph(next); return next
+          scheduleSave(next); return next
         })
       }
       setPending(null)
@@ -271,8 +338,59 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     else addNode('action', { actionKey: app.actionKey, title: app.label })
   }
   const addExt = (e: ExtEntry) => addNode('source', { sourceKey: e.sourceKey, title: e.label })
-  const loadExample = () => { const g = resetGraph(); setGraph(g); setSelId(null); setStatus({}); setNodeText({}) }
-  const clearCanvas = () => { const g = emptyGraph(); persist(g); setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}) }
+  const loadExample = () => { const g = sampleGraph(); persist({ ...g, name: graph.name || g.name }); setSelId(null); setStatus({}); setNodeText({}) }
+  const clearCanvas = () => { persist({ ...emptyGraph(), id: graph.id, name: graph.name }); setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}) }
+
+  // ── Accueil : ouvrir / créer / dupliquer / supprimer un système ──
+  const openSystem = (row: StudioSystemRow) => {
+    const g = row.graph && Array.isArray(row.graph.nodes) ? row.graph : emptyGraph()
+    setGraph({ ...g, name: row.name })
+    setSystemId(row.id)
+    setView('canvas'); setTab('canvas')
+    setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}); setLogs([]); setIssues(null)
+    setPan({ x: 0, y: 0 }); setZoom(1)
+  }
+  const newSystem = async (name: string, g: StudioGraph) => {
+    try {
+      const row = await createSystem(name, { ...g, name })
+      setSystems(s => [row, ...s])
+      openSystem(row)
+    } catch {
+      setHomeErr('Création impossible — réessaie.')
+    }
+  }
+  const removeSystem = async (id: string) => {
+    if (!confirm('Supprimer ce système ? Cette action est définitive.')) return
+    try { await deleteSystem(id); setSystems(s => s.filter(x => x.id !== id)) } catch { setHomeErr('Suppression impossible — réessaie.') }
+  }
+  const copySystem = async (row: StudioSystemRow) => {
+    try { const dup = await duplicateSystem(row); setSystems(s => [dup, ...s]) } catch { setHomeErr('Duplication impossible — réessaie.') }
+  }
+  const backToHome = () => {
+    // Sauvegarde immédiate avant de quitter la toile.
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    const id = systemIdRef.current
+    if (id) {
+      void updateSystem(id, { graph: graphRef.current, name: graphRef.current.name }).catch(() => {})
+      setSystems(s => s.map(x => x.id === id ? { ...x, name: graphRef.current.name, graph: graphRef.current, updated_at: new Date().toISOString() } : x))
+    }
+    setView('home')
+  }
+
+  // ── Packs : achat Stripe (paiement unique) ────────────────────
+  const buyPack = async (key: string) => {
+    setBuying(key)
+    try {
+      const r = await fetch('/api/studio/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pack: key }) })
+      const j = await r.json() as { url?: string; error?: string }
+      if (j.url) { window.location.href = j.url; return }
+      setHomeErr(j.error ?? 'Achat indisponible pour le moment.')
+    } catch {
+      setHomeErr('Achat indisponible pour le moment.')
+    } finally {
+      setBuying(null)
+    }
+  }
   const patchNode = (id: string, patch: Partial<StudioNode>) =>
     persist({ ...graph, nodes: graph.nodes.map(n => n.id === id ? { ...n, ...patch } : n) })
   const deleteNode = (id: string) => {
@@ -379,6 +497,25 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
   // ── Run once ───────────────────────────────────────────────
   const stopRun = () => { abortRef.current?.abort(); setRunning(false); setApproval(null) }
+
+  // Historique : enregistre le run en base (best-effort).
+  const saveRunHistory = async (status: RunRow['status'], runLogs: LogEntry[], outputs: Record<string, string>, errorText: string | null, estimate: number) => {
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const renders = terminalNodeIds(graphRef.current)
+        .map(id => { const n = graphRef.current.nodes.find(x => x.id === id); return n ? { title: n.title, text: outputs[id] ?? '' } : null })
+        .filter(Boolean)
+      await supabase.from('studio_runs').insert({
+        user_id: user.id, system_id: systemIdRef.current, system_name: graphRef.current.name,
+        status, logs: runLogs, renders, error_text: errorText, tokens_est: estimate,
+        finished_at: new Date().toISOString(),
+      })
+      setRuns(null)   // recharge à la prochaine ouverture de l'onglet
+    } catch { /* best-effort */ }
+  }
+
   const runOnce = async (force = false) => {
     if (running) return
     // Contrôle pré-run : erreurs → bloqué ; avertissements → « Lancer quand même ».
@@ -388,33 +525,65 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       setTab('canvas')
       return
     }
+    // Solde Studio : estimation du coût vs tokens restants.
+    const estimate = estimateRunTokens(graph.nodes)
+    if (access && access.allowed && estimate > access.remaining) {
+      setIssues({
+        errors: [`Solde Studio insuffisant : ce run coûte environ ${formatTokens(estimate)} tokens, il t'en reste ${formatTokens(access.remaining)}. Recharge avec un pack Studio.`],
+        warnings: [], nodeIssues: {}, canForce: false,
+      })
+      setWalletOpen(true)
+      return
+    }
     setIssues(null)
     setRunErr(null); setLogs([]); setNodeText({}); setStatus({})
+    const runLogs: LogEntry[] = []
     const ctrl = new AbortController(); abortRef.current = ctrl
     setRunning(true)
     try {
-      const { errors } = await runGraph(graph, {
+      const { outputs, errors } = await runGraph(graph, {
         signal: ctrl.signal,
         onStatus: (id, s) => setStatus(prev => ({ ...prev, [id]: s })),
         onChunk:  (id, t) => setNodeText(prev => ({ ...prev, [id]: t })),
-        onLog:    (entry) => { setNodeText(prev => ({ ...prev, [entry.nodeId]: entry.text })); setLogs(prev => [...prev, entry]) },
+        onLog:    (entry) => { runLogs.push(entry); setNodeText(prev => ({ ...prev, [entry.nodeId]: entry.text })); setLogs(prev => [...prev, entry]) },
         requestApproval: (node, content) => new Promise<boolean>(resolve => {
           setTab('chat')
           setApproval({ node, content, resolve: (ok) => { setApproval(null); resolve(ok) } })
         }),
       })
       if (errors.length > 0) {
-        setRunErr(`${errors.length} nœud(s) en erreur : ${errors.map(er => `${er.title} — ${er.message}`).join(' · ')}`)
+        const errText = errors.map(er => `${er.title} — ${er.message}`).join(' · ')
+        setRunErr(`${errors.length} nœud(s) en erreur : ${errText}`)
         setTab('chat')
+        void saveRunHistory('error', runLogs, outputs, errText, estimate)
       } else {
         setTab('rendu')
+        void saveRunHistory('done', runLogs, outputs, null, estimate)
       }
     } catch (e) {
       if (!ctrl.signal.aborted) setRunErr(e instanceof Error ? e.message : 'Erreur pendant le run')
+      void saveRunHistory(ctrl.signal.aborted ? 'stopped' : 'error', runLogs, {}, e instanceof Error ? e.message : null, estimate)
     } finally {
       setRunning(false); abortRef.current = null
+      refreshAccess()   // le solde vient d'être débité côté serveur
     }
   }
+
+  // ── Historique : chargement à l'ouverture de l'onglet ─────────
+  useEffect(() => {
+    if (tab !== 'runs' || runs !== null) return
+    void (async () => {
+      try {
+        const supabase = createClient()
+        const { data } = await supabase
+          .from('studio_runs')
+          .select('id, system_name, status, renders, tokens_est, created_at')
+          .order('created_at', { ascending: false })
+          .limit(30)
+        setRuns((data ?? []) as RunRow[])
+      } catch { setRuns([]) }
+    })()
+  }, [tab, runs])
 
   const copyRender = (id: string, text: string) => {
     void navigator.clipboard?.writeText(text)
@@ -443,7 +612,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
       {/* ══ Header ══ */}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: 'max(12px, env(safe-area-inset-top)) 14px 10px', borderBottom: '0.5px solid var(--border)' }}>
-        <button onClick={onClose} aria-label="Fermer" style={iconBtn}>
+        <button onClick={view === 'canvas' ? backToHome : onClose} aria-label={view === 'canvas' ? 'Retour à mes systèmes' : 'Fermer'} style={iconBtn}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', whiteSpace: 'nowrap' }}>Studio</div>
@@ -452,20 +621,32 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           style={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans,sans-serif', flexShrink: 0 }}>
           ?
         </button>
-        <input
-          value={graph.name}
-          onChange={e => persist({ ...graph, name: e.target.value })}
-          aria-label="Nom du système"
-          style={{ marginLeft: 2, minWidth: 0, flex: '0 1 240px', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', outline: 'none' }}
-        />
+        {view === 'canvas' && (
+          <input
+            value={graph.name}
+            onChange={e => persist({ ...graph, name: e.target.value })}
+            aria-label="Nom du système"
+            style={{ marginLeft: 2, minWidth: 0, flex: '0 1 240px', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', outline: 'none' }}
+          />
+        )}
 
-        <div style={{ display: 'flex', gap: 2, marginLeft: 'auto', background: 'var(--bg-alt)', borderRadius: 10, padding: 3 }}>
-          {(['canvas', 'chat', 'rendu'] as Tab[]).map(tb => (
+        {/* Solde Studio — clic : détail + packs */}
+        {access?.allowed && (
+          <button onClick={() => setWalletOpen(true)} title="Solde de tokens Studio — voir le détail et recharger"
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            {access.remaining > 1e12 ? 'Illimité' : `${formatTokens(access.remaining)} tokens`}
+          </button>
+        )}
+
+        {view === 'canvas' && (<>
+        <div style={{ display: 'flex', gap: 2, marginLeft: access?.allowed ? 0 : 'auto', background: 'var(--bg-alt)', borderRadius: 10, padding: 3 }}>
+          {(['canvas', 'chat', 'rendu', 'runs'] as Tab[]).map(tb => (
             <button key={tb} onClick={() => setTab(tb)}
               style={{ padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'DM Sans,sans-serif',
                 background: tab === tb ? 'var(--bg)' : 'transparent', color: tab === tb ? 'var(--text)' : 'var(--text-dim)',
                 boxShadow: tab === tb ? 'var(--shadow-card)' : 'none' }}>
-              {tb === 'canvas' ? 'Canvas' : tb === 'chat' ? 'Pilotage' : 'Rendu'}
+              {tb === 'canvas' ? 'Canvas' : tb === 'chat' ? 'Pilotage' : tb === 'rendu' ? 'Rendu' : 'Historique'}
             </button>
           ))}
         </div>
@@ -475,10 +656,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             <span style={{ width: 9, height: 9, borderRadius: 2, background: '#fff', display: 'inline-block' }} /> Arrêter
           </button>
         ) : (
-          <button onClick={() => void runOnce()} style={cta}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Run once
+          <button onClick={() => void runOnce()} style={cta}
+            title={graph.nodes.length ? `Coût estimé : ~${formatTokens(estimateRunTokens(graph.nodes))} tokens Studio` : 'Run once'}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            Run once
+            {graph.nodes.length > 0 && (
+              <span style={{ fontSize: 10.5, fontWeight: 700, opacity: 0.75, fontVariantNumeric: 'tabular-nums' }}>~{formatTokens(estimateRunTokens(graph.nodes))}</span>
+            )}
           </button>
         )}
+        </>)}
       </div>
 
       {/* ══ Corps ══ */}
@@ -520,7 +707,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         )}
 
         {/* ══ CANVAS ══ */}
-        {tab === 'canvas' && (
+        {view === 'canvas' && tab === 'canvas' && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
 
             {/* ── Barre « Décris ton système » (texte + dictée) ── */}
@@ -559,7 +746,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               </div>
               {buildErr && (
                 <div style={{ marginTop: 8, padding: '9px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 12.5, fontFamily: 'DM Sans,sans-serif', animation: 'studio_in 0.2s ease' }}>
-                  ⚠️ {buildErr}
+                  {buildErr}
                 </div>
               )}
               {explanation && (
@@ -747,7 +934,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         )}
                         {st === 'running' && <span style={{ width: 10, height: 10, borderRadius: '50%', border: `2px solid color-mix(in srgb, ${col} 25%, transparent)`, borderTopColor: col, animation: 'studio_spin 0.7s linear infinite', flexShrink: 0 }} />}
                         {st === 'done' && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5"/></svg>}
-                        {st === 'waiting' && <span style={{ color: '#F59E0B', fontSize: 12, flexShrink: 0, animation: 'studio_pulse 1.4s ease infinite' }}>⏸</span>}
+                        {st === 'waiting' && <svg width="12" height="12" viewBox="0 0 24 24" fill="#F59E0B" style={{ flexShrink: 0, animation: 'studio_pulse 1.4s ease infinite' }}><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg>}
                         {st === 'error' && <span style={{ color: '#EF4444', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>!</span>}
                       </div>
                       {/* Sous-titre connecteur */}
@@ -890,7 +1077,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         )}
 
         {/* ══ PILOTAGE ══ */}
-        {tab === 'chat' && (
+        {view === 'canvas' && tab === 'chat' && (
           <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 760, margin: '0 auto' }}>
             <label style={lbl}>Objectif du collectif</label>
             {trigger ? (
@@ -898,11 +1085,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 style={{ ...fld, resize: 'vertical', lineHeight: 1.5, marginBottom: 18 }} placeholder="Que doivent accomplir les agents ensemble ?" />
             ) : <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>Utilise la barre « Décris ton système » du Canvas pour créer un système (le déclencheur portera l’objectif).</p>}
 
-            {runErr && <div style={{ padding: 12, borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>⚠️ {runErr}</div>}
+            {runErr && <div style={{ padding: 12, borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{runErr}</div>}
 
             {approval && (
               <div style={{ padding: 16, borderRadius: 14, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.4)', marginBottom: 18, animation: 'studio_in 0.2s ease' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>⏸ Ton accord est requis — {approval.node.title}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>Ton accord est requis — {approval.node.title}</div>
                 {approval.node.role && <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginBottom: 8 }}>{approval.node.role}</div>}
                 <div style={{ fontSize: 12.5, color: 'var(--text-dim)', whiteSpace: 'pre-wrap', maxHeight: 240, overflowY: 'auto', padding: 10, borderRadius: 8, background: 'var(--bg-alt)', marginBottom: 12, lineHeight: 1.5 }}>{approval.content || '(aucun contenu en entrée)'}</div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -927,7 +1114,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         )}
 
         {/* ══ RENDU ══ */}
-        {tab === 'rendu' && (
+        {view === 'canvas' && tab === 'rendu' && (
           <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 820, margin: '0 auto' }}>
             {renders.every(r => !r.text) ? (
               <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', marginTop: 60 }}>
@@ -958,7 +1145,208 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         )}
+
+        {/* ══ HISTORIQUE DES RUNS ══ */}
+        {view === 'canvas' && tab === 'runs' && (
+          <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 760, margin: '0 auto' }}>
+            {runs === null && <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite' }}>Chargement de l’historique…</p>}
+            {runs !== null && runs.length === 0 && (
+              <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', marginTop: 60 }}>Aucun run pour l’instant — lance un « Run once » et il apparaîtra ici.</p>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {(runs ?? []).map(r => {
+                const open = openRunId === r.id
+                const stCol = r.status === 'done' ? '#22C55E' : r.status === 'error' ? '#EF4444' : '#F59E0B'
+                const stLbl = r.status === 'done' ? 'Terminé' : r.status === 'error' ? 'Erreur' : 'Arrêté'
+                return (
+                  <div key={r.id} style={{ borderRadius: 13, background: 'var(--bg-card)', border: '1px solid var(--border)', overflow: 'hidden', animation: 'studio_in 0.2s ease' }}>
+                    <button onClick={() => setOpenRunId(open ? null : r.id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans,sans-serif' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: stCol, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.system_name || 'Système sans nom'}</span>
+                        <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>
+                          {new Date(r.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {stLbl}{r.tokens_est ? ` · ~${formatTokens(r.tokens_est)} tokens` : ''}
+                        </span>
+                      </span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 200ms ease', flexShrink: 0 }}><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    {open && (
+                      <div style={{ padding: '0 14px 12px', borderTop: '1px solid var(--border)' }}>
+                        {(r.renders ?? []).filter(x => x.text).length === 0 && (
+                          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '10px 0 0' }}>Aucun rendu conservé pour ce run.</p>
+                        )}
+                        {(r.renders ?? []).filter(x => x.text).map((x, i) => (
+                          <div key={i} style={{ marginTop: 10 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>{x.title}</div>
+                            <div style={{ fontSize: 13, color: 'var(--text-mid)', whiteSpace: 'pre-wrap', lineHeight: 1.55, maxHeight: 300, overflowY: 'auto', padding: 10, borderRadius: 9, background: 'var(--bg-alt)', fontFamily: 'DM Sans,sans-serif' }}>{x.text}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ══ ACCUEIL — paywall / mes systèmes / templates ══ */}
+        {view === 'home' && (
+          <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '24px 20px 40px' }}>
+            {access && !access.allowed ? (
+              /* ── Paywall : Studio réservé Pro/Expert ── */
+              <div style={{ maxWidth: 660, margin: '40px auto 0', textAlign: 'center' }}>
+                <span style={{ width: 60, height: 60, borderRadius: 18, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                </span>
+                <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: '16px 0 8px', fontFamily: 'Syne,DM Sans,sans-serif' }}>Le Studio est réservé aux offres Pro et Expert</h2>
+                <p style={{ fontSize: 14, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 auto 22px', maxWidth: 480, fontFamily: 'DM Sans,sans-serif' }}>
+                  Un run mobilise plusieurs coachs IA en parallèle — c’est une puissance de calcul sans commune mesure avec le chat.
+                  Les abonnements Pro et Expert incluent un quota mensuel de tokens Studio dédié, extensible avec des packs.
+                </p>
+                <a href="/settings/subscription" style={{ ...cta, display: 'inline-flex', textDecoration: 'none' }}>Voir les abonnements</a>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 34, opacity: 0.65 }}>
+                  {STUDIO_PACKS.map(p => (
+                    <div key={p.key} style={{ padding: '16px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', textAlign: 'left' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>{p.label}</div>
+                      <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', margin: '6px 0 2px', fontFamily: 'Syne,DM Sans,sans-serif' }}>{formatTokens(p.tokens)} <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>tokens</span></div>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: '#8B5CF6' }}>{p.priceEur.toFixed(2).replace('.', ',')} €</div>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'DM Sans,sans-serif' }}>Packs disponibles une fois abonné Pro ou Expert.</p>
+              </div>
+            ) : (
+              <div style={{ maxWidth: 860, margin: '0 auto' }}>
+                {homeErr && (
+                  <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 12.5, fontFamily: 'DM Sans,sans-serif' }}>{homeErr}</div>
+                )}
+
+                {/* ── Mes systèmes ── */}
+                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'DM Sans,sans-serif' }}>Mes systèmes</div>
+                {homeLoading ? (
+                  <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite', fontFamily: 'DM Sans,sans-serif' }}>Chargement…</p>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
+                    {/* Nouveau système */}
+                    <button onClick={() => void newSystem('Mon système', emptyGraph())}
+                      style={{ minHeight: 110, borderRadius: 16, border: '2px dashed color-mix(in srgb, #8B5CF6 40%, transparent)', background: 'color-mix(in srgb, #8B5CF6 5%, var(--bg-card))', color: '#8B5CF6', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, fontWeight: 700 }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                      Nouveau système
+                    </button>
+                    {systems.map(s => {
+                      const nAgents = (s.graph?.nodes ?? []).filter(n => n.kind === 'agent' || n.kind === 'merge').length
+                      return (
+                        <div key={s.id} onClick={() => openSystem(s)} role="button" tabIndex={0}
+                          onKeyDown={e => { if (e.key === 'Enter') openSystem(s) }}
+                          style={{ minHeight: 110, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', padding: '14px 14px 12px', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'box-shadow 150ms, transform 150ms' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.10)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; (e.currentTarget as HTMLDivElement).style.transform = 'none' }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
+                          <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 4, fontFamily: 'DM Sans,sans-serif' }}>
+                            {(s.graph?.nodes ?? []).length} bloc{(s.graph?.nodes ?? []).length !== 1 ? 's' : ''} · {nAgents} agent{nAgents !== 1 ? 's' : ''}
+                          </div>
+                          <div style={{ flex: 1 }} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 10.5, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>
+                              {new Date(s.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                            </span>
+                            <div style={{ flex: 1 }} />
+                            <button onClick={e => { e.stopPropagation(); void copySystem(s) }} title="Dupliquer" aria-label="Dupliquer"
+                              style={{ ...zBtn, width: 26, height: 24 }}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            </button>
+                            <button onClick={e => { e.stopPropagation(); void removeSystem(s.id) }} title="Supprimer" aria-label="Supprimer"
+                              style={{ ...zBtn, width: 26, height: 24, color: '#EF4444' }}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* ── Templates ── */}
+                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '28px 0 10px', fontFamily: 'DM Sans,sans-serif' }}>Partir d’un modèle</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
+                  {STUDIO_TEMPLATES.map(t => (
+                    <button key={t.key} onClick={() => void newSystem(t.name, t.build())}
+                      style={{ borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', padding: '14px 14px 13px', textAlign: 'left', fontFamily: 'DM Sans,sans-serif', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'box-shadow 150ms, transform 150ms' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.10)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; (e.currentTarget as HTMLButtonElement).style.transform = 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/></svg>
+                        </span>
+                        <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{t.name}</span>
+                      </div>
+                      <p style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5, margin: '8px 0 0' }}>{t.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* ══ Solde Studio + packs (sur-page) ══ */}
+      {walletOpen && access && (
+        <div onClick={() => setWalletOpen(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 13700, background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ width: 'min(520px, 100%)', maxHeight: '85vh', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', padding: '22px 22px 18px', animation: 'studio_in 0.2s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <span style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              </span>
+              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>Tokens Studio</div>
+              <button onClick={() => setWalletOpen(false)} aria-label="Fermer" style={iconBtn}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            {/* Jauge mensuelle */}
+            <div style={{ padding: '12px 14px', borderRadius: 12, background: 'var(--bg-alt)', marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', fontFamily: 'DM Sans,sans-serif' }}>
+                <span>Quota mensuel inclus ({access.tier === 'expert' ? 'Expert' : 'Pro'})</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTokens(Math.min(access.monthlyUsed, access.monthlyLimit))} / {formatTokens(access.monthlyLimit)}</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 3, background: 'var(--border)', marginTop: 8, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${access.monthlyLimit > 0 ? Math.min(100, (access.monthlyUsed / access.monthlyLimit) * 100) : 0}%`, background: '#8B5CF6', borderRadius: 3 }} />
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8, fontFamily: 'DM Sans,sans-serif' }}>
+                Tokens de packs : <b style={{ color: 'var(--text)' }}>{formatTokens(access.packTokens)}</b> (n’expirent pas)
+              </div>
+            </div>
+
+            {/* Les 3 packs */}
+            <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '14px 0 8px', fontFamily: 'DM Sans,sans-serif' }}>Recharger</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {STUDIO_PACKS.map(p => (
+                <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>{p.label} — {formatTokens(p.tokens)} tokens</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2, fontFamily: 'DM Sans,sans-serif' }}>{p.tagline}</div>
+                  </div>
+                  <button onClick={() => void buyPack(p.key)} disabled={!access.packsAvailable || buying !== null}
+                    title={access.packsAvailable ? `Acheter ${p.label}` : 'Bientôt disponible'}
+                    style={{ padding: '8px 14px', borderRadius: 9, border: 'none', flexShrink: 0, cursor: access.packsAvailable && !buying ? 'pointer' : 'default',
+                      background: access.packsAvailable ? '#8B5CF6' : 'var(--border)', color: access.packsAvailable ? '#fff' : 'var(--text-dim)',
+                      fontSize: 12.5, fontWeight: 700, fontFamily: 'DM Sans,sans-serif' }}>
+                    {buying === p.key ? '…' : `${p.priceEur.toFixed(2).replace('.', ',')} €`}
+                  </button>
+                </div>
+              ))}
+            </div>
+            {!access.packsAvailable && (
+              <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'DM Sans,sans-serif' }}>L’achat de packs arrive très bientôt — ton quota mensuel se recharge automatiquement chaque mois.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ══ Sur-page d'aide ══ */}
       {helpOpen && (
@@ -983,7 +1371,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 chacun a son métier (endurance, force, prévention…), ils bossent en parallèle, et une synthèse assemble le tout.
               </p>
               {[
-                ['1. Décris', 'Écris (ou dicte 🎙️) ce que tu veux dans la barre du Canvas — l’IA construit le système toute seule : les agents, les connexions, tout.'],
+                ['1. Décris', 'Écris (ou dicte à la voix) ce que tu veux dans la barre du Canvas — l’IA construit le système toute seule : les agents, les connexions, tout.'],
                 ['2. Branche tes pages', 'Les nœuds verts « Page » lisent tes vraies données (Activités, Planning, Blessures, Récupération, Profil) et les injectent dans le système.'],
                 ['3. Lance', '« Run once » : les agents travaillent en même temps, tu suis tout dans Pilotage, le résultat arrive dans Rendu.'],
                 ['4. Tu gardes la main', 'Pour toute action importante (ex. enregistrer des séances dans ton Planning), le système se met en pause et attend TON accord.'],

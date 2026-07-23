@@ -12,6 +12,7 @@ import type Stripe from 'stripe'
 import { stripe, getTierFromPriceId } from '@/lib/stripe/config'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notifyUser } from '@/lib/notifications/dispatch'
+import { creditStudioPack } from '@/lib/tokens/studio'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -65,6 +66,25 @@ export async function POST(req: NextRequest) {
       // ── checkout.session.completed ──────────────────────────
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
+
+        // Paiement unique — pack de tokens STUDIO → crédite le wallet Studio.
+        if (session.mode === 'payment' && session.metadata?.studioPack) {
+          const packUserId = session.metadata.userId
+          const tokens = parseInt(session.metadata.studioTokens ?? '0', 10)
+          if (packUserId && tokens > 0) {
+            await creditStudioPack(packUserId, tokens)
+            void notifyUser(packUserId, 'tokens.pack_credite', {
+              title: 'Pack Studio crédité',
+              body: `${Math.round(tokens / 1000)}k tokens Studio ajoutés à ton solde. Bon build !`,
+              url: '/',
+              dedupKey: `studio-pack-${session.id}`,
+              once: true,
+            })
+            console.log(`[stripe/webhook] studio pack → user ${packUserId} +${tokens} tokens`)
+          }
+          break
+        }
+
         if (session.mode !== 'subscription') break
 
         const userId = session.metadata?.userId

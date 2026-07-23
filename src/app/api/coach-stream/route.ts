@@ -38,6 +38,7 @@ import { getUserTier, logUsage } from '@/lib/subscriptions/check-quota'
 import { TIER_LIMITS, MODEL_IDS, MODEL_MAX_TOKENS } from '@/lib/subscriptions/tier-limits'
 import { getActiveCompetencesPrompt } from '@/lib/ai/competences'
 import { getUserTokenLimits, recordTokenUsage } from '@/lib/tokens/limits'
+import { getStudioAccess, recordStudioUsage } from '@/lib/tokens/studio'
 import { getModelMultiplier } from '@/lib/tokens/multipliers'
 import { methodsIndexText } from '@/lib/coach/methods'
 import { buildDoctrineForChat } from '@/lib/coach/doctrine/registry'
@@ -245,9 +246,31 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: 'Erreur d\'authentification' }), { status: 401 })
   }
 
-  // ── Quota ─────────────────────────────────────────────────────
-  const check = await enforceQuota(userId, 'message')
-  if (!check.allowed) return check.response
+  let body: Record<string, unknown>
+  try {
+    body = await req.json() as Record<string, unknown>
+  } catch {
+    return new Response('Invalid JSON', { status: 400 })
+  }
+
+  // ── Mode STUDIO : quota et comptabilité SÉPARÉS du chat ────────
+  // Les appels du Studio d'agents (body.studio === true) sont réservés aux
+  // abonnements Pro/Expert, débitent le solde Studio (quota mensuel inclus
+  // puis packs) et n'entament JAMAIS le quota chat (ni messages, ni tokens).
+  const isStudio = body.studio === true
+  if (isStudio) {
+    const access = await getStudioAccess(userId)
+    if (!access.allowed) {
+      return new Response(JSON.stringify({ error: 'Le Studio est réservé aux abonnements Pro et Expert.' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+    }
+    if (access.remaining <= 0) {
+      return new Response(JSON.stringify({ error: 'Solde de tokens Studio épuisé. Recharge avec un pack Studio ou attends le reset mensuel.' }), { status: 402, headers: { 'Content-Type': 'application/json' } })
+    }
+  } else {
+    // ── Quota messages (chat uniquement) ──────────────────────────
+    const check = await enforceQuota(userId, 'message')
+    if (!check.allowed) return check.response
+  }
 
   // ── Tier / modèle ─────────────────────────────────────────────
   const tier      = await getUserTier(userId)
@@ -256,13 +279,6 @@ export async function POST(req: NextRequest) {
   const maxTokens = MODEL_MAX_TOKENS[tierModel]
 
   console.log(`[coach-stream] tier=${tier} model=${tierModel} → ${model}`)
-
-  let body: Record<string, unknown>
-  try {
-    body = await req.json() as Record<string, unknown>
-  } catch {
-    return new Response('Invalid JSON', { status: 400 })
-  }
 
   // ══════════════════════════════════════════════════════════════
   // MODE 1 — SESSION PARSER (sport présent, pas d'agentId)
@@ -690,19 +706,27 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
   }
 
   // ── Pré-check tokens (fail-open : n'interrompt jamais en cas d'erreur) ──
+  // Mode Studio → solde Studio uniquement (le quota chat n'est pas touché).
   const tokenModelKey = (chatBody as { modelId?: string }).modelId ?? 'athena'
   try {
-    const tl = await getUserTokenLimits(userId)
     const rawEstimate = Math.ceil((JSON.stringify(anthropicMessages).length + systemWithTools.length) / 4)
     const estimate = Math.ceil(rawEstimate * getModelMultiplier(tokenModelKey))
-    const remainingRolling = tl.rolling_6h.limit - tl.rolling_6h.used
-    const remainingTotal = (tl.monthly.limit - tl.monthly.used) + tl.bonus_tokens
-    if (estimate > remainingRolling) {
-      const hours = Math.max(1, Math.ceil((new Date(tl.rolling_6h.resets_at).getTime() - Date.now()) / 3_600_000))
-      return new Response(JSON.stringify({ error: `Limite de 6h atteinte. Réinitialisation dans ${hours}h.` }), { status: 402, headers: { 'Content-Type': 'application/json' } })
-    }
-    if (estimate > remainingTotal) {
-      return new Response(JSON.stringify({ error: 'Limite hebdomadaire de tokens atteinte. Recharge pour continuer.' }), { status: 402, headers: { 'Content-Type': 'application/json' } })
+    if (isStudio) {
+      const access = await getStudioAccess(userId)
+      if (estimate > access.remaining) {
+        return new Response(JSON.stringify({ error: 'Solde de tokens Studio insuffisant pour ce run. Recharge avec un pack Studio.' }), { status: 402, headers: { 'Content-Type': 'application/json' } })
+      }
+    } else {
+      const tl = await getUserTokenLimits(userId)
+      const remainingRolling = tl.rolling_6h.limit - tl.rolling_6h.used
+      const remainingTotal = (tl.monthly.limit - tl.monthly.used) + tl.bonus_tokens
+      if (estimate > remainingRolling) {
+        const hours = Math.max(1, Math.ceil((new Date(tl.rolling_6h.resets_at).getTime() - Date.now()) / 3_600_000))
+        return new Response(JSON.stringify({ error: `Limite de 6h atteinte. Réinitialisation dans ${hours}h.` }), { status: 402, headers: { 'Content-Type': 'application/json' } })
+      }
+      if (estimate > remainingTotal) {
+        return new Response(JSON.stringify({ error: 'Limite hebdomadaire de tokens atteinte. Recharge pour continuer.' }), { status: 402, headers: { 'Content-Type': 'application/json' } })
+      }
     }
   } catch (e) {
     console.error('[coach-stream] token pre-check failed (fail-open):', e)
@@ -988,17 +1012,24 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
       }
 
       // ── Comptabilité tokens (best-effort, pondérée modèle) ──
+      // Studio → comptabilité Studio séparée ; sinon quota chat classique.
       try {
-        if (totalIn + totalOut > 0) void recordTokenUsage(userId, totalIn + totalOut, { model: tokenModelKey })
+        if (totalIn + totalOut > 0) {
+          if (isStudio) void recordStudioUsage(userId, totalIn + totalOut, tokenModelKey, (body.runId as string | undefined))
+          else void recordTokenUsage(userId, totalIn + totalOut, { model: tokenModelKey })
+        }
       } catch (e) {
         console.error('[coach-stream] recordTokenUsage failed:', e)
       }
-      void logUsage(userId, 'message', {
-        model: chatModel,
-        stop_reason: lastStop ?? 'end_turn',
-        input_tokens:  totalIn,
-        output_tokens: totalOut,
-      })
+      // Studio : ne compte pas comme un « message » du chat (quota séparé).
+      if (!isStudio) {
+        void logUsage(userId, 'message', {
+          model: chatModel,
+          stop_reason: lastStop ?? 'end_turn',
+          input_tokens:  totalIn,
+          output_tokens: totalOut,
+        })
+      }
     },
   })
 

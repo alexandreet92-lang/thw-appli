@@ -964,13 +964,14 @@ function ConnectionsInner() {
         {/* ── Body ─────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flex: 1, padding: isMobile ? '0 0 60px' : '0 32px 60px' }}>
 
-          {/* Left sidebar (desktop only) */}
+          {/* Left sidebar (desktop only) — rail unifié : filet vertical jusqu'en bas (façon Planning/Calendar). */}
           {!isMobile && (
             <div style={{
-              width: 196, flexShrink: 0,
-              position: 'sticky', top: 100, alignSelf: 'flex-start',
-              paddingTop: 28, paddingRight: 16,
+              width: 214, flexShrink: 0, alignSelf: 'stretch',
+              borderRight: '0.5px solid var(--border)',
+              paddingRight: 14, marginRight: 18,
             }}>
+             <div style={{ position: 'sticky', top: 100, paddingTop: 28 }}>
               {CATEGORIES.map(cat => {
                 const catConnected = APPS.filter(a => a.category === cat.id && a.provider && connectedProviders[a.provider]).length
                 const isActive = catFilter === cat.id
@@ -998,6 +999,7 @@ function ConnectionsInner() {
                   </button>
                 )
               })}
+             </div>
             </div>
           )}
 

@@ -103,7 +103,15 @@ function nextMondayISO(): string {
 }
 
 // ── Exécution du graphe par couches (parallélisme réel) ───────────────────
-export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<Record<string, string>> {
+// Résilience : l'erreur d'un nœud ne tue PAS le run — le nœud passe en
+// « error », ses descendants en « skipped », et les autres branches continuent.
+// Seul un abort (bouton Arrêter) interrompt tout.
+export interface RunResult {
+  outputs: Record<string, string>
+  errors: { nodeId: string; title: string; message: string }[]
+}
+
+export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<RunResult> {
   const nodes = graph.nodes
   const byId = new Map(nodes.map(n => [n.id, n]))
   const deps = new Map<string, Set<string>>()
@@ -118,6 +126,9 @@ export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<Re
 
   const outputs: Record<string, string> = {}
   const done = new Set<string>()
+  const failed = new Set<string>()
+  const skipped = new Set<string>()
+  const errors: RunResult['errors'] = []
   nodes.forEach(n => cb.onStatus(n.id, 'idle'))
 
   const gatherUpstream = (nodeId: string): string =>
@@ -130,10 +141,17 @@ export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<Re
       .filter(Boolean)
       .join('\n\n')
 
-  while (done.size < nodes.length) {
+  while (done.size + failed.size + skipped.size < nodes.length) {
     if (cb.signal?.aborted) throw new Error('Exécution interrompue')
 
-    const ready = nodes.filter(n => !done.has(n.id) && [...deps.get(n.id)!].every(d => done.has(d)))
+    const pending = nodes.filter(n => !done.has(n.id) && !failed.has(n.id) && !skipped.has(n.id))
+    // Descendants d'un nœud en erreur / sauté → sautés à leur tour.
+    const toSkip = pending.filter(n => [...deps.get(n.id)!].some(d => failed.has(d) || skipped.has(d)))
+    if (toSkip.length) {
+      toSkip.forEach(n => { skipped.add(n.id); cb.onStatus(n.id, 'skipped') })
+      continue
+    }
+    const ready = pending.filter(n => [...deps.get(n.id)!].every(d => done.has(d)))
     if (ready.length === 0) throw new Error('Cycle détecté ou nœud non atteignable dans le graphe')
 
     await Promise.all(ready.map(async n => {
@@ -189,13 +207,17 @@ export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<Re
         cb.onStatus(n.id, 'done')
         done.add(n.id)
       } catch (e) {
+        if (cb.signal?.aborted) throw e
+        const message = e instanceof Error ? e.message : 'Erreur inconnue'
         cb.onStatus(n.id, 'error')
-        throw e
+        failed.add(n.id)
+        errors.push({ nodeId: n.id, title: n.title, message })
+        cb.onLog({ nodeId: n.id, title: `⚠️ ${n.title} — en erreur`, text: message })
       }
     }))
   }
 
-  return outputs
+  return { outputs, errors }
 }
 
 // Nœuds terminaux (sans fil sortant) → ce sont les « rendus » du graphe.

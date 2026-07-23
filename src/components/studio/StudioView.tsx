@@ -13,8 +13,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  loadGraph, saveGraph, resetGraph, emptyGraph, genId, MODEL_LABEL, KIND_LABEL, SOURCE_LABEL, ACTION_LABEL,
-  type StudioGraph, type StudioNode, type StudioNodeKind, type StudioModel, type StudioSourceKey, type StudioActionKey,
+  loadGraph, saveGraph, resetGraph, emptyGraph, genId, autoLayout, validateGraph,
+  MODEL_LABEL, KIND_LABEL, SOURCE_LABEL, ACTION_LABEL,
+  type StudioGraph, type StudioNode, type StudioNodeKind, type StudioModel, type StudioSourceKey, type StudioActionKey, type GraphIssues,
 } from '@/lib/studio/graph'
 import { runGraph, terminalNodeIds, type NodeStatus } from '@/lib/studio/runner'
 import { buildGraphFromDescription } from '@/lib/studio/architect'
@@ -102,7 +103,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [selId, setSelId] = useState<string | null>(null)
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
   const [helpOpen, setHelpOpen] = useState(false)
+  // Contrôle pré-run : erreurs (bloquent) + avertissements (on peut forcer).
+  const [issues, setIssues] = useState<(GraphIssues & { canForce: boolean }) | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
   // Apps externes réellement connectées (page Connexions) → grisage sinon.
   const [connectedProviders, setConnectedProviders] = useState<Set<string>>(new Set())
   useEffect(() => {
@@ -151,9 +156,18 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     const dx = Math.max(48, Math.min(160, dist * 0.45))
     return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`
   }
+  // pan/zoom via refs : les handlers pointeur/molette lisent toujours la valeur
+  // courante sans se réabonner.
+  const panRef = useRef(pan)
+  useEffect(() => { panRef.current = pan }, [pan])
+  const zoomRef = useRef(zoom)
+  useEffect(() => { zoomRef.current = zoom }, [zoom])
   const canvasPoint = (clientX: number, clientY: number) => {
     const r = wrapRef.current?.getBoundingClientRect()
-    return { x: clientX - (r?.left ?? 0) - pan.x, y: clientY - (r?.top ?? 0) - pan.y }
+    return {
+      x: (clientX - (r?.left ?? 0) - panRef.current.x) / zoomRef.current,
+      y: (clientY - (r?.top ?? 0) - panRef.current.y) / zoomRef.current,
+    }
   }
 
   // ── Interactions pointeur ──────────────────────────────────
@@ -167,7 +181,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       return
     }
     if (d.mode === 'conn') { const pt = canvasPoint(e.clientX, e.clientY); setPending(p => p ? { ...p, x: pt.x, y: pt.y } : p) }
-  }, [pan])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const graphRef = useRef(graph)
   useEffect(() => { graphRef.current = graph }, [graph])
@@ -233,8 +248,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const addNode = (kind: StudioNodeKind, opts?: { sourceKey?: StudioSourceKey; actionKey?: StudioActionKey; title?: string }) => {
     // Nouveau bloc placé au centre de la vue courante (pas au hasard hors-écran).
     const rect = wrapRef.current?.getBoundingClientRect()
-    const cx = (rect ? rect.width / 2 : 400) - pan.x - NODE_W / 2
-    const cy = (rect ? rect.height / 2 : 300) - pan.y - 40 + Math.round((Math.random() - 0.5) * 40)
+    const cx = ((rect ? rect.width / 2 : 400) - pan.x) / zoom - NODE_W / 2
+    const cy = ((rect ? rect.height / 2 : 300) - pan.y) / zoom - 40 + Math.round((Math.random() - 0.5) * 40)
     const sourceKey = kind === 'source' ? (opts?.sourceKey ?? 'activities') : undefined
     const actionKey = kind === 'action' ? (opts?.actionKey ?? 'planning_save') : undefined
     const n: StudioNode = {
@@ -266,6 +281,80 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   }
   const deleteEdge = (id: string) => { persist({ ...graph, edges: graph.edges.filter(e => e.id !== id) }); setSelEdge(null) }
 
+  // ── Zoom / navigation de la toile ──────────────────────────
+  const clampZoom = (z: number) => Math.min(1.6, Math.max(0.35, z))
+  const zoomAt = (cx: number, cy: number, z1: number) => {
+    const z0 = zoomRef.current
+    const z = clampZoom(z1)
+    const k = z / z0
+    setPan(p => ({ x: cx - (cx - p.x) * k, y: cy - (cy - p.y) * k }))
+    setZoom(z)
+  }
+  const zoomBy = (k: number) => {
+    const r = wrapRef.current?.getBoundingClientRect()
+    zoomAt(r ? r.width / 2 : 400, r ? r.height / 2 : 300, zoomRef.current * k)
+  }
+  const fitViewTo = (nodes: StudioNode[]) => {
+    const r = wrapRef.current?.getBoundingClientRect()
+    if (!r || nodes.length === 0) { setPan({ x: 0, y: 0 }); setZoom(1); return }
+    const minX = Math.min(...nodes.map(n => n.x)) - 50
+    const maxX = Math.max(...nodes.map(n => n.x)) + NODE_W + 50
+    const minY = Math.min(...nodes.map(n => n.y)) - 50
+    const maxY = Math.max(...nodes.map(n => n.y)) + 150 + 50
+    const z = clampZoom(Math.min(r.width / (maxX - minX), r.height / (maxY - minY), 1.15))
+    setZoom(z)
+    setPan({ x: (r.width - (maxX - minX) * z) / 2 - minX * z, y: (r.height - (maxY - minY) * z) / 2 - minY * z })
+  }
+  const fitView = () => fitViewTo(graph.nodes)
+  // « Ranger » : auto-layout (déjà utilisé par l'architecte) accessible à la main.
+  const tidy = () => {
+    if (!graph.nodes.length) return
+    const nodes = autoLayout(graph.nodes, graph.edges)
+    persist({ ...graph, nodes })
+    fitViewTo(nodes)
+  }
+
+  // Molette : deux doigts = pan ; ctrl/cmd (ou pincement trackpad) = zoom au curseur.
+  useEffect(() => {
+    if (tab !== 'canvas') return
+    const el = wrapRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const r = el.getBoundingClientRect()
+      if (e.ctrlKey || e.metaKey) {
+        zoomAt(e.clientX - r.left, e.clientY - r.top, zoomRef.current * Math.exp(-e.deltaY * 0.0022))
+      } else {
+        setPan(p => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }))
+      }
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab])
+
+  // Clavier : Suppr/Retour = supprimer la sélection ; Échap = désélectionner.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
+      if (e.key === 'Escape') { setSelId(null); setSelEdge(null); return }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selEdge) { e.preventDefault(); deleteEdge(selEdge) }
+        else if (selId) {
+          const n = graph.nodes.find(x => x.id === selId)
+          if (n && n.kind !== 'trigger') { e.preventDefault(); deleteNode(selId) }
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selEdge, selId, graph])
+
+  // Toute modification du graphe invalide le contrôle pré-run affiché.
+  useEffect(() => { setIssues(null) }, [graph])
+
   // ── Architecte : décrire → construire ──────────────────────
   const build = async () => {
     const d = desc.trim()
@@ -290,13 +379,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
   // ── Run once ───────────────────────────────────────────────
   const stopRun = () => { abortRef.current?.abort(); setRunning(false); setApproval(null) }
-  const runOnce = async () => {
+  const runOnce = async (force = false) => {
     if (running) return
+    // Contrôle pré-run : erreurs → bloqué ; avertissements → « Lancer quand même ».
+    const v = validateGraph(graph)
+    if (v.errors.length > 0 || (!force && v.warnings.length > 0)) {
+      setIssues({ ...v, canForce: v.errors.length === 0 })
+      setTab('canvas')
+      return
+    }
+    setIssues(null)
     setRunErr(null); setLogs([]); setNodeText({}); setStatus({})
     const ctrl = new AbortController(); abortRef.current = ctrl
     setRunning(true)
     try {
-      await runGraph(graph, {
+      const { errors } = await runGraph(graph, {
         signal: ctrl.signal,
         onStatus: (id, s) => setStatus(prev => ({ ...prev, [id]: s })),
         onChunk:  (id, t) => setNodeText(prev => ({ ...prev, [id]: t })),
@@ -306,12 +403,23 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           setApproval({ node, content, resolve: (ok) => { setApproval(null); resolve(ok) } })
         }),
       })
-      setTab('rendu')
+      if (errors.length > 0) {
+        setRunErr(`${errors.length} nœud(s) en erreur : ${errors.map(er => `${er.title} — ${er.message}`).join(' · ')}`)
+        setTab('chat')
+      } else {
+        setTab('rendu')
+      }
     } catch (e) {
       if (!ctrl.signal.aborted) setRunErr(e instanceof Error ? e.message : 'Erreur pendant le run')
     } finally {
       setRunning(false); abortRef.current = null
     }
+  }
+
+  const copyRender = (id: string, text: string) => {
+    void navigator.clipboard?.writeText(text)
+    setCopied(id)
+    setTimeout(() => setCopied(c => (c === id ? null : c)), 1600)
   }
 
   const renders = terminalNodeIds(graph).map(id => ({ node: graph.nodes.find(n => n.id === id)!, text: nodeText[id] ?? '' })).filter(r => r.node)
@@ -367,7 +475,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             <span style={{ width: 9, height: 9, borderRadius: 2, background: '#fff', display: 'inline-block' }} /> Arrêter
           </button>
         ) : (
-          <button onClick={runOnce} style={cta}>
+          <button onClick={() => void runOnce()} style={cta}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Run once
           </button>
         )}
@@ -375,6 +483,41 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
       {/* ══ Corps ══ */}
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+
+        {/* ── Contrôle pré-run : ce qui bloque / ce qui alerte ── */}
+        {issues && (
+          <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 9, width: 330, maxHeight: 'calc(100% - 24px)', overflowY: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 14px 40px rgba(0,0,0,0.16)', padding: 14, animation: 'studio_in 0.18s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ width: 24, height: 24, borderRadius: 8, background: issues.errors.length ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.14)', color: issues.errors.length ? '#EF4444' : '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+              </span>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', flex: 1 }}>
+                {issues.errors.length ? 'Le système ne peut pas tourner' : 'À vérifier avant de lancer'}
+              </span>
+              <button onClick={() => setIssues(null)} aria-label="Fermer" style={iconBtn}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            {issues.errors.map((msg, i) => (
+              <div key={`e${i}`} style={{ display: 'flex', gap: 7, padding: '6px 0', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.45, fontFamily: 'DM Sans,sans-serif' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', flexShrink: 0, marginTop: 5 }} />
+                <span>{msg}</span>
+              </div>
+            ))}
+            {issues.warnings.map((msg, i) => (
+              <div key={`w${i}`} style={{ display: 'flex', gap: 7, padding: '6px 0', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.45, fontFamily: 'DM Sans,sans-serif' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B', flexShrink: 0, marginTop: 5 }} />
+                <span>{msg}</span>
+              </div>
+            ))}
+            {issues.canForce && (
+              <button onClick={() => void runOnce(true)}
+                style={{ marginTop: 10, width: '100%', padding: '9px 0', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                Lancer quand même
+              </button>
+            )}
+          </div>
+        )}
 
         {/* ══ CANVAS ══ */}
         {tab === 'canvas' && (
@@ -436,17 +579,22 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {/* ── Palette : Outils vs Applications ── */}
             <div style={{ position: 'absolute', top: 14, left: 12, zIndex: 5, width: 186, maxHeight: 'calc(100% - 28px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 7, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.10)' }}>
               <div style={paletteHdr}>Outils</div>
-              {(['trigger', 'agent', 'merge', 'validation'] as StudioNodeKind[]).map(k => (
-                <button key={k} onClick={() => addNode(k)} title={`Ajouter : ${KIND_LABEL[k]}`}
-                  style={paletteBtn}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
-                  <span style={{ width: 24, height: 24, borderRadius: 7, background: `color-mix(in srgb, ${KIND_COLOR[k]} 14%, transparent)`, color: KIND_COLOR[k], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <KindIcon kind={k} size={13} />
-                  </span>
-                  {k === 'trigger' ? 'Objectif' : KIND_LABEL[k]}
-                </button>
-              ))}
+              {(['trigger', 'agent', 'merge', 'validation'] as StudioNodeKind[]).map(k => {
+                // RÈGLE : un seul Objectif par système.
+                const off = k === 'trigger' && !!trigger
+                return (
+                  <button key={k} onClick={() => { if (!off) addNode(k) }} disabled={off}
+                    title={off ? 'Un seul Objectif par système' : `Ajouter : ${KIND_LABEL[k]}`}
+                    style={{ ...paletteBtn, opacity: off ? 0.4 : 1, cursor: off ? 'default' : 'pointer' }}
+                    onMouseEnter={e => { if (!off) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                    <span style={{ width: 24, height: 24, borderRadius: 7, background: `color-mix(in srgb, ${KIND_COLOR[k]} 14%, transparent)`, color: KIND_COLOR[k], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <KindIcon kind={k} size={13} />
+                    </span>
+                    {k === 'trigger' ? 'Objectif' : KIND_LABEL[k]}
+                  </button>
+                )
+              })}
 
               <div style={{ ...paletteHdr, marginTop: 6 }}>Applications</div>
               {APP_CATALOG.map(app => (
@@ -496,11 +644,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {/* ── Zone graphe ── */}
             <div ref={wrapRef} data-bg="1" onPointerDown={startPan}
               style={{ position: 'absolute', inset: 0, overflow: 'hidden', cursor: drag.current?.mode === 'pan' ? 'grabbing' : 'default',
-                backgroundImage: 'radial-gradient(color-mix(in srgb, var(--text) 9%, transparent) 1px, transparent 1px)', backgroundSize: '24px 24px', backgroundPosition: `${pan.x}px ${pan.y}px` }}>
+                backgroundImage: 'radial-gradient(color-mix(in srgb, var(--text) 9%, transparent) 1px, transparent 1px)', backgroundSize: `${24 * zoom}px ${24 * zoom}px`, backgroundPosition: `${pan.x}px ${pan.y}px` }}>
 
               {/* Fils (SVG) */}
               <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
-                <g transform={`translate(${pan.x},${pan.y})`}>
+                <g transform={`translate(${pan.x},${pan.y}) scale(${zoom})`}>
                   {graph.edges.map(e => {
                     const a = graph.nodes.find(n => n.id === e.from), b = graph.nodes.find(n => n.id === e.to)
                     if (!a || !b) return null
@@ -540,7 +688,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               </svg>
 
               {/* Nœuds */}
-              <div style={{ position: 'absolute', left: pan.x, top: pan.y }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
                 {graph.nodes.map(n => {
                   const st = status[n.id] ?? 'idle'
                   const preview = nodeText[n.id]
@@ -561,16 +709,20 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   const subtitle = n.kind === 'source' ? SOURCE_LABEL[n.sourceKey ?? 'activities']
                     : n.kind === 'action' ? ACTION_LABEL[n.actionKey ?? 'planning_save']
                     : undefined
+                  // Anneau du contrôle pré-run : rouge = bloquant, ambre = avertissement.
+                  const iss = issues?.nodeIssues[n.id]
                   return (
                     <div key={n.id} className="studio-node"
                       style={{ position: 'absolute', left: n.x, top: n.y, width: NODE_W,
                         background: 'var(--bg-card)',
-                        border: `1px solid ${selId === n.id ? col : 'color-mix(in srgb, var(--text) 12%, transparent)'}`,
+                        border: `1px solid ${selId === n.id ? col : iss === 'error' ? 'rgba(239,68,68,0.65)' : iss === 'warning' ? 'rgba(245,158,11,0.65)' : 'color-mix(in srgb, var(--text) 12%, transparent)'}`,
                         borderRadius: 15, overflow: 'hidden', userSelect: 'none',
                         boxShadow: st !== 'idle' && STATUS_RING[st] !== 'transparent'
                           ? `0 0 0 3px ${STATUS_RING[st]}, 0 2px 6px rgba(0,0,0,0.07), 0 10px 26px rgba(0,0,0,0.10)`
                           : selId === n.id
                           ? `0 0 0 3px color-mix(in srgb, ${col} 22%, transparent), 0 2px 6px rgba(0,0,0,0.07), 0 10px 26px rgba(0,0,0,0.10)`
+                          : iss
+                          ? `0 0 0 3px ${iss === 'error' ? 'rgba(239,68,68,0.20)' : 'rgba(245,158,11,0.22)'}, 0 2px 6px rgba(0,0,0,0.07), 0 10px 26px rgba(0,0,0,0.10)`
                           : '0 1px 3px rgba(0,0,0,0.06), 0 8px 22px rgba(0,0,0,0.08)' }}>
                       {/* Objectif = en-tête PLEIN (allure de « logo » de départ) ;
                           les autres blocs : simple liseré coloré du type. */}
@@ -640,6 +792,27 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   </div>
                 </div>
               )}
+
+              {/* ── Contrôles de la toile : zoom · ajuster · ranger ── */}
+              <div style={{ position: 'absolute', right: 12, bottom: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 3, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.10)' }}>
+                <button onClick={() => zoomBy(1 / 1.2)} title="Zoom arrière" aria-label="Zoom arrière" style={zBtn}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14"/></svg>
+                </button>
+                <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }} title="Réinitialiser le zoom" aria-label="Réinitialiser le zoom"
+                  style={{ ...zBtn, width: 46, fontSize: 11, fontWeight: 700, fontFamily: 'DM Sans,sans-serif', fontVariantNumeric: 'tabular-nums' }}>
+                  {Math.round(zoom * 100)}%
+                </button>
+                <button onClick={() => zoomBy(1.2)} title="Zoom avant" aria-label="Zoom avant" style={zBtn}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+                <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 2px' }} />
+                <button onClick={fitView} title="Ajuster à la vue" aria-label="Ajuster à la vue" style={zBtn}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg>
+                </button>
+                <button onClick={tidy} title="Ranger la toile (auto-layout)" aria-label="Ranger la toile" style={zBtn}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="6" height="6" rx="1.5"/><rect x="15" y="4" width="6" height="6" rx="1.5"/><rect x="9" y="14" width="6" height="6" rx="1.5"/><path d="M6 10v2a2 2 0 002 2h1M18 10v2a2 2 0 01-2 2h-1"/></svg>
+                </button>
+              </div>
             </div>
 
             {/* ── Inspecteur ── */}
@@ -766,7 +939,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <span style={{ width: 24, height: 24, borderRadius: 8, background: `color-mix(in srgb, ${KIND_COLOR[r.node.kind]} 13%, transparent)`, color: KIND_COLOR[r.node.kind], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <KindIcon kind={r.node.kind} size={13} />
                   </span>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>{r.node.title}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>{r.node.title}</span>
+                  {r.text && (
+                    <button onClick={() => copyRender(r.node.id, r.text)} title="Copier le résultat"
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: copied === r.node.id ? '#22C55E' : 'var(--text-mid)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                      {copied === r.node.id ? (
+                        <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Copié</>
+                      ) : (
+                        <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copier</>
+                      )}
+                    </button>
+                  )}
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.6, padding: 16, borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                   {r.text || '—'}
@@ -837,6 +1020,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 }
 
 const iconBtn: React.CSSProperties = { border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', padding: 4 }
+const zBtn: React.CSSProperties = { width: 30, height: 28, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
 const paletteHdr: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '3px 8px 2px' }
 const paletteBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 9px', borderRadius: 9, border: 'none', cursor: 'pointer', background: 'transparent', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, fontFamily: 'DM Sans,sans-serif', textAlign: 'left' }
 const cta: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', flexShrink: 0 }

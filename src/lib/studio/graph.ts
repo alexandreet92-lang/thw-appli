@@ -148,6 +148,85 @@ export function resetGraph(): StudioGraph {
   return g
 }
 
+// ── Règles du graphe : validation avant run ───────────────────────────────
+// Erreurs = bloquent le lancement. Avertissements = informent (on peut forcer).
+export interface GraphIssues {
+  errors: string[]
+  warnings: string[]
+  nodeIssues: Record<string, 'error' | 'warning'>
+}
+
+export function validateGraph(g: StudioGraph): GraphIssues {
+  const errors: string[] = []
+  const warnings: string[] = []
+  const nodeIssues: Record<string, 'error' | 'warning'> = {}
+  const mark = (id: string, lvl: 'error' | 'warning') => { if (nodeIssues[id] !== 'error') nodeIssues[id] = lvl }
+
+  if (g.nodes.length === 0) {
+    errors.push('La toile est vide — pose un Objectif, ou décris ton système dans la barre du haut.')
+    return { errors, warnings, nodeIssues }
+  }
+
+  const triggers = g.nodes.filter(n => n.kind === 'trigger')
+  if (triggers.length === 0) errors.push("Il manque un Objectif — c'est le point d'entrée du système.")
+  if (triggers.length > 1) {
+    errors.push('Un seul Objectif par système — supprime les doublons.')
+    triggers.slice(1).forEach(t2 => mark(t2.id, 'error'))
+  }
+  const trig = triggers[0]
+  if (trig && !(trig.role ?? '').trim()) {
+    errors.push("L'Objectif est vide — décris ce que le système doit accomplir.")
+    mark(trig.id, 'error')
+  }
+  if (!g.nodes.some(n => n.kind === 'agent' || n.kind === 'merge')) {
+    errors.push('Ajoute au moins un Agent ou une Synthèse — personne ne travaille dans ce système.')
+  }
+
+  const ids = new Set(g.nodes.map(n => n.id))
+  const edges = g.edges.filter(e => ids.has(e.from) && ids.has(e.to))
+  const inCount = new Map<string, number>()
+  const outCount = new Map<string, number>()
+  edges.forEach(e => {
+    inCount.set(e.to, (inCount.get(e.to) ?? 0) + 1)
+    outCount.set(e.from, (outCount.get(e.from) ?? 0) + 1)
+  })
+
+  // Cycle (Kahn) : si on ne peut pas tout retirer, un fil revient en arrière.
+  const indeg = new Map<string, number>()
+  g.nodes.forEach(n => indeg.set(n.id, 0))
+  edges.forEach(e => indeg.set(e.to, (indeg.get(e.to) ?? 0) + 1))
+  const adj = new Map<string, string[]>()
+  edges.forEach(e => adj.set(e.from, [...(adj.get(e.from) ?? []), e.to]))
+  const queue = g.nodes.filter(n => (indeg.get(n.id) ?? 0) === 0).map(n => n.id)
+  let removed = 0
+  while (queue.length) {
+    const id = queue.pop()!
+    removed++
+    for (const to of adj.get(id) ?? []) {
+      indeg.set(to, (indeg.get(to) ?? 1) - 1)
+      if (indeg.get(to) === 0) queue.push(to)
+    }
+  }
+  if (removed < g.nodes.length) errors.push('Le graphe contient une boucle — un fil revient en arrière, le run ne peut pas se terminer.')
+
+  for (const n of g.nodes) {
+    const inC = inCount.get(n.id) ?? 0
+    const outC = outCount.get(n.id) ?? 0
+    if (n.kind === 'merge' && inC === 0) { errors.push(`« ${n.title} » (Synthèse) ne reçoit rien — relie-lui des agents en entrée.`); mark(n.id, 'error') }
+    if (n.kind === 'validation' && inC === 0) { errors.push(`« ${n.title} » (Validation) ne reçoit rien à valider.`); mark(n.id, 'error') }
+    if (n.kind === 'action' && inC === 0) { errors.push(`« ${n.title} » (Action) ne reçoit rien à écrire.`); mark(n.id, 'error') }
+    if (n.kind === 'agent') {
+      if (inC === 0) { warnings.push(`« ${n.title} » n'est relié à rien en entrée — il travaillera sans l'objectif ni les données.`); mark(n.id, 'warning') }
+      const role = (n.role ?? '').trim()
+      if (!role || role === 'Décris le rôle de cet agent…') { warnings.push(`« ${n.title} » n'a pas de rôle défini — précise son métier dans l'inspecteur.`); mark(n.id, 'warning') }
+    }
+    if (n.kind === 'source' && outC === 0) { warnings.push(`« ${n.title} » (Page) n'alimente aucun nœud — relie-le à un agent.`); mark(n.id, 'warning') }
+    if (n.kind === 'trigger' && outC === 0 && g.nodes.length > 1) { warnings.push("L'Objectif n'est relié à rien — les agents ne le recevront pas."); mark(n.id, 'warning') }
+  }
+
+  return { errors, warnings, nodeIssues }
+}
+
 // ── Auto-layout par profondeur topologique ────────────────────────────────
 // Place chaque nœud sur une colonne selon sa distance au déclencheur, et
 // répartit verticalement les nœuds d'une même colonne. Utilisé quand l'IA

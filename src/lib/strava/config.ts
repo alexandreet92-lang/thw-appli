@@ -5,7 +5,8 @@ export const STRAVA_CONFIG = {
   authUrl:      'https://www.strava.com/oauth/authorize',
   tokenUrl:     'https://www.strava.com/oauth/token',
   apiBase:      'https://www.strava.com/api/v3',
-  scope:        'read,activity:read_all,profile:read_all',
+  // activity:write requis pour l'envoi de séances vers Strava (upload GPX).
+  scope:        'read,activity:read_all,activity:write,profile:read_all',
 } as const
 
 export function buildAuthUrl(state?: string): string {

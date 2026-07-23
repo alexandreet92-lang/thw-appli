@@ -49,6 +49,14 @@ export async function POST(req: NextRequest) {
 
   if (!uploadRes.ok) {
     const body = await uploadRes.json().catch(() => ({}))
+    // 401/403 = scope activity:write non accordé (compte connecté avant l'ajout
+    // du droit d'écriture) → inviter à reconnecter Strava.
+    if (uploadRes.status === 401 || uploadRes.status === 403) {
+      return NextResponse.json(
+        { error: 'Reconnecte Strava pour autoriser l’envoi de séances (droit d’écriture).', needsReconnect: true },
+        { status: uploadRes.status },
+      )
+    }
     return NextResponse.json({ error: body.message ?? 'Erreur Strava' }, { status: uploadRes.status })
   }
 

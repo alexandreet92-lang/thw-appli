@@ -16,7 +16,8 @@ export const OAUTH_CONFIG: Record<OAuthProvider, ProviderConfig> = {
     redirectUri:  process.env.STRAVA_REDIRECT_URI  ?? '',
     authUrl:      'https://www.strava.com/oauth/authorize',
     tokenUrl:     'https://www.strava.com/oauth/token',
-    scope:        'read,activity:read_all,profile:read_all',
+    // activity:write requis pour l'envoi de séances vers Strava (upload GPX).
+    scope:        'read,activity:read_all,activity:write,profile:read_all',
   },
   wahoo: {
     clientId:     process.env.WAHOO_CLIENT_ID     ?? '',

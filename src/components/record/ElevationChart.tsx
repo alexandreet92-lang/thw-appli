@@ -19,17 +19,28 @@ const SURFACE_LABEL_KEYS: Record<string, string> = {
   asphalt: 'record.surfaceAsphalt', unpaved: 'record.surfaceUnpaved', gravel: 'record.surfaceGravel', path: 'record.surfacePath', unknown: 'record.surfaceUnknown',
 }
 
-const PAD = { top: 18, bottom: 20, left: 34, right: 12 }
-const MAX_PTS = 200
+const PAD = { top: 16, bottom: 20, left: 38, right: 14 }
+const N_SAMPLES = 110
 
-function downsample<T>(arr: T[], max: number): T[] {
-  if (arr.length <= max) return arr
-  const step = arr.length / max
-  return Array.from({ length: max }, (_, i) => arr[Math.round(i * step)])
+// Rééchantillonnage à pas de distance CONSTANT (interpolation linéaire) : supprime
+// la densité irrégulière des points GPS avant lissage.
+function resampleUniform(data: ElevPoint[], n: number): ElevPoint[] {
+  const total = data[data.length - 1].distanceM
+  if (data.length < 3 || total <= 0) return data
+  const out: ElevPoint[] = []
+  let j = 0
+  for (let i = 0; i <= n; i++) {
+    const d = (i / n) * total
+    while (j < data.length - 2 && data[j + 1].distanceM < d) j++
+    const a = data[j], b = data[j + 1]
+    const span = b.distanceM - a.distanceM
+    const t = span > 0 ? Math.max(0, Math.min(1, (d - a.distanceM) / span)) : 0
+    out.push({ distanceM: d, altitudeM: a.altitudeM + (b.altitudeM - a.altitudeM) * t })
+  }
+  return out
 }
 
-// Lissage par moyenne glissante sur l'altitude → supprime les micro-bosses (rendu « lisse »).
-function smoothAltitudes(data: ElevPoint[], half: number): ElevPoint[] {
+function movingAvg(data: ElevPoint[], half: number): ElevPoint[] {
   if (data.length < 3 || half < 1) return data
   return data.map((d, i) => {
     let sum = 0, n = 0
@@ -53,7 +64,7 @@ function indexForDistance(data: { distanceM: number }[], targetM: number): numbe
     ? lo - 1 : lo
 }
 
-// Courbe lisse (Catmull-Rom → Bézier cubique) : plus douce qu'un simple midpoint.
+// Courbe lisse (Catmull-Rom → Bézier cubique)
 function buildSmoothPath(points: { x: number; y: number }[]): string {
   if (points.length < 2) return ''
   let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
@@ -78,6 +89,7 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
   const [W, setW] = useState(360)
   const [cursor, setCursor] = useState<{ x: number; y: number; point: ElevPoint } | null>(null)
   const dim = isDark ? 'rgba(255,255,255,0.35)' : '#9CA3AF'
+  const gridStroke = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(17,24,39,0.07)'
 
   // Largeur réelle mesurée → viewBox = pixels (aucune distorsion, vrai plein largeur).
   useEffect(() => {
@@ -94,28 +106,38 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
   const cW = W - PAD.left - PAD.right
   const cH = height - PAD.top - PAD.bottom
 
-  const pts = useMemo(() => smoothAltitudes(downsample(data, MAX_PTS), 2), [data])
+  // Rééchantillonnage uniforme + double moyenne glissante → courbe réellement lisse.
+  const pts = useMemo(() => {
+    if (data.length < 3) return data
+    return movingAvg(movingAvg(resampleUniform(data, N_SAMPLES), 3), 2)
+  }, [data])
+
   const { minA, maxA, totalM } = useMemo(() => {
     if (pts.length === 0) return { minA: 0, maxA: 1, totalM: 1 }
     const alts = pts.map(d => d.altitudeM)
     return { minA: Math.min(...alts), maxA: Math.max(...alts), totalM: pts[pts.length - 1].distanceM || 1 }
   }, [pts])
-  const rng = maxA - minA || 1
+
+  // Échelle verticale ANTI-EXAGÉRATION : un parcours plat ne doit pas remplir
+  // toute la hauteur (sinon le moindre mètre de bruit devient une montagne).
+  const dispRng = Math.max((maxA - minA) * 1.25, 30)
+  const midAlt = (minA + maxA) / 2
+  const loA = midAlt - dispRng / 2
+  const hiA = midAlt + dispRng / 2
 
   const getX = useCallback((distM: number) => PAD.left + (distM / totalM) * cW, [totalM, cW])
-  const getY = useCallback((alt: number) => PAD.top + (1 - (alt - minA) / rng) * cH, [minA, rng, cH])
+  const getY = useCallback((alt: number) => PAD.top + (1 - (alt - loA) / dispRng) * cH, [loA, dispRng, cH])
 
   const handleMove = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     if (!svgRef.current || pts.length < 2) return
     const rect = svgRef.current.getBoundingClientRect()
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    // Position du curseur en coordonnées viewBox (= pixels), bornée à la zone traçée.
     const px = ((clientX - rect.left) / rect.width) * W
     const xClamped = Math.max(PAD.left, Math.min(PAD.left + cW, px))
     const distAtX = ((xClamped - PAD.left) / cW) * totalM
     const idx = indexForDistance(pts, distAtX)
     const pt = pts[idx]
-    // Le trait + le point + la bulle sont posés sur le MÊME point de la courbe → suit l'embout.
+    // Trait + pastille + bulle posés sur le MÊME point de la courbe → suit l'embout.
     setCursor({ x: getX(pt.distanceM), y: getY(pt.altitudeM), point: pt })
 
     if (onPositionChange && snappedPoints && snappedPoints.length > 0) {
@@ -144,6 +166,7 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
   const areaD = `${pathD} L ${lastX} ${baseY} L ${PAD.left} ${baseY} Z`
   const startPt = linePts[0]
   const endPt = linePts[linePts.length - 1]
+  const yTicks = [loA, midAlt, hiA]
 
   return (
     <div ref={wrapRef} style={{ position: 'relative', width: '100%' }}>
@@ -153,16 +176,22 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
         onMouseMove={handleMove} onMouseLeave={handleEnd}>
         <defs>
           <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#06B6D4" stopOpacity={0.32} />
-            <stop offset="100%" stopColor="#06B6D4" stopOpacity={0.03} />
+            <stop offset="0%" stopColor="#06B6D4" stopOpacity={0.28} />
+            <stop offset="100%" stopColor="#06B6D4" stopOpacity={0.02} />
           </linearGradient>
         </defs>
+
+        {/* Lignes de grille horizontales discrètes */}
+        {yTicks.map((alt, i) => (
+          <line key={i} x1={PAD.left} y1={getY(alt)} x2={PAD.left + cW} y2={getY(alt)} stroke={gridStroke} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+        ))}
+
         <path d={areaD} fill="url(#elevGrad)" />
-        <path d={pathD} fill="none" stroke="#06B6D4" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <path d={pathD} fill="none" stroke="#06B6D4" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
 
         {/* Graduations altitude (Y) */}
-        {[minA, (minA + maxA) / 2, maxA].map((alt, i) => (
-          <text key={i} x={PAD.left - 5} y={getY(alt) + 3} textAnchor="end" fontSize={8} fill={dim} style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(alt)}m</text>
+        {yTicks.map((alt, i) => (
+          <text key={i} x={PAD.left - 6} y={getY(alt) + 3} textAnchor="end" fontSize={8} fill={dim} style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(alt)}m</text>
         ))}
         {/* Graduations distance (X) */}
         {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
@@ -170,7 +199,7 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
           return <text key={i} x={getX(pts[idx].distanceM)} y={PAD.top + cH + 13} textAnchor="middle" fontSize={8} fill={dim} style={{ fontVariantNumeric: 'tabular-nums' }}>{(pts[idx].distanceM / 1000).toFixed(1)}km</text>
         })}
 
-        {/* Départ / arrivée — points soignés */}
+        {/* Départ / arrivée */}
         <circle cx={startPt.x} cy={startPt.y} r={4.5} fill="#10B981" stroke="#fff" strokeWidth={1.8} vectorEffect="non-scaling-stroke" />
         <circle cx={endPt.x} cy={endPt.y} r={4.5} fill="#EF4444" stroke="#fff" strokeWidth={1.8} vectorEffect="non-scaling-stroke" />
 

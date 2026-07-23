@@ -89,10 +89,8 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   const [searching, setSearching] = useState(false)
   const mapRef = useRef<L.Map | null>(null)
 
-  // Panneau bas dépliable/glissable (poignée)
-  const panelRef = useRef<HTMLDivElement>(null)
-  const [panelH, setPanelH] = useState<number | null>(null)   // null = hauteur naturelle (contenu)
-  const dragRef = useRef<{ y: number; h: number } | null>(null)
+  // Panneau bas : un clic sur la poignée = déplié ↔ replié (pas de redimensionnement libre)
+  const [panelOpen, setPanelOpen] = useState(true)
 
   const SPORT_CHIPS: { id: string; Icon: typeof IconBike; label: string }[] = [
     { id: 'cycling', Icon: IconBike, label: t('record.routeCreatorSportCycling') },
@@ -105,20 +103,6 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     setSport(id)
     if (waypoints.length >= 2) void doSnap(waypoints, id)
   }
-
-  const onHandleDown = (e: React.PointerEvent) => {
-    const h = panelRef.current?.offsetHeight ?? 300
-    dragRef.current = { y: e.clientY, h }
-    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
-  }
-  const onHandleMove = (e: React.PointerEvent) => {
-    if (!dragRef.current) return
-    const dy = dragRef.current.y - e.clientY   // vers le haut = agrandir
-    const min = 130
-    const max = Math.round((typeof window !== 'undefined' ? window.innerHeight : 800) * 0.72)
-    setPanelH(Math.max(min, Math.min(max, dragRef.current.h + dy)))
-  }
-  const onHandleUp = () => { dragRef.current = null }
 
   const doSnap = useCallback(async (pts: Waypoint[], sp: string) => {
     if (pts.length < 2) return
@@ -192,7 +176,11 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
 
   // Bouton flottant : plein, blanc le jour / noir la nuit (tokens), rond.
   const fb: React.CSSProperties = { width: 44, height: 44, borderRadius: '50%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.18)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  const editBtn: React.CSSProperties = { width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-card2)', color: 'var(--text)', border: '1px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
+  // Boutons d'édition regroupés (annuler / refaire / GPX) — cluster à séparateurs
+  const groupBtn: React.CSSProperties = { width: 40, height: 34, background: 'transparent', color: 'var(--text)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
+  const groupSep = <div style={{ width: 1, height: 18, background: 'var(--border)', flexShrink: 0 }} />
+  // Grille repliable : 1fr ↔ 0fr animé (le contenu se replie sans à-coups)
+  const collapse = (open: boolean): React.CSSProperties => ({ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows 320ms cubic-bezier(0.4,0,0.2,1)' })
 
   const displayPts: [number, number][] = snappedPoints.length >= 2
     ? snappedPoints.map(p => [p.lat, p.lng])
@@ -306,75 +294,89 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
         </div>
       )}
 
-      {/* Panneau bas — dépliable : glisse la poignée pour l'agrandir / le réduire */}
-      <div ref={panelRef} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'var(--bg-card)', borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -6px 26px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)', height: panelH != null ? panelH : undefined, maxHeight: '80vh' }}>
-        {/* Poignée : glisser vers le haut = déplier, vers le bas = replier */}
-        <div onPointerDown={onHandleDown} onPointerMove={onHandleMove} onPointerUp={onHandleUp} onPointerCancel={onHandleUp}
-          style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px', cursor: 'ns-resize', touchAction: 'none', flexShrink: 0 }}>
-          <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)' }} />
-        </div>
+      {/* Panneau bas — un clic sur le chevron : déplié ↔ replié (replié = juste les stats) */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'var(--bg-card)', borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -6px 26px rgba(0,0,0,0.18)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        {/* Poignée-chevron */}
+        <button onClick={() => setPanelOpen(o => !o)} aria-expanded={panelOpen} aria-label={panelOpen ? t('record.routeCreatorClose') : t('record.routeCreatorSave')}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '7px 0 1px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)' }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transform: panelOpen ? 'none' : 'rotate(180deg)', transition: 'transform 320ms cubic-bezier(0.4,0,0.2,1)' }}>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
 
-        {/* Contenu (défile quand le panneau est déplié) */}
-        <div style={{ flex: panelH != null ? 1 : undefined, minHeight: 0, overflowY: panelH != null ? 'auto' : 'visible' }}>
-          {/* Sports — sélection par logos */}
-          <div style={{ display: 'flex', gap: 7, overflowX: 'auto', padding: '2px 14px 8px', WebkitOverflowScrolling: 'touch' }}>
-            {SPORT_CHIPS.map(({ id, Icon, label }) => {
-              const on = sport === id
-              return (
-                <button key={id} onClick={() => pickSport(id)} aria-label={label} title={label}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, padding: '7px 13px', borderRadius: 999,
-                    background: on ? 'var(--primary)' : 'var(--bg-card2)', border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`,
-                    color: on ? 'var(--on-primary)' : 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600 }}>
-                  <Icon size={17} stroke={1.9} />
-                  <span>{label}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Point count + édition (annuler / refaire / import GPX) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px 8px' }}>
-            <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{snapping ? t('record.routeCreatorCalculating') : `${waypoints.length} point${waypoints.length !== 1 ? 's' : ''}`}</span>
-            <div style={{ flex: 1 }} />
-            <button onClick={undo} disabled={!waypoints.length} aria-label={t('record.routeCreatorUndo')} style={{ ...editBtn, opacity: waypoints.length ? 1 : 0.4 }}>
-              <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M3 9a6 6 0 1 1 1.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M3 5v4h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-            <button onClick={redo} disabled={!redoStack.length} aria-label={t('record.routeCreatorRedo')} style={{ ...editBtn, opacity: redoStack.length ? 1 : 0.4 }}>
-              <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M15 9a6 6 0 1 0-1.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M15 5v4h-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-            <label style={editBtn} aria-label={t('record.routeCreatorImportGpx')}>
-              <input type="file" accept=".gpx" onChange={handleGPX} style={{ display: 'none' }} />
-              <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M9 2v10M5 8l4-4 4 4M3 15h12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </label>
-          </div>
-
-          {/* Stats */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '4px 16px 6px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-            {[
-              { label: t('record.routeCreatorDistance'), value: distanceM >= 1000 ? `${(distanceM / 1000).toFixed(2)}` : `${Math.round(distanceM)}`, unit: distanceM >= 1000 ? 'km' : 'm' },
-              { label: 'D+', value: `${Math.round(elevGain)}`, unit: 'm' },
-              { label: t('record.routeCreatorGrade'), value: distanceM > 0 ? (elevGain / distanceM * 100).toFixed(1) : '--', unit: '%' },
-            ].map((s, i) => (
-              <div key={i} style={{ textAlign: 'center', padding: '8px 10px', flex: 1, borderLeft: i > 0 ? '1px solid var(--border)' : 'none' }}>
-                <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</p>
-                <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '2px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{s.value}<span style={{ fontSize: 9, color: 'var(--text-dim)' }}> {s.unit}</span></p>
+        {/* Sports (contrôle segmenté) + édition — repliables */}
+        <div style={collapse(panelOpen)}>
+          <div style={{ overflow: 'hidden', minHeight: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 14px 10px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 2, background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 13, padding: 3, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                {SPORT_CHIPS.map(({ id, Icon, label }) => {
+                  const on = sport === id
+                  return (
+                    <button key={id} onClick={() => pickSport(id)} aria-label={label} title={label}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, padding: '7px 14px', borderRadius: 10, border: 'none',
+                        background: on ? 'var(--bg-card)' : 'transparent',
+                        color: on ? 'var(--primary)' : 'var(--text-dim)',
+                        boxShadow: on ? '0 1px 5px rgba(0,0,0,0.14)' : 'none',
+                        cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: on ? 700 : 600,
+                        transition: 'background 150ms, color 150ms, box-shadow 150ms' }}>
+                      <Icon size={16} stroke={2} />
+                      <span>{label}</span>
+                    </button>
+                  )
+                })}
               </div>
-            ))}
-          </div>
-
-          {/* Profil altimétrique — pleine largeur, lisse */}
-          <div style={{ padding: '8px 12px 4px' }}>
-            <ElevationChart data={elevationProfile} surfaces={surfaces} height={120} isDark={isDark} snappedPoints={snappedPoints} onPositionChange={setScrubPosition} />
+              <div style={{ flex: 1 }} />
+              <span style={{ fontSize: 12, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{snapping ? t('record.routeCreatorCalculating') : `${waypoints.length} point${waypoints.length !== 1 ? 's' : ''}`}</span>
+              <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-card2)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+                <button onClick={undo} disabled={!waypoints.length} aria-label={t('record.routeCreatorUndo')} style={{ ...groupBtn, opacity: waypoints.length ? 1 : 0.35 }}>
+                  <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M3 9a6 6 0 1 1 1.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M3 5v4h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+                {groupSep}
+                <button onClick={redo} disabled={!redoStack.length} aria-label={t('record.routeCreatorRedo')} style={{ ...groupBtn, opacity: redoStack.length ? 1 : 0.35 }}>
+                  <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M15 9a6 6 0 1 0-1.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><path d="M15 5v4h-4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+                {groupSep}
+                <label style={groupBtn} aria-label={t('record.routeCreatorImportGpx')}>
+                  <input type="file" accept=".gpx" onChange={handleGPX} style={{ display: 'none' }} />
+                  <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M9 2v10M5 8l4-4 4 4M3 15h12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Enregistrer — bouton compact, épinglé */}
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 16px 10px', flexShrink: 0 }}>
+        {/* Stats + Enregistrer — toujours visibles (même repliés) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 26, padding: '9px 20px', borderTop: '1px solid var(--border)' }}>
+          {[
+            { label: t('record.routeCreatorDistance'), value: distanceM >= 1000 ? `${(distanceM / 1000).toFixed(2)}` : `${Math.round(distanceM)}`, unit: distanceM >= 1000 ? 'km' : 'm' },
+            { label: 'D+', value: `${Math.round(elevGain)}`, unit: 'm' },
+            { label: t('record.routeCreatorGrade'), value: distanceM > 0 ? (elevGain / distanceM * 100).toFixed(1) : '--', unit: '%' },
+          ].map((s, i) => (
+            <div key={i}>
+              <p style={{ fontSize: 9, color: 'var(--text-dim)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</p>
+              <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '2px 0 0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{s.value}<span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)' }}> {s.unit}</span></p>
+            </div>
+          ))}
+          <div style={{ flex: 1 }} />
           <button onClick={() => setShowSave(true)} disabled={waypoints.length < 2}
-            style={{ minWidth: 200, height: 44, padding: '0 34px', borderRadius: 999, background: waypoints.length < 2 ? 'var(--bg-card2)' : 'var(--primary)', border: 'none', color: waypoints.length < 2 ? 'var(--text-dim)' : 'var(--on-primary)', fontSize: 14.5, fontWeight: 700, cursor: waypoints.length < 2 ? 'default' : 'pointer', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+            style={{ height: 38, padding: '0 20px', borderRadius: 11, border: 'none',
+              background: waypoints.length < 2 ? 'var(--bg-card2)' : 'var(--primary)',
+              color: waypoints.length < 2 ? 'var(--text-dim)' : 'var(--on-primary)',
+              fontSize: 13.5, fontWeight: 700, cursor: waypoints.length < 2 ? 'default' : 'pointer', fontFamily: 'var(--font-body)',
+              display: 'flex', alignItems: 'center', gap: 7, boxShadow: waypoints.length < 2 ? 'none' : 'var(--shadow-card)' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
             {t('record.routeCreatorSave')}
           </button>
+        </div>
+
+        {/* Profil altimétrique — repliable */}
+        <div style={collapse(panelOpen)}>
+          <div style={{ overflow: 'hidden', minHeight: 0 }}>
+            <div style={{ padding: '2px 12px 8px' }}>
+              <ElevationChart data={elevationProfile} surfaces={surfaces} height={120} isDark={isDark} snappedPoints={snappedPoints} onPositionChange={setScrubPosition} />
+            </div>
+          </div>
         </div>
       </div>
 

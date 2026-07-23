@@ -120,9 +120,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [homeErr, setHomeErr] = useState<string | null>(null)
   const [access, setAccess] = useState<StudioAccess | null>(null)
   const [walletOpen, setWalletOpen] = useState(false)
-  const [buying, setBuying] = useState<string | null>(null)
   const [runs, setRuns] = useState<RunRow[] | null>(null)
   const [openRunId, setOpenRunId] = useState<string | null>(null)
+  // Coût réel du dernier run (tokens pondérés, mesurés côté serveur)
+  const [runCost, setRunCost] = useState<number | null>(null)
+  // Dossiers de systèmes (rail latéral de l'accueil)
+  const [activeFolder, setActiveFolder] = useState<string | null>(null)   // null = tous
+  const [folderMenuFor, setFolderMenuFor] = useState<string | null>(null) // systemId du menu « Déplacer »
+  const [newFolderName, setNewFolderName] = useState('')
   const [selId, setSelId] = useState<string | null>(null)
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -353,6 +358,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const newSystem = async (name: string, g: StudioGraph) => {
     try {
       const row = await createSystem(name, { ...g, name })
+      // Créé depuis un dossier ouvert → rangé dedans directement.
+      if (activeFolder) { void updateSystem(row.id, { folder: activeFolder }).catch(() => {}); row.folder = activeFolder }
       setSystems(s => [row, ...s])
       openSystem(row)
     } catch {
@@ -377,19 +384,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     setView('home')
   }
 
-  // ── Packs : achat Stripe (paiement unique) ────────────────────
-  const buyPack = async (key: string) => {
-    setBuying(key)
+  // ── Dossiers : déplacer un système ────────────────────────────
+  const moveToFolder = async (id: string, folder: string | null) => {
+    setFolderMenuFor(null); setNewFolderName('')
     try {
-      const r = await fetch('/api/studio/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pack: key }) })
-      const j = await r.json() as { url?: string; error?: string }
-      if (j.url) { window.location.href = j.url; return }
-      setHomeErr(j.error ?? 'Achat indisponible pour le moment.')
-    } catch {
-      setHomeErr('Achat indisponible pour le moment.')
-    } finally {
-      setBuying(null)
-    }
+      await updateSystem(id, { folder })
+      setSystems(s => s.map(x => x.id === id ? { ...x, folder } : x))
+    } catch { setHomeErr('Déplacement impossible — réessaie.') }
   }
   const patchNode = (id: string, patch: Partial<StudioNode>) =>
     persist({ ...graph, nodes: graph.nodes.map(n => n.id === id ? { ...n, ...patch } : n) })
@@ -479,7 +480,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     if (!d || building) return
     setBuilding(true); setBuildErr(null); setExplanation(null)
     try {
-      const res = await buildGraphFromDescription(d)
+      const res = await buildGraphFromDescription(d, graph.nodes.length > 0 ? graph : undefined)
       prevGraphRef.current = graph          // pour « Annuler »
       persist(res.graph)
       setSelId(null); setSelEdge(null); setPan({ x: 0, y: 0 })
@@ -536,13 +537,34 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       return
     }
     setIssues(null)
-    setRunErr(null); setLogs([]); setNodeText({}); setStatus({})
+    setRunErr(null); setLogs([]); setNodeText({}); setStatus({}); setRunCost(null)
     const runLogs: LogEntry[] = []
+    const runId = genId()
     const ctrl = new AbortController(); abortRef.current = ctrl
     setRunning(true)
+
+    // Coût RÉEL du run : la conso serveur est rattachée au runId → on la
+    // lit après le run (petit délai : l'écriture est asynchrone côté serveur).
+    const settleCost = (status: RunRow['status'], outputs: Record<string, string>, errText: string | null) => {
+      void (async () => {
+        await new Promise(r => setTimeout(r, 1400))
+        let actual = 0
+        try {
+          const supabase = createClient()
+          const { data } = await supabase.from('studio_usage').select('tokens_used').eq('run_id', runId)
+          actual = (data ?? []).reduce((s, r) => s + (r.tokens_used ?? 0), 0)
+        } catch { /* best-effort */ }
+        const cost = actual > 0 ? actual : estimate
+        setRunCost(cost)
+        void saveRunHistory(status, runLogs, outputs, errText, cost)
+        refreshAccess()   // le solde vient d'être débité côté serveur
+      })()
+    }
+
     try {
       const { outputs, errors } = await runGraph(graph, {
         signal: ctrl.signal,
+        runId,
         onStatus: (id, s) => setStatus(prev => ({ ...prev, [id]: s })),
         onChunk:  (id, t) => setNodeText(prev => ({ ...prev, [id]: t })),
         onLog:    (entry) => { runLogs.push(entry); setNodeText(prev => ({ ...prev, [entry.nodeId]: entry.text })); setLogs(prev => [...prev, entry]) },
@@ -555,17 +577,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         const errText = errors.map(er => `${er.title} — ${er.message}`).join(' · ')
         setRunErr(`${errors.length} nœud(s) en erreur : ${errText}`)
         setTab('chat')
-        void saveRunHistory('error', runLogs, outputs, errText, estimate)
+        settleCost('error', outputs, errText)
       } else {
         setTab('rendu')
-        void saveRunHistory('done', runLogs, outputs, null, estimate)
+        settleCost('done', outputs, null)
       }
     } catch (e) {
       if (!ctrl.signal.aborted) setRunErr(e instanceof Error ? e.message : 'Erreur pendant le run')
-      void saveRunHistory(ctrl.signal.aborted ? 'stopped' : 'error', runLogs, {}, e instanceof Error ? e.message : null, estimate)
+      settleCost(ctrl.signal.aborted ? 'stopped' : 'error', {}, e instanceof Error ? e.message : null)
     } finally {
       setRunning(false); abortRef.current = null
-      refreshAccess()   // le solde vient d'être débité côté serveur
     }
   }
 
@@ -725,9 +746,19 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   onChange={e => setDesc(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') void build() }}
                   disabled={building}
-                  placeholder="Décris ce que tu veux… l'IA construit le système pour toi"
+                  placeholder={graph.nodes.length > 0 ? 'Décris une modification… ou un nouveau système' : "Décris ce que tu veux… l'IA construit le système pour toi"}
                   style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13.5, fontFamily: 'DM Sans,sans-serif' }}
                 />
+                {/* Jauge d'utilisation — même principe que la bulle jauge du chat */}
+                {access?.allowed && (
+                  <button onClick={() => setWalletOpen(true)} title="Jauge d'utilisation Studio" aria-label="Jauge d'utilisation Studio"
+                    style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21a9 9 0 100-18 9 9 0 000 18z" opacity="0.4"/><path d="M12 3a9 9 0 018.5 6"/><path d="M12 12l3.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+                    {access.monthlyLimit > 0 && access.remaining < 1e12 && (
+                      <span style={{ position: 'absolute', top: 4, right: 4, width: 6, height: 6, borderRadius: '50%', background: access.remaining <= 0 ? '#EF4444' : (access.monthlyUsed / Math.max(1, access.monthlyLimit)) > 0.85 ? '#F59E0B' : '#22C55E' }} />
+                    )}
+                  </button>
+                )}
                 {/* Dictée vocale */}
                 <button onClick={() => setMicOpen(true)} disabled={building} title="Décrire à la voix" aria-label="Décrire à la voix"
                   style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -1087,6 +1118,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
             {runErr && <div style={{ padding: 12, borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{runErr}</div>}
 
+            {runCost !== null && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', marginBottom: 16, fontSize: 12, fontWeight: 700, color: '#8B5CF6', fontFamily: 'DM Sans,sans-serif', fontVariantNumeric: 'tabular-nums' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                Ce run a coûté {formatTokens(runCost)} tokens Studio
+              </div>
+            )}
+
             {approval && (
               <div style={{ padding: 16, borderRadius: 14, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.4)', marginBottom: 18, animation: 'studio_in 0.2s ease' }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>Ton accord est requis — {approval.node.title}</div>
@@ -1116,6 +1154,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {/* ══ RENDU ══ */}
         {view === 'canvas' && tab === 'rendu' && (
           <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 820, margin: '0 auto' }}>
+            {runCost !== null && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', marginBottom: 16, fontSize: 12, fontWeight: 700, color: '#8B5CF6', fontFamily: 'DM Sans,sans-serif', fontVariantNumeric: 'tabular-nums' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                Ce run a coûté {formatTokens(runCost)} tokens Studio
+              </div>
+            )}
             {renders.every(r => !r.text) ? (
               <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', marginTop: 60 }}>
                 Le rendu apparaîtra ici après un « Run once ».
@@ -1211,31 +1255,56 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <div key={p.key} style={{ padding: '16px 14px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', textAlign: 'left' }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>{p.label}</div>
                       <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', margin: '6px 0 2px', fontFamily: 'Syne,DM Sans,sans-serif' }}>{formatTokens(p.tokens)} <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>tokens</span></div>
-                      <div style={{ fontSize: 12.5, fontWeight: 700, color: '#8B5CF6' }}>{p.priceEur.toFixed(2).replace('.', ',')} €</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>{p.tagline}</div>
                     </div>
                   ))}
                 </div>
-                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'DM Sans,sans-serif' }}>Packs disponibles une fois abonné Pro ou Expert.</p>
+                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'DM Sans,sans-serif' }}>Packs disponibles sur le site, une fois abonné Pro ou Expert.</p>
               </div>
             ) : (
-              <div style={{ maxWidth: 860, margin: '0 auto' }}>
+              <div style={{ maxWidth: 1020, margin: '0 auto', display: 'flex', gap: 22, alignItems: 'flex-start' }}>
+                {/* ── Rail des dossiers ── */}
+                <div style={{ width: 170, flexShrink: 0, position: 'sticky', top: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'DM Sans,sans-serif' }}>Dossiers</div>
+                  {([null, ...Array.from(new Set(systems.map(s => s.folder).filter((f): f is string => Boolean(f)))).sort()] as (string | null)[]).map(f => {
+                    const on = activeFolder === f
+                    const count = f === null ? systems.length : systems.filter(s => s.folder === f).length
+                    return (
+                      <button key={f ?? '__all'} onClick={() => setActiveFolder(f)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left',
+                          background: on ? 'color-mix(in srgb, #8B5CF6 10%, transparent)' : 'transparent', color: on ? '#8B5CF6' : 'var(--text-mid)',
+                          fontSize: 13, fontWeight: on ? 700 : 600, fontFamily: 'DM Sans,sans-serif' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          {f === null ? <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></> : <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>}
+                        </svg>
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f ?? 'Tous les systèmes'}</span>
+                        <span style={{ fontSize: 11, color: on ? '#8B5CF6' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+                      </button>
+                    )
+                  })}
+                  <p style={{ fontSize: 10.5, color: 'var(--text-dim)', lineHeight: 1.5, margin: '10px 10px 0', fontFamily: 'DM Sans,sans-serif' }}>
+                    Range un système via l’icône dossier de sa carte — crée le dossier au passage.
+                  </p>
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
                 {homeErr && (
                   <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 12.5, fontFamily: 'DM Sans,sans-serif' }}>{homeErr}</div>
                 )}
 
                 {/* ── Mes systèmes ── */}
-                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'DM Sans,sans-serif' }}>Mes systèmes</div>
+                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'DM Sans,sans-serif' }}>{activeFolder ?? 'Mes systèmes'}</div>
                 {homeLoading ? (
                   <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite', fontFamily: 'DM Sans,sans-serif' }}>Chargement…</p>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
-                    {/* Nouveau système */}
+                    {/* Nouveau système (créé dans le dossier actif) */}
                     <button onClick={() => void newSystem('Mon système', emptyGraph())}
                       style={{ minHeight: 110, borderRadius: 16, border: '2px dashed color-mix(in srgb, #8B5CF6 40%, transparent)', background: 'color-mix(in srgb, #8B5CF6 5%, var(--bg-card))', color: '#8B5CF6', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, fontWeight: 700 }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                       Nouveau système
                     </button>
-                    {systems.map(s => {
+                    {systems.filter(s => activeFolder === null || s.folder === activeFolder).map(s => {
                       const nAgents = (s.graph?.nodes ?? []).filter(n => n.kind === 'agent' || n.kind === 'merge').length
                       return (
                         <div key={s.id} onClick={() => openSystem(s)} role="button" tabIndex={0}
@@ -1253,6 +1322,42 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                               {new Date(s.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                             </span>
                             <div style={{ flex: 1 }} />
+                            {/* Ranger dans un dossier */}
+                            <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+                              <button onClick={() => { setFolderMenuFor(folderMenuFor === s.id ? null : s.id); setNewFolderName('') }}
+                                title={s.folder ? `Dossier : ${s.folder}` : 'Ranger dans un dossier'} aria-label="Ranger dans un dossier"
+                                style={{ ...zBtn, width: 26, height: 24, color: s.folder ? '#8B5CF6' : 'var(--text-mid)' }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                              </button>
+                              {folderMenuFor === s.id && (
+                                <div style={{ position: 'absolute', bottom: 30, right: -8, zIndex: 30, width: 210, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 10px 32px rgba(0,0,0,0.18)', padding: 6, animation: 'studio_in 0.15s ease' }}>
+                                  {Array.from(new Set(systems.map(x => x.folder).filter((f): f is string => Boolean(f)))).sort().map(f => (
+                                    <button key={f} onClick={() => void moveToFolder(s.id, f)}
+                                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 12.5, fontWeight: 600, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>
+                                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f}</span>
+                                      {s.folder === f && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
+                                    </button>
+                                  ))}
+                                  {s.folder && (
+                                    <button onClick={() => void moveToFolder(s.id, null)}
+                                      style={{ display: 'flex', width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 12.5, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>
+                                      Retirer du dossier
+                                    </button>
+                                  )}
+                                  <div style={{ display: 'flex', gap: 5, padding: '6px 4px 2px', borderTop: '1px solid var(--border)', marginTop: 4 }}>
+                                    <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
+                                      onKeyDown={e => { if (e.key === 'Enter' && newFolderName.trim()) void moveToFolder(s.id, newFolderName.trim()) }}
+                                      placeholder="Nouveau dossier…"
+                                      style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Sans,sans-serif', outline: 'none' }} />
+                                    <button onClick={() => { if (newFolderName.trim()) void moveToFolder(s.id, newFolderName.trim()) }}
+                                      disabled={!newFolderName.trim()}
+                                      style={{ padding: '0 10px', borderRadius: 7, border: 'none', background: newFolderName.trim() ? '#8B5CF6' : 'var(--border)', color: newFolderName.trim() ? '#fff' : 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: newFolderName.trim() ? 'pointer' : 'default', fontFamily: 'DM Sans,sans-serif' }}>
+                                      OK
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                             <button onClick={e => { e.stopPropagation(); void copySystem(s) }} title="Dupliquer" aria-label="Dupliquer"
                               style={{ ...zBtn, width: 26, height: 24 }}>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
@@ -1285,6 +1390,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       <p style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5, margin: '8px 0 0' }}>{t.description}</p>
                     </button>
                   ))}
+                </div>
                 </div>
               </div>
             )}
@@ -1322,7 +1428,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
-            {/* Les 3 packs */}
+            {/* Les 3 packs — AUCUN prix dans l'app (règle Apple) : l'achat se fait sur le site */}
             <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '14px 0 8px', fontFamily: 'DM Sans,sans-serif' }}>Recharger</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {STUDIO_PACKS.map(p => (
@@ -1331,19 +1437,15 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>{p.label} — {formatTokens(p.tokens)} tokens</div>
                     <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2, fontFamily: 'DM Sans,sans-serif' }}>{p.tagline}</div>
                   </div>
-                  <button onClick={() => void buyPack(p.key)} disabled={!access.packsAvailable || buying !== null}
-                    title={access.packsAvailable ? `Acheter ${p.label}` : 'Bientôt disponible'}
-                    style={{ padding: '8px 14px', borderRadius: 9, border: 'none', flexShrink: 0, cursor: access.packsAvailable && !buying ? 'pointer' : 'default',
-                      background: access.packsAvailable ? '#8B5CF6' : 'var(--border)', color: access.packsAvailable ? '#fff' : 'var(--text-dim)',
-                      fontSize: 12.5, fontWeight: 700, fontFamily: 'DM Sans,sans-serif' }}>
-                    {buying === p.key ? '…' : `${p.priceEur.toFixed(2).replace('.', ',')} €`}
-                  </button>
                 </div>
               ))}
             </div>
-            {!access.packsAvailable && (
-              <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'DM Sans,sans-serif' }}>L’achat de packs arrive très bientôt — ton quota mensuel se recharge automatiquement chaque mois.</p>
-            )}
+            <a href={siteUrl} target="_blank" rel="noreferrer"
+              style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 0', borderRadius: 11, background: '#8B5CF6', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'DM Sans,sans-serif' }}>
+              Acheter des packs sur le site
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg>
+            </a>
+            <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'DM Sans,sans-serif' }}>Les tarifs et l’achat se font sur le site — les tokens sont crédités automatiquement sur ton compte. Ton quota mensuel se recharge, lui, chaque mois.</p>
           </div>
         </div>
       )}

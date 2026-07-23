@@ -31,6 +31,9 @@ export interface RunCallbacks {
   // Validation / action : renvoie true pour continuer, false pour arrêter.
   requestApproval: (node: StudioNode, content: string) => Promise<boolean>
   signal?: AbortSignal
+  // Identifiant du run : la conso serveur (studio_usage) y est rattachée →
+  // permet d'afficher le COÛT RÉEL du run une fois terminé.
+  runId?: string
 }
 
 // ── Appel d'un agent : /api/coach-stream, accumulation du flux SSE ────────
@@ -39,6 +42,7 @@ async function callAgent(
   userContent: string,
   onChunk: (t: string) => void,
   signal?: AbortSignal,
+  runId?: string,
 ): Promise<string> {
   const model: StudioModel = node.model ?? 'athena'
 
@@ -53,6 +57,7 @@ async function callAgent(
       // Comptabilité SÉPARÉE : les runs Studio débitent le solde Studio,
       // jamais le quota chat (voir coach-stream).
       studio: true,
+      runId,
     }),
   })
 
@@ -187,7 +192,7 @@ export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<Ru
             `{"week_start":"YYYY-MM-DD (un LUNDI)","day_index":0-6 (0=lundi),"sport":"run|bike|gym|hyrox|swim|trail_run|other","title":"…","duration_min":60,"intensity":"Z2|tempo|seuil|VMA|force|…","notes":"…"}\n` +
             `Le lundi de la semaine prochaine est le ${nextMondayISO()} — planifie à partir de là sauf indication contraire.\n` +
             `Maximum 10 séances.\n\n--- Plan à convertir ---\n${upstream}`
-          const raw = await callAgent({ ...n, model: n.model ?? 'hermes' }, prompt, t => cb.onChunk(n.id, t), cb.signal)
+          const raw = await callAgent({ ...n, model: n.model ?? 'hermes' }, prompt, t => cb.onChunk(n.id, t), cb.signal, cb.runId)
           const drafts = extractJson<PlanningSessionDraft[]>(raw)
           if (!Array.isArray(drafts) || drafts.length === 0) throw new Error('Aucune séance exploitable dans le plan reçu')
           const summary = describeDrafts(drafts.slice(0, 10))
@@ -203,7 +208,7 @@ export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<Ru
         } else {
           // agent | merge → appel IA
           const upstream = gatherUpstream(n.id)
-          const text = await callAgent(n, agentPrompt(n, upstream), t => cb.onChunk(n.id, t), cb.signal)
+          const text = await callAgent(n, agentPrompt(n, upstream), t => cb.onChunk(n.id, t), cb.signal, cb.runId)
           outputs[n.id] = text
           cb.onLog({ nodeId: n.id, title: n.title, text })
         }

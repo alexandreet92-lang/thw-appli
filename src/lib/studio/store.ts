@@ -11,6 +11,7 @@ export interface StudioSystemRow {
   id: string
   name: string
   graph: StudioGraph
+  folder: string | null
   updated_at: string
 }
 
@@ -18,7 +19,7 @@ export async function listSystems(): Promise<StudioSystemRow[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('studio_systems')
-    .select('id, name, graph, updated_at')
+    .select('id, name, graph, folder, updated_at')
     .order('updated_at', { ascending: false })
   if (error) throw new Error(error.message)
   return (data ?? []) as StudioSystemRow[]
@@ -31,13 +32,13 @@ export async function createSystem(name: string, graph: StudioGraph): Promise<St
   const { data, error } = await supabase
     .from('studio_systems')
     .insert({ user_id: user.id, name, graph })
-    .select('id, name, graph, updated_at')
+    .select('id, name, graph, folder, updated_at')
     .single()
   if (error) throw new Error(error.message)
   return data as StudioSystemRow
 }
 
-export async function updateSystem(id: string, patch: { name?: string; graph?: StudioGraph }): Promise<void> {
+export async function updateSystem(id: string, patch: { name?: string; graph?: StudioGraph; folder?: string | null }): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase
     .from('studio_systems')

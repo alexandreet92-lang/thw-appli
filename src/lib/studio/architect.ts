@@ -62,11 +62,25 @@ export interface ArchitectResult {
 
 export async function buildGraphFromDescription(
   description: string,
+  current?: StudioGraph,
   onProgress?: (t: string) => void,
   signal?: AbortSignal,
 ): Promise<ArchitectResult> {
   const pseudoNode: StudioNode = { id: 'arch', kind: 'agent', title: 'Architecte', x: 0, y: 0, model: 'athena' }
-  const raw = await callAgent(pseudoNode, ARCHITECT_PROMPT + description.trim(), onProgress ?? (() => {}), signal)
+
+  // Mode MODIFICATION : un système existe → l'architecte le fait évoluer au
+  // lieu de repartir de zéro (sauf si la demande décrit un système tout neuf).
+  let contextBlock = ''
+  if (current && current.nodes.length > 0) {
+    const slim = {
+      nodes: current.nodes.map(n => ({ id: n.id, kind: n.kind, title: n.title, role: n.role?.slice(0, 300), model: n.model, sourceKey: n.sourceKey, actionKey: n.actionKey })),
+      edges: current.edges.map(e => ({ from: e.from, to: e.to })),
+    }
+    contextBlock =
+      `\n\nUN SYSTÈME EXISTE DÉJÀ (ci-dessous). Si la demande de l'utilisateur est une MODIFICATION (ajouter/retirer/changer un agent, une source, un fil…), pars de ce graphe et renvoie le graphe COMPLET mis à jour en conservant tout ce qui n'est pas concerné (mêmes ids pour les nœuds gardés). Si la demande décrit un système entièrement différent, repars de zéro.\n\nGRAPHE EXISTANT :\n${JSON.stringify(slim)}\n`
+  }
+
+  const raw = await callAgent(pseudoNode, ARCHITECT_PROMPT + contextBlock + '\n' + description.trim(), onProgress ?? (() => {}), signal)
   const plan = extractJson<ArchPlan>(raw)
 
   if (!plan || !Array.isArray(plan.nodes) || plan.nodes.length === 0) {

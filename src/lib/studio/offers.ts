@@ -25,14 +25,15 @@ export interface StudioPack {
   key: StudioPackKey
   label: string
   tokens: number
-  priceEur: number
   tagline: string
 }
 
+// RÈGLE APPLE : aucun prix affiché DANS l'app — l'achat et les tarifs
+// vivent sur le site web (bouton « Voir sur le site »).
 export const STUDIO_PACKS: StudioPack[] = [
-  { key: 'decouverte', label: 'Pack Découverte', tokens: 200_000,   priceEur: 4.99,  tagline: 'Environ 8 à 15 runs selon les modèles' },
-  { key: 'builder',    label: 'Pack Builder',    tokens: 600_000,   priceEur: 11.99, tagline: 'Le meilleur ratio pour un usage régulier' },
-  { key: 'architecte', label: 'Pack Architecte', tokens: 2_000_000, priceEur: 29.99, tagline: 'Pour les systèmes complexes qui tournent souvent' },
+  { key: 'decouverte', label: 'Pack Découverte', tokens: 200_000,   tagline: 'Environ 8 à 15 runs selon les modèles' },
+  { key: 'builder',    label: 'Pack Builder',    tokens: 1_000_000, tagline: 'Le meilleur ratio pour un usage régulier' },
+  { key: 'architecte', label: 'Pack Architecte', tokens: 5_000_000, tagline: 'Pour les systèmes complexes qui tournent souvent' },
 ]
 
 // Estimation du coût d'un run par nœud IA (tokens PONDÉRÉS, ordre de

@@ -48,6 +48,18 @@ function fmtDur(s: number) {
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
+// Type d'activité Strava attendu par l'endpoint /uploads (activity_type).
+function stravaActivityType(sport?: string): string {
+  switch (sport) {
+    case 'running':   return 'Run'
+    case 'trail':     return 'TrailRun'
+    case 'hiking':    return 'Hike'
+    case 'mtb':       return 'MountainBikeRide'
+    case 'cycling':   return 'Ride'
+    default:          return 'Ride'
+  }
+}
+
 function SessionSummaryInner({ session, isDark, onClose, completedEfforts }: Props) {
   const t = getTheme(isDark)
   const { t: tr } = useI18n()
@@ -85,7 +97,7 @@ function SessionSummaryInner({ session, isDark, onClose, completedEfforts }: Pro
           gpsPoints: session.gps_points,
           duration: session.duration_seconds,
           distance: session.distance_m,
-          sport: 'Ride',
+          sport: stravaActivityType(session.sport),
           name: `${tr('record.sessionSummaryDefaultTitle')} · ${formatDate(session.started_at)}`,
         }),
       })

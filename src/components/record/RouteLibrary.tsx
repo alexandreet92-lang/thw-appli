@@ -118,6 +118,30 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
   const [fElev, setFElev] = useState('all')
   const [fType, setFType] = useState('all')
   const [openFilter, setOpenFilter] = useState<string | null>(null)
+  // Envoi vers l'appareil (Garmin/Wahoo) — visible seulement si connecté.
+  const [pushTargets, setPushTargets] = useState<string[]>([])
+  const [notice, setNotice] = useState<string | null>(null)
+  const DEVICE_NAME: Record<string, string> = { garmin: 'Garmin', wahoo: 'Wahoo' }
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const r = await fetch('/api/routes/push-to-device')
+        const j = await r.json() as { connected?: string[] }
+        setPushTargets(j.connected ?? [])
+      } catch { /* ignore */ }
+    })()
+  }, [])
+
+  const pushToDevice = async (route: Route, provider: string) => {
+    setMenuId(null); setNotice(`Envoi vers ${DEVICE_NAME[provider] ?? provider}…`)
+    try {
+      const r = await fetch('/api/routes/push-to-device', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ routeId: route.id, provider }) })
+      const j = await r.json() as { ok?: boolean; error?: string }
+      setNotice(j.ok ? `Envoyé vers ${DEVICE_NAME[provider] ?? provider}.` : (j.error ?? 'Échec de l’envoi'))
+    } catch { setNotice('Échec de l’envoi') }
+    setTimeout(() => setNotice(null), 4000)
+  }
 
   const bg = isDark ? '#0A0A0A' : '#FFFFFF'
   const text = isDark ? '#FFFFFF' : '#0A0A0A'
@@ -287,6 +311,12 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12M8 11l4 4 4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
                       {t('record.routeLibraryExport')}
                     </button>
+                    {pushTargets.map(p => (
+                      <button key={p} onClick={e => { e.stopPropagation(); void pushToDevice(route, p) }} style={menuItem(text)}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+                        {`${t('record.routeLibrarySendTo')} ${DEVICE_NAME[p] ?? p}`}
+                      </button>
+                    ))}
                     <button onClick={e => { e.stopPropagation(); void handleDelete(route.id) }} style={menuItem('#EF4444')}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
                       {t('record.routeLibraryDelete')}
@@ -309,6 +339,11 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
 
       {/* Ferme les menus/filtres au clic ailleurs */}
       {(menuId || openFilter) && <div onClick={() => { setMenuId(null); setOpenFilter(null) }} style={{ position: 'fixed', inset: 0, zIndex: 2 }} />}
+
+      {/* Retour d'envoi vers l'appareil */}
+      {notice && (
+        <div style={{ position: 'fixed', left: '50%', bottom: 24, transform: 'translateX(-50%)', zIndex: 30, background: 'var(--bg-card, #12151C)', color: text, border: `1px solid ${border}`, borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 600, boxShadow: '0 8px 28px rgba(0,0,0,0.28)', maxWidth: '90vw', textAlign: 'center' }}>{notice}</div>
+      )}
     </div>
   )
 }

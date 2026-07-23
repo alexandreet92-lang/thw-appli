@@ -13,8 +13,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  loadGraph, saveGraph, resetGraph, genId, MODEL_LABEL, KIND_LABEL, SOURCE_LABEL, ACTION_LABEL,
-  type StudioGraph, type StudioNode, type StudioNodeKind, type StudioModel, type StudioSourceKey,
+  loadGraph, saveGraph, resetGraph, emptyGraph, genId, MODEL_LABEL, KIND_LABEL, SOURCE_LABEL, ACTION_LABEL,
+  type StudioGraph, type StudioNode, type StudioNodeKind, type StudioModel, type StudioSourceKey, type StudioActionKey,
 } from '@/lib/studio/graph'
 import { runGraph, terminalNodeIds, type NodeStatus } from '@/lib/studio/runner'
 import { buildGraphFromDescription } from '@/lib/studio/architect'
@@ -46,6 +46,35 @@ function KindIcon({ kind, size = 13 }: { kind: StudioNodeKind; size?: number }) 
     case 'validation': return <svg {...p}><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9"/></svg>
     case 'source':     return <svg {...p}><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
     case 'action':     return <svg {...p}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+  }
+}
+
+// ── « Applications » = pages de l'app connectables (façon modules Make) ──
+// Chacune a son icône propre pour être reconnue d'un coup d'œil, distincte
+// des « outils » abstraits (Objectif, Agent, Synthèse, Validation).
+type AppEntry =
+  | { id: string; label: string; color: string; kind: 'source'; sourceKey: StudioSourceKey; access: 'lecture' }
+  | { id: string; label: string; color: string; kind: 'action'; actionKey: StudioActionKey; access: 'écriture' }
+
+const APP_CATALOG: AppEntry[] = [
+  { id: 'app_activities', label: 'Activités',     color: '#22C55E', kind: 'source', sourceKey: 'activities', access: 'lecture' },
+  { id: 'app_planning',   label: 'Planning',      color: '#06B6D4', kind: 'source', sourceKey: 'planning',   access: 'lecture' },
+  { id: 'app_injuries',   label: 'Blessures',     color: '#EF4444', kind: 'source', sourceKey: 'injuries',   access: 'lecture' },
+  { id: 'app_recovery',   label: 'Récupération',  color: '#8B5CF6', kind: 'source', sourceKey: 'recovery',   access: 'lecture' },
+  { id: 'app_profile',    label: 'Profil',        color: '#F59E0B', kind: 'source', sourceKey: 'profile',    access: 'lecture' },
+  { id: 'act_planning',   label: 'Planning',      color: '#EF4444', kind: 'action', actionKey: 'planning_save', access: 'écriture' },
+]
+
+function AppIcon({ id, size = 14 }: { id: string; size?: number }) {
+  const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none' as const, stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  switch (id) {
+    case 'app_activities': return <svg {...p}><path d="M3 12h4l2 7 4-16 2 9h6"/></svg>
+    case 'app_planning':   return <svg {...p}><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+    case 'app_injuries':   return <svg {...p}><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/></svg>
+    case 'app_recovery':   return <svg {...p}><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+    case 'app_profile':    return <svg {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+    case 'act_planning':   return <svg {...p}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+    default:               return <svg {...p}><rect x="3" y="3" width="18" height="18" rx="4"/></svg>
   }
 }
 
@@ -176,18 +205,33 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   }
 
   // ── Mutations ──────────────────────────────────────────────
-  const addNode = (kind: StudioNodeKind) => {
-    const base = { x: -pan.x + 160 + Math.round(Math.random() * 40), y: -pan.y + 180 + Math.round(Math.random() * 40) }
+  const addNode = (kind: StudioNodeKind, opts?: { sourceKey?: StudioSourceKey; actionKey?: StudioActionKey; title?: string }) => {
+    // Nouveau bloc placé au centre de la vue courante (pas au hasard hors-écran).
+    const rect = wrapRef.current?.getBoundingClientRect()
+    const cx = (rect ? rect.width / 2 : 400) - pan.x - NODE_W / 2
+    const cy = (rect ? rect.height / 2 : 300) - pan.y - 40 + Math.round((Math.random() - 0.5) * 40)
+    const sourceKey = kind === 'source' ? (opts?.sourceKey ?? 'activities') : undefined
+    const actionKey = kind === 'action' ? (opts?.actionKey ?? 'planning_save') : undefined
     const n: StudioNode = {
-      id: genId(), kind, x: base.x, y: base.y,
-      title: kind === 'agent' ? 'Nouvel agent' : kind === 'source' ? 'Page connectée' : KIND_LABEL[kind],
+      id: genId(), kind, x: cx, y: cy,
+      title: opts?.title
+        ?? (kind === 'agent' ? 'Nouvel agent'
+          : kind === 'source' ? SOURCE_LABEL[sourceKey ?? 'activities']
+          : kind === 'action' ? ACTION_LABEL[actionKey ?? 'planning_save']
+          : KIND_LABEL[kind]),
       role: kind === 'trigger' ? '' : kind === 'validation' ? 'Vérifie ce qui précède avant de continuer.' : kind === 'source' || kind === 'action' ? undefined : 'Décris le rôle de cet agent…',
       model: kind === 'agent' || kind === 'merge' ? 'athena' : undefined,
-      sourceKey: kind === 'source' ? 'activities' : undefined,
-      actionKey: kind === 'action' ? 'planning_save' : undefined,
+      sourceKey,
+      actionKey,
     }
     persist({ ...graph, nodes: [...graph.nodes, n] }); setSelId(n.id); setTab('canvas')
   }
+  const addApp = (app: AppEntry) => {
+    if (app.kind === 'source') addNode('source', { sourceKey: app.sourceKey, title: app.label })
+    else addNode('action', { actionKey: app.actionKey, title: app.label })
+  }
+  const loadExample = () => { const g = resetGraph(); setGraph(g); setSelId(null); setStatus({}); setNodeText({}) }
+  const clearCanvas = () => { const g = emptyGraph(); persist(g); setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}) }
   const patchNode = (id: string, patch: Partial<StudioNode>) =>
     persist({ ...graph, nodes: graph.nodes.map(n => n.id === id ? { ...n, ...patch } : n) })
   const deleteNode = (id: string) => {
@@ -363,24 +407,46 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               )}
             </div>
 
-            {/* ── Palette ── */}
-            <div style={{ position: 'absolute', top: 14, left: 12, zIndex: 5, display: 'flex', flexDirection: 'column', gap: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 6, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.10)' }}>
-              {(['agent', 'merge', 'validation', 'source', 'action'] as StudioNodeKind[]).map(k => (
+            {/* ── Palette : Outils vs Applications ── */}
+            <div style={{ position: 'absolute', top: 14, left: 12, zIndex: 5, width: 186, maxHeight: 'calc(100% - 28px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 7, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.10)' }}>
+              <div style={paletteHdr}>Outils</div>
+              {(['trigger', 'agent', 'merge', 'validation'] as StudioNodeKind[]).map(k => (
                 <button key={k} onClick={() => addNode(k)} title={`Ajouter : ${KIND_LABEL[k]}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 9, border: 'none', cursor: 'pointer', background: 'transparent', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, fontFamily: 'DM Sans,sans-serif', textAlign: 'left' }}
+                  style={paletteBtn}
                   onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
-                  <span style={{ width: 22, height: 22, borderRadius: 7, background: `color-mix(in srgb, ${KIND_COLOR[k]} 14%, transparent)`, color: KIND_COLOR[k], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <KindIcon kind={k} size={12} />
+                  <span style={{ width: 24, height: 24, borderRadius: 7, background: `color-mix(in srgb, ${KIND_COLOR[k]} 14%, transparent)`, color: KIND_COLOR[k], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <KindIcon kind={k} size={13} />
                   </span>
-                  {KIND_LABEL[k]}
+                  {k === 'trigger' ? 'Objectif' : KIND_LABEL[k]}
                 </button>
               ))}
-              <div style={{ height: 1, background: 'var(--border)', margin: '2px 4px' }} />
-              <button onClick={() => { if (confirm('Réinitialiser le système sur l’exemple ?')) { const g = resetGraph(); setGraph(g); setSelId(null); setStatus({}); setNodeText({}) } }}
-                style={{ padding: '6px 10px', borderRadius: 9, border: 'none', cursor: 'pointer', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, fontFamily: 'DM Sans,sans-serif', textAlign: 'left' }}>
-                Réinitialiser
+
+              <div style={{ ...paletteHdr, marginTop: 6 }}>Applications</div>
+              {APP_CATALOG.map(app => (
+                <button key={app.id} onClick={() => addApp(app)} title={`Connecter : ${app.label} (${app.access})`}
+                  style={paletteBtn}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                  <span style={{ width: 24, height: 24, borderRadius: 7, background: `color-mix(in srgb, ${app.color} 15%, transparent)`, color: app.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <AppIcon id={app.id} size={14} />
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.label}</span>
+                  <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: app.access === 'écriture' ? '#EF4444' : 'var(--text-dim)', background: app.access === 'écriture' ? 'rgba(239,68,68,0.10)' : 'var(--bg-hover)', padding: '2px 5px', borderRadius: 5, flexShrink: 0 }}>{app.access === 'écriture' ? 'écrit' : 'lit'}</span>
+                </button>
+              ))}
+
+              <div style={{ height: 1, background: 'var(--border)', margin: '5px 4px 3px' }} />
+              <button onClick={() => { if (graph.nodes.length && !confirm('Remplacer le système actuel par l’exemple ?')) return; loadExample() }}
+                style={{ ...paletteBtn, color: 'var(--text-dim)', fontSize: 11.5 }}>
+                Charger l’exemple
               </button>
+              {graph.nodes.length > 0 && (
+                <button onClick={() => { if (confirm('Vider la toile ?')) clearCanvas() }}
+                  style={{ ...paletteBtn, color: 'var(--text-dim)', fontSize: 11.5 }}>
+                  Vider la toile
+                </button>
+              )}
             </div>
 
             {/* ── Zone graphe ── */}
@@ -435,6 +501,15 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   const st = status[n.id] ?? 'idle'
                   const preview = nodeText[n.id]
                   const col = KIND_COLOR[n.kind]
+                  const isTrigger = n.kind === 'trigger'
+                  const appEntry = n.kind === 'source'
+                    ? APP_CATALOG.find(a => a.kind === 'source' && a.sourceKey === (n.sourceKey ?? 'activities'))
+                    : n.kind === 'action'
+                    ? APP_CATALOG.find(a => a.kind === 'action')
+                    : undefined
+                  // Type affiché en petit (distingue Objectif / Agent / Synthèse /
+                  // Validation) — et « App » pour les connecteurs d'applications.
+                  const typeTag = appEntry ? 'App' : isTrigger ? null : KIND_LABEL[n.kind]
                   const subtitle = n.kind === 'source' ? SOURCE_LABEL[n.sourceKey ?? 'activities']
                     : n.kind === 'action' ? ACTION_LABEL[n.actionKey ?? 'planning_save']
                     : undefined
@@ -449,15 +524,24 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                           : selId === n.id
                           ? `0 0 0 3px color-mix(in srgb, ${col} 22%, transparent), 0 2px 6px rgba(0,0,0,0.07), 0 10px 26px rgba(0,0,0,0.10)`
                           : '0 1px 3px rgba(0,0,0,0.06), 0 8px 22px rgba(0,0,0,0.08)' }}>
-                      {/* liseré coloré du type */}
-                      <div style={{ height: 3, background: `linear-gradient(90deg, ${col}, color-mix(in srgb, ${col} 35%, transparent))` }} />
+                      {/* Objectif = en-tête PLEIN (allure de « logo » de départ) ;
+                          les autres blocs : simple liseré coloré du type. */}
+                      {isTrigger ? (
+                        <div style={{ height: 4, background: `linear-gradient(90deg, ${col}, #6366F1)` }} />
+                      ) : (
+                        <div style={{ height: 3, background: `linear-gradient(90deg, ${col}, color-mix(in srgb, ${col} 35%, transparent))` }} />
+                      )}
                       {/* En-tête (poignée) */}
                       <div onPointerDown={e => startNodeDrag(e, n)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 11px 7px', cursor: 'grab' }}>
-                        <span style={{ width: 24, height: 24, borderRadius: 8, background: `color-mix(in srgb, ${col} 13%, transparent)`, color: col, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <KindIcon kind={n.kind} size={13} />
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: isTrigger ? '11px 11px 9px' : '9px 11px 7px', cursor: 'grab',
+                          background: isTrigger ? `linear-gradient(135deg, color-mix(in srgb, ${col} 18%, var(--bg-card)), var(--bg-card))` : 'transparent' }}>
+                        <span style={{ width: isTrigger ? 30 : 24, height: isTrigger ? 30 : 24, borderRadius: isTrigger ? 10 : 8, background: isTrigger ? `linear-gradient(135deg, ${col}, #6366F1)` : `color-mix(in srgb, ${col} 13%, transparent)`, color: isTrigger ? '#fff' : col, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: isTrigger ? `0 3px 10px color-mix(in srgb, ${col} 45%, transparent)` : 'none' }}>
+                          {appEntry ? <AppIcon id={appEntry.id} size={14} /> : <KindIcon kind={n.kind} size={isTrigger ? 15 : 13} />}
                         </span>
-                        <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 650, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{n.title}</span>
+                        <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          {typeTag && <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: col, lineHeight: 1 }}>{typeTag}</span>}
+                          <span style={{ fontSize: isTrigger ? 13.5 : 13, fontWeight: isTrigger ? 750 : 650, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{n.title}</span>
+                        </span>
                         {(n.kind === 'agent' || n.kind === 'merge') && n.model && (
                           <span style={{ fontSize: 9.5, fontWeight: 800, color: col, background: `color-mix(in srgb, ${col} 11%, transparent)`, padding: '2.5px 7px', borderRadius: 7, letterSpacing: '0.02em' }}>{MODEL_LABEL[n.model]}</span>
                         )}
@@ -484,6 +568,30 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   )
                 })}
               </div>
+
+              {/* ── Toile vide : grosse bulle « + » (façon Make) ── */}
+              {graph.nodes.length === 0 && !building && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', gap: 16, padding: 20 }}>
+                  <button onClick={() => addNode('trigger')} title="Commencer par un Objectif"
+                    style={{ pointerEvents: 'auto', width: 84, height: 84, borderRadius: 24, cursor: 'pointer',
+                      background: 'color-mix(in srgb, #8B5CF6 8%, var(--bg-card))', border: '2px dashed color-mix(in srgb, #8B5CF6 45%, transparent)',
+                      color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 10px 30px rgba(139,92,246,0.14)', transition: 'transform 0.15s, background 0.15s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.05)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}>
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                  </button>
+                  <div style={{ textAlign: 'center', maxWidth: 320 }}>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>Toile vierge</p>
+                    <p style={{ margin: '5px 0 0', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif' }}>
+                      Commence par poser un <b style={{ color: '#8B5CF6' }}>Objectif</b>, puis ajoute des <b>Outils</b> et des <b>Applications</b> depuis la palette à gauche — et relie-les.
+                    </p>
+                    <button onClick={loadExample} style={{ pointerEvents: 'auto', marginTop: 12, padding: '7px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                      ou charger un exemple
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* ── Inspecteur ── */}
@@ -681,6 +789,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 }
 
 const iconBtn: React.CSSProperties = { border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', padding: 4 }
+const paletteHdr: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '3px 8px 2px' }
+const paletteBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 9px', borderRadius: 9, border: 'none', cursor: 'pointer', background: 'transparent', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, fontFamily: 'DM Sans,sans-serif', textAlign: 'left' }
 const cta: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', flexShrink: 0 }
 const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', margin: '0 0 5px', display: 'block' }
 const fld: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', outline: 'none', marginBottom: 14 }

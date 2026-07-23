@@ -114,6 +114,13 @@ export function sampleGraph(): StudioGraph {
 
 const KEY = 'thw_studio_graph_v1'
 
+// Canvas VIDE au premier lancement (façon Make) — on n'impose plus l'exemple.
+// L'utilisateur part d'une toile blanche et ajoute ses blocs lui-même ;
+// l'exemple reste chargeable à la demande (bouton « Charger l'exemple »).
+export function emptyGraph(): StudioGraph {
+  return { id: genId(), name: 'Mon système', nodes: [], edges: [], updatedAt: 0 }
+}
+
 export function loadGraph(): StudioGraph {
   try {
     const raw = localStorage.getItem(KEY)
@@ -122,7 +129,7 @@ export function loadGraph(): StudioGraph {
       if (g && Array.isArray(g.nodes) && Array.isArray(g.edges)) return g
     }
   } catch { /* ignore */ }
-  return sampleGraph()
+  return emptyGraph()
 }
 
 export function saveGraph(g: StudioGraph): void {

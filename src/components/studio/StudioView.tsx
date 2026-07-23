@@ -134,11 +134,23 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       setPending(null)
     }
     drag.current = null
+    // Fin du drag : on réautorise la sélection de texte (voir arm()).
+    document.body.style.userSelect = ''
+    document.body.style.setProperty('-webkit-user-select', '')
     window.removeEventListener('pointermove', onPointerMove)
     window.removeEventListener('pointerup', onPointerUp)
   }, [onPointerMove])
 
-  const arm = () => { window.addEventListener('pointermove', onPointerMove); window.addEventListener('pointerup', onPointerUp) }
+  // Pendant un drag (déplacer un nœud, relier, pan), on coupe la sélection de
+  // texte native du navigateur — sinon glisser une branche « surligne en bleu »
+  // le texte des cartes sur ordinateur. On efface aussi la sélection en cours.
+  const arm = () => {
+    document.body.style.userSelect = 'none'
+    document.body.style.setProperty('-webkit-user-select', 'none')
+    window.getSelection?.()?.removeAllRanges()
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
+  }
 
   const startNodeDrag = (e: React.PointerEvent, n: StudioNode) => {
     e.stopPropagation()
@@ -149,6 +161,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   }
   const startConnect = (e: React.PointerEvent, n: StudioNode) => {
     e.stopPropagation()
+    e.preventDefault()
     const a = portOut(n)
     drag.current = { mode: 'conn', id: n.id, dx: 0, dy: 0 }
     setPending({ fromId: n.id, x: a.x, y: a.y })
@@ -156,6 +169,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   }
   const startPan = (e: React.PointerEvent) => {
     if (e.target !== wrapRef.current && !(e.target as HTMLElement).dataset.bg) return
+    e.preventDefault()
     setSelId(null); setSelEdge(null)
     drag.current = { mode: 'pan', dx: 0, dy: 0 }
     arm()

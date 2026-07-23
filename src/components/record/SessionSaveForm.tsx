@@ -15,6 +15,7 @@ import { OPEN_WATER_TYPES } from '@/types/openwater'
 import { HT_TYPES } from '@/types/hometrainer'
 import { useI18n } from '@/lib/i18n'
 import { currentLocale } from '@/lib/i18n'
+import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
 
 export interface SessionFormData {
   title: string
@@ -90,7 +91,10 @@ export default function SessionSaveForm({ sport, startedAt, onBack, onSave, isDa
     setSaving(true)
     // Les types de circuit cochés sont persistés avec les types d'entraînement.
     const types = [...trainingTypes, ...circuits.map(c => `circuit:${c}`)]
-    await onSave({ title: title.trim() || autoTitle, trainingTypes: types, rpe, comment, photos })
+    const finalTitle = title.trim() || autoTitle
+    await onSave({ title: finalTitle, trainingTypes: types, rpe, comment, photos })
+    // Notification « séance enregistrée » — uniquement après une sauvegarde réussie.
+    notifyActivitySaved({ sport, title: finalTitle })
     setSaving(false)
   }
   const toggleCircuit = (id: string) => setCircuits(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id])

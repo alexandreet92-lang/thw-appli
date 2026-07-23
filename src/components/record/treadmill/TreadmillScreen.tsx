@@ -15,6 +15,7 @@ import { useWakeLock } from '@/hooks/useWakeLock'
 import { useStopwatch, formatSeconds } from '@/hooks/useStopwatch'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
+import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
 import { useTreadmillPlan } from './useTreadmillPlan'
 import {
   type TreadmillPlan, type TreadStep,
@@ -135,6 +136,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           distance_m: distanceM, elevation_gain_m: Math.round(elevationM),
           avg_speed_ms: avgSpeedMs, calories: kcal, streams,
         })
+        notifyActivitySaved({ sport: 'running', title: plan.title })
       }
     } catch (e) { console.error('[treadmill] save error:', e) }
     setPhase('done')

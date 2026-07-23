@@ -15,6 +15,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
+import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
 import { SportIcon } from '@/components/icons/SportIcon'
 import { SessionBlockBuilder } from '@/components/planning/mobile/SessionBlockBuilder'
 import { StrengthBuilder } from '@/components/planning/mobile/StrengthBuilder'
@@ -202,6 +203,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
 
       await sb.from('activities').insert(act)
       await sb.from('workout_sessions').insert(ws)
+      notifyActivitySaved({ sport: def.id, title: autoTitle })
       onSaved?.(); doClose()
     } catch (e) {
       console.error('[manual] save error:', e)

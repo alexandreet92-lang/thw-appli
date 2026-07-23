@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
 import { useI18n } from '@/lib/i18n'
 import RPESlider from './RPESlider'
 import SwimmingPoolSelector from './SwimmingPoolSelector'
@@ -87,6 +88,7 @@ export default function SwimmingForm({ onClose }: Props) {
         distance_unit: distUnit,
       }).select('id').single()
       setSaved({ id: data?.id ?? null, durationSec: totalDurSec, distanceM: totalDistM, poolSize, calories, rpe, intervals })
+      notifyActivitySaved({ sport: 'swimming', title: title.trim() || autoTitle() })
     } catch (e) { console.error('[swimming] save error:', e) }
     setSaving(false)
   }

@@ -90,6 +90,58 @@ export async function readSource(key: StudioSourceKey): Promise<string> {
     return `PAGE RÉCUPÉRATION — check-ins 14 jours :\n${lines.join('\n')}`
   }
 
+  // ── Apps externes ──────────────────────────────────────────
+  if (key === 'ext_strava') {
+    // Strava alimente la table `activities` via la synchro. On lit les sorties
+    // récentes (le service ne stocke pas de flux « brut Strava » à part).
+    const since = new Date(Date.now() - 30 * 86400_000).toISOString()
+    const { data, error } = await sb.from('activities')
+      .select('title,sport_type,started_at,moving_time_s,distance_m,elevation_gain_m,average_heartrate')
+      .eq('user_id', uid).gte('started_at', since)
+      .order('started_at', { ascending: false }).limit(40)
+    if (error) throw new Error(`Lecture Strava : ${error.message}`)
+    if (!data?.length) return 'APP STRAVA — aucune sortie synchronisée. Connecte Strava dans Connexions et lance une synchro.'
+    const lines = data.map(a => {
+      const d = a.started_at ? String(a.started_at).slice(0, 10) : '?'
+      const dur = a.moving_time_s ? `${Math.round(Number(a.moving_time_s) / 60)}min` : ''
+      const km = a.distance_m ? `${(Number(a.distance_m) / 1000).toFixed(1)}km` : ''
+      const dplus = a.elevation_gain_m ? `D+${Math.round(Number(a.elevation_gain_m))}m` : ''
+      const fc = a.average_heartrate ? `FC ${Math.round(Number(a.average_heartrate))}` : ''
+      return `- ${d} · ${a.sport_type ?? '?'} · ${cap(String(a.title ?? ''), 40)} · ${[dur, km, dplus, fc].filter(Boolean).join(' · ')}`
+    })
+    return `APP STRAVA — ${data.length} sorties (30 j) :\n${lines.join('\n')}`
+  }
+
+  if (key === 'ext_withings') {
+    const { data, error } = await sb.from('body_measurements')
+      .select('measured_at,weight_kg,fat_mass_percent,muscle_mass_kg')
+      .eq('user_id', uid).order('measured_at', { ascending: false }).limit(20)
+    if (error) throw new Error(`Lecture Withings : ${error.message}`)
+    if (!data?.length) return 'APP WITHINGS — aucune mesure. Connecte Withings dans Connexions.'
+    const lines = (data as Record<string, unknown>[]).map(m =>
+      `- ${String(m.measured_at ?? '').slice(0, 10)} · ${m.weight_kg ? `${m.weight_kg} kg` : '—'}` +
+      `${m.fat_mass_percent ? ` · MG ${m.fat_mass_percent}%` : ''}${m.muscle_mass_kg ? ` · muscle ${m.muscle_mass_kg} kg` : ''}`)
+    return `APP WITHINGS — ${data.length} mesures :\n${lines.join('\n')}`
+  }
+
+  if (key === 'ext_polar') {
+    const since = new Date(Date.now() - 21 * 86400_000).toISOString().slice(0, 10)
+    const { data, error } = await sb.from('health_data')
+      .select('date,hrv_rmssd,readiness_score,fatigue_level,raw_data')
+      .eq('user_id', uid).gte('date', since).order('date', { ascending: false }).limit(21)
+    if (error) throw new Error(`Lecture Polar : ${error.message}`)
+    if (!data?.length) return 'APP POLAR — aucune donnée récupération/sommeil. Connecte Polar (ou un wearable) dans Connexions.'
+    const lines = (data as Record<string, unknown>[]).map(r => {
+      const raw = (r.raw_data ?? {}) as Record<string, unknown>
+      const hrv = r.hrv_rmssd ?? raw['hrv_rmssd'] ?? raw['hrv_ms']
+      const sleep = raw['sleep_hours'] ?? raw['sleep_duration_h']
+      return `- ${String(r.date ?? '').slice(0, 10)}` +
+        `${hrv != null ? ` · HRV ${hrv}` : ''}${r.readiness_score != null ? ` · readiness ${r.readiness_score}` : ''}` +
+        `${r.fatigue_level != null ? ` · fatigue ${r.fatigue_level}` : ''}${sleep != null ? ` · sommeil ${sleep}h` : ''}`
+    })
+    return `APP POLAR — récup/sommeil/HRV (21 j) :\n${lines.join('\n')}`
+  }
+
   // profile
   const { data, error } = await sb.from('profiles').select('*').eq('id', uid).maybeSingle()
   if (error) throw new Error(`Lecture Profil : ${error.message}`)

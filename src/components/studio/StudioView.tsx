@@ -65,6 +65,16 @@ const APP_CATALOG: AppEntry[] = [
   { id: 'act_planning',   label: 'Planning',      color: '#EF4444', kind: 'action', actionKey: 'planning_save', access: 'écriture' },
 ]
 
+// Apps EXTERNES (données synchronisées depuis un service tiers) — visibles dans
+// la palette comme des modules à part, grisées tant qu'elles ne sont pas
+// connectées (page Connexions).
+interface ExtEntry { id: string; label: string; color: string; sourceKey: StudioSourceKey; provider: string }
+const EXT_CATALOG: ExtEntry[] = [
+  { id: 'ext_strava',   label: 'Strava',   color: '#FC4C02', sourceKey: 'ext_strava',   provider: 'strava' },
+  { id: 'ext_withings', label: 'Withings', color: '#0A8F9E', sourceKey: 'ext_withings', provider: 'withings' },
+  { id: 'ext_polar',    label: 'Polar',    color: '#E4022A', sourceKey: 'ext_polar',    provider: 'polar' },
+]
+
 function AppIcon({ id, size = 14 }: { id: string; size?: number }) {
   const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none' as const, stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
   switch (id) {
@@ -74,6 +84,10 @@ function AppIcon({ id, size = 14 }: { id: string; size?: number }) {
     case 'app_recovery':   return <svg {...p}><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
     case 'app_profile':    return <svg {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
     case 'act_planning':   return <svg {...p}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+    // Apps externes — pictos évocateurs (pas les logos officiels).
+    case 'ext_strava':     return <svg {...p} fill="currentColor" stroke="none"><path d="M9 3l5 9h-3l-2-4-2 4H2L9 3zm5 11h3l1.5 3 1.5-3h3l-4.5 8L14 14z"/></svg>
+    case 'ext_withings':   return <svg {...p}><circle cx="12" cy="13" r="8"/><path d="M12 13V8M12 2v2"/></svg>
+    case 'ext_polar':      return <svg {...p}><path d="M20.8 5.6a5.5 5.5 0 00-8.8 1.4A5.5 5.5 0 003.2 5.6a5.5 5.5 0 000 7.8L12 21l8.8-7.6a5.5 5.5 0 000-7.8z"/><path d="M6 12h3l1.5-3 2 5 1.5-2H18"/></svg>
     default:               return <svg {...p}><rect x="3" y="3" width="18" height="18" rx="4"/></svg>
   }
 }
@@ -89,6 +103,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [helpOpen, setHelpOpen] = useState(false)
+  // Apps externes réellement connectées (page Connexions) → grisage sinon.
+  const [connectedProviders, setConnectedProviders] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    void (async () => {
+      try {
+        const r = await fetch('/api/oauth/status')
+        const j = await r.json() as { connected?: { provider: string }[] }
+        setConnectedProviders(new Set((j.connected ?? []).map(c => c.provider)))
+      } catch { /* silencieux */ }
+    })()
+  }, [])
 
   // Architecte (« décris ton système »)
   const [desc, setDesc] = useState('')
@@ -230,6 +255,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     if (app.kind === 'source') addNode('source', { sourceKey: app.sourceKey, title: app.label })
     else addNode('action', { actionKey: app.actionKey, title: app.label })
   }
+  const addExt = (e: ExtEntry) => addNode('source', { sourceKey: e.sourceKey, title: e.label })
   const loadExample = () => { const g = resetGraph(); setGraph(g); setSelId(null); setStatus({}); setNodeText({}) }
   const clearCanvas = () => { const g = emptyGraph(); persist(g); setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}) }
   const patchNode = (id: string, patch: Partial<StudioNode>) =>
@@ -436,6 +462,24 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 </button>
               ))}
 
+              <div style={{ ...paletteHdr, marginTop: 6 }}>Apps externes</div>
+              {EXT_CATALOG.map(ext => {
+                const on = connectedProviders.has(ext.provider)
+                return (
+                  <button key={ext.id} onClick={() => addExt(ext)}
+                    title={on ? `Connecter : ${ext.label}` : `${ext.label} — à connecter dans Connexions`}
+                    style={{ ...paletteBtn, opacity: on ? 1 : 0.55 }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                    <span style={{ width: 24, height: 24, borderRadius: 7, background: `color-mix(in srgb, ${ext.color} 16%, transparent)`, color: ext.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <AppIcon id={ext.id} size={14} />
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ext.label}</span>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: on ? '#22C55E' : 'var(--border-mid)' }} title={on ? 'Connecté' : 'Non connecté'} />
+                  </button>
+                )
+              })}
+
               <div style={{ height: 1, background: 'var(--border)', margin: '5px 4px 3px' }} />
               <button onClick={() => { if (graph.nodes.length && !confirm('Remplacer le système actuel par l’exemple ?')) return; loadExample() }}
                 style={{ ...paletteBtn, color: 'var(--text-dim)', fontSize: 11.5 }}>
@@ -500,16 +544,20 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 {graph.nodes.map(n => {
                   const st = status[n.id] ?? 'idle'
                   const preview = nodeText[n.id]
-                  const col = KIND_COLOR[n.kind]
                   const isTrigger = n.kind === 'trigger'
+                  const extEntry = n.kind === 'source' ? EXT_CATALOG.find(e => e.sourceKey === n.sourceKey) : undefined
                   const appEntry = n.kind === 'source'
                     ? APP_CATALOG.find(a => a.kind === 'source' && a.sourceKey === (n.sourceKey ?? 'activities'))
                     : n.kind === 'action'
                     ? APP_CATALOG.find(a => a.kind === 'action')
                     : undefined
+                  // Nœud d'app externe → couleur de la marque + son icône.
+                  const iconId = extEntry?.id ?? appEntry?.id ?? null
+                  const isApp = !!(extEntry || appEntry)
+                  const col = extEntry?.color ?? KIND_COLOR[n.kind]
                   // Type affiché en petit (distingue Objectif / Agent / Synthèse /
                   // Validation) — et « App » pour les connecteurs d'applications.
-                  const typeTag = appEntry ? 'App' : isTrigger ? null : KIND_LABEL[n.kind]
+                  const typeTag = isApp ? 'App' : isTrigger ? null : KIND_LABEL[n.kind]
                   const subtitle = n.kind === 'source' ? SOURCE_LABEL[n.sourceKey ?? 'activities']
                     : n.kind === 'action' ? ACTION_LABEL[n.actionKey ?? 'planning_save']
                     : undefined
@@ -536,7 +584,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: isTrigger ? '11px 11px 9px' : '9px 11px 7px', cursor: 'grab',
                           background: isTrigger ? `linear-gradient(135deg, color-mix(in srgb, ${col} 18%, var(--bg-card)), var(--bg-card))` : 'transparent' }}>
                         <span style={{ width: isTrigger ? 30 : 24, height: isTrigger ? 30 : 24, borderRadius: isTrigger ? 10 : 8, background: isTrigger ? `linear-gradient(135deg, ${col}, #6366F1)` : `color-mix(in srgb, ${col} 13%, transparent)`, color: isTrigger ? '#fff' : col, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: isTrigger ? `0 3px 10px color-mix(in srgb, ${col} 45%, transparent)` : 'none' }}>
-                          {appEntry ? <AppIcon id={appEntry.id} size={14} /> : <KindIcon kind={n.kind} size={isTrigger ? 15 : 13} />}
+                          {iconId ? <AppIcon id={iconId} size={14} /> : <KindIcon kind={n.kind} size={isTrigger ? 15 : 13} />}
                         </span>
                         <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
                           {typeTag && <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: col, lineHeight: 1 }}>{typeTag}</span>}

@@ -1,16 +1,20 @@
 'use client'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { MapContainer, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, useMapEvents, useMap } from 'react-leaflet'
 import { IconBike, IconMountain, IconRun, IconWalk } from '@tabler/icons-react'
-import type L from 'leaflet'
+import L from 'leaflet'
 import { createClient } from '@/lib/supabase/client'
 import { snapRoute } from '@/lib/openrouteservice'
 import type { Waypoint, SnappedPoint, Surface, ElevPoint } from '@/lib/openrouteservice'
 import { parseGPX } from '@/lib/gpxParser'
 import ElevationChart from './ElevationChart'
-import RouteSaveForm from './RouteSaveForm'
+import RouteSaveForm, { type RouteType } from './RouteSaveForm'
 import RouteLibrary from './RouteLibrary'
+import { FINISH_FLAG_HTML } from './finishFlag'
+
+// Marqueur « arrivée » (drapeau à damier) — divIcon Leaflet, pied posé sur le point.
+const FINISH_ICON = L.divIcon({ className: '', html: FINISH_FLAG_HTML, iconSize: [24, 24], iconAnchor: [5, 23] })
 import { useI18n } from '@/lib/i18n'
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
@@ -65,6 +69,7 @@ interface ActiveRoute {
 // Parcours enregistré (tel que renvoyé par la bibliothèque) — pour l'édition.
 interface SavedRoute {
   id: string; name: string; sport: string
+  route_type?: RouteType | null
   distance_m: number | null; elevation_gain_m: number | null
   surfaces: Surface[] | null
   snapped_points: SnappedPoint[] | null
@@ -88,6 +93,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   const [sport, setSport] = useState('cycling')
   const [routeName, setRouteName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingType, setEditingType] = useState<RouteType>('training')
   const [layer, setLayer] = useState<Layer>('std')
   const [layersOpen, setLayersOpen] = useState(false)
   const [showSave, setShowSave] = useState(false)
@@ -186,6 +192,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     setSport(route.sport || 'cycling')
     setRouteName(route.name || '')
     setEditingId(route.id)
+    setEditingType(route.route_type ?? 'training')
     setRedoStack([])
     setView('creating')
     const pts = route.snapped_points?.length ? route.snapped_points : wps
@@ -196,15 +203,15 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     }
   }
   const resetEditor = () => {
-    setEditingId(null); setWaypoints([]); setSnappedPoints([]); setDistanceM(0)
+    setEditingId(null); setEditingType('training'); setWaypoints([]); setSnappedPoints([]); setDistanceM(0)
     setElevGain(0); setSurfaces([]); setElevationProfile([]); setRouteName(''); setRedoStack([])
   }
 
-  const handleSave = async (name: string, isPublic: boolean) => {
+  const handleSave = async (name: string, isPublic: boolean, routeType: RouteType) => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser(); if (!user) return
     const payload = {
-      user_id: user.id, name, sport, is_public: isPublic,
+      user_id: user.id, name, sport, is_public: isPublic, route_type: routeType,
       distance_m: distanceM, elevation_gain_m: elevGain,
       waypoints, snapped_points: snappedPoints, elevation_profile: elevationProfile, surfaces,
     }
@@ -268,11 +275,13 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
           </>
         )}
         {waypoints.map((wp, i) => {
-          const isStart = i === 0, isEnd = i === waypoints.length - 1
-          const mid = !isStart && !isEnd
+          const isStart = i === 0, isEnd = i === waypoints.length - 1 && waypoints.length > 1
+          // Arrivée = drapeau à damier (fin de course) ; départ = pastille verte.
+          if (isEnd) return <Marker key={i} position={[wp.lat, wp.lng]} icon={FINISH_ICON} />
+          const mid = !isStart
           return (
             <CircleMarker key={i} center={[wp.lat, wp.lng]} radius={mid ? 4.5 : 7}
-              pathOptions={{ fillColor: isStart ? '#10B981' : isEnd ? '#EF4444' : '#ffffff', fillOpacity: 1, color: mid ? '#06B6D4' : '#ffffff', weight: mid ? 2 : 3 }} />
+              pathOptions={{ fillColor: isStart ? '#10B981' : '#ffffff', fillOpacity: 1, color: mid ? '#06B6D4' : '#ffffff', weight: mid ? 2 : 3 }} />
           )
         })}
         {scrubPosition && (
@@ -427,7 +436,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
         </div>
       </div>
 
-      {showSave && <RouteSaveForm routeName={routeName} onChangeName={setRouteName} onSave={handleSave} onClose={() => setShowSave(false)} isDark={isDark} />}
+      {showSave && <RouteSaveForm routeName={routeName} onChangeName={setRouteName} onSave={handleSave} onClose={() => setShowSave(false)} isDark={isDark} initialType={editingType} />}
     </div>
   )
 

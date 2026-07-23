@@ -22,7 +22,10 @@ export type StudioModel = 'hermes' | 'athena' | 'zeus'
 export type StudioNodeKind = 'trigger' | 'agent' | 'merge' | 'validation' | 'source' | 'action'
 
 // Pages de l'app branchables en LECTURE.
-export type StudioSourceKey = 'activities' | 'planning' | 'injuries' | 'recovery' | 'profile'
+export type StudioSourceKey =
+  | 'activities' | 'planning' | 'injuries' | 'recovery' | 'profile'
+  // Apps externes connectées (données synchronisées depuis le wearable / service)
+  | 'ext_strava' | 'ext_withings' | 'ext_polar'
 // Actions d'ÉCRITURE disponibles.
 export type StudioActionKey = 'planning_save'
 
@@ -80,6 +83,9 @@ export const SOURCE_LABEL: Record<StudioSourceKey, string> = {
   injuries:   'Mes blessures',
   recovery:   'Ma récupération (14 j)',
   profile:    'Mon profil',
+  ext_strava:   'Strava · sorties synchronisées',
+  ext_withings: 'Withings · poids & mensurations',
+  ext_polar:    'Polar · sommeil, HRV & readiness',
 }
 
 export const ACTION_LABEL: Record<StudioActionKey, string> = {

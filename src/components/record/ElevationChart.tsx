@@ -20,7 +20,8 @@ const SURFACE_LABEL_KEYS: Record<string, string> = {
 }
 
 const PAD = { top: 16, bottom: 20, left: 38, right: 14 }
-const N_SAMPLES = 110
+// Beaucoup d'échantillons = relief détaillé et fidèle (façon Strava).
+const N_SAMPLES = 240
 
 // Rééchantillonnage à pas de distance CONSTANT (interpolation linéaire) : supprime
 // la densité irrégulière des points GPS avant lissage.
@@ -64,24 +65,6 @@ function indexForDistance(data: { distanceM: number }[], targetM: number): numbe
     ? lo - 1 : lo
 }
 
-// Courbe lisse (Catmull-Rom → Bézier cubique)
-function buildSmoothPath(points: { x: number; y: number }[]): string {
-  if (points.length < 2) return ''
-  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i - 1] ?? points[i]
-    const p1 = points[i]
-    const p2 = points[i + 1]
-    const p3 = points[i + 2] ?? p2
-    const cp1x = p1.x + (p2.x - p0.x) / 6
-    const cp1y = p1.y + (p2.y - p0.y) / 6
-    const cp2x = p2.x - (p3.x - p1.x) / 6
-    const cp2y = p2.y - (p3.y - p1.y) / 6
-    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
-  }
-  return d
-}
-
 export default function ElevationChart({ data, surfaces, height = 100, isDark = false, snappedPoints, onPositionChange }: Props) {
   const { t } = useI18n()
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -106,10 +89,11 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
   const cW = W - PAD.left - PAD.right
   const cH = height - PAD.top - PAD.bottom
 
-  // Rééchantillonnage uniforme + double moyenne glissante → courbe réellement lisse.
+  // Rendu FIDÈLE (façon Strava) : rééchantillonnage uniforme + lissage LÉGER
+  // (un seul passage, anti-bruit GPS) → on garde le vrai relief, sommets nets.
   const pts = useMemo(() => {
     if (data.length < 3) return data
-    return movingAvg(movingAvg(resampleUniform(data, N_SAMPLES), 3), 2)
+    return movingAvg(resampleUniform(data, N_SAMPLES), 1)
   }, [data])
 
   const { minA, maxA, totalM } = useMemo(() => {
@@ -118,9 +102,10 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
     return { minA: Math.min(...alts), maxA: Math.max(...alts), totalM: pts[pts.length - 1].distanceM || 1 }
   }, [pts])
 
-  // Échelle verticale ANTI-EXAGÉRATION : un parcours plat ne doit pas remplir
-  // toute la hauteur (sinon le moindre mètre de bruit devient une montagne).
-  const dispRng = Math.max((maxA - minA) * 1.25, 30)
+  // Échelle verticale : léger garde-fou (un parcours PLAT ne devient pas une
+  // montagne) mais assez serrée pour qu'un parcours vallonné remplisse la
+  // hauteur — le relief ressort, façon Strava.
+  const dispRng = Math.max((maxA - minA) * 1.08, 18)
   const midAlt = (minA + maxA) / 2
   const loA = midAlt - dispRng / 2
   const hiA = midAlt + dispRng / 2
@@ -160,7 +145,8 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
   )
 
   const linePts = pts.map(d => ({ x: getX(d.distanceM), y: getY(d.altitudeM) }))
-  const pathD = buildSmoothPath(linePts)
+  // Segments droits = relief net et fidèle (Strava), pas de courbe qui arrondit les sommets.
+  const pathD = linePts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
   const lastX = getX(pts[pts.length - 1].distanceM).toFixed(1)
   const baseY = (PAD.top + cH).toFixed(1)
   const areaD = `${pathD} L ${lastX} ${baseY} L ${PAD.left} ${baseY} Z`
@@ -176,8 +162,8 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
         onMouseMove={handleMove} onMouseLeave={handleEnd}>
         <defs>
           <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#06B6D4" stopOpacity={0.28} />
-            <stop offset="100%" stopColor="#06B6D4" stopOpacity={0.02} />
+            <stop offset="0%" stopColor="#06B6D4" stopOpacity={0.5} />
+            <stop offset="100%" stopColor="#06B6D4" stopOpacity={0.08} />
           </linearGradient>
         </defs>
 

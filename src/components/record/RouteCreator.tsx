@@ -62,6 +62,16 @@ interface ActiveRoute {
   sport?: string
 }
 
+// Parcours enregistré (tel que renvoyé par la bibliothèque) — pour l'édition.
+interface SavedRoute {
+  id: string; name: string; sport: string
+  distance_m: number | null; elevation_gain_m: number | null
+  surfaces: Surface[] | null
+  snapped_points: SnappedPoint[] | null
+  waypoints: Waypoint[]
+  elevation_profile: ElevPoint[] | null
+}
+
 interface Props { onClose: () => void; onLoadRoute: (route: ActiveRoute) => void; isDark: boolean; initialView?: 'creating' | 'library' }
 
 export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView = 'creating' }: Props) {
@@ -77,6 +87,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   const [view, setView] = useState<'creating' | 'library'>(initialView)
   const [sport, setSport] = useState('cycling')
   const [routeName, setRouteName] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [layer, setLayer] = useState<Layer>('std')
   const [layersOpen, setLayersOpen] = useState(false)
   const [showSave, setShowSave] = useState(false)
@@ -163,14 +174,43 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
     mapRef.current?.locate({ setView: false, enableHighAccuracy: true, timeout: 15000, maximumAge: 0 })
   }
 
+  // « Modifier » depuis la bibliothèque : charge le parcours dans l'éditeur.
+  const loadRouteForEdit = (route: SavedRoute) => {
+    const wps: Waypoint[] = (route.waypoints ?? []).map(p => ({ lat: p.lat, lng: p.lng }))
+    setWaypoints(wps)
+    setSnappedPoints(route.snapped_points ?? [])
+    setDistanceM(route.distance_m ?? 0)
+    setElevGain(route.elevation_gain_m ?? 0)
+    setSurfaces(route.surfaces ?? [])
+    setElevationProfile(route.elevation_profile ?? [])
+    setSport(route.sport || 'cycling')
+    setRouteName(route.name || '')
+    setEditingId(route.id)
+    setRedoStack([])
+    setView('creating')
+    const pts = route.snapped_points?.length ? route.snapped_points : wps
+    if (pts.length) {
+      const lat = pts.reduce((s, p) => s + p.lat, 0) / pts.length
+      const lng = pts.reduce((s, p) => s + p.lng, 0) / pts.length
+      setTimeout(() => mapRef.current?.setView([lat, lng], 13), 60)
+    }
+  }
+  const resetEditor = () => {
+    setEditingId(null); setWaypoints([]); setSnappedPoints([]); setDistanceM(0)
+    setElevGain(0); setSurfaces([]); setElevationProfile([]); setRouteName(''); setRedoStack([])
+  }
+
   const handleSave = async (name: string, isPublic: boolean) => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser(); if (!user) return
-    await supabase.from('routes').insert({
+    const payload = {
       user_id: user.id, name, sport, is_public: isPublic,
       distance_m: distanceM, elevation_gain_m: elevGain,
       waypoints, snapped_points: snappedPoints, elevation_profile: elevationProfile, surfaces,
-    })
+    }
+    // Édition d'un parcours existant → mise à jour ; sinon création.
+    if (editingId) await supabase.from('routes').update(payload).eq('id', editingId)
+    else await supabase.from('routes').insert(payload)
     setShowSave(false); onClose()
   }
 
@@ -192,14 +232,21 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
   const exitCreate = initialView === 'library' ? () => setView('library') : onClose
 
   if (view === 'library') return createPortal(
-    <RouteLibrary isDark={isDark} onClose={onClose} onCreate={() => setView('creating')}
+    <RouteLibrary isDark={isDark} onClose={onClose}
+      onCreate={() => { resetEditor(); setView('creating') }}
+      onEditRoute={loadRouteForEdit}
       onUseRoute={route => { onLoadRoute(route); onClose() }} />,
     document.body
   )
 
   const ui = (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, fontFamily: 'var(--font-body)', animation: 'slideUp 300ms cubic-bezier(0.16,1,0.3,1)' }}>
-      <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+      <style>{`
+        @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        /* Curseur en petite croix sur la carte (placement précis des points), façon Strava. */
+        .leaflet-container, .leaflet-container .leaflet-grab { cursor: crosshair !important; }
+        .leaflet-container.leaflet-dragging, .leaflet-container.leaflet-dragging .leaflet-grab { cursor: crosshair !important; }
+      `}</style>
       <MapContainer center={[48.8566, 2.3522]} zoom={13} zoomControl={false} attributionControl={false} style={{ position: 'absolute', inset: 0 }}>
         <TileLayer url={TILES[layer]} tileSize={512} zoomOffset={-1} detectRetina={true} maxZoom={20} attribution={ATTR} />
         <MapClickHandler onAdd={addWaypoint} />
@@ -374,7 +421,7 @@ export default function RouteCreator({ onClose, onLoadRoute, isDark, initialView
         <div style={collapse(panelOpen)}>
           <div style={{ overflow: 'hidden', minHeight: 0 }}>
             <div style={{ padding: '2px 12px 8px' }}>
-              <ElevationChart data={elevationProfile} surfaces={surfaces} height={120} isDark={isDark} snappedPoints={snappedPoints} onPositionChange={setScrubPosition} />
+              <ElevationChart data={elevationProfile} surfaces={surfaces} height={150} isDark={isDark} snappedPoints={snappedPoints} onPositionChange={setScrubPosition} />
             </div>
           </div>
         </div>

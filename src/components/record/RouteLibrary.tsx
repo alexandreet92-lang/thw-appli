@@ -25,22 +25,23 @@ interface Props {
   onClose: () => void
   onUseRoute: (route: ActiveRoute) => void
   onCreate: () => void
+  onEditRoute?: (route: Route) => void
   isDark: boolean
 }
 
-// Vignette du parcours en SVG raw (aucune clé/API externe) : tracé normalisé
-// dans une box 100×70, ratio géographique respecté (longitude corrigée par
-// cos(lat)), nord en haut. Façon Strava — chaque carte montre son tracé.
-function RouteThumbnail({ route, accent, fallbackBg, fallbackStroke }: {
-  route: Route; accent: string; fallbackBg: string; fallbackStroke: string
+// Vignette du parcours en SVG raw (aucune clé/API externe) : tracé normalisé,
+// ratio géographique respecté (longitude corrigée par cos(lat)), nord en haut.
+// Grande carte pleine largeur, fond légèrement teinté « carte ». Façon Strava.
+function RouteThumbnail({ route, accent, mapBg, fallbackStroke }: {
+  route: Route; accent: string; mapBg: string; fallbackStroke: string
 }) {
-  const W = 100, H = 70, PAD = 9
+  const W = 240, H = 150, PAD = 16
   const pts = route.snapped_points ?? route.waypoints ?? []
 
   if (pts.length < 2) {
     return (
-      <div style={{ width: W, height: H, borderRadius: 10, background: fallbackBg, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 20l5-12 5 8 3-4 5 8H3z" stroke={fallbackStroke} strokeWidth="1.5" strokeLinejoin="round"/></svg>
+      <div style={{ width: '100%', aspectRatio: `${W} / ${H}`, background: mapBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M3 20l5-12 5 8 3-4 5 8H3z" stroke={fallbackStroke} strokeWidth="1.5" strokeLinejoin="round"/></svg>
       </div>
     )
   }
@@ -55,31 +56,41 @@ function RouteThumbnail({ route, accent, fallbackBg, fallbackStroke }: {
   const scale = Math.min((W - 2 * PAD) / geoW, (H - 2 * PAD) / geoH)
   const drawW = geoW * scale, drawH = geoH * scale
   const offX = (W - drawW) / 2, offY = (H - drawH) / 2
-  const path = pts.map(p => {
-    const x = offX + (p.lng - minLng) * kx * scale
-    const y = offY + (maxLat - p.lat) * scale
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
+  const xy = (p: { lat: number; lng: number }) => ({
+    x: offX + (p.lng - minLng) * kx * scale,
+    y: offY + (maxLat - p.lat) * scale,
+  })
+  const path = pts.map(p => { const c = xy(p); return `${c.x.toFixed(1)},${c.y.toFixed(1)}` }).join(' ')
+  const s = xy(pts[0]), e = xy(pts[pts.length - 1])
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ borderRadius: 10, flexShrink: 0, background: fallbackBg, display: 'block' }}>
-      <polyline points={path} fill="none" stroke={accent} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" style={{ display: 'block', width: '100%', aspectRatio: `${W} / ${H}`, background: mapBg }}>
+      <polyline points={path} fill="none" stroke="#ffffff" strokeWidth={5} strokeOpacity={0.7} strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={path} fill="none" stroke={accent} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={s.x} cy={s.y} r={4} fill="#10B981" stroke="#fff" strokeWidth={1.5} />
+      <circle cx={e.x} cy={e.y} r={4} fill="#EF4444" stroke="#fff" strokeWidth={1.5} />
     </svg>
   )
 }
 
-export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: Props) {
+function menuItem(color: string): React.CSSProperties {
+  return { display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', color, fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans, sans-serif' }
+}
+
+export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRoute, isDark }: Props) {
   const { t } = useI18n()
   const SPORT_LABELS: Record<string, string> = { cycling: t('record.routeLibrarySportCycling'), mtb: t('record.routeLibrarySportMtb'), trail: t('record.routeLibrarySportTrail'), hiking: t('record.routeLibrarySportHiking') }
   const [routes, setRoutes] = useState<Route[]>([])
   const [showPublic, setShowPublic] = useState(false)
   const [search, setSearch] = useState('')
+  const [menuId, setMenuId] = useState<string | null>(null)
   const bg = isDark ? '#0A0A0A' : '#FFFFFF'
   const text = isDark ? '#FFFFFF' : '#0A0A0A'
   const dim = isDark ? 'rgba(255,255,255,0.4)' : '#9CA3AF'
   const separator = isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'
   const surface = isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB'
   const border = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'
+  const mapBg = isDark ? 'rgba(120,180,140,0.10)' : '#EAF1E6'  // teinte « carte » discrète
 
   useEffect(() => {
     const load = async () => {
@@ -94,9 +105,31 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: 
   }, [showPublic])
 
   const handleDelete = async (id: string) => {
+    setMenuId(null)
     await createClient().from('routes').delete().eq('id', id)
     setRoutes(r => r.filter(x => x.id !== id))
   }
+
+  const handleDuplicate = async (route: Route) => {
+    setMenuId(null)
+    const sb = createClient()
+    const { data: { user } } = await sb.auth.getUser()
+    if (!user) return
+    const { data } = await sb.from('routes').insert({
+      user_id: user.id, name: `${route.name} (copie)`, sport: route.sport, is_public: false,
+      distance_m: route.distance_m, elevation_gain_m: route.elevation_gain_m,
+      waypoints: route.waypoints, snapped_points: route.snapped_points,
+      elevation_profile: route.elevation_profile, surfaces: route.surfaces,
+    }).select('*').single()
+    if (data) setRoutes(r => [data as Route, ...r])
+  }
+
+  const useRoute = (route: Route) => onUseRoute({
+    snapped_points: (route.snapped_points ?? route.waypoints).map(p => ({ lat: p.lat, lng: p.lng })),
+    elevation_profile: route.elevation_profile ?? [],
+    waypoints: route.waypoints?.map(p => ({ lat: p.lat, lng: p.lng })),
+    sport: route.sport,
+  })
 
   const filtered = routes.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
 
@@ -127,7 +160,7 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: 
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
         {filtered.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: dim }}>
             <p style={{ fontSize: 14 }}>{
@@ -137,28 +170,54 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, isDark }: 
             }</p>
           </div>
         )}
-        {filtered.map(route => (
-          <div key={route.id} style={{ background: surface, border: `1px solid ${border}`, borderRadius: 16, marginBottom: 12, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', gap: 12, padding: 12 }}>
-              <RouteThumbnail route={route} accent="#06B6D4" fallbackBg={separator} fallbackStroke={dim} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 15, fontWeight: 600, color: text, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{route.name}</p>
-                <p style={{ fontSize: 12, color: dim, margin: '0 0 6px' }}>{SPORT_LABELS[route.sport] ?? route.sport} · {new Date(route.created_at).toLocaleDateString(currentLocale())}</p>
+
+        {/* Grille de cartes — grandes vignettes, 4 par ligne sur desktop */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 16 }}>
+          {filtered.map(route => (
+            <div key={route.id} style={{ background: surface, border: `1px solid ${border}`, borderRadius: 16, overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', zIndex: menuId === route.id ? 3 : undefined }}>
+              {/* Vignette carte — clic = utiliser le parcours */}
+              <div onClick={() => useRoute(route)} style={{ position: 'relative', cursor: 'pointer' }} title={t('record.routeLibraryUse')}>
+                <RouteThumbnail route={route} accent="#06B6D4" mapBg={mapBg} fallbackStroke={dim} />
+                {/* Bouton ⋯ (menu) */}
+                <button onClick={e => { e.stopPropagation(); setMenuId(m => m === route.id ? null : route.id) }} aria-label="Options"
+                  style={{ position: 'absolute', top: 8, right: 8, width: 30, height: 30, borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                </button>
+                {menuId === route.id && (
+                  <div style={{ position: 'absolute', top: 42, right: 8, zIndex: 5, background: bg, border: `1px solid ${border}`, borderRadius: 12, boxShadow: '0 8px 28px rgba(0,0,0,0.22)', padding: 5, minWidth: 150, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {onEditRoute && (
+                      <button onClick={e => { e.stopPropagation(); setMenuId(null); onEditRoute(route) }} style={menuItem(text)}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                        {t('record.routeLibraryEdit')}
+                      </button>
+                    )}
+                    <button onClick={e => { e.stopPropagation(); void handleDuplicate(route) }} style={menuItem(text)}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+                      {t('record.routeLibraryDuplicate')}
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); void handleDelete(route.id) }} style={menuItem('#EF4444')}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                      {t('record.routeLibraryDelete')}
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* Infos — clic = utiliser aussi */}
+              <div onClick={() => useRoute(route)} style={{ padding: '10px 12px 12px', cursor: 'pointer' }}>
+                <p style={{ fontSize: 14.5, fontWeight: 700, color: text, margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{route.name}</p>
+                <p style={{ fontSize: 11.5, color: dim, margin: '0 0 7px' }}>{SPORT_LABELS[route.sport] ?? route.sport} · {new Date(route.created_at).toLocaleDateString(currentLocale())}</p>
                 <div style={{ display: 'flex', gap: 12 }}>
-                  {route.distance_m != null && <span style={{ fontSize: 12, color: dim }}>{(route.distance_m / 1000).toFixed(1)}km</span>}
-                  {route.elevation_gain_m != null && <span style={{ fontSize: 12, color: dim }}>D+ {Math.round(route.elevation_gain_m)}m</span>}
+                  {route.distance_m != null && <span style={{ fontSize: 12.5, fontWeight: 600, color: text }}>{(route.distance_m / 1000).toFixed(1)} km</span>}
+                  {route.elevation_gain_m != null && <span style={{ fontSize: 12.5, fontWeight: 600, color: dim }}>D+ {Math.round(route.elevation_gain_m)} m</span>}
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', borderTop: `1px solid ${separator}` }}>
-              <button onClick={() => onUseRoute({ snapped_points: (route.snapped_points ?? route.waypoints).map(p => ({ lat: p.lat, lng: p.lng })), elevation_profile: route.elevation_profile ?? [], waypoints: route.waypoints?.map(p => ({ lat: p.lat, lng: p.lng })), sport: route.sport })}
-                style={{ flex: 1, padding: '10px', background: 'none', border: 'none', color: '#06B6D4', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('record.routeLibraryUse')}</button>
-              <button onClick={() => handleDelete(route.id)}
-                style={{ padding: '10px 16px', background: 'none', border: 'none', borderLeft: `1px solid ${separator}`, color: dim, fontSize: 13, cursor: 'pointer' }}>{t('record.routeLibraryDelete')}</button>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
+
+      {/* Ferme le menu ⋯ au clic ailleurs */}
+      {menuId && <div onClick={() => setMenuId(null)} style={{ position: 'fixed', inset: 0, zIndex: 2 }} />}
     </div>
   )
 }

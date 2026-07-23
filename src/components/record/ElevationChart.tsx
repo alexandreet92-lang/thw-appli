@@ -2,6 +2,7 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
 import type { ElevPoint, Surface } from '@/lib/openrouteservice'
+import { FinishFlag } from './finishFlag'
 
 interface Props {
   data: ElevPoint[]
@@ -70,7 +71,7 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
   const wrapRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const [W, setW] = useState(360)
-  const [cursor, setCursor] = useState<{ x: number; y: number; point: ElevPoint } | null>(null)
+  const [cursor, setCursor] = useState<{ x: number; y: number; point: ElevPoint; slope: number } | null>(null)
   const dim = isDark ? 'rgba(255,255,255,0.35)' : '#9CA3AF'
   const gridStroke = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(17,24,39,0.07)'
 
@@ -122,8 +123,13 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
     const distAtX = ((xClamped - PAD.left) / cW) * totalM
     const idx = indexForDistance(pts, distAtX)
     const pt = pts[idx]
+    // Pente locale (%) : dénivelé / distance sur une petite fenêtre autour du point.
+    const w = 2
+    const i0 = Math.max(0, idx - w), i1 = Math.min(pts.length - 1, idx + w)
+    const dd = pts[i1].distanceM - pts[i0].distanceM
+    const slope = dd > 0 ? ((pts[i1].altitudeM - pts[i0].altitudeM) / dd) * 100 : 0
     // Trait + pastille + bulle posés sur le MÊME point de la courbe → suit l'embout.
-    setCursor({ x: getX(pt.distanceM), y: getY(pt.altitudeM), point: pt })
+    setCursor({ x: getX(pt.distanceM), y: getY(pt.altitudeM), point: pt, slope })
 
     if (onPositionChange && snappedPoints && snappedPoints.length > 0) {
       const gIdx = snappedPoints.length === pts.length
@@ -185,9 +191,9 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
           return <text key={i} x={getX(pts[idx].distanceM)} y={PAD.top + cH + 13} textAnchor="middle" fontSize={8} fill={dim} style={{ fontVariantNumeric: 'tabular-nums' }}>{(pts[idx].distanceM / 1000).toFixed(1)}km</text>
         })}
 
-        {/* Départ / arrivée */}
+        {/* Départ (pastille verte) / arrivée (drapeau à damier) */}
         <circle cx={startPt.x} cy={startPt.y} r={4.5} fill="#10B981" stroke="#fff" strokeWidth={1.8} vectorEffect="non-scaling-stroke" />
-        <circle cx={endPt.x} cy={endPt.y} r={4.5} fill="#EF4444" stroke="#fff" strokeWidth={1.8} vectorEffect="non-scaling-stroke" />
+        <FinishFlag x={endPt.x} y={endPt.y} size={0.62} />
 
         {/* Curseur — trait + pastille alignés sur la courbe */}
         {cursor && (
@@ -199,7 +205,7 @@ export default function ElevationChart({ data, surfaces, height = 100, isDark = 
       </svg>
       {cursor && (
         <div style={{ position: 'absolute', top: 2, left: `${Math.max(6, Math.min(94, (cursor.x / W) * 100))}%`, transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.78)', borderRadius: 7, padding: '3px 9px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-          <p style={{ fontSize: 12, color: 'white', margin: 0, fontWeight: 600 }}>{Math.round(cursor.point.altitudeM)}m</p>
+          <p style={{ fontSize: 12, color: 'white', margin: 0, fontWeight: 600 }}>{Math.round(cursor.point.altitudeM)}m · {cursor.slope >= 0 ? '+' : ''}{cursor.slope.toFixed(1)}%</p>
           <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', margin: 0 }}>{(cursor.point.distanceM / 1000).toFixed(2)}km</p>
         </div>
       )}

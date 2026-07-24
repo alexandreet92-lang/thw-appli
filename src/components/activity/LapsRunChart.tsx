@@ -43,8 +43,10 @@ function lapSpeedMs(lap: LapData): number {
   return 0
 }
 
-// Palette running : vitesse relative → vert (rapide = vert foncé).
-const RUN_SPEED_COLORS = ['#A7F3D0', '#6EE7B7', '#34D399', '#10B981', '#059669', '#047857'] as const
+// Palette running : vitesse relative → violet (rapide = violet foncé).
+// IDENTIQUE à LapsBikeChart (POWER_ZONE_COLORS) pour un design uniforme
+// entre le vélo et la course : mêmes barres violettes, même intensité.
+const RUN_SPEED_COLORS = ['#EDE9FE', '#C4B5FD', '#A78BFA', '#8B5CF6', '#7C3AED', '#6B21A8'] as const
 function runSpeedColor(speedMs: number, minSpeed: number, maxSpeed: number): string {
   if (maxSpeed <= minSpeed) return RUN_SPEED_COLORS[3]
   const t = (speedMs - minSpeed) / (maxSpeed - minSpeed)
@@ -197,7 +199,7 @@ export function LapsRunChart({ activityId, cachedLaps, avgSpeedMs, onLapTap }: P
               <g key={i}>
                 <rect x={bX} y={bY} width={bW} height={bH} fill={fill} rx={1.5} style={{ pointerEvents: 'none' }} />
                 {showLabel && (
-                  <text x={bX + bW / 2} y={bY - 4} textAnchor="middle" fontSize="9" fill="#059669" fontWeight="600"
+                  <text x={bX + bW / 2} y={bY - 4} textAnchor="middle" fontSize="9" fill="#7C3AED" fontWeight="600"
                     style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'Barlow Condensed, sans-serif', pointerEvents: 'none' }}>
                     {formatPace(speedMsToPace(sp))}
                   </text>

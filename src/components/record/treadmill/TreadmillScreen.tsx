@@ -19,7 +19,7 @@ import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
 import { useTreadmillPlan } from './useTreadmillPlan'
 import {
   type TreadmillPlan, type TreadStep,
-  zoneBg, zoneInk, fmtPaceSec, kmhToPaceSec,
+  zoneBg, zoneInk, fmtPaceSec, kmhToPaceSec, buildTreadmillLaps,
 } from './treadmillPlan'
 import { buildTreadmillStreams, type TreadInterval } from './treadmillProfile'
 
@@ -121,6 +121,8 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           inclinePct: st.inclinePct,
         }))
         const streams = buildTreadmillStreams(intervals)
+        // Tours = intervalles de la séance → même analyse que le vélo/course GPS.
+        const laps = streams ? buildTreadmillLaps(plan.steps, streams.time, streams.heartrate) : []
         const elevationM = intervals.reduce((s2, iv) => s2 + (iv.speedKmh / 3.6) * iv.durationS * Math.max(0, iv.inclinePct) / 100, 0)
         await sb.from('workout_sessions').insert({
           user_id: user.id, sport: 'running',
@@ -131,10 +133,11 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           title: plan.title, training_types: ['tapis'],
         })
         await sb.from('activities').insert({
-          user_id: user.id, sport_type: 'running', title: plan.title,
+          user_id: user.id, sport_type: 'run', title: plan.title,
           started_at: start, moving_time_s: durationSec, elapsed_time_s: durationSec,
           distance_m: distanceM, elevation_gain_m: Math.round(elevationM),
           avg_speed_ms: avgSpeedMs, calories: kcal, streams,
+          laps: laps.length > 1 ? laps : null,
         })
         notifyActivitySaved({ sport: 'running', title: plan.title })
       }

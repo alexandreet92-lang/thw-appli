@@ -51,6 +51,67 @@ export interface TreadmillPlan {
   totalDistanceM: number
 }
 
+/** Tour reconstruit pour l'analyse (forme LapData attendue par LapsRunChart /
+ *  LapsDetailView). Un intervalle tapis = un tour. */
+export interface TreadLap {
+  lap_index:         number
+  start_index:       number
+  end_index:         number
+  distance_m:        number
+  moving_time_s:     number
+  elapsed_time_s:    number
+  avg_speed_ms:      number
+  avg_hr:            number | null
+  avg_cadence:       number | null
+  elevation_gain_m:  number
+  temp_avg:          number | null
+}
+
+/**
+ * Reconstruit les tours (LapData) d'une séance TAPIS à partir de ses intervalles
+ * (plan.steps) et de la timeline des streams (streams.time). Chaque intervalle
+ * devient un tour, avec ses index de début/fin dans les streams pour que la vue
+ * détaillée (LapsDetailView) puisse trancher les séries. avg_hr calculé depuis la
+ * FC des streams si présente. Aucune donnée fabriquée hors vitesse cible du bloc.
+ */
+export function buildTreadmillLaps(
+  steps: TreadStep[],
+  timeArr: number[],
+  hrArr?: number[] | null,
+): TreadLap[] {
+  if (!steps.length || !timeArr.length) return []
+  const idxAtTime = (tSec: number): number => {
+    for (let i = 0; i < timeArr.length; i++) if (timeArr[i] >= tSec) return i
+    return timeArr.length - 1
+  }
+  return steps.map((st, i) => {
+    const spd = st.targetKmh != null && st.targetKmh > 0
+      ? st.targetKmh / 3.6
+      : (st.targetPaceSecPerKm ? 1000 / st.targetPaceSecPerKm : 0)
+    const si = idxAtTime(st.t0)
+    const ei = Math.max(si, idxAtTime(st.t1) - 1)
+    let avgHr: number | null = null
+    if (hrArr && hrArr.length) {
+      const seg = hrArr.slice(si, ei + 1).filter(h => h > 0)
+      if (seg.length) avgHr = Math.round(seg.reduce((a, b) => a + b, 0) / seg.length)
+    }
+    const dist = spd * st.durationS
+    return {
+      lap_index:        i,
+      start_index:      si,
+      end_index:        ei,
+      distance_m:       Math.round(dist),
+      moving_time_s:    st.durationS,
+      elapsed_time_s:   st.durationS,
+      avg_speed_ms:     spd,
+      avg_hr:           avgHr,
+      avg_cadence:      null,
+      elevation_gain_m: Math.round(dist * Math.max(0, st.inclinePct || 0) / 100),
+      temp_avg:         null,
+    }
+  })
+}
+
 const NAME_BY_TYPE: Record<string, string> = {
   warmup: 'Échauffement', effort: 'Effort', recovery: 'Récupération', cooldown: 'Retour au calme',
 }

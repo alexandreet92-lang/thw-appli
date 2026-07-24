@@ -26,7 +26,7 @@ import { totalMin, totalDistance, type MBlock } from '@/components/planning/mobi
 import { defaultCircuit, type ExerciseItem, type ExoCircuit } from '@/components/planning/mobile/strength'
 import type { ComposedMove, ComposedCircuit } from '@/components/planning/composedSports'
 import type { SportType, RunningSub } from '@/app/planning/page'
-import { buildTreadmillPlan } from './treadmill/treadmillPlan'
+import { buildTreadmillPlan, buildTreadmillLaps } from './treadmill/treadmillPlan'
 import { buildTreadmillStreams, summarizeIntervals, resampleHr, type TreadInterval } from './treadmill/treadmillProfile'
 import { TreadmillProfilePreview } from './treadmill/TreadmillProfilePreview'
 import { EnduranceStats } from './treadmill/EnduranceStats'
@@ -167,12 +167,15 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
           streams.heartrate = resampleHr(importedHr, streams.time.length)
           avgHr = Math.round(importedHr.reduce((a, b) => a + b, 0) / importedHr.length)
         }
+        // Tours = intervalles de la séance → analyse identique au vélo/course GPS.
+        const treadLaps = streams ? buildTreadmillLaps(plan.steps, streams.time, streams.heartrate) : []
         Object.assign(act, {
           // NB : `activities` n'a PAS de colonne training_types (contrairement à
           // workout_sessions) — ne pas l'insérer ici, sinon l'insert échoue.
           moving_time_s: sum.durationS, elapsed_time_s: sum.durationS, distance_m: sum.distanceM,
           elevation_gain_m: sum.elevationM, avg_speed_ms: sum.avgSpeedMs, average_heartrate: avgHr,
           streams,
+          laps: treadLaps.length > 1 ? treadLaps : undefined,
         })
         Object.assign(ws, { duration_seconds: sum.durationS, distance_m: sum.distanceM, elevation_gain_m: sum.elevationM, avg_speed_kmh: sum.avgSpeedMs * 3.6, avg_hr: avgHr, training_types: ['tapis'], laps: blocks })
       } else if (mode === 'endurance') {

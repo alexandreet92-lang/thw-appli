@@ -33,7 +33,7 @@ import { SwimLengths } from '@/components/activity/SwimLengths'
 import { MuscuActivityView } from '@/components/activity/MuscuActivityView'
 import ProgressionHub from '@/app/progression/page'
 import { ProgressionSportView } from '@/app/progression/components/ProgressionSportView'
-import { RunningLapsSection } from '@/components/activity/RunningLapsSection'
+import { LapsRunChart } from '@/components/activity/LapsRunChart'
 import { formatPace as fmtPaceMinKm, speedToPace as kmhToPaceMin, formatPaceSwim } from '@/lib/utils/pace'
 import { formatSplit, speedKmhToSplit500 } from '@/lib/utils/split'
 import { computeVapKmh, avgAdjustedPaceMinKm } from '@/lib/utils/vap'
@@ -7906,18 +7906,23 @@ conseil pour la prochaine séance similaire.`
               />
             )}
 
-            {/* LAPS course + tableau de repli — nécessitent des laps déjà présents.
-                Exclut le cas vélo-avec-watts déjà couvert au-dessus (pas de doublon). */}
-            {a.laps && a.laps.length > 1 && !(isBike && a.streams?.watts && a.streams.watts.length >= 2) && (
+            {/* LAPS course — MÊME système que le vélo : barres violettes cliquables
+                → LapsDetailView sport="running". Se monte toujours (self-fetch + se
+                masque seul s'il n'y a qu'un tour), comme le vélo. */}
+            {isRun && (
+              <LapsRunChart
+                activityId={a.id}
+                cachedLaps={a.laps}
+                avgSpeedMs={a.distance_m && a.moving_time_s ? a.distance_m / a.moving_time_s : null}
+                onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
+              />
+            )}
+
+            {/* Tableau de repli — autres sports (natation, muscu…) qui ont des laps
+                mais ni watts (vélo) ni allure cliquable (course) déjà couverts. */}
+            {a.laps && a.laps.length > 1 && !isRun && !(isBike && a.streams?.watts && a.streams.watts.length >= 2) && (
               <Section title={`Intervalles — ${a.laps.length} tours`}>
-                {isRun ? (
-                  <RunningLapsSection
-                    activityId={a.id}
-                    cachedLaps={a.laps}
-                    streams={a.streams}
-                    avgSpeedMs={a.distance_m && a.moving_time_s ? a.distance_m / a.moving_time_s : null}
-                  />
-                ) : (
+                {(
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead>
@@ -8378,13 +8383,14 @@ conseil pour la prochaine séance similaire.`
           </div>
         )}
 
-        {/* ── LAPS ── (running/trail : section inline dédiée ; vélo : LapsChart/Table watts) */}
+        {/* ── LAPS ── (running/trail : MÊME système que le vélo — barres violettes
+             cliquables → LapsDetailView sport="running" ; vélo : LapsChart/Table watts) */}
         {isRun ? (
-          <RunningLapsSection
+          <LapsRunChart
             activityId={a.id}
             cachedLaps={a.laps}
-            streams={a.streams}
             avgSpeedMs={a.distance_m && a.moving_time_s ? a.distance_m / a.moving_time_s : null}
+            onLapTap={i => { setLapsViewInitial(i); setLapsViewOpen(true) }}
           />
         ) : a.laps && a.laps.length > 1 ? (
           <div style={{ marginBottom: 32, paddingTop: 24 }}>
@@ -8651,8 +8657,8 @@ conseil pour la prochaine séance similaire.`
                 )
               })()}
 
-              {/* Les tours running/trail sont rendus en INLINE (RunningLapsSection,
-                  section LAPS ci-dessus) — pas de vue slide pour la course. */}
+              {/* Les tours running/trail utilisent LapsRunChart (section LAPS
+                  ci-dessus) → même vue détaillée que le vélo (LapsDetailView). */}
 
               {/* A — DÉCOUPLAGE P/FC — pleine largeur */}
               {showDec && (

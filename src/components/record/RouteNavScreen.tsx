@@ -37,7 +37,10 @@ interface Props {
   elapsedSec?: number
   distanceDoneM?: number
   gainDoneM?: number
-  onClose: () => void
+  onClose?: () => void
+  /** Rendu en page intégrée (carrousel) : pas de portal, pas de bouton fermer,
+      position absolue dans le parent au lieu d'un overlay plein écran. */
+  embedded?: boolean
 }
 
 function haversine(a: LatLng, b: LatLng): number {
@@ -98,7 +101,7 @@ function ManeuverIcon({ type, size = 24 }: { type: number; size?: number }) {
   return <svg {...p}><path d="M12 19V5M6 11l6-6 6 6" /></svg>
 }
 
-export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, watts, elapsedSec = 0, distanceDoneM = 0, gainDoneM = 0, onClose }: Props) {
+export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, watts, elapsedSec = 0, distanceDoneM = 0, gainDoneM = 0, onClose, embedded = false }: Props) {
   const { t } = useI18n()
   const [pos, setPos] = useState<LatLng | null>(null)
   const [speedKmh, setSpeedKmh] = useState(0)
@@ -215,7 +218,9 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
   )
 
   const ui = (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 10010, background: 'var(--bg)' }}>
+    <div style={embedded
+      ? { position: 'absolute', inset: 0, background: 'var(--bg)', overflow: 'hidden' }
+      : { position: 'fixed', inset: 0, zIndex: 10010, background: 'var(--bg)' }}>
       <MapContainer center={center} zoom={15} zoomControl={false} attributionControl={false} style={{ position: 'absolute', inset: 0 }}>
         <TileLayer url={tileUrl(isDark)} tileSize={512} zoomOffset={-1} detectRetina maxZoom={20} attribution={ATTR} />
         {hasRoute && <Polyline positions={line.map(p => [p.lat, p.lng] as [number, number])} pathOptions={{ color: '#2563EB', weight: 5, opacity: 0.92, lineCap: 'round', lineJoin: 'round' }} />}
@@ -226,20 +231,22 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
         <Follow pos={pos} />
       </MapContainer>
 
-      {/* Fermer */}
+      {/* Fermer (uniquement en overlay plein écran) */}
+      {!embedded && (
       <button onClick={onClose} aria-label={t('record.routeNavClose')} style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 10px)', left: 12, zIndex: 1200, width: 44, height: 44, borderRadius: '50%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(0,0,0,0.25)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg width="17" height="17" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/></svg>
       </button>
+      )}
 
       {/* Bannière manœuvre (façon app Plan). Repliée : carte flottante, tirer VERS
           LE BAS pour déployer la liste plein écran. Déployée : panneau quasi plein
           écran, défilable ; on remonte en donnant un coup VERS LE HAUT sur la poignée du bas. */}
       {hasRoute && (
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: bannerOpen ? 1300 : 1100, paddingTop: 'env(safe-area-inset-top)', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: bannerOpen ? 1300 : 1100, paddingTop: embedded ? 0 : 'env(safe-area-inset-top)', pointerEvents: 'none' }}>
         <div
           style={{
             pointerEvents: 'auto',
-            margin: bannerOpen ? '0' : '8px 12px 0 64px',
+            margin: bannerOpen ? '0' : (embedded ? '8px 12px 0' : '8px 12px 0 64px'),
             background: 'var(--bg)',
             border: bannerOpen ? 'none' : '1px solid var(--border)',
             borderTopLeftRadius: bannerOpen ? 0 : 18, borderTopRightRadius: bannerOpen ? 0 : 18,
@@ -309,7 +316,7 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
       )}
 
       {/* Surimpression : vitesse / FC / watts (par-dessus la carte, sans bulle) */}
-      <div style={{ position: 'absolute', right: 14, bottom: `calc(${hasRoute ? 150 : 28}px + env(safe-area-inset-bottom))`, zIndex: 1100, textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6, textShadow: txtShadow }}>
+      <div style={{ position: 'absolute', right: 14, bottom: embedded ? (hasRoute ? 150 : 28) : `calc(${hasRoute ? 150 : 28}px + env(safe-area-inset-bottom))`, zIndex: 1100, textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6, textShadow: txtShadow }}>
         <div><span style={{ fontSize: 26, fontWeight: 800, color: txt, fontVariantNumeric: 'tabular-nums' }}>{speedKmh.toFixed(1)}</span><span style={{ fontSize: 12, color: txt, opacity: 0.8, marginLeft: 3 }}>km/h</span></div>
         {hr != null && <div><span style={{ fontSize: 20, fontWeight: 700, color: txt }}>{Math.round(hr)}</span><span style={{ fontSize: 11, color: txt, opacity: 0.8, marginLeft: 3 }}>bpm</span></div>}
         {showWatts && watts != null && <div><span style={{ fontSize: 20, fontWeight: 700, color: txt }}>{Math.round(watts)}</span><span style={{ fontSize: 11, color: txt, opacity: 0.8, marginLeft: 3 }}>W</span></div>}
@@ -320,7 +327,7 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
       <div
         onTouchStart={e => { pStartY.current = e.touches[0].clientY }}
         onTouchEnd={e => { const dy = e.changedTouches[0].clientY - pStartY.current; if (dy < -30) setProfileOpen(true); else if (dy > 30) setProfileOpen(false) }}
-        style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 1100, background: 'var(--bg)', borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -6px 26px rgba(0,0,0,0.2)', paddingBottom: 'calc(8px + env(safe-area-inset-bottom))' }}
+        style={{ position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 1100, background: 'var(--bg)', borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -6px 26px rgba(0,0,0,0.2)', paddingBottom: embedded ? 8 : 'calc(8px + env(safe-area-inset-bottom))' }}
       >
         <div onClick={() => setProfileOpen(o => !o)} style={{ width: 44, height: 5, borderRadius: 5, background: 'var(--border-mid)', margin: '8px auto 4px', cursor: 'pointer' }} />
 
@@ -373,5 +380,6 @@ export default function RouteNavScreen({ route, sport, showWatts, isDark, hr, wa
     </div>
   )
 
+  if (embedded) return ui
   return typeof document !== 'undefined' ? createPortal(ui, document.body) : null
 }

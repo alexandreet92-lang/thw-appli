@@ -35,6 +35,15 @@ function deepSet<T>(obj: T, path: string, value: unknown): T {
   return result as T
 }
 
+// La table `cycling_settings` n'existe pas dans le schéma Supabase (seule
+// `running_settings` a été créée). Chaque upsert vers elle échouait et le
+// client instrumenté (src/lib/supabase/client.ts) affichait la pastille rouge
+// « Échec de l'enregistrement » dès l'ouverture de l'écran vélo. Les réglages
+// vélo sont donc persistés dans `sport_page_configs` (table existante, RLS
+// user_id, UNIQUE (user_id, sport)) sous une clé sport réservée — aucun hook
+// de pages n'utilise cette clé, la colonne jsonb `pages` porte le JSON.
+const SETTINGS_SPORT_KEY = 'cycling_settings'
+
 export function useCyclingSettings(onSaved?: () => void) {
   const supabase = createClient()
   const [settings, setSettings] = useState<CyclingSettings>(DEFAULT_CYCLING_SETTINGS)
@@ -51,18 +60,16 @@ export function useCyclingSettings(onSaved?: () => void) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
         const { data } = await supabase
-          .from('cycling_settings').select('settings').eq('user_id', user.id).maybeSingle()
-        if (data?.settings) {
-          const merged = { ...DEFAULT_CYCLING_SETTINGS, ...(data.settings as Partial<CyclingSettings>) } as CyclingSettings
+          .from('sport_page_configs').select('pages')
+          .eq('user_id', user.id).eq('sport', SETTINGS_SPORT_KEY).maybeSingle()
+        if (data?.pages) {
+          const merged = { ...DEFAULT_CYCLING_SETTINGS, ...(data.pages as Partial<CyclingSettings>) } as CyclingSettings
           setSettings(merged)
           latestRef.current = merged
-        } else {
-          await supabase.from('cycling_settings').upsert(
-            { user_id: user.id, settings: DEFAULT_CYCLING_SETTINGS },
-            { onConflict: 'user_id' }
-          )
         }
-      } catch { /* table absent — fallback */ }
+        // Pas de ligne → on reste sur les défauts en mémoire. Aucune écriture
+        // au montage : on ne persiste qu'au premier changement utilisateur.
+      } catch { /* pas de session — fallback défauts */ }
       finally { setLoaded(true) }
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -72,9 +79,9 @@ export function useCyclingSettings(onSaved?: () => void) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { error } = await supabase.from('cycling_settings').upsert(
-        { user_id: user.id, settings: next, updated_at: new Date().toISOString() },
-        { onConflict: 'user_id' }
+      const { error } = await supabase.from('sport_page_configs').upsert(
+        { user_id: user.id, sport: SETTINGS_SPORT_KEY, pages: next },
+        { onConflict: 'user_id,sport' }
       )
       if (!error) onSavedRef.current?.()
     } catch (e) { console.error('[useCyclingSettings]', e) }

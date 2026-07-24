@@ -50,8 +50,8 @@ function getLiveValue(fieldId: string, p: Props): string {
 export default function CyclingPageData({ page, isDark, dataFontFamily, ...liveProps }: Props) {
   const { t } = useI18n()
   const text       = isDark ? '#FFFFFF' : '#0A0A0A'
-  const dim        = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
-  const separator  = isDark ? 'rgba(255,255,255,0.08)' : '#E8E8E8'
+  const dim        = isDark ? 'rgba(255,255,255,0.38)' : '#8C8C8C'
+  const separator  = isDark ? 'rgba(255,255,255,0.06)' : '#EFEFEF'
   const fontFamily = dataFontFamily ?? '-apple-system, BlinkMacSystemFont, sans-serif'
 
   const bigFieldId   = page.bigFieldId ?? page.fields[0]
@@ -75,14 +75,14 @@ export default function CyclingPageData({ page, isDark, dataFontFamily, ...liveP
           minHeight: 100,
         }}
       >
-        <p style={{ fontSize: 11, color: dim, textTransform: 'uppercase', letterSpacing: '1.5px', margin: 0 }}>
+        <p style={{ fontSize: 10, fontWeight: 600, color: dim, textTransform: 'uppercase', letterSpacing: '0.16em', margin: 0 }}>
           {field?.labelKey ? t(field.labelKey) : field?.label}
         </p>
-        <p style={{ fontSize: 56, fontWeight: 700, color: text, margin: 0, lineHeight: 1, fontFamily }}>
+        <p style={{ fontSize: 56, fontWeight: 700, color: text, margin: 0, lineHeight: 1, fontFamily, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em' }}>
           {getLiveValue(fieldId, allProps)}
         </p>
         {field?.unit && (
-          <p style={{ fontSize: 14, color: dim, margin: 0 }}>{field.unit}</p>
+          <p style={{ fontSize: 13, fontWeight: 500, color: dim, margin: 0 }}>{field.unit}</p>
         )}
       </div>
     )
@@ -103,14 +103,14 @@ export default function CyclingPageData({ page, isDark, dataFontFamily, ...liveP
           minHeight: 80,
         }}
       >
-        <p style={{ fontSize: 10, color: dim, textTransform: 'uppercase', letterSpacing: '1.2px', margin: 0 }}>
+        <p style={{ fontSize: 9.5, fontWeight: 600, color: dim, textTransform: 'uppercase', letterSpacing: '0.14em', margin: 0 }}>
           {field?.labelKey ? t(field.labelKey) : field?.label}
         </p>
-        <p style={{ fontSize: 30, fontWeight: 700, color: text, margin: 0, lineHeight: 1, fontFamily }}>
+        <p style={{ fontSize: 30, fontWeight: 700, color: text, margin: 0, lineHeight: 1, fontFamily, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em' }}>
           {getLiveValue(fieldId, allProps)}
         </p>
         {field?.unit && (
-          <p style={{ fontSize: 12, color: dim, margin: 0 }}>{field.unit}</p>
+          <p style={{ fontSize: 11.5, fontWeight: 500, color: dim, margin: 0 }}>{field.unit}</p>
         )}
       </div>
     )

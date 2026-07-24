@@ -50,6 +50,12 @@ export default function CyclingControls({
       padding: '10px 24px',
       paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
     }}>
+      {/* État pressé commun — enfoncement doux sur tous les boutons de contrôle */}
+      <style>{`
+        .cyc-ctl-btn { transition: transform 0.12s ease, box-shadow 0.18s ease, opacity 0.2s ease; }
+        .cyc-ctl-btn:active { transform: scale(0.93); }
+        @media (prefers-reduced-motion: reduce) { .cyc-ctl-btn, .cyc-ctl-btn:active { transition: none; transform: none; } }
+      `}</style>
       {phase === 'ready' && (
         <>
           <GPSIndicator status={gpsStatus} accuracy={gpsAccuracy} isDark={isDark} />
@@ -59,17 +65,15 @@ export default function CyclingControls({
               onClick={canStart ? onStart : undefined}
               disabled={!canStart && !gpsLoading}
               aria-label={tr('record.commonStart')}
+              className="cyc-ctl-btn"
               style={{
                 width: 72, height: 72, borderRadius: '50%',
                 border: 'none', cursor: canStart ? 'pointer' : 'not-allowed',
                 background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
-                boxShadow: canStart ? '0 4px 20px rgba(6,182,212,0.40)' : 'none',
+                boxShadow: canStart ? '0 6px 24px rgba(6,182,212,0.35), 0 2px 6px rgba(6,182,212,0.25)' : 'none', // design-allow-color
                 opacity: canStart || gpsLoading ? 1 : 0.5,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'transform 0.12s, opacity 0.2s',
               }}
-              onMouseDown={e => { if (canStart) (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.95)' }}
-              onMouseUp={e   => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}
             >
               {gpsLoading ? (
                 <div style={{
@@ -97,21 +101,22 @@ export default function CyclingControls({
       {phase === 'running' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, width: '100%' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <button onClick={onLap} aria-label={tr('record.cyclingControlsLap')} style={{
+            <button onClick={onLap} aria-label={tr('record.cyclingControlsLap')} className="cyc-ctl-btn" style={{
               width: 52, height: 52, borderRadius: '50%',
               background: t.btnBg, color: t.text, border: 'none', cursor: 'pointer',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.10)', // design-allow-color
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M3 12h18M14 5l7 7-7 7"/>
               </svg>
             </button>
-            <p style={{ margin: 0, fontSize: 10, color: t.label, letterSpacing: '0.06em' }}>{tr('record.cyclingControlsLapCap')}</p>
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: t.label, letterSpacing: '0.09em' }}>{tr('record.cyclingControlsLapCap')}</p>
           </div>
-          <button onClick={onPause} aria-label={tr('record.commonPause')} style={{
+          <button onClick={onPause} aria-label={tr('record.commonPause')} className="cyc-ctl-btn" style={{
             width: 68, height: 68, borderRadius: '50%',
             background: t.pauseBg, color: t.pauseText, border: 'none', cursor: 'pointer',
-            boxShadow: '0 4px 18px rgba(0,0,0,0.20)',
+            boxShadow: '0 6px 22px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.14)', // design-allow-color
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <svg width="22" height="22" viewBox="0 0 22 22" fill="currentColor">
@@ -126,7 +131,7 @@ export default function CyclingControls({
       {phase === 'paused' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, width: '100%' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <button onClick={onFinish} aria-label={tr('record.cyclingControlsStop')} style={{
+            <button onClick={onFinish} aria-label={tr('record.cyclingControlsStop')} className="cyc-ctl-btn" style={{
               width: 52, height: 52, borderRadius: '50%',
               background: 'rgba(239,68,68,0.15)', color: '#ef4444',
               border: 'none', cursor: 'pointer',
@@ -136,13 +141,13 @@ export default function CyclingControls({
                 <rect x="3" y="3" width="12" height="12" rx="1.5"/>
               </svg>
             </button>
-            <p style={{ margin: 0, fontSize: 10, color: t.label, letterSpacing: '0.06em' }}>{tr('record.cyclingControlsStopCap')}</p>
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: t.label, letterSpacing: '0.09em' }}>{tr('record.cyclingControlsStopCap')}</p>
           </div>
-          <button onClick={onResume} aria-label={tr('record.commonResume')} style={{
+          <button onClick={onResume} aria-label={tr('record.commonResume')} className="cyc-ctl-btn" style={{
             width: 68, height: 68, borderRadius: '50%',
             background: 'linear-gradient(135deg, #06B6D4, #2563EB)',
             color: '#fff', border: 'none', cursor: 'pointer',
-            boxShadow: '0 4px 20px rgba(6,182,212,0.40)',
+            boxShadow: '0 6px 24px rgba(6,182,212,0.35), 0 2px 6px rgba(6,182,212,0.25)', // design-allow-color
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
@@ -158,6 +163,7 @@ export default function CyclingControls({
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
             <button
               onClick={onResume}
+              className="cyc-ctl-btn"
               style={{
                 width: 64, height: 64, borderRadius: '50%',
                 background: 'rgba(6,182,212,0.15)',
@@ -178,6 +184,7 @@ export default function CyclingControls({
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
             <button
               onClick={onConfirmFinish}
+              className="cyc-ctl-btn"
               style={{
                 width: 64, height: 64, borderRadius: '50%',
                 background: 'rgba(239,68,68,0.15)',

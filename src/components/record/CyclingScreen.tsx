@@ -10,8 +10,8 @@ import { useStopwatch } from '@/hooks/useStopwatch'
 import CyclingControls, { type CyclingPhase } from './CyclingControls'
 import GPSPermissionScreen from './GPSPermissionScreen'
 import GPSPrePermissionScreen from './GPSPrePermissionScreen'
-import CyclingPage2 from './CyclingPage2'
 import CyclingPageData from './CyclingPageData'
+import { primeLapBeep, playLapBeep } from './lapBeep'
 import CyclingSettings from './CyclingSettings'
 import SessionSummary from './SessionSummary'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
@@ -49,7 +49,6 @@ interface SessionSnap {
 export default function CyclingScreen({ onExit, onFinished, route }: Props) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
-  const [navOpen, setNavOpen] = useState(false)
   const [gpsEnabled, setGpsEnabled] = useState(false)
   const [showPrePermission, setShowPrePermission] = useState(false)
 
@@ -110,22 +109,37 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
     setCurrentLapDistance(gps.distance - lapStartDistance)
   }, [gps.distance, lapStartDistance])
 
-  const touchRef = useRef<{ y: number; t: number } | null>(null)
-  const swipeFromMap = useRef(false)
+  // ── Carrousel horizontal — swipe gauche/droite (seuil 50px), translateX.
+  // Sur la page carte, le swipe est désactivé (la carte garde pan & zoom) :
+  // la navigation s'y fait uniquement par les flèches latérales.
+  const [dragX, setDragX] = useState(0)
+  const dragRef = useRef<{ x: number; y: number; locked: 'h' | 'v' | null } | null>(null)
+  const onMapPage = pages[pageIndex]?.type === 'map'
+  const goTo = (i: number) => { const n = pages.length; if (n > 0) setPageIndex(((i % n) + n) % n) }
   const handleTouchStart = (e: React.TouchEvent) => {
-    swipeFromMap.current = !!(e.target as HTMLElement)?.closest?.('.leaflet-container')
-    if (swipeFromMap.current) return
-    touchRef.current = { y: e.touches[0].clientY, t: Date.now() }
+    if (onMapPage) return
+    if ((e.target as HTMLElement)?.closest?.('.leaflet-container')) return
+    dragRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, locked: null }
+  }
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const d = dragRef.current
+    if (!d) return
+    const dx = e.touches[0].clientX - d.x
+    const dy = e.touches[0].clientY - d.y
+    if (!d.locked) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+      d.locked = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+    }
+    if (d.locked === 'h') setDragX(dx)
   }
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (swipeFromMap.current) { swipeFromMap.current = false; return }
-    if (!touchRef.current) return
-    const dy = e.changedTouches[0].clientY - touchRef.current.y
-    const dt = Date.now() - touchRef.current.t
-    touchRef.current = null
-    if (dt > 600) return
-    if (dy < -50) setPageIndex(i => { const n = pages.length; return n === 0 ? i : (i + 1) % n })
-    else if (dy > 50) setPageIndex(i => { const n = pages.length; return n === 0 ? i : (i - 1 + n) % n })
+    const d = dragRef.current
+    dragRef.current = null
+    setDragX(0)
+    if (!d || d.locked !== 'h') return
+    const dx = e.changedTouches[0].clientX - d.x
+    if (Math.abs(dx) < 50) return
+    goTo(dx < 0 ? pageIndex + 1 : pageIndex - 1)
   }
 
   const handleGpsAuthorize = () => {
@@ -135,13 +149,16 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
   }
   const handleGpsDismiss = () => setShowPrePermission(false)
 
-  const handleStart  = () => { resetTracking(); setStartedAt(Date.now()); setPhase('running') }
+  // primeLapBeep : l'AudioContext doit naître sur un geste utilisateur (iOS)
+  // pour que le bip de lap soit audible ensuite.
+  const handleStart  = () => { primeLapBeep(); resetTracking(); setStartedAt(Date.now()); setPhase('running') }
   const handlePause  = () => setPhase('paused')
   const handleResume = () => setPhase('running')
   const handleStop   = () => setPhase('confirming_stop')
 
   const handleLap = () => {
     if (currentLapSec === 0) return
+    playLapBeep()
     const lap: SessionLap = {
       number: laps.length + 1,
       duration: currentLapSec,
@@ -270,11 +287,6 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
   const text       = isDark ? '#FFFFFF' : '#0A0A0A'
   const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
   const btnBg      = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
-  const trackPoints = gps.points.map(p => ({ lat: p.lat, lng: p.lng }))
-  const currentPosition: [number, number] | null =
-    gps.currentLat != null && gps.currentLng != null
-      ? [gps.currentLat, gps.currentLng]
-      : null
 
   const startedAtISO = startedAt ? new Date(startedAt).toISOString() : new Date().toISOString()
 
@@ -303,7 +315,8 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
         </button>
         <span style={{
           position: 'absolute', left: '50%', transform: 'translateX(-50%)',
-          fontSize: 13, color: labelColor, fontFamily: 'DM Sans, sans-serif',
+          fontSize: 13, fontWeight: 500, letterSpacing: '0.02em',
+          color: labelColor, fontFamily: 'var(--font-body)',
         }}>
           {t('record.cyclingScreenTitle')}
         </span>
@@ -320,7 +333,7 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
         </button>
       </div>
 
-      {/* Pages */}
+      {/* Pages — carrousel horizontal (translateX + drag tactile) */}
       <div
         style={{
           flex: 1, display: 'flex', flexDirection: 'column',
@@ -328,54 +341,100 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
           paddingBottom: 'calc(120px + env(safe-area-inset-bottom))',
         }}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div key={pageIndex} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflowY: 'auto' }}>
-          {(() => {
-            const page = pages[pageIndex]
-            if (!page) return null
-            if (page.type === 'map') {
-              return (
-                <CyclingPage2
-                  isDark={isDark}
-                  distanceM={gps.distance}
-                  trackPoints={trackPoints}
-                  currentPosition={currentPosition}
-                  onExpand={() => setNavOpen(true)}
-                  paused={autoPaused}
-                />
-              )
-            }
-            return (
-              <CyclingPageData
-                page={page}
-                isDark={isDark}
-                durationSec={stopwatch.seconds}
-                distanceM={gps.distance}
-                speedKmh={gps.currentSpeed}
-                elevationGainM={gps.elevationGain}
-                altitudeM={gps.currentAltitude ?? 0}
-                currentLapSec={currentLapSec}
-                currentLapDistanceM={currentLapDistance}
-                dataFontFamily={dataFontFamily}
-              />
-            )
-          })()}
-        </div>
-
-        {/* Page dots */}
         <div style={{
-          position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-          display: 'flex', flexDirection: 'column', gap: 8,
+          display: 'flex', flex: 1, minHeight: 0,
+          width: `${Math.max(pages.length, 1) * 100}%`,
+          transform: `translateX(calc(${-pageIndex * (100 / Math.max(pages.length, 1))}% + ${dragX}px))`,
+          transition: dragX !== 0 ? 'none' : 'transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1)',
+          willChange: 'transform',
         }}>
-          {pages.map((_, i) => (
-            <span key={i} style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: i === pageIndex ? '#06B6D4' : labelColor,
-              transition: 'background 0.2s',
-            }} />
+          {pages.map(page => (
+            <div
+              key={page.id}
+              style={{
+                width: `${100 / Math.max(pages.length, 1)}%`, height: '100%',
+                position: 'relative', display: 'flex', flexDirection: 'column',
+                minHeight: 0, overflowY: page.type === 'map' ? 'hidden' : 'auto',
+              }}
+            >
+              {page.type === 'map' ? (
+                /* Page 2 : pleine carte de navigation permanente (vitesse,
+                   D+ restant / km restant / temps est. si parcours chargé). */
+                <RouteNavScreen
+                  embedded
+                  route={route ?? null}
+                  sport="cycling"
+                  showWatts
+                  isDark={isDark}
+                  hr={null}
+                  watts={null}
+                  elapsedSec={stopwatch.seconds}
+                  distanceDoneM={gps.distance}
+                  gainDoneM={gps.elevationGain}
+                />
+              ) : (
+                <CyclingPageData
+                  page={page}
+                  isDark={isDark}
+                  durationSec={stopwatch.seconds}
+                  distanceM={gps.distance}
+                  speedKmh={gps.currentSpeed}
+                  elevationGainM={gps.elevationGain}
+                  altitudeM={gps.currentAltitude ?? 0}
+                  currentLapSec={currentLapSec}
+                  currentLapDistanceM={currentLapDistance}
+                  dataFontFamily={dataFontFamily}
+                />
+              )}
+            </div>
           ))}
         </div>
+
+        {/* Flèches de page — uniquement sur la carte (le pan y capture le swipe) */}
+        {onMapPage && pages.length > 1 && (
+          <>
+            {[{ dir: -1 as const, side: { left: 10 }, label: t('record.pagePrev'), path: 'M14 6l-6 6 6 6' },
+              { dir: 1 as const, side: { right: 10 }, label: t('record.pageNext'), path: 'M10 6l6 6-6 6' }].map(a => (
+              <button
+                key={a.dir}
+                onClick={() => goTo(pageIndex + a.dir)}
+                aria-label={a.label}
+                style={{
+                  position: 'absolute', top: 'calc(50% - 60px)', transform: 'translateY(-50%)', ...a.side,
+                  zIndex: 1400, width: 40, height: 40, borderRadius: '50%',
+                  background: btnBg, color: text, border: 'none', cursor: 'pointer',
+                  backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.18)', // design-allow-color
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d={a.path} />
+                </svg>
+              </button>
+            ))}
+          </>
+        )}
+
+        {/* Points de pagination — bas centre (masqués sur la carte : flèches) */}
+        {!onMapPage && (
+          <div style={{
+            position: 'absolute', left: 0, right: 0,
+            bottom: 'calc(128px + env(safe-area-inset-bottom))',
+            display: 'flex', justifyContent: 'center', gap: 7, pointerEvents: 'none',
+          }}>
+            {pages.map((_, i) => (
+              <span key={i} style={{
+                width: i === pageIndex ? 18 : 6, height: 6, borderRadius: 999,
+                background: i === pageIndex ? '#06B6D4' : labelColor,
+                transition: 'width 0.25s ease, background 0.25s ease',
+              }} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Active segment effort bandeau */}
@@ -399,11 +458,6 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
         </div>
       )}
       {previewUrl && <PhotoPreviewToast url={previewUrl} onDismiss={() => setPreviewUrl(null)} />}
-
-      {/* Navigation plein écran (dispo même sans parcours ; guidage si parcours) */}
-      {navOpen && (
-        <RouteNavScreen route={route ?? null} sport="cycling" showWatts isDark={isDark} hr={null} watts={null} elapsedSec={stopwatch.seconds} distanceDoneM={gps.distance} gainDoneM={gps.elevationGain} onClose={() => setNavOpen(false)} />
-      )}
 
       <CyclingControls
         phase={phase}

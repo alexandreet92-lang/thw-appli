@@ -27,7 +27,7 @@ export type StudioSourceKey =
   // Apps externes connectées (données synchronisées depuis le wearable / service)
   | 'ext_strava' | 'ext_withings' | 'ext_polar'
 // Actions d'ÉCRITURE disponibles.
-export type StudioActionKey = 'planning_save'
+export type StudioActionKey = 'planning_save' | 'calendar_race' | 'notify_report'
 
 export interface StudioNode {
   id: string
@@ -90,6 +90,8 @@ export const SOURCE_LABEL: Record<StudioSourceKey, string> = {
 
 export const ACTION_LABEL: Record<StudioActionKey, string> = {
   planning_save: 'Enregistrer dans le Planning',
+  calendar_race: 'Créer une course au Calendrier',
+  notify_report: 'Envoyer le rapport en notification',
 }
 
 // ── Graphe d'exemple : Objectif → (Endurance ∥ Force) → Synthèse ─────────

@@ -19,7 +19,8 @@ import type { StudioGraph, StudioNode, StudioModel } from './graph'
 import { SOURCE_LABEL } from './graph'
 import {
   readSource, savePlanningSessions, describeDrafts, extractJson,
-  type PlanningSessionDraft,
+  saveRaceEvent, describeRace, saveReportNotification,
+  type PlanningSessionDraft, type RaceDraft,
 } from './connectors'
 
 export type NodeStatus = 'idle' | 'running' | 'waiting' | 'done' | 'error' | 'skipped'
@@ -183,24 +184,56 @@ export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<Ru
           outputs[n.id] = content
 
         } else if (n.kind === 'action') {
-          // Action « Enregistrer dans le Planning » : l'IA structure d'abord
-          // les séances, PUIS l'utilisateur valide explicitement, PUIS on écrit.
+          // Actions d'écriture : l'IA structure d'abord, PUIS l'utilisateur
+          // valide explicitement, PUIS on écrit. Le message final contient un
+          // lien vers la page concernée (interconnexion des pages).
           const upstream = gatherUpstream(n.id)
-          const prompt =
-            `Tu convertis un plan d'entraînement en JSON STRICT pour insertion en base.\n` +
-            `Réponds UNIQUEMENT avec un tableau JSON (aucun texte autour) d'objets :\n` +
-            `{"week_start":"YYYY-MM-DD (un LUNDI)","day_index":0-6 (0=lundi),"sport":"run|bike|gym|hyrox|swim|trail_run|other","title":"…","duration_min":60,"intensity":"Z2|tempo|seuil|VMA|force|…","notes":"…"}\n` +
-            `Le lundi de la semaine prochaine est le ${nextMondayISO()} — planifie à partir de là sauf indication contraire.\n` +
-            `Maximum 10 séances.\n\n--- Plan à convertir ---\n${upstream}`
-          const raw = await callAgent({ ...n, model: n.model ?? 'hermes' }, prompt, t => cb.onChunk(n.id, t), cb.signal, cb.runId)
-          const drafts = extractJson<PlanningSessionDraft[]>(raw)
-          if (!Array.isArray(drafts) || drafts.length === 0) throw new Error('Aucune séance exploitable dans le plan reçu')
-          const summary = describeDrafts(drafts.slice(0, 10))
-          cb.onStatus(n.id, 'waiting')
-          const ok = await cb.requestApproval(n, `Séances prêtes à être enregistrées dans ton Planning :\n\n${summary}`)
-          if (!ok) throw new Error('Écriture dans le Planning refusée par l’utilisateur')
-          const count = await savePlanningSessions(drafts.slice(0, 10))
-          const doneMsg = `✓ ${count} séance(s) enregistrée(s) dans le Planning.\n\n${summary}`
+          const actionKey = n.actionKey ?? 'planning_save'
+          let doneMsg = ''
+
+          if (actionKey === 'planning_save') {
+            const prompt =
+              `Tu convertis un plan d'entraînement en JSON STRICT pour insertion en base.\n` +
+              `Réponds UNIQUEMENT avec un tableau JSON (aucun texte autour) d'objets :\n` +
+              `{"week_start":"YYYY-MM-DD (un LUNDI)","day_index":0-6 (0=lundi),"sport":"run|bike|gym|hyrox|swim|trail_run|other","title":"…","duration_min":60,"intensity":"Z2|tempo|seuil|VMA|force|…","notes":"…"}\n` +
+              `Le lundi de la semaine prochaine est le ${nextMondayISO()} — planifie à partir de là sauf indication contraire.\n` +
+              `Maximum 10 séances.\n\n--- Plan à convertir ---\n${upstream}`
+            const raw = await callAgent({ ...n, model: n.model ?? 'hermes' }, prompt, t => cb.onChunk(n.id, t), cb.signal, cb.runId)
+            const drafts = extractJson<PlanningSessionDraft[]>(raw)
+            if (!Array.isArray(drafts) || drafts.length === 0) throw new Error('Aucune séance exploitable dans le plan reçu')
+            const summary = describeDrafts(drafts.slice(0, 10))
+            cb.onStatus(n.id, 'waiting')
+            const ok = await cb.requestApproval(n, `Séances prêtes à être enregistrées dans ton Planning :\n\n${summary}`)
+            if (!ok) throw new Error('Écriture dans le Planning refusée par l’utilisateur')
+            const count = await savePlanningSessions(drafts.slice(0, 10))
+            doneMsg = `${count} séance(s) enregistrée(s) dans le Planning.\n\n${summary}\n\n[Ouvrir le planning](/planning)`
+
+          } else if (actionKey === 'calendar_race') {
+            const prompt =
+              `Tu extrais UNE course / un objectif daté depuis le contenu reçu, en JSON STRICT.\n` +
+              `Réponds UNIQUEMENT avec un objet JSON (aucun texte autour) :\n` +
+              `{"name":"Nom de la course/objectif","start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD ou null","description":"1-2 phrases (distance, objectif chrono…) ou null"}\n` +
+              `Nous sommes le ${new Date().toISOString().slice(0, 10)} — la date doit être FUTURE et plausible ; si aucune date n'est précisée, choisis un week-end cohérent avec le contenu.\n\n--- Contenu ---\n${upstream}`
+            const raw = await callAgent({ ...n, model: n.model ?? 'hermes' }, prompt, t => cb.onChunk(n.id, t), cb.signal, cb.runId)
+            const draft = extractJson<RaceDraft>(raw)
+            if (!draft?.name || !draft.start_date) throw new Error('Aucune course exploitable dans le contenu reçu')
+            const summary = describeRace(draft)
+            cb.onStatus(n.id, 'waiting')
+            const ok = await cb.requestApproval(n, `Course prête à être ajoutée à ton Calendrier :\n\n${summary}`)
+            if (!ok) throw new Error('Écriture dans le Calendrier refusée par l’utilisateur')
+            await saveRaceEvent(draft)
+            doneMsg = `« ${draft.name} » ajoutée à ton Calendrier (${draft.start_date}).\n\n[Ouvrir le calendrier](/calendar)`
+
+          } else {
+            // notify_report : pas de conversion IA — le contenu amont EST le rapport.
+            if (!upstream.trim()) throw new Error('Aucun contenu à envoyer en notification')
+            cb.onStatus(n.id, 'waiting')
+            const ok = await cb.requestApproval(n, `Rapport prêt à être envoyé dans tes notifications :\n\n${upstream.slice(0, 1200)}${upstream.length > 1200 ? '…' : ''}`)
+            if (!ok) throw new Error('Envoi de la notification refusé par l’utilisateur')
+            await saveReportNotification(n.title || 'Rapport du Studio', upstream)
+            doneMsg = `Rapport envoyé dans tes notifications.\n\n[Voir les notifications](/notifications)`
+          }
+
           outputs[n.id] = doneMsg
           cb.onChunk(n.id, doneMsg)
           cb.onLog({ nodeId: n.id, title: n.title, text: doneMsg })

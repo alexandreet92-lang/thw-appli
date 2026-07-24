@@ -40,7 +40,7 @@ BRIQUES DISPONIBLES (kind) :
 - "agent" : un coach IA spécialisé. "role" = son métier + sa mission, précis et actionnable. "model" ∈ "hermes" (rapide) | "athena" (équilibré) | "zeus" (max).
 - "merge" : fusionne les contributions reçues en UNE réponse. "role" = consigne de synthèse. "model" pareil.
 - "validation" : pause + accord de l'utilisateur avant de continuer. "role" = ce qu'on lui demande de vérifier.
-- "action" : écrit dans l'app. "actionKey" = "planning_save" (enregistre des séances dans le Planning). À n'utiliser QUE si l'utilisateur veut enregistrer/planifier réellement — et le faire précéder d'un "validation" n'est pas nécessaire (l'action demande déjà l'accord).
+- "action" : écrit dans l'app. "actionKey" ∈ "planning_save" (enregistre des séances dans le Planning) | "calendar_race" (ajoute une course/objectif daté au Calendrier) | "notify_report" (envoie le résultat en notification, pour les rapports à consulter plus tard). À n'utiliser QUE si l'utilisateur veut réellement écrire dans l'app — et le faire précéder d'un "validation" n'est pas nécessaire (l'action demande déjà l'accord).
 
 RÈGLES :
 - 3 à 7 nœuds. Un seul "trigger". Le graphe doit être connexe et SANS cycle.
@@ -107,7 +107,9 @@ export async function buildGraphFromDescription(
       sourceKey: an.kind === 'source'
         ? (['activities', 'planning', 'injuries', 'recovery', 'profile'].includes(String(an.sourceKey)) ? an.sourceKey : 'activities')
         : undefined,
-      actionKey: an.kind === 'action' ? 'planning_save' : undefined,
+      actionKey: an.kind === 'action'
+        ? (['planning_save', 'calendar_race', 'notify_report'].includes(String(an.actionKey)) ? an.actionKey : 'planning_save')
+        : undefined,
     })
   }
   if (!nodes.some(n => n.kind === 'trigger')) {

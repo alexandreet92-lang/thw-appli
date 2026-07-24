@@ -24,6 +24,7 @@ import { STUDIO_TEMPLATES } from '@/lib/studio/templates'
 import { STUDIO_PACKS, estimateRunTokens, formatTokens, type StudioAccess } from '@/lib/studio/offers'
 import { createClient } from '@/lib/supabase/client'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
+import StudioMarkdown from './StudioMarkdown'
 
 const NODE_W = 216
 const PORT_Y = 37   // ancrage vertical des ports (depuis le haut du nœud)
@@ -68,6 +69,8 @@ const APP_CATALOG: AppEntry[] = [
   { id: 'app_recovery',   label: 'Récupération',  color: '#8B5CF6', kind: 'source', sourceKey: 'recovery',   access: 'lecture' },
   { id: 'app_profile',    label: 'Profil',        color: '#F59E0B', kind: 'source', sourceKey: 'profile',    access: 'lecture' },
   { id: 'act_planning',   label: 'Planning',      color: '#EF4444', kind: 'action', actionKey: 'planning_save', access: 'écriture' },
+  { id: 'act_calendar',   label: 'Calendrier',    color: '#F97316', kind: 'action', actionKey: 'calendar_race', access: 'écriture' },
+  { id: 'act_notify',     label: 'Notification',  color: '#0EA5E9', kind: 'action', actionKey: 'notify_report', access: 'écriture' },
 ]
 
 // Apps EXTERNES (données synchronisées depuis un service tiers) — visibles dans
@@ -89,6 +92,8 @@ function AppIcon({ id, size = 14 }: { id: string; size?: number }) {
     case 'app_recovery':   return <svg {...p}><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
     case 'app_profile':    return <svg {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
     case 'act_planning':   return <svg {...p}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+    case 'act_calendar':   return <svg {...p}><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 14l2 2 4-4"/></svg>
+    case 'act_notify':     return <svg {...p}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
     // Apps externes — pictos évocateurs (pas les logos officiels).
     case 'ext_strava':     return <svg {...p} fill="currentColor" stroke="none"><path d="M9 3l5 9h-3l-2-4-2 4H2L9 3zm5 11h3l1.5 3 1.5-3h3l-4.5 8L14 14z"/></svg>
     case 'ext_withings':   return <svg {...p}><circle cx="12" cy="13" r="8"/><path d="M12 13V8M12 2v2"/></svg>
@@ -128,6 +133,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [activeFolder, setActiveFolder] = useState<string | null>(null)   // null = tous
   const [folderMenuFor, setFolderMenuFor] = useState<string | null>(null) // systemId du menu « Déplacer »
   const [newFolderName, setNewFolderName] = useState('')
+  // Planification autonome (un planning par système)
+  const [schedule, setSchedule] = useState<{ frequency: 'daily' | 'weekly'; hour: number; weekday: number; enabled: boolean } | null>(null)
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [scheduleSaving, setScheduleSaving] = useState(false)
   const [selId, setSelId] = useState<string | null>(null)
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -166,8 +175,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const abortRef = useRef<AbortController | null>(null)
 
   const wrapRef = useRef<HTMLDivElement>(null)
-  const drag = useRef<null | { mode: 'node' | 'pan' | 'conn'; id?: string; dx: number; dy: number }>(null)
+  const drag = useRef<null | { mode: 'node' | 'pan' | 'conn' | 'pinch'; id?: string; dx: number; dy: number }>(null)
   const [pending, setPending] = useState<null | { fromId: string; x: number; y: number }>(null)
+  // Pincement tactile (deux doigts) sur la toile
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
+  const pinchRef = useRef<{ dist: number; zoom: number } | null>(null)
+
+  // Mobile : inspecteur en sheet bas + palette repliable + barre compacte.
+  const [isMobile, setIsMobile] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(true)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const f = () => { setIsMobile(mq.matches); setPaletteOpen(!mq.matches) }
+    f(); mq.addEventListener('change', f)
+    return () => mq.removeEventListener('change', f)
+  }, [])
 
   // ── Persistance SERVEUR (debounce) — remplace le localStorage ──
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -244,8 +266,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
   // ── Interactions pointeur ──────────────────────────────────
   const onPointerMove = useCallback((e: PointerEvent) => {
+    if (pointersRef.current.has(e.pointerId)) pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     const d = drag.current
     if (!d) return
+    if (d.mode === 'pinch') {
+      // Deux doigts : zoom au point médian (mobile)
+      if (pointersRef.current.size >= 2 && pinchRef.current) {
+        const [p1, p2] = [...pointersRef.current.values()]
+        const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y)
+        if (dist > 0 && pinchRef.current.dist > 0) {
+          const r = wrapRef.current?.getBoundingClientRect()
+          zoomAt((p1.x + p2.x) / 2 - (r?.left ?? 0), (p1.y + p2.y) / 2 - (r?.top ?? 0), pinchRef.current.zoom * (dist / pinchRef.current.dist))
+        }
+      }
+      return
+    }
     if (d.mode === 'pan') { setPan(p => ({ x: p.x + e.movementX, y: p.y + e.movementY })); return }
     if (d.mode === 'node' && d.id) {
       const pt = canvasPoint(e.clientX, e.clientY)
@@ -260,7 +295,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   useEffect(() => { graphRef.current = graph }, [graph])
 
   const onPointerUp = useCallback((e: PointerEvent) => {
+    pointersRef.current.delete(e.pointerId)
     const d = drag.current
+    if (d?.mode === 'pinch' && pointersRef.current.size < 2) { pinchRef.current = null; drag.current = null }
     if (d?.mode === 'node') scheduleSave(graphRef.current)
     if (d?.mode === 'conn') {
       const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
@@ -311,6 +348,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const startPan = (e: React.PointerEvent) => {
     if (e.target !== wrapRef.current && !(e.target as HTMLElement).dataset.bg) return
     e.preventDefault()
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    // Deuxième doigt sur la toile → bascule en pincement (zoom tactile).
+    if (pointersRef.current.size === 2) {
+      const [p1, p2] = [...pointersRef.current.values()]
+      pinchRef.current = { dist: Math.hypot(p2.x - p1.x, p2.y - p1.y), zoom: zoomRef.current }
+      drag.current = { mode: 'pinch', dx: 0, dy: 0 }
+      return
+    }
     setSelId(null); setSelEdge(null)
     drag.current = { mode: 'pan', dx: 0, dy: 0 }
     arm()
@@ -337,6 +382,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       actionKey,
     }
     persist({ ...graph, nodes: [...graph.nodes, n] }); setSelId(n.id); setTab('canvas')
+    // Mobile : la palette (plein écran) se referme après l'ajout.
+    if (typeof window !== 'undefined' && window.innerWidth < 768) setPaletteOpen(false)
   }
   const addApp = (app: AppEntry) => {
     if (app.kind === 'source') addNode('source', { sourceKey: app.sourceKey, title: app.label })
@@ -354,6 +401,37 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     setView('canvas'); setTab('canvas')
     setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}); setLogs([]); setIssues(null)
     setPan({ x: 0, y: 0 }); setZoom(1)
+    // Planification existante du système (best-effort)
+    setSchedule(null)
+    void (async () => {
+      try {
+        const supabase = createClient()
+        const { data } = await supabase.from('studio_schedules')
+          .select('frequency, hour, weekday, enabled')
+          .eq('system_id', row.id).maybeSingle()
+        if (data) setSchedule({ frequency: data.frequency as 'daily' | 'weekly', hour: data.hour as number, weekday: (data.weekday as number | null) ?? 6, enabled: Boolean(data.enabled) })
+      } catch { /* silencieux */ }
+    })()
+  }
+
+  // Sauvegarde de la planification (upsert par system_id).
+  const saveSchedule = async (next: { frequency: 'daily' | 'weekly'; hour: number; weekday: number; enabled: boolean }) => {
+    const id = systemIdRef.current
+    if (!id) return
+    setSchedule(next)
+    setScheduleSaving(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris'
+      await supabase.from('studio_schedules').upsert({
+        user_id: user.id, system_id: id,
+        frequency: next.frequency, hour: next.hour,
+        weekday: next.frequency === 'weekly' ? next.weekday : null,
+        timezone: tz, enabled: next.enabled,
+      }, { onConflict: 'system_id' })
+    } catch { /* best-effort */ } finally { setScheduleSaving(false) }
   }
   const newSystem = async (name: string, g: StudioGraph) => {
     try {
@@ -612,6 +690,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     setTimeout(() => setCopied(c => (c === id ? null : c)), 1600)
   }
 
+  // « Continuer avec le coach » : dépose le rendu dans le composer du chat
+  // (mécanisme coach_prefill) puis ouvre le coach et ferme le Studio.
+  const continueWithCoach = (title: string, text: string) => {
+    try {
+      sessionStorage.setItem('coach_prefill',
+        `Voici le résultat produit par mon système Studio « ${graph.name} » (${title}) :\n\n${text.slice(0, 4000)}\n\nAide-moi à aller plus loin à partir de ça.`)
+    } catch { /* ignore */ }
+    onClose()
+    setTimeout(() => window.dispatchEvent(new CustomEvent('thw:open-coach')), 80)
+  }
+
   const renders = terminalNodeIds(graph).map(id => ({ node: graph.nodes.find(n => n.id === id)!, text: nodeText[id] ?? '' })).filter(r => r.node)
   const siteUrl = process.env.NEXT_PUBLIC_MARKETING_SITE_URL
     ? `${process.env.NEXT_PUBLIC_MARKETING_SITE_URL.replace(/\/$/, '')}/studio`
@@ -636,7 +725,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         <button onClick={view === 'canvas' ? backToHome : onClose} aria-label={view === 'canvas' ? 'Retour à mes systèmes' : 'Fermer'} style={iconBtn}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
-        <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', whiteSpace: 'nowrap' }}>Studio</div>
+        {!isMobile && <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', whiteSpace: 'nowrap' }}>Studio</div>}
         {/* Aide — sur-page d'explication */}
         <button onClick={() => setHelpOpen(true)} aria-label="Comment ça marche ?" title="Comment ça marche ?"
           style={{ width: 22, height: 22, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'DM Sans,sans-serif', flexShrink: 0 }}>
@@ -664,13 +753,19 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         <div style={{ display: 'flex', gap: 2, marginLeft: access?.allowed ? 0 : 'auto', background: 'var(--bg-alt)', borderRadius: 10, padding: 3 }}>
           {(['canvas', 'chat', 'rendu', 'runs'] as Tab[]).map(tb => (
             <button key={tb} onClick={() => setTab(tb)}
-              style={{ padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'DM Sans,sans-serif',
+              style={{ padding: isMobile ? '6px 8px' : '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: isMobile ? 11.5 : 13, fontWeight: 600, fontFamily: 'DM Sans,sans-serif',
                 background: tab === tb ? 'var(--bg)' : 'transparent', color: tab === tb ? 'var(--text)' : 'var(--text-dim)',
                 boxShadow: tab === tb ? 'var(--shadow-card)' : 'none' }}>
               {tb === 'canvas' ? 'Canvas' : tb === 'chat' ? 'Pilotage' : tb === 'rendu' ? 'Rendu' : 'Historique'}
             </button>
           ))}
         </div>
+
+        {/* Planifier — run autonome récurrent */}
+        <button onClick={() => setScheduleOpen(true)} title={schedule?.enabled ? 'Planification active — modifier' : 'Planifier ce système (run automatique)'} aria-label="Planifier ce système"
+          style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: schedule?.enabled ? 'color-mix(in srgb, #8B5CF6 10%, transparent)' : 'var(--bg-alt)', color: schedule?.enabled ? '#8B5CF6' : 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </button>
 
         {running ? (
           <button onClick={stopRun} style={{ ...cta, background: '#374151' }}>
@@ -732,7 +827,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
 
             {/* ── Barre « Décris ton système » (texte + dictée) ── */}
-            <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', zIndex: 6, width: 'min(620px, calc(100% - 220px))' }}>
+            <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', zIndex: 6, width: isMobile ? 'calc(100% - 24px)' : 'min(620px, calc(100% - 220px))' }}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 6, padding: '6px 6px 6px 14px',
                 borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)',
@@ -794,8 +889,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               )}
             </div>
 
-            {/* ── Palette : Outils vs Applications ── */}
-            <div style={{ position: 'absolute', top: 14, left: 12, zIndex: 5, width: 186, maxHeight: 'calc(100% - 28px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 7, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.10)' }}>
+            {/* ── Palette : Outils vs Applications (repliable sur mobile) ── */}
+            {(!isMobile || paletteOpen) && (
+            <div style={{ position: 'absolute', top: isMobile ? 74 : 14, left: 12, zIndex: 8, width: isMobile ? 'calc(100% - 24px)' : 186, maxHeight: isMobile ? 'calc(100% - 90px)' : 'calc(100% - 28px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 7, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.10)' }}>
+              {isMobile && (
+                <button onClick={() => setPaletteOpen(false)} aria-label="Fermer la palette"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '7px 9px', borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                  Ajouter un bloc
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              )}
               <div style={paletteHdr}>Outils</div>
               {(['trigger', 'agent', 'merge', 'validation'] as StudioNodeKind[]).map(k => {
                 // RÈGLE : un seul Objectif par système.
@@ -858,10 +961,19 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 </button>
               )}
             </div>
+            )}
+
+            {/* Mobile : bouton d'ouverture de la palette */}
+            {isMobile && !paletteOpen && (
+              <button onClick={() => setPaletteOpen(true)} aria-label="Ajouter un bloc"
+                style={{ position: 'absolute', left: 12, bottom: 14, zIndex: 6, width: 46, height: 46, borderRadius: 14, border: 'none', background: '#8B5CF6', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(139,92,246,0.4)' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            )}
 
             {/* ── Zone graphe ── */}
             <div ref={wrapRef} data-bg="1" onPointerDown={startPan}
-              style={{ position: 'absolute', inset: 0, overflow: 'hidden', cursor: drag.current?.mode === 'pan' ? 'grabbing' : 'default',
+              style={{ position: 'absolute', inset: 0, overflow: 'hidden', cursor: drag.current?.mode === 'pan' ? 'grabbing' : 'default', touchAction: 'none',
                 backgroundImage: 'radial-gradient(color-mix(in srgb, var(--text) 9%, transparent) 1px, transparent 1px)', backgroundSize: `${24 * zoom}px ${24 * zoom}px`, backgroundPosition: `${pan.x}px ${pan.y}px` }}>
 
               {/* Fils (SVG) */}
@@ -915,7 +1027,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   const appEntry = n.kind === 'source'
                     ? APP_CATALOG.find(a => a.kind === 'source' && a.sourceKey === (n.sourceKey ?? 'activities'))
                     : n.kind === 'action'
-                    ? APP_CATALOG.find(a => a.kind === 'action')
+                    ? APP_CATALOG.find(a => a.kind === 'action' && a.actionKey === (n.actionKey ?? 'planning_save'))
                     : undefined
                   // Nœud d'app externe → couleur de la marque + son icône.
                   const iconId = extEntry?.id ?? appEntry?.id ?? null
@@ -1033,9 +1145,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
-            {/* ── Inspecteur ── */}
+            {/* ── Inspecteur (colonne droite desktop · sheet bas mobile) ── */}
             {sel && (
-              <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 300, background: 'var(--bg-card)', borderLeft: '1px solid var(--border)', padding: 16, overflowY: 'auto', zIndex: 4, animation: 'studio_in 0.18s ease' }}>
+              <div style={isMobile
+                ? { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '62%', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 16, overflowY: 'auto', zIndex: 9, boxShadow: '0 -10px 34px rgba(0,0,0,0.20)', animation: 'studio_in 0.18s ease' }
+                : { position: 'absolute', top: 0, right: 0, bottom: 0, width: 300, background: 'var(--bg-card)', borderLeft: '1px solid var(--border)', padding: 16, overflowY: 'auto', zIndex: 4, animation: 'studio_in 0.18s ease' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                   <span style={{ width: 24, height: 24, borderRadius: 8, background: `color-mix(in srgb, ${KIND_COLOR[sel.kind]} 13%, transparent)`, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <KindIcon kind={sel.kind} size={13} />
@@ -1067,9 +1181,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 {sel.kind === 'action' && (
                   <>
                     <label style={lbl}>Action</label>
-                    <div style={{ ...fld, background: 'var(--bg-alt)' }}>{ACTION_LABEL[sel.actionKey ?? 'planning_save']}</div>
+                    <select value={sel.actionKey ?? 'planning_save'} onChange={e => patchNode(sel.id, { actionKey: e.target.value as StudioActionKey, title: ACTION_LABEL[e.target.value as StudioActionKey] })} style={{ ...fld, cursor: 'pointer' }}>
+                      {(Object.keys(ACTION_LABEL) as StudioActionKey[]).map(k => (
+                        <option key={k} value={k}>{ACTION_LABEL[k]}</option>
+                      ))}
+                    </select>
                     <p style={{ fontSize: 11.5, color: 'var(--text-dim)', lineHeight: 1.5, margin: '0 0 14px' }}>
-                      Convertit ce qu’il reçoit en séances et les enregistre dans ton Planning — toujours après ta validation explicite.
+                      {(sel.actionKey ?? 'planning_save') === 'planning_save'
+                        ? 'Convertit ce qu’il reçoit en séances et les enregistre dans ton Planning — toujours après ta validation explicite.'
+                        : (sel.actionKey === 'calendar_race')
+                        ? 'Extrait une course/un objectif daté de ce qu’il reçoit et l’ajoute à ton Calendrier — toujours après ta validation explicite.'
+                        : 'Envoie le contenu reçu dans tes notifications (rapport consultable plus tard) — toujours après ta validation explicite.'}
                     </p>
                   </>
                 )}
@@ -1171,7 +1293,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <KindIcon kind={r.node.kind} size={13} />
                   </span>
                   <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>{r.node.title}</span>
-                  {r.text && (
+                  {r.text && (<>
+                    <button onClick={() => continueWithCoach(r.node.title, r.text)} title="Continuer cette discussion avec le coach IA"
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                      Continuer avec le coach
+                    </button>
                     <button onClick={() => copyRender(r.node.id, r.text)} title="Copier le résultat"
                       style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: copied === r.node.id ? '#22C55E' : 'var(--text-mid)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
                       {copied === r.node.id ? (
@@ -1180,10 +1307,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copier</>
                       )}
                     </button>
-                  )}
+                  </>)}
                 </div>
-                <div style={{ fontSize: 14, color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.6, padding: 16, borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  {r.text || '—'}
+                <div style={{ padding: '12px 16px', borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                  {r.text ? <StudioMarkdown text={r.text} /> : <span style={{ fontSize: 14, color: 'var(--text-dim)' }}>—</span>}
                 </div>
               </div>
             ))}
@@ -1223,7 +1350,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         {(r.renders ?? []).filter(x => x.text).map((x, i) => (
                           <div key={i} style={{ marginTop: 10 }}>
                             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>{x.title}</div>
-                            <div style={{ fontSize: 13, color: 'var(--text-mid)', whiteSpace: 'pre-wrap', lineHeight: 1.55, maxHeight: 300, overflowY: 'auto', padding: 10, borderRadius: 9, background: 'var(--bg-alt)', fontFamily: 'DM Sans,sans-serif' }}>{x.text}</div>
+                            <div style={{ maxHeight: 300, overflowY: 'auto', padding: '8px 10px', borderRadius: 9, background: 'var(--bg-alt)' }}>
+                              <StudioMarkdown text={x.text} />
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1262,9 +1391,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'DM Sans,sans-serif' }}>Packs disponibles sur le site, une fois abonné Pro ou Expert.</p>
               </div>
             ) : (
-              <div style={{ maxWidth: 1020, margin: '0 auto', display: 'flex', gap: 22, alignItems: 'flex-start' }}>
-                {/* ── Rail des dossiers ── */}
-                <div style={{ width: 170, flexShrink: 0, position: 'sticky', top: 0 }}>
+              <div style={{ maxWidth: 1020, margin: '0 auto', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 14 : 22, alignItems: isMobile ? 'stretch' : 'flex-start' }}>
+                {/* ── Rail des dossiers (horizontal sur mobile) ── */}
+                <div style={isMobile ? { width: '100%' } : { width: 170, flexShrink: 0, position: 'sticky', top: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'DM Sans,sans-serif' }}>Dossiers</div>
                   {([null, ...Array.from(new Set(systems.map(s => s.folder).filter((f): f is string => Boolean(f)))).sort()] as (string | null)[]).map(f => {
                     const on = activeFolder === f
@@ -1397,6 +1526,70 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           </div>
         )}
       </div>
+
+      {/* ══ Planification autonome (sur-page) ══ */}
+      {scheduleOpen && (() => {
+        const hasHuman = graph.nodes.some(n => n.kind === 'validation' || n.kind === 'action')
+        const cur = schedule ?? { frequency: 'weekly' as const, hour: 18, weekday: 6, enabled: false }
+        const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+        const selStyle: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', outline: 'none', cursor: 'pointer' }
+        return (
+          <div onClick={() => setScheduleOpen(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 13700, background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div onClick={e => e.stopPropagation()}
+              style={{ width: 'min(480px, 100%)', background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', padding: '22px 22px 18px', animation: 'studio_in 0.2s ease' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <span style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>Planifier ce système</div>
+                <button onClick={() => setScheduleOpen(false)} aria-label="Fermer" style={iconBtn}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+
+              {hasHuman ? (
+                <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: 0, fontFamily: 'DM Sans,sans-serif' }}>
+                  Ce système contient un bloc <b>Validation</b> ou <b>Action</b> : il a besoin de TON accord pour avancer, il ne peut donc pas tourner tout seul.
+                  Retire ces blocs (garde des agents et une synthèse) pour activer la planification.
+                </p>
+              ) : (
+                <>
+                  <p style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.55, margin: '0 0 14px', fontFamily: 'DM Sans,sans-serif' }}>
+                    Le système tournera tout seul, même app fermée. Le rendu arrive dans l’Historique et tu reçois une notification. Chaque run débite ton solde Studio (~{formatTokens(estimateRunTokens(graph.nodes))} tokens).
+                  </p>
+                  {/* Activation */}
+                  <button onClick={() => void saveSchedule({ ...cur, enabled: !cur.enabled })} disabled={scheduleSaving}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', borderRadius: 12, border: '1px solid var(--border)', background: cur.enabled ? 'color-mix(in srgb, #8B5CF6 8%, transparent)' : 'var(--bg-alt)', cursor: 'pointer', marginBottom: 12 }}>
+                    <span style={{ width: 38, height: 22, borderRadius: 999, background: cur.enabled ? '#8B5CF6' : 'var(--border-mid)', position: 'relative', transition: 'background 180ms', flexShrink: 0 }}>
+                      <span style={{ position: 'absolute', top: 2, left: cur.enabled ? 18 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 180ms', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
+                    </span>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>{cur.enabled ? 'Planification active' : 'Planification désactivée'}</span>
+                  </button>
+                  {/* Fréquence / jour / heure */}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <select value={cur.frequency} onChange={e => void saveSchedule({ ...cur, frequency: e.target.value as 'daily' | 'weekly' })} style={selStyle}>
+                      <option value="weekly">Chaque semaine</option>
+                      <option value="daily">Chaque jour</option>
+                    </select>
+                    {cur.frequency === 'weekly' && (
+                      <select value={cur.weekday} onChange={e => void saveSchedule({ ...cur, weekday: Number(e.target.value) })} style={selStyle}>
+                        {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                      </select>
+                    )}
+                    <select value={cur.hour} onChange={e => void saveSchedule({ ...cur, hour: Number(e.target.value) })} style={selStyle}>
+                      {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, '0')} h</option>)}
+                    </select>
+                  </div>
+                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '10px 0 0', fontFamily: 'DM Sans,sans-serif' }}>
+                    Fuseau horaire : {Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris'} (détecté automatiquement).
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ══ Solde Studio + packs (sur-page) ══ */}
       {walletOpen && access && (

@@ -20835,6 +20835,15 @@ export default function AIPanel({
   }, [activeId, loading, convs])
   useEffect(() => { if (open) setTimeout(() => areaRef.current?.focus(), 260) }, [open])
   useEffect(() => { if (open && prefillMessage) setInput(prefillMessage) }, [open, prefillMessage])
+  // Prefill déposé par une autre surface (Dashboard, Studio « Continuer avec
+  // le coach »…) via sessionStorage — consommé une seule fois à l'ouverture.
+  useEffect(() => {
+    if (!open) return
+    try {
+      const p = sessionStorage.getItem('coach_prefill')
+      if (p) { setInput(p); sessionStorage.removeItem('coach_prefill') }
+    } catch { /* ignore */ }
+  }, [open])
 
   // ── Détection support voix ───────────────────────────────────
   useEffect(() => {

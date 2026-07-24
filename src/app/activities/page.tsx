@@ -3460,6 +3460,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   const [showSelModal, setShowSelModal] = useState(false)
   const isSelectingRef = useRef(false)
   const dragStartIdxRef = useRef<number | null>(null)
+  const selectionRef = useRef<[number, number] | null>(null)
 
   // ── Détection desktop (souris + hover réel) ────────────────────────
   const [isDesktop, setIsDesktop] = useState(false)
@@ -3682,6 +3683,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       isSelectingRef.current = true
       const idx = idxFromClientX(e.clientX)
       dragStartIdxRef.current = idx
+      selectionRef.current = [idx, idx]
       setSelection([idx, idx])
       setShowSelModal(false)
       hideHint()
@@ -3699,7 +3701,9 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     if (isSelectingRef.current) {
       const idx = idxFromClientX(e.clientX)
       const start = dragStartIdxRef.current ?? idx
-      setSelection([Math.min(start, idx), Math.max(start, idx)])
+      const ns: [number, number] = [Math.min(start, idx), Math.max(start, idx)]
+      selectionRef.current = ns
+      setSelection(ns)
       return
     }
     updateAtPointer(e.clientX, e.clientY)
@@ -3708,13 +3712,16 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     if (isSelectingRef.current) {
       isSelectingRef.current = false
       dragStartIdxRef.current = null
-      setSelection(cur => {
-        if (cur && cur[1] - cur[0] > 5) {
-          setShowSelModal(true)
-          return cur
-        }
-        return null
-      })
+      // On lit la sélection depuis la ref (à jour) et on déclenche l'ouverture
+      // HORS de tout updater setState — nested setState + retour de la même
+      // référence faisait bail-out React et l'ouverture se perdait.
+      const cur = selectionRef.current
+      if (cur && cur[1] - cur[0] > 5) {
+        setShowSelModal(true)
+      } else {
+        selectionRef.current = null
+        setSelection(null)
+      }
     }
     hideHint()
   }
@@ -3906,6 +3913,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
           ftp={activity.ftp_at_time ?? null}
           onClose={() => {
             setShowSelModal(false)
+            selectionRef.current = null
             setSelection(null)
           }}
         />

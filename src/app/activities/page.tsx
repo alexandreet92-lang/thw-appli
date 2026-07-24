@@ -2766,6 +2766,9 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
   const containerRef   = useRef<HTMLDivElement>(null)
   const tracksAreaRef  = useRef<HTMLDivElement>(null)
   const handleMoveRef  = useRef<(clientX: number, clientY: number) => void>(() => {})
+  const selectionRef   = useRef<[number,number] | null>(null)
+  const draggingRef    = useRef(false)
+  const handleUpRef    = useRef<() => void>(() => {})
 
   // Distances cumulées le long du tracé polyline (pour mapping curseur → GPS)
   const polyCumDist = useMemo(
@@ -2804,7 +2807,9 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
     if (dragStartPct !== null) {
       const i1 = Math.round(dragStartPct * (N-1))
       const i2 = Math.round(pct * (N-1))
-      setSelection([Math.min(i1,i2), Math.max(i1,i2)])
+      const ns: [number, number] = [Math.min(i1,i2), Math.max(i1,i2)]
+      selectionRef.current = ns
+      setSelection(ns)
     }
     // Mapping curseur → GPS si polyline disponible
     if (polylinePoints && polyCumDist && s?.distance) {
@@ -2855,15 +2860,33 @@ function SyncCharts({ activity, hrZones, powerZones, paceZones, polylinePoints, 
   function handleDown(clientX: number) {
     const chartEl = tracksAreaRef.current ?? containerRef.current
     if (!chartEl) return
+    draggingRef.current = true
+    selectionRef.current = null
     setDragStartPct(getPct(clientX, chartEl))
     setSelection(null)
     setShowSelModal(false)
   }
 
   function handleUp() {
+    if (!draggingRef.current) return
+    draggingRef.current = false
     setDragStartPct(null)
-    if (selection && selection[1] - selection[0] > 5) setShowSelModal(true)
+    const sel = selectionRef.current
+    if (sel && sel[1] - sel[0] > 5) setShowSelModal(true)
   }
+  handleUpRef.current = handleUp
+
+  // Filet global : relâcher HORS du conteneur (ou un tap-drag qui finit à côté)
+  // doit quand même finaliser la sélection et ouvrir la sur-page.
+  useEffect(() => {
+    const up = () => handleUpRef.current()
+    window.addEventListener('mouseup', up)
+    window.addEventListener('touchend', up)
+    return () => {
+      window.removeEventListener('mouseup', up)
+      window.removeEventListener('touchend', up)
+    }
+  }, [])
 
   function smooth(arr: number[], w = 5): number[] {
     return arr.map((_, i) => {

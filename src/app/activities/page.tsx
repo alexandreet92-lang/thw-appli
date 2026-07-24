@@ -2621,7 +2621,7 @@ function SelectionSheet(props: SelectionSheetProps) {
         style={{
           position:             'fixed',
           inset:                0,
-          zIndex:               600,
+          zIndex:               99990,
           background:           'rgba(0,0,0,0.4)',
           backdropFilter:       'blur(4px)',
           WebkitBackdropFilter: 'blur(4px)',
@@ -2630,8 +2630,8 @@ function SelectionSheet(props: SelectionSheetProps) {
       <div
         className={closing ? 'sel-sheet-out' : 'sel-sheet-in'}
         style={{
-          position:     'fixed', left: 0, right: 0, bottom: 0, zIndex: 601,
-          background:   'var(--bg)',
+          position:     'fixed', left: 0, right: 0, bottom: 0, zIndex: 99991,
+          background:   'var(--bg, #ffffff)',
           borderRadius: '16px 16px 0 0',
           boxShadow:    '0 10px 40px rgba(0,0,0,0.3)',
           maxHeight:    '90vh',

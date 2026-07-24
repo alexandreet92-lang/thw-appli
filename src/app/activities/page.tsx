@@ -3676,6 +3676,43 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     return Math.round(ratio * (N - 1))
   }
 
+  // Drag-to-select (desktop) reconstruit sur des ÉVÉNEMENTS SOURIS PURS attachés
+  // au document. Les mouse events ne sont PAS soumis à la pointer-capture et sont
+  // délivrés de façon fiable par tous les navigateurs (Safari inclus) → le
+  // relâchement est toujours capté et la sur-page s'ouvre à chaque fois.
+  function startMouseSelection(clientX: number) {
+    if (isSelectingRef.current) return               // déjà en cours (évite double départ)
+    // eslint-disable-next-line no-console
+    console.log('[SEL] start drag', { clientX, N })
+    isSelectingRef.current = true
+    const startIdx = idxFromClientX(clientX)
+    dragStartIdxRef.current = startIdx
+    selectionRef.current = [startIdx, startIdx]
+    setSelection([startIdx, startIdx])
+    setShowSelModal(false)
+    hideHint()
+    const onDocMove = (ev: MouseEvent) => {
+      const idx = idxFromClientX(ev.clientX)
+      const start = dragStartIdxRef.current ?? idx
+      const ns: [number, number] = [Math.min(start, idx), Math.max(start, idx)]
+      selectionRef.current = ns
+      setSelection(ns)
+    }
+    const onDocUp = () => {
+      document.removeEventListener('mousemove', onDocMove)
+      document.removeEventListener('mouseup', onDocUp)
+      isSelectingRef.current = false
+      dragStartIdxRef.current = null
+      const cur = selectionRef.current
+      // eslint-disable-next-line no-console
+      console.log('[SEL] mouseup — sélection finale', cur, '→ ouverture:', !!(cur && cur[1] - cur[0] > 5))
+      if (cur && cur[1] - cur[0] > 5) setShowSelModal(true)
+      else { selectionRef.current = null; setSelection(null) }
+    }
+    document.addEventListener('mousemove', onDocMove)
+    document.addEventListener('mouseup', onDocUp)
+  }
+
   // Handlers communs pointer (touch + mouse). PointerEvents unifie les 2.
   function onPointerDown(e: React.PointerEvent) {
     // Desktop : clic gauche démarre le drag-to-select. Le drag est piloté au
@@ -3684,31 +3721,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     // Safari ne délivre pas toujours → le relâchement était perdu et la sur-page
     // ne s'ouvrait jamais.
     if (isDesktop && e.pointerType === 'mouse' && e.button === 0) {
-      isSelectingRef.current = true
-      const startIdx = idxFromClientX(e.clientX)
-      dragStartIdxRef.current = startIdx
-      selectionRef.current = [startIdx, startIdx]
-      setSelection([startIdx, startIdx])
-      setShowSelModal(false)
-      hideHint()
-      const onDocMove = (ev: PointerEvent) => {
-        const idx = idxFromClientX(ev.clientX)
-        const start = dragStartIdxRef.current ?? idx
-        const ns: [number, number] = [Math.min(start, idx), Math.max(start, idx)]
-        selectionRef.current = ns
-        setSelection(ns)
-      }
-      const onDocUp = () => {
-        document.removeEventListener('pointermove', onDocMove)
-        document.removeEventListener('pointerup', onDocUp)
-        isSelectingRef.current = false
-        dragStartIdxRef.current = null
-        const cur = selectionRef.current
-        if (cur && cur[1] - cur[0] > 5) setShowSelModal(true)
-        else { selectionRef.current = null; setSelection(null) }
-      }
-      document.addEventListener('pointermove', onDocMove)
-      document.addEventListener('pointerup', onDocUp)
+      startMouseSelection(e.clientX)
       return
     }
     updateAtPointer(e.clientX, e.clientY)
@@ -3959,7 +3972,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
 
         <div
           ref={containerRef}
-          onPointerDown={onPointerDown}
+          onMouseDown={e => { if (isDesktop && e.button === 0) startMouseSelection(e.clientX) }} onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerLeaveOrUp}
           onPointerLeave={onPointerLeaveOrUp}
@@ -4152,7 +4165,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
 
         <div
           ref={containerRef}
-          onPointerDown={onPointerDown}
+          onMouseDown={e => { if (isDesktop && e.button === 0) startMouseSelection(e.clientX) }} onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerLeaveOrUp}
           onPointerLeave={onPointerLeaveOrUp}
@@ -4323,7 +4336,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       {/* Chart combiné */}
       <div
         ref={containerRef}
-        onPointerDown={onPointerDown}
+        onMouseDown={e => { if (isDesktop && e.button === 0) startMouseSelection(e.clientX) }} onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerLeaveOrUp}
         onPointerLeave={onPointerLeaveOrUp}

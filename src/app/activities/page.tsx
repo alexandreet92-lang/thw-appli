@@ -2355,19 +2355,6 @@ function SelectionSheet(props: SelectionSheetProps) {
     ] },
   ]
 
-  // ── Diagnostic Puissance — log conditions de calcul (gardé pour traçabilité) ──
-  if (typeof window !== 'undefined') {
-    // eslint-disable-next-line no-console
-    console.log('[SelectionSheet][DIAG Power]', {
-      hasStreams: !!activity.streams,
-      streamsKeys: activity.streams ? Object.keys(activity.streams) : [],
-      wattsSamples: wS?.slice(0, 5),
-      wattsLen: wS?.length ?? 0,
-      ftp,
-      ftp_at_time: activity.ftp_at_time,
-      hasAnyPositive: wS?.some(w => w != null && w > 0) ?? false,
-    })
-  }
 
   // ── Données puissance présentes ? ──
   const hasPowerData = !!wS && wS.length > 0 && wS.some(w => w != null && w > 0)
@@ -2586,10 +2573,6 @@ function SelectionSheet(props: SelectionSheetProps) {
   // block créé par un ancêtre transformé (ex: bottom-sheet de l'activité).
   const sheetNode = (
     <>
-      {/* DEBUG temporaire : preuve visible que SelectionSheet est bien monté. */}
-      <div style={{ position: 'fixed', top: 40, right: 8, zIndex: 100000, background: '#c026d3', color: '#fff', fontFamily: 'monospace', fontSize: 11, padding: '4px 8px', borderRadius: 6, pointerEvents: 'none' }}>
-        SHEET MONTÉE
-      </div>
       {/* Animations + responsive grids — injectés via le portal car SyncCharts
           (qui hébergeait ces règles auparavant) n'est plus monté. */}
       <style>{`
@@ -3465,8 +3448,6 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   const isSelectingRef = useRef(false)
   const dragStartIdxRef = useRef<number | null>(null)
   const selectionRef = useRef<[number, number] | null>(null)
-  // DEBUG temporaire visible à l'écran (diagnostic sur-page sélection).
-  const [dbg, setDbg] = useState('prêt')
 
   // ── Détection desktop (souris + hover réel) ────────────────────────
   const [isDesktop, setIsDesktop] = useState(false)
@@ -3688,7 +3669,6 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   // relâchement est toujours capté et la sur-page s'ouvre à chaque fois.
   function startMouseSelection(clientX: number) {
     if (isSelectingRef.current) return               // déjà en cours (évite double départ)
-    setDbg('START clic reçu')
     isSelectingRef.current = true
     const startIdx = idxFromClientX(clientX)
     dragStartIdxRef.current = startIdx
@@ -3702,7 +3682,6 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       const ns: [number, number] = [Math.min(start, idx), Math.max(start, idx)]
       selectionRef.current = ns
       setSelection(ns)
-      setDbg(`DRAG ${ns[0]}→${ns[1]}`)
     }
     const onDocUp = () => {
       document.removeEventListener('mousemove', onDocMove)
@@ -3710,9 +3689,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       isSelectingRef.current = false
       dragStartIdxRef.current = null
       const cur = selectionRef.current
-      const willOpen = !!(cur && cur[1] - cur[0] > 5)
-      setDbg(`UP sel=${cur ? cur.join('-') : 'null'} ouvre=${willOpen}`)
-      if (willOpen) setShowSelModal(true)
+      if (cur && cur[1] - cur[0] > 5) setShowSelModal(true)
       else { selectionRef.current = null; setSelection(null) }
     }
     document.addEventListener('mousemove', onDocMove)
@@ -3942,13 +3919,6 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       )
       : null
 
-  // DEBUG temporaire : badge visible à l'écran pour diagnostiquer la sélection.
-  const DebugBadge = (
-    <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 99999, background: '#000', color: '#39FF14', fontFamily: 'monospace', fontSize: 11, padding: '4px 8px', borderRadius: 6, pointerEvents: 'none', maxWidth: 340, whiteSpace: 'normal' }}>
-      {dbg} · open={String(showSelModal)} s={String(!!s)} sel={selection ? `${selection[0]}-${selection[1]}` : 'null'} render={String(!!(showSelModal && selection && s))}
-    </div>
-  )
-
   const W = 1000
   const ROW_H = 70    // hauteur fixe par row (Format A collé)
 
@@ -4115,7 +4085,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         }}>
           {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
         </div>
-        {SelSheetNode}{DebugBadge}
+        {SelSheetNode}
       </div>
     )
   }
@@ -4283,7 +4253,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         }}>
           {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
         </div>
-        {SelSheetNode}{DebugBadge}
+        {SelSheetNode}
       </div>
     )
   }
@@ -4444,7 +4414,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       }}>
         {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
       </div>
-      {SelSheetNode}{DebugBadge}
+      {SelSheetNode}
     </div>
   )
 }

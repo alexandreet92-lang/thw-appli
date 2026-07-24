@@ -3461,6 +3461,8 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   const isSelectingRef = useRef(false)
   const dragStartIdxRef = useRef<number | null>(null)
   const selectionRef = useRef<[number, number] | null>(null)
+  // DEBUG temporaire visible à l'écran (diagnostic sur-page sélection).
+  const [dbg, setDbg] = useState('prêt')
 
   // ── Détection desktop (souris + hover réel) ────────────────────────
   const [isDesktop, setIsDesktop] = useState(false)
@@ -3682,8 +3684,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
   // relâchement est toujours capté et la sur-page s'ouvre à chaque fois.
   function startMouseSelection(clientX: number) {
     if (isSelectingRef.current) return               // déjà en cours (évite double départ)
-    // eslint-disable-next-line no-console
-    console.log('[SEL] start drag', { clientX, N })
+    setDbg('START clic reçu')
     isSelectingRef.current = true
     const startIdx = idxFromClientX(clientX)
     dragStartIdxRef.current = startIdx
@@ -3697,6 +3698,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       const ns: [number, number] = [Math.min(start, idx), Math.max(start, idx)]
       selectionRef.current = ns
       setSelection(ns)
+      setDbg(`DRAG ${ns[0]}→${ns[1]}`)
     }
     const onDocUp = () => {
       document.removeEventListener('mousemove', onDocMove)
@@ -3704,9 +3706,9 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       isSelectingRef.current = false
       dragStartIdxRef.current = null
       const cur = selectionRef.current
-      // eslint-disable-next-line no-console
-      console.log('[SEL] mouseup — sélection finale', cur, '→ ouverture:', !!(cur && cur[1] - cur[0] > 5))
-      if (cur && cur[1] - cur[0] > 5) setShowSelModal(true)
+      const willOpen = !!(cur && cur[1] - cur[0] > 5)
+      setDbg(`UP sel=${cur ? cur.join('-') : 'null'} ouvre=${willOpen}`)
+      if (willOpen) setShowSelModal(true)
       else { selectionRef.current = null; setSelection(null) }
     }
     document.addEventListener('mousemove', onDocMove)
@@ -3936,6 +3938,13 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       )
       : null
 
+  // DEBUG temporaire : badge visible à l'écran pour diagnostiquer la sélection.
+  const DebugBadge = (
+    <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 99999, background: '#000', color: '#39FF14', fontFamily: 'monospace', fontSize: 11, padding: '4px 8px', borderRadius: 6, pointerEvents: 'none' }}>
+      SEL: {dbg} · desktop={String(isDesktop)}
+    </div>
+  )
+
   const W = 1000
   const ROW_H = 70    // hauteur fixe par row (Format A collé)
 
@@ -4102,7 +4111,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         }}>
           {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
         </div>
-        {SelSheetNode}
+        {SelSheetNode}{DebugBadge}
       </div>
     )
   }
@@ -4270,7 +4279,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
         }}>
           {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
         </div>
-        {SelSheetNode}
+        {SelSheetNode}{DebugBadge}
       </div>
     )
   }
@@ -4431,7 +4440,7 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
       }}>
         {xLabels.map((l, i) => <span key={i}>{l.label}</span>)}
       </div>
-      {SelSheetNode}
+      {SelSheetNode}{DebugBadge}
     </div>
   )
 }

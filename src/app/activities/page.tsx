@@ -2586,6 +2586,10 @@ function SelectionSheet(props: SelectionSheetProps) {
   // block créé par un ancêtre transformé (ex: bottom-sheet de l'activité).
   const sheetNode = (
     <>
+      {/* DEBUG temporaire : preuve visible que SelectionSheet est bien monté. */}
+      <div style={{ position: 'fixed', top: 40, right: 8, zIndex: 100000, background: '#c026d3', color: '#fff', fontFamily: 'monospace', fontSize: 11, padding: '4px 8px', borderRadius: 6, pointerEvents: 'none' }}>
+        SHEET MONTÉE
+      </div>
       {/* Animations + responsive grids — injectés via le portal car SyncCharts
           (qui hébergeait ces règles auparavant) n'est plus monté. */}
       <style>{`
@@ -3940,8 +3944,8 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
 
   // DEBUG temporaire : badge visible à l'écran pour diagnostiquer la sélection.
   const DebugBadge = (
-    <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 99999, background: '#000', color: '#39FF14', fontFamily: 'monospace', fontSize: 11, padding: '4px 8px', borderRadius: 6, pointerEvents: 'none' }}>
-      SEL: {dbg} · desktop={String(isDesktop)}
+    <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 99999, background: '#000', color: '#39FF14', fontFamily: 'monospace', fontSize: 11, padding: '4px 8px', borderRadius: 6, pointerEvents: 'none', maxWidth: 340, whiteSpace: 'normal' }}>
+      {dbg} · open={String(showSelModal)} s={String(!!s)} sel={selection ? `${selection[0]}-${selection[1]}` : 'null'} render={String(!!(showSelModal && selection && s))}
     </div>
   )
 

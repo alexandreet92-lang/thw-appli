@@ -3678,16 +3678,37 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
 
   // Handlers communs pointer (touch + mouse). PointerEvents unifie les 2.
   function onPointerDown(e: React.PointerEvent) {
-    // Desktop : clic gauche démarre le drag-to-select
+    // Desktop : clic gauche démarre le drag-to-select. Le drag est piloté au
+    // niveau DOCUMENT (pointermove/up) → fiable partout, Safari INCLUS. Avant, on
+    // dépendait de la pointer-capture + des pointerup/leave de l'élément que
+    // Safari ne délivre pas toujours → le relâchement était perdu et la sur-page
+    // ne s'ouvrait jamais.
     if (isDesktop && e.pointerType === 'mouse' && e.button === 0) {
       isSelectingRef.current = true
-      const idx = idxFromClientX(e.clientX)
-      dragStartIdxRef.current = idx
-      selectionRef.current = [idx, idx]
-      setSelection([idx, idx])
+      const startIdx = idxFromClientX(e.clientX)
+      dragStartIdxRef.current = startIdx
+      selectionRef.current = [startIdx, startIdx]
+      setSelection([startIdx, startIdx])
       setShowSelModal(false)
       hideHint()
-      e.currentTarget.setPointerCapture(e.pointerId)
+      const onDocMove = (ev: PointerEvent) => {
+        const idx = idxFromClientX(ev.clientX)
+        const start = dragStartIdxRef.current ?? idx
+        const ns: [number, number] = [Math.min(start, idx), Math.max(start, idx)]
+        selectionRef.current = ns
+        setSelection(ns)
+      }
+      const onDocUp = () => {
+        document.removeEventListener('pointermove', onDocMove)
+        document.removeEventListener('pointerup', onDocUp)
+        isSelectingRef.current = false
+        dragStartIdxRef.current = null
+        const cur = selectionRef.current
+        if (cur && cur[1] - cur[0] > 5) setShowSelModal(true)
+        else { selectionRef.current = null; setSelection(null) }
+      }
+      document.addEventListener('pointermove', onDocMove)
+      document.addEventListener('pointerup', onDocUp)
       return
     }
     updateAtPointer(e.clientX, e.clientY)
@@ -3697,32 +3718,14 @@ export function ActivityCurves({ activity }: ActivityCurvesProps) {
     }
   }
   function onPointerMove(e: React.PointerEvent) {
-    // Drag-to-select actif : étend la sélection, pas de crosshair/tooltip
-    if (isSelectingRef.current) {
-      const idx = idxFromClientX(e.clientX)
-      const start = dragStartIdxRef.current ?? idx
-      const ns: [number, number] = [Math.min(start, idx), Math.max(start, idx)]
-      selectionRef.current = ns
-      setSelection(ns)
-      return
-    }
+    // Pendant un drag-to-select desktop, c'est le document qui gère → on ignore.
+    if (isSelectingRef.current) return
     updateAtPointer(e.clientX, e.clientY)
   }
   function onPointerLeaveOrUp() {
-    if (isSelectingRef.current) {
-      isSelectingRef.current = false
-      dragStartIdxRef.current = null
-      // On lit la sélection depuis la ref (à jour) et on déclenche l'ouverture
-      // HORS de tout updater setState — nested setState + retour de la même
-      // référence faisait bail-out React et l'ouverture se perdait.
-      const cur = selectionRef.current
-      if (cur && cur[1] - cur[0] > 5) {
-        setShowSelModal(true)
-      } else {
-        selectionRef.current = null
-        setSelection(null)
-      }
-    }
+    // Le drag desktop est finalisé par le listener document (onDocUp) ; ici on
+    // ne touche jamais à une sélection en cours.
+    if (isSelectingRef.current) return
     hideHint()
   }
 

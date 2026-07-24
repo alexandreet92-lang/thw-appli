@@ -1633,11 +1633,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 </div>
               ))}
             </div>
-            <a href={siteUrl} target="_blank" rel="noreferrer"
-              style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 0', borderRadius: 11, background: '#8B5CF6', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'DM Sans,sans-serif' }}>
+            <button onClick={() => {
+                // Page tokens du site + uid → les liens Stripe portent client_reference_id
+                // (crédit instantané, sans dépendre de l'email de paiement).
+                void (async () => {
+                  const base = (process.env.NEXT_PUBLIC_MARKETING_SITE_URL ?? '').replace(/\/$/, '')
+                  let uid = ''
+                  try { const { data: { user } } = await createClient().auth.getUser(); uid = user?.id ?? '' } catch { /* ignore */ }
+                  const url = base ? `${base}/tokens.html${uid ? `?uid=${uid}` : ''}` : '/settings/subscription'
+                  window.open(url, '_blank', 'noopener')
+                })()
+              }}
+              style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px 0', borderRadius: 11, border: 'none', background: '#8B5CF6', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
               Acheter des packs sur le site
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg>
-            </a>
+            </button>
             <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 10, fontFamily: 'DM Sans,sans-serif' }}>Les tarifs et l’achat se font sur le site — les tokens sont crédités automatiquement sur ton compte. Ton quota mensuel se recharge, lui, chaque mois.</p>
           </div>
         </div>

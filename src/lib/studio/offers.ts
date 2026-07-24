@@ -32,7 +32,7 @@ export interface StudioPack {
 // vivent sur le site web (bouton « Voir sur le site »).
 export const STUDIO_PACKS: StudioPack[] = [
   { key: 'decouverte', label: 'Pack Découverte', tokens: 200_000,   tagline: 'Environ 8 à 15 runs selon les modèles' },
-  { key: 'builder',    label: 'Pack Builder',    tokens: 1_000_000, tagline: 'Le meilleur ratio pour un usage régulier' },
+  { key: 'builder',    label: 'Pack Builder',    tokens: 2_000_000, tagline: 'Le meilleur ratio pour un usage régulier' },
   { key: 'architecte', label: 'Pack Architecte', tokens: 5_000_000, tagline: 'Pour les systèmes complexes qui tournent souvent' },
 ]
 

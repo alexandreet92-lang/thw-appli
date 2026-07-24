@@ -13,6 +13,7 @@ import { stripe, getTierFromPriceId } from '@/lib/stripe/config'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notifyUser } from '@/lib/notifications/dispatch'
 import { creditStudioPack } from '@/lib/tokens/studio'
+import { STUDIO_PACKS } from '@/lib/studio/offers'
 import type { TierName } from '@/lib/subscriptions/tier-limits'
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -68,10 +69,52 @@ export async function POST(req: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session
 
         // Paiement unique — pack de tokens STUDIO → crédite le wallet Studio.
-        if (session.mode === 'payment' && session.metadata?.studioPack) {
-          const packUserId = session.metadata.userId
-          const tokens = parseInt(session.metadata.studioTokens ?? '0', 10)
-          if (packUserId && tokens > 0) {
+        // Deux origines possibles :
+        //  • checkout créé par l'app (/api/studio/checkout) → metadata.studioPack + userId ;
+        //  • PAYMENT LINK (buy.stripe.com, depuis le site web) → pack identifié par le
+        //    Price ID des line items, utilisateur retrouvé via client_reference_id
+        //    (?client_reference_id=<uid> sur le lien) ou, à défaut, l'email de paiement.
+        if (session.mode === 'payment') {
+          // 1) Identifier le pack.
+          let packKey: string | null = session.metadata?.studioPack ?? null
+          let tokens = parseInt(session.metadata?.studioTokens ?? '0', 10)
+          if (!packKey) {
+            try {
+              const items = await stripe.checkout.sessions.listLineItems(session.id, { limit: 5 })
+              const priceIds = items.data.map(li => li.price?.id).filter(Boolean) as string[]
+              const PRICE_TO_PACK: Record<string, string> = {}
+              if (process.env.STRIPE_PRICE_STUDIO_DECOUVERTE) PRICE_TO_PACK[process.env.STRIPE_PRICE_STUDIO_DECOUVERTE] = 'decouverte'
+              if (process.env.STRIPE_PRICE_STUDIO_BUILDER)    PRICE_TO_PACK[process.env.STRIPE_PRICE_STUDIO_BUILDER]    = 'builder'
+              if (process.env.STRIPE_PRICE_STUDIO_ARCHITECTE) PRICE_TO_PACK[process.env.STRIPE_PRICE_STUDIO_ARCHITECTE] = 'architecte'
+              packKey = priceIds.map(id => PRICE_TO_PACK[id]).find(Boolean) ?? null
+            } catch (e) { console.warn('[stripe/webhook] listLineItems failed:', e) }
+          }
+          if (!packKey) break   // paiement unique sans rapport avec le Studio
+          if (!tokens || tokens <= 0) {
+            tokens = STUDIO_PACKS.find(p => p.key === packKey)?.tokens ?? 0
+          }
+
+          // 2) Identifier l'utilisateur.
+          let packUserId: string | null = session.metadata?.userId ?? session.client_reference_id ?? null
+          if (!packUserId) {
+            const email = (session.customer_details?.email ?? session.customer_email ?? '').toLowerCase()
+            if (email) {
+              try {
+                for (let page = 1; page <= 5 && !packUserId; page++) {
+                  const { data: usersPage } = await sb.auth.admin.listUsers({ page, perPage: 200 })
+                  const match = usersPage?.users?.find((u: { email?: string }) => (u.email ?? '').toLowerCase() === email)
+                  if (match) packUserId = match.id
+                  if (!usersPage?.users?.length || usersPage.users.length < 200) break
+                }
+              } catch (e) { console.warn('[stripe/webhook] user lookup by email failed:', e) }
+            }
+          }
+          if (!packUserId) {
+            console.warn(`[stripe/webhook] pack ${packKey} payé (session ${session.id}) mais utilisateur introuvable — crédit manuel requis`)
+            break
+          }
+
+          if (tokens > 0) {
             await creditStudioPack(packUserId, tokens)
             void notifyUser(packUserId, 'tokens.pack_credite', {
               title: 'Pack Studio crédité',
@@ -80,7 +123,7 @@ export async function POST(req: NextRequest) {
               dedupKey: `studio-pack-${session.id}`,
               once: true,
             })
-            console.log(`[stripe/webhook] studio pack → user ${packUserId} +${tokens} tokens`)
+            console.log(`[stripe/webhook] studio pack ${packKey} → user ${packUserId} +${tokens} tokens`)
           }
           break
         }

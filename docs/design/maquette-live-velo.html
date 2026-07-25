@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Hybrid — Maquette Live Vélo</title>
+<style>
+:root{
+  --bg:#09090B; --surface:#141417; --surface2:#1A1A1E;
+  --hair:rgba(255,255,255,.07); --hair2:rgba(255,255,255,.12);
+  --txt:#FAFAFA; --txt2:#A1A1AA; --label:#71717A; --dim:#3F3F46;
+  --cyan:#06B6D4; --cyan-on:#04262E; --cyan-track:#155E6E;
+  --green:#10B981; --orange:#F59E0B; --red:#EF4444;
+  --float:rgba(13,13,16,.88);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;background:#000;font-family:Inter,-apple-system,system-ui,sans-serif;color:var(--txt)}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;overflow:hidden}
+.num{font-variant-numeric:tabular-nums}
+
+/* ===== Cadre téléphone ===== */
+#stage{position:relative}
+#phone{position:relative;width:390px;height:844px;background:var(--bg);border-radius:44px;
+  overflow:hidden;box-shadow:0 0 0 10px #1c1c1f,0 0 0 12px #0a0a0a,0 30px 80px rgba(0,0,0,.8)}
+@media(max-height:940px){#stage{transform:scale(calc((100vh - 90px)/844));transform-origin:center}}
+
+/* ===== Status bar ===== */
+#statusbar{color:var(--txt);position:absolute;top:0;left:0;right:0;height:54px;z-index:60;display:flex;
+  align-items:center;justify-content:space-between;padding:14px 30px 0;pointer-events:none}
+#statusbar .t{font-size:16px;font-weight:700}
+#statusbar .icons{display:flex;gap:6px;align-items:center;opacity:.9}
+
+/* ===== Header ===== */
+#header{position:absolute;top:58px;left:0;right:0;height:60px;z-index:55;
+  display:flex;align-items:center;justify-content:space-between;padding:0 26px}
+.hbtn{width:36px;height:36px;border-radius:50%;background:var(--surface2);border:none;color:var(--txt);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+[data-page="1"] .hbtn{background:rgba(20,20,23,.78);border:1px solid var(--hair2)}
+#title{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:9px;
+  font-size:15px;font-weight:600}
+#recdot{width:7px;height:7px;border-radius:50%;background:var(--red);
+  box-shadow:0 0 0 3px rgba(239,68,68,.18);display:none}
+#phone.rec #recdot{display:block}
+[data-page="1"] #title{display:none}
+[data-page="1"] #gear{display:none}
+
+/* ===== Pages ===== */
+#pages{position:absolute;inset:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;
+  scrollbar-width:none}
+#pages::-webkit-scrollbar{display:none}
+#phone.locked #pages{overflow:hidden}
+.page{width:390px;height:844px;flex:none;scroll-snap-align:start;position:relative}
+
+/* ===== Tuiles / grille ===== */
+.hero{position:absolute;left:0;right:0;text-align:center}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.17em;color:var(--label);text-transform:uppercase}
+.heroval{font-weight:800;letter-spacing:-.01em;line-height:1}
+.herosub{font-size:13px;font-weight:500;color:var(--txt2);margin-top:10px}
+.grid{position:absolute;left:20px;right:20px}
+.row{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--hair);position:relative}
+.grid .row:last-child{border-bottom:1px solid var(--hair)}
+.row::after{content:"";position:absolute;left:50%;top:18px;bottom:18px;width:1px;background:var(--hair)}
+.cellu{padding:20px 6px 22px;text-align:center}
+.cellu .lb{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--label)}
+.cellu .v{margin-top:9px;display:flex;align-items:baseline;justify-content:center;gap:6px}
+.cellu .n{font-size:40px;font-weight:800}
+.cellu .u{font-size:13px;font-weight:600;color:var(--label)}
+.dimv .n,.dimv .heroval{color:var(--dim)!important}
+.dimv .u{color:#52525B}
+
+/* ===== Chips capteurs ===== */
+#chips{position:absolute;top:126px;left:0;right:0;display:flex;justify-content:center;gap:8px}
+.chip{height:28px;padding:0 13px;border-radius:14px;background:var(--surface);border:1px solid var(--hair2);
+  display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--txt2)}
+.chip .d{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.chip.off{color:var(--label)} .chip.off .d{background:none;border:1.5px solid var(--dim)}
+
+/* ===== Badge auto-pause ===== */
+#autopill{position:absolute;top:122px;left:50%;transform:translateX(-50%);height:30px;padding:0 15px;
+  border-radius:15px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);
+  display:none;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--orange);z-index:56}
+#autopill .d{width:7px;height:7px;border-radius:50%;background:var(--orange)}
+#phone.autopause #autopill{display:flex}
+
+/* ===== Pagination ===== */
+#dots{position:absolute;left:50%;transform:translateX(-50%);display:flex;gap:11px;z-index:54;bottom:168px;
+  transition:bottom .2s}
+#phone.rec[data-page="1"] #dots{bottom:34px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--dim);transition:.2s}
+.dot.on{width:7px;height:7px;background:var(--cyan)}
+
+/* ===== Zone contrôles ===== */
+#controls{position:absolute;left:0;right:0;bottom:0;height:158px;z-index:54}
+#phone.rec[data-page="1"] #controls{display:none}
+#gpsline{position:absolute;top:0;left:0;right:0;display:flex;justify-content:center;align-items:center;
+  gap:8px;font-size:13px;font-weight:500;color:var(--txt2)}
+#gpsline .d{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.bigbtn{position:absolute;left:50%;top:26px;transform:translateX(-50%);width:88px;height:88px;
+  border-radius:50%;background:var(--cyan);border:none;cursor:pointer;
+  box-shadow:0 0 0 10px rgba(6,182,212,.05),0 0 0 20px rgba(6,182,212,.032),0 0 0 30px rgba(6,182,212,.017);
+  display:flex;align-items:center;justify-content:center}
+.bigbtn:active{transform:translateX(-50%) scale(.95)}
+#startlabel{position:absolute;left:0;right:0;top:124px;text-align:center;font-size:13px;font-weight:800;
+  letter-spacing:.19em;color:var(--cyan)}
+.sidebtn{position:absolute;top:42px;width:52px;height:52px;border-radius:50%;background:var(--surface);
+  border:1px solid var(--hair2);color:var(--txt2);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.sidebtn:active{transform:scale(.93)}
+#lockbtn{left:52px}
+#lapbtn{right:52px;color:var(--txt);font-size:11.5px;font-weight:800;letter-spacing:.1em}
+#pre,#recc,#lockc{display:none}
+#phone.pre #pre{display:block}
+#phone.rec:not(.locked) #recc{display:block}
+#phone.rec.locked #lockc{display:block}
+#hint{position:absolute;top:8px;left:0;right:0;text-align:center;font-size:12.5px;color:var(--label)}
+#biglock{position:absolute;left:50%;top:38px;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;
+  background:rgba(6,182,212,.12);border:1.5px solid var(--cyan);color:var(--cyan);cursor:pointer;
+  display:flex;align-items:center;justify-content:center}
+#biglock.pulse{animation:pulse .25s}
+@keyframes pulse{50%{transform:translateX(-50%) scale(1.1)}}
+
+/* ===== Carte ===== */
+#map{background:#0E1013}
+#mapsvg{position:absolute;inset:0;width:100%;height:100%}
+.scrimtop{position:absolute;top:0;left:0;right:0;height:150px;
+  background:linear-gradient(#09090BF2,#09090B00);pointer-events:none}
+.scrimbot{position:absolute;bottom:0;left:0;right:0;height:210px;
+  background:linear-gradient(#09090B00,#09090BE6 45%,#09090BFA);pointer-events:none}
+#phone.rec .scrimbot{display:none}
+.arrow{position:absolute;top:424px;width:32px;height:32px;border-radius:50%;background:rgba(9,9,11,.55);
+  border:1px solid var(--hair2);color:var(--txt2);font-size:19px;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;z-index:5;padding-bottom:2px}
+#layersbtn{position:absolute;top:126px;right:24px;width:40px;height:40px;border-radius:50%;
+  background:rgba(20,20,23,.8);border:1px solid var(--hair2);color:var(--txt2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;z-index:5}
+#phone.rec #layersbtn{display:none}
+#routechip{position:absolute;bottom:220px;left:50%;transform:translateX(-50%);height:32px;padding:0 17px;
+  border-radius:16px;background:rgba(20,20,23,.85);border:1px solid var(--hair2);display:flex;
+  align-items:center;font-size:12.5px;font-weight:600;color:var(--txt2);white-space:nowrap;z-index:5}
+#phone.rec #routechip{display:none}
+
+/* --- Guidage : bandeau compact --- */
+#guide{position:absolute;top:62px;left:68px;right:16px;min-height:54px;border-radius:16px;
+  background:var(--float);border:1px solid var(--hair2);display:flex;align-items:center;gap:12px;
+  padding:10px 12px;cursor:pointer;z-index:6;backdrop-filter:blur(14px)}
+#guide:active{transform:scale(.985)}
+#guideic{width:36px;height:36px;border-radius:10px;background:rgba(6,182,212,.14);flex:none;
+  display:flex;align-items:center;justify-content:center;color:var(--cyan)}
+#guide.na #guideic{background:rgba(255,255,255,.07);color:var(--label)}
+#guidetxt{flex:1;min-width:0}
+#guidetitle{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;white-space:nowrap}
+#guidesub{font-size:12px;font-weight:500;color:var(--txt2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#guidechev{color:var(--label);flex:none}
+.rbadge{display:inline-flex;align-items:center;height:19px;padding:0 7px;border-radius:5px;
+  font-size:11.5px;font-weight:800;letter-spacing:.02em}
+.rbadge.y{background:#EAB308;color:#1C1400}
+.rbadge.r{background:#B91C1C;color:#fff}
+.exitchip{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:7px;
+  background:rgba(255,255,255,.09);font-size:12px;font-weight:600;color:var(--txt2)}
+
+/* --- Guidage : panneau déplié --- */
+#gpanel{position:absolute;top:56px;left:16px;right:16px;bottom:150px;border-radius:24px;
+  background:rgba(16,16,19,.92);backdrop-filter:blur(22px);border:1px solid var(--hair2);z-index:40;
+  display:none;flex-direction:column;overflow:hidden}
+#gpanel.open{display:flex}
+#gphead{display:flex;align-items:center;gap:14px;padding:22px 22px 16px;border-bottom:1px solid var(--hair)}
+#gphead .ic{width:44px;height:44px;border-radius:12px;background:rgba(6,182,212,.14);color:var(--cyan);
+  display:flex;align-items:center;justify-content:center;flex:none}
+#gphead .t{font-size:20px;font-weight:800;line-height:1.2}
+#gplist{flex:1;overflow-y:auto;padding:4px 22px;scrollbar-width:none}
+#gplist::-webkit-scrollbar{display:none}
+.man{display:flex;align-items:flex-start;gap:16px;padding:19px 0;border-bottom:1px solid var(--hair)}
+.man:last-child{border-bottom:none}
+.man .mic{width:40px;flex:none;color:var(--txt2);padding-top:3px}
+.man .dist{font-size:27px;font-weight:800;line-height:1.05}
+.man .lbl{font-size:15px;font-weight:600;color:var(--txt2);margin-top:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.man .mr{margin-left:auto;padding-top:5px}
+.man:nth-child(4){opacity:.72}.man:nth-child(5){opacity:.5}.man:nth-child(6){opacity:.34}
+#gpclose{height:44px;border:none;background:none;color:var(--label);cursor:pointer;flex:none}
+
+/* --- Vitesse / mini-pause / stats --- */
+#speedcap{position:absolute;left:16px;bottom:180px;width:140px;border-radius:18px;background:var(--float);
+  border:1px solid var(--hair2);padding:12px 14px;display:none;z-index:5;backdrop-filter:blur(14px)}
+#speedcap .lb{font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--label)}
+#speedcap .v{display:flex;align-items:baseline;gap:5px;margin-top:4px}
+#speedcap .n{font-size:32px;font-weight:800}
+#speedcap .u{font-size:12px;font-weight:600;color:var(--label)}
+#minipause{position:absolute;right:18px;bottom:190px;width:48px;height:48px;border-radius:50%;
+  background:rgba(13,13,16,.92);border:1.5px solid var(--cyan);color:var(--cyan);cursor:pointer;
+  display:none;align-items:center;justify-content:center;z-index:5}
+#phone.rec #speedcap{display:block}
+#phone.rec:not(.locked) #minipause{display:flex}
+#statsband{position:absolute;left:0;right:0;bottom:0;height:160px;background:rgba(9,9,11,.94);
+  border-top:1px solid var(--hair2);display:none;grid-template-columns:1fr 1fr 1fr;padding:22px 6px 0;z-index:4}
+#phone.rec #statsband{display:grid}
+.sb{text-align:center;position:relative}
+.sb+.sb::before{content:"";position:absolute;left:0;top:0;bottom:66px;width:1px;background:var(--hair)}
+.sb .lb{font-size:10px;font-weight:700;letter-spacing:.15em;color:var(--label)}
+.sb .v{display:flex;align-items:baseline;justify-content:center;gap:4px;margin-top:8px}
+.sb .n{font-size:26px;font-weight:800}
+.sb .u{font-size:12px;font-weight:600;color:var(--label)}
+.sb .sub{font-size:11px;font-weight:500;color:#52525B;margin-top:6px}
+
+/* ===== Laps ===== */
+#history{position:absolute;left:28px;right:28px;top:556px}
+#history .h{font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--label);margin-bottom:6px}
+.laprow{display:grid;grid-template-columns:66px 1fr 1fr 1fr;align-items:center;height:40px;
+  border-top:1px solid var(--hair);font-size:13.5px}
+.laprow:first-of-type{border-top:none}
+.laprow b{font-weight:700}.laprow span{color:var(--txt2);font-weight:600;text-align:center}
+#histempty{font-size:13px;color:var(--label);padding:8px 0}
+
+/* ===== Overlays ===== */
+#exitov,#lapov{position:absolute;inset:0;z-index:70;display:none}
+#exitov.open,#lapov.open{display:block}
+.veil{position:absolute;inset:0;background:rgba(0,0,0,.68)}
+#sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:28px 28px 0 0;
+  border-top:1px solid rgba(255,255,255,.08);padding:12px 20px 34px;text-align:center;
+  animation:up .26s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+#sheet .handle{width:36px;height:4px;border-radius:2px;background:var(--dim);margin:0 auto 22px}
+#sheet h2{font-size:19px;font-weight:800}
+#sheet p{font-size:13.5px;color:var(--txt2);margin:8px 0 22px;font-weight:500}
+.pill{width:100%;height:52px;border-radius:26px;font-size:16px;font-weight:800;cursor:pointer;
+  font-family:inherit;margin-bottom:12px}
+.pill.primary{background:var(--cyan);border:none;color:var(--cyan-on)}
+.pill.ghost{background:none;border:1.2px solid var(--hair2);color:var(--txt);font-weight:700;font-size:15.5px}
+.pill.danger{background:none;border:none;color:var(--red);font-size:14.5px;font-weight:600;height:36px;margin:0}
+#lapring{position:absolute;left:50%;top:340px;transform:translateX(-50%);width:132px;height:132px}
+#lapring svg{transform:rotate(-90deg)}
+#lapring .txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:21px;font-weight:800;letter-spacing:.13em}
+#lapov .cap{position:absolute;left:0;right:0;top:498px;text-align:center;font-size:13.5px;font-weight:600;color:var(--txt2)}
+#flash{position:absolute;inset:0;z-index:80;pointer-events:none;border:3px solid rgba(6,182,212,.55);
+  border-radius:44px;opacity:0;transition:opacity .12s}
+
+
+/* ===== Thème clair ===== */
+[data-theme="light"]{
+  --bg:#F6F6F7; --surface:#FFFFFF; --surface2:#EBEBED;
+  --hair:rgba(0,0,0,.08); --hair2:rgba(0,0,0,.13);
+  --txt:#131316; --txt2:#4B4B55; --label:#6E6E78; --dim:#C6C6CC;
+  --float:rgba(255,255,255,.92);
+}
+[data-theme="light"] #map{background:#EDEDEB}
+[data-theme="light"] #mapsvg path[fill="#111417"]{fill:#E3E5E1}
+[data-theme="light"] #mapsvg path[fill="#0F1B22"]{fill:#CFE3EC}
+[data-theme="light"] #mapsvg g[stroke="#23262B"]{stroke:#D8D8D4}
+[data-theme="light"] #mapsvg path[stroke="#2C3037"]{stroke:#CFCFCA}
+[data-theme="light"] #mapsvg path[stroke="#3A3F47"]{stroke:#B8B8B2}
+[data-theme="light"] #mapsvg text{fill:#8A8A92}
+[data-theme="light"] .scrimtop{background:linear-gradient(#F6F6F7F2,#F6F6F700)}
+[data-theme="light"] .scrimbot{background:linear-gradient(#F6F6F700,#F6F6F7E6 45%,#F6F6F7FA)}
+[data-theme="light"] #statsband{background:rgba(252,252,253,.95)}
+[data-theme="light"] #gpanel{background:rgba(255,255,255,.94)}
+[data-theme="light"] #toast{background:rgba(255,255,255,.96)}
+[data-theme="light"] .arrow{background:rgba(255,255,255,.72);color:#4B4B55}
+[data-theme="light"] #layersbtn,[data-theme="light"] #minipause{background:rgba(255,255,255,.85)}
+[data-theme="light"] .veil{background:rgba(20,20,24,.45)}
+[data-theme="light"] #guide.na #guideic{background:rgba(0,0,0,.06)}
+[data-theme="light"] #phone{box-shadow:0 0 0 10px #d9d9dd,0 0 0 12px #b9b9bf,0 30px 80px rgba(0,0,0,.35)}
+
+/* ===== Résumé & Training ===== */
+#summary,#training{position:absolute;inset:0;background:var(--bg);z-index:66;display:none;
+  flex-direction:column;padding-top:54px}
+#summary.open,#training.open{display:flex;animation:fadein .25s ease-out}
+@keyframes fadein{from{opacity:0;transform:translateY(14px)}}
+.pgh{text-align:center;padding:18px 0 14px}
+.pgh h2{font-size:19px;font-weight:800}
+.pgh .sub{font-size:12.5px;font-weight:500;color:var(--txt2);margin-top:4px}
+#summap{margin:2px 16px 0;height:186px;border-radius:20px;overflow:hidden;position:relative;
+  background:#0E1013;border:1px solid var(--hair)}
+[data-theme="light"] #summap{background:#EDEDEB}
+#sumgrid .cellu{padding:15px 6px 17px}
+#sumgrid .n{font-size:29px}
+#sumfoot{margin-top:auto;padding:0 20px 30px;text-align:center}
+#sumDelete{margin-top:2px}
+/* progression */
+#prog{display:none;padding:8px 6px 6px}
+#prog .lb{display:flex;justify-content:space-between;font-size:13px;font-weight:600;color:var(--txt2);margin-bottom:10px}
+#prog .lb b{color:var(--txt);font-weight:800}
+#ptrack{height:8px;border-radius:4px;background:var(--surface2);overflow:hidden}
+#pfill{height:100%;width:0%;border-radius:4px;background:var(--cyan);transition:width .12s linear}
+#done{display:none;padding-top:2px}
+#done .ok{width:52px;height:52px;border-radius:50%;background:rgba(16,185,129,.13);color:var(--green);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+#done .t{font-size:15.5px;font-weight:700;margin-bottom:16px}
+/* training */
+#training{padding:54px 0 0}
+#trlist{flex:1;overflow-y:auto;padding:0 20px}
+.trcard{background:var(--surface);border:1px solid var(--hair);border-radius:18px;padding:16px;
+  margin-bottom:12px;position:relative;overflow:hidden}
+.trcard.new::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cyan)}
+.trcard .tt{font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px}
+.trcard .badge-new{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--cyan);
+  background:rgba(6,182,212,.12);padding:3px 8px;border-radius:8px}
+.trcard .dt{font-size:12px;font-weight:500;color:var(--label);margin-top:3px}
+.trcard .st{display:flex;gap:22px;margin-top:13px}
+.trcard .st div{font-size:14.5px;font-weight:800}
+.trcard .st span{display:block;font-size:10px;font-weight:700;letter-spacing:.13em;color:var(--label);margin-top:3px}
+.trcard.skel{opacity:.45}
+.trcard.skel .bar{height:11px;border-radius:6px;background:var(--surface2);margin-top:8px}
+#trfoot{padding:14px 20px 30px}
+#toast{position:absolute;top:126px;left:50%;transform:translateX(-50%) translateY(-8px);z-index:90;
+  height:36px;padding:0 18px;border-radius:18px;background:rgba(20,20,23,.94);border:1px solid var(--hair2);
+  display:flex;align-items:center;font-size:13px;font-weight:600;color:var(--txt);opacity:0;
+  pointer-events:none;transition:.25s;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.pill.danger.confirm{background:var(--red);color:#fff;height:44px;border-radius:22px;font-weight:800}
+
+/* ===== Barre de contrôle démo ===== */
+#toolbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:560px}
+.tg{height:34px;padding:0 14px;border-radius:17px;background:#141417;border:1px solid var(--hair2);
+  color:var(--txt2);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;
+  align-items:center;gap:8px}
+.tg .sw{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+.tg.on{color:var(--txt);border-color:rgba(6,182,212,.5)}
+.tg.on .sw{background:var(--cyan)}
+#toolbar .cap{width:100%;text-align:center;font-size:11.5px;color:var(--label);font-weight:500}
+</style>
+</head>
+<body>
+
+<div id="stage"><div id="phone" class="pre" data-page="0">
+
+  <!-- Status bar -->
+  <div id="statusbar"><span class="t num" id="clock">09:41</span>
+    <div class="icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="6" width="3" height="6" rx="1" fill="currentColor"/><rect x="10" y="3" width="3" height="9" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor" opacity=".35"/></svg>
+      <svg width="17" height="12" viewBox="0 0 17 12"><path d="M1 4.5 Q8.5 -2.5 16 4.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M4.5 8 Q8.5 4.2 12.5 8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="8.5" cy="11" r="1.5" fill="currentColor"/></svg>
+      <svg width="27" height="13" viewBox="0 0 27 13"><rect x="0" y="0" width="23" height="13" rx="3.5" stroke="currentColor" opacity=".5" fill="none"/><rect x="2" y="2" width="16" height="9" rx="2" fill="currentColor"/><path d="M25 4 q2 2.5 0 5" stroke="currentColor" fill="none" opacity=".5"/></svg>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div id="header">
+    <button class="hbtn" id="closebtn" aria-label="Fermer">
+      <svg width="14" height="14" viewBox="0 0 14 14"><path d="M1 1 L13 13 M13 1 L1 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div id="title"><span id="recdot"></span>Vélo</div>
+    <button class="hbtn" id="gear" aria-label="Réglages">
+      <svg width="19" height="19" viewBox="0 0 20 20"><path d="M10 6.5 a3.5 3.5 0 1 0 0 7 a3.5 3.5 0 1 0 0 -7 M10 1 v2.4 M10 16.6 V19 M1 10 h2.4 M16.6 10 H19 M3.6 3.6 l1.7 1.7 M14.7 14.7 l1.7 1.7 M16.4 3.6 l-1.7 1.7 M5.3 14.7 l-1.7 1.7" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <div id="autopill"><span class="d"></span>En pause auto</div>
+
+  <!-- ============ PAGES ============ -->
+  <div id="pages">
+
+    <!-- PAGE 1 : Données -->
+    <section class="page" id="p1">
+      <div id="chips">
+        <div class="chip"><span class="d"></span>GPS ±2 m</div>
+        <div class="chip"><span class="d"></span>FC</div>
+        <div class="chip off" id="chippwr"><span class="d"></span>Puissance</div>
+      </div>
+      <div class="hero" id="hero1" style="top:140px">
+        <div class="eyebrow" id="heroLb">DURÉE</div>
+        <div class="heroval num" id="heroV" style="font-size:76px;margin-top:26px;color:var(--dim)">00:00:00</div>
+        <div class="herosub num" id="heroSub" style="visibility:hidden">moy — · NP —</div>
+      </div>
+      <div class="grid" style="top:340px" id="grid1"></div>
+    </section>
+
+    <!-- PAGE 2 : Carte -->
+    <section class="page" id="map">
+      <svg id="mapsvg" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice">
+        <path d="M 0 0 L 250 0 Q 180 120 90 160 Q 20 190 0 260 Z" fill="#111417"/>
+        <path d="M 110 300 Q 160 270 200 300 Q 230 330 190 355 Q 130 370 105 340 Q 95 315 110 300 Z" fill="#0F1B22"/>
+        <path d="M 0 560 Q 60 520 110 560 Q 150 600 100 640 Q 30 660 0 620 Z" fill="#0F1B22"/>
+        <g stroke="#23262B" stroke-width="3.5" fill="none">
+          <path d="M 60 0 Q 120 200 90 400 Q 70 550 130 844"/>
+          <path d="M 0 380 Q 150 350 250 380 Q 330 400 390 370"/>
+          <path d="M 200 0 Q 240 150 210 300 Q 190 420 260 560 Q 300 660 280 844"/>
+          <path d="M 0 640 Q 120 610 220 660 Q 320 700 390 660"/>
+          <path d="M 300 0 Q 330 120 390 180"/>
+        </g>
+        <path d="M 320 0 Q 300 200 330 420 Q 355 580 320 844" stroke="#2C3037" stroke-width="6" fill="none"/>
+        <path d="M 320 0 Q 300 200 330 420 Q 355 580 320 844" stroke="#3A3F47" stroke-width="1" fill="none" stroke-dasharray="8 10"/>
+        <text x="120" y="470" font-size="10" fill="#4B5563" font-family="Inter,sans-serif" text-anchor="middle" opacity=".8">Domaine de Clairis</text>
+        <text x="285" y="250" font-size="9" font-weight="600" fill="#4B5563" font-family="Inter,sans-serif" text-anchor="middle">D 103</text>
+        <g id="routeg">
+          <path d="M 120 380 Q 160 410 195 430" stroke="var(--cyan-track)" stroke-width="5" fill="none" stroke-linecap="round"/>
+          <path d="M 195 430 Q 230 460 262 452 Q 310 440 328 470 Q 350 505 340 560 Q 332 620 360 700" stroke="var(--cyan)" stroke-width="5" fill="none" stroke-linecap="round" opacity=".9"/>
+        </g>
+        <circle cx="195" cy="430" r="16" fill="var(--cyan)" opacity=".18">
+          <animate attributeName="r" values="14;20;14" dur="2.4s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="195" cy="430" r="9" fill="#fff"/><circle cx="195" cy="430" r="6.5" fill="var(--cyan)"/>
+      </svg>
+      <div class="scrimtop"></div><div class="scrimbot"></div>
+
+      <!-- Bandeau guidage -->
+      <div id="guide">
+        <div id="guideic"></div>
+        <div id="guidetxt">
+          <div id="guidetitle"></div>
+          <div id="guidesub"></div>
+        </div>
+        <svg id="guidechev" width="12" height="8" viewBox="0 0 12 8"><path d="M1 1 L6 6.5 L11 1" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <button id="layersbtn" aria-label="Fond de carte">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 6.5 L9 2.5 L16 6.5 L9 10.5 Z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/><path d="M2 11 L9 15 L16 11" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round" opacity=".55"/></svg>
+      </button>
+      <div class="arrow" id="aL" style="left:10px">‹</div>
+      <div class="arrow" id="aR" style="right:10px">›</div>
+      <div id="routechip">Itinéraire · 42,5 km · 380 m D+</div>
+
+      <div id="speedcap"><div class="lb">VITESSE</div>
+        <div class="v"><span class="n num" id="mSpd">0,0</span><span class="u">km/h</span></div></div>
+      <button id="minipause" aria-label="Pause">
+        <svg width="15" height="16" viewBox="0 0 14 16"><rect width="4.5" height="16" rx="2" fill="currentColor"/><rect x="9.5" width="4.5" height="16" rx="2" fill="currentColor"/></svg>
+      </button>
+      <div id="statsband">
+        <div class="sb"><div class="lb">D+ RESTANT</div><div class="v"><span class="n num" id="sDp">320</span><span class="u">m</span></div><div class="sub num" id="sDpS">fait 0 m</div></div>
+        <div class="sb"><div class="lb">RESTANT</div><div class="v"><span class="n num" id="sKm">18,4</span><span class="u">km</span></div><div class="sub num" id="sKmS">fait 0,00 km</div></div>
+        <div class="sb"><div class="lb">TEMPS EST.</div><div class="v"><span class="n num" id="sEt">38</span><span class="u">min</span></div><div class="sub num" id="sEtS">écoulé 0 min</div></div>
+      </div>
+
+      <!-- Panneau guidage déplié -->
+      <div id="gpanel">
+        <div id="gphead">
+          <div class="ic"><svg width="22" height="22" viewBox="0 0 22 22"><path d="M11 19 L11 7 M5 12 L11 5.5 L17 12" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="t" id="gptitle">Suivez l’itinéraire</div>
+        </div>
+        <div id="gplist"></div>
+        <button id="gpclose" aria-label="Replier">
+          <svg width="18" height="10" viewBox="0 0 18 10"><path d="M1 9 L9 1.5 L17 9" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- PAGE 3 : Laps -->
+    <section class="page" id="p3">
+      <div class="hero" style="top:136px">
+        <div class="eyebrow" id="lapEb" style="color:var(--dim)">LAP 1</div>
+        <div class="heroval num dimhero" id="lapV" style="font-size:88px;margin-top:22px;color:var(--dim)">00:00</div>
+        <div class="herosub num" id="lapSub">Les laps démarrent avec l’activité</div>
+      </div>
+      <div class="grid" style="top:328px" id="grid3"></div>
+      <div id="history"><div class="h">LAPS PRÉCÉDENTS</div><div id="histrows"><div id="histempty">Aucun lap terminé</div></div></div>
+    </section>
+  </div>
+
+  <!-- Pagination -->
+  <div id="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
+
+  <!-- Contrôles -->
+  <div id="controls">
+    <div id="pre">
+      <div id="gpsline"><span class="d"></span>Bon signal (±2 m)</div>
+      <button class="bigbtn" id="startbtn" aria-label="Démarrer">
+        <svg width="30" height="34" viewBox="0 0 30 34"><path d="M4 3 L27 17 L4 31 Z" fill="var(--cyan-on)" stroke="var(--cyan-on)" stroke-width="4" stroke-linejoin="round"/></svg>
+      </button>
+      <div id="startlabel">DÉMARRER</div>
+    </div>
+    <div id="recc">
+      <button class="sidebtn" id="lockbtn" aria-label="Verrouiller">
+        <svg width="19" height="20" viewBox="0 0 19 20"><rect x="2.5" y="8.5" width="14" height="10" rx="3" fill="currentColor"/><path d="M5.5 8.5 V5.5 a4 4 0 0 1 8 0 V7" stroke="currentColor" stroke-width="2.3" fill="none"/></svg>
+      </button>
+      <button class="bigbtn" style="width:84px;height:84px" id="pausebtn" aria-label="Pause">
+        <svg id="icPause" width="22" height="26" viewBox="0 0 22 26"><rect width="7" height="26" rx="3" fill="var(--cyan-on)"/><rect x="15" width="7" height="26" rx="3" fill="var(--cyan-on)"/></svg>
+        <svg id="icPlay" width="26" height="30" viewBox="0 0 26 30" style="display:none"><path d="M3 3 L23 15 L3 27 Z" fill="var(--cyan-on)" stroke="var(--cyan-on)" stroke-width="4" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="sidebtn" id="lapbtn">LAP</button>
+    </div>
+    <div id="lockc">
+      <div id="hint">Double tap pour déverrouiller</div>
+      <button id="biglock" aria-label="Déverrouiller">
+        <svg width="20" height="21" viewBox="0 0 19 20"><rect x="2.5" y="8.5" width="14" height="10" rx="3" fill="currentColor"/><path d="M5.5 8.5 V5.5 a4 4 0 0 1 8 0 V8.5" stroke="currentColor" stroke-width="2.3" fill="none"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Confirmation de sortie -->
+  <div id="exitov"><div class="veil" id="exitveil"></div>
+    <div id="sheet">
+      <div class="handle"></div>
+      <h2>Enregistrement en cours</h2>
+      <p class="num" id="sheetsub">0:00 · 0,0 km — activité non sauvegardée</p>
+      <button class="pill primary" id="btnResume">Reprendre</button>
+      <button class="pill ghost" id="btnSave">Terminer et sauvegarder</button>
+      <button class="pill danger" id="btnDelete">Supprimer l’activité</button>
+    </div>
+  </div>
+
+  <!-- Lap appui long -->
+  <div id="lapov"><div class="veil"></div>
+    <div id="lapring">
+      <svg width="132" height="132"><circle cx="66" cy="66" r="58" stroke="rgba(255,255,255,.14)" stroke-width="6" fill="none"/>
+        <circle id="ringp" cx="66" cy="66" r="58" stroke="var(--cyan)" stroke-width="6" fill="none" stroke-linecap="round"
+          stroke-dasharray="364.4" stroke-dashoffset="364.4"/></svg>
+      <div class="txt">LAP</div>
+    </div>
+    <div class="cap">Maintenez 2 s pour marquer un lap</div>
+  </div>
+
+
+  <!-- Résumé de séance -->
+  <div id="summary">
+    <div class="pgh"><h2>Résumé de la séance</h2><div class="sub" id="sumdate"></div></div>
+    <div id="summap">
+      <svg viewBox="0 0 358 186" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+        <g class="minimap" stroke="#23262B" stroke-width="2.5" fill="none" opacity=".8">
+          <path d="M 30 0 Q 80 90 60 186"/><path d="M 0 100 Q 170 80 358 110"/>
+          <path d="M 240 0 Q 260 90 230 186"/><path d="M 300 0 Q 330 60 358 70"/>
+        </g>
+        <path d="M 60 140 Q 110 90 160 100 Q 220 112 240 80 Q 275 45 320 60" stroke="var(--cyan)"
+          stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        <circle cx="60" cy="140" r="6" fill="var(--green)"/><circle cx="60" cy="140" r="2.6" fill="#fff"/>
+        <circle cx="320" cy="60" r="6" fill="var(--red)"/><circle cx="320" cy="60" r="2.6" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="grid" id="sumgrid" style="position:relative;left:0;right:0;margin:14px 20px 0">
+      <div class="row"><div class="cellu"><div class="lb">DURÉE</div><div class="v"><span class="n num" id="r_dur">—</span></div></div>
+        <div class="cellu"><div class="lb">DISTANCE</div><div class="v"><span class="n num" id="r_dist">—</span><span class="u">km</span></div></div></div>
+      <div class="row"><div class="cellu"><div class="lb">D+</div><div class="v"><span class="n num" id="r_dp">—</span><span class="u">m</span></div></div>
+        <div class="cellu"><div class="lb">VITESSE MOY</div><div class="v"><span class="n num" id="r_spd">—</span><span class="u">km/h</span></div></div></div>
+      <div class="row"><div class="cellu"><div class="lb">WATTS MOY</div><div class="v"><span class="n num" id="r_w">—</span><span class="u">W</span></div></div>
+        <div class="cellu"><div class="lb">WATTS NORM.</div><div class="v"><span class="n num" id="r_np">—</span><span class="u">W</span></div></div></div>
+      <div class="row"><div class="cellu"><div class="lb">FC MOY</div><div class="v"><span class="n num" id="r_fc">—</span><span class="u">bpm</span></div></div>
+        <div class="cellu"><div class="lb">CADENCE MOY</div><div class="v"><span class="n num" id="r_cad">—</span><span class="u">rpm</span></div></div></div>
+    </div>
+    <div id="sumfoot">
+      <div id="sumbtns">
+        <button class="pill primary" id="sumSave">Enregistrer la séance</button>
+        <button class="pill danger" id="sumDelete">Supprimer l’activité</button>
+      </div>
+      <div id="prog"><div class="lb"><span>Envoi de la séance…</span><b class="num" id="ppct">0 %</b></div>
+        <div id="ptrack"><div id="pfill"></div></div></div>
+      <div id="done">
+        <div class="ok"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 12.5 L9.5 18 L20 6.5" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="t">Séance enregistrée</div>
+        <button class="pill primary" id="goTraining">Voir l’entraînement</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page Entraînement -->
+  <div id="training">
+    <div class="pgh"><h2>Entraînement</h2><div class="sub">Semaine 30 · 4 séances</div></div>
+    <div id="trlist">
+      <div class="trcard new">
+        <div class="tt">Sortie vélo <span class="badge-new">NOUVEAU</span></div>
+        <div class="dt" id="trdate"></div>
+        <div class="st">
+          <div class="num" id="tr_dist">—<span>KM</span></div>
+          <div class="num" id="tr_dur">—<span>DURÉE</span></div>
+          <div class="num" id="tr_w">—<span>W MOY</span></div>
+          <div class="num" id="tr_dp">—<span>D+</span></div>
+        </div>
+      </div>
+      <div class="trcard skel"><div class="tt" style="font-size:13px">Seuil 2 × 20 min — jeudi</div><div class="bar" style="width:70%"></div><div class="bar" style="width:45%"></div></div>
+      <div class="trcard skel"><div class="tt" style="font-size:13px">Course à pied EF — mercredi</div><div class="bar" style="width:62%"></div><div class="bar" style="width:38%"></div></div>
+    </div>
+    <div id="trfoot"><button class="pill ghost" id="newSession">Nouvelle séance (démo)</button></div>
+  </div>
+
+  <div id="flash"></div>
+  <div id="toast"></div>
+</div></div>
+
+<!-- Barre de démo -->
+<div id="toolbar">
+  <button class="tg" id="tgPwr"><span class="sw"></span>Capteur puissance</button>
+  <button class="tg" id="tgAuto"><span class="sw"></span>Simuler auto-pause</button>
+  <button class="tg" id="tgHold"><span class="sw"></span>Lap appui long (opt-in)</button>
+  <button class="tg" id="tgRoute" ><span class="sw"></span>Parcours chargé</button>
+  <button class="tg" id="tgLight"><span class="sw"></span>Thème clair</button>
+  <div class="cap">Barre de démo — hors produit. Glisse horizontalement dans l’écran pour changer de page.</div>
+</div>
+
+<script>
+/* ================= État ================= */
+const S = {
+  mode:'pre', locked:false, autopause:false,
+  pwr:true, holdLap:false, route:true,
+  t:0, lapT:0, lapN:1, dist:0, dplus:0, fcSum:0, fcN:0, cadSum:0,
+  spd:0, w:0, fc:0, cad:0, wSum:0, wN:0,
+  laps:[], routeKm:42.5, routeDp:380,
+};
+const $=id=>document.getElementById(id);
+const phone=$('phone');
+const fr1=v=>v.toFixed(1).replace('.',',');
+const fr2=v=>v.toFixed(2).replace('.',',');
+function hms(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+  return h?`${h}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`}
+
+/* ================= Grilles ================= */
+function cellHTML(id,lb,unit){return `<div class="cellu" id="c_${id}"><div class="lb">${lb}</div>
+  <div class="v"><span class="n num" id="v_${id}">—</span>${unit?`<span class="u">${unit}</span>`:''}</div></div>`}
+$('grid1').innerHTML=
+ `<div class="row">${cellHTML('dur','DURÉE','')}${cellHTML('dist','DISTANCE','km')}</div>
+  <div class="row">${cellHTML('spd','VITESSE','km/h')}${cellHTML('fc','FC','bpm')}</div>
+  <div class="row">${cellHTML('dp','D+','m')}${cellHTML('cad','CADENCE','rpm')}</div>`;
+$('grid3').innerHTML=
+ `<div class="row">${cellHTML('lw','WATTS LAP','W')}${cellHTML('lfc','FC LAP','bpm')}</div>
+  <div class="row">${cellHTML('lcad','CADENCE','rpm')}${cellHTML('alt','ALTITUDE','m')}</div>`;
+
+/* ================= Guidage ================= */
+const IC={
+  right:'<svg width="30" height="30" viewBox="0 0 30 30"><path d="M8 26 V13 a5 5 0 0 1 5 -5 h8 M16 3.5 L22.5 8 L16 12.5" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  left:'<svg width="30" height="30" viewBox="0 0 30 30"><path d="M22 26 V13 a5 5 0 0 0 -5 -5 h-8 M14 3.5 L7.5 8 L14 12.5" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  rondR:'<svg width="32" height="30" viewBox="0 0 32 30"><circle cx="13" cy="16" r="6.5" stroke="currentColor" stroke-width="2.6" fill="none"/><path d="M13 26 V23 M19.5 15 h8 M23 10.5 L28.5 15 L23 19.5" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  rondL:'<svg width="32" height="30" viewBox="0 0 32 30"><circle cx="19" cy="16" r="6.5" stroke="currentColor" stroke-width="2.6" fill="none"/><path d="M19 26 V23 M12.5 15 h-8 M9 10.5 L3.5 15 L9 19.5" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  straight:'<svg width="30" height="30" viewBox="0 0 30 30"><path d="M15 27 V6 M8.5 12 L15 4.5 L21.5 12" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  join:'<svg width="30" height="30" viewBox="0 0 30 30"><circle cx="9" cy="15" r="3.2" fill="currentColor"/><path d="M12 15 h13 M20 9.5 L26.5 15 L20 20.5" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+};
+const MAN=[
+  {ic:'right', d:'250 m', t:'Tournez à droite'},
+  {ic:'right', d:'600 m', badge:['y','D 103']},
+  {ic:'rondR', d:'1,5 km', badge:['y','D 660'], chip:'1re sortie'},
+  {ic:'rondL', d:'1,3 km', badge:['r','A 6'], t:'vers Sens', chip:'3e sortie'},
+  {ic:'straight', d:'100 m', badge:['r','A 6'], t:'Autoroute du Soleil'},
+  {ic:'right', d:'4,2 km', badge:['y','D 606'], t:'Sortie 17'}
+];
+$('gplist').innerHTML=MAN.map(m=>`<div class="man">
+  <div class="mic">${IC[m.ic]}</div>
+  <div><div class="dist num">${m.d}</div>
+    <div class="lbl">${m.badge?`<span class="rbadge ${m.badge[0]}">${m.badge[1]}</span>`:''}${m.t||''}</div></div>
+  ${m.chip?`<div class="mr"><span class="exitchip">${m.chip}</span></div>`:''}</div>`).join('');
+
+function guideRender(){
+  const g=$('guide'),ic=$('guideic'),ti=$('guidetitle'),su=$('guidesub');
+  if(!S.route){g.classList.add('na');
+    ic.innerHTML='<svg width="20" height="20" viewBox="0 0 22 22"><path d="M11 19 L11 7 M5 12 L11 5.5 L17 12" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    ti.textContent='Guidage indisponible'; su.textContent='Aucun parcours chargé';
+    $('guidechev').style.display='none'; $('routeg').style.display='none'; $('routechip').style.display='none'; return}
+  g.classList.remove('na'); $('guidechev').style.display='';
+  $('routeg').style.display=''; $('routechip').style.display='';
+  if(S.mode==='pre'){
+    ic.innerHTML=IC.join;
+    ti.textContent='Rejoignez l’itinéraire';
+    su.textContent='Départ du parcours à 350 m';
+  }else{
+    const m=MAN[0];
+    ic.innerHTML=IC[m.ic];
+    ti.innerHTML=`<span class="num">${m.d}</span> · ${m.t||''} ${m.badge?`<span class="rbadge ${m.badge[0]}">${m.badge[1]}</span>`:''}`;
+    su.innerHTML=`puis D 103 à droite dans 600 m`;
+  }
+}
+$('guide').addEventListener('click',()=>{ if(S.route) $('gpanel').classList.add('open') });
+$('gpclose').addEventListener('click',()=>$('gpanel').classList.remove('open'));
+$('gptitle').textContent='Suivez l’itinéraire';
+
+/* ================= Rendu ================= */
+function set(id,v){$(id).textContent=v}
+function dimCell(id,on){$('c_'+id).classList.toggle('dimv',on)}
+function render(){
+  const rec=S.mode!=='pre', dim=!rec||S.autopause||S.mode==='paused';
+  phone.classList.toggle('pre',!rec);
+  phone.classList.toggle('rec',rec);
+  phone.classList.toggle('autopause',S.autopause&&rec);
+  phone.classList.toggle('locked',S.locked&&rec);
+  // héro page 1
+  if(!rec){ set('heroLb','DURÉE'); $('heroV').style.fontSize='76px'; $('heroV').style.color='var(--dim)';
+    set('heroV','00:00:00'); $('heroSub').style.visibility='hidden'; $('chips').style.display='flex';
+  } else {
+    $('chips').style.display='none'; $('heroSub').style.visibility='visible';
+    if(S.pwr){ set('heroLb','PUISSANCE · 3 S'); $('heroV').style.fontSize='112px';
+      set('heroV',dim?'0':Math.round(S.w));
+      const avg=S.wN?Math.round(S.wSum/S.wN):0;
+      set('heroSub',`moy ${avg} W · NP ${Math.round(avg*1.06)} W`);
+    } else { set('heroLb','VITESSE'); $('heroV').style.fontSize='104px';
+      set('heroV',fr1(dim?0:S.spd)); set('heroSub',`km/h · moy ${fr1(S.dist/(Math.max(S.t,1)/3600))}`);}
+    $('heroV').style.color=dim?'var(--dim)':'var(--txt)';
+    $('heroSub').style.color=dim?'#52525B':'var(--txt2)';
+  }
+  // grille 1
+  set('v_dur',rec?hms(S.t):'00:00'); set('v_dist',rec?fr2(S.dist):'0,00');
+  set('v_spd',fr1(dim?0:S.spd)); set('v_fc',rec?Math.round(dim?S.fc*.8:S.fc):'—');
+  set('v_dp',Math.round(S.dplus)); set('v_cad',rec?(dim?0:Math.round(S.cad)):'—');
+  if(!S.pwr){$('c_spd').querySelector('.lb').textContent='WATTS';$('c_spd').querySelector('.u').textContent='W';
+    set('v_spd',rec&&!dim?Math.round(S.w):'—');}
+  else{$('c_spd').querySelector('.lb').textContent='VITESSE';$('c_spd').querySelector('.u').textContent='km/h';}
+  ['dur','dist','spd','fc','dp','cad'].forEach(id=>dimCell(id,dim));
+  $('chippwr').classList.toggle('off',!S.pwr);
+  // page 3
+  set('lapEb',rec?`LAP ${S.lapN} · DURÉE`:'LAP 1');
+  $('lapEb').style.color=rec&&!dim?'var(--label)':'var(--dim)';
+  set('lapV',rec?hms(S.lapT):'00:00');
+  $('lapV').style.color=dim?'var(--dim)':'var(--txt)';
+  set('lapSub',rec?`total ${hms(S.t)} · ${fr2(S.dist)} km`:'Les laps démarrent avec l’activité');
+  set('v_lw',rec&&!dim&&S.pwr?Math.round(S.w):'—');
+  set('v_lfc',rec?Math.round(dim?S.fc*.8:S.fc):'—');
+  set('v_lcad',rec?(dim?0:Math.round(S.cad)):'—');
+  set('v_alt',Math.round(179+S.dplus*.4));
+  ['lw','lfc','lcad'].forEach(id=>dimCell(id,dim)); dimCell('alt',false);
+  // carte
+  set('mSpd',fr1(dim?0:S.spd));
+  const remKm=Math.max(S.routeKm-S.dist,0), remDp=Math.max(S.routeDp-S.dplus,0);
+  set('sDp',Math.round(remDp)); set('sDpS',`fait ${Math.round(S.dplus)} m`);
+  set('sKm',fr1(remKm)); set('sKmS',`fait ${fr2(S.dist)} km`);
+  set('sEt',Math.round(remKm/30*60)); set('sEtS',`écoulé ${Math.floor(S.t/60)} min`);
+  // pause / play
+  const paused=S.mode==='paused'||S.autopause;
+  $('icPause').style.display=paused?'none':'';
+  $('icPlay').style.display=paused?'':'none';
+  guideRender();
+}
+
+/* ================= Simulation ================= */
+let tick=null;
+function startTick(){ if(tick)return;
+  tick=setInterval(()=>{
+    $('clock').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    if(S.mode!=='rec'||S.autopause){render();return}
+    S.t++; S.lapT++;
+    S.w=Math.max(0,S.w+(Math.random()-0.48)*18); if(S.w<80)S.w=190+Math.random()*40;
+    S.spd=Math.max(8,Math.min(52,S.spd+(Math.random()-0.5)*2.4)); if(S.spd<9)S.spd=29;
+    S.fc=Math.max(105,Math.min(188,S.fc+(Math.random()-0.5)*2.5)); if(S.fc<110)S.fc=148;
+    S.cad=Math.max(60,Math.min(110,S.cad+(Math.random()-0.5)*4)); if(S.cad<62)S.cad=90;
+    S.dist+=S.spd/3600; if(Math.random()<0.35)S.dplus+=Math.random()*1.6;
+    S.wSum+=S.w; S.wN++; S.fcSum+=S.fc; S.fcN++; S.cadSum+=S.cad;
+    render();
+  },1000);
+}
+startTick();
+
+/* ================= Interactions ================= */
+let toastT=null;
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2600)}
+$('startbtn').onclick=()=>{S.mode='rec';S.spd=29;S.w=205;S.fc=142;S.cad=88;render();flash()};
+function togglePause(){ if(S.autopause){S.autopause=false;$('tgAuto').classList.remove('on');render();return}
+  S.mode=S.mode==='rec'?'paused':'rec';render()}
+$('pausebtn').onclick=togglePause;
+$('minipause').onclick=()=>{togglePause();goPage(0)};
+function doLap(){
+  const avg=S.wN?Math.round(S.wSum/S.wN):0;
+  S.laps.unshift({n:S.lapN,t:hms(S.lapT),w:S.pwr?Math.round(avg*(0.94+Math.random()*0.1)):null,fc:Math.round(S.fc-2)});
+  S.lapN++; S.lapT=0;
+  $('histrows').innerHTML=S.laps.slice(0,3).map(l=>
+    `<div class="laprow num"><b>Lap ${l.n}</b><span>${l.t}</span><span>${l.w!=null?l.w+' W':'—'}</span><span>${l.fc} bpm</span></div>`).join('');
+  flash(); render();
+}
+$('lapbtn').onclick=doLap;
+function flash(){const f=$('flash');f.style.opacity=1;setTimeout(()=>f.style.opacity=0,300)}
+
+/* Verrouillage */
+$('lockbtn').onclick=()=>{S.locked=true;render()};
+let lastTap=0;
+$('biglock').onclick=()=>{const now=Date.now();
+  if(now-lastTap<400){S.locked=false;render()}
+  else{$('biglock').classList.remove('pulse');void $('biglock').offsetWidth;$('biglock').classList.add('pulse')}
+  lastTap=now};
+
+/* Sortie */
+$('closebtn').onclick=()=>{ if(S.mode==='pre'){toast('Retour à l’app (pas d’enregistrement en cours)');return}
+  $('sheetsub').textContent=`${hms(S.t)} · ${fr1(S.dist)} km — activité non sauvegardée`;
+  $('exitov').classList.add('open')};
+const closeExit=()=>$('exitov').classList.remove('open');
+$('btnResume').onclick=()=>{resetDel();closeExit()}; $('exitveil').onclick=()=>{resetDel();closeExit()};
+$('btnSave').onclick=()=>{resetDel();closeExit();openSummary()};
+let delArmed=false,delT=null;
+$('btnDelete').onclick=()=>{ if(!delArmed){delArmed=true;
+    $('btnDelete').textContent=`Confirmer — supprimer ${fr1(S.dist)} km ?`;
+    $('btnDelete').classList.add('confirm');
+    delT=setTimeout(resetDel,3000);return}
+  clearTimeout(delT);resetDel();closeExit();reset(false);toast('Activité supprimée')};
+function resetDel(){delArmed=false;$('btnDelete').textContent='Supprimer l’activité';$('btnDelete').classList.remove('confirm')}
+function reset(saved){Object.assign(S,{mode:'pre',locked:false,autopause:false,t:0,lapT:0,lapN:1,dist:0,dplus:0,spd:0,w:0,fc:0,cad:0,wSum:0,wN:0,fcSum:0,fcN:0,cadSum:0,laps:[]});
+  $('tgAuto').classList.remove('on');
+  $('histrows').innerHTML='<div id="histempty">Aucun lap terminé</div>';
+  render(); if(saved)toast('Activité sauvegardée ✓')}
+
+/* Lap appui long (opt-in) */
+let holdT=null,holdStart=0,raf=null;
+const CIRC=364.4;
+function holdBegin(e){ if(!S.holdLap||S.mode!=='rec'||S.locked||S.autopause)return;
+  if(e.target.closest('button,#guide,#gpanel'))return;
+  holdStart=performance.now(); $('lapov').classList.add('open');
+  const step=()=>{const p=Math.min((performance.now()-holdStart)/2000,1);
+    $('ringp').style.strokeDashoffset=CIRC*(1-p);
+    if(p>=1){holdEnd(true);return} raf=requestAnimationFrame(step)};
+  raf=requestAnimationFrame(step);}
+function holdEnd(done){ cancelAnimationFrame(raf);
+  $('lapov').classList.remove('open'); $('ringp').style.strokeDashoffset=CIRC;
+  if(done===true)doLap();}
+['pointerdown'].forEach(ev=>$('pages').addEventListener(ev,holdBegin));
+['pointerup','pointercancel','pointerleave'].forEach(ev=>document.addEventListener(ev,()=>holdEnd(false)));
+
+/* Pages */
+const pages=$('pages');
+function goPage(i){pages.scrollTo({left:i*390,behavior:'smooth'})}
+$('aL').onclick=()=>goPage(0); $('aR').onclick=()=>goPage(2);
+pages.addEventListener('scroll',()=>{
+  const i=Math.round(pages.scrollLeft/390);
+  phone.dataset.page=i;
+  document.querySelectorAll('.dot').forEach((d,k)=>d.classList.toggle('on',k===i));
+});
+
+/* Toolbar démo */
+function tg(id,key,cb){$(id).onclick=()=>{S[key]=!S[key];$(id).classList.toggle('on',S[key]);cb&&cb();render()}}
+$('tgPwr').classList.add('on');
+tg('tgPwr','pwr');
+tg('tgAuto','autopause',()=>{if(S.autopause&&S.mode==='pre'){S.autopause=false;$('tgAuto').classList.remove('on');toast('Démarre d’abord l’enregistrement')}});
+tg('tgHold','holdLap');
+$('tgRoute').classList.add('on');
+tg('tgRoute','route');
+$('tgLight').onclick=()=>{const on=phone.dataset.theme!=='light';
+  phone.dataset.theme=on?'light':'';$('tgLight').classList.toggle('on',on)};
+$('gear').onclick=()=>toast('Réglages : tuiles, Pause/Lap, auto-pause, appui long, fond de carte');
+
+
+/* ================= Résumé & envoi ================= */
+function openSummary(){
+  S.mode='paused';
+  const avg=S.wN?S.wSum/S.wN:0;
+  set('sumdate',new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})
+    +' · '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}));
+  set('r_dur',hms(S.t)); set('r_dist',fr2(S.dist)); set('r_dp',Math.round(S.dplus));
+  set('r_spd',fr1(S.t?S.dist/(S.t/3600):0));
+  set('r_w',S.pwr?Math.round(avg):'—'); set('r_np',S.pwr?Math.round(avg*1.06):'—');
+  set('r_fc',S.fcN?Math.round(S.fcSum/S.fcN):'—');
+  set('r_cad',S.cadSum&&S.fcN?Math.round(S.cadSum/S.fcN):'—');
+  $('sumbtns').style.display='';$('prog').style.display='none';$('done').style.display='none';
+  $('pfill').style.width='0%';
+  $('summary').classList.add('open');
+}
+$('sumSave').onclick=()=>{
+  $('sumbtns').style.display='none'; $('prog').style.display='block';
+  let p=0;
+  const iv=setInterval(()=>{
+    p=Math.min(100,p+(p<70?Math.random()*9+3:Math.random()*5+1));
+    $('pfill').style.width=p+'%'; set('ppct',Math.round(p)+' %');
+    if(p>=100){clearInterval(iv);
+      setTimeout(()=>{$('prog').style.display='none';$('done').style.display='block'},350)}
+  },120);
+};
+let sumDelArmed=false,sumDelT=null;
+$('sumDelete').onclick=()=>{ if(!sumDelArmed){sumDelArmed=true;
+    $('sumDelete').textContent=`Confirmer — supprimer ${fr1(S.dist)} km ?`;
+    $('sumDelete').classList.add('confirm');
+    sumDelT=setTimeout(sumResetDel,3000);return}
+  clearTimeout(sumDelT);sumResetDel();
+  $('summary').classList.remove('open');reset(false);toast('Activité supprimée')};
+function sumResetDel(){sumDelArmed=false;$('sumDelete').textContent='Supprimer l’activité';$('sumDelete').classList.remove('confirm')}
+$('goTraining').onclick=()=>{
+  set('trdate',new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}));
+  set('tr_dist',fr1(S.dist)); $('tr_dist').append(Object.assign(document.createElement('span'),{textContent:'KM'}));
+  set('tr_dur',hms(S.t)); $('tr_dur').append(Object.assign(document.createElement('span'),{textContent:'DURÉE'}));
+  const avg=S.wN?Math.round(S.wSum/S.wN):0;
+  set('tr_w',S.pwr?avg:'—'); $('tr_w').append(Object.assign(document.createElement('span'),{textContent:'W MOY'}));
+  set('tr_dp',Math.round(S.dplus)); $('tr_dp').append(Object.assign(document.createElement('span'),{textContent:'D+'}));
+  $('summary').classList.remove('open');
+  $('training').classList.add('open');
+};
+$('newSession').onclick=()=>{$('training').classList.remove('open');reset(false);toast('Prêt pour une nouvelle séance')};
+
+render();
+</script>
+</body>
+</html>

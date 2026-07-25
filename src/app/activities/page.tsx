@@ -9149,11 +9149,19 @@ function CalendarGrid({ activities, onSelect }: { activities: Activity[]; onSele
 // ─────────────────────────────────────────────────────────────
 // SECTION: ANALYSE
 // ─────────────────────────────────────────────────────────────
-function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, loadMore, hasMore, loadingMore }: {
+// Badge « NOUVEAU » — mise en avant de l'activité créée par l'écran live (?new=<id>).
+function NewActivityBadge() {
+  return (
+    <span style={{ position: 'absolute', top: 10, right: 12, zIndex: 3, fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', color: '#06B6D4', background: 'rgba(6,182,212,0.12)', padding: '3px 8px', borderRadius: 8, pointerEvents: 'none' }}>NOUVEAU</span> // design-allow-color
+  )
+}
+
+function SectionAnalyse({ activities, zones, profile, deepLinkId, highlightId, onDelete, loadMore, hasMore, loadingMore }: {
   activities: Activity[]
   zones: TrainingZoneRow[]
   profile: Profile
   deepLinkId?: string | null
+  highlightId?: string | null
   onDelete?: (id: string) => void
   loadMore?: () => void
   hasMore?: boolean
@@ -9229,6 +9237,16 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const touchStartX = useRef<number>(0)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  // ?new=<id> : scrolle une seule fois sur la carte de l'activité mise en avant.
+  const newRef = useRef<HTMLDivElement | null>(null)
+  const newScrolled = useRef(false)
+  useEffect(() => {
+    if (!highlightId || newScrolled.current) return
+    const el = newRef.current
+    if (!el) return
+    newScrolled.current = true
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
 
   useEffect(() => {
     if (!sentinelRef.current || !loadMore) return
@@ -9339,7 +9357,8 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden', boxShadow: T.shadow }}>
             <div style={{ maxHeight: 600, overflowY: 'auto' }}>
               {filtered.map(act => (
-                <div key={act.id} style={{ position: 'relative', overflow: 'hidden' }}>
+                <div key={act.id} ref={highlightId === act.id ? newRef : undefined} style={{ position: 'relative', overflow: 'hidden', borderLeft: highlightId === act.id ? '4px solid #06B6D4' : undefined }}> {/* design-allow-color */}
+                  {highlightId === act.id && <NewActivityBadge />}
                   {onDelete && (
                     <div
                       onClick={() => setConfirmDeleteId(act.id)}
@@ -9392,6 +9411,8 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, onDelete, load
           onSelect={setSelected}
           sentinelRef={sentinelRef}
           loadingMore={!!loadingMore}
+          highlightId={highlightId}
+          newRef={newRef}
         />
       )}
     </div>
@@ -9485,11 +9506,13 @@ interface AutoRecRow {
 }
 interface BestRow { distance_label: string; performance: string }
 
-function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
+function CardsView({ activities, onSelect, sentinelRef, loadingMore, highlightId, newRef }: {
   activities:  Activity[]
   onSelect:    (a: Activity) => void
   sentinelRef: React.RefObject<HTMLDivElement | null>
   loadingMore: boolean
+  highlightId?: string | null
+  newRef?:     React.RefObject<HTMLDivElement | null>
 }) {
   const { t } = useI18n()
   const [recordsByActivity, setRecordsByActivity] = useState<Map<string, AutoRecRow[]>>(new Map())
@@ -9654,16 +9677,25 @@ function CardsView({ activities, onSelect, sentinelRef, loadingMore }: {
   return (
     <>
       <div className="thw-cards-grid">
-        {cards.map(c => (
-          <ActivityCard
-            key={c.id}
-            data={c}
-            onClick={() => {
-              const act = activities.find(a => a.id === c.id)
-              if (act) onSelect(act)
-            }}
-          />
-        ))}
+        {cards.map(c => {
+          const isNew = highlightId === c.id
+          return (
+            <div
+              key={c.id}
+              ref={isNew ? newRef : undefined}
+              style={isNew ? { position: 'relative', borderLeft: '4px solid #06B6D4' } : undefined} // design-allow-color
+            >
+              {isNew && <NewActivityBadge />}
+              <ActivityCard
+                data={c}
+                onClick={() => {
+                  const act = activities.find(a => a.id === c.id)
+                  if (act) onSelect(act)
+                }}
+              />
+            </div>
+          )
+        })}
       </div>
       <div ref={sentinelRef} style={{ height: 1 }} />
       {loadingMore && (
@@ -9943,11 +9975,16 @@ function TrainingPageInner() {
   const isMobile = width < 768
   // Deep-link depuis Planning : ?id=<activity_id> → ouvre directement la section analyse
   const [deepLinkId, setDeepLinkId] = useState<string|null>(null)
+  // Depuis l'écran d'enregistrement live : ?new=<activity_id> → scrolle sur la
+  // carte de l'activité créée et la met en avant (liseré cyan + badge NOUVEAU).
+  const [newActivityId, setNewActivityId] = useState<string|null>(null)
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     const id = params.get('id')
     if (id) { setDeepLinkId(id); setSection('analyse') }
+    const created = params.get('new')
+    if (created) { setNewActivityId(created); setSection('analyse') }
   }, [])
 
   async function syncStrava() {
@@ -10098,7 +10135,7 @@ function TrainingPageInner() {
             )}
             {loading && !error && <PageLoader />}
             {!loading && !error && id === 'donnees'     && <div className="fade-up"><ScrollReveal><SectionDonnees activities={activities} zones={zones} profile={profile} /></ScrollReveal></div>}
-            {!loading && !error && id === 'analyse'     && <div className="fade-up"><ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal></div>}
+            {!loading && !error && id === 'analyse'     && <div className="fade-up"><ScrollReveal><SectionAnalyse activities={activities} zones={zones} profile={profile} deepLinkId={deepLinkId} highlightId={newActivityId} onDelete={handleDeleteActivity} loadMore={loadMore} hasMore={hasMore} loadingMore={loadingMore} /></ScrollReveal></div>}
             {id === 'progression' && (
               <div className="fade-up">
                 {progSport

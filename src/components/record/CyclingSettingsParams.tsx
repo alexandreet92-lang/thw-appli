@@ -202,8 +202,13 @@ export default function CyclingSettingsParams({ settings, updateSetting, theme, 
         right={<Toggle theme={theme} value={re.autoPause} onChange={v => updateSetting('recording.autoPause', v)} />} />
       <SettingsRow theme={theme} label={t('record.cyclingParamsAutoPauseThreshold')} disabled={!re.autoPause}
         right={<Select theme={theme} value={re.autoPauseThreshold} options={[{value:3,label:'3 km/h'},{value:5,label:'5 km/h'},{value:10,label:'10 km/h'}]} onChange={v => updateSetting('recording.autoPauseThreshold', Number(v))} disabled={!re.autoPause} />} />
-      <SettingsRow theme={theme} label={t('record.cyclingParamsAutoLap')} last
+      <SettingsRow theme={theme} label={t('record.cyclingParamsAutoLap')}
         right={<Select theme={theme} value={re.autoLap} options={[{value:0,label:t('record.commonDisabled')},{value:1,label:'1 km'},{value:5,label:'5 km'},{value:10,label:'10 km'},{value:20,label:'20 km'}]} onChange={v => updateSetting('recording.autoLap', Number(v))} />} />
+      {/* Écran live v2 : disposition des contrôles + lap par appui long (opt-in) */}
+      <SettingsRow theme={theme} label="Permuter Pause / Lap" description="Le bouton central devient Lap, Pause passe sur le côté"
+        right={<Toggle theme={theme} value={re.swapPauseLap} onChange={v => updateSetting('recording.swapPauseLap', v)} />} />
+      <SettingsRow theme={theme} label="Lap par appui long (2 s)" description="Maintenir l'écran 2 s pendant l'enregistrement pour marquer un lap" last
+        right={<Toggle theme={theme} value={re.longPressLap} onChange={v => updateSetting('recording.longPressLap', v)} />} />
     </SettingsSection>
   )
 

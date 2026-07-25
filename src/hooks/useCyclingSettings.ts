@@ -8,7 +8,7 @@ export interface CyclingSettings {
   alerts: { gpsLost: boolean; hrZone: boolean; hrMaxThreshold: number; powerHighThreshold: number; powerLowThreshold: number; hydrationInterval: number; nutritionInterval: number; vibration: boolean; sound: boolean }
   display: { keepAwake: boolean; theme: 'auto'|'light'|'dark'; dataSize: 'small'|'normal'|'large'; dataFont: DataFont }
   athlete: { ftp: number; maxHr: number; restHr: number }
-  recording: { gpsFrequency: number|'auto'; autoPause: boolean; autoPauseThreshold: number; autoLap: number }
+  recording: { gpsFrequency: number|'auto'; autoPause: boolean; autoPauseThreshold: number; autoLap: number; swapPauseLap: boolean; longPressLap: boolean }
   units: { distance: 'metric'|'imperial'; altitude: 'm'|'ft'; temperature: 'c'|'f'; weight: 'kg'|'lbs' }
   postRide: { autoStrava: boolean; showSummary: boolean }
 }
@@ -18,7 +18,9 @@ export const DEFAULT_CYCLING_SETTINGS: CyclingSettings = {
   alerts: { gpsLost: true, hrZone: false, hrMaxThreshold: 185, powerHighThreshold: 300, powerLowThreshold: 100, hydrationInterval: 30, nutritionInterval: 45, vibration: true, sound: false },
   display: { keepAwake: true, theme: 'auto', dataSize: 'normal', dataFont: 'system' },
   athlete: { ftp: 200, maxHr: 185, restHr: 55 },
-  recording: { gpsFrequency: 1, autoPause: true, autoPauseThreshold: 5, autoLap: 0 },
+  // swapPauseLap : permute les boutons Pause/Lap de l'écran live.
+  // longPressLap : lap par appui long 2 s — OPT-IN, désactivé par défaut.
+  recording: { gpsFrequency: 1, autoPause: true, autoPauseThreshold: 5, autoLap: 0, swapPauseLap: false, longPressLap: false },
   units: { distance: 'metric', altitude: 'm', temperature: 'c', weight: 'kg' },
   postRide: { autoStrava: false, showSummary: true },
 }
@@ -63,7 +65,16 @@ export function useCyclingSettings(onSaved?: () => void) {
           .from('sport_page_configs').select('pages')
           .eq('user_id', user.id).eq('sport', SETTINGS_SPORT_KEY).maybeSingle()
         if (data?.pages) {
-          const merged = { ...DEFAULT_CYCLING_SETTINGS, ...(data.pages as Partial<CyclingSettings>) } as CyclingSettings
+          // Fusion PAR SECTION : un réglage ajouté depuis (ex. recording.swapPauseLap)
+          // garde sa valeur par défaut même si la section était déjà persistée.
+          const stored = data.pages as Partial<CyclingSettings>
+          const merged = (Object.keys(DEFAULT_CYCLING_SETTINGS) as (keyof CyclingSettings)[]).reduce(
+            (acc, key) => {
+              acc[key] = { ...DEFAULT_CYCLING_SETTINGS[key], ...(stored[key] ?? {}) } as never
+              return acc
+            },
+            { ...DEFAULT_CYCLING_SETTINGS } as CyclingSettings,
+          )
           setSettings(merged)
           latestRef.current = merged
         }

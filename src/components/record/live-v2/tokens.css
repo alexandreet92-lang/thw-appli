@@ -1,0 +1,235 @@
+/* ════════════════════════════════════════════════════════════════════
+   live-v2/tokens.css — design tokens de l'écran live (PROMPT_LIVE_VELO §2).
+   Importé UNIQUEMENT par LiveShell : tout est scopé sous [data-live-shell]
+   pour ne pas polluer le reste de l'app. Thème sombre par défaut, clair via
+   [data-live-theme="light"]. Seul fichier autorisé à porter des hex live-*.
+   ════════════════════════════════════════════════════════════════════ */
+
+[data-live-shell] {
+  --live-bg: #09090B; /* design-allow-color */
+  --live-surface: #141417; /* design-allow-color */
+  --live-surface-2: #1A1A1E; /* design-allow-color */
+  --live-hairline: rgba(255, 255, 255, 0.07); /* design-allow-color */
+  --live-hairline-2: rgba(255, 255, 255, 0.12); /* design-allow-color */
+  --live-text: #FAFAFA; /* design-allow-color */
+  --live-text-2: #A1A1AA; /* design-allow-color */
+  --live-label: #71717A; /* design-allow-color */
+  --live-dim: #3F3F46; /* design-allow-color */
+  --live-dim-sub: #52525B; /* design-allow-color */
+  --live-accent: #06B6D4; /* design-allow-color */
+  --live-accent-on: #04262E; /* design-allow-color */
+  --live-accent-track: #155E6E; /* design-allow-color */
+  --live-accent-dim: rgba(6, 182, 212, 0.12); /* design-allow-color */
+  --live-accent-soft: rgba(6, 182, 212, 0.14); /* design-allow-color */
+  --live-success: #10B981; /* design-allow-color */
+  --live-success-dim: rgba(16, 185, 129, 0.13); /* design-allow-color */
+  --live-warn: #F59E0B; /* design-allow-color */
+  --live-warn-bg: rgba(245, 158, 11, 0.10); /* design-allow-color */
+  --live-warn-border: rgba(245, 158, 11, 0.35); /* design-allow-color */
+  --live-danger: #EF4444; /* design-allow-color */
+  --live-danger-halo: rgba(239, 68, 68, 0.18); /* design-allow-color */
+  --live-float: rgba(13, 13, 16, 0.88); /* design-allow-color */
+  --live-veil: rgba(0, 0, 0, 0.68); /* design-allow-color */
+  --live-hold-track: rgba(255, 255, 255, 0.14); /* design-allow-color */
+  --live-flash: rgba(6, 182, 212, 0.55); /* design-allow-color */
+  --live-map-bg: #0E1013; /* design-allow-color */
+  --live-glow: 0 0 0 10px rgba(6, 182, 212, 0.05), 0 0 0 20px rgba(6, 182, 212, 0.032), 0 0 0 30px rgba(6, 182, 212, 0.017); /* design-allow-color */
+  --live-scrim-top: linear-gradient(rgba(9, 9, 11, 0.95), rgba(9, 9, 11, 0)); /* design-allow-color */
+  --live-scrim-bot: linear-gradient(rgba(9, 9, 11, 0), rgba(9, 9, 11, 0.90) 45%, rgba(9, 9, 11, 0.98)); /* design-allow-color */
+  --live-band-bg: rgba(9, 9, 11, 0.94); /* design-allow-color */
+  --live-arrow-bg: rgba(9, 9, 11, 0.55); /* design-allow-color */
+  --live-btn-map: rgba(20, 20, 23, 0.80); /* design-allow-color */
+  --live-toast-bg: rgba(20, 20, 23, 0.94); /* design-allow-color */
+}
+
+[data-live-shell][data-live-theme="light"] {
+  --live-bg: #F6F6F7; /* design-allow-color */
+  --live-surface: #FFFFFF; /* design-allow-color */
+  --live-surface-2: #EBEBED; /* design-allow-color */
+  --live-hairline: rgba(0, 0, 0, 0.08); /* design-allow-color */
+  --live-hairline-2: rgba(0, 0, 0, 0.13); /* design-allow-color */
+  --live-text: #131316; /* design-allow-color */
+  --live-text-2: #4B4B55; /* design-allow-color */
+  --live-label: #6E6E78; /* design-allow-color */
+  --live-dim: #C6C6CC; /* design-allow-color */
+  --live-dim-sub: #A9A9B2; /* design-allow-color */
+  --live-float: rgba(255, 255, 255, 0.92); /* design-allow-color */
+  --live-veil: rgba(20, 20, 24, 0.45); /* design-allow-color */
+  --live-map-bg: #EDEDEB; /* design-allow-color */
+  --live-scrim-top: linear-gradient(rgba(246, 246, 247, 0.95), rgba(246, 246, 247, 0)); /* design-allow-color */
+  --live-scrim-bot: linear-gradient(rgba(246, 246, 247, 0), rgba(246, 246, 247, 0.90) 45%, rgba(246, 246, 247, 0.98)); /* design-allow-color */
+  --live-band-bg: rgba(252, 252, 253, 0.95); /* design-allow-color */
+  --live-arrow-bg: rgba(255, 255, 255, 0.72); /* design-allow-color */
+  --live-btn-map: rgba(255, 255, 255, 0.85); /* design-allow-color */
+  --live-toast-bg: rgba(255, 255, 255, 0.96); /* design-allow-color */
+}
+
+/* ── Shell ─────────────────────────────────────────────────────────── */
+[data-live-shell] {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--live-bg);
+  color: var(--live-text);
+  font-family: Inter, var(--font-body), system-ui, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+[data-live-shell] *, [data-live-shell] *::before, [data-live-shell] *::after { box-sizing: border-box; }
+[data-live-shell] button { font-family: inherit; }
+.lv2-num { font-variant-numeric: tabular-nums; }
+
+/* ── Carrousel 3 pages (scroll snap) ───────────────────────────────── */
+.lv2-pages {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.lv2-pages::-webkit-scrollbar { display: none; }
+.lv2-pages.lv2-locked { overflow-x: hidden; }
+.lv2-page {
+  width: 100%;
+  height: 100%;
+  flex: none;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Typo / grille de tuiles ───────────────────────────────────────── */
+.lv2-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--live-label);
+  text-transform: uppercase;
+}
+.lv2-grid { margin: 0 20px; }
+.lv2-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--live-hairline);
+  position: relative;
+}
+.lv2-grid .lv2-row:last-child { border-bottom: 1px solid var(--live-hairline); }
+/* Séparateur vertical : s'arrête à 18 px des traits horizontaux (spec §2). */
+.lv2-row::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  bottom: 18px;
+  width: 1px;
+  background: var(--live-hairline);
+}
+.lv2-cell { padding: 20px 6px 22px; text-align: center; }
+.lv2-cell .lv2-v {
+  margin-top: 9px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+}
+.lv2-cell .lv2-n { font-weight: 800; color: var(--live-text); }
+.lv2-cell .lv2-u { font-size: 13px; font-weight: 600; color: var(--live-label); }
+.lv2-cell.lv2-dim .lv2-n { color: var(--live-dim); }
+.lv2-cell.lv2-dim .lv2-u { color: var(--live-dim-sub); }
+
+/* ── Boutons / pills ───────────────────────────────────────────────── */
+.lv2-pill {
+  width: 100%;
+  height: 52px;
+  border-radius: 26px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+}
+.lv2-pill-primary { background: var(--live-accent); color: var(--live-accent-on); }
+.lv2-pill-ghost {
+  background: none;
+  border: 1.2px solid var(--live-hairline-2);
+  color: var(--live-text);
+  font-weight: 700;
+  font-size: 15.5px;
+}
+.lv2-pill-danger {
+  background: none;
+  border: none;
+  color: var(--live-danger);
+  font-size: 14.5px;
+  font-weight: 600;
+  height: 36px;
+}
+.lv2-pill-danger.lv2-armed {
+  background: var(--live-danger);
+  color: var(--live-surface);
+  height: 44px;
+  border-radius: 22px;
+  font-weight: 800;
+}
+.lv2-press { transition: transform 0.12s ease; }
+.lv2-press:active { transform: scale(0.93); }
+@media (prefers-reduced-motion: reduce) {
+  .lv2-press, .lv2-press:active { transition: none; transform: none; }
+}
+
+/* ── Marqueur GPS carte : blanc 18⌀ + cœur cyan + halo pulsé ───────── */
+.lv2-gps-marker { position: relative; }
+.lv2-gps-halo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  background: var(--live-accent);
+  opacity: 0.18;
+  animation: lv2Halo 2.4s ease-in-out infinite;
+}
+.lv2-gps-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  background: #FFFFFF; /* design-allow-color */
+}
+.lv2-gps-dot::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--live-accent);
+}
+
+/* ── Animations ────────────────────────────────────────────────────── */
+@keyframes lv2Halo {
+  0%, 100% { transform: scale(1); opacity: 0.18; }
+  50% { transform: scale(1.5); opacity: 0.05; }
+}
+@keyframes lv2Pulse { 50% { transform: scale(1.1); } }
+.lv2-lock-pulse { animation: lv2Pulse 0.25s; }
+@keyframes lv2SheetUp {
+  from { transform: translateY(40px); opacity: 0; }
+}
+@keyframes lv2FadeIn {
+  from { opacity: 0; transform: translateY(14px); }
+}
+@keyframes lv2ToastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lv2-gps-halo, .lv2-lock-pulse { animation: none; }
+}

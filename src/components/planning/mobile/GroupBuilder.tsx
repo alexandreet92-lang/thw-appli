@@ -114,7 +114,8 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
         // EMOM/Tabata (cadence imposée).
         const showRoundRest = variant === 'hyrox' || ctype === 'circuit' || ctype === 'superset'
         return (
-        <div key={c.id} style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: 12, marginBottom: 14, background: 'var(--se-card2)' }}>
+        <Fragment key={c.id}>
+        <div style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: 12, marginBottom: isLastCircuit ? 14 : 0, background: 'var(--se-card2)' }}>
           {/* En-tête de groupe */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <input value={c.name} onChange={e => updateCircuit(c.id, { name: e.target.value })}
@@ -166,27 +167,14 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
             </div>
           )}
 
-          {/* Récup entre tours / récup avant le circuit suivant */}
-          {(showRoundRest || !isLastCircuit) && (
-            <div style={{ display: 'grid', gridTemplateColumns: showRoundRest && !isLastCircuit ? '1fr 1fr' : '1fr', gap: 10, marginBottom: 12 }}>
-              {showRoundRest && (
-                <div>
-                  <FieldLabel>{tr('planning.restBetweenRounds')}</FieldLabel>
-                  <Stepper value={String(c.restBetweenRoundsSec ?? 0)} unit="s"
-                    onChange={v => updateCircuit(c.id, { restBetweenRoundsSec: Math.max(0, parseInt(v) || 0) })}
-                    onDec={() => updateCircuit(c.id, { restBetweenRoundsSec: Math.max(0, (c.restBetweenRoundsSec ?? 0) - 15) })}
-                    onInc={() => updateCircuit(c.id, { restBetweenRoundsSec: (c.restBetweenRoundsSec ?? 0) + 15 })} />
-                </div>
-              )}
-              {!isLastCircuit && (
-                <div>
-                  <FieldLabel>{tr('planning.restAfterCircuit')}</FieldLabel>
-                  <Stepper value={String(c.restAfterCircuitSec ?? 0)} unit="s"
-                    onChange={v => updateCircuit(c.id, { restAfterCircuitSec: Math.max(0, parseInt(v) || 0) })}
-                    onDec={() => updateCircuit(c.id, { restAfterCircuitSec: Math.max(0, (c.restAfterCircuitSec ?? 0) - 15) })}
-                    onInc={() => updateCircuit(c.id, { restAfterCircuitSec: (c.restAfterCircuitSec ?? 0) + 15 })} />
-                </div>
-              )}
+          {/* Récup entre tours (la récup inter-circuits vit ENTRE les cartes, cf. connecteur plus bas) */}
+          {showRoundRest && (
+            <div style={{ marginBottom: 12 }}>
+              <FieldLabel>{tr('planning.restBetweenRounds')}</FieldLabel>
+              <Stepper value={String(c.restBetweenRoundsSec ?? 0)} unit="s"
+                onChange={v => updateCircuit(c.id, { restBetweenRoundsSec: Math.max(0, parseInt(v) || 0) })}
+                onDec={() => updateCircuit(c.id, { restBetweenRoundsSec: Math.max(0, (c.restBetweenRoundsSec ?? 0) - 15) })}
+                onInc={() => updateCircuit(c.id, { restBetweenRoundsSec: (c.restBetweenRoundsSec ?? 0) + 15 })} />
             </div>
           )}
 
@@ -235,6 +223,21 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
             </button>
           )}
         </div>
+        {/* ── Connecteur ENTRE les circuits : récup avant le circuit suivant ── */}
+        {!isLastCircuit && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '0 0 0' }}>
+            <div style={{ width: 2, height: 10, background: 'var(--se-rule)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 999, border: '1px dashed var(--se-rule)', background: 'var(--se-card)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--se-dim)', whiteSpace: 'nowrap' }}>⏱ {tr('planning.restAfterCircuit')}</span>
+              <Stepper value={String(c.restAfterCircuitSec ?? 0)} unit="s"
+                onChange={v => updateCircuit(c.id, { restAfterCircuitSec: Math.max(0, parseInt(v) || 0) })}
+                onDec={() => updateCircuit(c.id, { restAfterCircuitSec: Math.max(0, (c.restAfterCircuitSec ?? 0) - 15) })}
+                onInc={() => updateCircuit(c.id, { restAfterCircuitSec: (c.restAfterCircuitSec ?? 0) + 15 })} />
+            </div>
+            <div style={{ width: 2, height: 10, background: 'var(--se-rule)' }} />
+          </div>
+        )}
+        </Fragment>
       )})}
 
       {/* Ajouter un circuit — muscu : choix du type ; hyrox : direct */}

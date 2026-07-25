@@ -3706,8 +3706,11 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   const [showDurPicker, setShowDurPicker] = useState(false)
   const [executeMode, setExecuteMode] = useState(false)
   const [tssInfo, setTssInfo] = useState(false)
-  const [mobile, setMobile] = useState(false)
-  const [wide, setWide] = useState(false)   // desktop ≥ 1024px → modale 2 colonnes
+  // Init SYNCHRONE (lazy initializer) : l'éditeur s'ouvre après un clic, window
+  // existe déjà. Avant, wide=false au 1er rendu → le layout MOBILE legacy
+  // s'affichait en flash sur desktop avant que le useEffect ne corrige.
+  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
+  const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024)   // desktop ≥ 1024px → modale 2 colonnes
   const [nutritionOpen, setNutritionOpen] = useState(false)
   const [nutritionLoading, setNutritionLoading] = useState(false)
   const [showDuplicateMenu, setShowDuplicateMenu] = useState(false)

@@ -11,6 +11,7 @@ import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editor
 import { toBars, totalMin, totalDistance, newSingle, newInterval, recalc, type MBlock, type EffortUnit } from './blocks'
 import { BlockCard } from './BlockCard'
 import { EnduranceLiveSummary } from './EnduranceLiveSummary'
+import { parseSessionText } from './parseSessionText'
 import { Segmented } from './ui'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
@@ -309,8 +310,21 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
           {aiError && (
             <p style={{ margin: '8px 0 0', padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, lineHeight: 1.4 }}>{aiError}</p>
           )}
-          {/* Résumé live sous « Générer les blocs » — se met à jour dès qu'il y a des blocs */}
-          <EnduranceLiveSummary sport={sport} runningSub={runningSub} blocks={blocks} />
+          {/* Résumé live sous « Générer les blocs » : dès qu'il y a des blocs,
+              leurs stats ; SINON, estimation EN DIRECT du texte tapé (parseur
+              client, zéro IA) — durée/vitesse/allure évoluent pendant la frappe. */}
+          {(() => {
+            const typedBlocks = blocks.length === 0 ? parseSessionText(aiPrompt, sport, runningSub) : []
+            const useTyped = blocks.length === 0 && typedBlocks.length > 0
+            return (
+              <>
+                <EnduranceLiveSummary sport={sport} runningSub={runningSub} blocks={useTyped ? typedBlocks : blocks} />
+                {useTyped && (
+                  <p style={{ margin: '4px 2px 0', fontSize: 10.5, color: 'var(--se-dim)' }}>{tr('planning.liveEstimate')}</p>
+                )}
+              </>
+            )
+          })()}
         </div>
       )}
 

@@ -2647,15 +2647,12 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const [detailModal, setDetailModal] = useState<Session|null>(null)
   const [activityDetail, setActivityDetail] = useState<TrainingActivity|null>(null)
   const [dragOver, setDragOver] = useState<number|null>(null)
-  const [hoverAdd, setHoverAdd] = useState<string|null>(null)
-  // Curseur « + » vert qui suit la souris sur la zone vide d'une case jour (desktop).
-  const [plusCur, setPlusCur] = useState<{key:string;x:number;y:number}|null>(null)
   // Zone « vide » d'une case = tout sauf les cartes/bulles/boutons cliquables.
   const isEmptyCellTarget = (e: React.MouseEvent) =>
     !(e.target as HTMLElement).closest('button, a, [data-noadd]')
-  const plusBadge = (key: string) => plusCur?.key === key ? (
-    <span aria-hidden style={{ position:'absolute' as const, left:plusCur.x, top:plusCur.y, transform:'translate(-50%,-50%)', zIndex:9, width:22, height:22, borderRadius:'50%', background:'#22c55e', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, lineHeight:1, fontWeight:700, pointerEvents:'none' as const, boxShadow:'0 2px 8px rgba(34,197,94,0.45)' }}>+</span>
-  ) : null
+  // Curseur natif « flèche + badge + vert » (dessiné par le navigateur → zéro
+  // lag, flèche toujours visible). Les cartes/boutons gardent leur pointer.
+  const plusCursor = `url("data:image/svg+xml,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'><path d='M4 1v16l4.2-3.6L10.8 19l3-1.3-2.6-5.6L16 11z' fill='white' stroke='black' stroke-width='1.2'/><circle cx='19' cy='19' r='6.5' fill='#22c55e' stroke='white' stroke-width='1.5'/><path d='M19 15.8v6.4M15.8 19h6.4' stroke='white' stroke-width='1.8' stroke-linecap='round'/></svg>")}") 4 2, copy`
   const [dragCell, setDragCell] = useState<string|null>(null)
   const planDrag = useRef<{ id: string; ws: string; day: number } | null>(null)
   // Mobile : drag d'une séance par appui long (≥1 s) puis déplacement vers un autre jour.
@@ -2983,28 +2980,17 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                   const isDropTarget = dragCell === hid
                   return (
                     <div key={i} data-day-index={i}
-                      onMouseEnter={() => setHoverAdd(hid)}
-                      onMouseLeave={() => { setHoverAdd(h => h === hid ? null : h); setPlusCur(p => p?.key === hid ? null : p) }}
-                      onMouseMove={e => {
-                        if (isEmptyCellTarget(e)) { const r = e.currentTarget.getBoundingClientRect(); setPlusCur({ key: hid, x: e.clientX - r.left, y: e.clientY - r.top }) }
-                        else setPlusCur(p => p?.key === hid ? null : p)
-                      }}
                       onClick={e => { if (isEmptyCellTarget(e)) { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan: activePlan, weekStart: ws }) } }}
                       onDragOver={e => { if (planDrag.current) { e.preventDefault(); setDragCell(hid) } }}
                       onDragLeave={() => setDragCell(c => c === hid ? null : c)}
                       onDrop={() => { const dr = planDrag.current; if (dr && dr.ws === ws && dr.day !== i) moveSession(dr.id, i); planDrag.current = null; setDragCell(null) }}
-                      style={{ position: 'relative' as const, minHeight: 104, padding: '8px 6px 22px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' as const, gap: 5, background: isDropTarget ? 'rgba(6,182,212,0.07)' : 'transparent', transition: 'background .12s', cursor: plusCur?.key === hid ? ('none' as const) : undefined }}>
+                      style={{ position: 'relative' as const, minHeight: 104, padding: '8px 6px 22px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' as const, gap: 5, background: isDropTarget ? 'rgba(6,182,212,0.07)' : 'transparent', transition: 'background .12s', cursor: plusCursor }}>
                       {/* N° du jour dans un anneau coloré (type de jour) ; clic → menu (desktop) */}
                       <div style={{ alignSelf: 'flex-end' as const, marginBottom: 2 }}>
                         <DayHeader num={dates[i]} intensity={d.intensity} isToday={isToday}
                           onNum={() => setDayPicker(p => p === `d_${hid}` ? null : `d_${hid}`)} open={dayPicker === `d_${hid}`}
                           onPick={(it) => { void setDayIntensityWeek(ws, i, it); setDayPicker(null) }} />
                       </div>
-                      {hoverAdd === hid && (
-                        <button onClick={() => { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan: activePlan, weekStart: ws }) }} title={t('plnp.addSession')}
-                          style={{ position: 'absolute' as const, bottom: 4, left: '50%', transform: 'translateX(-50%)', zIndex: 6, background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 2, opacity: 0.7 }}>+</button>
-                      )}
-                      {plusBadge(hid)}
                       {/* Courses du jour (drapeau) */}
                       {d.races.map(r => (
                         <RaceBubble key={r.id} race={r} onClick={() => setRaceDetail(r)} />
@@ -3430,20 +3416,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               onDragLeave={()=>setDragOver(null)}
               onDrop={()=>onDrop(i)}
               onTouchEnd={()=>onTouchEnd(i)}
-              onMouseEnter={()=>setHoverAdd(`${ws}_${i}`)}
-              onMouseLeave={()=>{setHoverAdd(h=>h===`${ws}_${i}`?null:h);setPlusCur(p=>p?.key===`${ws}_${i}`?null:p)}}
-              onMouseMove={e=>{
-                if (isEmptyCellTarget(e)) { const r=e.currentTarget.getBoundingClientRect(); setPlusCur({ key:`${ws}_${i}`, x:e.clientX-r.left, y:e.clientY-r.top }) }
-                else setPlusCur(p=>p?.key===`${ws}_${i}`?null:p)
-              }}
               onClick={e=>{ if (isEmptyCellTarget(e)) { setAddModalFavorites(false); setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws}) } }}
-              style={{ position:'relative' as const,borderLeft:'1px solid var(--border)',padding:'6px 4px',background:dragOver===i?'rgba(6,182,212,0.04)':'transparent',minWidth:68,minHeight:80,cursor:plusCur?.key===`${ws}_${i}`?('none' as const):undefined }}>
-              {plusBadge(`${ws}_${i}`)}
-              {hoverAdd===`${ws}_${i}` && (
-                <button onClick={()=>{setAddModalFavorites(false);setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws})}}
-                  title={t('plnp.addSession')}
-                  style={{ position:'absolute' as const,top:'50%',left:'50%',transform:'translate(-50%,-50%)',zIndex:8,width:30,height:30,borderRadius:'50%',background:'#06B6D4',border:'none',color:'#fff',fontSize:18,lineHeight:1,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 10px rgba(6,182,212,0.55)' }}>+</button>
-              )}
+              style={{ position:'relative' as const,borderLeft:'1px solid var(--border)',padding:'6px 4px',background:dragOver===i?'rgba(6,182,212,0.04)':'transparent',minWidth:68,minHeight:80,cursor:plusCursor }}>
               <div style={{ display:'flex',flexDirection:'column',gap:4 }}>
                 {/* Activités réelles (cliquables → modal détail) */}
                 {d.activities.map(a=>{

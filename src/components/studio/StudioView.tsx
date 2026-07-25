@@ -32,6 +32,12 @@ const NODE_D = 66            // diamètre de la bulle
 const NODE_W = NODE_D        // (compat) largeur = diamètre
 const PORT_Y = NODE_D / 2    // ancrage vertical des ports = centre de la bulle
 
+// ── Règles de liaison ──────────────────────────────────────────
+// Sortie : tout sauf Action (bout de chaîne). Entrée : tout sauf Objectif
+// (départ) et Application-lecture (source, produit des données).
+const hasStudioOutput = (k: StudioNodeKind) => k !== 'action'
+const hasStudioInput = (k: StudioNodeKind) => k !== 'trigger' && k !== 'source'
+
 const KIND_COLOR: Record<StudioNodeKind, string> = {
   trigger:    '#8B5CF6',
   agent:      '#06B6D4',
@@ -145,6 +151,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [hoverId, setHoverId] = useState<string | null>(null)   // bulle survolée → champ de rôle
   const [pickerOpen, setPickerOpen] = useState(false)           // sélecteur « + » façon Make
   const [pickerQuery, setPickerQuery] = useState('')
+  const [pickerFrom, setPickerFrom] = useState<string | null>(null)  // « + » d'une bulle → nouvelle branche
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -310,6 +317,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       const toId = el?.closest('[data-portin]')?.getAttribute('data-portin') ?? null
       if (toId && d.id && toId !== d.id) {
         setGraph(g => {
+          const from = g.nodes.find(n => n.id === d.id), to = g.nodes.find(n => n.id === toId)
+          if (!from || !to) return g
+          // Règle de liaison : refuse une connexion invalide (silencieux).
+          if (!hasStudioOutput(from.kind) || !hasStudioInput(to.kind)) return g
           if (g.edges.some(x => x.from === d.id && x.to === toId)) return g
           const next = { ...g, edges: [...g.edges, { id: genId(), from: d.id!, to: toId }] }
           scheduleSave(next); return next
@@ -368,11 +379,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   }
 
   // ── Mutations ──────────────────────────────────────────────
-  const addNode = (kind: StudioNodeKind, opts?: { sourceKey?: StudioSourceKey; actionKey?: StudioActionKey; title?: string }) => {
-    // Nouveau bloc placé au centre de la vue courante (pas au hasard hors-écran).
+  const addNode = (kind: StudioNodeKind, opts?: { sourceKey?: StudioSourceKey; actionKey?: StudioActionKey; title?: string; fromId?: string }): string => {
+    // Si on ajoute une BRANCHE depuis une bulle → on place le nouveau bloc à sa
+    // droite ; sinon au centre de la vue courante.
     const rect = wrapRef.current?.getBoundingClientRect()
-    const cx = ((rect ? rect.width / 2 : 400) - pan.x) / zoom - NODE_W / 2
-    const cy = ((rect ? rect.height / 2 : 300) - pan.y) / zoom - 40 + Math.round((Math.random() - 0.5) * 40)
+    const src = opts?.fromId ? graph.nodes.find(x => x.id === opts.fromId) : undefined
+    const downstream = src ? graph.edges.filter(e2 => e2.from === src.id).length : 0
+    const cx = src ? src.x + 150 : ((rect ? rect.width / 2 : 400) - pan.x) / zoom - NODE_W / 2
+    const cy = src ? src.y + downstream * 100 : ((rect ? rect.height / 2 : 300) - pan.y) / zoom - 40 + Math.round((Math.random() - 0.5) * 40)
     const sourceKey = kind === 'source' ? (opts?.sourceKey ?? 'activities') : undefined
     const actionKey = kind === 'action' ? (opts?.actionKey ?? 'planning_save') : undefined
     const n: StudioNode = {
@@ -387,15 +401,20 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       sourceKey,
       actionKey,
     }
-    persist({ ...graph, nodes: [...graph.nodes, n] }); setSelId(n.id); setTab('canvas')
-    // Mobile : la palette (plein écran) se referme après l'ajout.
+    // Branche : on relie source → nouveau bloc dans le MÊME enregistrement, si la
+    // règle de liaison l'autorise.
+    const edges = src && hasStudioOutput(src.kind) && hasStudioInput(kind)
+      ? [...graph.edges, { id: genId(), from: src.id, to: n.id }]
+      : graph.edges
+    persist({ ...graph, nodes: [...graph.nodes, n], edges }); setSelId(n.id); setTab('canvas')
     if (typeof window !== 'undefined' && window.innerWidth < 768) setPaletteOpen(false)
+    return n.id
   }
-  const addApp = (app: AppEntry) => {
-    if (app.kind === 'source') addNode('source', { sourceKey: app.sourceKey, title: app.label })
-    else addNode('action', { actionKey: app.actionKey, title: app.label })
+  const addApp = (app: AppEntry, fromId?: string) => {
+    if (app.kind === 'source') addNode('source', { sourceKey: app.sourceKey, title: app.label, fromId })
+    else addNode('action', { actionKey: app.actionKey, title: app.label, fromId })
   }
-  const addExt = (e: ExtEntry) => addNode('source', { sourceKey: e.sourceKey, title: e.label })
+  const addExt = (e: ExtEntry, fromId?: string) => addNode('source', { sourceKey: e.sourceKey, title: e.label, fromId })
   const loadExample = () => { const g = sampleGraph(); persist({ ...g, name: graph.name || g.name }); setSelId(null); setStatus({}); setNodeText({}) }
   const clearCanvas = () => { persist({ ...emptyGraph(), id: graph.id, name: graph.name }); setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}) }
 
@@ -895,14 +914,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               )}
             </div>
 
-            {/* ── Barre flottante : « + » (sélecteur) · exemple · vider ── */}
+            {/* ── Barre flottante : exemple · vider ── */}
             <div style={{ position: 'absolute', top: 14, left: 12, zIndex: 8, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-              <button onClick={() => { setPickerQuery(''); setPickerOpen(o => !o) }} title="Ajouter un bloc"
-                style={{ width: 46, height: 46, borderRadius: '50%', background: 'linear-gradient(140deg, #8B5CF6, #6366F1)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(139,92,246,0.4)', transition: 'transform 0.15s' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.06)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" style={{ transform: pickerOpen ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s' }}><path d="M12 5v14M5 12h14"/></svg>
-              </button>
               {graph.nodes.length > 0 && (
                 <div style={{ display: 'flex', gap: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, boxShadow: '0 6px 18px rgba(0,0,0,0.10)' }}>
                   <button onClick={() => { if (confirm('Remplacer le système actuel par l’exemple ?')) loadExample() }} title="Charger l’exemple" style={zBtn}>
@@ -919,11 +932,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {pickerOpen && (() => {
               const q = pickerQuery.trim().toLowerCase()
               const match = (s: string) => !q || s.toLowerCase().includes(q)
+              // Depuis une bulle (branche) : on ne propose que des blocs qui
+              // acceptent une entrée (agent / synthèse / validation + actions).
+              const branchFrom = pickerFrom ? graph.nodes.find(n => n.id === pickerFrom) : undefined
+              const branching = !!pickerFrom
+              const close = () => { setPickerOpen(false); setPickerFrom(null) }
               const tools = (['trigger', 'agent', 'merge', 'validation'] as StudioNodeKind[])
+                .filter(k => !branching || hasStudioInput(k))
                 .map(k => ({ k, label: k === 'trigger' ? 'Objectif' : KIND_LABEL[k], off: k === 'trigger' && !!trigger }))
                 .filter(t => match(t.label))
-              const apps = APP_CATALOG.filter(a => match(a.label))
-              const exts = EXT_CATALOG.filter(e => match(e.label))
+              const apps = APP_CATALOG.filter(a => (!branching || a.kind === 'action') && match(a.label))
+              const exts = branching ? [] : EXT_CATALOG.filter(e => match(e.label))
               const bubble = (color: string, node: React.ReactNode, dim?: boolean) => (
                 <span style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, background: `linear-gradient(140deg, ${color}, color-mix(in srgb, ${color} 60%, #000))`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: dim ? 0.55 : 1, boxShadow: '0 3px 10px rgba(0,0,0,0.2)' }}>{node}</span>
               )
@@ -941,8 +960,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               )
               return (
                 <>
-                  <div onClick={() => setPickerOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 9 }} />
+                  <div onClick={close} style={{ position: 'absolute', inset: 0, zIndex: 9 }} />
                   <div style={{ position: 'absolute', top: 14, left: 70, zIndex: 10, width: 300, maxHeight: 'calc(100% - 28px)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 12px 40px rgba(0,0,0,0.28)', overflow: 'hidden', animation: 'studio_in 0.16s ease' }}>
+                    {branching && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 12px', borderBottom: '1px solid var(--border)', background: 'rgba(139,92,246,0.06)' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3v12a3 3 0 003 3h6"/><path d="M15 15l3 3-3 3"/></svg>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#8B5CF6', fontFamily: 'DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          Brancher depuis « {branchFrom?.title ?? 'bloc'} »
+                        </span>
+                      </div>
+                    )}
                     <div style={{ padding: 10, borderBottom: '1px solid var(--border)' }}>
                       <input autoFocus value={pickerQuery} onChange={e => setPickerQuery(e.target.value)} placeholder="Rechercher un outil ou une application…"
                         style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
@@ -951,17 +978,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       {tools.length > 0 && <div style={paletteHdr}>Outils</div>}
                       {tools.map(t => row(`t_${t.k}`, KIND_COLOR[t.k], <KindIcon kind={t.k} size={19} />, t.label,
                         t.off ? 'Un seul par système' : null,
-                        () => { if (!t.off) { addNode(t.k); setPickerOpen(false) } }, t.off))}
+                        () => { if (!t.off) { addNode(t.k, { fromId: pickerFrom ?? undefined }); close() } }, t.off))}
                       {apps.length > 0 && <div style={{ ...paletteHdr, marginTop: 4 }}>Applications</div>}
                       {apps.map(app => row(app.id, app.color, <AppIcon id={app.id} size={19} />, app.label,
                         app.access === 'écriture' ? 'Écriture' : 'Lecture',
-                        () => { addApp(app); setPickerOpen(false) }, false))}
+                        () => { addApp(app, pickerFrom ?? undefined); close() }, false))}
                       {exts.length > 0 && <div style={{ ...paletteHdr, marginTop: 4 }}>Apps externes</div>}
                       {exts.map(ext => {
                         const on = connectedProviders.has(ext.provider)
                         return row(ext.id, ext.color, <AppIcon id={ext.id} size={19} />, ext.label,
                           on ? 'Connecté' : 'À connecter dans Connexions',
-                          () => { addExt(ext); setPickerOpen(false) }, !on)
+                          () => { addExt(ext, pickerFrom ?? undefined); close() }, !on)
                       })}
                       {tools.length + apps.length + exts.length === 0 && (
                         <div style={{ padding: '18px 10px', textAlign: 'center', fontSize: 12.5, color: 'var(--text-dim)' }}>Aucun résultat.</div>
@@ -1072,8 +1099,18 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         {hasInput && (
                           <span data-portin={n.id} className="studio-port" style={{ position: 'absolute', left: -7, top: NODE_D / 2 - 7, width: 14, height: 14, borderRadius: '50%', background: 'var(--bg)', border: `2.5px solid color-mix(in srgb, var(--text) 35%, transparent)`, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }} />
                         )}
-                        <span onPointerDown={e => startConnect(e, n)} title="Relier" className="studio-port"
-                          style={{ position: 'absolute', right: -7, top: NODE_D / 2 - 7, width: 14, height: 14, borderRadius: '50%', background: col, border: '2.5px solid var(--bg-card)', cursor: 'crosshair', boxShadow: `0 0 0 2px color-mix(in srgb, ${col} 25%, transparent), 0 1px 3px rgba(0,0,0,0.2)` }} />
+                        {hasStudioOutput(n.kind) && (
+                          <span onPointerDown={e => startConnect(e, n)} title="Relier" className="studio-port"
+                            style={{ position: 'absolute', right: -7, top: NODE_D / 2 - 7, width: 14, height: 14, borderRadius: '50%', background: col, border: '2.5px solid var(--bg-card)', cursor: 'crosshair', boxShadow: `0 0 0 2px color-mix(in srgb, ${col} 25%, transparent), 0 1px 3px rgba(0,0,0,0.2)` }} />
+                        )}
+                        {/* « + » au survol : ouvre une branche (ajoute + relie un bloc). */}
+                        {open && hasStudioOutput(n.kind) && (
+                          <button onPointerDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); setPickerFrom(n.id); setPickerQuery(''); setPickerOpen(true) }}
+                            title="Ajouter une branche" className="studio-port"
+                            style={{ position: 'absolute', right: -30, top: NODE_D / 2 - 11, width: 22, height: 22, borderRadius: '50%', background: col, color: '#fff', border: '2px solid var(--bg-card)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                          </button>
+                        )}
                       </div>
                       {/* Libellé sous la bulle */}
                       <div style={{ width: NODE_D + 52, marginLeft: -26, marginTop: 6, textAlign: 'center', pointerEvents: 'none' }}>
@@ -1106,7 +1143,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               {/* ── Toile vide : grosse bulle « + » (façon Make) ── */}
               {graph.nodes.length === 0 && !building && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', gap: 16, padding: 20 }}>
-                  <button onClick={() => { setPickerQuery(''); setPickerOpen(true) }} title="Ajouter un bloc"
+                  <button onClick={() => { setPickerFrom(null); setPickerQuery(''); setPickerOpen(true) }} title="Ajouter un bloc"
                     style={{ pointerEvents: 'auto', width: 84, height: 84, borderRadius: '50%', cursor: 'pointer',
                       background: 'color-mix(in srgb, #8B5CF6 8%, var(--bg-card))', border: '2px dashed color-mix(in srgb, #8B5CF6 45%, transparent)',
                       color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center',

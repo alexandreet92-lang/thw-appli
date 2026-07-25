@@ -15,7 +15,7 @@ import {
 import { extractJson } from './connectors'
 import { callAgent } from './runner'
 
-interface ArchNode {
+export interface ArchNode {
   id: string
   kind: StudioNodeKind
   title: string
@@ -24,7 +24,7 @@ interface ArchNode {
   sourceKey?: StudioSourceKey
   actionKey?: StudioActionKey
 }
-interface ArchPlan {
+export interface ArchPlan {
   name: string
   explanation: string
   nodes: ArchNode[]
@@ -60,33 +60,23 @@ export interface ArchitectResult {
   explanation: string
 }
 
-export async function buildGraphFromDescription(
-  description: string,
-  current?: StudioGraph,
-  onProgress?: (t: string) => void,
-  signal?: AbortSignal,
-): Promise<ArchitectResult> {
-  const pseudoNode: StudioNode = { id: 'arch', kind: 'agent', title: 'Architecte', x: 0, y: 0, model: 'athena' }
-
-  // Mode MODIFICATION : un système existe → l'architecte le fait évoluer au
-  // lieu de repartir de zéro (sauf si la demande décrit un système tout neuf).
-  let contextBlock = ''
-  if (current && current.nodes.length > 0) {
-    const slim = {
-      nodes: current.nodes.map(n => ({ id: n.id, kind: n.kind, title: n.title, role: n.role?.slice(0, 300), model: n.model, sourceKey: n.sourceKey, actionKey: n.actionKey })),
-      edges: current.edges.map(e => ({ from: e.from, to: e.to })),
-    }
-    contextBlock =
-      `\n\nUN SYSTÈME EXISTE DÉJÀ (ci-dessous). Si la demande de l'utilisateur est une MODIFICATION (ajouter/retirer/changer un agent, une source, un fil…), pars de ce graphe et renvoie le graphe COMPLET mis à jour en conservant tout ce qui n'est pas concerné (mêmes ids pour les nœuds gardés). Si la demande décrit un système entièrement différent, repars de zéro.\n\nGRAPHE EXISTANT :\n${JSON.stringify(slim)}\n`
+// Contexte « un système existe déjà » injecté dans les prompts.
+function existingGraphBlock(current?: StudioGraph): string {
+  if (!current || current.nodes.length === 0) return ''
+  const slim = {
+    nodes: current.nodes.map(n => ({ id: n.id, kind: n.kind, title: n.title, role: n.role?.slice(0, 300), model: n.model, sourceKey: n.sourceKey, actionKey: n.actionKey })),
+    edges: current.edges.map(e => ({ from: e.from, to: e.to })),
   }
+  return `\n\nUN SYSTÈME EXISTE DÉJÀ (ci-dessous). Si la demande est une MODIFICATION (ajouter/retirer/changer un agent, une source, un fil…), pars de ce graphe et renvoie le graphe COMPLET mis à jour en conservant tout ce qui n'est pas concerné (mêmes ids pour les nœuds gardés). Si la demande décrit un système entièrement différent, repars de zéro.\n\nGRAPHE EXISTANT :\n${JSON.stringify(slim)}\n`
+}
 
-  const raw = await callAgent(pseudoNode, ARCHITECT_PROMPT + contextBlock + '\n' + description.trim(), onProgress ?? (() => {}), signal)
-  const plan = extractJson<ArchPlan>(raw)
-
+// Transforme un plan IA (nœuds/fils bruts) en graphe Studio complet et mis en
+// page. Extrait de buildGraphFromDescription pour être réutilisé par le mode
+// conversationnel (on n'applique le graphe qu'après confirmation).
+export function planToGraph(plan: ArchPlan, description: string): ArchitectResult {
   if (!plan || !Array.isArray(plan.nodes) || plan.nodes.length === 0) {
     throw new Error("L'architecte n'a pas renvoyé de graphe exploitable — reformule ta demande.")
   }
-
   // Remap des ids IA → ids réels, et validation défensive des kinds/refs.
   const KINDS: StudioNodeKind[] = ['trigger', 'agent', 'merge', 'validation', 'source', 'action']
   const idMap = new Map<string, string>()
@@ -142,4 +132,92 @@ export async function buildGraphFromDescription(
     updatedAt: Date.now(),
   }
   return { graph, explanation: String(plan.explanation ?? '').slice(0, 800) }
+}
+
+export async function buildGraphFromDescription(
+  description: string,
+  current?: StudioGraph,
+  onProgress?: (t: string) => void,
+  signal?: AbortSignal,
+): Promise<ArchitectResult> {
+  const pseudoNode: StudioNode = { id: 'arch', kind: 'agent', title: 'Architecte', x: 0, y: 0, model: 'athena' }
+  const raw = await callAgent(pseudoNode, ARCHITECT_PROMPT + existingGraphBlock(current) + '\n' + description.trim(), onProgress ?? (() => {}), signal)
+  return planToGraph(extractJson<ArchPlan>(raw), description)
+}
+
+// ══════════════════════════════════════════════════════════════
+// ARCHITECTE CONVERSATIONNEL — clarifier puis confirmer avant d'appliquer.
+// ──────────────────────────────────────────────────────────────
+// Au lieu de construire directement, l'IA dialogue : elle pose des questions
+// (choix cliquables façon coach) tant qu'il y a une ambiguïté, confirme sa
+// compréhension, PUIS propose un plan que l'utilisateur doit valider
+// explicitement. Aucune modification du graphe n'est appliquée sans ce « oui ».
+// ══════════════════════════════════════════════════════════════
+
+export type ArchitectTurn =
+  | { action: 'ask'; message: string; question: string; options: string[] }
+  | { action: 'propose'; message: string; plan: ArchPlan }
+  | { action: 'reply'; message: string }
+
+export interface ArchitectChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+const CONVERSE_PROMPT = `Tu es l'ARCHITECTE du Studio d'agents d'une app de coaching sportif hybride.
+Tu dialogues avec l'utilisateur pour concevoir ou modifier un système multi-agents (un graphe), MAIS tu n'appliques JAMAIS de changement toi-même : l'app applique le graphe seulement après que l'utilisateur a cliqué « Confirmer ». Ton rôle : bien comprendre le besoin, lever toute ambiguïté, puis proposer un plan clair à valider.
+
+BRIQUES DISPONIBLES (kind) :
+- "trigger" : point d'entrée UNIQUE et OBLIGATOIRE. Son "role" = l'objectif du système.
+- "source" : lit une page de l'app. "sourceKey" ∈ "activities" | "planning" | "injuries" | "recovery" | "profile". Pas de "role".
+- "agent" : coach IA spécialisé. "role" = métier + mission, précis. "model" ∈ "hermes" | "athena" | "zeus".
+- "merge" : fusionne les contributions en UNE réponse. "role" = consigne de synthèse.
+- "validation" : pause + accord utilisateur avant de continuer. "role" = ce qu'on vérifie.
+- "action" : écrit dans l'app. "actionKey" ∈ "planning_save" | "calendar_race" | "notify_report". Seulement si l'utilisateur veut vraiment écrire.
+
+COMPORTEMENT (très important) :
+- S'il y a la MOINDRE ambiguïté ou une info manquante qui changerait le système (objectif réel, sports concernés, écrire ou pas dans l'app, fréquence, niveau de détail, nombre d'étapes/agents…), pose UNE seule question à la fois, courte, avec 2 à 4 options cliquables. Une question à la fois, on avance pas à pas.
+- Dis clairement ce que tu as compris ; si un point reste flou, signale-le explicitement au lieu de deviner.
+- Ne propose un plan QUE lorsque tu as assez d'infos. Une demande triviale et sans ambiguïté peut aller directement à la proposition (l'utilisateur devra quand même confirmer).
+- Le plan proposé doit résumer, en français simple, ce que le système fera et pourquoi ce découpage, puis lister implicitement les nœuds via le JSON.
+- Reste bref et concret. Français.
+
+RÈGLES DU GRAPHE (pour une proposition) : 3 à 7 nœuds, un seul "trigger", graphe connexe sans cycle, sources en entrée des agents concernés, termine par "merge" (ou "action" si écriture). Titres courts, rôles concrets.
+
+RÉPONDS UNIQUEMENT avec un objet JSON, une de ces trois formes :
+1) Question de clarification :
+{"action":"ask","message":"une phrase : ce que tu as compris / pourquoi tu demandes","question":"ta question","options":["Option A","Option B","Option C"]}
+2) Proposition à confirmer :
+{"action":"propose","message":"résumé en français du système proposé et pourquoi","plan":{"name":"Nom court","explanation":"2-4 phrases","nodes":[{"id":"n1","kind":"trigger","title":"Objectif","role":"…"}],"edges":[{"from":"n1","to":"n2"}]}}
+3) Réponse simple (question de l'utilisateur sans construction) :
+{"action":"reply","message":"ta réponse"}
+`
+
+export async function converseArchitect(
+  history: ArchitectChatMessage[],
+  current?: StudioGraph,
+  signal?: AbortSignal,
+): Promise<ArchitectTurn> {
+  const pseudoNode: StudioNode = { id: 'arch', kind: 'agent', title: 'Architecte', x: 0, y: 0, model: 'athena' }
+  const convo = history.map(m => `${m.role === 'user' ? 'UTILISATEUR' : 'ARCHITECTE'} : ${m.content}`).join('\n')
+  const prompt = CONVERSE_PROMPT + existingGraphBlock(current) + '\n\nCONVERSATION :\n' + convo + '\n\nARCHITECTE :'
+  const raw = await callAgent(pseudoNode, prompt, () => {}, signal)
+
+  let parsed: { action?: string; message?: string; question?: string; options?: unknown; plan?: ArchPlan }
+  try { parsed = extractJson(raw) } catch {
+    // Pas de JSON exploitable → on traite la réponse brute comme un message.
+    return { action: 'reply', message: raw.trim().slice(0, 1200) || "Je n'ai pas bien saisi — peux-tu reformuler ?" }
+  }
+
+  const message = String(parsed.message ?? '').slice(0, 1200)
+  if (parsed.action === 'ask') {
+    const options = Array.isArray(parsed.options)
+      ? parsed.options.map(o => String(o).slice(0, 80)).filter(Boolean).slice(0, 4)
+      : []
+    return { action: 'ask', message, question: String(parsed.question ?? '').slice(0, 300), options }
+  }
+  if (parsed.action === 'propose' && parsed.plan && Array.isArray(parsed.plan.nodes)) {
+    return { action: 'propose', message, plan: parsed.plan }
+  }
+  return { action: 'reply', message: message || raw.trim().slice(0, 1200) }
 }

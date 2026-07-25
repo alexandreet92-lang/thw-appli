@@ -18,7 +18,7 @@ import {
   type StudioGraph, type StudioNode, type StudioNodeKind, type StudioModel, type StudioSourceKey, type StudioActionKey, type GraphIssues,
 } from '@/lib/studio/graph'
 import { runGraph, terminalNodeIds, type NodeStatus } from '@/lib/studio/runner'
-import { buildGraphFromDescription } from '@/lib/studio/architect'
+import { converseArchitect, planToGraph, type ArchitectChatMessage, type ArchPlan } from '@/lib/studio/architect'
 import { listSystems, createSystem, updateSystem, deleteSystem, duplicateSystem, migrateLocalGraphIfAny, type StudioSystemRow } from '@/lib/studio/store'
 import { STUDIO_TEMPLATES } from '@/lib/studio/templates'
 import { STUDIO_PACKS, estimateRunTokens, formatTokens, type StudioAccess } from '@/lib/studio/offers'
@@ -31,6 +31,7 @@ import StudioMarkdown from './StudioMarkdown'
 const NODE_D = 66            // diamètre de la bulle
 const NODE_W = NODE_D        // (compat) largeur = diamètre
 const PORT_Y = NODE_D / 2    // ancrage vertical des ports = centre de la bulle
+const CHAT_W = 380           // largeur du panneau de chat Architecte (desktop)
 
 // ── Règles de liaison ──────────────────────────────────────────
 // Sortie : tout sauf Action (bout de chaîne). Entrée : tout sauf Objectif
@@ -172,11 +173,24 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
   // Architecte (« décris ton système »)
   const [desc, setDesc] = useState('')
-  const [building, setBuilding] = useState(false)
-  const [buildErr, setBuildErr] = useState<string | null>(null)
-  const [explanation, setExplanation] = useState<string | null>(null)
   const [micOpen, setMicOpen] = useState(false)
   const prevGraphRef = useRef<StudioGraph | null>(null)
+
+  // ── Architecte CONVERSATIONNEL : dialogue → confirmation → application ──
+  // L'IA ne construit rien sans un « oui » explicite. Les messages s'affichent
+  // dans un panneau à droite (repliable) ou en plein écran.
+  type ChatMsg =
+    | { id: string; role: 'user'; text: string }
+    | { id: string; role: 'assistant'; kind: 'ask'; text: string; question: string; options: string[] }
+    | { id: string; role: 'assistant'; kind: 'propose'; text: string; plan: ArchPlan; applied?: boolean; declined?: boolean }
+    | { id: string; role: 'assistant'; kind: 'reply'; text: string }
+    | { id: string; role: 'assistant'; kind: 'error'; text: string }
+  const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([])
+  const [chatOpen, setChatOpen] = useState(false)     // panneau latéral droit visible
+  const [chatFull, setChatFull] = useState(false)     // plein écran
+  const [chatBusy, setChatBusy] = useState(false)     // l'IA réfléchit
+  const [chatInput, setChatInput] = useState('')
+  const chatScrollRef = useRef<HTMLDivElement>(null)
 
   // Exécution
   const [running, setRunning] = useState(false)
@@ -589,27 +603,188 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   // Toute modification du graphe invalide le contrôle pré-run affiché.
   useEffect(() => { setIssues(null) }, [graph])
 
-  // ── Architecte : décrire → construire ──────────────────────
+  // ── Architecte CONVERSATIONNEL ─────────────────────────────
+  // La barre « Décris… » et la saisie du chat mènent ici. L'IA dialogue, pose
+  // des questions, puis PROPOSE un plan à confirmer — rien n'est appliqué avant.
+  const chatIdRef = useRef(0)
+  const newMsgId = () => `m${++chatIdRef.current}`
+
+  const sendArchitect = async (text: string) => {
+    const t = text.trim()
+    if (!t || chatBusy) return
+    const userMsg: ChatMsg = { id: newMsgId(), role: 'user', text: t }
+    const history = [...chatMsgs, userMsg]
+    setChatMsgs(history)
+    setChatOpen(true)
+    setChatBusy(true)
+    // Historique compact pour l'IA (on résume les propositions par leur texte).
+    const apiHistory: ArchitectChatMessage[] = history.map(m =>
+      m.role === 'user'
+        ? { role: 'user' as const, content: m.text }
+        : { role: 'assistant' as const, content: m.kind === 'ask' ? `${m.text}\nQuestion : ${m.question}` : m.text })
+    try {
+      const turn = await converseArchitect(apiHistory, graph.nodes.length > 0 ? graph : undefined)
+      const id = newMsgId()
+      if (turn.action === 'ask') {
+        setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'ask', text: turn.message, question: turn.question, options: turn.options }])
+      } else if (turn.action === 'propose') {
+        setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'propose', text: turn.message || turn.plan.explanation || 'Voici le système que je te propose.', plan: turn.plan }])
+      } else {
+        setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'reply', text: turn.message }])
+      }
+    } catch (e) {
+      setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'error', text: e instanceof Error ? e.message : "L'architecte n'a pas répondu — réessaie." }])
+    } finally {
+      setChatBusy(false)
+    }
+  }
+
+  // Entrée depuis la barre « Décris… » : démarre/continue la conversation.
   const build = async () => {
     const d = desc.trim()
-    if (!d || building) return
-    setBuilding(true); setBuildErr(null); setExplanation(null)
+    if (!d || chatBusy) return
+    setDesc('')
+    await sendArchitect(d)
+  }
+
+  // L'utilisateur CONFIRME une proposition → on applique enfin le graphe.
+  const confirmPlan = (msgId: string) => {
+    const msg = chatMsgs.find(m => m.id === msgId)
+    if (!msg || msg.role !== 'assistant' || msg.kind !== 'propose') return
     try {
-      const res = await buildGraphFromDescription(d, graph.nodes.length > 0 ? graph : undefined)
+      const res = planToGraph(msg.plan, msg.text)
       prevGraphRef.current = graph          // pour « Annuler »
       persist(res.graph)
-      setSelId(null); setSelEdge(null); setPan({ x: 0, y: 0 })
+      setSelId(null); setSelEdge(null); setPan({ x: 0, y: 0 }); setZoom(1)
       setStatus({}); setNodeText({}); setLogs([])
-      setExplanation(res.explanation || 'Système construit — vérifie les nœuds puis lance « Run once ».')
-      setDesc('')
+      setChatMsgs(m => m.map(x => x.id === msgId && x.role === 'assistant' && x.kind === 'propose' ? { ...x, applied: true } : x))
+      setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'reply', text: 'C’est fait — j’ai construit le système. Vérifie les bulles puis lance « Run once ». Tu peux annuler si besoin.' }])
     } catch (e) {
-      setBuildErr(e instanceof Error ? e.message : 'La construction a échoué — réessaie.')
-    } finally { setBuilding(false) }
+      setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'error', text: e instanceof Error ? e.message : "Impossible d'appliquer ce plan." }])
+    }
   }
+  const declinePlan = (msgId: string) => {
+    setChatMsgs(m => m.map(x => x.id === msgId && x.role === 'assistant' && x.kind === 'propose' ? { ...x, declined: true } : x))
+    setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'reply', text: 'Ok, je n’applique rien. Dis-moi ce que tu veux changer.' }])
+  }
+  const resetChat = () => { setChatMsgs([]); setChatInput(''); setChatBusy(false) }
+
   const undoBuild = () => {
-    if (prevGraphRef.current) { persist(prevGraphRef.current); prevGraphRef.current = null }
-    setExplanation(null)
+    if (prevGraphRef.current) {
+      persist(prevGraphRef.current); prevGraphRef.current = null
+      setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'reply', text: 'J’ai rétabli le système précédent.' }])
+    }
   }
+
+  // Autoscroll du chat à chaque nouveau message.
+  useEffect(() => {
+    const el = chatScrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [chatMsgs, chatBusy])
+
+  // ── Rendu du chat (partagé entre panneau latéral et plein écran) ──
+  const planPreview = (plan: ArchPlan) => {
+    const titles = (plan.nodes ?? []).map(n => String(n.title || n.kind)).slice(0, 8)
+    return (
+      <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        {titles.map((t, i) => (
+          <span key={i} style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-mid)', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 999, padding: '3px 9px', fontFamily: 'DM Sans,sans-serif' }}>{t}</span>
+        ))}
+      </div>
+    )
+  }
+
+  const chatBody = (
+    <>
+      <div ref={chatScrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {chatMsgs.length === 0 && !chatBusy && (
+          <div style={{ margin: 'auto', textAlign: 'center', maxWidth: 280, color: 'var(--text-dim)' }}>
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 8 }}><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+            <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>Décris ton système</p>
+            <p style={{ margin: '5px 0 0', fontSize: 12, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif' }}>Je te pose quelques questions pour bien comprendre, puis je te propose un système à valider. Rien n’est appliqué sans ton accord.</p>
+          </div>
+        )}
+        {chatMsgs.map(m => {
+          if (m.role === 'user') return (
+            <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '86%', background: '#8B5CF6', color: '#fff', padding: '9px 13px', borderRadius: '14px 14px 4px 14px', fontSize: 13, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif', whiteSpace: 'pre-wrap' }}>{m.text}</div>
+          )
+          const bubble = (children: React.ReactNode, tone?: 'error') => (
+            <div key={m.id} style={{ alignSelf: 'flex-start', maxWidth: '92%', background: tone === 'error' ? 'rgba(239,68,68,0.08)' : 'var(--bg-card)', border: `1px solid ${tone === 'error' ? 'rgba(239,68,68,0.3)' : 'var(--border)'}`, color: tone === 'error' ? '#EF4444' : 'var(--text)', padding: '10px 13px', borderRadius: '14px 14px 14px 4px', fontSize: 13, lineHeight: 1.55, fontFamily: 'DM Sans,sans-serif' }}>{children}</div>
+          )
+          if (m.kind === 'reply') return bubble(<span style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span>)
+          if (m.kind === 'error') return bubble(<span style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span>, 'error')
+          if (m.kind === 'ask') return bubble(
+            <>
+              {m.text && <div style={{ color: 'var(--text-mid)', marginBottom: 6, whiteSpace: 'pre-wrap' }}>{m.text}</div>}
+              <div style={{ fontWeight: 700 }}>{m.question}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 9 }}>
+                {m.options.map((opt, i) => (
+                  <button key={i} onClick={() => void sendArchitect(opt)} disabled={chatBusy}
+                    style={{ textAlign: 'left', padding: '8px 12px', borderRadius: 10, border: '1px solid color-mix(in srgb, #8B5CF6 40%, transparent)', background: 'color-mix(in srgb, #8B5CF6 7%, transparent)', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </>
+          )
+          // propose
+          return bubble(
+            <>
+              <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
+              {planPreview(m.plan)}
+              {!m.applied && !m.declined && (
+                <>
+                  <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: '#8B5CF6' }}>Confirmes-tu la construction de ce système&nbsp;?</div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button onClick={() => confirmPlan(m.id)}
+                      style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', background: '#8B5CF6', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                      Confirmer
+                    </button>
+                    <button onClick={() => declinePlan(m.id)}
+                      style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                      Non
+                    </button>
+                  </div>
+                </>
+              )}
+              {m.applied && (
+                <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#22C55E', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                    Construit
+                  </span>
+                  {prevGraphRef.current && (
+                    <button onClick={undoBuild} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'DM Sans,sans-serif', textDecoration: 'underline' }}>Annuler</button>
+                  )}
+                </div>
+              )}
+              {m.declined && <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--text-dim)', fontStyle: 'italic' }}>Non appliqué.</div>}
+            </>
+          )
+        })}
+        {chatBusy && (
+          <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 4, padding: '11px 14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px 14px 14px 4px' }}>
+            {[0, 1, 2].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#8B5CF6', animation: `studio_pulse 1s ease ${i * 0.15}s infinite` }} />)}
+          </div>
+        )}
+      </div>
+      {/* Saisie */}
+      <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: 10, display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+        <textarea
+          value={chatInput}
+          onChange={e => setChatInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); const t = chatInput; setChatInput(''); void sendArchitect(t) } }}
+          placeholder="Écris ta réponse ou une demande…"
+          rows={1}
+          style={{ flex: 1, minWidth: 0, resize: 'none', maxHeight: 120, padding: '9px 12px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', outline: 'none', lineHeight: 1.4 }}
+        />
+        <button onClick={() => { const t = chatInput; setChatInput(''); void sendArchitect(t) }} disabled={!chatInput.trim() || chatBusy} aria-label="Envoyer"
+          style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 11, border: 'none', background: chatInput.trim() && !chatBusy ? '#8B5CF6' : 'var(--border)', color: chatInput.trim() && !chatBusy ? '#fff' : 'var(--text-dim)', cursor: chatInput.trim() && !chatBusy ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
+    </>
+  )
 
   // ── Run once ───────────────────────────────────────────────
   const stopRun = () => { abortRef.current?.abort(); setRunning(false); setApproval(null) }
@@ -798,6 +973,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           ))}
         </div>
 
+        {/* Chat Architecte — ouvre la discussion en plein écran */}
+        <button onClick={() => { setChatFull(true); if (tab !== 'canvas') setTab('canvas') }} title="Discuter avec l’architecte (plein écran)" aria-label="Chat architecte"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 10, border: '1px solid var(--border)', background: chatMsgs.length > 0 ? 'color-mix(in srgb, #8B5CF6 10%, transparent)' : 'var(--bg-alt)', color: chatMsgs.length > 0 ? '#8B5CF6' : 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'DM Sans,sans-serif', flexShrink: 0 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 01-8.5 8.5 8.6 8.6 0 01-3.9-.9L3 21l1.9-5.6a8.4 8.4 0 01-.9-3.9A8.4 8.4 0 0112.5 3 8.4 8.4 0 0121 11.5z"/></svg>
+          {!isMobile && 'Chat'}
+        </button>
+
         {/* Planifier — run autonome récurrent */}
         <button onClick={() => setScheduleOpen(true)} title={schedule?.enabled ? 'Planification active — modifier' : 'Planifier ce système (run automatique)'} aria-label="Planifier ce système"
           style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: schedule?.enabled ? 'color-mix(in srgb, #8B5CF6 10%, transparent)' : 'var(--bg-alt)', color: schedule?.enabled ? '#8B5CF6' : 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -877,8 +1059,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   value={desc}
                   onChange={e => setDesc(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') void build() }}
-                  disabled={building}
-                  placeholder={graph.nodes.length > 0 ? 'Décris une modification… ou un nouveau système' : "Décris ce que tu veux… l'IA construit le système pour toi"}
+                  disabled={chatBusy}
+                  placeholder={graph.nodes.length > 0 ? 'Décris une modification… ou un nouveau système' : "Décris ce que tu veux… l'IA te posera des questions"}
                   style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13.5, fontFamily: 'DM Sans,sans-serif' }}
                 />
                 {/* Jauge d'utilisation — même principe que la bulle jauge du chat */}
@@ -892,38 +1074,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   </button>
                 )}
                 {/* Dictée vocale */}
-                <button onClick={() => setMicOpen(true)} disabled={building} title="Décrire à la voix" aria-label="Décrire à la voix"
+                <button onClick={() => setMicOpen(true)} disabled={chatBusy} title="Décrire à la voix" aria-label="Décrire à la voix"
                   style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/>
                   </svg>
                 </button>
-                <button onClick={() => void build()} disabled={!desc.trim() || building}
-                  style={{ height: 32, padding: '0 14px', borderRadius: 10, border: 'none', cursor: desc.trim() && !building ? 'pointer' : 'not-allowed',
-                    background: desc.trim() && !building ? '#8B5CF6' : 'var(--border)', color: desc.trim() && !building ? '#fff' : 'var(--text-dim)',
+                <button onClick={() => void build()} disabled={!desc.trim() || chatBusy}
+                  style={{ height: 32, padding: '0 14px', borderRadius: 10, border: 'none', cursor: desc.trim() && !chatBusy ? 'pointer' : 'not-allowed',
+                    background: desc.trim() && !chatBusy ? '#8B5CF6' : 'var(--border)', color: desc.trim() && !chatBusy ? '#fff' : 'var(--text-dim)',
                     fontSize: 12.5, fontWeight: 700, fontFamily: 'DM Sans,sans-serif', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                  {building ? (
-                    <><span style={{ width: 11, height: 11, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite', display: 'inline-block' }} /> Construction…</>
-                  ) : 'Construire'}
+                  {chatBusy ? (
+                    <><span style={{ width: 11, height: 11, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite', display: 'inline-block' }} /> …</>
+                  ) : 'Envoyer'}
                 </button>
               </div>
-              {buildErr && (
-                <div style={{ marginTop: 8, padding: '9px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 12.5, fontFamily: 'DM Sans,sans-serif', animation: 'studio_in 0.2s ease' }}>
-                  {buildErr}
-                </div>
-              )}
-              {explanation && (
-                <div style={{ marginTop: 8, padding: '12px 14px', borderRadius: 12, background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.3)', animation: 'studio_in 0.25s ease' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#8B5CF6', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>Système construit</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif' }}>{explanation}</div>
-                  <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                    <button onClick={() => setExplanation(null)} style={{ border: 'none', background: 'transparent', color: '#8B5CF6', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, fontFamily: 'DM Sans,sans-serif' }}>OK</button>
-                    {prevGraphRef.current && (
-                      <button onClick={undoBuild} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer', padding: 0, fontFamily: 'DM Sans,sans-serif' }}>Annuler (revenir à l'ancien)</button>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* ── Barre flottante : exemple · vider ── */}
@@ -1159,7 +1324,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               </div>
 
               {/* ── Toile vide : grosse bulle « + » (façon Make) ── */}
-              {graph.nodes.length === 0 && !building && (
+              {graph.nodes.length === 0 && !chatBusy && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', gap: 16, padding: 20 }}>
                   <button onClick={() => { setPickerFrom(null); setPickerQuery(''); setPickerOpen(true) }} title="Ajouter un bloc"
                     style={{ pointerEvents: 'auto', width: 84, height: 84, borderRadius: '50%', cursor: 'pointer',
@@ -1204,11 +1369,43 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
+            {/* ── Panneau Architecte (chat) — colonne droite repliable ── */}
+            {chatOpen && !chatFull && (
+              <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, zIndex: 8,
+                width: isMobile ? '100%' : CHAT_W, background: 'var(--bg-card)', borderLeft: '1px solid var(--border)',
+                display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 34px rgba(0,0,0,0.14)', animation: 'studio_in 0.2s ease' }}>
+                <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 12px', borderBottom: '1px solid var(--border)' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', flex: 1 }}>Architecte</span>
+                  {chatMsgs.length > 0 && (
+                    <button onClick={resetChat} title="Nouvelle conversation" aria-label="Nouvelle conversation" style={iconBtn}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                  )}
+                  <button onClick={() => setChatFull(true)} title="Plein écran" aria-label="Plein écran" style={iconBtn}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg>
+                  </button>
+                  <button onClick={() => setChatOpen(false)} title="Réduire" aria-label="Réduire" style={iconBtn}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                  </button>
+                </div>
+                {chatBody}
+              </div>
+            )}
+            {/* Onglet de réouverture quand le chat est replié mais qu'une conversation existe */}
+            {!chatOpen && chatMsgs.length > 0 && (
+              <button onClick={() => setChatOpen(true)} title="Rouvrir l’architecte"
+                style={{ position: 'absolute', top: 70, right: 0, zIndex: 8, display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px 9px 14px', borderRadius: '12px 0 0 12px', border: '1px solid var(--border)', borderRight: 'none', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', boxShadow: '-4px 4px 16px rgba(0,0,0,0.12)', fontFamily: 'DM Sans,sans-serif' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>Architecte</span>
+              </button>
+            )}
+
             {/* ── Inspecteur (colonne droite desktop · sheet bas mobile) ── */}
             {sel && (
               <div style={isMobile
                 ? { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '62%', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 16, overflowY: 'auto', zIndex: 9, boxShadow: '0 -10px 34px rgba(0,0,0,0.20)', animation: 'studio_in 0.18s ease' }
-                : { position: 'absolute', top: 0, right: 0, bottom: 0, width: 300, background: 'var(--bg-card)', borderLeft: '1px solid var(--border)', padding: 16, overflowY: 'auto', zIndex: 4, animation: 'studio_in 0.18s ease' }}>
+                : { position: 'absolute', top: 0, right: chatOpen ? CHAT_W : 0, bottom: 0, width: 300, background: 'var(--bg-card)', borderLeft: '1px solid var(--border)', padding: 16, overflowY: 'auto', zIndex: 4, animation: 'studio_in 0.18s ease' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                   <span style={{ width: 24, height: 24, borderRadius: 8, background: `color-mix(in srgb, ${KIND_COLOR[sel.kind]} 13%, transparent)`, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <KindIcon kind={sel.kind} size={13} />
@@ -1585,6 +1782,30 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           </div>
         )}
       </div>
+
+      {/* ══ Architecte — chat plein écran ══ */}
+      {chatFull && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 30, background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'studio_in 0.18s ease' }}>
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>Architecte</span>
+            {chatMsgs.length > 0 && (
+              <button onClick={resetChat} title="Nouvelle conversation" aria-label="Nouvelle conversation" style={iconBtn}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            )}
+            <button onClick={() => { setChatFull(false); setChatOpen(true) }} title="Réduire dans la colonne" aria-label="Réduire" style={iconBtn}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M21 8V5a2 2 0 00-2-2M3 16v3a2 2 0 002 2"/><path d="M9 15l-6 6M21 3l-6 6"/></svg>
+            </button>
+            <button onClick={() => setChatFull(false)} title="Fermer" aria-label="Fermer" style={iconBtn}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div style={{ flex: 1, minHeight: 0, width: '100%', maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+            {chatBody}
+          </div>
+        </div>
+      )}
 
       {/* ══ Planification autonome (sur-page) ══ */}
       {scheduleOpen && (() => {

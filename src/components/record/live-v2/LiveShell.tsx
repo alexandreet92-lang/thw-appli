@@ -311,10 +311,6 @@ export default function LiveShell({
     if (eff === 'recording') send({ type: 'PAUSE' })
     else send({ type: 'RESUME' })
   }
-  const handleMiniPause = () => {
-    handlePauseToggle()
-    goPage(0)
-  }
   const handleClose = () => {
     if (machine.phase === 'idle') { onExit(); return }
     if (inSummaryFlow) { showToast('Enregistre ou supprime la séance d’abord'); return }
@@ -538,7 +534,6 @@ export default function LiveShell({
             units={settings.units}
             onPrevPage={() => goPage(0)}
             onNextPage={() => goPage(2)}
-            onMiniPause={handleMiniPause}
           />
         </section>
         <section className="lv2-page">
@@ -819,15 +814,12 @@ export default function LiveShell({
         opacity: flash ? 1 : 0, transition: 'opacity 0.12s',
       }} />
 
-      {/* ── Bouton photo — discret sur la page carte, au-dessus du mini-pause.
-             Monté en permanence (display) : la file de photos en attente doit
-             survivre aux changements de page jusqu'au flush post-envoi. ── */}
+      {/* ── Bouton photo — AUCUN bouton visible sur la carte (spec) : monté
+             en permanence mais toujours masqué, car sa file de photos en
+             attente doit survivre jusqu'au flush post-envoi. ── */}
       <div
         className="lv2-photo"
-        style={{
-          position: 'absolute', right: 18, bottom: 250, zIndex: 5,
-          display: started && onMapPage && !locked ? 'block' : 'none',
-        }}
+        style={{ position: 'absolute', right: 18, bottom: 250, zIndex: 5, display: 'none' }}
       >
         <PhotoButton
           key={photoKey}

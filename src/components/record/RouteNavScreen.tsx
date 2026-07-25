@@ -25,6 +25,11 @@ export interface NavRouteInput {
   elevation_profile: { distanceM: number; altitudeM: number }[]
   waypoints?: LatLng[]
   sport?: string
+  /** Nom du parcours (bibliothèque) — affiché dans le panneau de guidage. */
+  name?: string | null
+  /** Totaux stockés en base — repli si la géométrie ne permet pas le calcul. */
+  distance_m?: number | null
+  elevation_gain_m?: number | null
 }
 
 interface Props {

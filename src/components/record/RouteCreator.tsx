@@ -64,6 +64,9 @@ interface ActiveRoute {
   elevation_profile: { distanceM: number; altitudeM: number }[]
   waypoints?: { lat: number; lng: number }[]
   sport?: string
+  name?: string | null
+  distance_m?: number | null
+  elevation_gain_m?: number | null
 }
 
 // Parcours enregistré (tel que renvoyé par la bibliothèque) — pour l'édition.

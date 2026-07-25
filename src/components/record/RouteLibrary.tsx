@@ -25,6 +25,9 @@ interface ActiveRoute {
   elevation_profile: { distanceM: number; altitudeM: number }[]
   waypoints?: { lat: number; lng: number }[]
   sport?: string
+  name?: string | null
+  distance_m?: number | null
+  elevation_gain_m?: number | null
 }
 
 interface Props {
@@ -195,6 +198,9 @@ export default function RouteLibrary({ onClose, onUseRoute, onCreate, onEditRout
     elevation_profile: route.elevation_profile ?? [],
     waypoints: route.waypoints?.map(p => ({ lat: p.lat, lng: p.lng })),
     sport: route.sport,
+    name: route.name,
+    distance_m: route.distance_m,
+    elevation_gain_m: route.elevation_gain_m,
   })
 
   const SPORT_OPTS: FilterOpt[] = [{ id: 'all', label: t('record.routeLibraryAllSports') }, { id: 'cycling', label: SPORT_LABELS.cycling }, { id: 'mtb', label: SPORT_LABELS.mtb }, { id: 'trail', label: SPORT_LABELS.trail }, { id: 'hiking', label: SPORT_LABELS.hiking }]

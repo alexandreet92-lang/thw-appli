@@ -42,6 +42,11 @@
   --live-toast-bg: rgba(20, 20, 23, 0.94); /* design-allow-color */
   --live-guide-panel: rgba(16, 16, 19, 0.92); /* design-allow-color */
   --live-chip-bg: rgba(255, 255, 255, 0.09); /* design-allow-color */
+  /* Données posées à même la carte (page 2) : texte blanc + halo noir fort,
+     lisible sur fond de carte clair (outdoors) comme foncé — identique dans
+     les deux thèmes, façon compteur Garmin. */
+  --live-map-ink: #FFFFFF; /* design-allow-color */
+  --live-map-halo: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.6); /* design-allow-color */
   /* Badges route (spec §4) — identiques dans les deux thèmes. */
   --live-badge-dep-bg: #EAB308; /* design-allow-color */
   --live-badge-dep-text: #1C1400; /* design-allow-color */

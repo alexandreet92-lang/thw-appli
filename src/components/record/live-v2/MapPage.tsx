@@ -3,10 +3,16 @@
 // MapPage — page 2 de l'écran live : carte plein écran (tuiles Mapbox,
 // Standard = outdoors-v12 EN COULEUR dans les deux thèmes), scrims, bouton
 // couches UNIQUE avec menu Standard/Satellite/Hybride/Sombre, flèches de
-// page, capsules vitesse + W + FC, mini-pause, bandeau stats bas (totaux du
+// page, données posées À MÊME la carte (vitesse + W + FC en texte blanc à
+// halo, façon compteur Garmin — aucune capsule), bandeau stats bas (totaux du
 // parcours avant départ, restants pendant l'enregistrement, distance/D+/durée
 // sans parcours), tracé parcouru en accent-track / restant en accent,
 // position blanc 18⌀ + cœur cyan + halo pulsé, chip itinéraire avant départ.
+// PROGRESSION : projection orthogonale du point GPS sur le SEGMENT le plus
+// proche du tracé (pas le sommet), désambiguïsée par la progression
+// précédente (un parcours en boucle ne saute plus à l'arrivée au départ).
+// D+ : somme des gains positifs du profil avec hystérésis 1 m ; sans
+// altitudes, la colonne D+ est MASQUÉE (jamais de faux « 1 m »).
 // EMPILEMENT : la carte vit dans .lv2-map-wrap (z 0 + isolation) qui piège
 // les panes Leaflet (z 200-700) ; tous les overlays frères sont à z >= 10.
 // GUIDAGE VIRAGE-PAR-VIRAGE (spec §4, vague 2) : les manœuvres réelles ORS
@@ -60,6 +66,65 @@ function haversine(a: LatLng, b: LatLng): number {
   return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
 }
 
+// ── Projection du point GPS sur le tracé (progression le long du parcours) ──
+// Projette orthogonalement sur CHAQUE segment (plan local équirectangulaire,
+// param clampé 0..1) puis, parmi les quasi-ex-æquo (± 30 m — cas d'une boucle
+// où départ et arrivée se superposent), garde le candidat dont la progression
+// est la plus proche de la progression précédente : au départ d'une boucle on
+// reste à 0 km au lieu de sauter à l'arrivée.
+interface RouteProjection { progressM: number; segIdx: number }
+
+function projectOnRoute(
+  pos: LatLng, line: LatLng[], cum: number[], prevProgressM: number,
+): RouteProjection | null {
+  if (line.length < 2) return null
+  const R = 6371000
+  const rad = Math.PI / 180
+  const cosLat = Math.cos(pos.lat * rad)
+  const px = pos.lng * rad * cosLat * R
+  const py = pos.lat * rad * R
+  const cand: { progressM: number; segIdx: number; d: number }[] = []
+  let bestD = Infinity
+  for (let i = 0; i < line.length - 1; i++) {
+    const ax = line[i].lng * rad * cosLat * R
+    const ay = line[i].lat * rad * R
+    const bx = line[i + 1].lng * rad * cosLat * R
+    const by = line[i + 1].lat * rad * R
+    const dx = bx - ax
+    const dy = by - ay
+    const len2 = dx * dx + dy * dy
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0
+    const d = Math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+    const segLen = (cum[i + 1] ?? 0) - (cum[i] ?? 0)
+    cand.push({ progressM: (cum[i] ?? 0) + t * segLen, segIdx: i, d })
+    if (d < bestD) bestD = d
+  }
+  let best = cand[0]
+  let bestScore = Infinity
+  for (const c of cand) {
+    if (c.d > bestD + 30) continue
+    const score = Math.abs(c.progressM - prevProgressM)
+    if (score < bestScore) { bestScore = score; best = c }
+  }
+  return best ? { progressM: best.progressM, segIdx: best.segIdx } : null
+}
+
+// ── D+ avec hystérésis 1 m (anti-bruit) sur le profil altimétrique ──
+// Somme des montées d'au moins 1 m depuis la dernière altitude de référence ;
+// `fromM` ignore la partie déjà parcourue (D+ restant).
+function smoothedGainM(ep: { distanceM: number; altitudeM: number }[], fromM = 0): number {
+  let g = 0
+  let ref: number | null = null
+  for (const p of ep) {
+    if (p.distanceM < fromM) { ref = p.altitudeM; continue }
+    if (ref == null) { ref = p.altitudeM; continue }
+    const d = p.altitudeM - ref
+    if (d >= 1) { g += d; ref = p.altitudeM }
+    else if (d <= -1) ref = p.altitudeM
+  }
+  return g
+}
+
 // Recentrage auto sur la position, suspendu 15 s après un pan/zoom manuel.
 const RECENTER_DELAY_MS = 15000
 function Follow({ pos }: { pos: LatLng | null }) {
@@ -109,12 +174,11 @@ interface Props {
   units?: LiveUnits
   onPrevPage: () => void
   onNextPage: () => void
-  onMiniPause: () => void
 }
 
 export default function MapPage({
   started, locked, dim, speedKmh, powerW, heartRateBpm, distanceDoneM, gainDoneM, elapsedSec,
-  points, currentPos, route, defaultLayer, units, onPrevPage, onNextPage, onMiniPause,
+  points, currentPos, route, defaultLayer, units, onPrevPage, onNextPage,
 }: Props) {
   const [layer, setLayer] = useState<LayerId>(defaultLayer)
   const [layersOpen, setLayersOpen] = useState(false)
@@ -143,52 +207,48 @@ export default function MapPage({
   const line = route?.snapped_points ?? []
   const hasRoute = line.length > 1
 
-  // Distances cumulées le long du parcours + index du point le plus proche.
+  // Distances cumulées le long du parcours (géométrie = source de vérité).
   const cum = useMemo(() => {
     const a = [0]
     for (let i = 1; i < line.length; i++) a.push(a[i - 1] + haversine(line[i - 1], line[i]))
     return a
   }, [line])
-  const totalM = cum[cum.length - 1] ?? 0
-  const totalGain = useMemo(() => {
-    const ep = route?.elevation_profile ?? []
-    let g = 0
-    for (let i = 1; i < ep.length; i++) {
-      const d = ep[i].altitudeM - ep[i - 1].altitudeM
-      if (d > 0) g += d
-    }
-    return g
-  }, [route?.elevation_profile])
+  const geomTotalM = cum[cum.length - 1] ?? 0
+  // Repli sur le total stocké en base si la géométrie est inexploitable.
+  const totalM = geomTotalM > 0 ? geomTotalM : (route?.distance_m ?? 0)
+
+  // D+ : profil altimétrique si présent (hystérésis 1 m), sinon total stocké
+  // en base, sinon null → colonne D+ MASQUÉE (jamais de valeur inventée).
+  const ep = useMemo(() => route?.elevation_profile ?? [], [route?.elevation_profile])
+  const hasElev = ep.length > 1
+  const totalGainM: number | null = useMemo(() => {
+    if (hasElev) return smoothedGainM(ep)
+    return route?.elevation_gain_m ?? null
+  }, [hasElev, ep, route?.elevation_gain_m])
 
   // Le verrouillage prime : panneau replié tant que l'écran est verrouillé.
   useEffect(() => { if (locked) setGuideOpen(false) }, [locked])
 
-  const nearestIdx = useMemo(() => {
-    if (!currentPos || line.length === 0) return 0
-    let best = 0
-    let bd = Infinity
-    for (let i = 0; i < line.length; i++) {
-      const d = haversine(currentPos, line[i])
-      if (d < bd) { bd = d; best = i }
-    }
-    return best
-  }, [currentPos, line])
+  // Progression le long du tracé : projection segment + mémoire de la
+  // progression précédente (désambiguïsation boucle) — remise à 0 à l'arrêt.
+  const progressRef = useRef(0)
+  useEffect(() => { if (!started) progressRef.current = 0 }, [started])
+  const proj = useMemo(
+    () => (currentPos ? projectOnRoute(currentPos, line, cum, progressRef.current) : null),
+    [currentPos, line, cum],
+  )
+  useEffect(() => { if (started && proj) progressRef.current = proj.progressM }, [started, proj])
 
-  const traveledOnRouteM = started ? (cum[nearestIdx] ?? 0) : 0
+  const nearestIdx = proj?.segIdx ?? 0
+  const traveledOnRouteM = started && proj ? proj.progressM : 0
   const remainingM = Math.max(0, totalM - traveledOnRouteM)
-  const remainingGain = useMemo(() => {
-    if (!hasRoute) return 0
-    const ep = route?.elevation_profile ?? []
-    let g = 0
-    for (let i = 1; i < ep.length; i++) {
-      if (ep[i].distanceM < traveledOnRouteM) continue
-      const d = ep[i].altitudeM - ep[i - 1].altitudeM
-      if (d > 0) g += d
-    }
-    return ep.length > 1 ? g : Math.max(0, totalGain - gainDoneM)
-  }, [hasRoute, route?.elevation_profile, traveledOnRouteM, totalGain, gainDoneM])
+  const remainingGainM: number | null = useMemo(() => {
+    if (!hasRoute || !hasElev) return null
+    return smoothedGainM(ep, traveledOnRouteM)
+  }, [hasRoute, hasElev, ep, traveledOnRouteM])
 
-  const avgKmh = speedKmh > 3 ? speedKmh : 22
+  // Temps estimé = restant / vitesse lissée, ou 25 km/h par défaut à l'arrêt.
+  const avgKmh = speedKmh > 3 ? speedKmh : 25
   const estMin = (remainingM / 1000) / avgKmh * 60
 
   // Distance jusqu'au départ du parcours (bandeau « Rejoignez l'itinéraire »).
@@ -362,13 +422,20 @@ export default function MapPage({
         {hasRoute && <span style={{ color: 'var(--live-label)', flexShrink: 0 }}>{chevron}</span>}
       </div>
 
-      {/* Panneau de guidage déplié (remplace l'ancien RouteNavScreen) */}
+      {/* Panneau de guidage déplié (remplace l'ancien RouteNavScreen).
+          Sans manœuvres ORS : détail du parcours (nom, totaux, profil). */}
       {guideOpen && hasRoute && (
         <GuidePanel
           steps={steps ?? []}
           stepDistM={stepDistM}
           nextIdx={steps ? nextStepIdx : -1}
           fmtDist={fmtDist}
+          routeName={route?.name ?? null}
+          distLabel={`${frNum((totalM / 1000) * df, 1)} ${getUnitLabel('km', units)}`}
+          gainLabel={totalGainM != null ? `${Math.round(totalGainM * af)} ${getUnitLabel('m', units)} D+` : null}
+          elevProfile={ep}
+          traveledM={traveledOnRouteM}
+          fmtAlt={m => `${Math.round(m * af)} ${getUnitLabel('m', units)}`}
           onClose={() => setGuideOpen(false)}
         />
       )}
@@ -454,159 +521,131 @@ export default function MapPage({
           display: 'flex', alignItems: 'center', whiteSpace: 'nowrap',
           fontSize: 12.5, fontWeight: 600, color: 'var(--live-text-2)',
         }}>
-          Itinéraire · {frNum((totalM / 1000) * df, 1)} {getUnitLabel('km', units)} · {Math.round(totalGain * af)} {getUnitLabel('m', units)} D+
+          Itinéraire · {frNum((totalM / 1000) * df, 1)} {getUnitLabel('km', units)}
+          {totalGainM != null && ` · ${Math.round(totalGainM * af)} ${getUnitLabel('m', units)} D+`}
         </div>
       )}
 
-      {/* Pile bas-gauche : mini-capsules W + FC au-dessus de la capsule vitesse */}
-      {started && (
-        <div style={{ position: 'absolute', left: 16, bottom: 268, display: 'flex', gap: 8, zIndex: 20 }}>
-          {[
-            { lb: 'W', v: powerW != null ? String(Math.round(powerW)) : '—' },
-            { lb: 'FC', v: heartRateBpm != null ? String(Math.round(heartRateBpm)) : '—' },
-          ].map(c => (
-            <div key={c.lb} style={{
-              minWidth: 64, borderRadius: 18, padding: '8px 12px',
-              background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
-              backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-            }}>
-              <div className="lv2-eyebrow" style={{ fontSize: 9 }}>{c.lb}</div>
-              <div className="lv2-num" style={{ fontSize: 17, fontWeight: 800, marginTop: 2, color: dim ? 'var(--live-dim)' : 'var(--live-text)' }}>
-                {c.v}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Capsule vitesse — bas gauche (en enregistrement) */}
+      {/* Données À MÊME la carte — bas gauche, texte blanc + halo noir fort
+          (lisible sur carte claire ET foncée, façon compteur Garmin) :
+          ligne W · FC au-dessus, VITESSE en très grand en dessous. */}
       {started && (
         <div style={{
-          position: 'absolute', left: 16, bottom: 180, width: 140, borderRadius: 18, zIndex: 20,
-          background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
-          backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-          padding: '12px 14px',
+          position: 'absolute', left: 18, bottom: 178, zIndex: 20, pointerEvents: 'none',
+          color: 'var(--live-map-ink)', textShadow: 'var(--live-map-halo)',
+          opacity: dim ? 0.55 : 1, transition: 'opacity 0.2s',
         }}>
-          <div className="lv2-eyebrow" style={{ fontSize: 10 }}>Vitesse</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 4 }}>
-            <span className="lv2-num" style={{ fontSize: 32, fontWeight: 800, color: dim ? 'var(--live-dim)' : 'var(--live-text)' }}>
+          <div style={{ display: 'flex', gap: 26, alignItems: 'flex-end' }}>
+            {[
+              { lb: 'W', v: powerW != null ? String(Math.round(powerW)) : '—' },
+              { lb: 'FC', v: heartRateBpm != null ? String(Math.round(heartRateBpm)) : '—' },
+            ].map(c => (
+              <div key={c.lb}>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', opacity: 0.85 }}>{c.lb}</div>
+                <div className="lv2-num" style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.05, marginTop: 1 }}>
+                  {c.v}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8 }}>
+            <span className="lv2-num" style={{ fontSize: 60, fontWeight: 800, lineHeight: 0.95, letterSpacing: '-0.01em' }}>
               {frNum((dim ? 0 : speedKmh) * df, 1)}
             </span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--live-label)' }}>{getUnitLabel('km/h', units)}</span>
+            <span style={{ fontSize: 14, fontWeight: 700, opacity: 0.85 }}>{getUnitLabel('km/h', units)}</span>
           </div>
         </div>
-      )}
-
-      {/* Mini-pause — bas droite (tap → pause + retour page 1) */}
-      {started && !locked && (
-        <button
-          onClick={onMiniPause}
-          aria-label="Pause"
-          className="lv2-press"
-          style={{
-            position: 'absolute', right: 18, bottom: 190, width: 48, height: 48,
-            borderRadius: '50%', zIndex: 20,
-            background: 'var(--live-float)', border: '1.5px solid var(--live-accent)',
-            color: 'var(--live-accent)', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          <svg width="15" height="16" viewBox="0 0 14 16">
-            <rect width="4.5" height="16" rx="2" fill="currentColor" />
-            <rect x="9.5" width="4.5" height="16" rx="2" fill="currentColor" />
-          </svg>
-        </button>
       )}
 
       {/* Bandeau stats bas — 3 colonnes. Visible dès qu'un parcours est chargé
           (avant départ : TOTAUX du parcours, au-dessus de la zone Démarrer) et
           pendant l'enregistrement (restants avec parcours, sinon distance /
           D+ fait / durée). */}
-      {(started || hasRoute) && (
-        <div style={{
-          position: 'absolute', left: 0, right: 0, zIndex: 15,
-          bottom: started ? 0 : 'calc(env(safe-area-inset-bottom) + 158px)',
-          height: started ? 160 : 108,
-          background: 'var(--live-band-bg)',
-          borderTop: '1px solid var(--live-hairline-2)',
-          borderBottom: started ? 'none' : '1px solid var(--live-hairline-2)',
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-          padding: started ? '22px 6px 0' : '16px 6px 0',
-        }}>
-          {(started
-            ? hasRoute
-              ? [
-                {
-                  label: 'D+ restant',
-                  value: String(Math.round(remainingGain * af)),
-                  unit: getUnitLabel('m', units),
-                  sub: `fait ${Math.round(gainDoneM * af)} ${getUnitLabel('m', units)}`,
-                },
-                {
-                  label: 'Restant',
-                  value: frNum((remainingM / 1000) * df, 1),
-                  unit: getUnitLabel('km', units),
-                  sub: `fait ${frNum((distanceDoneM / 1000) * df, 2)} ${getUnitLabel('km', units)}`,
-                },
-                {
-                  label: 'Temps est.',
-                  value: estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin)),
-                  unit: estMin < 60 ? 'min' : undefined,
-                  sub: `écoulé ${Math.floor(elapsedSec / 60)} min`,
-                },
-              ]
-              : [
-                {
-                  label: 'Distance',
-                  value: frNum((distanceDoneM / 1000) * df, 2),
-                  unit: getUnitLabel('km', units),
-                  sub: null,
-                },
-                {
-                  label: 'D+ fait',
-                  value: String(Math.round(gainDoneM * af)),
-                  unit: getUnitLabel('m', units),
-                  sub: null,
-                },
-                { label: 'Durée', value: formatHMS(elapsedSec, true), unit: undefined, sub: null },
-              ]
+      {(started || hasRoute) && (() => {
+        const estCol = {
+          label: 'Temps est.',
+          value: estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin)),
+          unit: estMin < 60 ? 'min' : undefined,
+          sub: started ? `écoulé ${Math.floor(elapsedSec / 60)} min` : null,
+        }
+        // Colonnes D+ uniquement si un dénivelé RÉEL est connu — jamais de
+        // valeur inventée quand le parcours n'a pas d'altitudes.
+        const cols: { label: string; value: string; unit?: string; sub: string | null }[] = started
+          ? hasRoute
+            ? [
+              ...(remainingGainM != null ? [{
+                label: 'D+ restant',
+                value: String(Math.round(remainingGainM * af)),
+                unit: getUnitLabel('m', units),
+                sub: `fait ${Math.round(gainDoneM * af)} ${getUnitLabel('m', units)}`,
+              }] : []),
+              {
+                label: 'Restant',
+                value: frNum((remainingM / 1000) * df, 1),
+                unit: getUnitLabel('km', units),
+                sub: `fait ${frNum((distanceDoneM / 1000) * df, 2)} ${getUnitLabel('km', units)}`,
+              },
+              estCol,
+            ]
             : [
               {
-                label: 'D+ total',
-                value: String(Math.round(totalGain * af)),
-                unit: getUnitLabel('m', units),
-                sub: null,
-              },
-              {
                 label: 'Distance',
-                value: frNum((totalM / 1000) * df, 1),
+                value: frNum((distanceDoneM / 1000) * df, 2),
                 unit: getUnitLabel('km', units),
                 sub: null,
               },
               {
-                label: 'Temps est.',
-                value: estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin)),
-                unit: estMin < 60 ? 'min' : undefined,
+                label: 'D+ fait',
+                value: String(Math.round(gainDoneM * af)),
+                unit: getUnitLabel('m', units),
                 sub: null,
               },
+              { label: 'Durée', value: formatHMS(elapsedSec, true), unit: undefined, sub: null },
             ]
-          ).map((c, i) => (
-            <div key={c.label} style={{ textAlign: 'center', position: 'relative' }}>
-              {i > 0 && (
-                <span style={{ position: 'absolute', left: 0, top: 0, bottom: started ? 66 : 14, width: 1, background: 'var(--live-hairline)' }} />
-              )}
-              <div className="lv2-eyebrow" style={{ fontSize: 10, letterSpacing: '0.15em' }}>{c.label}</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4, marginTop: 8 }}>
-                <span className="lv2-num" style={{ fontSize: 26, fontWeight: 800 }}>{c.value}</span>
-                {c.unit && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--live-label)' }}>{c.unit}</span>}
+          : [
+            ...(totalGainM != null ? [{
+              label: 'D+ total',
+              value: String(Math.round(totalGainM * af)),
+              unit: getUnitLabel('m', units),
+              sub: null,
+            }] : []),
+            {
+              label: 'Distance',
+              value: frNum((totalM / 1000) * df, 1),
+              unit: getUnitLabel('km', units),
+              sub: null,
+            },
+            estCol,
+          ]
+        return (
+          <div style={{
+            position: 'absolute', left: 0, right: 0, zIndex: 15,
+            bottom: started ? 0 : 'calc(env(safe-area-inset-bottom) + 158px)',
+            height: started ? 160 : 108,
+            background: 'var(--live-band-bg)',
+            borderTop: '1px solid var(--live-hairline-2)',
+            borderBottom: started ? 'none' : '1px solid var(--live-hairline-2)',
+            display: 'grid', gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
+            padding: started ? '22px 6px 0' : '16px 6px 0',
+          }}>
+            {cols.map((c, i) => (
+              <div key={c.label} style={{ textAlign: 'center', position: 'relative' }}>
+                {i > 0 && (
+                  <span style={{ position: 'absolute', left: 0, top: 0, bottom: started ? 66 : 14, width: 1, background: 'var(--live-hairline)' }} />
+                )}
+                <div className="lv2-eyebrow" style={{ fontSize: 10, letterSpacing: '0.15em' }}>{c.label}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4, marginTop: 8 }}>
+                  <span className="lv2-num" style={{ fontSize: 26, fontWeight: 800 }}>{c.value}</span>
+                  {c.unit && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--live-label)' }}>{c.unit}</span>}
+                </div>
+                {c.sub && (
+                  <div className="lv2-num" style={{ fontSize: 11, fontWeight: 500, color: 'var(--live-dim-sub)', marginTop: 6 }}>{c.sub}</div>
+                )}
               </div>
-              {c.sub && (
-                <div className="lv2-num" style={{ fontSize: 11, fontWeight: 500, color: 'var(--live-dim-sub)', marginTop: 6 }}>{c.sub}</div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )
+      })()}
     </div>
   )
 }

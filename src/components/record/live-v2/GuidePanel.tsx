@@ -5,6 +5,8 @@
 // blur 22) : en-tête icône 44 + « Suivez l'itinéraire » 20/800, liste des
 // manœuvres À VENIR (icône 40, distance 27/800, libellé 15/600, badge route,
 // chip de sortie ORS), opacité dégressive 1/1/1/.72/.5/.34, chevron de repli.
+// SANS manœuvres ORS : jamais vide — DÉTAIL DU PARCOURS (nom, distance,
+// D+ si connu, mini profil altimétrique SVG maison avec progression).
 // Exporte aussi les briques réutilisées par le bandeau compact de MapPage :
 // ManeuverIcon (SVG inline stroke currentColor 2.6-2.8, paths de la maquette),
 // maneuverKind, detectRoadBadge, RoadBadge, exitChipLabel.
@@ -104,6 +106,47 @@ export function exitChipLabel(n: number): string {
   return n === 1 ? '1re sortie' : `${n}e sortie`
 }
 
+// ── Mini profil altimétrique (SVG maison, tokens live) ──────────────
+// Aire + ligne accent, marqueur de progression ; libellés min/max en HTML
+// (le SVG est étiré en preserveAspectRatio none).
+function MiniElevProfile({ elevProfile, traveledM, fmtAlt }: {
+  elevProfile: { distanceM: number; altitudeM: number }[]
+  traveledM: number
+  fmtAlt: (m: number) => string
+}) {
+  const W = 320
+  const H = 96
+  const totalM = elevProfile[elevProfile.length - 1]?.distanceM || 1
+  const alts = elevProfile.map(p => p.altitudeM)
+  const aMin = Math.min(...alts)
+  const aMax = Math.max(...alts)
+  const rng = Math.max(aMax - aMin, 10)
+  const x = (d: number) => (d / totalM) * W
+  const y = (a: number) => 6 + (1 - (a - aMin) / rng) * (H - 12)
+  const lineD = elevProfile
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(p.distanceM).toFixed(1)} ${y(p.altitudeM).toFixed(1)}`)
+    .join(' ')
+  const areaD = `${lineD} L ${W} ${H} L 0 ${H} Z`
+  const progX = Math.max(0, Math.min(W, x(traveledM)))
+  return (
+    <div style={{ position: 'relative' }}>
+      <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+        <path d={areaD} fill="var(--live-accent-soft)" />
+        <path d={lineD} fill="none" stroke="var(--live-accent)" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        {traveledM > 0 && (
+          <line x1={progX} y1={4} x2={progX} y2={H} stroke="var(--live-text-2)" strokeWidth={1.4} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+        )}
+      </svg>
+      <span className="lv2-num" style={{ position: 'absolute', top: 2, right: 4, fontSize: 10.5, fontWeight: 600, color: 'var(--live-label)' }}>
+        {fmtAlt(aMax)}
+      </span>
+      <span className="lv2-num" style={{ position: 'absolute', bottom: 2, right: 4, fontSize: 10.5, fontWeight: 600, color: 'var(--live-label)' }}>
+        {fmtAlt(aMin)}
+      </span>
+    </div>
+  )
+}
+
 // ── Panneau déplié ──────────────────────────────────────────────────
 interface Props {
   /** Toutes les manœuvres ORS du parcours (vide si guidage détaillé indisponible). */
@@ -114,14 +157,31 @@ interface Props {
   nextIdx: number
   /** Format de distance selon les réglages d'unités. */
   fmtDist: (m: number) => string
+  /** Nom du parcours chargé — repli « Détail du parcours » si absent. */
+  routeName?: string | null
+  /** Distance totale déjà formatée (« 20,3 km »). */
+  distLabel: string
+  /** D+ total déjà formaté (« 480 m D+ ») — null si aucune altitude connue. */
+  gainLabel: string | null
+  /** Profil altimétrique du parcours (vide si aucune altitude). */
+  elevProfile: { distanceM: number; altitudeM: number }[]
+  /** Progression le long du parcours (m) — marqueur sur le profil. */
+  traveledM: number
+  /** Format d'altitude selon les réglages d'unités. */
+  fmtAlt: (m: number) => string
   onClose: () => void
 }
 
 const ROW_OPACITY = [1, 1, 1, 0.72, 0.5, 0.34]
 
-export default function GuidePanel({ steps, stepDistM, nextIdx, fmtDist, onClose }: Props) {
+export default function GuidePanel({
+  steps, stepDistM, nextIdx, fmtDist,
+  routeName, distLabel, gainLabel, elevProfile, traveledM, fmtAlt, onClose,
+}: Props) {
   const upcoming = nextIdx >= 0 ? steps.slice(nextIdx) : []
   const upcomingDist = nextIdx >= 0 ? stepDistM.slice(nextIdx) : []
+  const hasSteps = steps.length > 0
+  const hasElev = elevProfile.length > 1
 
   return (
     <div style={{
@@ -132,7 +192,7 @@ export default function GuidePanel({ steps, stepDistM, nextIdx, fmtDist, onClose
       backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
-      {/* En-tête : icône 44 + titre 20/800 */}
+      {/* En-tête : icône 44 + titre 20/800 + totaux du parcours */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 14, padding: '22px 22px 16px',
         borderBottom: '1px solid var(--live-hairline)', flexShrink: 0,
@@ -146,20 +206,53 @@ export default function GuidePanel({ steps, stepDistM, nextIdx, fmtDist, onClose
             <path d="M11 19 L11 7 M5 12 L11 5.5 L17 12" stroke="currentColor" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.2 }}>Suivez l’itinéraire</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{
+            fontSize: 20, fontWeight: 800, lineHeight: 1.2,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {hasSteps ? 'Suivez l’itinéraire' : (routeName || 'Détail du parcours')}
+          </div>
+          <div className="lv2-num" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--live-text-2)', marginTop: 3 }}>
+            {distLabel}
+            {gainLabel != null && ` · ${gainLabel}`}
+          </div>
+        </div>
       </div>
 
-      {/* Liste des manœuvres à venir */}
+      {/* Contenu : manœuvres ORS si dispo, sinon DÉTAIL DU PARCOURS */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 22px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
-        {upcoming.length === 0 ? (
+        {!hasSteps ? (
+          <div style={{ padding: '18px 0' }}>
+            <div style={{ display: 'flex', gap: 22, marginBottom: hasElev ? 16 : 12 }}>
+              <div>
+                <div className="lv2-eyebrow" style={{ fontSize: 9.5 }}>Distance</div>
+                <div className="lv2-num" style={{ fontSize: 22, fontWeight: 800, marginTop: 3 }}>{distLabel}</div>
+              </div>
+              {gainLabel != null && (
+                <div>
+                  <div className="lv2-eyebrow" style={{ fontSize: 9.5 }}>Dénivelé</div>
+                  <div className="lv2-num" style={{ fontSize: 22, fontWeight: 800, marginTop: 3 }}>{gainLabel}</div>
+                </div>
+              )}
+            </div>
+            {hasElev && (
+              <>
+                <div className="lv2-eyebrow" style={{ fontSize: 9.5, marginBottom: 8 }}>Profil altimétrique</div>
+                <MiniElevProfile elevProfile={elevProfile} traveledM={traveledM} fmtAlt={fmtAlt} />
+              </>
+            )}
+            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--live-label)', marginTop: 16 }}>
+              Guidage virage-par-virage indisponible sur ce parcours — suivez le tracé sur la carte.
+            </div>
+          </div>
+        ) : upcoming.length === 0 ? (
           <div style={{
             height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             textAlign: 'center', padding: '0 20px',
             fontSize: 13.5, fontWeight: 500, color: 'var(--live-text-2)',
           }}>
-            {steps.length === 0
-              ? 'Guidage détaillé indisponible sur ce parcours'
-              : 'Aucune manœuvre à venir'}
+            Aucune manœuvre à venir
           </div>
         ) : (
           upcoming.map((s, i) => {

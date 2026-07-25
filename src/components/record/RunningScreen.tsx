@@ -12,6 +12,8 @@ import CyclingPage2 from './CyclingPage2'
 import RunningPageData from './RunningPageData'
 import RunningSettings from './RunningSettings'
 import AutoPauseBadge from './AutoPauseBadge'
+import LiveNoticeBanner, { useLiveNotice, useVibrate, useLapBeepSound } from './LiveNoticeBanner'
+import { primeLapBeep, playLapBeep } from './lapBeep'
 import ExitConfirmOverlay from './ExitConfirmOverlay'
 import SessionSummary from './SessionSummary'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
@@ -69,7 +71,8 @@ export default function RunningScreen({ onExit, onFinished, route }: Props) {
   const { settings, updateSetting } = useRunningSettings()
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
-  const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
+  // Réglage recording.gpsFrequency : throttling des positions dans le hook GPS.
+  const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled, settings.recording.gpsFrequency)
   // Réglage display.keepAwake : wake lock actif uniquement si autorisé.
   useWakeLock(phase !== 'ready' && settings.display.keepAwake)
   const autoPauseOn = settings.recording.autoPause
@@ -79,6 +82,10 @@ export default function RunningScreen({ onExit, onFinished, route }: Props) {
     if (phase !== 'running' || !autoPauseOn) { setAutoPaused(false); return }
     setAutoPaused((gps.currentSpeed ?? 0) < autoPauseTh)
   }, [gps.currentSpeed, phase, autoPauseOn, autoPauseTh])
+  // Réglages alertes — son (module lapBeep) + vibration + bandeau transitoire.
+  useLapBeepSound(settings.alerts.sound)
+  const vibrate = useVibrate(settings.alerts.vibration)
+  const { noticeKey, showNotice } = useLiveNotice(vibrate)
   const stopwatch = useStopwatch(phase === 'running' && !autoPaused)
   const { activeEffort, completedEfforts } = useSegmentDetection(
     gps.currentLat ?? null, gps.currentLng ?? null, 'running', phase === 'running'
@@ -118,13 +125,16 @@ export default function RunningScreen({ onExit, onFinished, route }: Props) {
 
   const handleGpsAuthorize = () => { localStorage.setItem('gps_permission_explained', 'true'); setShowPrePermission(false); setGpsEnabled(true) }
   const handleGpsDismiss = () => setShowPrePermission(false)
-  const handleStart  = () => { resetTracking(); setStartedAt(Date.now()); setPhase('running') }
+  // primeLapBeep : l'AudioContext doit naître sur un geste utilisateur (iOS).
+  const handleStart  = () => { primeLapBeep(); resetTracking(); lastHydrationRef.current = 0; lastNutritionRef.current = 0; gpsWasOkRef.current = true; setStartedAt(Date.now()); setPhase('running') }
   const handlePause  = () => setPhase('paused')
   const handleResume = () => setPhase('running')
   const handleStop   = () => setPhase('confirming_stop')
 
   const handleLap = () => {
     if (currentLapSec === 0) return
+    playLapBeep() // muet si alerts.sound est désactivé (setLapBeepSoundEnabled)
+    vibrate(200)  // alerts.vibration
     setLaps(prev => [...prev, { number: prev.length + 1, duration: currentLapSec, distance: currentLapDistance, avgSpeed: currentLapDistance > 0 ? (currentLapDistance / currentLapSec) * 3.6 : 0, timestamp: Date.now() }])
     setCurrentLapSec(0)
     setLapStartDistance(gps.distance)
@@ -138,6 +148,34 @@ export default function RunningScreen({ onExit, onFinished, route }: Props) {
     if (phase !== 'running' || autoLapKm <= 0) return
     if (currentLapDistance >= autoLapKm * 1000) handleLapRef.current()
   }, [currentLapDistance, autoLapKm, phase])
+
+  // Rappels hydratation / nutrition (alerts.*Interval, minutes de chrono).
+  const hydrationMin = settings.alerts.hydrationInterval
+  const nutritionMin = settings.alerts.nutritionInterval
+  const lastHydrationRef = useRef(0)
+  const lastNutritionRef = useRef(0)
+  useEffect(() => {
+    if (phase !== 'running') return
+    const sec = stopwatch.seconds
+    if (hydrationMin > 0) {
+      const n = Math.floor(sec / (hydrationMin * 60))
+      if (n > lastHydrationRef.current) { lastHydrationRef.current = n; showNotice('record.reminderHydration') }
+    }
+    if (nutritionMin > 0) {
+      const n = Math.floor(sec / (nutritionMin * 60))
+      if (n > lastNutritionRef.current) { lastNutritionRef.current = n; showNotice('record.reminderNutrition') }
+    }
+  }, [stopwatch.seconds, phase, hydrationMin, nutritionMin, showNotice])
+
+  // Alerte perte de signal GPS (alerts.gpsLost) — sur transition ok → perdu.
+  const gpsLostOn = settings.alerts.gpsLost
+  const gpsWasOkRef = useRef(true)
+  useEffect(() => {
+    if (phase !== 'running' || !gpsLostOn) return
+    const lost = gps.status === GPSStatus.poor || gps.status === GPSStatus.error || gps.status === GPSStatus.unavailable
+    if (lost && gpsWasOkRef.current) { gpsWasOkRef.current = false; showNotice('record.alertGpsLost') }
+    if (!lost) gpsWasOkRef.current = true
+  }, [gps.status, phase, gpsLostOn, showNotice])
 
   const handleOpenSaveForm = () => {
     const endedAt = new Date()
@@ -174,12 +212,18 @@ export default function RunningScreen({ onExit, onFinished, route }: Props) {
       } catch (e) { console.error('[running] save error:', e) }
     }
     setShowSaveForm(false)
+    // Réglage postRun.showSummary : si désactivé, on ferme directement.
+    if (!settings.postRun.showSummary) { onFinished(); return }
     setFinishedSession({ id: savedId, started_at: snap.startedAtISO, ended_at: snap.endedAtISO, duration_seconds: snap.durationSec, distance_m: snap.distM, elevation_gain_m: snap.elevM, avg_speed_kmh: snap.avgSpeedKmh, max_speed_kmh: snap.maxSpeedKmh, calories: snap.calories, gps_points: snap.gpsPts, laps: snap.lapsSnap, title: formData.title, training_types: formData.trainingTypes, rpe: formData.rpe, comment: formData.comment, sport: 'running' })
   }
 
   if (!mounted) return null
 
-  const isDark = document.documentElement.classList.contains('dark')
+  // Réglage display.theme : auto = thème système, sinon forçage clair/sombre.
+  const systemDark = document.documentElement.classList.contains('dark')
+  const isDark = settings.display.theme === 'dark' ? true
+    : settings.display.theme === 'light' ? false
+    : systemDark
   const bg = isDark ? '#0A0A0A' : '#FFFFFF', text = isDark ? '#FFFFFF' : '#0A0A0A'
   const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
   const btnBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
@@ -207,7 +251,7 @@ export default function RunningScreen({ onExit, onFinished, route }: Props) {
             const page = pages[pageIndex]
             if (!page) return null
             if (page.type === 'map') return <CyclingPage2 isDark={isDark} distanceM={gps.distance} trackPoints={trackPoints} currentPosition={currentPosition} onExpand={() => setNavOpen(true)} paused={autoPaused} />
-            return <RunningPageData page={page} isDark={isDark} durationSec={stopwatch.seconds} distanceM={gps.distance} speedKmh={gps.currentSpeed} elevationGainM={gps.elevationGain} altitudeM={gps.currentAltitude ?? 0} gradientPercent={gps.gradient ?? 0} currentLapSec={currentLapSec} currentLapDistanceM={currentLapDistance} dataFontFamily={dataFontFamily} />
+            return <RunningPageData page={page} isDark={isDark} durationSec={stopwatch.seconds} distanceM={gps.distance} speedKmh={gps.currentSpeed} elevationGainM={gps.elevationGain} altitudeM={gps.currentAltitude ?? 0} gradientPercent={gps.gradient ?? 0} currentLapSec={currentLapSec} currentLapDistanceM={currentLapDistance} dataFontFamily={dataFontFamily} units={settings.units} paceUnit={settings.display.paceUnit} dataSize={settings.display.dataSize} />
           })()}
         </div>
         <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -217,6 +261,9 @@ export default function RunningScreen({ onExit, onFinished, route }: Props) {
 
       {/* Badge auto-pause — visible quelle que soit la page active */}
       <AutoPauseBadge active={autoPaused} isDark={isDark} />
+
+      {/* Bandeau transitoire : rappels hydratation/nutrition, perte GPS */}
+      <LiveNoticeBanner noticeKey={noticeKey} />
 
       {/* Active segment effort bandeau */}
       {activeEffort && (

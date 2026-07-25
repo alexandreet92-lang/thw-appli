@@ -73,7 +73,13 @@ function accuracyToStatus(accuracy: number): GPSStatus {
 const GRADIENT_WINDOW_M = 30
 const GRADIENT_MIN_SPAN_M = 15
 
-export function useGPSTracking(isActive: boolean): {
+// Réglage recording.gpsFrequency (secondes entre deux positions retenues,
+// ou 'auto' = aucune limitation). Throttling par ignorance des positions trop
+// rapprochées — la première position est toujours gardée. Tolérance de 20 %
+// pour ne pas rejeter une position à cause du jitter du GPS (~1 Hz natif).
+export type GPSFrequency = number | 'auto'
+
+export function useGPSTracking(isActive: boolean, gpsFrequency?: GPSFrequency): {
   gps: GPSState
   stopWatching: () => void
   resetTracking: () => void
@@ -85,6 +91,10 @@ export function useGPSTracking(isActive: boolean): {
   const altWindowRef = useRef<{ d: number; alt: number }[]>([])
   const activeRef    = useRef(isActive)
   useEffect(() => { activeRef.current = isActive }, [isActive])
+  // Ref (pas de dépendance d'effet) : changer la fréquence ne redémarre pas le watch.
+  const frequencyRef = useRef<GPSFrequency | undefined>(gpsFrequency)
+  useEffect(() => { frequencyRef.current = gpsFrequency }, [gpsFrequency])
+  const lastAcceptedRef = useRef<number | null>(null)
 
   const stopWatching = useCallback(() => {
     if (watchIdRef.current !== null) {
@@ -97,6 +107,7 @@ export function useGPSTracking(isActive: boolean): {
     lastPointRef.current = null
     cumDistRef.current = 0
     altWindowRef.current = []
+    lastAcceptedRef.current = null
     setState(prev => ({
       ...prev,
       points: [],
@@ -123,6 +134,15 @@ export function useGPSTracking(isActive: boolean): {
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
+        // Throttling recording.gpsFrequency : ignorer les positions arrivant
+        // plus vite que l'intervalle configuré (la 1re est toujours gardée).
+        const freq = frequencyRef.current
+        if (typeof freq === 'number' && freq > 0) {
+          const minMs = freq * 1000 * 0.8 // tolérance jitter 20 %
+          if (lastAcceptedRef.current !== null && pos.timestamp - lastAcceptedRef.current < minMs) return
+        }
+        lastAcceptedRef.current = pos.timestamp
+
         const { latitude, longitude, altitude, accuracy, speed } = pos.coords
         const point: GPSPoint = {
           lat: latitude,

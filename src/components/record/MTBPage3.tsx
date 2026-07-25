@@ -1,5 +1,6 @@
 'use client'
 import { useI18n } from '@/lib/i18n'
+import { altFactor, getUnitLabel, SIZE_SCALE, type LiveUnits, type DataSize } from './units'
 
 interface Props {
   isDark: boolean
@@ -11,11 +12,13 @@ interface Props {
   lapElevLossM: number
   avgSpeedKmh: number
   dataFontFamily?: string
+  units?: LiveUnits
+  dataSize?: DataSize
 }
 
-function Cell({ label, value, unit, big, isDark, font }: {
+function Cell({ label, value, unit, big, isDark, font, sizes }: {
   label: string; value: string; unit?: string; big?: boolean
-  isDark: boolean; font: string
+  isDark: boolean; font: string; sizes: { big: number; small: number }
 }) {
   const text = isDark ? '#FFF' : '#0A0A0A'
   const dim  = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
@@ -26,7 +29,7 @@ function Cell({ label, value, unit, big, isDark, font }: {
     return (
       <div style={{ gridColumn:'1/-1', padding:'20px 12px', borderBottom:`1px solid ${sep}`, textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:4, minHeight:100 }}>
         <p style={{ fontSize:11, color:dim, textTransform:'uppercase', letterSpacing:'1.5px', margin:0 }}>{label}</p>
-        <p style={{ fontSize:56, fontWeight:700, color, margin:0, lineHeight:1, fontFamily:font }}>{value}</p>
+        <p style={{ fontSize:sizes.big, fontWeight:700, color, margin:0, lineHeight:1, fontFamily:font }}>{value}</p>
         {unit && <p style={{ fontSize:14, color:dim, margin:0 }}>{unit}</p>}
       </div>
     )
@@ -34,23 +37,27 @@ function Cell({ label, value, unit, big, isDark, font }: {
   return (
     <div style={{ padding:'14px 8px', textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:3, borderRight:`1px solid ${sep}`, borderBottom:`1px solid ${sep}`, minHeight:80 }}>
       <p style={{ fontSize:10, color:dim, textTransform:'uppercase', letterSpacing:'1.2px', margin:0 }}>{label}</p>
-      <p style={{ fontSize:30, fontWeight:700, color:text, margin:0, lineHeight:1, fontFamily:font }}>{value}</p>
+      <p style={{ fontSize:sizes.small, fontWeight:700, color:text, margin:0, lineHeight:1, fontFamily:font }}>{value}</p>
       {unit && <p style={{ fontSize:12, color:dim, margin:0 }}>{unit}</p>}
     </div>
   )
 }
 
-export default function MTBPage3({ isDark, gradientPercent, maxGradient, elevationGainM, elevationLossM, lapElevGainM, lapElevLossM, dataFontFamily }: Props) {
+export default function MTBPage3({ isDark, gradientPercent, maxGradient, elevationGainM, elevationLossM, lapElevGainM, lapElevLossM, dataFontFamily, units, dataSize }: Props) {
   const { t } = useI18n()
   const font = dataFontFamily ?? '-apple-system, sans-serif'
+  // Réglages Unités / Taille des données appliqués à l'affichage.
+  const altF  = altFactor(units)
+  const mUnit = getUnitLabel('m', units)
+  const sizes = SIZE_SCALE[dataSize ?? 'normal']
   return (
     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', flex:1, alignContent:'start' }}>
-      <Cell big isDark={isDark} font={font} label={t('record.commonCurrentGradient')} value={gradientPercent.toFixed(1)} unit="%" />
-      <Cell isDark={isDark} font={font} label={t('record.mtbPage3MaxGradient')} value={maxGradient.toFixed(1)} unit="%" />
-      <Cell isDark={isDark} font={font} label="D+" value={String(Math.round(elevationGainM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="D-" value={String(Math.round(elevationLossM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="D+ lap" value={String(Math.round(lapElevGainM))} unit="m" />
-      <Cell isDark={isDark} font={font} label="D- lap" value={String(Math.round(lapElevLossM))} unit="m" />
+      <Cell big isDark={isDark} font={font} sizes={sizes} label={t('record.commonCurrentGradient')} value={gradientPercent.toFixed(1)} unit="%" />
+      <Cell isDark={isDark} font={font} sizes={sizes} label={t('record.mtbPage3MaxGradient')} value={maxGradient.toFixed(1)} unit="%" />
+      <Cell isDark={isDark} font={font} sizes={sizes} label="D+" value={String(Math.round(elevationGainM * altF))} unit={mUnit} />
+      <Cell isDark={isDark} font={font} sizes={sizes} label="D-" value={String(Math.round(elevationLossM * altF))} unit={mUnit} />
+      <Cell isDark={isDark} font={font} sizes={sizes} label="D+ lap" value={String(Math.round(lapElevGainM * altF))} unit={mUnit} />
+      <Cell isDark={isDark} font={font} sizes={sizes} label="D- lap" value={String(Math.round(lapElevLossM * altF))} unit={mUnit} />
     </div>
   )
 }

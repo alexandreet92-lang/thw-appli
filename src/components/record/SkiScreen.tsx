@@ -11,6 +11,9 @@ import SkiPage1 from './SkiPage1'
 import SkiPage2 from './SkiPage2'
 import SkiPage3 from './SkiPage3'
 import SkiSettings from './SkiSettings'
+import AutoPauseBadge from './AutoPauseBadge'
+import LiveNoticeBanner, { useLiveNotice, useVibrate, useLapBeepSound } from './LiveNoticeBanner'
+import { primeLapBeep } from './lapBeep'
 import ExitConfirmOverlay from './ExitConfirmOverlay'
 import SkiSummary, { type SkiSnap } from './SkiSummary'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
@@ -53,10 +56,46 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
   const { settings, updateSetting } = useSkiSettings()
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
-  const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
-  useWakeLock(phase !== 'ready')
-  const stopwatch = useStopwatch(phase === 'running')
+  // Réglage recording.gpsFrequency : throttling des positions dans le hook GPS.
+  const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled, settings.recording.gpsFrequency)
+  // Réglage display.keepAwake : wake lock actif uniquement si autorisé.
+  useWakeLock(phase !== 'ready' && settings.display.keepAwake)
+  // Auto-pause : sous le seuil (km/h) le chrono se met en pause automatiquement
+  // et reprend dès que la vitesse repasse au-dessus.
+  const autoPauseOn = settings.recording.autoPause
+  const autoPauseTh = settings.recording.autoPauseThreshold
+  const [autoPaused, setAutoPaused] = useState(false)
+  useEffect(() => {
+    if (phase !== 'running' || !autoPauseOn) { setAutoPaused(false); return }
+    setAutoPaused((gps.currentSpeed ?? 0) < autoPauseTh)
+  }, [gps.currentSpeed, phase, autoPauseOn, autoPauseTh])
+  // Réglages alertes — son (module lapBeep) + vibration + bandeau transitoire.
+  useLapBeepSound(settings.alerts.sound)
+  const vibrate = useVibrate(settings.alerts.vibration)
+  const { noticeKey, showNotice } = useLiveNotice(vibrate)
+  const stopwatch = useStopwatch(phase === 'running' && !autoPaused)
   const { stats: ski, update: skiUpdate, reset: skiReset } = useSkiTracking(phase === 'running')
+
+  // Alerte perte de signal GPS (alerts.gpsLost) — sur transition ok → perdu.
+  const gpsLostOn = settings.alerts.gpsLost
+  const gpsWasOkRef = useRef(true)
+  useEffect(() => {
+    if (phase !== 'running' || !gpsLostOn) return
+    const lost = gps.status === GPSStatus.poor || gps.status === GPSStatus.error || gps.status === GPSStatus.unavailable
+    if (lost && gpsWasOkRef.current) { gpsWasOkRef.current = false; showNotice('record.alertGpsLost') }
+    if (!lost) gpsWasOkRef.current = true
+  }, [gps.status, phase, gpsLostOn, showNotice])
+
+  // Alerte vitesse max (alerts.maxSpeedAlert, km/h, 0 = off) — sur
+  // franchissement du seuil, réarmée quand la vitesse redescend en dessous.
+  const maxSpeedTh = settings.alerts.maxSpeedAlert
+  const speedArmedRef = useRef(true)
+  useEffect(() => {
+    if (phase !== 'running' || maxSpeedTh <= 0) return
+    const over = (gps.currentSpeed ?? 0) >= maxSpeedTh
+    if (over && speedArmedRef.current) { speedArmedRef.current = false; showNotice('record.alertMaxSpeed') }
+    if (!over) speedArmedRef.current = true
+  }, [gps.currentSpeed, phase, maxSpeedTh, showNotice])
 
   useEffect(() => {
     if (phase !== 'running') return
@@ -81,7 +120,8 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
     else if (dy > 50) setPageIndex(i => { const n = Math.max(PAGE_COUNT, pages.length); return (i - 1 + n) % n })
   }
 
-  const handleStart = () => { resetTracking(); skiReset(); setStartedAt(Date.now()); setPhase('running') }
+  // primeLapBeep : l'AudioContext doit naître sur un geste utilisateur (iOS).
+  const handleStart = () => { primeLapBeep(); resetTracking(); skiReset(); gpsWasOkRef.current = true; speedArmedRef.current = true; setStartedAt(Date.now()); setPhase('running') }
   const handlePause = () => setPhase('paused')
   const handleResume = () => setPhase('running')
   const handleStop = () => setPhase('confirming_stop')
@@ -122,11 +162,17 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
       }
     } catch (e) { console.error('[ski] save error:', e) }
     setShowSaveForm(false)
+    // Réglage postRun.showSummary : si désactivé, on ferme directement.
+    if (!settings.postRun.showSummary) { onFinished(); return }
     setFinishedSnap(snapRef.current)
   }
 
   if (!mounted) return null
-  const isDark = document.documentElement.classList.contains('dark')
+  // Réglage display.theme : auto = thème système, sinon forçage clair/sombre.
+  const systemDark = document.documentElement.classList.contains('dark')
+  const isDark = settings.display.theme === 'dark' ? true
+    : settings.display.theme === 'light' ? false
+    : systemDark
   const bg = isDark ? '#0A0A0A' : '#FFFFFF', text = isDark ? '#FFFFFF' : '#0A0A0A'
   const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
   const btnBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
@@ -157,14 +203,20 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
       {/* Pages */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', position:'relative', overflow:'hidden', paddingBottom:'calc(120px + env(safe-area-inset-bottom))' }} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div key={pageIndex} style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0, overflowY:'auto' }}>
-          {pageIndex === 0 && <SkiPage1 isDark={isDark} durationSec={stopwatch.seconds} speedKmh={gps.currentSpeed} maxSpeedKmh={gps.maxSpeed} distanceM={gps.distance} elevationLossM={ski.elevationLossM} altitudeM={gps.currentAltitude ?? 0} runCount={ski.runCount} dataFontFamily={dataFontFamily} />}
+          {pageIndex === 0 && <SkiPage1 isDark={isDark} durationSec={stopwatch.seconds} speedKmh={gps.currentSpeed} maxSpeedKmh={gps.maxSpeed} distanceM={gps.distance} elevationLossM={ski.elevationLossM} altitudeM={gps.currentAltitude ?? 0} runCount={ski.runCount} dataFontFamily={dataFontFamily} units={settings.units} dataSize={settings.display.dataSize} />}
           {pageIndex === 1 && <SkiPage2 isDark={isDark} distanceM={gps.distance} trackPoints={trackPoints} currentPosition={currentPosition} />}
-          {pageIndex === 2 && <SkiPage3 isDark={isDark} maxSpeedKmh={ski.maxSpeedRunKmh} avgSpeedRunKmh={ski.avgSpeedRunKmh} runCount={ski.runCount} totalRunDistanceM={ski.totalRunDistanceM} elevationLossM={ski.elevationLossM} phase={ski.phase} dataFontFamily={dataFontFamily} />}
+          {pageIndex === 2 && <SkiPage3 isDark={isDark} maxSpeedKmh={ski.maxSpeedRunKmh} avgSpeedRunKmh={ski.avgSpeedRunKmh} runCount={ski.runCount} totalRunDistanceM={ski.totalRunDistanceM} elevationLossM={ski.elevationLossM} phase={ski.phase} dataFontFamily={dataFontFamily} units={settings.units} dataSize={settings.display.dataSize} />}
         </div>
         <div style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', gap:8 }}>
           {Array.from({ length: dotCount }).map((_, i) => <span key={i} style={{ width:6, height:6, borderRadius:'50%', background: i === pageIndex ? '#06B6D4' : labelColor, transition:'background 0.2s' }} />)}
         </div>
       </div>
+
+      {/* Badge auto-pause — visible quelle que soit la page active */}
+      <AutoPauseBadge active={autoPaused} isDark={isDark} />
+
+      {/* Bandeau transitoire : perte GPS, alerte vitesse max */}
+      <LiveNoticeBanner noticeKey={noticeKey} />
 
       {(phase === 'running' || phase === 'paused') && (
         <div style={{ position: 'absolute', bottom: 'calc(130px + env(safe-area-inset-bottom))', left: 16, zIndex: 100 }}>

@@ -2,6 +2,7 @@
 import dynamic from 'next/dynamic'
 import { detectTrailType } from '@/types/mtb'
 import { useI18n } from '@/lib/i18n'
+import { distFactor, getUnitLabel, type LiveUnits } from './units'
 
 const MapBackground = dynamic(() => import('./MapBackground'), { ssr: false })
 
@@ -13,6 +14,7 @@ interface Props {
   elevationGainM: number
   trackPoints: { lat: number; lng: number }[]
   currentPosition?: [number, number] | null
+  units?: LiveUnits
 }
 
 function getTheme(isDark: boolean) {
@@ -24,11 +26,12 @@ function getTheme(isDark: boolean) {
   }
 }
 
-export default function MTBPage2({ isDark, distanceM, speedKmh, gradientPercent, elevationGainM, trackPoints, currentPosition }: Props) {
+export default function MTBPage2({ isDark, distanceM, speedKmh, gradientPercent, elevationGainM, trackPoints, currentPosition, units }: Props) {
   const { t: tr } = useI18n()
   const t = getTheme(isDark)
   const terrainType = detectTrailType(speedKmh, gradientPercent, elevationGainM)
-  const distanceKm = (distanceM / 1000).toFixed(2)
+  // Réglage Unités appliqué à la tuile distance (km → mi).
+  const distanceKm = ((distanceM / 1000) * distFactor(units)).toFixed(2)
 
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0 }}>
@@ -42,7 +45,7 @@ export default function MTBPage2({ isDark, distanceM, speedKmh, gradientPercent,
         <div style={{ padding:'16px 12px', borderRight:`1px solid ${t.separator}` }}>
           <p style={{ margin:0, fontSize:10, fontWeight:700, color:t.label, textTransform:'uppercase', letterSpacing:'0.15em' }}>{tr('record.commonDistance')}</p>
           <p style={{ margin:'6px 0 0', fontSize:40, fontWeight:700, lineHeight:1, color:t.text, fontFamily:'DM Mono, monospace' }}>{distanceKm}</p>
-          <p style={{ margin:'4px 0 0', fontSize:12, color:t.label }}>km</p>
+          <p style={{ margin:'4px 0 0', fontSize:12, color:t.label }}>{getUnitLabel('km', units)}</p>
         </div>
         <div style={{ padding:'12px', display:'flex', flexDirection:'column', justifyContent:'center', gap:6 }}>
           <p style={{ margin:0, fontSize:10, fontWeight:700, color:t.label, textTransform:'uppercase', letterSpacing:'0.12em' }}>{tr('record.mtbPage2EstimatedTerrain')}</p>

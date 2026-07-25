@@ -12,6 +12,9 @@ import MTBPage2 from './MTBPage2'
 import MTBPage3 from './MTBPage3'
 import MTBPage4 from './MTBPage4'
 import MTBSettings from './MTBSettings'
+import AutoPauseBadge from './AutoPauseBadge'
+import LiveNoticeBanner, { useLiveNotice, useVibrate, useLapBeepSound } from './LiveNoticeBanner'
+import { primeLapBeep, playLapBeep } from './lapBeep'
 import ExitConfirmOverlay from './ExitConfirmOverlay'
 import SessionSummary from './SessionSummary'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
@@ -72,11 +75,26 @@ export default function MTBScreen({ onExit, onFinished }: Props) {
   const { settings, updateSetting } = useMTBSettings()
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
-  const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
-  useWakeLock(phase !== 'ready')
-  const stopwatch = useStopwatch(phase === 'running')
+  // Réglage recording.gpsFrequency : throttling des positions dans le hook GPS.
+  const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled, settings.recording.gpsFrequency)
+  // Réglage display.keepAwake : wake lock actif uniquement si autorisé.
+  useWakeLock(phase !== 'ready' && settings.display.keepAwake)
+  // Auto-pause : sous le seuil (km/h) la séance se met en pause automatiquement
+  // et reprend dès que la vitesse repasse au-dessus.
+  const autoPauseOn = settings.recording.autoPause
+  const autoPauseTh = settings.recording.autoPauseThreshold
+  const [autoPaused, setAutoPaused] = useState(false)
+  useEffect(() => {
+    if (phase !== 'running' || !autoPauseOn) { setAutoPaused(false); return }
+    setAutoPaused((gps.currentSpeed ?? 0) < autoPauseTh)
+  }, [gps.currentSpeed, phase, autoPauseOn, autoPauseTh])
+  // Réglages alertes — son (module lapBeep) + vibration + bandeau transitoire.
+  useLapBeepSound(settings.alerts.sound)
+  const vibrate = useVibrate(settings.alerts.vibration)
+  const { noticeKey, showNotice } = useLiveNotice(vibrate)
+  const stopwatch = useStopwatch(phase === 'running' && !autoPaused)
 
-  useEffect(() => { if (phase !== 'running') return; const i = setInterval(() => setCurrentLapSec(s => s + 1), 1000); return () => clearInterval(i) }, [phase])
+  useEffect(() => { if (phase !== 'running' || autoPaused) return; const i = setInterval(() => setCurrentLapSec(s => s + 1), 1000); return () => clearInterval(i) }, [phase, autoPaused])
   useEffect(() => { setCurrentLapDistance(gps.distance - lapStartDistance) }, [gps.distance, lapStartDistance])
 
   useEffect(() => {
@@ -120,7 +138,8 @@ export default function MTBScreen({ onExit, onFinished }: Props) {
     else if (dy > 50) setPageIndex(i => { const n = Math.max(PAGE_COUNT, pages.length); return (i - 1 + n) % n })
   }
 
-  const handleStart = () => { resetTracking(); setElevationLossM(0); setMaxGradient(0); prevAltRef.current = null; lapPrevAltRef.current = null; setStartedAt(Date.now()); setPhase('running') }
+  // primeLapBeep : l'AudioContext doit naître sur un geste utilisateur (iOS).
+  const handleStart = () => { primeLapBeep(); resetTracking(); setElevationLossM(0); setMaxGradient(0); prevAltRef.current = null; lapPrevAltRef.current = null; lastHydrationRef.current = 0; lastNutritionRef.current = 0; gpsWasOkRef.current = true; slopeArmedRef.current = true; setStartedAt(Date.now()); setPhase('running') }
   const handlePause = () => setPhase('paused')
   const handleResume = () => setPhase('running')
   const handleStop = () => setPhase('confirming_stop')
@@ -129,10 +148,60 @@ export default function MTBScreen({ onExit, onFinished }: Props) {
 
   const handleLap = () => {
     if (currentLapSec === 0) return
+    playLapBeep() // muet si alerts.sound est désactivé (setLapBeepSoundEnabled)
+    vibrate(200)  // alerts.vibration
     setLaps(prev => [...prev, { number: prev.length + 1, duration: currentLapSec, distance: currentLapDistance, avgSpeed: currentLapDistance > 0 ? (currentLapDistance / currentLapSec) * 3.6 : 0, timestamp: Date.now() }])
     setCurrentLapSec(0); setLapStartDistance(gps.distance)
     setLapElevGain(0); setLapElevLoss(0); lapPrevAltRef.current = gps.currentAltitude
   }
+
+  // Auto-lap (recording.autoLap, en km) : déclenche le même handleLap.
+  const autoLapKm = settings.recording.autoLap
+  const handleLapRef = useRef(handleLap)
+  handleLapRef.current = handleLap
+  useEffect(() => {
+    if (phase !== 'running' || autoLapKm <= 0) return
+    if (currentLapDistance >= autoLapKm * 1000) handleLapRef.current()
+  }, [currentLapDistance, autoLapKm, phase])
+
+  // Rappels hydratation / nutrition (alerts.*Interval, minutes de chrono).
+  const hydrationMin = settings.alerts.hydrationInterval
+  const nutritionMin = settings.alerts.nutritionInterval
+  const lastHydrationRef = useRef(0)
+  const lastNutritionRef = useRef(0)
+  useEffect(() => {
+    if (phase !== 'running') return
+    const sec = stopwatch.seconds
+    if (hydrationMin > 0) {
+      const n = Math.floor(sec / (hydrationMin * 60))
+      if (n > lastHydrationRef.current) { lastHydrationRef.current = n; showNotice('record.reminderHydration') }
+    }
+    if (nutritionMin > 0) {
+      const n = Math.floor(sec / (nutritionMin * 60))
+      if (n > lastNutritionRef.current) { lastNutritionRef.current = n; showNotice('record.reminderNutrition') }
+    }
+  }, [stopwatch.seconds, phase, hydrationMin, nutritionMin, showNotice])
+
+  // Alerte perte de signal GPS (alerts.gpsLost) — sur transition ok → perdu.
+  const gpsLostOn = settings.alerts.gpsLost
+  const gpsWasOkRef = useRef(true)
+  useEffect(() => {
+    if (phase !== 'running' || !gpsLostOn) return
+    const lost = gps.status === GPSStatus.poor || gps.status === GPSStatus.error || gps.status === GPSStatus.unavailable
+    if (lost && gpsWasOkRef.current) { gpsWasOkRef.current = false; showNotice('record.alertGpsLost') }
+    if (!lost) gpsWasOkRef.current = true
+  }, [gps.status, phase, gpsLostOn, showNotice])
+
+  // Alerte pente raide (alerts.steepSlopeThreshold, %, 0 = off) — sur
+  // franchissement du seuil, réarmée quand la pente redescend en dessous.
+  const steepSlopeTh = settings.alerts.steepSlopeThreshold
+  const slopeArmedRef = useRef(true)
+  useEffect(() => {
+    if (phase !== 'running' || steepSlopeTh <= 0) return
+    const steep = Math.abs(gps.gradient ?? 0) >= steepSlopeTh
+    if (steep && slopeArmedRef.current) { slopeArmedRef.current = false; showNotice('record.alertSteepSlope') }
+    if (!steep) slopeArmedRef.current = true
+  }, [gps.gradient, phase, steepSlopeTh, showNotice])
 
   const handleOpenSaveForm = () => {
     const endedAt = new Date()
@@ -160,11 +229,17 @@ export default function MTBScreen({ onExit, onFinished }: Props) {
       }
     } catch (e) { console.error('[mtb] save error:', e) }
     setShowSaveForm(false)
+    // Réglage postRide.showSummary : si désactivé, on ferme directement.
+    if (!settings.postRide.showSummary) { onFinished(); return }
     setFinishedSession({ id: savedId, started_at: snap.startedAtISO, ended_at: snap.endedAtISO, duration_seconds: snap.durationSec, distance_m: snap.distM, elevation_gain_m: snap.elevM, elevation_loss_m: snap.elevLossM, avg_speed_kmh: snap.avgSpeedKmh, max_speed_kmh: snap.maxSpeedKmh, calories: snap.calories, gps_points: snap.gpsPts, laps: snap.lapsSnap, title: formData.title, training_types: formData.trainingTypes, rpe: formData.rpe, comment: formData.comment, sport: 'mtb' })
   }
 
   if (!mounted) return null
-  const isDark = document.documentElement.classList.contains('dark')
+  // Réglage display.theme : auto = thème système, sinon forçage clair/sombre.
+  const systemDark = document.documentElement.classList.contains('dark')
+  const isDark = settings.display.theme === 'dark' ? true
+    : settings.display.theme === 'light' ? false
+    : systemDark
   const bg = isDark ? '#0A0A0A' : '#FFFFFF', text = isDark ? '#FFFFFF' : '#0A0A0A'
   const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
   const btnBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)'
@@ -188,15 +263,21 @@ export default function MTBScreen({ onExit, onFinished }: Props) {
 
       <div style={{ flex:1, display:'flex', flexDirection:'column', position:'relative', overflow:'hidden', paddingBottom:'calc(120px + env(safe-area-inset-bottom))' }} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div key={pageIndex} style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0, overflowY:'auto' }}>
-          {pageIndex === 0 && <MTBPage1 isDark={isDark} durationSec={stopwatch.seconds} speedKmh={gps.currentSpeed} distanceM={gps.distance} elevationGainM={gps.elevationGain} elevationLossM={elevationLossM} dataFontFamily={dataFontFamily} />}
-          {pageIndex === 1 && <MTBPage2 isDark={isDark} distanceM={gps.distance} speedKmh={gps.currentSpeed} gradientPercent={gps.gradient ?? 0} elevationGainM={gps.elevationGain} trackPoints={trackPoints} currentPosition={currentPosition} />}
-          {pageIndex === 2 && <MTBPage3 isDark={isDark} gradientPercent={gps.gradient ?? 0} maxGradient={maxGradient} elevationGainM={gps.elevationGain} elevationLossM={elevationLossM} lapElevGainM={lapElevGain} lapElevLossM={lapElevLoss} avgSpeedKmh={avgSpeedKmh} dataFontFamily={dataFontFamily} />}
-          {pageIndex === 3 && <MTBPage4 isDark={isDark} currentLapSec={currentLapSec} currentLapDistanceM={currentLapDistance} avgSpeedKmh={avgSpeedKmh} lapElevGainM={lapElevGain} lapElevLossM={lapElevLoss} dataFontFamily={dataFontFamily} />}
+          {pageIndex === 0 && <MTBPage1 isDark={isDark} durationSec={stopwatch.seconds} speedKmh={gps.currentSpeed} distanceM={gps.distance} elevationGainM={gps.elevationGain} elevationLossM={elevationLossM} dataFontFamily={dataFontFamily} units={settings.units} dataSize={settings.display.dataSize} />}
+          {pageIndex === 1 && <MTBPage2 isDark={isDark} distanceM={gps.distance} speedKmh={gps.currentSpeed} gradientPercent={gps.gradient ?? 0} elevationGainM={gps.elevationGain} trackPoints={trackPoints} currentPosition={currentPosition} units={settings.units} />}
+          {pageIndex === 2 && <MTBPage3 isDark={isDark} gradientPercent={gps.gradient ?? 0} maxGradient={maxGradient} elevationGainM={gps.elevationGain} elevationLossM={elevationLossM} lapElevGainM={lapElevGain} lapElevLossM={lapElevLoss} avgSpeedKmh={avgSpeedKmh} dataFontFamily={dataFontFamily} units={settings.units} dataSize={settings.display.dataSize} />}
+          {pageIndex === 3 && <MTBPage4 isDark={isDark} currentLapSec={currentLapSec} currentLapDistanceM={currentLapDistance} avgSpeedKmh={avgSpeedKmh} lapElevGainM={lapElevGain} lapElevLossM={lapElevLoss} dataFontFamily={dataFontFamily} units={settings.units} dataSize={settings.display.dataSize} />}
         </div>
         <div style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', gap:8 }}>
           {Array.from({ length: dotCount }).map((_, i) => <span key={i} style={{ width:6, height:6, borderRadius:'50%', background: i === pageIndex ? '#F97316' : labelColor, transition:'background 0.2s' }} />)}
         </div>
       </div>
+
+      {/* Badge auto-pause — visible quelle que soit la page active */}
+      <AutoPauseBadge active={autoPaused} isDark={isDark} />
+
+      {/* Bandeau transitoire : rappels hydratation/nutrition, perte GPS, pente */}
+      <LiveNoticeBanner noticeKey={noticeKey} />
 
       {(phase === 'running' || phase === 'paused') && (
         <div style={{ position: 'absolute', bottom: 'calc(130px + env(safe-area-inset-bottom))', left: 16, zIndex: 100 }}>

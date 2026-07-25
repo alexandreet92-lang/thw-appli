@@ -82,7 +82,8 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
   const { settings, updateSetting } = useCyclingSettings()
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
-  const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
+  // Réglage recording.gpsFrequency : throttling des positions dans le hook GPS.
+  const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled, settings.recording.gpsFrequency)
   // Réglage display.keepAwake : wake lock actif uniquement si autorisé.
   useWakeLock(phase !== 'ready' && settings.display.keepAwake)
   // Auto-pause : sous le seuil (km/h, défaut 5) la séance se met en pause

@@ -26,6 +26,7 @@ import { SessionEditorMobile } from './mobile/SessionEditorMobile'
 import { SessionEditorDesktop } from './mobile/SessionEditorDesktop'
 import { sportColor as mobileSportColor } from './mobile/editorial'
 import { blocksToExercises, defaultCircuit } from './mobile/strength'
+import { buildSessionMemoHtml } from '@/lib/planning/sessionMemo'
 import type { SessionEditorPanelProps } from './mobile/panelProps'
 
 import {
@@ -4248,6 +4249,29 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 400) }
   }
 
+  // Mémo de séance imprimable (« antisèche ») — une ligne par bloc (endurance,
+  // + bande tube de cadre pour le vélo) ou circuits (muscu / Hyrox).
+  function handlePrintMemo() {
+    const circuits = mCircuits.length ? mCircuits : gymCircuitsRef.current
+    const circuitMap = Object.keys(mMap).length ? mMap : gymCircuitMapRef.current
+    const html = buildSessionMemoHtml({
+      title,
+      sport,
+      sportLabel: SPORT_LABEL[sport],
+      subtitle: trainingTypes.join(' + '),
+      totalMin: dur,
+      tss: sessionStats.tssHigh || null,
+      rpe: rpe || null,
+      blocks,
+      exercises,
+      circuits,
+      circuitMap,
+      generatedOn: new Date().toLocaleDateString(currentLocale()),
+    })
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 400) }
+  }
+
   function handleSportChange(s: SportType) {
     setSport(s); setTrainingTypes([]); setBlocks([]); setExercises([]); setComposedMoves([])
   }
@@ -4858,7 +4882,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         distance: parcoursData.distance, elevation: parcoursData.elevation, name: parcoursData.name,
       } : undefined,
       builderTab, setBuilderTab, saving, saved,
-      onClose, onSave: handleSubmit, onExportPDF: handleExportPDF, onFavorite,
+      onClose, onSave: handleSubmit, onExportPDF: handleExportPDF, onFavorite, onPrintMemo: handlePrintMemo,
       onDelete: isEdit && onDelete && session ? () => onDelete(session.id) : undefined,
     }
     // Portal vers document.body : sort des ancêtres transformés (MobileShell
@@ -5009,6 +5033,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               {SPORT_LABEL[sport]}{trainingTypes.length ? ` · ${trainingTypes.join(' + ')}` : ''}
             </p>
           </div>
+          <button onClick={handlePrintMemo} title="Mémo imprimable"
+            style={{ flexShrink: 0, height: 34, padding: '0 12px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${accent}`, background: 'transparent', color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+            Mémo
+          </button>
           <button onClick={handleCompteRendu} title={t('sed.reportDownloadImage')}
             style={{ flexShrink: 0, height: 34, padding: '0 13px', borderRadius: 10, cursor: 'pointer', border: 'none', background: 'var(--primary)', color: 'var(--on-primary, #06121A)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
             <svg width="13" height="13" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">

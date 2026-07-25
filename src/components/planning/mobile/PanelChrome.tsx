@@ -2,7 +2,7 @@
 // Header + Footer partagés des coquilles SessionEditor (mobile & desktop).
 // Même look éditorial ; le footer peut être flottant (mobile) ou barre sticky (desktop).
 import { useState } from 'react'
-import { IconChevronLeft, IconFileText, IconStar, IconTrash } from '@tabler/icons-react'
+import { IconChevronLeft, IconFileText, IconStar, IconTrash, IconPrinter } from '@tabler/icons-react'
 import { SPORT_LABEL } from '@/app/planning/page'
 import { PLAN_COLOR } from './editorial'
 import type { SessionEditorPanelProps } from './panelProps'
@@ -16,6 +16,11 @@ export function PanelHeader({ p, titleSize = 21, padding = '14px 18px', bordered
       <span style={{ fontSize: 14, fontWeight: 600, color: p.sportAccent, flexShrink: 0 }}>{SPORT_LABEL[p.sport]}</span>
       <input value={p.title} onChange={e => p.setTitle(e.target.value)} placeholder={`${SPORT_LABEL[p.sport]} ${p.trainingTypes.join('+')}`}
         className="se-fr" style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', outline: 'none', color: 'var(--se-text)', fontSize: titleSize, fontWeight: 600, padding: 0 }} />
+      {/* Mémo imprimable — antisèche de la séance (une ligne par bloc / circuits). */}
+      <button type="button" onClick={p.onPrintMemo} aria-label="Mémo imprimable" title="Mémo imprimable"
+        style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 11px', borderRadius: 999, border: `1px solid ${p.sportAccent}`, background: 'transparent', color: p.sportAccent, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+        <IconPrinter size={15} /> Mémo
+      </button>
       {!p.reserveMode && <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: planCol, border: `1px solid ${planCol}`, borderRadius: 999, padding: '3px 11px' }}>{t('planning.planPrefix')} {p.selPlan}</span>}
       <button type="button" onClick={p.onClose} style={{ flexShrink: 0, width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--se-rule)', background: 'transparent', color: 'var(--se-dim)', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
     </div>

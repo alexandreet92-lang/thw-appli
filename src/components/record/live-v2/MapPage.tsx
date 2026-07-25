@@ -1,11 +1,14 @@
 'use client'
 // ════════════════════════════════════════════════════════════════════
 // MapPage — page 2 de l'écran live : carte plein écran (tuiles Mapbox,
-// dark-v11 en thème sombre / light-v11 en thème clair), scrims, bouton
-// couches UNIQUE avec menu Standard/Satellite/Hybride, flèches de page,
-// capsule vitesse, mini-pause, bandeau stats bas (D+ RESTANT / RESTANT /
-// TEMPS EST.), tracé parcouru en accent-track / restant en accent, position
-// blanc 18⌀ + cœur cyan + halo pulsé, chip itinéraire avant départ.
+// Standard = outdoors-v12 EN COULEUR dans les deux thèmes), scrims, bouton
+// couches UNIQUE avec menu Standard/Satellite/Hybride/Sombre, flèches de
+// page, capsules vitesse + W + FC, mini-pause, bandeau stats bas (totaux du
+// parcours avant départ, restants pendant l'enregistrement, distance/D+/durée
+// sans parcours), tracé parcouru en accent-track / restant en accent,
+// position blanc 18⌀ + cœur cyan + halo pulsé, chip itinéraire avant départ.
+// EMPILEMENT : la carte vit dans .lv2-map-wrap (z 0 + isolation) qui piège
+// les panes Leaflet (z 200-700) ; tous les overlays frères sont à z >= 10.
 // GUIDAGE VIRAGE-PAR-VIRAGE (spec §4, vague 2) : les manœuvres réelles ORS
 // (navigationRoute — type, instruction FR, name, exit_number) alimentent le
 // bandeau compact (icône, distance GPS → manœuvre, badge route, « puis … »)
@@ -29,15 +32,20 @@ const ATTR = '© Mapbox © OpenStreetMap'
 const ACCENT = '#06B6D4' // design-allow-color
 const ACCENT_TRACK = '#155E6E' // design-allow-color
 
-type LayerId = 'std' | 'sat' | 'hyb'
+/** Couches proposées par les réglages (defaultMapType). */
+type BaseLayerId = 'std' | 'sat' | 'hyb'
+/** Couches du menu de la page carte : + option « Sombre » (dark-v11). */
+type LayerId = BaseLayerId | 'dark'
 
-function tileUrl(layer: LayerId, isDark: boolean): string {
+function tileUrl(layer: LayerId): string {
   const style = layer === 'sat'
     ? 'satellite-streets-v12'
     : layer === 'hyb'
       ? 'satellite-v9'
-      // Style sombre obligatoire en thème dark (dark-v11), clair = light-v11 (spec §2).
-      : isDark ? 'dark-v11' : 'light-v11'
+      : layer === 'dark'
+        ? 'dark-v11'
+        // Standard = carte EN COULEUR (outdoors-v12) quel que soit le thème.
+        : 'outdoors-v12'
   return `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`
 }
 
@@ -82,11 +90,14 @@ const gpsIcon = L.divIcon({
 })
 
 interface Props {
-  isDark: boolean
   started: boolean
   locked: boolean
   dim: boolean
   speedKmh: number
+  /** Puissance instantanée (W) — null si aucun capteur : affiche « — ». */
+  powerW: number | null
+  /** Fréquence cardiaque (bpm) — null si aucun capteur : affiche « — ». */
+  heartRateBpm: number | null
   distanceDoneM: number
   gainDoneM: number
   elapsedSec: number
@@ -94,7 +105,7 @@ interface Props {
   points: LatLng[]
   currentPos: LatLng | null
   route: NavRouteInput | null
-  defaultLayer: LayerId
+  defaultLayer: BaseLayerId
   units?: LiveUnits
   onPrevPage: () => void
   onNextPage: () => void
@@ -102,7 +113,7 @@ interface Props {
 }
 
 export default function MapPage({
-  isDark, started, locked, dim, speedKmh, distanceDoneM, gainDoneM, elapsedSec,
+  started, locked, dim, speedKmh, powerW, heartRateBpm, distanceDoneM, gainDoneM, elapsedSec,
   points, currentPos, route, defaultLayer, units, onPrevPage, onNextPage, onMiniPause,
 }: Props) {
   const [layer, setLayer] = useState<LayerId>(defaultLayer)
@@ -244,7 +255,10 @@ export default function MapPage({
   const bannerIconKind = hasRoute ? (started ? 'straight' : 'join') : 'straight'
 
   return (
-    <div style={{ position: 'absolute', inset: 0, background: 'var(--live-map-bg)' }}>
+    <div style={{ position: 'absolute', inset: 0, background: 'var(--live-map-bg)', isolation: 'isolate' }}>
+      {/* Wrapper z 0 + isolation : les panes Leaflet (z 200-700) restent
+          piégés ici — les overlays frères (z >= 10) passent devant. */}
+      <div className="lv2-map-wrap">
       <MapContainer
         center={center}
         zoom={15}
@@ -252,7 +266,7 @@ export default function MapPage({
         attributionControl={false}
         style={{ position: 'absolute', inset: 0 }}
       >
-        <TileLayer url={tileUrl(layer, isDark)} tileSize={512} zoomOffset={-1} detectRetina maxZoom={20} attribution={ATTR} />
+        <TileLayer url={tileUrl(layer)} tileSize={512} zoomOffset={-1} detectRetina maxZoom={20} attribution={ATTR} />
         {/* Trace réellement parcourue — accent-track */}
         {points.length > 1 && (
           <Polyline
@@ -276,11 +290,12 @@ export default function MapPage({
         {currentPos && <Marker position={[currentPos.lat, currentPos.lng]} icon={gpsIcon} />}
         <Follow pos={currentPos} />
       </MapContainer>
+      </div>
 
       {/* Scrims */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 150, background: 'var(--live-scrim-top)', pointerEvents: 'none', zIndex: 2 }} />
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 150, background: 'var(--live-scrim-top)', pointerEvents: 'none', zIndex: 10 }} />
       {!started && (
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 210, background: 'var(--live-scrim-bot)', pointerEvents: 'none', zIndex: 2 }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 210, background: 'var(--live-scrim-bot)', pointerEvents: 'none', zIndex: 10 }} />
       )}
 
       {/* Bandeau guidage compact — à droite de la croix (spec §4) */}
@@ -289,7 +304,7 @@ export default function MapPage({
         role={hasRoute ? 'button' : undefined}
         style={{
           position: 'absolute', top: 'calc(env(safe-area-inset-top) + 62px)', left: 68, right: 16,
-          minHeight: 54, borderRadius: 16, zIndex: 6,
+          minHeight: 54, borderRadius: 16, zIndex: 30,
           background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
           backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
           display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
@@ -367,7 +382,7 @@ export default function MapPage({
             className="lv2-press"
             style={{
               position: 'absolute', top: 'calc(env(safe-area-inset-top) + 126px)', right: 24,
-              width: 40, height: 40, borderRadius: '50%', zIndex: 6,
+              width: 40, height: 40, borderRadius: '50%', zIndex: 30,
               background: 'var(--live-btn-map)', border: '1px solid var(--live-hairline-2)',
               color: 'var(--live-text-2)', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -380,12 +395,12 @@ export default function MapPage({
           </button>
           {layersOpen && (
             <div style={{
-              position: 'absolute', top: 'calc(env(safe-area-inset-top) + 172px)', right: 24, zIndex: 7,
+              position: 'absolute', top: 'calc(env(safe-area-inset-top) + 172px)', right: 24, zIndex: 31,
               background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
               borderRadius: 14, overflow: 'hidden', minWidth: 150,
               backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
             }}>
-              {([['std', 'Standard'], ['sat', 'Satellite'], ['hyb', 'Hybride']] as [LayerId, string][]).map(([id, lbl], i) => (
+              {([['std', 'Standard'], ['sat', 'Satellite'], ['hyb', 'Hybride'], ['dark', 'Sombre']] as [LayerId, string][]).map(([id, lbl], i) => (
                 <button
                   key={id}
                   onClick={() => { setLayer(id); setLayersOpen(false) }}
@@ -411,7 +426,7 @@ export default function MapPage({
         </>
       )}
 
-      {/* Flèches ‹ › à mi-hauteur */}
+      {/* Flèches ‹ › à mi-hauteur — TOUJOURS visibles, au-dessus de la carte */}
       {[{ label: 'Page précédente', side: { left: 10 }, glyph: '‹', on: onPrevPage },
         { label: 'Page suivante', side: { right: 10 }, glyph: '›', on: onNextPage }].map(a => (
         <button
@@ -420,7 +435,7 @@ export default function MapPage({
           aria-label={a.label}
           style={{
             position: 'absolute', top: '50%', transform: 'translateY(-50%)', ...a.side,
-            width: 32, height: 32, borderRadius: '50%', zIndex: 5,
+            width: 32, height: 32, borderRadius: '50%', zIndex: 20,
             background: 'var(--live-arrow-bg)', border: '1px solid var(--live-hairline-2)',
             color: 'var(--live-text-2)', fontSize: 19, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: 2,
@@ -430,11 +445,11 @@ export default function MapPage({
         </button>
       ))}
 
-      {/* Chip itinéraire — avant démarrage */}
+      {/* Chip itinéraire — avant démarrage, au-dessus du bandeau des totaux */}
       {!started && hasRoute && (
         <div className="lv2-num" style={{
-          position: 'absolute', bottom: 220, left: '50%', transform: 'translateX(-50%)',
-          height: 32, padding: '0 17px', borderRadius: 16, zIndex: 5,
+          position: 'absolute', bottom: 'calc(env(safe-area-inset-bottom) + 282px)', left: '50%', transform: 'translateX(-50%)',
+          height: 32, padding: '0 17px', borderRadius: 16, zIndex: 20,
           background: 'var(--live-btn-map)', border: '1px solid var(--live-hairline-2)',
           display: 'flex', alignItems: 'center', whiteSpace: 'nowrap',
           fontSize: 12.5, fontWeight: 600, color: 'var(--live-text-2)',
@@ -443,10 +458,31 @@ export default function MapPage({
         </div>
       )}
 
+      {/* Pile bas-gauche : mini-capsules W + FC au-dessus de la capsule vitesse */}
+      {started && (
+        <div style={{ position: 'absolute', left: 16, bottom: 268, display: 'flex', gap: 8, zIndex: 20 }}>
+          {[
+            { lb: 'W', v: powerW != null ? String(Math.round(powerW)) : '—' },
+            { lb: 'FC', v: heartRateBpm != null ? String(Math.round(heartRateBpm)) : '—' },
+          ].map(c => (
+            <div key={c.lb} style={{
+              minWidth: 64, borderRadius: 18, padding: '8px 12px',
+              background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
+              backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+            }}>
+              <div className="lv2-eyebrow" style={{ fontSize: 9 }}>{c.lb}</div>
+              <div className="lv2-num" style={{ fontSize: 17, fontWeight: 800, marginTop: 2, color: dim ? 'var(--live-dim)' : 'var(--live-text)' }}>
+                {c.v}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Capsule vitesse — bas gauche (en enregistrement) */}
       {started && (
         <div style={{
-          position: 'absolute', left: 16, bottom: 180, width: 140, borderRadius: 18, zIndex: 5,
+          position: 'absolute', left: 16, bottom: 180, width: 140, borderRadius: 18, zIndex: 20,
           background: 'var(--live-float)', border: '1px solid var(--live-hairline-2)',
           backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
           padding: '12px 14px',
@@ -469,7 +505,7 @@ export default function MapPage({
           className="lv2-press"
           style={{
             position: 'absolute', right: 18, bottom: 190, width: 48, height: 48,
-            borderRadius: '50%', zIndex: 5,
+            borderRadius: '50%', zIndex: 20,
             background: 'var(--live-float)', border: '1.5px solid var(--live-accent)',
             color: 'var(--live-accent)', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -482,44 +518,91 @@ export default function MapPage({
         </button>
       )}
 
-      {/* Bandeau stats bas — h 160, 3 colonnes */}
-      {started && (
+      {/* Bandeau stats bas — 3 colonnes. Visible dès qu'un parcours est chargé
+          (avant départ : TOTAUX du parcours, au-dessus de la zone Démarrer) et
+          pendant l'enregistrement (restants avec parcours, sinon distance /
+          D+ fait / durée). */}
+      {(started || hasRoute) && (
         <div style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0, height: 160, zIndex: 4,
-          background: 'var(--live-band-bg)', borderTop: '1px solid var(--live-hairline-2)',
+          position: 'absolute', left: 0, right: 0, zIndex: 15,
+          bottom: started ? 0 : 'calc(env(safe-area-inset-bottom) + 158px)',
+          height: started ? 160 : 108,
+          background: 'var(--live-band-bg)',
+          borderTop: '1px solid var(--live-hairline-2)',
+          borderBottom: started ? 'none' : '1px solid var(--live-hairline-2)',
           display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-          padding: '22px 6px 0',
+          padding: started ? '22px 6px 0' : '16px 6px 0',
         }}>
-          {[
-            {
-              label: 'D+ restant',
-              value: hasRoute ? String(Math.round(remainingGain * af)) : '—',
-              unit: getUnitLabel('m', units),
-              sub: `fait ${Math.round(gainDoneM * af)} ${getUnitLabel('m', units)}`,
-            },
-            {
-              label: 'Restant',
-              value: hasRoute ? frNum((remainingM / 1000) * df, 1) : '—',
-              unit: getUnitLabel('km', units),
-              sub: `fait ${frNum((distanceDoneM / 1000) * df, 2)} ${getUnitLabel('km', units)}`,
-            },
-            {
-              label: 'Temps est.',
-              value: hasRoute ? (estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin))) : '—',
-              unit: hasRoute && estMin < 60 ? 'min' : undefined,
-              sub: `écoulé ${Math.floor(elapsedSec / 60)} min`,
-            },
-          ].map((c, i) => (
+          {(started
+            ? hasRoute
+              ? [
+                {
+                  label: 'D+ restant',
+                  value: String(Math.round(remainingGain * af)),
+                  unit: getUnitLabel('m', units),
+                  sub: `fait ${Math.round(gainDoneM * af)} ${getUnitLabel('m', units)}`,
+                },
+                {
+                  label: 'Restant',
+                  value: frNum((remainingM / 1000) * df, 1),
+                  unit: getUnitLabel('km', units),
+                  sub: `fait ${frNum((distanceDoneM / 1000) * df, 2)} ${getUnitLabel('km', units)}`,
+                },
+                {
+                  label: 'Temps est.',
+                  value: estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin)),
+                  unit: estMin < 60 ? 'min' : undefined,
+                  sub: `écoulé ${Math.floor(elapsedSec / 60)} min`,
+                },
+              ]
+              : [
+                {
+                  label: 'Distance',
+                  value: frNum((distanceDoneM / 1000) * df, 2),
+                  unit: getUnitLabel('km', units),
+                  sub: null,
+                },
+                {
+                  label: 'D+ fait',
+                  value: String(Math.round(gainDoneM * af)),
+                  unit: getUnitLabel('m', units),
+                  sub: null,
+                },
+                { label: 'Durée', value: formatHMS(elapsedSec, true), unit: undefined, sub: null },
+              ]
+            : [
+              {
+                label: 'D+ total',
+                value: String(Math.round(totalGain * af)),
+                unit: getUnitLabel('m', units),
+                sub: null,
+              },
+              {
+                label: 'Distance',
+                value: frNum((totalM / 1000) * df, 1),
+                unit: getUnitLabel('km', units),
+                sub: null,
+              },
+              {
+                label: 'Temps est.',
+                value: estMin >= 60 ? formatHMS(Math.round(estMin * 60), true) : String(Math.round(estMin)),
+                unit: estMin < 60 ? 'min' : undefined,
+                sub: null,
+              },
+            ]
+          ).map((c, i) => (
             <div key={c.label} style={{ textAlign: 'center', position: 'relative' }}>
               {i > 0 && (
-                <span style={{ position: 'absolute', left: 0, top: 0, bottom: 66, width: 1, background: 'var(--live-hairline)' }} />
+                <span style={{ position: 'absolute', left: 0, top: 0, bottom: started ? 66 : 14, width: 1, background: 'var(--live-hairline)' }} />
               )}
               <div className="lv2-eyebrow" style={{ fontSize: 10, letterSpacing: '0.15em' }}>{c.label}</div>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4, marginTop: 8 }}>
                 <span className="lv2-num" style={{ fontSize: 26, fontWeight: 800 }}>{c.value}</span>
                 {c.unit && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--live-label)' }}>{c.unit}</span>}
               </div>
-              <div className="lv2-num" style={{ fontSize: 11, fontWeight: 500, color: 'var(--live-dim-sub)', marginTop: 6 }}>{c.sub}</div>
+              {c.sub && (
+                <div className="lv2-num" style={{ fontSize: 11, fontWeight: 500, color: 'var(--live-dim-sub)', marginTop: 6 }}>{c.sub}</div>
+              )}
             </div>
           ))}
         </div>

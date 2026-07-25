@@ -522,11 +522,12 @@ export default function LiveShell({
         </section>
         <section className="lv2-page">
           <MapPage
-            isDark={isDark}
             started={started}
             locked={locked}
             dim={dim}
             speedKmh={smoothedSpeed}
+            powerW={null}
+            heartRateBpm={null}
             distanceDoneM={gps.distance}
             gainDoneM={gps.elevationGain}
             elapsedSec={durationSec}

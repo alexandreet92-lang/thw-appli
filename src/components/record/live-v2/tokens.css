@@ -102,9 +102,15 @@
 .lv2-num { font-variant-numeric: tabular-nums; }
 
 /* ── Carrousel 3 pages (scroll snap) ───────────────────────────────── */
+/* z-index 0 + isolation : le carrousel forme son propre contexte
+   d'empilement — les panes Leaflet (z 200-700 dans leaflet.css) restent
+   piégés dessous et ne peuvent plus recouvrir le header / overlays du
+   shell (z 54+). */
 .lv2-pages {
   position: absolute;
   inset: 0;
+  z-index: 0;
+  isolation: isolate;
   display: flex;
   overflow-x: auto;
   overflow-y: hidden;
@@ -121,6 +127,17 @@
   scroll-snap-stop: always;
   position: relative;
   overflow: hidden;
+}
+
+/* ── Conteneur carte Leaflet (page 2) ──────────────────────────────── */
+/* Piège les z-index internes de Leaflet (panes 200-700) dans un contexte
+   d'empilement local : les overlays frères de MapPage (z >= 10) passent
+   devant la carte. */
+.lv2-map-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  isolation: isolate;
 }
 
 /* ── Typo / grille de tuiles ───────────────────────────────────────── */

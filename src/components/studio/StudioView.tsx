@@ -254,15 +254,27 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const trigger = graph.nodes.find(n => n.kind === 'trigger') ?? null
 
   // ── Géométrie ──────────────────────────────────────────────
+  const R = NODE_D / 2                              // rayon de la bulle
+  const center = (n: StudioNode) => ({ x: n.x + R, y: n.y + R })
+  // Poignée de sortie : bord droit de la bulle (le « + » et la pastille de
+  // liaison restent toujours à droite, quelle que soit la position du voisin).
   const portOut = (n: StudioNode) => ({ x: n.x + NODE_D, y: n.y + PORT_Y })
-  const portIn  = (n: StudioNode) => ({ x: n.x,          y: n.y + PORT_Y })
-  // Courbes : poignées horizontales proportionnelles à la distance, avec un
-  // léger amorti vertical — rend les fils souples façon Make/Figma.
-  const edgePath = (a: { x: number; y: number }, b: { x: number; y: number }) => {
-    const dist = Math.hypot(b.x - a.x, b.y - a.y)
-    const dx = Math.max(48, Math.min(160, dist * 0.45))
-    return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`
+  // Ancrages d'une arête façon Make : le fil part du POINT DU BORD de chaque
+  // bulle qui fait face à l'autre — il pivote donc autour de la bulle selon où
+  // l'on place le voisin, et la ligne reste toujours droite.
+  const edgeAnchors = (a: StudioNode, b: StudioNode) => {
+    const ca = center(a), cb = center(b)
+    const dx = cb.x - ca.x, dy = cb.y - ca.y
+    const d = Math.hypot(dx, dy) || 1
+    const ux = dx / d, uy = dy / d
+    return {
+      p1: { x: ca.x + ux * R, y: ca.y + uy * R },   // bord de A vers B
+      p2: { x: cb.x - ux * R, y: cb.y - uy * R },   // bord de B vers A
+    }
   }
+  // Ligne droite (plus de courbe biscornue).
+  const edgePath = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+    `M ${a.x} ${a.y} L ${b.x} ${b.y}`
   // pan/zoom via refs : les handlers pointeur/molette lisent toujours la valeur
   // courante sans se réabonner.
   const panRef = useRef(pan)
@@ -1010,7 +1022,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   {graph.edges.map(e => {
                     const a = graph.nodes.find(n => n.id === e.from), b = graph.nodes.find(n => n.id === e.to)
                     if (!a || !b) return null
-                    const p1 = portOut(a), p2 = portIn(b)
+                    const { p1, p2 } = edgeAnchors(a, b)
                     const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
                     const flowing = status[e.from] === 'done' && (status[e.to] === 'running' || status[e.to] === 'waiting')
                     const doneFlow = status[e.from] === 'done' && status[e.to] === 'done'
@@ -1040,7 +1052,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   {pending && (() => {
                     const a = graph.nodes.find(n => n.id === pending.fromId)
                     if (!a) return null
-                    return <path d={edgePath(portOut(a), { x: pending.x, y: pending.y })} fill="none" stroke={KIND_COLOR[a.kind]} strokeWidth={2.2} strokeDasharray="6 5" strokeLinecap="round" style={{ animation: 'studio_dash 0.5s linear infinite' }} />
+                    // Le fil provisoire part aussi du bord de la bulle qui fait
+                    // face au curseur → il pivote pendant le glisser.
+                    const ca = center(a)
+                    const dx = pending.x - ca.x, dy = pending.y - ca.y
+                    const d = Math.hypot(dx, dy) || 1
+                    const start = { x: ca.x + (dx / d) * R, y: ca.y + (dy / d) * R }
+                    return <path d={edgePath(start, { x: pending.x, y: pending.y })} fill="none" stroke={KIND_COLOR[a.kind]} strokeWidth={2.2} strokeDasharray="6 5" strokeLinecap="round" style={{ animation: 'studio_dash 0.5s linear infinite' }} />
                   })()}
                 </g>
               </svg>
@@ -1081,8 +1099,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     <div key={n.id} className="studio-node"
                       onMouseEnter={() => setHoverId(n.id)} onMouseLeave={() => setHoverId(h => h === n.id ? null : h)}
                       style={{ position: 'absolute', left: n.x, top: n.y, width: NODE_D, userSelect: 'none', zIndex: open ? 6 : 1 }}>
-                      {/* Bulle circulaire — juste le logo */}
+                      {/* Bulle circulaire — juste le logo. La bulle entière est
+                          une cible de dépôt de fil (on relâche n'importe où dessus). */}
                       <div onPointerDown={e => startNodeDrag(e, n)} title={n.title}
+                        data-portin={hasInput ? n.id : undefined}
                         style={{ width: NODE_D, height: NODE_D, borderRadius: '50%', cursor: 'grab', position: 'relative',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           background: filled ? `linear-gradient(140deg, ${col}, color-mix(in srgb, ${col} 60%, #000))` : 'var(--bg-card)',
@@ -1095,11 +1115,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                         {st === 'done' && <span style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%', background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>}
                         {st === 'waiting' && <span style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%', background: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'studio_pulse 1.4s ease infinite' }}><svg width="9" height="9" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg></span>}
                         {st === 'error' && <span style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%', background: '#EF4444', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</span>}
-                        {/* Ports */}
-                        {hasInput && (
-                          <span data-portin={n.id} className="studio-port" style={{ position: 'absolute', left: -7, top: NODE_D / 2 - 7, width: 14, height: 14, borderRadius: '50%', background: 'var(--bg)', border: `2.5px solid color-mix(in srgb, var(--text) 35%, transparent)`, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }} />
-                        )}
-                        {hasStudioOutput(n.kind) && (
+                        {/* Poignée de sortie (glisser pour relier) — à droite, au
+                            survol seulement pour garder la bulle épurée. */}
+                        {open && hasStudioOutput(n.kind) && (
                           <span onPointerDown={e => startConnect(e, n)} title="Relier" className="studio-port"
                             style={{ position: 'absolute', right: -7, top: NODE_D / 2 - 7, width: 14, height: 14, borderRadius: '50%', background: col, border: '2.5px solid var(--bg-card)', cursor: 'crosshair', boxShadow: `0 0 0 2px color-mix(in srgb, ${col} 25%, transparent), 0 1px 3px rgba(0,0,0,0.2)` }} />
                         )}

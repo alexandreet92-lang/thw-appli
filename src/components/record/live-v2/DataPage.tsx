@@ -8,6 +8,7 @@
 // ════════════════════════════════════════════════════════════════════
 import { GPSStatus } from '@/hooks/useGPSTracking'
 import { formatHMS, frNum } from './liveMachine'
+import { distFactor, altFactor, getUnitLabel, type LiveUnits } from '../units'
 
 export type HeroSource = 'power' | 'speed'
 
@@ -33,6 +34,7 @@ interface Props {
   gpsStatus: GPSStatus
   gpsAccuracy: number | null
   dataSize: 'small' | 'normal' | 'large'
+  units?: LiveUnits
   onSensorChipTap: () => void
 }
 
@@ -59,10 +61,13 @@ function Cell({ label, value, unit, dim, tileSize }: {
 export default function DataPage({
   started, dim, durationSec, distanceM, speedKmh, avgSpeedKmh, elevGainM,
   heartRate, cadence, powerW, avgPowerW, npW, heroSource,
-  gpsStatus, gpsAccuracy, dataSize, onSensorChipTap,
+  gpsStatus, gpsAccuracy, dataSize, units, onSensorChipTap,
 }: Props) {
   const f = SIZE_FACTOR[dataSize]
   const tileSize = Math.round(40 * f)
+  const df = distFactor(units)
+  const af = altFactor(units)
+  const speedUnit = getUnitLabel('km/h', units)
 
   const gpsOk = gpsStatus === GPSStatus.good || gpsStatus === GPSStatus.approximate
   const gpsChipLabel = gpsOk
@@ -135,10 +140,10 @@ export default function DataPage({
           <>
             <div className="lv2-eyebrow">Vitesse</div>
             <div className="lv2-num" style={{ fontSize: Math.round(104 * f), fontWeight: 800, lineHeight: 1, letterSpacing: '-0.01em', marginTop: 20, color: dim ? 'var(--live-dim)' : 'var(--live-text)' }}>
-              {frNum(shownSpeed, 1)}
+              {frNum(shownSpeed * df, 1)}
             </div>
             <div className="lv2-num" style={{ fontSize: 13, fontWeight: 500, marginTop: 10, color: dim ? 'var(--live-dim-sub)' : 'var(--live-text-2)' }}>
-              km/h · moy {frNum(avgSpeedKmh, 1)}
+              {speedUnit} · moy {frNum(avgSpeedKmh * df, 1)}
             </div>
           </>
         )}
@@ -148,14 +153,14 @@ export default function DataPage({
       <div className="lv2-grid" style={{ marginTop: started ? 40 : 48 }}>
         <div className="lv2-row">
           <Cell label="Durée" value={started ? formatHMS(durationSec) : '00:00'} dim={dim || !started} tileSize={tileSize} />
-          <Cell label="Distance" value={started ? frNum(distanceM / 1000, 2) : '0,00'} unit="km" dim={dim || !started} tileSize={tileSize} />
+          <Cell label="Distance" value={started ? frNum((distanceM / 1000) * df, 2) : '0,00'} unit={getUnitLabel('km', units)} dim={dim || !started} tileSize={tileSize} />
         </div>
         <div className="lv2-row">
-          <Cell label="Vitesse" value={frNum(started ? shownSpeed : 0, 1)} unit="km/h" dim={dim || !started} tileSize={tileSize} />
+          <Cell label="Vitesse" value={frNum((started ? shownSpeed : 0) * df, 1)} unit={speedUnit} dim={dim || !started} tileSize={tileSize} />
           <Cell label="FC" value={started && heartRate != null ? String(Math.round(heartRate)) : '—'} unit="bpm" dim={dim || !started} tileSize={tileSize} />
         </div>
         <div className="lv2-row">
-          <Cell label="D+" value={String(Math.round(elevGainM))} unit="m" dim={dim || !started} tileSize={tileSize} />
+          <Cell label="D+" value={String(Math.round(elevGainM * af))} unit={getUnitLabel('m', units)} dim={dim || !started} tileSize={tileSize} />
           <Cell label="Cadence" value={started && cadence != null ? String(Math.round(dim ? 0 : cadence)) : '—'} unit="rpm" dim={dim || !started} tileSize={tileSize} />
         </div>
       </div>

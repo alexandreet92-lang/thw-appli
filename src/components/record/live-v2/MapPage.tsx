@@ -1,18 +1,25 @@
 'use client'
 // ════════════════════════════════════════════════════════════════════
 // MapPage — page 2 de l'écran live : carte plein écran (tuiles Mapbox,
-// dark-v11 en thème sombre), scrims, bouton couches UNIQUE avec menu
-// Standard/Satellite/Hybride, flèches de page, capsule vitesse, mini-pause,
-// bandeau stats bas (D+ RESTANT / RESTANT / TEMPS EST.), tracé parcouru en
-// accent-track / restant en accent, position blanc 18⌀ + cœur cyan + halo
-// pulsé, chip itinéraire avant départ, BANDEAU GUIDAGE SIMPLE (vague 1).
-// Spec §3 page 2 — le guidage virage-par-virage détaillé arrive en vague 2.
+// dark-v11 en thème sombre / light-v11 en thème clair), scrims, bouton
+// couches UNIQUE avec menu Standard/Satellite/Hybride, flèches de page,
+// capsule vitesse, mini-pause, bandeau stats bas (D+ RESTANT / RESTANT /
+// TEMPS EST.), tracé parcouru en accent-track / restant en accent, position
+// blanc 18⌀ + cœur cyan + halo pulsé, chip itinéraire avant départ.
+// GUIDAGE VIRAGE-PAR-VIRAGE (spec §4, vague 2) : les manœuvres réelles ORS
+// (navigationRoute — type, instruction FR, name, exit_number) alimentent le
+// bandeau compact (icône, distance GPS → manœuvre, badge route, « puis … »)
+// et le panneau déplié GuidePanel. Parcours sans steps ORS (trace GPX
+// simple) → bandeau simple + panneau « Guidage détaillé indisponible ».
 // ════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { NavRouteInput } from '../RouteNavScreen'
-import { formatDistShort, formatHMS, frNum } from './liveMachine'
+import { navigationRoute, maneuverShortFR, type NavStep } from '@/lib/openrouteservice'
+import { formatHMS, frNum } from './liveMachine'
+import { distFactor, altFactor, getUnitLabel, formatDistShortU, type LiveUnits } from '../units'
+import GuidePanel, { ManeuverIcon, maneuverKind, detectRoadBadge, RoadBadge } from './GuidePanel'
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX ?? ''
 const ATTR = '© Mapbox © OpenStreetMap'
@@ -29,8 +36,8 @@ function tileUrl(layer: LayerId, isDark: boolean): string {
     ? 'satellite-streets-v12'
     : layer === 'hyb'
       ? 'satellite-v9'
-      // Style sombre obligatoire en thème dark (dark-v11) — clair en vague 2.
-      : isDark ? 'dark-v11' : 'outdoors-v12'
+      // Style sombre obligatoire en thème dark (dark-v11), clair = light-v11 (spec §2).
+      : isDark ? 'dark-v11' : 'light-v11'
   return `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/512/{z}/{x}/{y}@2x?access_token=${TOKEN}`
 }
 
@@ -88,19 +95,39 @@ interface Props {
   currentPos: LatLng | null
   route: NavRouteInput | null
   defaultLayer: LayerId
+  units?: LiveUnits
   onPrevPage: () => void
   onNextPage: () => void
   onMiniPause: () => void
-  /** Ouvre le panneau de guidage existant (RouteNavScreen) — si parcours chargé. */
-  onOpenGuide: () => void
 }
 
 export default function MapPage({
   isDark, started, locked, dim, speedKmh, distanceDoneM, gainDoneM, elapsedSec,
-  points, currentPos, route, defaultLayer, onPrevPage, onNextPage, onMiniPause, onOpenGuide,
+  points, currentPos, route, defaultLayer, units, onPrevPage, onNextPage, onMiniPause,
 }: Props) {
   const [layer, setLayer] = useState<LayerId>(defaultLayer)
   const [layersOpen, setLayersOpen] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
+  // Manœuvres ORS du parcours — null tant que rien n'est chargé / disponible.
+  const [steps, setSteps] = useState<NavStep[] | null>(null)
+
+  const df = distFactor(units)
+  const af = altFactor(units)
+  const fmtDist = (m: number) => formatDistShortU(m, units)
+
+  // Étapes de navigation réelles (ORS) — uniquement si le parcours porte ses
+  // waypoints (parcours créés dans l'app). Échec / trace GPX simple → null,
+  // le bandeau reste en mode simple, jamais de données inventées.
+  useEffect(() => {
+    let alive = true
+    setSteps(null)
+    const wps = route?.waypoints
+    if (!wps || wps.length < 2) return
+    navigationRoute(wps, route?.sport ?? 'cycling')
+      .then(r => { if (alive) setSteps(r.steps.length > 0 ? r.steps : null) })
+      .catch(() => { /* clé ORS absente / réseau — mode simple */ })
+    return () => { alive = false }
+  }, [route?.waypoints, route?.sport])
 
   const line = route?.snapped_points ?? []
   const hasRoute = line.length > 1
@@ -121,6 +148,9 @@ export default function MapPage({
     }
     return g
   }, [route?.elevation_profile])
+
+  // Le verrouillage prime : panneau replié tant que l'écran est verrouillé.
+  useEffect(() => { if (locked) setGuideOpen(false) }, [locked])
 
   const nearestIdx = useMemo(() => {
     if (!currentPos || line.length === 0) return 0
@@ -153,6 +183,41 @@ export default function MapPage({
   // Distance jusqu'au départ du parcours (bandeau « Rejoignez l'itinéraire »).
   const distToStartM = hasRoute && currentPos ? haversine(currentPos, line[0]) : null
 
+  // ── Guidage : projection des manœuvres sur le parcours ──
+  // Distance cumulée de chaque manœuvre le long du tracé (point le plus proche).
+  const stepCum = useMemo(() => (steps ?? []).map(s => {
+    let best = 0
+    let bd = Infinity
+    for (let i = 0; i < line.length; i++) {
+      const d = haversine(s, line[i])
+      if (d < bd) { bd = d; best = i }
+    }
+    return cum[best] ?? 0
+  }), [steps, line, cum])
+  // Distance restante jusqu'à chaque manœuvre (le long du parcours).
+  const stepDistM = useMemo(
+    () => stepCum.map(c => Math.max(0, c - traveledOnRouteM)),
+    [stepCum, traveledOnRouteM],
+  )
+  const nextStepIdx = useMemo(() => {
+    for (let i = 0; i < stepCum.length; i++) {
+      if (stepCum[i] > traveledOnRouteM + 8) return i
+    }
+    return -1
+  }, [stepCum, traveledOnRouteM])
+  const nextStep = steps && nextStepIdx >= 0 ? steps[nextStepIdx] : null
+  // Distance affichée : position GPS réelle → point de la manœuvre (spec §4).
+  const distToNextM = nextStep
+    ? (currentPos ? haversine(currentPos, nextStep) : stepDistM[nextStepIdx])
+    : null
+  const afterStep = steps && nextStepIdx >= 0 && nextStepIdx + 1 < steps.length ? steps[nextStepIdx + 1] : null
+  const afterGapM = afterStep ? Math.max(0, stepCum[nextStepIdx + 1] - stepCum[nextStepIdx]) : null
+
+  // Mode du bandeau : manœuvre réelle en roulant si steps ORS, sinon simple.
+  const turnMode = started && hasRoute && nextStep != null && distToNextM != null
+  const nextBadge = turnMode ? detectRoadBadge(nextStep.name, nextStep.instruction) : null
+  const afterBadge = afterStep ? detectRoadBadge(afterStep.name, afterStep.instruction) : null
+
   // Découpe du parcours : parcouru (accent-track) / restant (accent).
   const routeDone = hasRoute && started ? line.slice(0, nearestIdx + 1) : []
   const routeRemaining = hasRoute ? (started ? line.slice(nearestIdx) : line) : []
@@ -166,26 +231,17 @@ export default function MapPage({
       <path d="M1 1 L6 6.5 L11 1" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
-  const joinIcon = (
-    <svg width="22" height="22" viewBox="0 0 30 30">
-      <circle cx="9" cy="15" r="3.2" fill="currentColor" />
-      <path d="M12 15 h13 M20 9.5 L26.5 15 L20 20.5" stroke="currentColor" strokeWidth="2.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-  const straightIcon = (
-    <svg width="20" height="20" viewBox="0 0 30 30">
-      <path d="M15 27 V6 M8.5 12 L15 4.5 L21.5 12" stroke="currentColor" strokeWidth="2.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
 
+  // États simples du bandeau (parcours absent / avant départ / sans steps ORS).
   const guideTitle = !hasRoute
     ? 'Guidage indisponible'
     : started ? 'Suivez l’itinéraire' : 'Rejoignez l’itinéraire'
   const guideSub = !hasRoute
     ? 'Aucun parcours chargé'
     : started
-      ? `${frNum(remainingM / 1000, 1)} km restants`
-      : `Départ à ${distToStartM != null ? formatDistShort(distToStartM) : '—'}`
+      ? `${fmtDist(remainingM)} restants`
+      : `Départ à ${distToStartM != null ? fmtDist(distToStartM) : '—'}`
+  const bannerIconKind = hasRoute ? (started ? 'straight' : 'join') : 'straight'
 
   return (
     <div style={{ position: 'absolute', inset: 0, background: 'var(--live-map-bg)' }}>
@@ -227,9 +283,9 @@ export default function MapPage({
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 210, background: 'var(--live-scrim-bot)', pointerEvents: 'none', zIndex: 2 }} />
       )}
 
-      {/* Bandeau guidage simple — à droite de la croix */}
+      {/* Bandeau guidage compact — à droite de la croix (spec §4) */}
       <div
-        onClick={hasRoute ? onOpenGuide : undefined}
+        onClick={hasRoute && !locked ? () => setGuideOpen(true) : undefined}
         role={hasRoute ? 'button' : undefined}
         style={{
           position: 'absolute', top: 'calc(env(safe-area-inset-top) + 62px)', left: 68, right: 16,
@@ -246,16 +302,61 @@ export default function MapPage({
           color: hasRoute ? 'var(--live-accent)' : 'var(--live-label)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          {hasRoute ? (started ? straightIcon : joinIcon) : straightIcon}
+          <ManeuverIcon kind={turnMode && nextStep ? maneuverKind(nextStep.type) : bannerIconKind} size={22} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{guideTitle}</div>
-          <div className="lv2-num" style={{ fontSize: 12, fontWeight: 500, color: 'var(--live-text-2)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {guideSub}
-          </div>
+          {turnMode && nextStep && distToNextM != null ? (
+            <>
+              {/* Prochaine manœuvre réelle : distance 15/700 · instruction + badge route */}
+              <div style={{
+                fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span className="lv2-num" style={{ flexShrink: 0 }}>{fmtDist(distToNextM)}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>· {maneuverShortFR(nextStep.type)}</span>
+                {nextBadge && <RoadBadge info={nextBadge} />}
+              </div>
+              {/* Sous-ligne « puis <manœuvre suivante> dans X m » 12/500 */}
+              <div className="lv2-num" style={{
+                fontSize: 12, fontWeight: 500, color: 'var(--live-text-2)', marginTop: 2,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                {afterStep && afterGapM != null ? (
+                  <>
+                    <span>puis</span>
+                    {afterBadge && <RoadBadge info={afterBadge} />}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {maneuverShortFR(afterStep.type).toLowerCase()} dans {fmtDist(afterGapM)}
+                    </span>
+                  </>
+                ) : (
+                  <span>{fmtDist(remainingM)} restants</span>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{guideTitle}</div>
+              <div className="lv2-num" style={{ fontSize: 12, fontWeight: 500, color: 'var(--live-text-2)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {guideSub}
+              </div>
+            </>
+          )}
         </div>
         {hasRoute && <span style={{ color: 'var(--live-label)', flexShrink: 0 }}>{chevron}</span>}
       </div>
+
+      {/* Panneau de guidage déplié (remplace l'ancien RouteNavScreen) */}
+      {guideOpen && hasRoute && (
+        <GuidePanel
+          steps={steps ?? []}
+          stepDistM={stepDistM}
+          nextIdx={steps ? nextStepIdx : -1}
+          fmtDist={fmtDist}
+          onClose={() => setGuideOpen(false)}
+        />
+      )}
 
       {/* Bouton couches UNIQUE + menu (avant démarrage uniquement, cf. maquette) */}
       {!started && (
@@ -338,7 +439,7 @@ export default function MapPage({
           display: 'flex', alignItems: 'center', whiteSpace: 'nowrap',
           fontSize: 12.5, fontWeight: 600, color: 'var(--live-text-2)',
         }}>
-          Itinéraire · {frNum(totalM / 1000, 1)} km · {Math.round(totalGain)} m D+
+          Itinéraire · {frNum((totalM / 1000) * df, 1)} {getUnitLabel('km', units)} · {Math.round(totalGain * af)} {getUnitLabel('m', units)} D+
         </div>
       )}
 
@@ -353,9 +454,9 @@ export default function MapPage({
           <div className="lv2-eyebrow" style={{ fontSize: 10 }}>Vitesse</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 4 }}>
             <span className="lv2-num" style={{ fontSize: 32, fontWeight: 800, color: dim ? 'var(--live-dim)' : 'var(--live-text)' }}>
-              {frNum(dim ? 0 : speedKmh, 1)}
+              {frNum((dim ? 0 : speedKmh) * df, 1)}
             </span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--live-label)' }}>km/h</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--live-label)' }}>{getUnitLabel('km/h', units)}</span>
           </div>
         </div>
       )}
@@ -392,15 +493,15 @@ export default function MapPage({
           {[
             {
               label: 'D+ restant',
-              value: hasRoute ? String(Math.round(remainingGain)) : '—',
-              unit: 'm',
-              sub: `fait ${Math.round(gainDoneM)} m`,
+              value: hasRoute ? String(Math.round(remainingGain * af)) : '—',
+              unit: getUnitLabel('m', units),
+              sub: `fait ${Math.round(gainDoneM * af)} ${getUnitLabel('m', units)}`,
             },
             {
               label: 'Restant',
-              value: hasRoute ? frNum(remainingM / 1000, 1) : '—',
-              unit: 'km',
-              sub: `fait ${frNum(distanceDoneM / 1000, 2)} km`,
+              value: hasRoute ? frNum((remainingM / 1000) * df, 1) : '—',
+              unit: getUnitLabel('km', units),
+              sub: `fait ${frNum((distanceDoneM / 1000) * df, 2)} ${getUnitLabel('km', units)}`,
             },
             {
               label: 'Temps est.',

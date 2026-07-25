@@ -13,15 +13,22 @@ const STEP_PCT = { auth: 6, session: 45, streams: 70, laps: 85, aggregates: 100 
 
 export const DEFAULT_LIVE_TITLE = 'Sortie vélo'
 
+export interface LiveUploadResult {
+  /** Id de la ligne `activities` créée (mise en avant sur la page Training). */
+  activityId: string | null
+  /** Id de la ligne `workout_sessions` créée (rattachement des photos). */
+  sessionId: string | null
+}
+
 /**
- * Envoie la séance : résout à l'id de la ligne `activities` créée (pour la
- * mise en avant sur la page Training), rejette en cas d'échec réseau/DB —
- * l'appelant conserve alors le backup local et propose « Réessayer ».
+ * Envoie la séance : résout aux ids créés (`activities` pour la mise en avant
+ * Training, `workout_sessions` pour les photos), rejette en cas d'échec
+ * réseau/DB — l'appelant conserve alors le backup local et propose « Réessayer ».
  */
 export async function uploadLiveSession(
   snap: LiveSnapshot,
   onProgress: (pct: number) => void,
-): Promise<string | null> {
+): Promise<LiveUploadResult> {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     throw new Error('offline')
   }
@@ -85,5 +92,5 @@ export async function uploadLiveSession(
   if (e4) throw e4
   onProgress(STEP_PCT.aggregates)
 
-  return (act as { id: string } | null)?.id ?? null
+  return { activityId: (act as { id: string } | null)?.id ?? null, sessionId }
 }

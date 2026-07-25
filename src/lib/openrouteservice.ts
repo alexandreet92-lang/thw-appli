@@ -94,7 +94,22 @@ const MANEUVER_FR: Record<number, string> = {
   9: 'Demi-tour', 10: 'Arrivée', 11: 'Départ', 12: 'Restez à gauche', 13: 'Restez à droite',
 }
 
-export interface NavStep { lat: number; lng: number; instruction: string; type: number; distanceM: number }
+/** Libellé court FR d'une manœuvre d'après son type ORS. */
+export function maneuverShortFR(type: number): string {
+  return MANEUVER_FR[type] ?? 'Continuez'
+}
+
+export interface NavStep {
+  lat: number
+  lng: number
+  instruction: string
+  type: number
+  distanceM: number
+  /** Nom de voie ORS (ex. « D 103 », « Autoroute du Soleil ») — absent si non nommée. */
+  name?: string
+  /** Numéro de sortie de rond-point (roundabout_exits ORS) — absent hors rond-point. */
+  exitNumber?: number
+}
 export interface NavRoute { coords: SnappedPoint[]; steps: NavStep[]; distanceM: number; elevGain: number }
 
 // Récupère la géométrie + les étapes de navigation (manœuvres) pour un parcours.
@@ -106,12 +121,12 @@ export async function navigationRoute(waypoints: Waypoint[], sport: string): Pro
     {
       method: 'POST',
       headers: { 'Authorization': ORS_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ coordinates: waypoints.map(w => [w.lng, w.lat]), elevation: true, instructions: true, language: 'fr' }),
+      body: JSON.stringify({ coordinates: waypoints.map(w => [w.lng, w.lat]), elevation: true, instructions: true, language: 'fr', roundabout_exits: true }),
     },
   )
   if (!res.ok) throw new Error(`ORS ${res.status}`)
   const data = await res.json() as {
-    features: { geometry: { coordinates: number[][] }; properties: { segments: { steps: { distance: number; type: number; instruction: string; way_points: number[] }[] }[] } }[]
+    features: { geometry: { coordinates: number[][] }; properties: { segments: { steps: { distance: number; type: number; instruction: string; name?: string; exit_number?: number; way_points: number[] }[] }[] } }[]
   }
   const feature = data.features[0]
   const coords: SnappedPoint[] = feature.geometry.coordinates.map(([lng, lat, alt]) => ({ lat, lng, altitude: alt ?? 0 }))
@@ -127,7 +142,13 @@ export async function navigationRoute(waypoints: Waypoint[], sport: string): Pro
       const idx = st.way_points?.[0] ?? 0
       const c = coords[idx]
       if (!c) continue
-      steps.push({ lat: c.lat, lng: c.lng, instruction: st.instruction || MANEUVER_FR[st.type] || 'Continuez', type: st.type, distanceM: st.distance })
+      steps.push({
+        lat: c.lat, lng: c.lng,
+        instruction: st.instruction || MANEUVER_FR[st.type] || 'Continuez',
+        type: st.type, distanceM: st.distance,
+        name: st.name && st.name !== '-' ? st.name : undefined,
+        exitNumber: typeof st.exit_number === 'number' ? st.exit_number : undefined,
+      })
     }
   }
   return { coords, steps, distanceM, elevGain }

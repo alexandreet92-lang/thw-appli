@@ -17,6 +17,8 @@ import type { CyclingSettings } from '@/hooks/useCyclingSettings'
 import type { NavRouteInput } from '../RouteNavScreen'
 import type { SessionLap } from '@/types/session'
 import { primeLapBeep, playLapBeep, setLapBeepSoundEnabled } from '../lapBeep'
+import PhotoButton, { type PhotoButtonHandle } from '../PhotoButton'
+import PhotoPreviewToast from '../PhotoPreviewToast'
 import {
   LIVE_INIT, liveReducer, isStarted, isTimerRunning, effectivePhase,
   TIMER_INIT, timerStart, timerPause, timerResume, timerElapsedSec,
@@ -32,7 +34,6 @@ import {
 } from './useLocalBackup'
 
 const MapPage = dynamic(() => import('./MapPage'), { ssr: false })
-const RouteNavScreen = dynamic(() => import('../RouteNavScreen'), { ssr: false })
 
 const HOLD_LAP_MS = 2000
 const RING_CIRC = 2 * Math.PI * 58 // anneau 132⌀, r 58
@@ -60,12 +61,15 @@ export default function LiveShell({
   const [lapStart, setLapStart] = useState({ sec: 0, dist: 0 })
   const [summarySnap, setSummarySnap] = useState<LiveSnapshot | null>(null)
   const [pendingBackup, setPendingBackup] = useState<LiveBackup | null>(null)
-  const [navOpen, setNavOpen] = useState(false)
   const [flash, setFlash] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [hold, setHold] = useState<{ active: boolean; progress: number }>({ active: false, progress: 0 })
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+  // Clé de remontage du PhotoButton : vide sa file de photos en attente au reset.
+  const [photoKey, setPhotoKey] = useState(0)
 
   const pagesRef = useRef<HTMLDivElement>(null)
+  const photoRef = useRef<PhotoButtonHandle>(null)
   const bigLockRef = useRef<HTMLButtonElement>(null)
   const lastLockTap = useRef(0)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -240,6 +244,32 @@ export default function LiveShell({
   // Backup non envoyé au montage → proposer la reprise d'envoi.
   useEffect(() => { setPendingBackup(loadLiveBackup()) }, [])
 
+  // ── Blocage du retour navigateur pendant résumé / envoi (spec §7) ──
+  // Sentinelle pushState au montage du flux ; popstate → re-push + toast.
+  // Nettoyage au démontage : listener retiré, sentinelle dépilée si encore là
+  // (après router.push vers Training, l'état d'historique n'est plus le nôtre).
+  useEffect(() => {
+    if (!inSummaryFlow || typeof window === 'undefined') return
+    const pushSentinel = () => {
+      try {
+        window.history.pushState({ ...(window.history.state ?? {}), __lv2Block: true }, '', window.location.href)
+      } catch { /* historique indisponible */ }
+    }
+    const onPop = () => {
+      pushSentinel()
+      showToast('Termine ou supprime l’activité d’abord')
+    }
+    pushSentinel()
+    window.addEventListener('popstate', onPop)
+    return () => {
+      window.removeEventListener('popstate', onPop)
+      try {
+        const st = window.history.state as { __lv2Block?: boolean } | null
+        if (st?.__lv2Block) window.history.back()
+      } catch { /* ignore */ }
+    }
+  }, [inSummaryFlow, showToast])
+
   // ── Reset complet (suppression / retour idle) ──
   const resetAll = useCallback(() => {
     setTimer(TIMER_INIT)
@@ -250,6 +280,8 @@ export default function LiveShell({
     lastHydrationRef.current = 0
     lastNutritionRef.current = 0
     gpsWasOkRef.current = true
+    setPhotoPreviewUrl(null)
+    setPhotoKey(k => k + 1) // vide les photos en attente
     resetTracking()
   }, [resetTracking])
 
@@ -484,6 +516,7 @@ export default function LiveShell({
             gpsStatus={gps.status}
             gpsAccuracy={gps.accuracy}
             dataSize={settings.display.dataSize}
+            units={settings.units}
             onSensorChipTap={() => showToast('Appairage capteurs — bientôt disponible')}
           />
         </section>
@@ -501,10 +534,10 @@ export default function LiveShell({
             currentPos={currentPos}
             route={route}
             defaultLayer={settings.navigation.defaultMapType}
+            units={settings.units}
             onPrevPage={() => goPage(0)}
             onNextPage={() => goPage(2)}
             onMiniPause={handleMiniPause}
-            onOpenGuide={() => setNavOpen(true)}
           />
         </section>
         <section className="lv2-page">
@@ -518,6 +551,7 @@ export default function LiveShell({
             altitudeM={gps.currentAltitude}
             laps={laps}
             dataSize={settings.display.dataSize}
+            units={settings.units}
           />
         </section>
       </div>
@@ -784,6 +818,26 @@ export default function LiveShell({
         opacity: flash ? 1 : 0, transition: 'opacity 0.12s',
       }} />
 
+      {/* ── Bouton photo — discret sur la page carte, au-dessus du mini-pause.
+             Monté en permanence (display) : la file de photos en attente doit
+             survivre aux changements de page jusqu'au flush post-envoi. ── */}
+      <div
+        className="lv2-photo"
+        style={{
+          position: 'absolute', right: 18, bottom: 250, zIndex: 5,
+          display: started && onMapPage && !locked ? 'block' : 'none',
+        }}
+      >
+        <PhotoButton
+          key={photoKey}
+          ref={photoRef}
+          onPreview={setPhotoPreviewUrl}
+          currentLat={gps.currentLat ?? undefined}
+          currentLng={gps.currentLng ?? undefined}
+        />
+      </div>
+      {photoPreviewUrl && <PhotoPreviewToast url={photoPreviewUrl} onDismiss={() => setPhotoPreviewUrl(null)} />}
+
       {/* ── Sheet de sortie ── */}
       <ExitSheet
         open={machine.phase === 'stopping'}
@@ -798,27 +852,15 @@ export default function LiveShell({
       {inSummaryFlow && summarySnap && (
         <SummaryScreen
           snap={summarySnap}
+          units={settings.units}
           onUploadStart={() => send({ type: 'UPLOAD' })}
           onUploadDone={() => send({ type: 'UPLOAD_DONE' })}
           onUploadFail={() => send({ type: 'UPLOAD_FAIL' })}
           onDiscard={handleDiscardSummary}
+          flushPhotos={async sessionId => {
+            await photoRef.current?.flushToSession(sessionId, gps.currentLat ?? undefined, gps.currentLng ?? undefined)
+          }}
           onFinished={onFinished}
-        />
-      )}
-
-      {/* ── Guidage détaillé existant (panneau RouteNavScreen) ── */}
-      {navOpen && route && (
-        <RouteNavScreen
-          route={route}
-          sport="cycling"
-          showWatts
-          isDark={isDark}
-          hr={null}
-          watts={null}
-          elapsedSec={durationSec}
-          distanceDoneM={gps.distance}
-          gainDoneM={gps.elevationGain}
-          onClose={() => setNavOpen(false)}
         />
       )}
     </div>

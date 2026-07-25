@@ -7,6 +7,7 @@
 // ════════════════════════════════════════════════════════════════════
 import type { SessionLap } from '@/types/session'
 import { formatHMS, frNum } from './liveMachine'
+import { distFactor, altFactor, getUnitLabel, type LiveUnits } from '../units'
 
 interface Props {
   started: boolean
@@ -19,6 +20,7 @@ interface Props {
   /** Laps terminés, ordre chronologique (le rendu inverse : plus récent en haut). */
   laps: SessionLap[]
   dataSize: 'small' | 'normal' | 'large'
+  units?: LiveUnits
 }
 
 const SIZE_FACTOR: Record<Props['dataSize'], number> = { small: 0.88, normal: 1, large: 1.12 }
@@ -42,11 +44,13 @@ function Cell({ label, value, unit, dim, tileSize }: {
 }
 
 export default function LapsPage({
-  started, dim, lapNumber, lapSec, totalSec, distanceM, altitudeM, laps, dataSize,
+  started, dim, lapNumber, lapSec, totalSec, distanceM, altitudeM, laps, dataSize, units,
 }: Props) {
   const f = SIZE_FACTOR[dataSize]
   const tileSize = Math.round(40 * f)
   const newestFirst = [...laps].reverse()
+  const df = distFactor(units)
+  const af = altFactor(units)
 
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingTop: 'calc(env(safe-area-inset-top) + 64px)' }}>
@@ -61,7 +65,7 @@ export default function LapsPage({
         </div>
         <div className="lv2-num" style={{ fontSize: 13, fontWeight: 500, marginTop: 10, color: dim ? 'var(--live-dim-sub)' : 'var(--live-text-2)' }}>
           {started
-            ? `total ${formatHMS(totalSec)} · ${frNum(distanceM / 1000, 2)} km`
+            ? `total ${formatHMS(totalSec)} · ${frNum((distanceM / 1000) * df, 2)} ${getUnitLabel('km', units)}`
             : 'Les laps démarrent avec l’activité'}
         </div>
       </div>
@@ -74,7 +78,7 @@ export default function LapsPage({
         </div>
         <div className="lv2-row">
           <Cell label="Cadence" value="—" unit="rpm" dim={dim || !started} tileSize={tileSize} />
-          <Cell label="Altitude" value={altitudeM != null ? String(Math.round(altitudeM)) : '—'} unit="m" dim={false} tileSize={tileSize} />
+          <Cell label="Altitude" value={altitudeM != null ? String(Math.round(altitudeM * af)) : '—'} unit={getUnitLabel('m', units)} dim={false} tileSize={tileSize} />
         </div>
       </div>
 

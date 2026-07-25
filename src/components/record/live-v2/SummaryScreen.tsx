@@ -13,14 +13,18 @@ import { useSmSn } from '@/hooks/useSmSn'
 import { formatHMS, frNum } from './liveMachine'
 import { uploadLiveSession } from './saveLive'
 import { clearLiveBackup, type LiveSnapshot } from './useLocalBackup'
+import { distFactor, altFactor, getUnitLabel, type LiveUnits } from '../units'
 import UploadGauge, { type UploadGaugeState } from './UploadGauge'
 
 interface Props {
   snap: LiveSnapshot
+  units?: LiveUnits
   onUploadStart: () => void
   onUploadDone: () => void
   onUploadFail: () => void
   onDiscard: () => void
+  /** Envoi des photos prises pendant la séance vers la session créée (best effort). */
+  flushPhotos?: (sessionId: string) => Promise<void>
   /** Callback historique de fin (nettoyage de la page record) — avant navigation. */
   onFinished: () => void
 }
@@ -54,9 +58,11 @@ function projectTrack(pts: { lat: number; lng: number }[]): [number, number][] {
   ])
 }
 
-export default function SummaryScreen({ snap, onUploadStart, onUploadDone, onUploadFail, onDiscard, onFinished }: Props) {
+export default function SummaryScreen({ snap, units, onUploadStart, onUploadDone, onUploadFail, onDiscard, flushPhotos, onFinished }: Props) {
   const router = useRouter()
   const { compute } = useSmSn()
+  const df = distFactor(units)
+  const af = altFactor(units)
 
   const [foot, setFoot] = useState<'buttons' | UploadGaugeState>('buttons')
   const [progress, setProgress] = useState(0)
@@ -93,8 +99,12 @@ export default function SummaryScreen({ snap, onUploadStart, onUploadDone, onUpl
     setProgress(0)
     onUploadStart()
     try {
-      const id = await uploadLiveSession(snap, setProgress)
-      savedIdRef.current = id
+      const { activityId, sessionId } = await uploadLiveSession(snap, setProgress)
+      savedIdRef.current = activityId
+      // Photos prises pendant la séance → rattachées à la session créée.
+      if (sessionId && flushPhotos) {
+        try { await flushPhotos(sessionId) } catch (e) { console.error('[live-v2] photo flush error:', e) }
+      }
       clearLiveBackup()
       // 100 % affiché 350 ms avant la confirmation (spec §7).
       setTimeout(() => { setFoot('done'); onUploadDone() }, 350)
@@ -126,11 +136,11 @@ export default function SummaryScreen({ snap, onUploadStart, onUploadDone, onUpl
   const rows: { label: string; value: string; unit?: string }[][] = [
     [
       { label: 'Durée', value: formatHMS(snap.durationSec, true) },
-      { label: 'Distance', value: frNum(snap.distM / 1000, 2), unit: 'km' },
+      { label: 'Distance', value: frNum((snap.distM / 1000) * df, 2), unit: getUnitLabel('km', units) },
     ],
     [
-      { label: 'D+', value: String(Math.round(snap.elevM)), unit: 'm' },
-      { label: 'Vitesse moy', value: frNum(snap.avgSpeedKmh, 1), unit: 'km/h' },
+      { label: 'D+', value: String(Math.round(snap.elevM * af)), unit: getUnitLabel('m', units) },
+      { label: 'Vitesse moy', value: frNum(snap.avgSpeedKmh * df, 1), unit: getUnitLabel('km/h', units) },
     ],
     [
       { label: 'Watts moy', value: '—', unit: 'W' },
@@ -218,7 +228,7 @@ export default function SummaryScreen({ snap, onUploadStart, onUploadDone, onUpl
               className={armed ? 'lv2-pill lv2-pill-danger lv2-armed lv2-press' : 'lv2-pill lv2-pill-danger lv2-press'}
               onClick={handleDelete}
             >
-              {armed ? `Confirmer — supprimer ${frNum(snap.distM / 1000, 1)} km ?` : 'Supprimer l’activité'}
+              {armed ? `Confirmer — supprimer ${frNum((snap.distM / 1000) * df, 1)} ${getUnitLabel('km', units)} ?` : 'Supprimer l’activité'}
             </button>
           </>
         ) : (

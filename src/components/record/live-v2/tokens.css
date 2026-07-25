@@ -40,6 +40,13 @@
   --live-arrow-bg: rgba(9, 9, 11, 0.55); /* design-allow-color */
   --live-btn-map: rgba(20, 20, 23, 0.80); /* design-allow-color */
   --live-toast-bg: rgba(20, 20, 23, 0.94); /* design-allow-color */
+  --live-guide-panel: rgba(16, 16, 19, 0.92); /* design-allow-color */
+  --live-chip-bg: rgba(255, 255, 255, 0.09); /* design-allow-color */
+  /* Badges route (spec §4) — identiques dans les deux thèmes. */
+  --live-badge-dep-bg: #EAB308; /* design-allow-color */
+  --live-badge-dep-text: #1C1400; /* design-allow-color */
+  --live-badge-hwy-bg: #B91C1C; /* design-allow-color */
+  --live-badge-hwy-text: #FFFFFF; /* design-allow-color */
 }
 
 [data-live-shell][data-live-theme="light"] {
@@ -62,7 +69,20 @@
   --live-arrow-bg: rgba(255, 255, 255, 0.72); /* design-allow-color */
   --live-btn-map: rgba(255, 255, 255, 0.85); /* design-allow-color */
   --live-toast-bg: rgba(255, 255, 255, 0.96); /* design-allow-color */
+  --live-guide-panel: rgba(255, 255, 255, 0.94); /* design-allow-color */
+  --live-chip-bg: rgba(0, 0, 0, 0.07); /* design-allow-color */
 }
+
+/* ── Bouton photo (PhotoButton partagé, restylé aux tokens live) ───── */
+.lv2-photo button {
+  width: 48px !important;
+  height: 48px !important;
+  background: var(--live-float) !important;
+  border: 1px solid var(--live-hairline-2) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.lv2-photo svg { stroke: var(--live-text-2); }
 
 /* ── Shell ─────────────────────────────────────────────────────────── */
 [data-live-shell] {

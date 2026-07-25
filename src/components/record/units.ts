@@ -43,6 +43,16 @@ export function getUnitLabel(unit: string | undefined, units?: LiveUnits, paceUn
   return unit
 }
 
+/** Distance courte selon les réglages : « 350 m » / « 1,5 km » — ou ft / mi. */
+export function formatDistShortU(m: number, units?: LiveUnits): string {
+  if (units?.distance === 'imperial') {
+    const mi = m / 1609.344
+    if (mi >= 0.2) return `${mi.toFixed(1).replace('.', ',')} mi`
+    return `${Math.round((m * M_TO_FT) / 10) * 10} ft`
+  }
+  return m >= 1000 ? `${(m / 1000).toFixed(1).replace('.', ',')} km` : `${Math.round(m)} m`
+}
+
 /** Réglage « Taille des données » appliqué aux tuiles (px de la valeur). */
 export const SIZE_SCALE: Record<DataSize, { big: number; small: number }> = {
   small:  { big: 44, small: 24 },

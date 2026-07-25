@@ -26,8 +26,11 @@ import { createClient } from '@/lib/supabase/client'
 import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
 import StudioMarkdown from './StudioMarkdown'
 
-const NODE_W = 216
-const PORT_Y = 37   // ancrage vertical des ports (depuis le haut du nœud)
+// Nœuds = « bulles-logos » circulaires (façon Make) : diamètre fixe, libellé
+// dessous, port d'entrée à gauche / de sortie à droite (au centre vertical).
+const NODE_D = 66            // diamètre de la bulle
+const NODE_W = NODE_D        // (compat) largeur = diamètre
+const PORT_Y = NODE_D / 2    // ancrage vertical des ports = centre de la bulle
 
 const KIND_COLOR: Record<StudioNodeKind, string> = {
   trigger:    '#8B5CF6',
@@ -139,6 +142,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [scheduleSaving, setScheduleSaving] = useState(false)
   const [selId, setSelId] = useState<string | null>(null)
   const [selEdge, setSelEdge] = useState<string | null>(null)
+  const [hoverId, setHoverId] = useState<string | null>(null)   // bulle survolée → champ de rôle
+  const [pickerOpen, setPickerOpen] = useState(false)           // sélecteur « + » façon Make
+  const [pickerQuery, setPickerQuery] = useState('')
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -181,9 +187,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
   const pinchRef = useRef<{ dist: number; zoom: number } | null>(null)
 
-  // Mobile : inspecteur en sheet bas + palette repliable + barre compacte.
+  // Mobile : inspecteur en sheet bas + barre compacte.
   const [isMobile, setIsMobile] = useState(false)
-  const [paletteOpen, setPaletteOpen] = useState(true)
+  const [, setPaletteOpen] = useState(true)
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
     const f = () => { setIsMobile(mq.matches); setPaletteOpen(!mq.matches) }
@@ -241,7 +247,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const trigger = graph.nodes.find(n => n.kind === 'trigger') ?? null
 
   // ── Géométrie ──────────────────────────────────────────────
-  const portOut = (n: StudioNode) => ({ x: n.x + NODE_W, y: n.y + PORT_Y })
+  const portOut = (n: StudioNode) => ({ x: n.x + NODE_D, y: n.y + PORT_Y })
   const portIn  = (n: StudioNode) => ({ x: n.x,          y: n.y + PORT_Y })
   // Courbes : poignées horizontales proportionnelles à la distance, avec un
   // léger amorti vertical — rend les fils souples façon Make/Figma.
@@ -889,87 +895,82 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               )}
             </div>
 
-            {/* ── Palette : Outils vs Applications (repliable sur mobile) ── */}
-            {(!isMobile || paletteOpen) && (
-            <div style={{ position: 'absolute', top: isMobile ? 74 : 14, left: 12, zIndex: 8, width: isMobile ? 'calc(100% - 24px)' : 186, maxHeight: isMobile ? 'calc(100% - 90px)' : 'calc(100% - 28px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 7, boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.10)' }}>
-              {isMobile && (
-                <button onClick={() => setPaletteOpen(false)} aria-label="Fermer la palette"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '7px 9px', borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                  Ajouter un bloc
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-              )}
-              <div style={paletteHdr}>Outils</div>
-              {(['trigger', 'agent', 'merge', 'validation'] as StudioNodeKind[]).map(k => {
-                // RÈGLE : un seul Objectif par système.
-                const off = k === 'trigger' && !!trigger
-                return (
-                  <button key={k} onClick={() => { if (!off) addNode(k) }} disabled={off}
-                    title={off ? 'Un seul Objectif par système' : `Ajouter : ${KIND_LABEL[k]}`}
-                    style={{ ...paletteBtn, opacity: off ? 0.4 : 1, cursor: off ? 'default' : 'pointer' }}
-                    onMouseEnter={e => { if (!off) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
-                    <span style={{ width: 24, height: 24, borderRadius: 7, background: `color-mix(in srgb, ${KIND_COLOR[k]} 14%, transparent)`, color: KIND_COLOR[k], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <KindIcon kind={k} size={13} />
-                    </span>
-                    {k === 'trigger' ? 'Objectif' : KIND_LABEL[k]}
-                  </button>
-                )
-              })}
-
-              <div style={{ ...paletteHdr, marginTop: 6 }}>Applications</div>
-              {APP_CATALOG.map(app => (
-                <button key={app.id} onClick={() => addApp(app)} title={`Connecter : ${app.label} (${app.access})`}
-                  style={paletteBtn}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
-                  <span style={{ width: 24, height: 24, borderRadius: 7, background: `color-mix(in srgb, ${app.color} 15%, transparent)`, color: app.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <AppIcon id={app.id} size={14} />
-                  </span>
-                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.label}</span>
-                  <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: app.access === 'écriture' ? '#EF4444' : 'var(--text-dim)', background: app.access === 'écriture' ? 'rgba(239,68,68,0.10)' : 'var(--bg-hover)', padding: '2px 5px', borderRadius: 5, flexShrink: 0 }}>{app.access === 'écriture' ? 'écrit' : 'lit'}</span>
-                </button>
-              ))}
-
-              <div style={{ ...paletteHdr, marginTop: 6 }}>Apps externes</div>
-              {EXT_CATALOG.map(ext => {
-                const on = connectedProviders.has(ext.provider)
-                return (
-                  <button key={ext.id} onClick={() => addExt(ext)}
-                    title={on ? `Connecter : ${ext.label}` : `${ext.label} — à connecter dans Connexions`}
-                    style={{ ...paletteBtn, opacity: on ? 1 : 0.55 }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
-                    <span style={{ width: 24, height: 24, borderRadius: 7, background: `color-mix(in srgb, ${ext.color} 16%, transparent)`, color: ext.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <AppIcon id={ext.id} size={14} />
-                    </span>
-                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ext.label}</span>
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: on ? '#22C55E' : 'var(--border-mid)' }} title={on ? 'Connecté' : 'Non connecté'} />
-                  </button>
-                )
-              })}
-
-              <div style={{ height: 1, background: 'var(--border)', margin: '5px 4px 3px' }} />
-              <button onClick={() => { if (graph.nodes.length && !confirm('Remplacer le système actuel par l’exemple ?')) return; loadExample() }}
-                style={{ ...paletteBtn, color: 'var(--text-dim)', fontSize: 11.5 }}>
-                Charger l’exemple
+            {/* ── Barre flottante : « + » (sélecteur) · exemple · vider ── */}
+            <div style={{ position: 'absolute', top: 14, left: 12, zIndex: 8, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+              <button onClick={() => { setPickerQuery(''); setPickerOpen(o => !o) }} title="Ajouter un bloc"
+                style={{ width: 46, height: 46, borderRadius: '50%', background: 'linear-gradient(140deg, #8B5CF6, #6366F1)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(139,92,246,0.4)', transition: 'transform 0.15s' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.06)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" style={{ transform: pickerOpen ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s' }}><path d="M12 5v14M5 12h14"/></svg>
               </button>
               {graph.nodes.length > 0 && (
-                <button onClick={() => { if (confirm('Vider la toile ?')) clearCanvas() }}
-                  style={{ ...paletteBtn, color: 'var(--text-dim)', fontSize: 11.5 }}>
-                  Vider la toile
-                </button>
+                <div style={{ display: 'flex', gap: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, boxShadow: '0 6px 18px rgba(0,0,0,0.10)' }}>
+                  <button onClick={() => { if (confirm('Remplacer le système actuel par l’exemple ?')) loadExample() }} title="Charger l’exemple" style={zBtn}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v12H5.2L4 17.2z"/><path d="M8 9h8M8 12h5"/></svg>
+                  </button>
+                  <button onClick={() => { if (confirm('Vider la toile ?')) clearCanvas() }} title="Vider la toile" style={zBtn}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                  </button>
+                </div>
               )}
             </div>
-            )}
 
-            {/* Mobile : bouton d'ouverture de la palette */}
-            {isMobile && !paletteOpen && (
-              <button onClick={() => setPaletteOpen(true)} aria-label="Ajouter un bloc"
-                style={{ position: 'absolute', left: 12, bottom: 14, zIndex: 6, width: 46, height: 46, borderRadius: 14, border: 'none', background: '#8B5CF6', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(139,92,246,0.4)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-              </button>
-            )}
+            {/* ── Sélecteur « + » façon Make : outils, applications, apps externes ── */}
+            {pickerOpen && (() => {
+              const q = pickerQuery.trim().toLowerCase()
+              const match = (s: string) => !q || s.toLowerCase().includes(q)
+              const tools = (['trigger', 'agent', 'merge', 'validation'] as StudioNodeKind[])
+                .map(k => ({ k, label: k === 'trigger' ? 'Objectif' : KIND_LABEL[k], off: k === 'trigger' && !!trigger }))
+                .filter(t => match(t.label))
+              const apps = APP_CATALOG.filter(a => match(a.label))
+              const exts = EXT_CATALOG.filter(e => match(e.label))
+              const bubble = (color: string, node: React.ReactNode, dim?: boolean) => (
+                <span style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, background: `linear-gradient(140deg, ${color}, color-mix(in srgb, ${color} 60%, #000))`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: dim ? 0.55 : 1, boxShadow: '0 3px 10px rgba(0,0,0,0.2)' }}>{node}</span>
+              )
+              const row = (key: string, color: string, icon: React.ReactNode, label: string, sub: string | null, onClick: () => void, dim = false, tag?: string) => (
+                <button key={key} onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '7px 9px', borderRadius: 10, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans,sans-serif' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
+                  {bubble(color, icon, dim)}
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 650, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+                    {sub && <span style={{ display: 'block', fontSize: 10.5, color: 'var(--text-dim)' }}>{sub}</span>}
+                  </span>
+                  {tag && <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text-dim)', flexShrink: 0 }}>{tag}</span>}
+                </button>
+              )
+              return (
+                <>
+                  <div onClick={() => setPickerOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 9 }} />
+                  <div style={{ position: 'absolute', top: 14, left: 70, zIndex: 10, width: 300, maxHeight: 'calc(100% - 28px)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 12px 40px rgba(0,0,0,0.28)', overflow: 'hidden', animation: 'studio_in 0.16s ease' }}>
+                    <div style={{ padding: 10, borderBottom: '1px solid var(--border)' }}>
+                      <input autoFocus value={pickerQuery} onChange={e => setPickerQuery(e.target.value)} placeholder="Rechercher un outil ou une application…"
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'DM Sans,sans-serif' }} />
+                    </div>
+                    <div style={{ overflowY: 'auto', padding: 6 }}>
+                      {tools.length > 0 && <div style={paletteHdr}>Outils</div>}
+                      {tools.map(t => row(`t_${t.k}`, KIND_COLOR[t.k], <KindIcon kind={t.k} size={19} />, t.label,
+                        t.off ? 'Un seul par système' : null,
+                        () => { if (!t.off) { addNode(t.k); setPickerOpen(false) } }, t.off))}
+                      {apps.length > 0 && <div style={{ ...paletteHdr, marginTop: 4 }}>Applications</div>}
+                      {apps.map(app => row(app.id, app.color, <AppIcon id={app.id} size={19} />, app.label,
+                        app.access === 'écriture' ? 'Écriture' : 'Lecture',
+                        () => { addApp(app); setPickerOpen(false) }, false))}
+                      {exts.length > 0 && <div style={{ ...paletteHdr, marginTop: 4 }}>Apps externes</div>}
+                      {exts.map(ext => {
+                        const on = connectedProviders.has(ext.provider)
+                        return row(ext.id, ext.color, <AppIcon id={ext.id} size={19} />, ext.label,
+                          on ? 'Connecté' : 'À connecter dans Connexions',
+                          () => { addExt(ext); setPickerOpen(false) }, !on)
+                      })}
+                      {tools.length + apps.length + exts.length === 0 && (
+                        <div style={{ padding: '18px 10px', textAlign: 'center', fontSize: 12.5, color: 'var(--text-dim)' }}>Aucun résultat.</div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
 
             {/* ── Zone graphe ── */}
             <div ref={wrapRef} data-bg="1" onPointerDown={startPan}
@@ -1033,67 +1034,70 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   const iconId = extEntry?.id ?? appEntry?.id ?? null
                   const isApp = !!(extEntry || appEntry)
                   const col = extEntry?.color ?? KIND_COLOR[n.kind]
-                  // Type affiché en petit (distingue Objectif / Agent / Synthèse /
-                  // Validation) — et « App » pour les connecteurs d'applications.
-                  const typeTag = isApp ? 'App' : isTrigger ? null : KIND_LABEL[n.kind]
                   const subtitle = n.kind === 'source' ? SOURCE_LABEL[n.sourceKey ?? 'activities']
                     : n.kind === 'action' ? ACTION_LABEL[n.actionKey ?? 'planning_save']
                     : undefined
                   // Anneau du contrôle pré-run : rouge = bloquant, ambre = avertissement.
                   const iss = issues?.nodeIssues[n.id]
+                  const hasInput = n.kind !== 'trigger' && n.kind !== 'source'
+                  const roleBearing = n.kind === 'trigger' || n.kind === 'agent' || n.kind === 'merge' || n.kind === 'validation'
+                  const filled = isApp || isTrigger   // bulle pleine (logo blanc) vs contour
+                  const open = hoverId === n.id || selId === n.id
+                  const rolePh = n.kind === 'trigger' ? 'Décris l’objectif du système…'
+                    : n.kind === 'merge' ? 'Rôle de la synthèse…'
+                    : n.kind === 'validation' ? 'Que vérifier avant de continuer ?'
+                    : 'Rôle de cet agent…'
+                  const ringColor = st !== 'idle' && STATUS_RING[st] !== 'transparent' ? STATUS_RING[st]
+                    : selId === n.id ? `color-mix(in srgb, ${col} 32%, transparent)`
+                    : iss === 'error' ? 'rgba(239,68,68,0.22)' : iss === 'warning' ? 'rgba(245,158,11,0.24)' : null
                   return (
                     <div key={n.id} className="studio-node"
-                      style={{ position: 'absolute', left: n.x, top: n.y, width: NODE_W,
-                        background: 'var(--bg-card)',
-                        border: `1px solid ${selId === n.id ? col : iss === 'error' ? 'rgba(239,68,68,0.65)' : iss === 'warning' ? 'rgba(245,158,11,0.65)' : 'color-mix(in srgb, var(--text) 12%, transparent)'}`,
-                        borderRadius: 15, overflow: 'hidden', userSelect: 'none',
-                        boxShadow: st !== 'idle' && STATUS_RING[st] !== 'transparent'
-                          ? `0 0 0 3px ${STATUS_RING[st]}, 0 2px 6px rgba(0,0,0,0.07), 0 10px 26px rgba(0,0,0,0.10)`
-                          : selId === n.id
-                          ? `0 0 0 3px color-mix(in srgb, ${col} 22%, transparent), 0 2px 6px rgba(0,0,0,0.07), 0 10px 26px rgba(0,0,0,0.10)`
-                          : iss
-                          ? `0 0 0 3px ${iss === 'error' ? 'rgba(239,68,68,0.20)' : 'rgba(245,158,11,0.22)'}, 0 2px 6px rgba(0,0,0,0.07), 0 10px 26px rgba(0,0,0,0.10)`
-                          : '0 1px 3px rgba(0,0,0,0.06), 0 8px 22px rgba(0,0,0,0.08)' }}>
-                      {/* Objectif = en-tête PLEIN (allure de « logo » de départ) ;
-                          les autres blocs : simple liseré coloré du type. */}
-                      {isTrigger ? (
-                        <div style={{ height: 4, background: `linear-gradient(90deg, ${col}, #6366F1)` }} />
-                      ) : (
-                        <div style={{ height: 3, background: `linear-gradient(90deg, ${col}, color-mix(in srgb, ${col} 35%, transparent))` }} />
-                      )}
-                      {/* En-tête (poignée) */}
-                      <div onPointerDown={e => startNodeDrag(e, n)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: isTrigger ? '11px 11px 9px' : '9px 11px 7px', cursor: 'grab',
-                          background: isTrigger ? `linear-gradient(135deg, color-mix(in srgb, ${col} 18%, var(--bg-card)), var(--bg-card))` : 'transparent' }}>
-                        <span style={{ width: isTrigger ? 30 : 24, height: isTrigger ? 30 : 24, borderRadius: isTrigger ? 10 : 8, background: isTrigger ? `linear-gradient(135deg, ${col}, #6366F1)` : `color-mix(in srgb, ${col} 13%, transparent)`, color: isTrigger ? '#fff' : col, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: isTrigger ? `0 3px 10px color-mix(in srgb, ${col} 45%, transparent)` : 'none' }}>
-                          {iconId ? <AppIcon id={iconId} size={14} /> : <KindIcon kind={n.kind} size={isTrigger ? 15 : 13} />}
-                        </span>
-                        <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                          {typeTag && <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: col, lineHeight: 1 }}>{typeTag}</span>}
-                          <span style={{ fontSize: isTrigger ? 13.5 : 13, fontWeight: isTrigger ? 750 : 650, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{n.title}</span>
-                        </span>
-                        {(n.kind === 'agent' || n.kind === 'merge') && n.model && (
-                          <span style={{ fontSize: 9.5, fontWeight: 800, color: col, background: `color-mix(in srgb, ${col} 11%, transparent)`, padding: '2.5px 7px', borderRadius: 7, letterSpacing: '0.02em' }}>{MODEL_LABEL[n.model]}</span>
+                      onMouseEnter={() => setHoverId(n.id)} onMouseLeave={() => setHoverId(h => h === n.id ? null : h)}
+                      style={{ position: 'absolute', left: n.x, top: n.y, width: NODE_D, userSelect: 'none', zIndex: open ? 6 : 1 }}>
+                      {/* Bulle circulaire — juste le logo */}
+                      <div onPointerDown={e => startNodeDrag(e, n)} title={n.title}
+                        style={{ width: NODE_D, height: NODE_D, borderRadius: '50%', cursor: 'grab', position: 'relative',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: filled ? `linear-gradient(140deg, ${col}, color-mix(in srgb, ${col} 60%, #000))` : 'var(--bg-card)',
+                          color: filled ? '#fff' : col,
+                          border: `2px solid ${selId === n.id ? col : filled ? 'transparent' : `color-mix(in srgb, ${col} 55%, transparent)`}`,
+                          boxShadow: ringColor ? `0 0 0 4px ${ringColor}, 0 6px 18px rgba(0,0,0,0.22)` : '0 6px 18px rgba(0,0,0,0.22)' }}>
+                        {iconId ? <AppIcon id={iconId} size={28} /> : <KindIcon kind={n.kind} size={28} />}
+                        {/* Badge de statut (coin haut-droit) */}
+                        {st === 'running' && <span style={{ position: 'absolute', top: -3, right: -3, width: 16, height: 16, borderRadius: '50%', background: 'var(--bg-card)', border: `2px solid color-mix(in srgb, ${col} 25%, transparent)`, borderTopColor: col, animation: 'studio_spin 0.7s linear infinite' }} />}
+                        {st === 'done' && <span style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%', background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>}
+                        {st === 'waiting' && <span style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%', background: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'studio_pulse 1.4s ease infinite' }}><svg width="9" height="9" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg></span>}
+                        {st === 'error' && <span style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: '50%', background: '#EF4444', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</span>}
+                        {/* Ports */}
+                        {hasInput && (
+                          <span data-portin={n.id} className="studio-port" style={{ position: 'absolute', left: -7, top: NODE_D / 2 - 7, width: 14, height: 14, borderRadius: '50%', background: 'var(--bg)', border: `2.5px solid color-mix(in srgb, var(--text) 35%, transparent)`, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }} />
                         )}
-                        {st === 'running' && <span style={{ width: 10, height: 10, borderRadius: '50%', border: `2px solid color-mix(in srgb, ${col} 25%, transparent)`, borderTopColor: col, animation: 'studio_spin 0.7s linear infinite', flexShrink: 0 }} />}
-                        {st === 'done' && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5"/></svg>}
-                        {st === 'waiting' && <svg width="12" height="12" viewBox="0 0 24 24" fill="#F59E0B" style={{ flexShrink: 0, animation: 'studio_pulse 1.4s ease infinite' }}><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg>}
-                        {st === 'error' && <span style={{ color: '#EF4444', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>!</span>}
+                        <span onPointerDown={e => startConnect(e, n)} title="Relier" className="studio-port"
+                          style={{ position: 'absolute', right: -7, top: NODE_D / 2 - 7, width: 14, height: 14, borderRadius: '50%', background: col, border: '2.5px solid var(--bg-card)', cursor: 'crosshair', boxShadow: `0 0 0 2px color-mix(in srgb, ${col} 25%, transparent), 0 1px 3px rgba(0,0,0,0.2)` }} />
                       </div>
-                      {/* Sous-titre connecteur */}
-                      {subtitle && (
-                        <div style={{ padding: '0 11px 4px', fontSize: 10.5, fontWeight: 700, color: col, fontFamily: 'DM Sans,sans-serif' }}>{subtitle}</div>
-                      )}
-                      {/* Corps : aperçu rôle / streaming */}
-                      <div style={{ padding: '2px 11px 10px', fontSize: 11.5, color: 'var(--text-dim)', lineHeight: 1.45, maxHeight: 64, overflow: 'hidden', fontFamily: 'DM Sans,sans-serif' }}>
-                        {preview ? preview.slice(0, 200) : (n.role || (n.kind === 'trigger' ? 'Définis l’objectif…' : n.kind === 'source' ? 'Injecte ces données dans le système.' : n.kind === 'action' ? 'Agit sur l’app après ta validation.' : '—'))}
+                      {/* Libellé sous la bulle */}
+                      <div style={{ width: NODE_D + 52, marginLeft: -26, marginTop: 6, textAlign: 'center', pointerEvents: 'none' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.15, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>{n.title}</div>
+                        {(n.kind === 'agent' || n.kind === 'merge') && n.model && (
+                          <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: col, marginTop: 1 }}>{MODEL_LABEL[n.model]}</div>
+                        )}
                       </div>
-                      {/* Ports */}
-                      {n.kind !== 'trigger' && n.kind !== 'source' && (
-                        <span data-portin={n.id} className="studio-port" style={{ position: 'absolute', left: -8, top: PORT_Y - 7, width: 14, height: 14, borderRadius: '50%', background: 'var(--bg)', border: `2.5px solid color-mix(in srgb, var(--text) 35%, transparent)`, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }} />
+                      {/* Champ d'objectif/rôle — au survol ou à la sélection */}
+                      {open && roleBearing && (
+                        <div onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}
+                          style={{ position: 'absolute', top: NODE_D + 34, left: NODE_D / 2 - 112, width: 224, zIndex: 8, background: 'var(--bg-card)', border: `1px solid ${col}`, borderRadius: 12, padding: 8, boxShadow: '0 10px 30px rgba(0,0,0,0.28)', animation: 'studio_in 0.14s ease' }}>
+                          <textarea value={n.role ?? ''} onChange={e => patchNode(n.id, { role: e.target.value })} placeholder={rolePh}
+                            rows={3} style={{ width: '100%', boxSizing: 'border-box', resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 12, lineHeight: 1.45, fontFamily: 'DM Sans,sans-serif' }} />
+                          {preview && <div style={{ marginTop: 4, paddingTop: 6, borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-dim)', maxHeight: 60, overflow: 'hidden' }}>{preview.slice(0, 180)}</div>}
+                        </div>
                       )}
-                      <span onPointerDown={e => startConnect(e, n)} title="Relier" className="studio-port"
-                        style={{ position: 'absolute', right: -8, top: PORT_Y - 7, width: 14, height: 14, borderRadius: '50%', background: col, border: '2.5px solid var(--bg-card)', cursor: 'crosshair', boxShadow: `0 0 0 2px color-mix(in srgb, ${col} 25%, transparent), 0 1px 3px rgba(0,0,0,0.2)` }} />
+                      {open && !roleBearing && subtitle && (
+                        <div onPointerDown={e => e.stopPropagation()}
+                          style={{ position: 'absolute', top: NODE_D + 34, left: NODE_D / 2 - 100, width: 200, zIndex: 8, background: 'var(--bg-card)', border: `1px solid ${col}`, borderRadius: 12, padding: '8px 10px', boxShadow: '0 10px 30px rgba(0,0,0,0.28)', fontSize: 11.5, color: 'var(--text-mid)', fontFamily: 'DM Sans,sans-serif' }}>
+                          <div style={{ fontWeight: 700, color: col, marginBottom: 2 }}>{subtitle}</div>
+                          {n.kind === 'source' ? 'Injecte ces données dans le système.' : 'Agit sur l’app après ta validation.'}
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -1102,19 +1106,19 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               {/* ── Toile vide : grosse bulle « + » (façon Make) ── */}
               {graph.nodes.length === 0 && !building && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', gap: 16, padding: 20 }}>
-                  <button onClick={() => addNode('trigger')} title="Commencer par un Objectif"
-                    style={{ pointerEvents: 'auto', width: 84, height: 84, borderRadius: 24, cursor: 'pointer',
+                  <button onClick={() => { setPickerQuery(''); setPickerOpen(true) }} title="Ajouter un bloc"
+                    style={{ pointerEvents: 'auto', width: 84, height: 84, borderRadius: '50%', cursor: 'pointer',
                       background: 'color-mix(in srgb, #8B5CF6 8%, var(--bg-card))', border: '2px dashed color-mix(in srgb, #8B5CF6 45%, transparent)',
                       color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       boxShadow: '0 10px 30px rgba(139,92,246,0.14)', transition: 'transform 0.15s, background 0.15s' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.05)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.06)' }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}>
                     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                   </button>
-                  <div style={{ textAlign: 'center', maxWidth: 320 }}>
+                  <div style={{ textAlign: 'center', maxWidth: 300 }}>
                     <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>Toile vierge</p>
                     <p style={{ margin: '5px 0 0', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif' }}>
-                      Commence par poser un <b style={{ color: '#8B5CF6' }}>Objectif</b>, puis ajoute des <b>Outils</b> et des <b>Applications</b> depuis la palette à gauche — et relie-les.
+                      Appuie sur <b style={{ color: '#8B5CF6' }}>+</b> pour choisir un outil ou une application, et relie les bulles entre elles.
                     </p>
                     <button onClick={loadExample} style={{ pointerEvents: 'auto', marginTop: 12, padding: '7px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
                       ou charger un exemple
@@ -1715,7 +1719,6 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 const iconBtn: React.CSSProperties = { border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', padding: 4 }
 const zBtn: React.CSSProperties = { width: 30, height: 28, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
 const paletteHdr: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--text-dim)', padding: '3px 8px 2px' }
-const paletteBtn: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 9px', borderRadius: 9, border: 'none', cursor: 'pointer', background: 'transparent', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, fontFamily: 'DM Sans,sans-serif', textAlign: 'left' }
 const cta: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', flexShrink: 0 }
 const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: 'var(--text-mid)', margin: '0 0 5px', display: 'block' }
 const fld: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', outline: 'none', marginBottom: 14 }

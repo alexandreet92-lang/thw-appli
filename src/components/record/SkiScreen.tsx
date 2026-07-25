@@ -11,6 +11,7 @@ import SkiPage1 from './SkiPage1'
 import SkiPage2 from './SkiPage2'
 import SkiPage3 from './SkiPage3'
 import SkiSettings from './SkiSettings'
+import ExitConfirmOverlay from './ExitConfirmOverlay'
 import SkiSummary, { type SkiSnap } from './SkiSummary'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
 import { useSkiConfig } from '@/hooks/useSkiConfig'
@@ -41,6 +42,7 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
   const [skiType, setSkiType] = useState<'ski' | 'snowboard'>('ski')
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
   const [showSaveForm, setShowSaveForm] = useState(false)
   const [finishedSnap, setFinishedSnap] = useState<SkiSnap | null>(null)
   const snapRef = useRef<SkiSnap | null>(null)
@@ -137,7 +139,7 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
     <div style={{ position:'fixed', inset:0, zIndex:9999, backgroundColor:bg, color:text, display:'flex', flexDirection:'column', width:'100vw', height:'100dvh', paddingTop:'env(safe-area-inset-top)' }}>
       {/* Header */}
       <div style={{ height:48, flexShrink:0, display:'flex', alignItems:'center', padding:'0 12px', gap:8 }}>
-        <button onClick={onExit} aria-label={t('record.skiExit')} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <button onClick={() => { if (phase === 'ready') onExit(); else setExitConfirmOpen(true) }} aria-label={t('record.skiExit')} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         </button>
         <div style={{ display:'flex', gap:6, flex:1, justifyContent:'center' }}>
@@ -172,6 +174,8 @@ export default function SkiScreen({ onExit, onFinished }: Props) {
       {previewUrl && <PhotoPreviewToast url={previewUrl} onDismiss={() => setPreviewUrl(null)} />}
       <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={() => {}} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
       <SkiSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />
+
+      <ExitConfirmOverlay open={exitConfirmOpen} isDark={isDark} onQuit={() => { setExitConfirmOpen(false); onExit() }} onStay={() => setExitConfirmOpen(false)} />
 
       {gps.status === GPSStatus.denied && <GPSPermissionScreen isDark={isDark} />}
       {showPrePermission && <GPSPrePermissionScreen onAuthorize={handleGpsAuthorize} onDismiss={handleGpsDismiss} />}

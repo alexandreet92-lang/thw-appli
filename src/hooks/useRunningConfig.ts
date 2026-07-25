@@ -24,11 +24,8 @@ export function useRunningConfig(sport: string = 'running') {
         if (fetched && Array.isArray(fetched) && fetched.length > 0) {
           setPages(fetched)
         } else {
+          // Défauts en mémoire — aucune écriture au montage (persisté via savePages).
           setPages(DEFAULT_RUNNING_PAGES)
-          await sb.from('sport_page_configs').upsert(
-            { user_id: user.id, sport, pages: DEFAULT_RUNNING_PAGES },
-            { onConflict: 'user_id,sport' }
-          )
         }
       } catch { /* fallback */ }
       finally { setLoading(false) }

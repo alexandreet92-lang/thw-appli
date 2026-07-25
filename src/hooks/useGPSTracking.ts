@@ -67,6 +67,12 @@ function accuracyToStatus(accuracy: number): GPSStatus {
   return GPSStatus.poor
 }
 
+// Pente lissée : dérivée altitude/distance sur une fenêtre glissante d'environ
+// 30 m (au moins 15 m pour publier une valeur) — la dérivée point à point est
+// trop bruitée avec l'altitude GPS.
+const GRADIENT_WINDOW_M = 30
+const GRADIENT_MIN_SPAN_M = 15
+
 export function useGPSTracking(isActive: boolean): {
   gps: GPSState
   stopWatching: () => void
@@ -75,6 +81,8 @@ export function useGPSTracking(isActive: boolean): {
   const [state, setState] = useState<GPSState>(INITIAL_STATE)
   const watchIdRef   = useRef<number | null>(null)
   const lastPointRef = useRef<GPSPoint | null>(null)
+  const cumDistRef   = useRef(0)
+  const altWindowRef = useRef<{ d: number; alt: number }[]>([])
   const activeRef    = useRef(isActive)
   useEffect(() => { activeRef.current = isActive }, [isActive])
 
@@ -87,6 +95,8 @@ export function useGPSTracking(isActive: boolean): {
 
   const resetTracking = useCallback(() => {
     lastPointRef.current = null
+    cumDistRef.current = 0
+    altWindowRef.current = []
     setState(prev => ({
       ...prev,
       points: [],
@@ -121,28 +131,37 @@ export function useGPSTracking(isActive: boolean): {
           timestamp: pos.timestamp,
           speed,
         }
-        const status = accuracy != null
-          ? (state.status === GPSStatus.requesting ? GPSStatus.acquiring : accuracyToStatus(accuracy))
-          : GPSStatus.acquiring
         const speedKmh = speed != null && speed > 0 ? speed * 3.6 : 0
 
-        setState(prev => {
-          let distance       = prev.distance
-          let elevationGain  = prev.elevationGain
-          let gradient       = prev.gradient
-
-          if (lastPointRef.current) {
-            const d = haversine(lastPointRef.current, point)
-            if (d > 0.5 && d < 200) {
-              distance += d
-              if (point.altitude != null && lastPointRef.current.altitude != null) {
-                const dAlt = point.altitude - lastPointRef.current.altitude
-                if (dAlt > 0) elevationGain += dAlt
-                if (d > 0) gradient = (dAlt / d) * 100
-              }
+        // Déplacement + variation d'altitude calculés hors du updater React
+        // (mutations de refs interdites dans un updater — double invocation).
+        let dDelta = 0
+        let dAlt: number | null = null
+        if (lastPointRef.current) {
+          const d = haversine(lastPointRef.current, point)
+          if (d > 0.5 && d < 200) {
+            dDelta = d
+            if (point.altitude != null && lastPointRef.current.altitude != null) {
+              dAlt = point.altitude - lastPointRef.current.altitude
             }
           }
+        }
+        cumDistRef.current += dDelta
 
+        // Pente lissée sur ~30 m (fenêtre glissante distance/altitude).
+        let smoothedGradient: number | null = null
+        if (point.altitude != null && (dDelta > 0 || altWindowRef.current.length === 0)) {
+          const w = altWindowRef.current
+          w.push({ d: cumDistRef.current, alt: point.altitude })
+          while (w.length > 1 && cumDistRef.current - w[0].d > GRADIENT_WINDOW_M) w.shift()
+          const span = cumDistRef.current - w[0].d
+          if (span >= GRADIENT_MIN_SPAN_M) {
+            smoothedGradient = ((point.altitude - w[0].alt) / span) * 100
+          }
+        }
+        lastPointRef.current = point
+
+        setState(prev => {
           const newStatus = prev.status === GPSStatus.requesting
             ? GPSStatus.acquiring
             : (accuracy != null ? accuracyToStatus(accuracy) : prev.status)
@@ -153,15 +172,14 @@ export function useGPSTracking(isActive: boolean): {
             points: [...prev.points, point],
             currentSpeed: speedKmh,
             maxSpeed: Math.max(prev.maxSpeed, speedKmh),
-            distance,
-            elevationGain,
+            distance: prev.distance + dDelta,
+            elevationGain: dAlt != null && dAlt > 0 ? prev.elevationGain + dAlt : prev.elevationGain,
             currentAltitude: altitude,
-            gradient,
+            gradient: smoothedGradient ?? prev.gradient,
             currentLat: latitude,
             currentLng: longitude,
           }
         })
-        lastPointRef.current = point
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {

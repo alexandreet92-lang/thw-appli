@@ -33,6 +33,14 @@ function deepSet<T>(obj: T, path: string, value: unknown): T {
   return result as T
 }
 
+// La table `ski_settings` n'existe pas dans le schéma Supabase (seule
+// `running_settings` a été créée). Chaque upsert vers elle échouait et le
+// client instrumenté affichait « Échec de l'enregistrement » à l'ouverture.
+// Les réglages ski sont donc persistés dans `sport_page_configs` (table
+// existante, RLS user_id, UNIQUE (user_id, sport)) sous une clé sport
+// réservée — aucun hook de pages n'utilise cette clé.
+const SETTINGS_SPORT_KEY = 'ski_settings'
+
 export function useSkiSettings(onSaved?: () => void) {
   const supabase = createClient()
   const [settings, setSettings] = useState<SkiSettings>(DEFAULT_SKI_SETTINGS)
@@ -49,17 +57,15 @@ export function useSkiSettings(onSaved?: () => void) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
         const { data } = await supabase
-          .from('ski_settings').select('settings').eq('user_id', user.id).maybeSingle()
-        if (data?.settings) {
-          const merged = { ...DEFAULT_SKI_SETTINGS, ...(data.settings as Partial<SkiSettings>) } as SkiSettings
+          .from('sport_page_configs').select('pages')
+          .eq('user_id', user.id).eq('sport', SETTINGS_SPORT_KEY).maybeSingle()
+        if (data?.pages) {
+          const merged = { ...DEFAULT_SKI_SETTINGS, ...(data.pages as Partial<SkiSettings>) } as SkiSettings
           setSettings(merged); latestRef.current = merged
-        } else {
-          await supabase.from('ski_settings').upsert(
-            { user_id: user.id, settings: DEFAULT_SKI_SETTINGS },
-            { onConflict: 'user_id' }
-          )
         }
-      } catch { /* table absent — fallback */ }
+        // Pas de ligne → défauts en mémoire. Aucune écriture au montage :
+        // on ne persiste qu'au premier changement utilisateur.
+      } catch { /* pas de session — fallback défauts */ }
       finally { setLoaded(true) }
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -69,9 +75,9 @@ export function useSkiSettings(onSaved?: () => void) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { error } = await supabase.from('ski_settings').upsert(
-        { user_id: user.id, settings: next, updated_at: new Date().toISOString() },
-        { onConflict: 'user_id' }
+      const { error } = await supabase.from('sport_page_configs').upsert(
+        { user_id: user.id, sport: SETTINGS_SPORT_KEY, pages: next },
+        { onConflict: 'user_id,sport' }
       )
       if (!error) onSavedRef.current?.()
     } catch (e) { console.error('[useSkiSettings]', e) }

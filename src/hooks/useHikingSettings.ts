@@ -35,6 +35,14 @@ function deepSet<T>(obj: T, path: string, value: unknown): T {
   return result as T
 }
 
+// La table `hiking_settings` n'existe pas dans le schéma Supabase (seule
+// `running_settings` a été créée). Chaque upsert vers elle échouait et le
+// client instrumenté affichait « Échec de l'enregistrement » à l'ouverture.
+// Les réglages rando sont donc persistés dans `sport_page_configs` (table
+// existante, RLS user_id, UNIQUE (user_id, sport)) sous une clé sport
+// réservée — aucun hook de pages n'utilise cette clé.
+const SETTINGS_SPORT_KEY = 'hiking_settings'
+
 export function useHikingSettings(onSaved?: () => void) {
   const supabase = createClient()
   const [settings, setSettings] = useState<HikingSettings>(DEFAULT_HIKING_SETTINGS)
@@ -50,14 +58,16 @@ export function useHikingSettings(onSaved?: () => void) {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-        const { data } = await supabase.from('hiking_settings').select('settings').eq('user_id', user.id).maybeSingle()
-        if (data?.settings) {
-          const merged = { ...DEFAULT_HIKING_SETTINGS, ...(data.settings as Partial<HikingSettings>) } as HikingSettings
+        const { data } = await supabase
+          .from('sport_page_configs').select('pages')
+          .eq('user_id', user.id).eq('sport', SETTINGS_SPORT_KEY).maybeSingle()
+        if (data?.pages) {
+          const merged = { ...DEFAULT_HIKING_SETTINGS, ...(data.pages as Partial<HikingSettings>) } as HikingSettings
           setSettings(merged); latestRef.current = merged
-        } else {
-          await supabase.from('hiking_settings').upsert({ user_id: user.id, settings: DEFAULT_HIKING_SETTINGS }, { onConflict: 'user_id' })
         }
-      } catch { /* table absent */ }
+        // Pas de ligne → défauts en mémoire. Aucune écriture au montage :
+        // on ne persiste qu'au premier changement utilisateur.
+      } catch { /* pas de session — fallback défauts */ }
       finally { setLoaded(true) }
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -67,7 +77,10 @@ export function useHikingSettings(onSaved?: () => void) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { error } = await supabase.from('hiking_settings').upsert({ user_id: user.id, settings: next, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+      const { error } = await supabase.from('sport_page_configs').upsert(
+        { user_id: user.id, sport: SETTINGS_SPORT_KEY, pages: next },
+        { onConflict: 'user_id,sport' }
+      )
       if (!error) onSavedRef.current?.()
     } catch (e) { console.error('[useHikingSettings]', e) }
     finally { setSaving(false) }

@@ -11,6 +11,7 @@ import HikingPage1 from './HikingPage1'
 import HikingPage2 from './HikingPage2'
 import HikingPage3 from './HikingPage3'
 import HikingSettings from './HikingSettings'
+import ExitConfirmOverlay from './ExitConfirmOverlay'
 import SessionSummary from './SessionSummary'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
 import { useHikingConfig } from '@/hooks/useHikingConfig'
@@ -54,6 +55,7 @@ export default function HikingScreen({ onExit, onFinished }: Props) {
   const [elevationLossM, setElevationLossM] = useState(0)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
   const [showSaveForm, setShowSaveForm] = useState(false)
   const [finishedSession, setFinishedSession] = useState<FinishedSession | null>(null)
   const snapRef = useRef<SessionSnap | null>(null)
@@ -156,7 +158,7 @@ export default function HikingScreen({ onExit, onFinished }: Props) {
   return createPortal(
     <div style={{ position:'fixed', inset:0, zIndex:9999, backgroundColor:bg, color:text, display:'flex', flexDirection:'column', width:'100vw', height:'100dvh', paddingTop:'env(safe-area-inset-top)' }}>
       <div style={{ height:48, flexShrink:0, display:'flex', alignItems:'center', padding:'0 12px', position:'relative' }}>
-        <button onClick={onExit} aria-label={t('record.commonQuit')} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <button onClick={() => { if (phase === 'ready') onExit(); else setExitConfirmOpen(true) }} aria-label={t('record.commonQuit')} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         </button>
         <span style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', fontSize:13, color:labelColor, fontFamily:'DM Sans, sans-serif' }}>{t('record.hikingScreenTitle')}</span>
@@ -184,6 +186,8 @@ export default function HikingScreen({ onExit, onFinished }: Props) {
       {previewUrl && <PhotoPreviewToast url={previewUrl} onDismiss={() => setPreviewUrl(null)} />}
       <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={handleLap} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
       <HikingSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />
+
+      <ExitConfirmOverlay open={exitConfirmOpen} isDark={isDark} onQuit={() => { setExitConfirmOpen(false); onExit() }} onStay={() => setExitConfirmOpen(false)} />
 
       {gps.status === GPSStatus.denied && <GPSPermissionScreen isDark={isDark} />}
       {showPrePermission && <GPSPrePermissionScreen onAuthorize={handleGpsAuthorize} onDismiss={handleGpsDismiss} />}

@@ -55,13 +55,10 @@ export function useRunningSettings(onSaved?: () => void) {
         if (data?.settings) {
           const merged = { ...DEFAULT_RUNNING_SETTINGS, ...(data.settings as Partial<RunningSettings>) } as RunningSettings
           setSettings(merged); latestRef.current = merged
-        } else {
-          await supabase.from('running_settings').upsert(
-            { user_id: user.id, settings: DEFAULT_RUNNING_SETTINGS },
-            { onConflict: 'user_id' }
-          )
         }
-      } catch { /* table absent — fallback */ }
+        // Pas de ligne → défauts en mémoire. Aucune écriture au montage :
+        // on ne persiste qu'au premier changement utilisateur.
+      } catch { /* pas de session — fallback défauts */ }
       finally { setLoaded(true) }
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

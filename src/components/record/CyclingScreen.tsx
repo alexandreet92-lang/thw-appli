@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import type { NavRouteInput } from './RouteNavScreen'
@@ -11,8 +11,10 @@ import CyclingControls, { type CyclingPhase } from './CyclingControls'
 import GPSPermissionScreen from './GPSPermissionScreen'
 import GPSPrePermissionScreen from './GPSPrePermissionScreen'
 import CyclingPageData from './CyclingPageData'
-import { primeLapBeep, playLapBeep } from './lapBeep'
+import { primeLapBeep, playLapBeep, setLapBeepSoundEnabled } from './lapBeep'
 import CyclingSettings from './CyclingSettings'
+import AutoPauseBadge from './AutoPauseBadge'
+import ExitConfirmOverlay from './ExitConfirmOverlay'
 import SessionSummary from './SessionSummary'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
 import { useSegmentDetection } from '@/hooks/useSegmentDetection'
@@ -69,6 +71,7 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
   const [lapStartDistance, setLapStartDistance] = useState(0)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
   const [showSaveForm, setShowSaveForm] = useState(false)
   const [finishedSession, setFinishedSession] = useState<FinishedSession | null>(null)
   const snapRef = useRef<SessionSnap | null>(null)
@@ -80,7 +83,8 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
   const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
-  useWakeLock(phase !== 'ready')
+  // Réglage display.keepAwake : wake lock actif uniquement si autorisé.
+  useWakeLock(phase !== 'ready' && settings.display.keepAwake)
   // Auto-pause : sous le seuil (km/h, défaut 5) la séance se met en pause
   // automatiquement et reprend dès que la vitesse repasse au-dessus.
   const autoPauseOn = settings.recording.autoPause
@@ -90,6 +94,32 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
     if (phase !== 'running' || !autoPauseOn) { setAutoPaused(false); return }
     setAutoPaused((gps.currentSpeed ?? 0) < autoPauseTh)
   }, [gps.currentSpeed, phase, autoPauseOn, autoPauseTh])
+
+  // Réglages alertes — son (module lapBeep) + vibration.
+  const soundOn = settings.alerts.sound
+  const vibrationOn = settings.alerts.vibration
+  useEffect(() => {
+    setLapBeepSoundEnabled(soundOn)
+    return () => setLapBeepSoundEnabled(true) // ne pas laisser le mute fuiter hors de l'écran
+  }, [soundOn])
+  const vibrate = useCallback((pattern: number | number[]) => {
+    if (!vibrationOn) return
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try { navigator.vibrate(pattern) } catch { /* non supporté */ }
+    }
+  }, [vibrationOn])
+
+  // Rappels hydratation / nutrition + alerte perte GPS → bandeau transitoire.
+  const [noticeKey, setNoticeKey] = useState<string | null>(null)
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const showNotice = useCallback((key: string) => {
+    setNoticeKey(key)
+    playLapBeep()
+    vibrate([120, 80, 120])
+    if (noticeTimer.current) clearTimeout(noticeTimer.current)
+    noticeTimer.current = setTimeout(() => setNoticeKey(null), 6000)
+  }, [vibrate])
+  useEffect(() => () => { if (noticeTimer.current) clearTimeout(noticeTimer.current) }, [])
   const stopwatch = useStopwatch(phase === 'running' && !autoPaused)
   const { activeEffort, completedEfforts } = useSegmentDetection(
     gps.currentLat ?? null, gps.currentLng ?? null, 'cycling', phase === 'running'
@@ -151,14 +181,19 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
 
   // primeLapBeep : l'AudioContext doit naître sur un geste utilisateur (iOS)
   // pour que le bip de lap soit audible ensuite.
-  const handleStart  = () => { primeLapBeep(); resetTracking(); setStartedAt(Date.now()); setPhase('running') }
+  const handleStart  = () => {
+    primeLapBeep(); resetTracking()
+    lastHydrationRef.current = 0; lastNutritionRef.current = 0; gpsWasOkRef.current = true
+    setStartedAt(Date.now()); setPhase('running')
+  }
   const handlePause  = () => setPhase('paused')
   const handleResume = () => setPhase('running')
   const handleStop   = () => setPhase('confirming_stop')
 
   const handleLap = () => {
     if (currentLapSec === 0) return
-    playLapBeep()
+    playLapBeep() // muet si alerts.sound est désactivé (setLapBeepSoundEnabled)
+    vibrate(200)  // alerts.vibration
     const lap: SessionLap = {
       number: laps.length + 1,
       duration: currentLapSec,
@@ -170,6 +205,44 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
     setCurrentLapSec(0)
     setLapStartDistance(gps.distance)
   }
+
+  // Auto-lap (recording.autoLap, en km) : déclenche le même handleLap (bip +
+  // vibration inclus) dès que la distance du lap courant atteint le seuil.
+  const autoLapKm = settings.recording.autoLap
+  const handleLapRef = useRef(handleLap)
+  handleLapRef.current = handleLap
+  useEffect(() => {
+    if (phase !== 'running' || autoLapKm <= 0) return
+    if (currentLapDistance >= autoLapKm * 1000) handleLapRef.current()
+  }, [currentLapDistance, autoLapKm, phase])
+
+  // Rappels hydratation / nutrition (alerts.*Interval, minutes de chrono).
+  const hydrationMin = settings.alerts.hydrationInterval
+  const nutritionMin = settings.alerts.nutritionInterval
+  const lastHydrationRef = useRef(0)
+  const lastNutritionRef = useRef(0)
+  useEffect(() => {
+    if (phase !== 'running') return
+    const sec = stopwatch.seconds
+    if (hydrationMin > 0) {
+      const n = Math.floor(sec / (hydrationMin * 60))
+      if (n > lastHydrationRef.current) { lastHydrationRef.current = n; showNotice('record.reminderHydration') }
+    }
+    if (nutritionMin > 0) {
+      const n = Math.floor(sec / (nutritionMin * 60))
+      if (n > lastNutritionRef.current) { lastNutritionRef.current = n; showNotice('record.reminderNutrition') }
+    }
+  }, [stopwatch.seconds, phase, hydrationMin, nutritionMin, showNotice])
+
+  // Alerte perte de signal GPS (alerts.gpsLost) — sur transition ok → perdu.
+  const gpsLostOn = settings.alerts.gpsLost
+  const gpsWasOkRef = useRef(true)
+  useEffect(() => {
+    if (phase !== 'running' || !gpsLostOn) return
+    const lost = gps.status === GPSStatus.poor || gps.status === GPSStatus.error || gps.status === GPSStatus.unavailable
+    if (lost && gpsWasOkRef.current) { gpsWasOkRef.current = false; showNotice('record.alertGpsLost') }
+    if (!lost) gpsWasOkRef.current = true
+  }, [gps.status, phase, gpsLostOn, showNotice])
 
   // TERMINER pressed → snapshot GPS state, stop tracking, show form
   const handleOpenSaveForm = () => {
@@ -261,6 +334,8 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
     }
 
     setShowSaveForm(false)
+    // Réglage postRide.showSummary : si désactivé, on ferme directement.
+    if (!settings.postRide.showSummary) { onFinished(); return }
     setFinishedSession({
       id: savedId,
       started_at: snap.startedAtISO,
@@ -282,7 +357,11 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
 
   if (!mounted) return null
 
-  const isDark = document.documentElement.classList.contains('dark')
+  // Réglage display.theme : auto = thème système, sinon forçage clair/sombre.
+  const systemDark = document.documentElement.classList.contains('dark')
+  const isDark = settings.display.theme === 'dark' ? true
+    : settings.display.theme === 'light' ? false
+    : systemDark
   const bg         = isDark ? '#0A0A0A' : '#FFFFFF'
   const text       = isDark ? '#FFFFFF' : '#0A0A0A'
   const labelColor = isDark ? 'rgba(255,255,255,0.40)' : '#8C8C8C'
@@ -304,11 +383,14 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
         display: 'flex', alignItems: 'center', padding: '0 12px',
         position: 'relative',
       }}>
-        <button onClick={onExit} aria-label={t('record.commonQuit')} style={{
-          width: 36, height: 36, borderRadius: '50%',
-          background: btnBg, color: text, border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
+        <button
+          onClick={() => { if (phase === 'ready') onExit(); else setExitConfirmOpen(true) }}
+          aria-label={t('record.commonQuit')}
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: btnBg, color: text, border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
@@ -382,11 +464,15 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
                   durationSec={stopwatch.seconds}
                   distanceM={gps.distance}
                   speedKmh={gps.currentSpeed}
+                  maxSpeedKmh={gps.maxSpeed}
                   elevationGainM={gps.elevationGain}
                   altitudeM={gps.currentAltitude ?? 0}
+                  gradientPercent={gps.gradient}
                   currentLapSec={currentLapSec}
                   currentLapDistanceM={currentLapDistance}
                   dataFontFamily={dataFontFamily}
+                  units={settings.units}
+                  dataSize={settings.display.dataSize}
                 />
               )}
             </div>
@@ -437,6 +523,17 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
         )}
       </div>
 
+      {/* Badge auto-pause — visible quelle que soit la page active */}
+      <AutoPauseBadge active={autoPaused} isDark={isDark} />
+
+      {/* Bandeau transitoire : rappels hydratation/nutrition, perte GPS */}
+      {noticeKey && (
+        <div style={{ position: 'fixed', top: 'calc(100px + env(safe-area-inset-top))', left: 16, right: 16, zIndex: 1000, background: 'rgba(6,182,212,0.92)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}> {/* design-allow-color */}
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff', flexShrink: 0 }} /> {/* design-allow-color */}
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{t(noticeKey)}</span> {/* design-allow-color */}
+        </div>
+      )}
+
       {/* Active segment effort bandeau */}
       {activeEffort && (
         <div style={{ position: 'fixed', top: 'calc(56px + env(safe-area-inset-top))', left: 16, right: 16, zIndex: 1000, background: 'rgba(6,182,212,0.92)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -478,6 +575,13 @@ export default function CyclingScreen({ onExit, onFinished, route }: Props) {
         isDark={isDark}
         settings={settings}
         updateSetting={updateSetting}
+      />
+
+      <ExitConfirmOverlay
+        open={exitConfirmOpen}
+        isDark={isDark}
+        onQuit={() => { setExitConfirmOpen(false); onExit() }}
+        onStay={() => setExitConfirmOpen(false)}
       />
 
       {gps.status === GPSStatus.denied && (

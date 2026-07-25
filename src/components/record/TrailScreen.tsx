@@ -13,6 +13,8 @@ import TrailPage2 from './TrailPage2'
 import TrailPage3 from './TrailPage3'
 import TrailPage4 from './TrailPage4'
 import TrailSettings from './TrailSettings'
+import AutoPauseBadge from './AutoPauseBadge'
+import ExitConfirmOverlay from './ExitConfirmOverlay'
 import SessionSummary from './SessionSummary'
 import SessionSaveForm, { type SessionFormData } from './SessionSaveForm'
 import { savePendingSession } from '@/lib/offlineStorage'
@@ -60,6 +62,7 @@ export default function TrailScreen({ onExit, onFinished, route }: Props) {
   const [elevationLossM, setElevationLossM] = useState(0)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
   const [showSaveForm, setShowSaveForm] = useState(false)
   const [finishedSession, setFinishedSession] = useState<FinishedSession | null>(null)
   const snapRef = useRef<SessionSnap | null>(null)
@@ -71,7 +74,8 @@ export default function TrailScreen({ onExit, onFinished, route }: Props) {
   const dataFontFamily = (FONT_OPTIONS.find(f => f.id === (settings.display.dataFont ?? 'system')) ?? FONT_OPTIONS[0]).fontFamily
 
   const { gps, stopWatching, resetTracking } = useGPSTracking(gpsEnabled)
-  useWakeLock(phase !== 'ready')
+  // Réglage display.keepAwake : wake lock actif uniquement si autorisé.
+  useWakeLock(phase !== 'ready' && settings.display.keepAwake)
   const autoPauseOn = settings.recording.autoPause
   const autoPauseTh = settings.recording.autoPauseThreshold
   const [autoPaused, setAutoPaused] = useState(false)
@@ -133,6 +137,15 @@ export default function TrailScreen({ onExit, onFinished, route }: Props) {
     setLapElevGain(0); setLapElevLoss(0); lapPrevAltRef.current = gps.currentAltitude
   }
 
+  // Auto-lap (recording.autoLap, en km) : déclenche le même handleLap.
+  const autoLapKm = settings.recording.autoLap
+  const handleLapRef = useRef(handleLap)
+  handleLapRef.current = handleLap
+  useEffect(() => {
+    if (phase !== 'running' || autoLapKm <= 0) return
+    if (currentLapDistance >= autoLapKm * 1000) handleLapRef.current()
+  }, [currentLapDistance, autoLapKm, phase])
+
   const handleOpenSaveForm = () => {
     const endedAt = new Date()
     const durationSec = stopwatch.seconds
@@ -182,7 +195,7 @@ export default function TrailScreen({ onExit, onFinished, route }: Props) {
   return createPortal(
     <div style={{ position:'fixed', inset:0, zIndex:9999, backgroundColor:bg, color:text, display:'flex', flexDirection:'column', width:'100vw', height:'100dvh', paddingTop:'env(safe-area-inset-top)' }}>
       <div style={{ height:48, flexShrink:0, display:'flex', alignItems:'center', padding:'0 12px', position:'relative' }}>
-        <button onClick={onExit} aria-label={t('record.trailExit')} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <button onClick={() => { if (phase === 'ready') onExit(); else setExitConfirmOpen(true) }} aria-label={t('record.trailExit')} style={{ width:36, height:36, borderRadius:'50%', background:btnBg, color:text, border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
         </button>
         <span style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', fontSize:13, color:labelColor, fontFamily:'DM Sans, sans-serif' }}>Trail</span>
@@ -203,6 +216,9 @@ export default function TrailScreen({ onExit, onFinished, route }: Props) {
         </div>
       </div>
 
+      {/* Badge auto-pause — visible quelle que soit la page active */}
+      <AutoPauseBadge active={autoPaused} isDark={isDark} />
+
       {/* Navigation plein écran (dispo même sans parcours ; guidage si parcours) */}
       {navOpen && (
         <RouteNavScreen route={route ?? null} sport="trail" showWatts={false} isDark={isDark} hr={null} elapsedSec={stopwatch.seconds} distanceDoneM={gps.distance} gainDoneM={gps.elevationGain} onClose={() => setNavOpen(false)} />
@@ -210,6 +226,8 @@ export default function TrailScreen({ onExit, onFinished, route }: Props) {
 
       <CyclingControls phase={phase} gpsStatus={gps.status} gpsAccuracy={gps.accuracy} onStart={handleStart} onPause={handlePause} onResume={handleResume} onLap={handleLap} onFinish={handleStop} onConfirmFinish={handleOpenSaveForm} isDark={isDark} />
       <TrailSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} isDark={isDark} settings={settings} updateSetting={updateSetting} />
+
+      <ExitConfirmOverlay open={exitConfirmOpen} isDark={isDark} onQuit={() => { setExitConfirmOpen(false); onExit() }} onStay={() => setExitConfirmOpen(false)} />
 
       {gps.status === GPSStatus.denied && <GPSPermissionScreen isDark={isDark} />}
       {showPrePermission && <GPSPrePermissionScreen onAuthorize={handleGpsAuthorize} onDismiss={handleGpsDismiss} />}

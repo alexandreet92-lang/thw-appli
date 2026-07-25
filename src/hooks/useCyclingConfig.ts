@@ -25,11 +25,9 @@ export function useCyclingConfig(sport: string = 'cycling') {
         if (fetched && Array.isArray(fetched) && fetched.length > 0) {
           setPages(fetched)
         } else {
+          // Pas de ligne → défauts en mémoire. Aucune écriture au montage :
+          // on ne persiste qu'au premier changement utilisateur (savePages).
           setPages(DEFAULT_PAGES)
-          await sb.from('sport_page_configs').upsert(
-            { user_id: user.id, sport, pages: DEFAULT_PAGES },
-            { onConflict: 'user_id,sport' }
-          )
         }
       } catch {
         /* table absente ou pas de session — fallback DEFAULT_PAGES */

@@ -11,6 +11,15 @@ interface WebkitWindow { webkitAudioContext?: AudioContextCtor }
 
 let ctx: AudioContext | null = null
 
+// Réglage utilisateur alerts.sound — synchronisé par l'écran live actif.
+// false (défaut du réglage) → aucun son n'est joué, quel que soit l'appelant.
+let soundEnabled = true
+
+/** Synchronise le réglage alerts.sound de l'écran live actif. */
+export function setLapBeepSoundEnabled(enabled: boolean): void {
+  soundEnabled = enabled
+}
+
 function getContext(): AudioContext | null {
   if (typeof window === 'undefined') return null
   if (!ctx) {
@@ -46,6 +55,7 @@ function tone(ac: AudioContext, startAt: number, freq: number, durSec: number, g
 
 /** Bip principal 880 Hz (150 ms) + bip court de confirmation. */
 export function playLapBeep(): void {
+  if (!soundEnabled) return
   const ac = getContext()
   if (!ac) return
   try {

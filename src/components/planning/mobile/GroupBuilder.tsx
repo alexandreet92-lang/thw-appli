@@ -6,13 +6,13 @@
 import { useState, Fragment } from 'react'
 import type { ReactNode } from 'react'
 import { IconPlus, IconRefresh, IconDotsVertical, IconTrash, IconSearch, IconArrowNarrowDown } from '@tabler/icons-react'
-import { searchExercises } from '../exercises'
+import { searchExercises, type ExoDefinition } from '../exercises'
 import {
   type ExerciseItem, type ExoCircuit, itemFromDef, customItem, genCircuitId, fmtSec,
 } from './strength'
 import { ExerciseCard } from './ExerciseCard'
 import { ExercisePicker } from './ExercisePicker'
-import { Stepper } from './ui'
+import { Stepper, FieldLabel } from './ui'
 import { CIRCUIT_TYPES, type CircuitType } from '@/app/planning/page'
 import { useI18n } from '@/lib/i18n'
 
@@ -31,6 +31,8 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
 }) {
   const { t: tr } = useI18n()
   const [adding, setAdding] = useState<string | null>(null)
+  // Remplacement d'un exercice : rouvre le sélecteur en conservant reps/charge/repos.
+  const [replacing, setReplacing] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [menu, setMenu] = useState<string | null>(null)
   // Sélecteur de type de circuit : 'new' = ajout, ou un id de circuit = changement.
@@ -41,6 +43,15 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
   const addItem = (item: ExerciseItem, cid: string) => { setExercises([...exercises, item]); setMap({ ...map, [item.id]: cid }); setAdding(null); setQuery('') }
   const updateExo = (it: ExerciseItem) => setExercises(exercises.map(e => e.id === it.id ? it : e))
   const removeExo = (id: string) => { setExercises(exercises.filter(e => e.id !== id)); const m = { ...map }; delete m[id]; setMap(m) }
+  // Remplace l'exercice (nom/catégorie) en GARDANT séries/reps/charge/repos/notes.
+  const replaceWithDef = (id: string, def: ExoDefinition) => {
+    setExercises(exercises.map(e => e.id === id ? { ...e, exoId: def.id, name: def.name, category: def.category } : e))
+    setReplacing(null); setQuery('')
+  }
+  const replaceWithCustom = (id: string, name: string) => {
+    setExercises(exercises.map(e => e.id === id ? { ...e, exoId: 'custom', name } : e))
+    setReplacing(null); setQuery('')
+  }
   function addCircuit(typeId?: CircuitType) {
     const n = circuits.length + 1
     if (variant === 'hyrox') {
@@ -69,12 +80,40 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
 
   const results = searchExercises(query, variant === 'hyrox' ? 'hyrox' : undefined).slice(0, 8)
 
+  // Panneau de recherche hyrox (stations + nom libre) — partagé ajout / remplacement.
+  const hyroxSearchPanel = (onDef: (def: ExoDefinition) => void, onCustomName: (name: string) => void) => (
+    <div style={{ marginTop: 10, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', background: 'var(--se-card)', padding: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <IconSearch size={15} color="var(--se-dim)" />
+        <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder={tr('planning.searchOrFreeName')}
+          style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: 'var(--se-text)' }} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
+        {results.map(def => (
+          <button key={def.id} type="button" onClick={() => onDef(def)}
+            style={{ textAlign: 'left', border: 'none', background: 'transparent', color: 'var(--se-text)', fontSize: 13, padding: '7px 6px', borderRadius: 8, cursor: 'pointer' }}>{def.name}</button>
+        ))}
+        {query.trim() && (
+          <button type="button" onClick={() => onCustomName(query.trim())}
+            style={{ textAlign: 'left', border: '1px dashed var(--se-rule)', background: 'transparent', color: accent, fontSize: 13, fontWeight: 600, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', marginTop: 2 }}>{tr('planning.createQuoted', { q: query.trim() })}</button>
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <div>
       {presets}
       {banner}
 
-      {circuits.map(c => (
+      {circuits.map((c, ci) => {
+        const ctype = (c.type ?? 'series') as string
+        const isLastCircuit = ci === circuits.length - 1
+        // Récup entre tours : pertinente dès que le circuit enchaîne des tours
+        // (Lap / Superset / Hyrox) — pas en Séries (repos porté par l'exo) ni
+        // EMOM/Tabata (cadence imposée).
+        const showRoundRest = variant === 'hyrox' || ctype === 'circuit' || ctype === 'superset'
+        return (
         <div key={c.id} style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: 12, marginBottom: 14, background: 'var(--se-card2)' }}>
           {/* En-tête de groupe */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -127,13 +166,50 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
             </div>
           )}
 
+          {/* Récup entre tours / récup avant le circuit suivant */}
+          {(showRoundRest || !isLastCircuit) && (
+            <div style={{ display: 'grid', gridTemplateColumns: showRoundRest && !isLastCircuit ? '1fr 1fr' : '1fr', gap: 10, marginBottom: 12 }}>
+              {showRoundRest && (
+                <div>
+                  <FieldLabel>{tr('planning.restBetweenRounds')}</FieldLabel>
+                  <Stepper value={String(c.restBetweenRoundsSec ?? 0)} unit="s"
+                    onChange={v => updateCircuit(c.id, { restBetweenRoundsSec: Math.max(0, parseInt(v) || 0) })}
+                    onDec={() => updateCircuit(c.id, { restBetweenRoundsSec: Math.max(0, (c.restBetweenRoundsSec ?? 0) - 15) })}
+                    onInc={() => updateCircuit(c.id, { restBetweenRoundsSec: (c.restBetweenRoundsSec ?? 0) + 15 })} />
+                </div>
+              )}
+              {!isLastCircuit && (
+                <div>
+                  <FieldLabel>{tr('planning.restAfterCircuit')}</FieldLabel>
+                  <Stepper value={String(c.restAfterCircuitSec ?? 0)} unit="s"
+                    onChange={v => updateCircuit(c.id, { restAfterCircuitSec: Math.max(0, parseInt(v) || 0) })}
+                    onDec={() => updateCircuit(c.id, { restAfterCircuitSec: Math.max(0, (c.restAfterCircuitSec ?? 0) - 15) })}
+                    onInc={() => updateCircuit(c.id, { restAfterCircuitSec: (c.restAfterCircuitSec ?? 0) + 15 })} />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Exercices du groupe — flèche d'enchaînement si repos court (≤30s) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {exosOf(c.id).map((e, i, arr) => {
               const chained = i < arr.length - 1 && (c.type === 'superset' || (c.type === 'circuit' && (e.restSec ?? 0) <= 30))
+              // RÈGLE : le dernier exercice d'un circuit (hors Séries) n'affiche pas
+              // son « Repos après » — la récup de tour / circuit prend le relais.
+              const hideRest = i === arr.length - 1 && ctype !== 'series'
               return (
                 <Fragment key={e.id}>
-                  <ExerciseCard variant={variant} item={e} index={i} accent={accent} circuitType={c.type} onChange={updateExo} onRemove={() => removeExo(e.id)} />
+                  <ExerciseCard variant={variant} item={e} index={i} accent={accent} circuitType={c.type}
+                    hideRest={hideRest}
+                    onChange={updateExo} onRemove={() => removeExo(e.id)}
+                    onReplace={() => { setReplacing(r => r === e.id ? null : e.id); setAdding(null); setQuery('') }} />
+                  {replacing === e.id && (
+                    variant === 'hyrox'
+                      ? hyroxSearchPanel(def => replaceWithDef(e.id, def), name => replaceWithCustom(e.id, name))
+                      : <ExercisePicker accent={accent}
+                          onPick={def => replaceWithDef(e.id, def)}
+                          onCustom={name => { if (name) replaceWithCustom(e.id, name) }} />
+                  )}
                   {chained && (
                     <div style={{ display: 'flex', justifyContent: 'center', margin: '-6px 0', color: accent }}>
                       <IconArrowNarrowDown size={22} />
@@ -147,35 +223,19 @@ export function GroupBuilder({ variant, accent, exercises, setExercises, circuit
           {/* Panneau d'ajout */}
           {adding === c.id ? (
             variant === 'hyrox' ? (
-              <div style={{ marginTop: 10, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', background: 'var(--se-card)', padding: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <IconSearch size={15} color="var(--se-dim)" />
-                  <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder={tr('planning.searchOrFreeName')}
-                    style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: 'var(--se-text)' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
-                  {results.map(def => (
-                    <button key={def.id} type="button" onClick={() => addItem(itemFromDef(def), c.id)}
-                      style={{ textAlign: 'left', border: 'none', background: 'transparent', color: 'var(--se-text)', fontSize: 13, padding: '7px 6px', borderRadius: 8, cursor: 'pointer' }}>{def.name}</button>
-                  ))}
-                  {query.trim() && (
-                    <button type="button" onClick={() => addItem(customItem(query.trim(), 'hyrox'), c.id)}
-                      style={{ textAlign: 'left', border: '1px dashed var(--se-rule)', background: 'transparent', color: accent, fontSize: 13, fontWeight: 600, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', marginTop: 2 }}>{tr('planning.createQuoted', { q: query.trim() })}</button>
-                  )}
-                </div>
-              </div>
+              hyroxSearchPanel(def => addItem(itemFromDef(def), c.id), name => addItem(customItem(name, 'hyrox'), c.id))
             ) : (
               <ExercisePicker accent={accent}
                 onPick={def => addItem(itemFromDef(def), c.id)}
                 onCustom={name => { if (name) addItem(customItem(name, 'mixte'), c.id) }} />
             )
           ) : (
-            <button type="button" onClick={() => { setAdding(c.id); setQuery('') }} style={addBtn(accent)}>
+            <button type="button" onClick={() => { setAdding(c.id); setReplacing(null); setQuery('') }} style={addBtn(accent)}>
               <IconPlus size={15} /> {variant === 'hyrox' ? tr('planning.addStationExercise') : tr('planning.addExercise')}
             </button>
           )}
         </div>
-      ))}
+      )})}
 
       {/* Ajouter un circuit — muscu : choix du type ; hyrox : direct */}
       {variant === 'hyrox' ? (

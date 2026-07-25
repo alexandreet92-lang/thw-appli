@@ -5,12 +5,14 @@
 // CSS pur) + liste de BlockCard + boutons d'ajout. Adaptatif par sport.
 // ══════════════════════════════════════════════════════════════════
 import { useState, useRef } from 'react'
-import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical } from '@tabler/icons-react'
+import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical, IconMicrophone } from '@tabler/icons-react'
 import type { SportType, RunningSub } from '@/app/planning/page'
 import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editorial'
 import { toBars, totalMin, totalDistance, newSingle, newInterval, recalc, type MBlock, type EffortUnit } from './blocks'
 import { BlockCard } from './BlockCard'
+import { EnduranceLiveSummary } from './EnduranceLiveSummary'
 import { Segmented } from './ui'
+import { VoiceOverlay } from '@/components/ai/VoiceOverlay'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import type { PanelParcours } from './panelProps'
 import { useI18n } from '@/lib/i18n'
@@ -25,6 +27,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [voiceOpen, setVoiceOpen] = useState(false)
   const [parcoursFile, setParcoursFile] = useState<File | null>(null)
   const parcoursInputRef = useRef<HTMLInputElement>(null)
   // Drag-to-reorder (souris + tactile via pointer events)
@@ -276,19 +279,29 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
         <button type="button" onClick={() => add(newInterval(sport, runningSub === 'treadmill'))} style={addBtn}><IconRefresh size={15} /> {isSwim ? tr('planning.series') : tr('planning.interval')}</button>
       </div>
 
+      {/* Résumé live (manuel) : durée + intensité moyenne — tapis : km, D+, allure, VAP */}
+      {builderTab !== 'ai' && <EnduranceLiveSummary sport={sport} runningSub={runningSub} blocks={blocks} />}
+
       {/* IA : champ d'écriture → génération des blocs d'intensité */}
       {builderTab === 'ai' && (
         <div style={{ marginTop: 14, padding: 14, border: '1px dashed var(--se-rule)', borderRadius: 'var(--se-r)' }}>
           <p style={{ margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: accent }}>
             <IconSparkles size={15} /> {tr('planning.aiDescribeSession')}
           </p>
-          <textarea
-            value={aiPrompt}
-            onChange={e => { setAiPrompt(e.target.value); if (aiError) setAiError(null) }}
-            rows={4}
-            placeholder={sport === 'bike' ? tr('planning.aiPlaceholderBike') : tr('planning.aiPlaceholderDefault')}
-            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-card2)', border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', color: 'var(--se-text)', padding: 12, fontSize: 13, outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
-          />
+          <div style={{ position: 'relative' }}>
+            <textarea
+              value={aiPrompt}
+              onChange={e => { setAiPrompt(e.target.value); if (aiError) setAiError(null) }}
+              rows={4}
+              placeholder={sport === 'bike' ? tr('planning.aiPlaceholderBike') : tr('planning.aiPlaceholderDefault')}
+              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-card2)', border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', color: 'var(--se-text)', padding: '12px 40px 12px 12px', fontSize: 13, outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
+            />
+            {/* Dictée : VoiceOverlay → le texte transcrit est concaténé au champ */}
+            <button type="button" onClick={() => setVoiceOpen(true)} aria-label={tr('planning.aiDescribeSession')}
+              style={{ position: 'absolute', right: 8, bottom: 12, border: 'none', background: 'transparent', color: accent, cursor: 'pointer', display: 'flex', padding: 4 }}>
+              <IconMicrophone size={18} />
+            </button>
+          </div>
           <button type="button" onClick={() => void generate()} disabled={aiLoading || !aiPrompt.trim()}
             style={{ marginTop: 8, width: '100%', padding: 12, borderRadius: 'var(--se-r)', border: 'none', background: aiLoading ? 'var(--se-rule)' : accent, color: '#fff', fontSize: 13, fontWeight: 700, cursor: aiLoading || !aiPrompt.trim() ? 'default' : 'pointer', opacity: !aiPrompt.trim() ? 0.5 : 1 }}>
             {aiLoading ? tr('planning.generating') : tr('planning.generateBlocks')}
@@ -296,7 +309,17 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
           {aiError && (
             <p style={{ margin: '8px 0 0', padding: '8px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: 11, lineHeight: 1.4 }}>{aiError}</p>
           )}
+          {/* Résumé live sous « Générer les blocs » — se met à jour dès qu'il y a des blocs */}
+          <EnduranceLiveSummary sport={sport} runningSub={runningSub} blocks={blocks} />
         </div>
+      )}
+
+      {voiceOpen && (
+        <VoiceOverlay
+          isDesktop={typeof window !== 'undefined' && window.innerWidth >= 1024}
+          onConfirm={txt => { setAiPrompt(p => (p.trim() ? p.trimEnd() + ' ' : '') + txt); setVoiceOpen(false) }}
+          onCancel={() => setVoiceOpen(false)}
+        />
       )}
 
       {/* Parcours : parcours lié au stage (auto) OU import manuel */}

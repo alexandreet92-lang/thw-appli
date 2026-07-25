@@ -22,7 +22,8 @@ export interface ExoCircuit {
   name: string
   type: string          // 'series' | 'lap' | 'superset' | 'emom' | 'tabata'
   rounds: number
-  restBetweenRoundsSec: number
+  restBetweenRoundsSec: number      // récup entre chaque tour du circuit
+  restAfterCircuitSec?: number      // récup avant le circuit suivant (additif, rétro-compatible)
   targetTimeSec?: number
 }
 

@@ -18,7 +18,7 @@ export function StrengthBuilder(p: {
   const cells = [
     { label: t('planning.snNeuro'), value: String(p.sn) },
     { label: t('planning.volume'), value: tonnage ? `${(tonnage / 1000).toFixed(1)} t` : '—' },
-    { label: t('planning.durationEst'), value: p.exercises.length ? fmtDur(estDurationMin(p.exercises, p.circuits)) : '—' },
+    { label: t('planning.durationEst'), value: p.exercises.length ? fmtDur(estDurationMin(p.exercises, p.circuits, p.map)) : '—' },
     { label: t('planning.exercises'), value: String(p.exercises.length) },
   ]
   return (

@@ -61,11 +61,43 @@ export function customItem(name: string, category: ExoCategory): ExerciseItem {
 export function tonnageKg(exos: ExerciseItem[]): number {
   return exos.reduce((s, e) => s + e.sets * e.reps * (e.weightKg ?? 0), 0)
 }
-/** Durée estimée (min) : temps cible si présent, sinon séries × (repos + ~reps·3s). */
-export function estDurationMin(exos: ExerciseItem[], circuits: ExoCircuit[]): number {
+/** Durée estimée (min) : temps cible si présent, sinon séries × (repos + ~reps·3s).
+ *  Avec `map` (exo → circuit) : calcul par circuit — le repos du DERNIER exo d'un
+ *  circuit (hors Séries) est ignoré (la récup de tour prend le relais), la récup
+ *  entre tours compte (tours−1) fois et la récup avant circuit suivant s'ajoute
+ *  pour tous les circuits sauf le dernier. */
+export function estDurationMin(exos: ExerciseItem[], circuits: ExoCircuit[], map?: Record<string, string>): number {
+  if (!map) {
+    let sec = 0
+    for (const e of exos) sec += (e.targetTimeSec ?? e.sets * (e.restSec + e.reps * 3))
+    for (const c of circuits) if (c.targetTimeSec) sec = Math.max(sec, c.targetTimeSec)
+    return Math.round(sec / 60)
+  }
   let sec = 0
-  for (const e of exos) sec += (e.targetTimeSec ?? e.sets * (e.restSec + e.reps * 3))
-  for (const c of circuits) if (c.targetTimeSec) sec = Math.max(sec, c.targetTimeSec)
+  const withExos = circuits.filter(c => exos.some(e => (map[e.id] ?? 'default') === c.id))
+  withExos.forEach((c, ci) => {
+    const list = exos.filter(e => (map[e.id] ?? 'default') === c.id)
+    const type = c.type ?? 'series'
+    const rounds = Math.max(1, c.rounds || 1)
+    let circuitSec = 0
+    if (type === 'series') {
+      for (const e of list) circuitSec += (e.targetTimeSec ?? e.sets * (e.restSec + e.reps * 3))
+    } else if (type === 'emom') {
+      circuitSec = rounds * 60
+    } else if (type === 'tabata') {
+      circuitSec = rounds * 30
+    } else {
+      let tourSec = 0
+      list.forEach((e, ei) => {
+        tourSec += (e.targetTimeSec ?? e.reps * 3)
+        if (ei < list.length - 1) tourSec += e.restSec   // repos du dernier exo ignoré
+      })
+      circuitSec = rounds * tourSec + (rounds - 1) * (c.restBetweenRoundsSec || 0)
+    }
+    if (c.targetTimeSec) circuitSec = Math.max(circuitSec, c.targetTimeSec)
+    sec += circuitSec
+    if (ci < withExos.length - 1) sec += (c.restAfterCircuitSec ?? 0)
+  })
   return Math.round(sec / 60)
 }
 /** Temps cible total (s) : Σ temps cible des circuits, sinon Σ temps cible exos. */
@@ -92,6 +124,7 @@ export function blocksToExercises(blocks: Block[], sport: 'gym' | 'hyrox'): { ex
       current = {
         id: b.id, name: b.label || 'Circuit', type: b.mode as string,
         rounds: b.zone || 3, restBetweenRoundsSec: Math.round((b.recoveryMin ?? 0) * 60),
+        restAfterCircuitSec: b.restAfterMin != null ? Math.round(b.restAfterMin * 60) : undefined,
         targetTimeSec: b.durationMin ? b.durationMin * 60 : undefined,
       }
       circuits.push(current)
@@ -142,17 +175,23 @@ export function blocksToWorkoutExercises(blocks: Block[], sport: 'gym' | 'hyrox'
     if (exos.length === 0) continue
     const mode = (['series', 'circuit', 'superset', 'emom', 'tabata'].includes(c.type) ? c.type : 'series') as WorkoutMode
     if (mode === 'series') {
-      exos.forEach(e => out.push(toWE(e, 'series')))
+      exos.forEach((e, ei) => {
+        const we = toWE(e, 'series')
+        // Récup avant circuit suivant : portée par le dernier exo du groupe.
+        if (ei === exos.length - 1 && c.restAfterCircuitSec != null) we.restAfterSec = c.restAfterCircuitSec
+        out.push(we)
+      })
     } else if (mode === 'circuit') {
       out.push({
         id: c.id, name: c.name || 'Circuit', mode: 'circuit',
         sets: 1, reps: 0, weightKg: 0, restSec: c.restBetweenRoundsSec,
         circuitRounds: c.rounds, circuitRestSec: c.restBetweenRoundsSec,
+        restAfterSec: c.restAfterCircuitSec,
         circuitExercises: exos.map(e => toWE(e, 'series')),
       })
     } else if (mode === 'superset') {
       const [a, b] = exos
-      out.push({ ...toWE(a, 'superset'), sets: c.rounds, supersetPartner: b ? toWE(b, 'series') : undefined })
+      out.push({ ...toWE(a, 'superset'), sets: c.rounds, restAfterSec: c.restAfterCircuitSec, supersetPartner: b ? toWE(b, 'series') : undefined })
     } else if (mode === 'emom') {
       out.push({ ...toWE(exos[0], 'emom'), name: c.name || exos[0].name, emomMinutes: c.rounds, circuitExercises: exos.map(e => toWE(e, 'series')) })
     } else {

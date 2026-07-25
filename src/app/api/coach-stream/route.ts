@@ -57,6 +57,13 @@ FORMAT TAPIS (running INDOOR sur tapis) : chaque bloc a "value" = VITESSE en km/
 ZONES ENDURANCE : Z1=récup, Z2=endurance, Z3=tempo/SL1, Z4=seuil/SL2, Z5=VO2max/PMA
 INTENSITÉS : VÉLO/ELLIPTIQUE=watts, RUNNING (extérieur)=allure/km, RUNNING (tapis)=vitesse km/h + pente %, NATATION=allure/100m, AVIRON=allure/500m
 
+LIBELLÉS NORMALISÉS (champ "label") — OBLIGATOIRE pour l'ENDURANCE, un libellé court par bloc :
+- Bloc simple : « 10' échauffement @5:20/km » / « 20' tempo @250w » / « 5' récup active » / « 5' cool down »
+- Intervalle : « 6x600m @3:45/km - récup 1'30 » / « 10x30" @360w - récup 1' » (reps x distance-ou-durée @intensité - récup durée)
+- Durées : N' (minutes), N'30 (min+sec), 30" (secondes). Distances : 400m, 1km. Intensités : @m:ss/km (course), @NNNw (vélo/elliptique), @m:ss/100m (natation), @m:ss/500m (aviron), @NN km/h + pente N% (tapis, si pente > 0).
+- Les NOMBRES DITS À L'ORAL sont TOUJOURS convertis en chiffres normalisés : « dix fois quatre cents mètres à trois trente » → label "10x400m @3:30/km - récup 1'" (avec reps:10, distance 400 m, value "3:30") ; « six fois six cents » → "6x600m …" ; « trois minutes trente » → "3:30".
+- Le libellé reflète EXACTEMENT les valeurs des champs du bloc (mêmes reps, mêmes allures/watts, même récup) — jamais d'à-peu-près.
+
 MUSCU / HYROX :
 - zone = nombre de SÉRIES (pas une zone cardio)
 - value = charge kg SANS unité ("60" pas "60kg"). Vide "" si poids de corps

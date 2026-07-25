@@ -4265,6 +4265,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         hrAvg: '',
         label: circuit.name,
         recoveryMin: circuit.restBetweenRoundsSec / 60,  // repos entre tours
+        restAfterMin: circuit.restAfterCircuitSec != null ? circuit.restAfterCircuitSec / 60 : undefined,  // récup avant circuit suivant
       })
       for (const e of circuitExos) {
         result.push({

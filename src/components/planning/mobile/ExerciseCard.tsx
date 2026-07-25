@@ -1,7 +1,7 @@
 'use client'
 // Carte d'exercice (Muscu / Hyrox) — éditorial clair. Filet gauche coloré
 // (pattern muscu ou rouge hyrox), tag, champs adaptatifs. Mute l'ExerciseItem.
-import { IconX } from '@tabler/icons-react'
+import { IconX, IconRefresh } from '@tabler/icons-react'
 import { type ExerciseItem, type ExoCategory, MUSCU_PATTERNS, PATTERN_VAR, PATTERN_LABEL_KEY, fmtSec } from './strength'
 import { secToPace, paceToSec } from './editorial'
 import { Stepper, FieldLabel } from './ui'
@@ -21,10 +21,14 @@ function NumField({ label, value, unit, step = 1, min = 0, onChange }: {
   )
 }
 
-export function ExerciseCard({ variant, item, index, accent, circuitType, onChange, onRemove }: {
+export function ExerciseCard({ variant, item, index, accent, circuitType, hideRest, onChange, onRemove, onReplace }: {
   variant: 'muscu' | 'hyrox'; item: ExerciseItem; index: number; accent: string
   circuitType?: string
+  // Dernier exo d'un circuit : le « Repos après » est masqué (la récup de tour/circuit prend le relais).
+  hideRest?: boolean
   onChange: (e: ExerciseItem) => void; onRemove: () => void
+  // « Remplacer » : rouvre le sélecteur d'exercice en conservant reps/charge.
+  onReplace?: () => void
 }) {
   const { t } = useI18n()
   const set = (patch: Partial<ExerciseItem>) => onChange({ ...item, ...patch })
@@ -33,7 +37,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, onChan
   // en EMOM/Tabata la cadence est imposée (pas de repos par exo).
   const ct = circuitType ?? 'series'
   const showSets = ct === 'series'
-  const showRest = ct !== 'emom' && ct !== 'tabata'
+  const showRest = ct !== 'emom' && ct !== 'tabata' && !hideRest
   // Reps vs Temps (gainage / core) : mode dérivé de targetTimeSec (undefined = reps).
   // Bascule Temps → seed 30s ; Reps → efface le temps cible.
   const timeMode = item.targetTimeSec != null
@@ -53,6 +57,10 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, onChan
         <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--se-dim)', border: '1px solid var(--se-rule)', borderRadius: 6, padding: '2px 7px' }}>
           {variant === 'muscu' ? t(PATTERN_LABEL_KEY[item.category]) : isStation ? t('planning.station') : t('planning.free')}
         </span>
+        {onReplace && (
+          <button type="button" onClick={onReplace} aria-label={t('planning.replace')} title={t('planning.replace')}
+            style={{ flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconRefresh size={15} /></button>
+        )}
         <button type="button" onClick={onRemove} aria-label={t('planning.remove')} style={{ flexShrink: 0, border: 'none', background: 'transparent', color: 'var(--se-dim)', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={16} /></button>
       </div>
 
@@ -110,7 +118,7 @@ export function ExerciseCard({ variant, item, index, accent, circuitType, onChan
                 onDec={() => set({ targetTimeSec: Math.max(0, (item.targetTimeSec ?? 0) - 5) })}
                 onInc={() => set({ targetTimeSec: (item.targetTimeSec ?? 0) + 5 })} />
             </div>
-            <NumField label={t('planning.rest')} unit="s" value={item.restSec} step={15} onChange={n => set({ restSec: n })} />
+            {!hideRest && <NumField label={t('planning.restAfter')} unit="s" value={item.restSec} step={15} onChange={n => set({ restSec: n })} />}
           </div>
           {isRun && (
             <div>

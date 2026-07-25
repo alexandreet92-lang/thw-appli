@@ -54,7 +54,9 @@ export function buildTimeline(blocks: WorkoutExercise[]): TimelineStep[] {
         } else if (!lastTour) {
           if (tourRest > 0) steps.push(rest(tourRest, blockIdx, tour, toursInBlock, exos[0]?.name ?? '', true))
         } else if (!lastBlock) {
-          const sec = tourRest || block.restSec || 0
+          // Récup avant le bloc suivant : restAfterSec (récup avant circuit suivant)
+          // prioritaire, sinon repli historique (récup de tour / repos de l'exo).
+          const sec = block.restAfterSec ?? (tourRest || block.restSec || 0)
           if (sec > 0) steps.push(rest(sec, blockIdx, tour, toursInBlock, firstExoName(blocks[blockIdx + 1]), true))
         }
       })

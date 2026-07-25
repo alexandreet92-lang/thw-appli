@@ -9,6 +9,9 @@ export interface WorkoutExercise {
   weightKg: number
   restSec: number
   durationSec?: number
+  // Récup avant le bloc/circuit SUIVANT (s) — prioritaire sur restSec/circuitRestSec
+  // pour la transition inter-blocs (additif, rétro-compatible).
+  restAfterSec?: number
   // circuit
   circuitRounds?: number
   circuitRestSec?: number

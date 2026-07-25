@@ -135,6 +135,9 @@ export interface TrainingActivity {
 export interface Block {
   id:string; mode:BlockMode; type:BlockType; durationMin:number; zone:number; value:string; hrAvg:string; label:string
   reps?:number; effortMin?:number; recoveryMin?:number; recoveryZone?:number; recoveryValue?:string
+  // Circuit (muscu/hyrox) — récup avant le circuit suivant (min), portée par le circuit_header.
+  // Champ additif rétro-compatible : absent sur les séances existantes.
+  restAfterMin?:number
   // Tapis (running indoor) — pente % → dénivelé auto (m)
   inclinePct?: number; elevationM?: number
   // Terrain planning — km sur le parcours (overlay ElevationChart)
@@ -2645,6 +2648,14 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   const [activityDetail, setActivityDetail] = useState<TrainingActivity|null>(null)
   const [dragOver, setDragOver] = useState<number|null>(null)
   const [hoverAdd, setHoverAdd] = useState<string|null>(null)
+  // Curseur « + » vert qui suit la souris sur la zone vide d'une case jour (desktop).
+  const [plusCur, setPlusCur] = useState<{key:string;x:number;y:number}|null>(null)
+  // Zone « vide » d'une case = tout sauf les cartes/bulles/boutons cliquables.
+  const isEmptyCellTarget = (e: React.MouseEvent) =>
+    !(e.target as HTMLElement).closest('button, a, [data-noadd]')
+  const plusBadge = (key: string) => plusCur?.key === key ? (
+    <span aria-hidden style={{ position:'absolute' as const, left:plusCur.x, top:plusCur.y, transform:'translate(-50%,-50%)', zIndex:9, width:22, height:22, borderRadius:'50%', background:'#22c55e', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, lineHeight:1, fontWeight:700, pointerEvents:'none' as const, boxShadow:'0 2px 8px rgba(34,197,94,0.45)' }}>+</span>
+  ) : null
   const [dragCell, setDragCell] = useState<string|null>(null)
   const planDrag = useRef<{ id: string; ws: string; day: number } | null>(null)
   // Mobile : drag d'une séance par appui long (≥1 s) puis déplacement vers un autre jour.
@@ -2972,11 +2983,17 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                   const isDropTarget = dragCell === hid
                   return (
                     <div key={i} data-day-index={i}
-                      onMouseEnter={() => setHoverAdd(hid)} onMouseLeave={() => setHoverAdd(h => h === hid ? null : h)}
+                      onMouseEnter={() => setHoverAdd(hid)}
+                      onMouseLeave={() => { setHoverAdd(h => h === hid ? null : h); setPlusCur(p => p?.key === hid ? null : p) }}
+                      onMouseMove={e => {
+                        if (isEmptyCellTarget(e)) { const r = e.currentTarget.getBoundingClientRect(); setPlusCur({ key: hid, x: e.clientX - r.left, y: e.clientY - r.top }) }
+                        else setPlusCur(p => p?.key === hid ? null : p)
+                      }}
+                      onClick={e => { if (isEmptyCellTarget(e)) { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan: activePlan, weekStart: ws }) } }}
                       onDragOver={e => { if (planDrag.current) { e.preventDefault(); setDragCell(hid) } }}
                       onDragLeave={() => setDragCell(c => c === hid ? null : c)}
                       onDrop={() => { const dr = planDrag.current; if (dr && dr.ws === ws && dr.day !== i) moveSession(dr.id, i); planDrag.current = null; setDragCell(null) }}
-                      style={{ position: 'relative' as const, minHeight: 104, padding: '8px 6px 22px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' as const, gap: 5, background: isDropTarget ? 'rgba(6,182,212,0.07)' : 'transparent', transition: 'background .12s' }}>
+                      style={{ position: 'relative' as const, minHeight: 104, padding: '8px 6px 22px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column' as const, gap: 5, background: isDropTarget ? 'rgba(6,182,212,0.07)' : 'transparent', transition: 'background .12s', cursor: plusCur?.key === hid ? ('none' as const) : undefined }}>
                       {/* N° du jour dans un anneau coloré (type de jour) ; clic → menu (desktop) */}
                       <div style={{ alignSelf: 'flex-end' as const, marginBottom: 2 }}>
                         <DayHeader num={dates[i]} intensity={d.intensity} isToday={isToday}
@@ -2987,6 +3004,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                         <button onClick={() => { setAddModalFavorites(false); setAddChooser({ dayIndex: i, plan: activePlan, weekStart: ws }) }} title={t('plnp.addSession')}
                           style={{ position: 'absolute' as const, bottom: 4, left: '50%', transform: 'translateX(-50%)', zIndex: 6, background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 2, opacity: 0.7 }}>+</button>
                       )}
+                      {plusBadge(hid)}
                       {/* Courses du jour (drapeau) */}
                       {d.races.map(r => (
                         <RaceBubble key={r.id} race={r} onClick={() => setRaceDetail(r)} />
@@ -3413,8 +3431,14 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               onDrop={()=>onDrop(i)}
               onTouchEnd={()=>onTouchEnd(i)}
               onMouseEnter={()=>setHoverAdd(`${ws}_${i}`)}
-              onMouseLeave={()=>setHoverAdd(h=>h===`${ws}_${i}`?null:h)}
-              style={{ position:'relative' as const,borderLeft:'1px solid var(--border)',padding:'6px 4px',background:dragOver===i?'rgba(6,182,212,0.04)':'transparent',minWidth:68,minHeight:80 }}>
+              onMouseLeave={()=>{setHoverAdd(h=>h===`${ws}_${i}`?null:h);setPlusCur(p=>p?.key===`${ws}_${i}`?null:p)}}
+              onMouseMove={e=>{
+                if (isEmptyCellTarget(e)) { const r=e.currentTarget.getBoundingClientRect(); setPlusCur({ key:`${ws}_${i}`, x:e.clientX-r.left, y:e.clientY-r.top }) }
+                else setPlusCur(p=>p?.key===`${ws}_${i}`?null:p)
+              }}
+              onClick={e=>{ if (isEmptyCellTarget(e)) { setAddModalFavorites(false); setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws}) } }}
+              style={{ position:'relative' as const,borderLeft:'1px solid var(--border)',padding:'6px 4px',background:dragOver===i?'rgba(6,182,212,0.04)':'transparent',minWidth:68,minHeight:80,cursor:plusCur?.key===`${ws}_${i}`?('none' as const):undefined }}>
+              {plusBadge(`${ws}_${i}`)}
               {hoverAdd===`${ws}_${i}` && (
                 <button onClick={()=>{setAddModalFavorites(false);setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws})}}
                   title={t('plnp.addSession')}
@@ -3428,7 +3452,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                   if(matchedSession) {
                     const actMin = Math.round(a.elapsedTime/60)
                     const st = matchStatus(matchedSession.durationMin, actMin)
-                    return <div key={a.id} onClick={()=>setActivityDetail(a)} style={{ borderRadius:6,padding:'4px 6px',background:SPORT_BG[sp],borderLeft:`2px solid ${SPORT_BORDER[sp]}`,cursor:'pointer' }}>
+                    return <div key={a.id} data-noadd onClick={()=>setActivityDetail(a)} style={{ borderRadius:6,padding:'4px 6px',background:SPORT_BG[sp],borderLeft:`2px solid ${SPORT_BORDER[sp]}`,cursor:'pointer' }}>
                       <div style={{ display:'flex',alignItems:'center',gap:3,marginBottom:2 }}>
                         <SportBadge sport={sp} size="xs"/>
                         <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,flex:1 }}>{matchedSession.title}</p>
@@ -3437,7 +3461,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                       <span style={{ fontSize:7,fontWeight:700,color:st.color }}>{st.label === 'Conforme' ? t('plnp.matchStatus.conforme') : st.label === 'Écourtée' ? t('plnp.matchStatus.ecourtee') : t('plnp.matchStatus.prolongee')}</span>
                     </div>
                   }
-                  return <div key={a.id} onClick={()=>setActivityDetail(a)} style={{ borderRadius:6,padding:'4px 6px',background:`${SPORT_BORDER[sp]}18`,borderLeft:`2px solid ${SPORT_BORDER[sp]}`,opacity:0.9,cursor:'pointer' }}>
+                  return <div key={a.id} data-noadd onClick={()=>setActivityDetail(a)} style={{ borderRadius:6,padding:'4px 6px',background:`${SPORT_BORDER[sp]}18`,borderLeft:`2px solid ${SPORT_BORDER[sp]}`,opacity:0.9,cursor:'pointer' }}>
                     <div style={{ display:'flex',alignItems:'center',gap:3 }}>
                       <span style={{ fontSize:7,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700,flexShrink:0 }}>OK</span>
                       <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{a.name}</p>
@@ -3449,7 +3473,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 {d.races.map(r=><RaceBubble key={r.id} race={r} onClick={()=>setRaceDetail(r)} />)}
                 {/* Planned sessions (hide ones matched by an activity) */}
                 {d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).map(s=>(
-                  <div key={s.id} draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={e=>{e.stopPropagation();onTouchStart(s.id,i,e)}} onTouchMove={onTouchMove} onTouchEnd={onTouchEndPoint} onClick={()=>setDetailModal(s)}
+                  <div key={s.id} data-noadd draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={e=>{e.stopPropagation();onTouchStart(s.id,i,e)}} onTouchMove={onTouchMove} onTouchEnd={onTouchEndPoint} onClick={()=>setDetailModal(s)}
                     style={{ borderRadius:8,padding:'7px 9px',marginBottom:4,background:'#1b212b',borderLeft:`2px solid ${SPORT_BORDER[s.sport]}`,cursor:'grab',opacity:s.status==='done'?0.75:1,position:'relative',overflow:'hidden' }}>
                     {/* teinte de fond par sport — très subtile */}
                     <div style={{ position:'absolute',inset:0,opacity:.08,background:SPORT_BORDER[s.sport],pointerEvents:'none' }} />

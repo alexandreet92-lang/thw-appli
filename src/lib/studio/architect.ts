@@ -159,7 +159,7 @@ export interface ArchitectQuestion {
   header: string
   question: string
   multiSelect: boolean
-  options: { label: string; description?: string }[]
+  options: { label: string; description?: string; recommended?: boolean }[]
 }
 
 export type ArchitectTurn =
@@ -186,6 +186,7 @@ BRIQUES DISPONIBLES (kind) :
 COMPORTEMENT (très important) :
 - S'il y a la MOINDRE ambiguïté ou une info manquante qui changerait le système (objectif réel, sports concernés, écrire ou pas dans l'app, fréquence, niveau de détail, nombre d'étapes/agents…), pose des questions de clarification. Regroupe-les en 1 à 3 questions maximum par tour, chacune avec 2 à 4 options claires (un "label" court + une "description" d'une ligne qui explique le choix). L'utilisateur clique une option (ou écrit la sienne dans « Autre ») et avance.
 - Chaque question a un "header" : une catégorie très courte en MAJUSCULES (ex. "OBJECTIF", "SPORTS", "FRÉQUENCE", "SORTIE"). "multiSelect" = true si plusieurs réponses sont possibles.
+- Quand tu as un avis, marque l'option que tu conseilles avec "recommended": true (une seule par question) — ça aide l'utilisateur à trancher. Mets-le seulement si tu as une vraie préférence.
 - Dis clairement ce que tu as compris ; si un point reste flou, signale-le explicitement au lieu de deviner.
 - Ne propose un plan QUE lorsque tu as assez d'infos. Une demande triviale et sans ambiguïté peut aller directement à la proposition (l'utilisateur devra quand même confirmer).
 - Le plan proposé doit résumer, en français simple, ce que le système fera et pourquoi ce découpage, puis lister les nœuds via le JSON.
@@ -195,7 +196,7 @@ RÈGLES DU GRAPHE (pour une proposition) : 3 à 7 nœuds, un seul "trigger", gra
 
 RÉPONDS UNIQUEMENT avec un objet JSON, une de ces trois formes :
 1) Questions de clarification (1 à 3 questions) :
-{"action":"ask","message":"une phrase : ce que tu as compris / pourquoi tu demandes","questions":[{"header":"OBJECTIF","question":"Quel est le but principal ?","multiSelect":false,"options":[{"label":"Bilan hebdo","description":"Analyser la semaine écoulée"},{"label":"Plan à venir","description":"Construire les prochaines séances"}]}]}
+{"action":"ask","message":"une phrase : ce que tu as compris / pourquoi tu demandes","questions":[{"header":"OBJECTIF","question":"Quel est le but principal ?","multiSelect":false,"options":[{"label":"Bilan hebdo","description":"Analyser la semaine écoulée","recommended":true},{"label":"Plan à venir","description":"Construire les prochaines séances"}]}]}
 2) Proposition à confirmer :
 {"action":"propose","message":"résumé en français du système proposé et pourquoi","plan":{"name":"Nom court","explanation":"2-4 phrases","nodes":[{"id":"n1","kind":"trigger","title":"Objectif","role":"…"}],"edges":[{"from":"n1","to":"n2"}]}}
 3) Réponse simple (question de l'utilisateur sans construction) :
@@ -230,8 +231,8 @@ export async function converseArchitect(
       question: String(q?.question ?? '').slice(0, 300),
       multiSelect: !!q?.multiSelect,
       options: (Array.isArray(q?.options) ? q.options : []).slice(0, 5).map((o: unknown) => {
-        const obj = (o && typeof o === 'object') ? o as { label?: unknown; description?: unknown } : { label: o }
-        return { label: String(obj.label ?? o ?? '').slice(0, 90), description: obj.description ? String(obj.description).slice(0, 180) : undefined }
+        const obj = (o && typeof o === 'object') ? o as { label?: unknown; description?: unknown; recommended?: unknown } : { label: o }
+        return { label: String(obj.label ?? o ?? '').slice(0, 90), description: obj.description ? String(obj.description).slice(0, 180) : undefined, recommended: !!obj.recommended }
       }).filter(o => o.label),
     })).filter(q => q.question && q.options.length)
     if (questions.length) return { action: 'ask', message, questions }

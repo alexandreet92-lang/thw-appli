@@ -13,7 +13,7 @@ export interface ClarifyingQuestion {
   header: string
   question: string
   multiSelect: boolean
-  options: { label: string; description?: string }[]
+  options: { label: string; description?: string; recommended?: boolean }[]
 }
 export interface ClarifyingQuestions {
   questions: ClarifyingQuestion[]
@@ -151,7 +151,12 @@ export function CoachQuestionCard({
                   }}
                 >
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: 14.5, fontWeight: 600, color: sel ? '#3C90D5' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{opt.label}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 14.5, fontWeight: 600, color: sel ? '#3C90D5' : 'var(--ai-text)', fontFamily: 'Syne,sans-serif' }}>{opt.label}</span>
+                      {opt.recommended && (
+                        <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: '#3C90D5', background: 'rgba(60,144,213,0.12)', border: '1px solid rgba(60,144,213,0.35)', borderRadius: 999, padding: '1px 7px' }}>Recommandé</span>
+                      )}
+                    </span>
                     {opt.description && <span style={{ display: 'block', fontSize: 12.5, color: 'var(--ai-dim)', marginTop: 2, lineHeight: 1.45 }}>{opt.description}</span>}
                   </span>
                   {sel && (

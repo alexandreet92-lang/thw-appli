@@ -211,6 +211,15 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const [builderModel, setBuilderModel] = useState<StudioModel>('athena')  // modèle de l'architecte
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  // Modèle par défaut réglé dans Réglages IA → Studio (localStorage).
+  useEffect(() => {
+    const load = () => {
+      try { const v = localStorage.getItem('thw_studio_builder_model'); if (v === 'hermes' || v === 'athena' || v === 'zeus') setBuilderModel(v) } catch { /* ignore */ }
+    }
+    load()
+    window.addEventListener('thw:studio-settings-changed', load)
+    return () => window.removeEventListener('thw:studio-settings-changed', load)
+  }, [])
   const [micTarget, setMicTarget] = useState<'desc' | 'chat'>('desc')       // champ visé par la dictée
 
   // Exécution

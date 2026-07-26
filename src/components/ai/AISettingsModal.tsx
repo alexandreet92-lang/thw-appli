@@ -19,7 +19,7 @@ import { ConnectorLogo, type ConnectorId } from '@/components/ai/ConnectorLogos'
 
 export type SettingsSection =
   | 'profil' | 'instructions' | 'modele' | 'voix' | 'notifications'
-  | 'agent_training' | 'agent_networks' | 'connecteurs' | 'abonnement'
+  | 'agent_training' | 'agent_networks' | 'studio' | 'connecteurs' | 'abonnement'
 
 const SPORTS: [string, string][] = [
   ['running', 'Course à pied'], ['cycling', 'Vélo'], ['swimming', 'Natation'],
@@ -229,6 +229,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
       { id: 'modele', label: 'Modèle par défaut' }, { id: 'voix', label: 'Voix' }, { id: 'notifications', label: 'Notifications' },
     ] },
     { group: 'Agents', items: [ { id: 'agent_training', label: 'Training' }, { id: 'agent_networks', label: 'Networks (bientôt)', disabled: true } ] },
+    { group: 'Studio', items: [ { id: 'studio', label: 'Studio' } ] },
     { group: 'Compte', items: [ { id: 'connecteurs', label: 'Connecteurs' }, { id: 'abonnement', label: 'Abonnement' } ] },
   ]
 
@@ -287,6 +288,7 @@ export default function AISettingsModal({ open, initialSection = 'profil', onClo
               {section === 'notifications' && <NotificationsSection prefs={prefs} globalNotif={globalNotif} pushState={pushState} setPushState={setPushState} patchPref={patchPref} setGlobal={setGlobal} />}
               {section === 'agent_training' && <AgentTrainingSection agent={agent} save={saveAgent} />}
               {section === 'agent_networks' && <div style={sectionTitleStyle}>Networks — bientôt disponible</div>}
+              {section === 'studio' && <StudioSection />}
               {section === 'connecteurs' && <ConnecteursSection />}
               {section === 'abonnement' && <AbonnementSection />}
             </div>
@@ -408,6 +410,49 @@ function ModeleSection({ value, onChange }: { value: string; onChange: (v: strin
           )
         })}
       </div>
+    </div>
+  )
+}
+
+// ── Studio ─────────────────────────────────────────────────────
+// Réglages de la page Studio (orchestration d'agents). Pour l'instant : le
+// modèle par défaut de l'architecte. Persisté en localStorage, lu par le Studio.
+function StudioSection() {
+  const MODELS: [string, string, string][] = [['hermes', 'Hermès', 'Rapide'], ['athena', 'Athéna', 'Équilibré'], ['zeus', 'Zeus', 'Maximum']]
+  const [model, setModel] = useState('athena')
+  useEffect(() => {
+    try { const v = localStorage.getItem('thw_studio_builder_model'); if (v && ['hermes', 'athena', 'zeus'].includes(v)) setModel(v) } catch { /* ignore */ }
+  }, [])
+  const change = (v: string) => {
+    setModel(v)
+    try { localStorage.setItem('thw_studio_builder_model', v) } catch { /* ignore */ }
+    try { window.dispatchEvent(new CustomEvent('thw:studio-settings-changed')) } catch { /* ignore */ }
+  }
+  return (
+    <div>
+      <div style={sectionTitleStyle}>Studio</div>
+      <p style={sectionLead}>Les réglages de la page Studio (construction de systèmes multi-agents).</p>
+
+      <label style={fieldLabel}>Modèle de l’architecte</label>
+      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '2px 0 10px', fontFamily: FB, lineHeight: 1.5 }}>
+        Le modèle utilisé par défaut quand l’architecte te pose des questions et propose un système.
+      </p>
+      <div style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 'var(--r-md)', background: 'var(--bg-alt)', border: '1px solid var(--border)' }}>
+        {MODELS.map(([id, label, speed]) => {
+          const on = model === id
+          return (
+            <button key={id} type="button" onClick={() => change(id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 'var(--r-sm)', border: 'none', background: on ? 'var(--bg-card)' : 'transparent', color: on ? 'var(--text)' : 'var(--text-dim)', cursor: 'pointer', fontFamily: FB, transition: 'background 0.14s, color 0.14s', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.2)' : 'none' }}>
+              <span style={{ fontSize: 14, fontWeight: on ? 600 : 500 }}>{label}</span>
+              <span style={{ fontSize: 10.5, color: on ? 'var(--primary)' : 'var(--text-dim)', fontWeight: 500 }}>{speed}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '22px 0 0', fontFamily: FB, lineHeight: 1.5 }}>
+        D’autres réglages du Studio (planification, actions autorisées…) viendront ici.
+      </p>
     </div>
   )
 }

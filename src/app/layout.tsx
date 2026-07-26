@@ -5,6 +5,7 @@ import { MobileShell } from '@/components/shared/MobileShell'
 import MobileTabBar from '@/components/MobileTabBar'
 import OfflineIndicator from '@/components/shared/OfflineIndicator'
 import GlobalOnboardingWrapper from '@/components/onboarding/GlobalOnboardingWrapper'
+import { AISettingsHost } from '@/components/ai/AISettingsHost'
 import { ClientShell } from '@/app/ClientShell'
 
 export const dynamic = 'force-dynamic'
@@ -54,6 +55,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <MobileTabBar />
           <OfflineIndicator />
           <GlobalOnboardingWrapper />
+          {/* Fenêtre de réglages IA — hôte UNIQUE (évite les fonds empilés) */}
+          <AISettingsHost />
 
         </ClientShell>
       </body>

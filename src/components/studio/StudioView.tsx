@@ -18,7 +18,8 @@ import {
   type StudioGraph, type StudioNode, type StudioNodeKind, type StudioModel, type StudioSourceKey, type StudioActionKey, type GraphIssues,
 } from '@/lib/studio/graph'
 import { runGraph, terminalNodeIds, type NodeStatus } from '@/lib/studio/runner'
-import { converseArchitect, planToGraph, type ArchitectChatMessage, type ArchPlan } from '@/lib/studio/architect'
+import { converseArchitect, planToGraph, type ArchitectChatMessage, type ArchitectQuestion } from '@/lib/studio/architect'
+import { CoachQuestionCard } from '@/components/ai/CoachQuestionCard'
 import { listSystems, createSystem, updateSystem, deleteSystem, duplicateSystem, migrateLocalGraphIfAny, type StudioSystemRow } from '@/lib/studio/store'
 import { STUDIO_TEMPLATES } from '@/lib/studio/templates'
 import { STUDIO_PACKS, estimateRunTokens, formatTokens, type StudioAccess } from '@/lib/studio/offers'
@@ -32,6 +33,12 @@ const NODE_D = 66            // diamètre de la bulle
 const NODE_W = NODE_D        // (compat) largeur = diamètre
 const PORT_Y = NODE_D / 2    // ancrage vertical des ports = centre de la bulle
 const CHAT_W = 380           // largeur du panneau de chat Architecte (desktop)
+// Variables --ai-* attendues par CoachQuestionCard (normalement portées par
+// .aip-root) — on les fournit localement pour réutiliser la carte dans le Studio.
+const aiVars = {
+  '--ai-bg': 'var(--bg-card)', '--ai-bg2': 'var(--bg-alt)', '--ai-border': 'var(--border)',
+  '--ai-text': 'var(--text)', '--ai-mid': 'var(--text-mid)', '--ai-dim': 'var(--text-dim)',
+} as React.CSSProperties
 
 // ── Règles de liaison ──────────────────────────────────────────
 // Sortie : tout sauf Action (bout de chaîne). Entrée : tout sauf Objectif
@@ -192,8 +199,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   // dans un panneau à droite (repliable) ou en plein écran.
   type ChatMsg =
     | { id: string; role: 'user'; text: string }
-    | { id: string; role: 'assistant'; kind: 'ask'; text: string; question: string; options: string[] }
-    | { id: string; role: 'assistant'; kind: 'propose'; text: string; plan: ArchPlan; applied?: boolean; declined?: boolean }
+    | { id: string; role: 'assistant'; kind: 'ask'; text: string; questions: ArchitectQuestion[] }
+    | { id: string; role: 'assistant'; kind: 'propose'; text: string; graph: StudioGraph; applied?: boolean; declined?: boolean }
     | { id: string; role: 'assistant'; kind: 'reply'; text: string }
     | { id: string; role: 'assistant'; kind: 'error'; text: string }
   const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([])
@@ -686,14 +693,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     const apiHistory: ArchitectChatMessage[] = history.map(m =>
       m.role === 'user'
         ? { role: 'user' as const, content: m.text }
-        : { role: 'assistant' as const, content: m.kind === 'ask' ? `${m.text}\nQuestion : ${m.question}` : m.text })
+        : { role: 'assistant' as const, content: m.kind === 'ask' ? `${m.text}\nQuestions : ${m.questions.map(q => q.question).join(' | ')}` : m.text })
     try {
       const turn = await converseArchitect(apiHistory, graph.nodes.length > 0 ? graph : undefined, undefined, builderModel)
       const id = newMsgId()
       if (turn.action === 'ask') {
-        setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'ask', text: turn.message, question: turn.question, options: turn.options }])
+        setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'ask', text: turn.message, questions: turn.questions }])
       } else if (turn.action === 'propose') {
-        setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'propose', text: turn.message || turn.plan.explanation || 'Voici le système que je te propose.', plan: turn.plan }])
+        // On construit dès maintenant le graphe (mise en page) pour en afficher
+        // une MAQUETTE ; il ne sera APPLIQUÉ qu'après confirmation.
+        try {
+          const built = planToGraph(turn.plan, turn.message || turn.plan.explanation || '').graph
+          setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'propose', text: turn.message || turn.plan.explanation || 'Voici le système que je te propose.', graph: built }])
+        } catch (e) {
+          setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'error', text: e instanceof Error ? e.message : "Je n'ai pas pu préparer ce système — reformule ta demande." }])
+        }
       } else {
         setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'reply', text: turn.message }])
       }
@@ -717,9 +731,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     const msg = chatMsgs.find(m => m.id === msgId)
     if (!msg || msg.role !== 'assistant' || msg.kind !== 'propose') return
     try {
-      const res = planToGraph(msg.plan, msg.text)
+      // Nouvelle identité de graphe pour éviter d'écraser un autre système ouvert.
+      const res: StudioGraph = { ...msg.graph, id: genId(), updatedAt: Date.now() }
       prevGraphRef.current = graph          // pour « Annuler »
-      commit(res.graph)
+      commit(res)
       setSelId(null); setSelEdge(null); setPan({ x: 0, y: 0 }); setZoom(1)
       setStatus({}); setNodeText({}); setLogs([])
       setChatMsgs(m => m.map(x => x.id === msgId && x.role === 'assistant' && x.kind === 'propose' ? { ...x, applied: true } : x))
@@ -747,14 +762,57 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     if (el) el.scrollTop = el.scrollHeight
   }, [chatMsgs, chatBusy])
 
-  // ── Rendu du chat (partagé entre panneau latéral et plein écran) ──
-  const planPreview = (plan: ArchPlan) => {
-    const titles = (plan.nodes ?? []).map(n => String(n.title || n.kind)).slice(0, 8)
+  // ── Maquette visuelle du système proposé (bulles + branches, comme la toile) ──
+  const miniGraph = (g: StudioGraph, height = 178) => {
+    const nodes = g.nodes
+    if (!nodes.length) return null
+    const minX = Math.min(...nodes.map(n => n.x)), minY = Math.min(...nodes.map(n => n.y))
+    const maxX = Math.max(...nodes.map(n => n.x)) + NODE_D, maxY = Math.max(...nodes.map(n => n.y)) + NODE_D
+    const gw = Math.max(1, maxX - minX), gh = Math.max(1, maxY - minY)
+    const W = 320, PAD = 34
+    const k = Math.min((W - 2 * PAD) / gw, (height - 2 * PAD) / gh, 0.62)
+    const d = Math.max(20, NODE_D * k)
+    const cx = (n: StudioNode) => PAD + (n.x - minX) * k + d / 2
+    const cy = (n: StudioNode) => PAD + (n.y - minY) * k + d / 2
+    const visual = (n: StudioNode) => {
+      const ext = n.kind === 'source' ? EXT_CATALOG.find(e => e.sourceKey === n.sourceKey) : undefined
+      const app = n.kind === 'source' ? APP_CATALOG.find(a => a.kind === 'source' && a.sourceKey === (n.sourceKey ?? 'activities'))
+        : n.kind === 'action' ? APP_CATALOG.find(a => a.kind === 'action' && a.actionKey === (n.actionKey ?? 'planning_save')) : undefined
+      const iconId = ext?.id ?? app?.id ?? null
+      return { iconId, col: ext?.color ?? KIND_COLOR[n.kind], filled: !!(ext || app) || n.kind === 'trigger' }
+    }
     return (
-      <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-        {titles.map((t, i) => (
-          <span key={i} style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-mid)', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 999, padding: '3px 9px', fontFamily: 'DM Sans,sans-serif' }}>{t}</span>
-        ))}
+      <div style={{ position: 'relative', width: '100%', maxWidth: W, height, margin: '10px auto 2px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-alt)', overflow: 'hidden',
+        backgroundImage: 'radial-gradient(color-mix(in srgb, var(--text) 8%, transparent) 1px, transparent 1px)', backgroundSize: '14px 14px' }}>
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="xMidYMid meet">
+          {g.edges.map(e => {
+            const a = nodes.find(n => n.id === e.from), b = nodes.find(n => n.id === e.to)
+            if (!a || !b) return null
+            const ax = cx(a), ay = cy(a), bx = cx(b), by = cy(b)
+            const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, r = d / 2
+            const p1x = ax + ux * r, p1y = ay + uy * r, p2x = bx - ux * r, p2y = by - uy * r
+            const N = Math.max(3, Math.min(16, Math.round(Math.hypot(p2x - p1x, p2y - p1y) / 8)))
+            return (
+              <g key={e.id}>
+                <defs><linearGradient id={`mg_${g.id}_${e.id}`} gradientUnits="userSpaceOnUse" x1={p1x} y1={p1y} x2={p2x} y2={p2y}><stop offset="0" stopColor={KIND_COLOR[a.kind]} /><stop offset="1" stopColor={KIND_COLOR[b.kind]} /></linearGradient></defs>
+                {Array.from({ length: N + 1 }, (_, i) => { const t = i / N; return <circle key={i} cx={p1x + (p2x - p1x) * t} cy={p1y + (p2y - p1y) * t} r={1.5} fill={`url(#mg_${g.id}_${e.id})`} opacity={0.85} /> })}
+              </g>
+            )
+          })}
+        </svg>
+        {nodes.map(n => {
+          const { iconId, col, filled } = visual(n)
+          return (
+            <div key={n.id} style={{ position: 'absolute', left: cx(n) - d / 2, top: cy(n) - d / 2, width: d, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: d, height: d, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: filled ? `linear-gradient(140deg, ${col}, color-mix(in srgb, ${col} 60%, #000))` : 'var(--bg-card)',
+                color: filled ? '#fff' : col, border: `1.5px solid ${filled ? 'transparent' : `color-mix(in srgb, ${col} 55%, transparent)`}`, boxShadow: '0 2px 6px rgba(0,0,0,0.14)' }}>
+                {iconId ? <AppIcon id={iconId} size={Math.round(d * 0.44)} /> : <KindIcon kind={n.kind} size={Math.round(d * 0.44)} />}
+              </div>
+              <span style={{ marginTop: 2, maxWidth: d + 30, fontSize: 7.5, fontWeight: 700, color: 'var(--text-mid)', textAlign: 'center', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'DM Sans,sans-serif' }}>{n.title}</span>
+            </div>
+          )
+        })}
       </div>
     )
   }
@@ -858,25 +916,24 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           )
           if (m.kind === 'reply') return bubble(<span style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span>)
           if (m.kind === 'error') return bubble(<span style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span>, 'error')
-          if (m.kind === 'ask') return bubble(
-            <>
-              {m.text && <div style={{ color: 'var(--text-mid)', marginBottom: 6, whiteSpace: 'pre-wrap' }}>{m.text}</div>}
-              <div style={{ fontWeight: 700 }}>{m.question}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 9 }}>
-                {m.options.map((opt, i) => (
-                  <button key={i} onClick={() => void sendArchitect(opt)} disabled={chatBusy}
-                    style={{ textAlign: 'left', padding: '8px 12px', borderRadius: 10, border: '1px solid color-mix(in srgb, #3B92D4 40%, transparent)', background: 'color-mix(in srgb, #3B92D4 7%, transparent)', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            </>
+          if (m.kind === 'ask') return (
+            <div key={m.id} style={{ alignSelf: 'stretch', ...aiVars }}>
+              {m.text && <div style={{ color: 'var(--text-mid)', margin: '0 0 8px', fontSize: 13, lineHeight: 1.55, fontFamily: 'DM Sans,sans-serif', whiteSpace: 'pre-wrap' }}>{m.text}</div>}
+              <CoachQuestionCard data={{ questions: m.questions }} onSubmit={recap => void sendArchitect(recap)} />
+            </div>
           )
           // propose
           return bubble(
             <>
               <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
-              {planPreview(m.plan)}
+              {/* Maquette : aperçu du système avant de le concrétiser */}
+              <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', marginTop: 10 }}>Aperçu du système</div>
+              {miniGraph(m.graph)}
+              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                <span>{m.graph.nodes.length} bloc{m.graph.nodes.length > 1 ? 's' : ''}</span>·
+                <span>{m.graph.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} agent(s)</span>·
+                <span>{m.graph.edges.length} liaison{m.graph.edges.length > 1 ? 's' : ''}</span>
+              </div>
               {!m.applied && !m.declined && (
                 <>
                   <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: '#3B92D4' }}>Confirmes-tu la construction de ce système&nbsp;?</div>

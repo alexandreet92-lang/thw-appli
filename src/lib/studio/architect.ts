@@ -154,8 +154,16 @@ export async function buildGraphFromDescription(
 // explicitement. Aucune modification du graphe n'est appliquée sans ce « oui ».
 // ══════════════════════════════════════════════════════════════
 
+// Question de clarification — même forme que la carte du coach (CoachQuestionCard).
+export interface ArchitectQuestion {
+  header: string
+  question: string
+  multiSelect: boolean
+  options: { label: string; description?: string }[]
+}
+
 export type ArchitectTurn =
-  | { action: 'ask'; message: string; question: string; options: string[] }
+  | { action: 'ask'; message: string; questions: ArchitectQuestion[] }
   | { action: 'propose'; message: string; plan: ArchPlan }
   | { action: 'reply'; message: string }
 
@@ -176,17 +184,18 @@ BRIQUES DISPONIBLES (kind) :
 - "action" : écrit dans l'app. "actionKey" ∈ "planning_save" | "calendar_race" | "notify_report". Seulement si l'utilisateur veut vraiment écrire.
 
 COMPORTEMENT (très important) :
-- S'il y a la MOINDRE ambiguïté ou une info manquante qui changerait le système (objectif réel, sports concernés, écrire ou pas dans l'app, fréquence, niveau de détail, nombre d'étapes/agents…), pose UNE seule question à la fois, courte, avec 2 à 4 options cliquables. Une question à la fois, on avance pas à pas.
+- S'il y a la MOINDRE ambiguïté ou une info manquante qui changerait le système (objectif réel, sports concernés, écrire ou pas dans l'app, fréquence, niveau de détail, nombre d'étapes/agents…), pose des questions de clarification. Regroupe-les en 1 à 3 questions maximum par tour, chacune avec 2 à 4 options claires (un "label" court + une "description" d'une ligne qui explique le choix). L'utilisateur clique une option (ou écrit la sienne dans « Autre ») et avance.
+- Chaque question a un "header" : une catégorie très courte en MAJUSCULES (ex. "OBJECTIF", "SPORTS", "FRÉQUENCE", "SORTIE"). "multiSelect" = true si plusieurs réponses sont possibles.
 - Dis clairement ce que tu as compris ; si un point reste flou, signale-le explicitement au lieu de deviner.
 - Ne propose un plan QUE lorsque tu as assez d'infos. Une demande triviale et sans ambiguïté peut aller directement à la proposition (l'utilisateur devra quand même confirmer).
-- Le plan proposé doit résumer, en français simple, ce que le système fera et pourquoi ce découpage, puis lister implicitement les nœuds via le JSON.
+- Le plan proposé doit résumer, en français simple, ce que le système fera et pourquoi ce découpage, puis lister les nœuds via le JSON.
 - Reste bref et concret. Français.
 
 RÈGLES DU GRAPHE (pour une proposition) : 3 à 7 nœuds, un seul "trigger", graphe connexe sans cycle, sources en entrée des agents concernés, termine par "merge" (ou "action" si écriture). Titres courts, rôles concrets.
 
 RÉPONDS UNIQUEMENT avec un objet JSON, une de ces trois formes :
-1) Question de clarification :
-{"action":"ask","message":"une phrase : ce que tu as compris / pourquoi tu demandes","question":"ta question","options":["Option A","Option B","Option C"]}
+1) Questions de clarification (1 à 3 questions) :
+{"action":"ask","message":"une phrase : ce que tu as compris / pourquoi tu demandes","questions":[{"header":"OBJECTIF","question":"Quel est le but principal ?","multiSelect":false,"options":[{"label":"Bilan hebdo","description":"Analyser la semaine écoulée"},{"label":"Plan à venir","description":"Construire les prochaines séances"}]}]}
 2) Proposition à confirmer :
 {"action":"propose","message":"résumé en français du système proposé et pourquoi","plan":{"name":"Nom court","explanation":"2-4 phrases","nodes":[{"id":"n1","kind":"trigger","title":"Objectif","role":"…"}],"edges":[{"from":"n1","to":"n2"}]}}
 3) Réponse simple (question de l'utilisateur sans construction) :
@@ -204,7 +213,7 @@ export async function converseArchitect(
   const prompt = CONVERSE_PROMPT + existingGraphBlock(current) + '\n\nCONVERSATION :\n' + convo + '\n\nARCHITECTE :'
   const raw = await callAgent(pseudoNode, prompt, () => {}, signal)
 
-  let parsed: { action?: string; message?: string; question?: string; options?: unknown; plan?: ArchPlan }
+  let parsed: { action?: string; message?: string; question?: string; questions?: unknown; options?: unknown; plan?: ArchPlan }
   try { parsed = extractJson(raw) } catch {
     // Pas de JSON exploitable → on traite la réponse brute comme un message.
     return { action: 'reply', message: raw.trim().slice(0, 1200) || "Je n'ai pas bien saisi — peux-tu reformuler ?" }
@@ -212,10 +221,21 @@ export async function converseArchitect(
 
   const message = String(parsed.message ?? '').slice(0, 1200)
   if (parsed.action === 'ask') {
-    const options = Array.isArray(parsed.options)
-      ? parsed.options.map(o => String(o).slice(0, 80)).filter(Boolean).slice(0, 4)
-      : []
-    return { action: 'ask', message, question: String(parsed.question ?? '').slice(0, 300), options }
+    // Format riche (questions[]) ; repli sur l'ancien format (question + options[]).
+    const rawQs = Array.isArray(parsed.questions) && parsed.questions.length
+      ? parsed.questions
+      : (parsed.question ? [{ header: 'Question', question: parsed.question, multiSelect: false, options: parsed.options }] : [])
+    const questions: ArchitectQuestion[] = (rawQs as Record<string, unknown>[]).slice(0, 3).map(q => ({
+      header: String(q?.header ?? 'Question').slice(0, 24),
+      question: String(q?.question ?? '').slice(0, 300),
+      multiSelect: !!q?.multiSelect,
+      options: (Array.isArray(q?.options) ? q.options : []).slice(0, 5).map((o: unknown) => {
+        const obj = (o && typeof o === 'object') ? o as { label?: unknown; description?: unknown } : { label: o }
+        return { label: String(obj.label ?? o ?? '').slice(0, 90), description: obj.description ? String(obj.description).slice(0, 180) : undefined }
+      }).filter(o => o.label),
+    })).filter(q => q.question && q.options.length)
+    if (questions.length) return { action: 'ask', message, questions }
+    return { action: 'reply', message: message || "Peux-tu préciser un peu ta demande ?" }
   }
   if (parsed.action === 'propose' && parsed.plan && Array.isArray(parsed.plan.nodes)) {
     return { action: 'propose', message, plan: parsed.plan }

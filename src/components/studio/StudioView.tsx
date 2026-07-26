@@ -282,6 +282,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const systemIdRef = useRef<string | null>(null)
   useEffect(() => { systemIdRef.current = systemId }, [systemId])
+
+  // ── Mémoire du chat Architecte (localStorage, ~48 h par système) ──
+  const chatKey = (id: string) => `thw_studio_chat_${id}`
+  useEffect(() => {
+    const id = systemIdRef.current
+    if (!id) return
+    try {
+      if (!chatMsgs.length) localStorage.removeItem(chatKey(id))
+      else localStorage.setItem(chatKey(id), JSON.stringify({ v: 1, updatedAt: Date.now(), msgs: chatMsgs }))
+    } catch { /* quota / privé — silencieux */ }
+  }, [chatMsgs])
   const scheduleSave = useCallback((g: StudioGraph) => {
     const id = systemIdRef.current
     if (!id) return
@@ -556,6 +567,19 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     setView('canvas'); setTab('canvas')
     setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}); setLogs([]); setIssues(null)
     setPan({ x: 0, y: 0 }); setZoom(1); resetHistory()
+    // Mémoire du chat : restaure la conversation si elle date de < 48 h.
+    let restored: ChatMsg[] = []
+    try {
+      const raw = localStorage.getItem(chatKey(row.id))
+      if (raw) {
+        const parsed = JSON.parse(raw) as { updatedAt?: number; msgs?: ChatMsg[] }
+        if (parsed && Array.isArray(parsed.msgs) && Date.now() - (parsed.updatedAt ?? 0) < 48 * 60 * 60 * 1000) restored = parsed.msgs
+        else localStorage.removeItem(chatKey(row.id))
+      }
+    } catch { /* silencieux */ }
+    setChatMsgs(restored); setChatInput(''); setChatBusy(false); setChatFull(false); setChatOpen(restored.length > 0)
+    // Reprend le compteur d'ids au-dessus des messages restaurés (pas de collision).
+    chatIdRef.current = restored.reduce((mx, m) => { const n = parseInt(String(m.id).slice(1), 10); return Number.isFinite(n) ? Math.max(mx, n) : mx }, 0)
     // Planification existante du système (best-effort)
     setSchedule(null)
     void (async () => {

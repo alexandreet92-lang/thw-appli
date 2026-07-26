@@ -777,7 +777,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       setSelId(null); setSelEdge(null); setPan({ x: 0, y: 0 }); setZoom(1)
       setStatus({}); setNodeText({}); setLogs([])
       setChatMsgs(m => m.map(x => x.id === msgId && x.role === 'assistant' && x.kind === 'propose' ? { ...x, applied: true } : x))
-      setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'reply', text: 'C’est fait — j’ai construit le système. Vérifie les bulles puis lance « Run once ». Tu peux annuler si besoin.' }])
+      const living = !!res.objective?.text
+      const done = living
+        ? `C’est fait — voici ta base${res.objective?.deadline ? ` (objectif jusqu’au ${res.objective.deadline})` : ''}. Pour qu’elle vive en continu, active la planification (icône horloge en haut) : elle sortira ton programme à chaque cycle en s’adaptant à ta forme. Tu peux d’abord tester avec « Run once ».`
+        : 'C’est fait — j’ai construit le système. Vérifie les bulles puis lance « Run once ». Tu peux annuler si besoin.'
+      setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'reply', text: done }])
     } catch (e) {
       setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'error', text: e instanceof Error ? e.message : "Impossible d'appliquer ce plan." }])
     }
@@ -2241,7 +2245,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
       {/* ══ Planification autonome (sur-page) ══ */}
       {scheduleOpen && (() => {
-        const hasHuman = graph.nodes.some(n => n.kind === 'validation' || n.kind === 'action')
+        // « notify_report » est autorisé en autonome ; écritures/validation non.
+        const hasHuman = graph.nodes.some(n => n.kind === 'validation' || (n.kind === 'action' && n.actionKey !== 'notify_report'))
         const cur = schedule ?? { frequency: 'weekly' as const, hour: 18, weekday: 6, enabled: false }
         const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
         const selStyle: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', outline: 'none', cursor: 'pointer' }
@@ -2262,8 +2267,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
               {hasHuman ? (
                 <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.6, margin: 0, fontFamily: 'DM Sans,sans-serif' }}>
-                  Ce système contient un bloc <b>Validation</b> ou <b>Action</b> : il a besoin de TON accord pour avancer, il ne peut donc pas tourner tout seul.
-                  Retire ces blocs (garde des agents et une synthèse) pour activer la planification.
+                  Ce système contient un bloc <b>Validation</b> ou une <b>écriture</b> (Planning / Calendrier) : il a besoin de TON accord pour avancer, il ne peut donc pas tourner tout seul.
+                  Pour la planification, termine plutôt par une <b>Notification</b> (il t’envoie sa synthèse), ou retire ces blocs.
                 </p>
               ) : (
                 <>

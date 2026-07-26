@@ -84,15 +84,41 @@ export async function GET(req: NextRequest) {
       const graph = system.graph as StudioGraph
       const name = (system.name as string) || 'Système Studio'
 
-      // Garde-fous : graphe valide + pas de nœud à accord humain + accès + solde.
+      // ── Système vivant : objectif échu → pause + demande du prochain objectif ──
+      const deadline = graph.objective?.deadline
+      if (deadline) {
+        const end = new Date(`${deadline}T23:59:59`)
+        if (!isNaN(end.getTime()) && now.getTime() > end.getTime()) {
+          // Met le système en pause (planification désactivée) — une seule fois.
+          await sb.from('studio_schedules').update({ enabled: false }).eq('id', sched.id)
+          await createNotification(sb, sched.user_id, {
+            type: 'studio.schedule',
+            title: `« ${name} » : objectif atteint`,
+            body: `Ton objectif « ${graph.objective!.text} » est arrivé à échéance. Le système est en pause — ouvre le Studio pour définir ton prochain objectif et le relancer.`,
+            link: '/',
+            dedupKey: `studio-obj-expired-${sched.system_id}-${deadline}`,
+          })
+          await sendPushToUser(sb, sched.user_id, {
+            title: 'Studio : objectif atteint',
+            body: `« ${name} » est en pause. Définis ton prochain objectif.`,
+            url: '/',
+            tag: `studio-obj-${sched.system_id}`,
+          })
+          continue
+        }
+      }
+
+      // Garde-fous : graphe valide + pas d'action qui écrit/valide sans toi.
+      // Exception : « notify_report » (envoi d'une notification) est sûr en
+      // autonome → un système vivant peut t'envoyer sa synthèse chaque cycle.
       const v = validateGraph(graph)
-      const hasHuman = graph.nodes.some(n => n.kind === 'validation' || n.kind === 'action')
-      if (v.errors.length > 0 || hasHuman) {
+      const needsHuman = graph.nodes.some(n => n.kind === 'validation' || (n.kind === 'action' && n.actionKey !== 'notify_report'))
+      if (v.errors.length > 0 || needsHuman) {
         await createNotification(sb, sched.user_id, {
           type: 'studio.schedule',
           title: `« ${name} » n'a pas pu tourner`,
-          body: hasHuman
-            ? 'Ce système contient un bloc Validation ou Action : il ne peut pas tourner sans toi. Retire ces blocs pour la planification.'
+          body: needsHuman
+            ? 'Ce système contient un bloc Validation ou une écriture (Planning / Calendrier) qui nécessite ton accord : il ne peut pas tourner tout seul. Pour la planification, termine plutôt par une Notification.'
             : `Le système est invalide : ${v.errors[0]}`,
           link: '/',
           dedupKey: `studio-sched-invalid-${sched.id}`,

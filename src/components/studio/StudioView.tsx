@@ -247,6 +247,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [micTarget, setMicTarget] = useState<'desc' | 'chat'>('desc')       // champ visé par la dictée
   const [previewSel, setPreviewSel] = useState<{ msgId: string; nodeId: string } | null>(null)  // bulle touchée dans une maquette
   const [renduSelId, setRenduSelId] = useState<string | null>(null)         // bulle sélectionnée dans le Rendu
+  // Objectif « en cours » du système vivant (éditeur).
+  const [objEditOpen, setObjEditOpen] = useState(false)
+  const [objText, setObjText] = useState('')
+  const [objDeadline, setObjDeadline] = useState('')
 
   // Exécution
   const [running, setRunning] = useState(false)
@@ -784,6 +788,27 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   }
   const resetChat = () => { setChatMsgs([]); setChatInput(''); setChatBusy(false) }
 
+  // ── Objectif « en cours » (système vivant) ──
+  const openObjEditor = () => {
+    setObjText(graph.objective?.text ?? '')
+    setObjDeadline(graph.objective?.deadline ?? '')
+    setObjEditOpen(true)
+  }
+  const saveObjective = () => {
+    const text = objText.trim()
+    commit({ ...graph, objective: text ? { text, deadline: objDeadline || null } : null })
+    setObjEditOpen(false)
+  }
+  // Jours restants avant l'échéance (null si pas d'échéance). Négatif = passée.
+  const objDaysLeft = (): number | null => {
+    const dl = graph.objective?.deadline
+    if (!dl) return null
+    const d = new Date(dl + 'T00:00:00')
+    if (isNaN(d.getTime())) return null
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    return Math.round((d.getTime() - today.getTime()) / 86400000)
+  }
+
   const undoBuild = () => {
     if (prevGraphRef.current) {
       commit(prevGraphRef.current); prevGraphRef.current = null
@@ -1318,6 +1343,40 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 })}
               </div>
             )}
+
+            {/* ── Objectif « en cours » (système vivant) ── */}
+            {graph.nodes.length > 0 && (() => {
+              const dleft = objDaysLeft()
+              const expired = dleft !== null && dleft < 0
+              const soon = dleft !== null && dleft >= 0 && dleft <= 7
+              const accent = expired ? '#EF4444' : soon ? '#F59E0B' : '#3B92D4'
+              const top = (chatOpen || chatFull) ? 14 : (isMobile ? 88 : 100)
+              return (
+                <div style={{ position: 'absolute', top, left: '50%', transform: 'translateX(-50%)', zIndex: 5, maxWidth: isMobile ? 'calc(100% - 24px)' : 560 }}>
+                  <button onClick={openObjEditor} title="Objectif du système — clique pour modifier"
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: '100%', padding: '6px 12px', borderRadius: 999, border: `1px solid color-mix(in srgb, ${accent} 45%, var(--border))`, background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.08)', fontFamily: 'DM Sans,sans-serif' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.6" fill={accent}/></svg>
+                    {graph.objective?.text ? (
+                      <>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{graph.objective.text}</span>
+                        {dleft !== null && (
+                          <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.02em', color: accent, background: `color-mix(in srgb, ${accent} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${accent} 35%, transparent)`, borderRadius: 999, padding: '2px 8px' }}>
+                            {expired ? 'échéance passée' : soon ? `J-${dleft}` : new Date(graph.objective.deadline + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-mid)' }}>Définir l’objectif du système</span>
+                    )}
+                  </button>
+                  {expired && (
+                    <div style={{ marginTop: 6, padding: '7px 11px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', fontSize: 11.5, color: '#EF4444', fontFamily: 'DM Sans,sans-serif', lineHeight: 1.45 }}>
+                      L’objectif est passé. Définis ton prochain objectif pour que le système se remette à jour.
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* ── Barre flottante : annuler · rétablir · exemple · vider ── */}
             <div style={{ position: 'absolute', top: 14, left: 12, zIndex: 8, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
@@ -2142,6 +2201,40 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           </div>
           <div style={{ flex: 1, minHeight: 0, width: '100%', maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
             {chatBody}
+          </div>
+        </div>
+      )}
+
+      {/* ══ Éditeur d'objectif (système vivant) ══ */}
+      {objEditOpen && (
+        <div onClick={() => setObjEditOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'studio_in 0.16s ease' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 'min(440px, 100%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B92D4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.6" fill="#3B92D4"/></svg>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>Objectif du système</span>
+              <button onClick={() => setObjEditOpen(false)} style={iconBtn} aria-label="Fermer">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif' }}>
+              Ce système reste ta base permanente ; il se spécialise selon cet objectif. À l’échéance, il te demandera ton prochain objectif pour se remettre à jour.
+            </p>
+            <label style={lbl}>Objectif du moment</label>
+            <input value={objText} onChange={e => setObjText(e.target.value)} autoFocus placeholder="Ex. Prise de masse → ~77 kg + semi Maroc"
+              onKeyDown={e => { if (e.key === 'Enter') saveObjective() }} style={fld} />
+            <label style={lbl}>Échéance (optionnel)</label>
+            <input type="date" value={objDeadline} onChange={e => setObjDeadline(e.target.value)} style={{ ...fld, cursor: 'pointer' }} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <button onClick={saveObjective} style={{ flex: 1, padding: '10px 0', borderRadius: 11, border: 'none', background: '#3B92D4', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                Enregistrer
+              </button>
+              {graph.objective && (
+                <button onClick={() => { commit({ ...graph, objective: null }); setObjEditOpen(false) }}
+                  style={{ padding: '10px 14px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                  Retirer
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

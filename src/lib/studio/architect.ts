@@ -29,6 +29,7 @@ export interface ArchPlan {
   explanation: string
   nodes: ArchNode[]
   edges: { from: string; to: string }[]
+  objective?: { text?: string; deadline?: string | null }
 }
 
 const ARCHITECT_PROMPT = `Tu es l'ARCHITECTE du Studio d'agents d'une app de coaching sportif hybride.
@@ -64,6 +65,7 @@ export interface ArchitectResult {
 function existingGraphBlock(current?: StudioGraph): string {
   if (!current || current.nodes.length === 0) return ''
   const slim = {
+    objective: current.objective ?? null,
     nodes: current.nodes.map(n => ({ id: n.id, kind: n.kind, title: n.title, role: n.role?.slice(0, 300), model: n.model, sourceKey: n.sourceKey, actionKey: n.actionKey })),
     edges: current.edges.map(e => ({ from: e.from, to: e.to })),
   }
@@ -124,12 +126,15 @@ export function planToGraph(plan: ArchPlan, description: string): ArchitectResul
     }
   }
 
+  const objText = plan.objective?.text ? String(plan.objective.text).slice(0, 200) : ''
+  const objDeadline = plan.objective?.deadline ? String(plan.objective.deadline).slice(0, 10) : null
   const graph: StudioGraph = {
     id: genId(),
     name: String(plan.name ?? 'Système généré').slice(0, 60),
     nodes: autoLayout(nodes, edges),
     edges,
     updatedAt: Date.now(),
+    objective: objText ? { text: objText, deadline: objDeadline } : null,
   }
   return { graph, explanation: String(plan.explanation ?? '').slice(0, 800) }
 }
@@ -175,10 +180,18 @@ export interface ArchitectChatMessage {
 const CONVERSE_PROMPT = `Tu es l'ARCHITECTE du Studio d'agents d'une app de coaching sportif hybride.
 Tu dialogues avec l'utilisateur pour concevoir ou modifier un système multi-agents (un graphe), MAIS tu n'appliques JAMAIS de changement toi-même : l'app applique le graphe seulement après que l'utilisateur a cliqué « Confirmer ». Ton rôle : bien comprendre le besoin, lever toute ambiguïté, puis proposer un plan clair à valider.
 
+PHILOSOPHIE — SYSTÈME VIVANT (essentiel) :
+Tu construis des systèmes DURABLES, pas des systèmes jetables pour une seule tâche. Un bon système est une BASE permanente qui gère l'entraînement de l'utilisateur EN CONTINU (chaque semaine, chaque mois, toute l'année) et qui se SPÉCIALISE selon son OBJECTIF DU MOMENT (avec une échéance). Principes :
+- Il tourne en boucle (planification récurrente), il ne meurt pas quand l'objectif est atteint.
+- Il LIT TOUTES les données utiles à chaque cycle : activités, récupération (sommeil / HRV / check-ins), blessures/douleurs, profil. Mets ces sources en entrée.
+- Il produit le programme PAR CYCLE (la semaine, ou les 2 semaines, à venir) — JAMAIS un bloc figé sur plusieurs mois — pour s'ADAPTER à la forme réelle : fatigue, progrès plus rapide que prévu, douleur/blessure.
+- Capture l'objectif du moment + son échéance dans le champ "objective" de la proposition ET dans le "role" du trigger. À l'échéance, le système se mettra en pause et redemandera le prochain objectif — dis-le à l'utilisateur.
+- Demande toujours la CADENCE (hebdo ou toutes les 2 semaines) et l'ÉCHÉANCE de l'objectif si tu ne les as pas.
+
 BRIQUES DISPONIBLES (kind) :
-- "trigger" : point d'entrée UNIQUE et OBLIGATOIRE. Son "role" = l'objectif du système.
-- "source" : lit une page de l'app. "sourceKey" ∈ "activities" | "planning" | "injuries" | "recovery" | "profile". Pas de "role".
-- "agent" : coach IA spécialisé. "role" = métier + mission, précis. "model" ∈ "hermes" | "athena" | "zeus".
+- "trigger" : point d'entrée UNIQUE et OBLIGATOIRE. Son "role" = la mission permanente + l'objectif du moment + la cadence.
+- "source" : lit une page de l'app. "sourceKey" ∈ "activities" | "planning" | "injuries" | "recovery" (inclut sommeil/HRV/check-ins) | "profile". Pas de "role".
+- "agent" : coach IA spécialisé. "role" = métier + mission, précis, en mode "génère le prochain cycle en t'adaptant à la forme actuelle". "model" ∈ "hermes" | "athena" | "zeus".
 - "merge" : fusionne les contributions en UNE réponse. "role" = consigne de synthèse.
 - "validation" : pause + accord utilisateur avant de continuer. "role" = ce qu'on vérifie.
 - "action" : écrit dans l'app. "actionKey" ∈ "planning_save" | "calendar_race" | "notify_report". Seulement si l'utilisateur veut vraiment écrire.
@@ -192,13 +205,13 @@ COMPORTEMENT (très important) :
 - Le plan proposé doit résumer, en français simple, ce que le système fera et pourquoi ce découpage, puis lister les nœuds via le JSON.
 - Reste bref et concret. Français.
 
-RÈGLES DU GRAPHE (pour une proposition) : 3 à 7 nœuds, un seul "trigger", graphe connexe sans cycle, sources en entrée des agents concernés, termine par "merge" (ou "action" si écriture). Titres courts, rôles concrets.
+RÈGLES DU GRAPHE (pour une proposition) : 3 à 7 nœuds, un seul "trigger", graphe connexe sans cycle, sources utiles en entrée (activités, récupération, blessures, profil), termine par "merge" (ou "action" si écriture). Titres courts, rôles concrets. Le "objective" décrit l'objectif du moment ("text") et son échéance ("deadline" au format YYYY-MM-DD si connue, sinon null).
 
 RÉPONDS UNIQUEMENT avec un objet JSON, une de ces trois formes :
 1) Questions de clarification (1 à 3 questions) :
 {"action":"ask","message":"une phrase : ce que tu as compris / pourquoi tu demandes","questions":[{"header":"OBJECTIF","question":"Quel est le but principal ?","multiSelect":false,"options":[{"label":"Bilan hebdo","description":"Analyser la semaine écoulée","recommended":true},{"label":"Plan à venir","description":"Construire les prochaines séances"}]}]}
 2) Proposition à confirmer :
-{"action":"propose","message":"résumé en français du système proposé et pourquoi","plan":{"name":"Nom court","explanation":"2-4 phrases","nodes":[{"id":"n1","kind":"trigger","title":"Objectif","role":"…"}],"edges":[{"from":"n1","to":"n2"}]}}
+{"action":"propose","message":"résumé en français du système proposé et pourquoi","plan":{"name":"Nom court","explanation":"2-4 phrases","objective":{"text":"Prise de masse → ~77 kg + semi Maroc","deadline":"2025-11-30"},"nodes":[{"id":"n1","kind":"trigger","title":"Objectif","role":"…"}],"edges":[{"from":"n1","to":"n2"}]}}
 3) Réponse simple (question de l'utilisateur sans construction) :
 {"action":"reply","message":"ta réponse"}
 `

@@ -40,7 +40,7 @@ const hasStudioOutput = (k: StudioNodeKind) => k !== 'action'
 const hasStudioInput = (k: StudioNodeKind) => k !== 'trigger' && k !== 'source'
 
 const KIND_COLOR: Record<StudioNodeKind, string> = {
-  trigger:    '#8B5CF6',
+  trigger:    '#3B92D4',
   agent:      '#06B6D4',
   merge:      '#F59E0B',
   validation: '#EC4899',
@@ -65,6 +65,12 @@ function KindIcon({ kind, size = 13 }: { kind: StudioNodeKind; size?: number }) 
   }
 }
 
+// Logo THW (shuriken 4 bras) — remplace l'étoile générique dans le Studio.
+function StudioLogo({ size = 16 }: { size?: number }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/logos/logo_4bras.png" alt="" width={size} height={size} style={{ display: 'block', objectFit: 'contain', flexShrink: 0 }} />
+}
+
 // ── « Applications » = pages de l'app connectables (façon modules Make) ──
 // Chacune a son icône propre pour être reconnue d'un coup d'œil, distincte
 // des « outils » abstraits (Objectif, Agent, Synthèse, Validation).
@@ -76,7 +82,7 @@ const APP_CATALOG: AppEntry[] = [
   { id: 'app_activities', label: 'Activités',     color: '#22C55E', kind: 'source', sourceKey: 'activities', access: 'lecture' },
   { id: 'app_planning',   label: 'Planning',      color: '#06B6D4', kind: 'source', sourceKey: 'planning',   access: 'lecture' },
   { id: 'app_injuries',   label: 'Blessures',     color: '#EF4444', kind: 'source', sourceKey: 'injuries',   access: 'lecture' },
-  { id: 'app_recovery',   label: 'Récupération',  color: '#8B5CF6', kind: 'source', sourceKey: 'recovery',   access: 'lecture' },
+  { id: 'app_recovery',   label: 'Récupération',  color: '#14B8A6', kind: 'source', sourceKey: 'recovery',   access: 'lecture' },
   { id: 'app_profile',    label: 'Profil',        color: '#F59E0B', kind: 'source', sourceKey: 'profile',    access: 'lecture' },
   { id: 'act_planning',   label: 'Planning',      color: '#EF4444', kind: 'action', actionKey: 'planning_save', access: 'écriture' },
   { id: 'act_calendar',   label: 'Calendrier',    color: '#F97316', kind: 'action', actionKey: 'calendar_race', access: 'écriture' },
@@ -191,6 +197,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [chatBusy, setChatBusy] = useState(false)     // l'IA réfléchit
   const [chatInput, setChatInput] = useState('')
   const chatScrollRef = useRef<HTMLDivElement>(null)
+  const [builderModel, setBuilderModel] = useState<StudioModel>('athena')  // modèle de l'architecte
+  const [modelMenuOpen, setModelMenuOpen] = useState(false)
 
   // Exécution
   const [running, setRunning] = useState(false)
@@ -202,7 +210,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const abortRef = useRef<AbortController | null>(null)
 
   const wrapRef = useRef<HTMLDivElement>(null)
-  const drag = useRef<null | { mode: 'node' | 'pan' | 'conn' | 'pinch'; id?: string; dx: number; dy: number }>(null)
+  const drag = useRef<null | { mode: 'node' | 'pan' | 'conn' | 'pinch'; id?: string; dx: number; dy: number; moved?: boolean }>(null)
   const [pending, setPending] = useState<null | { fromId: string; x: number; y: number }>(null)
   // Pincement tactile (deux doigts) sur la toile
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
@@ -231,6 +239,48 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     }, 700)
   }, [])
   const persist = useCallback((g: StudioGraph) => { setGraph(g); scheduleSave(g) }, [scheduleSave])
+
+  // ── Historique local (annuler / rétablir) ─────────────────────
+  // Chaque mutation de l'utilisateur snapshot le graphe AVANT changement. Les
+  // retouches de texte consécutives (même structure) sont fusionnées en une
+  // seule étape pour ne pas polluer l'historique.
+  const undoRef = useRef<StudioGraph[]>([])
+  const redoRef = useRef<StudioGraph[]>([])
+  const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
+  const structSig = (g: StudioGraph) =>
+    g.nodes.map(n => n.id + n.kind).sort().join('|') + '#' + g.edges.map(e => `${e.from}>${e.to}`).sort().join('|')
+  const pushHistory = useCallback(() => {
+    const cur = graphRef.current
+    const top = undoRef.current[undoRef.current.length - 1]
+    if (!(top && structSig(top) === structSig(cur))) {
+      undoRef.current.push(cur)
+      if (undoRef.current.length > 60) undoRef.current.shift()
+    }
+    redoRef.current = []
+    setCanUndo(undoRef.current.length > 0); setCanRedo(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const resetHistory = useCallback(() => { undoRef.current = []; redoRef.current = []; setCanUndo(false); setCanRedo(false) }, [])
+  // Mutation « avec historique » : snapshot puis applique. On garde graphRef
+  // synchronisé pour que des clics/actions rapprochés lisent le bon état.
+  const commit = useCallback((g: StudioGraph) => { pushHistory(); graphRef.current = g; persist(g) }, [pushHistory, persist])
+  const undo = () => {
+    if (!undoRef.current.length) return
+    redoRef.current.push(graphRef.current)
+    const prev = undoRef.current.pop()!
+    graphRef.current = prev
+    setGraph(prev); scheduleSave(prev); setSelId(null); setSelEdge(null)
+    setCanUndo(undoRef.current.length > 0); setCanRedo(true)
+  }
+  const redo = () => {
+    if (!redoRef.current.length) return
+    undoRef.current.push(graphRef.current)
+    const next = redoRef.current.pop()!
+    graphRef.current = next
+    setGraph(next); scheduleSave(next); setSelId(null); setSelEdge(null)
+    setCanUndo(true); setCanRedo(redoRef.current.length > 0)
+  }
 
   const refreshAccess = useCallback(() => {
     void fetch('/api/studio/access')
@@ -322,6 +372,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     }
     if (d.mode === 'pan') { setPan(p => ({ x: p.x + e.movementX, y: p.y + e.movementY })); return }
     if (d.mode === 'node' && d.id) {
+      // Au tout premier déplacement réel, on snapshot la position d'avant (1 étape).
+      if (!d.moved) { d.moved = true; pushHistory() }
       const pt = canvasPoint(e.clientX, e.clientY)
       setGraph(g => ({ ...g, nodes: g.nodes.map(n => n.id === d.id ? { ...n, x: pt.x - d.dx, y: pt.y - d.dy } : n) }))
       return
@@ -342,15 +394,15 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
       const toId = el?.closest('[data-portin]')?.getAttribute('data-portin') ?? null
       if (toId && d.id && toId !== d.id) {
-        setGraph(g => {
-          const from = g.nodes.find(n => n.id === d.id), to = g.nodes.find(n => n.id === toId)
-          if (!from || !to) return g
-          // Règle de liaison : refuse une connexion invalide (silencieux).
-          if (!hasStudioOutput(from.kind) || !hasStudioInput(to.kind)) return g
-          if (g.edges.some(x => x.from === d.id && x.to === toId)) return g
-          const next = { ...g, edges: [...g.edges, { id: genId(), from: d.id!, to: toId }] }
-          scheduleSave(next); return next
-        })
+        const g = graphRef.current
+        const from = g.nodes.find(n => n.id === d.id), to = g.nodes.find(n => n.id === toId)
+        // Règle de liaison : refuse une connexion invalide (silencieux).
+        if (from && to && hasStudioOutput(from.kind) && hasStudioInput(to.kind)
+          && !g.edges.some(x => x.from === d.id && x.to === toId)) {
+          pushHistory()
+          const next = { ...g, edges: [...g.edges, { id: genId(), from: d.id, to: toId }] }
+          setGraph(next); scheduleSave(next)
+        }
       }
       setPending(null)
     }
@@ -432,7 +484,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     const edges = src && hasStudioOutput(src.kind) && hasStudioInput(kind)
       ? [...graph.edges, { id: genId(), from: src.id, to: n.id }]
       : graph.edges
-    persist({ ...graph, nodes: [...graph.nodes, n], edges }); setSelId(n.id); setTab('canvas')
+    commit({ ...graph, nodes: [...graph.nodes, n], edges }); setSelId(n.id); setTab('canvas')
     if (typeof window !== 'undefined' && window.innerWidth < 768) setPaletteOpen(false)
     return n.id
   }
@@ -441,8 +493,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     else addNode('action', { actionKey: app.actionKey, title: app.label, fromId })
   }
   const addExt = (e: ExtEntry, fromId?: string) => addNode('source', { sourceKey: e.sourceKey, title: e.label, fromId })
-  const loadExample = () => { const g = sampleGraph(); persist({ ...g, name: graph.name || g.name }); setSelId(null); setStatus({}); setNodeText({}) }
-  const clearCanvas = () => { persist({ ...emptyGraph(), id: graph.id, name: graph.name }); setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}) }
+  const loadExample = () => { const g = sampleGraph(); commit({ ...g, name: graph.name || g.name }); setSelId(null); setStatus({}); setNodeText({}) }
+  const clearCanvas = () => { commit({ ...emptyGraph(), id: graph.id, name: graph.name }); setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}) }
 
   // ── Accueil : ouvrir / créer / dupliquer / supprimer un système ──
   const openSystem = (row: StudioSystemRow) => {
@@ -451,7 +503,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     setSystemId(row.id)
     setView('canvas'); setTab('canvas')
     setSelId(null); setSelEdge(null); setStatus({}); setNodeText({}); setLogs([]); setIssues(null)
-    setPan({ x: 0, y: 0 }); setZoom(1)
+    setPan({ x: 0, y: 0 }); setZoom(1); resetHistory()
     // Planification existante du système (best-effort)
     setSchedule(null)
     void (async () => {
@@ -522,12 +574,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     } catch { setHomeErr('Déplacement impossible — réessaie.') }
   }
   const patchNode = (id: string, patch: Partial<StudioNode>) =>
-    persist({ ...graph, nodes: graph.nodes.map(n => n.id === id ? { ...n, ...patch } : n) })
+    commit({ ...graph, nodes: graph.nodes.map(n => n.id === id ? { ...n, ...patch } : n) })
   const deleteNode = (id: string) => {
-    persist({ ...graph, nodes: graph.nodes.filter(n => n.id !== id), edges: graph.edges.filter(e => e.from !== id && e.to !== id) })
+    commit({ ...graph, nodes: graph.nodes.filter(n => n.id !== id), edges: graph.edges.filter(e => e.from !== id && e.to !== id) })
     setSelId(null)
   }
-  const deleteEdge = (id: string) => { persist({ ...graph, edges: graph.edges.filter(e => e.id !== id) }); setSelEdge(null) }
+  const deleteEdge = (id: string) => { commit({ ...graph, edges: graph.edges.filter(e => e.id !== id) }); setSelEdge(null) }
 
   // ── Zoom / navigation de la toile ──────────────────────────
   const clampZoom = (z: number) => Math.min(1.6, Math.max(0.35, z))
@@ -558,7 +610,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const tidy = () => {
     if (!graph.nodes.length) return
     const nodes = autoLayout(graph.nodes, graph.edges)
-    persist({ ...graph, nodes })
+    commit({ ...graph, nodes })
     fitViewTo(nodes)
   }
 
@@ -585,6 +637,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
+      // Annuler / Rétablir (⌘Z, ⌘⇧Z, ⌘Y) — actifs même hors sélection.
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y')) {
+        e.preventDefault()
+        if (e.key === 'y' || e.key === 'Y' || e.shiftKey) redo(); else undo()
+        return
+      }
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
       if (e.key === 'Escape') { setSelId(null); setSelEdge(null); return }
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -623,7 +681,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         ? { role: 'user' as const, content: m.text }
         : { role: 'assistant' as const, content: m.kind === 'ask' ? `${m.text}\nQuestion : ${m.question}` : m.text })
     try {
-      const turn = await converseArchitect(apiHistory, graph.nodes.length > 0 ? graph : undefined)
+      const turn = await converseArchitect(apiHistory, graph.nodes.length > 0 ? graph : undefined, undefined, builderModel)
       const id = newMsgId()
       if (turn.action === 'ask') {
         setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'ask', text: turn.message, question: turn.question, options: turn.options }])
@@ -654,7 +712,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     try {
       const res = planToGraph(msg.plan, msg.text)
       prevGraphRef.current = graph          // pour « Annuler »
-      persist(res.graph)
+      commit(res.graph)
       setSelId(null); setSelEdge(null); setPan({ x: 0, y: 0 }); setZoom(1)
       setStatus({}); setNodeText({}); setLogs([])
       setChatMsgs(m => m.map(x => x.id === msgId && x.role === 'assistant' && x.kind === 'propose' ? { ...x, applied: true } : x))
@@ -671,7 +729,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
   const undoBuild = () => {
     if (prevGraphRef.current) {
-      persist(prevGraphRef.current); prevGraphRef.current = null
+      commit(prevGraphRef.current); prevGraphRef.current = null
       setChatMsgs(m => [...m, { id: newMsgId(), role: 'assistant', kind: 'reply', text: 'J’ai rétabli le système précédent.' }])
     }
   }
@@ -699,14 +757,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       <div ref={chatScrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
         {chatMsgs.length === 0 && !chatBusy && (
           <div style={{ margin: 'auto', textAlign: 'center', maxWidth: 280, color: 'var(--text-dim)' }}>
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 8 }}><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+<div style={{ display: 'inline-flex', marginBottom: 8 }}><StudioLogo size={32} /></div>
             <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>Décris ton système</p>
             <p style={{ margin: '5px 0 0', fontSize: 12, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif' }}>Je te pose quelques questions pour bien comprendre, puis je te propose un système à valider. Rien n’est appliqué sans ton accord.</p>
           </div>
         )}
         {chatMsgs.map(m => {
           if (m.role === 'user') return (
-            <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '86%', background: '#8B5CF6', color: '#fff', padding: '9px 13px', borderRadius: '14px 14px 4px 14px', fontSize: 13, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif', whiteSpace: 'pre-wrap' }}>{m.text}</div>
+            <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '86%', background: '#3B92D4', color: '#fff', padding: '9px 13px', borderRadius: '14px 14px 4px 14px', fontSize: 13, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif', whiteSpace: 'pre-wrap' }}>{m.text}</div>
           )
           const bubble = (children: React.ReactNode, tone?: 'error') => (
             <div key={m.id} style={{ alignSelf: 'flex-start', maxWidth: '92%', background: tone === 'error' ? 'rgba(239,68,68,0.08)' : 'var(--bg-card)', border: `1px solid ${tone === 'error' ? 'rgba(239,68,68,0.3)' : 'var(--border)'}`, color: tone === 'error' ? '#EF4444' : 'var(--text)', padding: '10px 13px', borderRadius: '14px 14px 14px 4px', fontSize: 13, lineHeight: 1.55, fontFamily: 'DM Sans,sans-serif' }}>{children}</div>
@@ -720,7 +778,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 9 }}>
                 {m.options.map((opt, i) => (
                   <button key={i} onClick={() => void sendArchitect(opt)} disabled={chatBusy}
-                    style={{ textAlign: 'left', padding: '8px 12px', borderRadius: 10, border: '1px solid color-mix(in srgb, #8B5CF6 40%, transparent)', background: 'color-mix(in srgb, #8B5CF6 7%, transparent)', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                    style={{ textAlign: 'left', padding: '8px 12px', borderRadius: 10, border: '1px solid color-mix(in srgb, #3B92D4 40%, transparent)', background: 'color-mix(in srgb, #3B92D4 7%, transparent)', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
                     {opt}
                   </button>
                 ))}
@@ -734,10 +792,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               {planPreview(m.plan)}
               {!m.applied && !m.declined && (
                 <>
-                  <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: '#8B5CF6' }}>Confirmes-tu la construction de ce système&nbsp;?</div>
+                  <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: '#3B92D4' }}>Confirmes-tu la construction de ce système&nbsp;?</div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                     <button onClick={() => confirmPlan(m.id)}
-                      style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', background: '#8B5CF6', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                      style={{ flex: 1, padding: '9px 0', borderRadius: 10, border: 'none', background: '#3B92D4', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
                       Confirmer
                     </button>
                     <button onClick={() => declinePlan(m.id)}
@@ -764,7 +822,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         })}
         {chatBusy && (
           <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 4, padding: '11px 14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px 14px 14px 4px' }}>
-            {[0, 1, 2].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#8B5CF6', animation: `studio_pulse 1s ease ${i * 0.15}s infinite` }} />)}
+            {[0, 1, 2].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#3B92D4', animation: `studio_pulse 1s ease ${i * 0.15}s infinite` }} />)}
           </div>
         )}
       </div>
@@ -779,7 +837,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           style={{ flex: 1, minWidth: 0, resize: 'none', maxHeight: 120, padding: '9px 12px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', outline: 'none', lineHeight: 1.4 }}
         />
         <button onClick={() => { const t = chatInput; setChatInput(''); void sendArchitect(t) }} disabled={!chatInput.trim() || chatBusy} aria-label="Envoyer"
-          style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 11, border: 'none', background: chatInput.trim() && !chatBusy ? '#8B5CF6' : 'var(--border)', color: chatInput.trim() && !chatBusy ? '#fff' : 'var(--text-dim)', cursor: chatInput.trim() && !chatBusy ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 11, border: 'none', background: chatInput.trim() && !chatBusy ? '#3B92D4' : 'var(--border)', color: chatInput.trim() && !chatBusy ? '#fff' : 'var(--text-dim)', cursor: chatInput.trim() && !chatBusy ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
         </button>
       </div>
@@ -946,7 +1004,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {view === 'canvas' && (
           <input
             value={graph.name}
-            onChange={e => persist({ ...graph, name: e.target.value })}
+            onChange={e => commit({ ...graph, name: e.target.value })}
             aria-label="Nom du système"
             style={{ marginLeft: 2, minWidth: 0, flex: '0 1 240px', padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', outline: 'none' }}
           />
@@ -956,7 +1014,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {access?.allowed && (
           <button onClick={() => setWalletOpen(true)} title="Solde de tokens Studio — voir le détail et recharger"
             style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3B92D4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             {access.remaining > 1e12 ? 'Illimité' : `${formatTokens(access.remaining)} tokens`}
           </button>
         )}
@@ -975,14 +1033,14 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
         {/* Chat Architecte — ouvre la discussion en plein écran */}
         <button onClick={() => { setChatFull(true); if (tab !== 'canvas') setTab('canvas') }} title="Discuter avec l’architecte (plein écran)" aria-label="Chat architecte"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 10, border: '1px solid var(--border)', background: chatMsgs.length > 0 ? 'color-mix(in srgb, #8B5CF6 10%, transparent)' : 'var(--bg-alt)', color: chatMsgs.length > 0 ? '#8B5CF6' : 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'DM Sans,sans-serif', flexShrink: 0 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: isMobile ? '0 9px' : '0 12px', height: 34, borderRadius: 10, border: '1px solid var(--border)', background: chatMsgs.length > 0 ? 'color-mix(in srgb, #3B92D4 10%, transparent)' : 'var(--bg-alt)', color: chatMsgs.length > 0 ? '#3B92D4' : 'var(--text-mid)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'DM Sans,sans-serif', flexShrink: 0 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 01-8.5 8.5 8.6 8.6 0 01-3.9-.9L3 21l1.9-5.6a8.4 8.4 0 01-.9-3.9A8.4 8.4 0 0112.5 3 8.4 8.4 0 0121 11.5z"/></svg>
           {!isMobile && 'Chat'}
         </button>
 
         {/* Planifier — run autonome récurrent */}
         <button onClick={() => setScheduleOpen(true)} title={schedule?.enabled ? 'Planification active — modifier' : 'Planifier ce système (run automatique)'} aria-label="Planifier ce système"
-          style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: schedule?.enabled ? 'color-mix(in srgb, #8B5CF6 10%, transparent)' : 'var(--bg-alt)', color: schedule?.enabled ? '#8B5CF6' : 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: schedule?.enabled ? 'color-mix(in srgb, #3B92D4 10%, transparent)' : 'var(--bg-alt)', color: schedule?.enabled ? '#3B92D4' : 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         </button>
 
@@ -1045,62 +1103,104 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {view === 'canvas' && tab === 'canvas' && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
 
-            {/* ── Barre « Décris ton système » (texte + dictée) ── */}
+            {/* ── Composeur « Décris ton système » — même esprit que le chat coach ── */}
             <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', zIndex: 6, width: isMobile ? 'calc(100% - 24px)' : 'min(620px, calc(100% - 220px))' }}>
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 6, padding: '6px 6px 6px 14px',
-                borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)',
+                display: 'flex', flexDirection: 'column', gap: 8, padding: '11px 12px 9px',
+                borderRadius: 18, border: '1px solid var(--border)', background: 'var(--bg-card)',
                 boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.10)',
               }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                  <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/>
-                </svg>
                 <input
                   value={desc}
                   onChange={e => setDesc(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') void build() }}
                   disabled={chatBusy}
                   placeholder={graph.nodes.length > 0 ? 'Décris une modification… ou un nouveau système' : "Décris ce que tu veux… l'IA te posera des questions"}
-                  style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13.5, fontFamily: 'DM Sans,sans-serif' }}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '3px 4px', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 14, fontFamily: 'DM Sans,sans-serif' }}
                 />
-                {/* Jauge d'utilisation — même principe que la bulle jauge du chat */}
-                {access?.allowed && (
-                  <button onClick={() => setWalletOpen(true)} title="Jauge d'utilisation Studio" aria-label="Jauge d'utilisation Studio"
-                    style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21a9 9 0 100-18 9 9 0 000 18z" opacity="0.4"/><path d="M12 3a9 9 0 018.5 6"/><path d="M12 12l3.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
-                    {access.monthlyLimit > 0 && access.remaining < 1e12 && (
-                      <span style={{ position: 'absolute', top: 4, right: 4, width: 6, height: 6, borderRadius: '50%', background: access.remaining <= 0 ? '#EF4444' : (access.monthlyUsed / Math.max(1, access.monthlyLimit)) > 0.85 ? '#F59E0B' : '#22C55E' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {/* Sélecteur de modèle IA (logo + nom) */}
+                  <div style={{ position: 'relative' }}>
+                    <button onClick={() => setModelMenuOpen(o => !o)} disabled={chatBusy} title="Modèle de l’IA"
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px 0 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif', fontSize: 12, fontWeight: 700 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={builderModel === 'hermes' ? '/logos/logo_3bras.png' : builderModel === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={16} height={16} style={{ objectFit: 'contain', flexShrink: 0 }} />
+                      {MODEL_LABEL[builderModel]}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    {modelMenuOpen && (
+                      <>
+                        <div onClick={() => setModelMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 19 }} />
+                        <div style={{ position: 'absolute', top: 36, left: 0, zIndex: 20, width: 200, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 12px 34px rgba(0,0,0,0.2)', padding: 5, animation: 'studio_in 0.14s ease' }}>
+                          {(['hermes', 'athena', 'zeus'] as StudioModel[]).map(m => (
+                            <button key={m} onClick={() => { setBuilderModel(m); setModelMenuOpen(false) }}
+                              style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 9px', borderRadius: 9, border: 'none', background: builderModel === m ? 'color-mix(in srgb, #3B92D4 9%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans,sans-serif' }}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={20} height={20} style={{ objectFit: 'contain', flexShrink: 0 }} />
+                              <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{MODEL_LABEL[m]}</span>
+                              {builderModel === m && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B92D4" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }} />
+                  {/* Jauge d'utilisation des tokens */}
+                  {access?.allowed && (
+                    <button onClick={() => setWalletOpen(true)} title="Jauge d'utilisation Studio" aria-label="Jauge d'utilisation Studio"
+                      style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21a9 9 0 100-18 9 9 0 000 18z" opacity="0.4"/><path d="M12 3a9 9 0 018.5 6"/><path d="M12 12l3.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+                      {access.monthlyLimit > 0 && access.remaining < 1e12 && (
+                        <span style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: access.remaining <= 0 ? '#EF4444' : (access.monthlyUsed / Math.max(1, access.monthlyLimit)) > 0.85 ? '#F59E0B' : '#22C55E' }} />
+                      )}
+                    </button>
+                  )}
+                  {/* Dictée vocale */}
+                  <button onClick={() => setMicOpen(true)} disabled={chatBusy} title="Décrire à la voix" aria-label="Décrire à la voix"
+                    style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/>
+                    </svg>
+                  </button>
+                  {/* Envoyer */}
+                  <button onClick={() => void build()} disabled={!desc.trim() || chatBusy} aria-label="Envoyer"
+                    style={{ width: 34, height: 34, borderRadius: 11, border: 'none', cursor: desc.trim() && !chatBusy ? 'pointer' : 'not-allowed',
+                      background: desc.trim() && !chatBusy ? '#3B92D4' : 'var(--border)', color: desc.trim() && !chatBusy ? '#fff' : 'var(--text-dim)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {chatBusy ? (
+                      <span style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite', display: 'inline-block' }} />
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
                     )}
                   </button>
-                )}
-                {/* Dictée vocale */}
-                <button onClick={() => setMicOpen(true)} disabled={chatBusy} title="Décrire à la voix" aria-label="Décrire à la voix"
-                  style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/>
-                  </svg>
-                </button>
-                <button onClick={() => void build()} disabled={!desc.trim() || chatBusy}
-                  style={{ height: 32, padding: '0 14px', borderRadius: 10, border: 'none', cursor: desc.trim() && !chatBusy ? 'pointer' : 'not-allowed',
-                    background: desc.trim() && !chatBusy ? '#8B5CF6' : 'var(--border)', color: desc.trim() && !chatBusy ? '#fff' : 'var(--text-dim)',
-                    fontSize: 12.5, fontWeight: 700, fontFamily: 'DM Sans,sans-serif', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                  {chatBusy ? (
-                    <><span style={{ width: 11, height: 11, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite', display: 'inline-block' }} /> …</>
-                  ) : 'Envoyer'}
-                </button>
+                </div>
               </div>
             </div>
 
-            {/* ── Barre flottante : exemple · vider ── */}
+            {/* ── Barre flottante : annuler · rétablir · exemple · vider ── */}
             <div style={{ position: 'absolute', top: 14, left: 12, zIndex: 8, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-              {graph.nodes.length > 0 && (
+              {(graph.nodes.length > 0 || canUndo || canRedo) && (
                 <div style={{ display: 'flex', gap: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, boxShadow: '0 6px 18px rgba(0,0,0,0.10)' }}>
-                  <button onClick={() => { if (confirm('Remplacer le système actuel par l’exemple ?')) loadExample() }} title="Charger l’exemple" style={zBtn}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v12H5.2L4 17.2z"/><path d="M8 9h8M8 12h5"/></svg>
+                  <button onClick={undo} disabled={!canUndo} title="Annuler (⌘Z)" aria-label="Annuler"
+                    style={{ ...zBtn, opacity: canUndo ? 1 : 0.35, cursor: canUndo ? 'pointer' : 'default' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 015 5 5 5 0 01-5 5H8"/></svg>
                   </button>
-                  <button onClick={() => { if (confirm('Vider la toile ?')) clearCanvas() }} title="Vider la toile" style={zBtn}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                  <button onClick={redo} disabled={!canRedo} title="Rétablir (⌘⇧Z)" aria-label="Rétablir"
+                    style={{ ...zBtn, opacity: canRedo ? 1 : 0.35, cursor: canRedo ? 'pointer' : 'default' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 00-5 5 5 5 0 005 5h7"/></svg>
                   </button>
+                  {graph.nodes.length > 0 && (
+                    <>
+                      <div style={{ width: 1, background: 'var(--border)', margin: '2px 1px' }} />
+                      <button onClick={() => { if (confirm('Remplacer le système actuel par l’exemple ?')) loadExample() }} title="Charger l’exemple" style={zBtn}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v12H5.2L4 17.2z"/><path d="M8 9h8M8 12h5"/></svg>
+                      </button>
+                      <button onClick={() => { if (confirm('Vider la toile ?')) clearCanvas() }} title="Vider la toile" style={zBtn}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -1140,9 +1240,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <div onClick={close} style={{ position: 'absolute', inset: 0, zIndex: 9 }} />
                   <div style={{ position: 'absolute', top: 14, left: 70, zIndex: 10, width: 300, maxHeight: 'calc(100% - 28px)', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 12px 40px rgba(0,0,0,0.28)', overflow: 'hidden', animation: 'studio_in 0.16s ease' }}>
                     {branching && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 12px', borderBottom: '1px solid var(--border)', background: 'rgba(139,92,246,0.06)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3v12a3 3 0 003 3h6"/><path d="M15 15l3 3-3 3"/></svg>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#8B5CF6', fontFamily: 'DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 12px', borderBottom: '1px solid var(--border)', background: 'rgba(59,146,212,0.06)' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B92D4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3v12a3 3 0 003 3h6"/><path d="M15 15l3 3-3 3"/></svg>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#3B92D4', fontFamily: 'DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           Brancher depuis « {branchFrom?.title ?? 'bloc'} »
                         </span>
                       </div>
@@ -1191,21 +1291,41 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
                     const flowing = status[e.from] === 'done' && (status[e.to] === 'running' || status[e.to] === 'waiting')
                     const doneFlow = status[e.from] === 'done' && status[e.to] === 'done'
-                    const col = flowing ? KIND_COLOR[a.kind] : doneFlow ? '#22C55E' : 'color-mix(in srgb, var(--text) 30%, transparent)'
+                    const sel = selEdge === e.id
+                    const colA = KIND_COLOR[a.kind], colB = KIND_COLOR[b.kind]
+                    // Chapelet de perles façon Make : dégradé de la couleur de A vers
+                    // celle de B, perles un peu plus grosses près des bulles.
+                    const dx = p2.x - p1.x, dy = p2.y - p1.y
+                    const L = Math.hypot(dx, dy) || 1
+                    const N = Math.max(4, Math.min(42, Math.round(L / 11)))
                     return (
                       <g key={e.id}>
-                        {/* halo doux sous le fil */}
-                        <path d={edgePath(p1, p2)} fill="none" stroke={col} strokeWidth={6} strokeOpacity={0.08} strokeLinecap="round" />
-                        <path d={edgePath(p1, p2)} fill="none" stroke={col}
-                          strokeWidth={selEdge === e.id ? 2.6 : 2} strokeOpacity={flowing || doneFlow ? 0.95 : 0.75} strokeLinecap="round"
-                          strokeDasharray={flowing ? '7 7' : undefined}
-                          style={{ pointerEvents: 'stroke', cursor: 'pointer', animation: flowing ? 'studio_dash 0.6s linear infinite' : undefined }}
+                        <defs>
+                          <linearGradient id={`eg_${e.id}`} gradientUnits="userSpaceOnUse" x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}>
+                            <stop offset="0" stopColor={colA} />
+                            <stop offset="1" stopColor={colB} />
+                          </linearGradient>
+                        </defs>
+                        {/* Zone de clic invisible le long du fil */}
+                        <path d={edgePath(p1, p2)} fill="none" stroke="transparent" strokeWidth={16}
+                          style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
                           onPointerDown={(ev) => { ev.stopPropagation(); setSelEdge(e.id); setSelId(null) }} />
-                        {/* pastille directionnelle au milieu */}
-                        {!flowing && !doneFlow && selEdge !== e.id && (
-                          <circle cx={mid.x} cy={mid.y} r={2.4} fill="color-mix(in srgb, var(--text) 34%, transparent)" />
+                        {flowing || doneFlow ? (
+                          // Fil actif : trait animé bien lisible.
+                          <path d={edgePath(p1, p2)} fill="none" stroke={doneFlow ? '#22C55E' : KIND_COLOR[a.kind]}
+                            strokeWidth={2.4} strokeOpacity={0.95} strokeLinecap="round"
+                            strokeDasharray={flowing ? '7 7' : undefined}
+                            style={{ pointerEvents: 'none', animation: flowing ? 'studio_dash 0.6s linear infinite' : undefined }} />
+                        ) : (
+                          // Fil au repos : chapelet de perles dégradées.
+                          Array.from({ length: N + 1 }, (_, i) => {
+                            const t = i / N
+                            const r = (sel ? 2.3 : 1.8) + 1.5 * Math.abs(2 * t - 1)
+                            return <circle key={i} cx={p1.x + dx * t} cy={p1.y + dy * t} r={r}
+                              fill={`url(#eg_${e.id})`} opacity={sel ? 1 : 0.85} style={{ pointerEvents: 'none' }} />
+                          })
                         )}
-                        {selEdge === e.id && (
+                        {sel && (
                           <g transform={`translate(${mid.x},${mid.y})`} style={{ pointerEvents: 'all', cursor: 'pointer' }} onPointerDown={(ev) => { ev.stopPropagation(); deleteEdge(e.id) }}>
                             <circle r="10" fill="#EF4444" style={{ filter: 'drop-shadow(0 2px 6px rgba(239,68,68,0.45))' }} />
                             <path d="M -3.4 -3.4 L 3.4 3.4 M 3.4 -3.4 L -3.4 3.4" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
@@ -1328,9 +1448,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', gap: 16, padding: 20 }}>
                   <button onClick={() => { setPickerFrom(null); setPickerQuery(''); setPickerOpen(true) }} title="Ajouter un bloc"
                     style={{ pointerEvents: 'auto', width: 84, height: 84, borderRadius: '50%', cursor: 'pointer',
-                      background: 'color-mix(in srgb, #8B5CF6 8%, var(--bg-card))', border: '2px dashed color-mix(in srgb, #8B5CF6 45%, transparent)',
-                      color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 10px 30px rgba(139,92,246,0.14)', transition: 'transform 0.15s, background 0.15s' }}
+                      background: 'color-mix(in srgb, #3B92D4 8%, var(--bg-card))', border: '2px dashed color-mix(in srgb, #3B92D4 45%, transparent)',
+                      color: '#3B92D4', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 10px 30px rgba(59,146,212,0.14)', transition: 'transform 0.15s, background 0.15s' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.06)' }}
                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)' }}>
                     <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -1338,7 +1458,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <div style={{ textAlign: 'center', maxWidth: 300 }}>
                     <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>Toile vierge</p>
                     <p style={{ margin: '5px 0 0', fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif' }}>
-                      Appuie sur <b style={{ color: '#8B5CF6' }}>+</b> pour choisir un outil ou une application, et relie les bulles entre elles.
+                      Appuie sur <b style={{ color: '#3B92D4' }}>+</b> pour choisir un outil ou une application, et relie les bulles entre elles.
                     </p>
                     <button onClick={loadExample} style={{ pointerEvents: 'auto', marginTop: 12, padding: '7px 14px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
                       ou charger un exemple
@@ -1375,7 +1495,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 width: isMobile ? '100%' : CHAT_W, background: 'var(--bg-card)', borderLeft: '1px solid var(--border)',
                 display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 34px rgba(0,0,0,0.14)', animation: 'studio_in 0.2s ease' }}>
                 <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '11px 12px', borderBottom: '1px solid var(--border)' }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+                  <StudioLogo size={17} />
                   <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif', flex: 1 }}>Architecte</span>
                   {chatMsgs.length > 0 && (
                     <button onClick={resetChat} title="Nouvelle conversation" aria-label="Nouvelle conversation" style={iconBtn}>
@@ -1396,7 +1516,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {!chatOpen && chatMsgs.length > 0 && (
               <button onClick={() => setChatOpen(true)} title="Rouvrir l’architecte"
                 style={{ position: 'absolute', top: 70, right: 0, zIndex: 8, display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px 9px 14px', borderRadius: '12px 0 0 12px', border: '1px solid var(--border)', borderRight: 'none', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', boxShadow: '-4px 4px 16px rgba(0,0,0,0.12)', fontFamily: 'DM Sans,sans-serif' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+                <StudioLogo size={15} />
                 <span style={{ fontSize: 12, fontWeight: 700 }}>Architecte</span>
               </button>
             )}
@@ -1497,7 +1617,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {runErr && <div style={{ padding: 12, borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>{runErr}</div>}
 
             {runCost !== null && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', marginBottom: 16, fontSize: 12, fontWeight: 700, color: '#8B5CF6', fontFamily: 'DM Sans,sans-serif', fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 16, fontSize: 12, fontWeight: 700, color: '#3B92D4', fontFamily: 'DM Sans,sans-serif', fontVariantNumeric: 'tabular-nums' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                 Ce run a coûté {formatTokens(runCost)} tokens Studio
               </div>
@@ -1533,7 +1653,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {view === 'canvas' && tab === 'rendu' && (
           <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 820, margin: '0 auto' }}>
             {runCost !== null && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', marginBottom: 16, fontSize: 12, fontWeight: 700, color: '#8B5CF6', fontFamily: 'DM Sans,sans-serif', fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 16, fontSize: 12, fontWeight: 700, color: '#3B92D4', fontFamily: 'DM Sans,sans-serif', fontVariantNumeric: 'tabular-nums' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                 Ce run a coûté {formatTokens(runCost)} tokens Studio
               </div>
@@ -1626,7 +1746,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             {access && !access.allowed ? (
               /* ── Paywall : Studio réservé Pro/Expert ── */
               <div style={{ maxWidth: 660, margin: '40px auto 0', textAlign: 'center' }}>
-                <span style={{ width: 60, height: 60, borderRadius: 18, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ width: 60, height: 60, borderRadius: 18, background: 'rgba(59,146,212,0.12)', color: '#3B92D4', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
                 </span>
                 <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', margin: '16px 0 8px', fontFamily: 'Syne,DM Sans,sans-serif' }}>Le Studio est réservé aux offres Pro et Expert</h2>
@@ -1657,13 +1777,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     return (
                       <button key={f ?? '__all'} onClick={() => setActiveFolder(f)}
                         style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', borderRadius: 10, border: 'none', cursor: 'pointer', textAlign: 'left',
-                          background: on ? 'color-mix(in srgb, #8B5CF6 10%, transparent)' : 'transparent', color: on ? '#8B5CF6' : 'var(--text-mid)',
+                          background: on ? 'color-mix(in srgb, #3B92D4 10%, transparent)' : 'transparent', color: on ? '#3B92D4' : 'var(--text-mid)',
                           fontSize: 13, fontWeight: on ? 700 : 600, fontFamily: 'DM Sans,sans-serif' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                           {f === null ? <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></> : <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>}
                         </svg>
                         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f ?? 'Tous les systèmes'}</span>
-                        <span style={{ fontSize: 11, color: on ? '#8B5CF6' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+                        <span style={{ fontSize: 11, color: on ? '#3B92D4' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
                       </button>
                     )
                   })}
@@ -1685,7 +1805,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
                     {/* Nouveau système (créé dans le dossier actif) */}
                     <button onClick={() => void newSystem('Mon système', emptyGraph())}
-                      style={{ minHeight: 110, borderRadius: 16, border: '2px dashed color-mix(in srgb, #8B5CF6 40%, transparent)', background: 'color-mix(in srgb, #8B5CF6 5%, var(--bg-card))', color: '#8B5CF6', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, fontWeight: 700 }}>
+                      style={{ minHeight: 110, borderRadius: 16, border: '2px dashed color-mix(in srgb, #3B92D4 40%, transparent)', background: 'color-mix(in srgb, #3B92D4 5%, var(--bg-card))', color: '#3B92D4', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, fontWeight: 700 }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                       Nouveau système
                     </button>
@@ -1711,7 +1831,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                             <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
                               <button onClick={() => { setFolderMenuFor(folderMenuFor === s.id ? null : s.id); setNewFolderName('') }}
                                 title={s.folder ? `Dossier : ${s.folder}` : 'Ranger dans un dossier'} aria-label="Ranger dans un dossier"
-                                style={{ ...zBtn, width: 26, height: 24, color: s.folder ? '#8B5CF6' : 'var(--text-mid)' }}>
+                                style={{ ...zBtn, width: 26, height: 24, color: s.folder ? '#3B92D4' : 'var(--text-mid)' }}>
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
                               </button>
                               {folderMenuFor === s.id && (
@@ -1720,7 +1840,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                                     <button key={f} onClick={() => void moveToFolder(s.id, f)}
                                       style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '8px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: 12.5, fontWeight: 600, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>
                                       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f}</span>
-                                      {s.folder === f && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
+                                      {s.folder === f && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3B92D4" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
                                     </button>
                                   ))}
                                   {s.folder && (
@@ -1736,7 +1856,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                                       style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 12, fontFamily: 'DM Sans,sans-serif', outline: 'none' }} />
                                     <button onClick={() => { if (newFolderName.trim()) void moveToFolder(s.id, newFolderName.trim()) }}
                                       disabled={!newFolderName.trim()}
-                                      style={{ padding: '0 10px', borderRadius: 7, border: 'none', background: newFolderName.trim() ? '#8B5CF6' : 'var(--border)', color: newFolderName.trim() ? '#fff' : 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: newFolderName.trim() ? 'pointer' : 'default', fontFamily: 'DM Sans,sans-serif' }}>
+                                      style={{ padding: '0 10px', borderRadius: 7, border: 'none', background: newFolderName.trim() ? '#3B92D4' : 'var(--border)', color: newFolderName.trim() ? '#fff' : 'var(--text-dim)', fontSize: 12, fontWeight: 700, cursor: newFolderName.trim() ? 'pointer' : 'default', fontFamily: 'DM Sans,sans-serif' }}>
                                       OK
                                     </button>
                                   </div>
@@ -1767,7 +1887,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.10)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; (e.currentTarget as HTMLButtonElement).style.transform = 'none' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(59,146,212,0.12)', color: '#3B92D4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/></svg>
                         </span>
                         <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{t.name}</span>
@@ -1787,7 +1907,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       {chatFull && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 30, background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'studio_in 0.18s ease' }}>
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+            <StudioLogo size={19} />
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>Architecte</span>
             {chatMsgs.length > 0 && (
               <button onClick={resetChat} title="Nouvelle conversation" aria-label="Nouvelle conversation" style={iconBtn}>
@@ -1819,7 +1939,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             <div onClick={e => e.stopPropagation()}
               style={{ width: 'min(480px, 100%)', background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', padding: '22px 22px 18px', animation: 'studio_in 0.2s ease' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <span style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(59,146,212,0.12)', color: '#3B92D4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                 </span>
                 <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>Planifier ce système</div>
@@ -1840,8 +1960,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   </p>
                   {/* Activation */}
                   <button onClick={() => void saveSchedule({ ...cur, enabled: !cur.enabled })} disabled={scheduleSaving}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', borderRadius: 12, border: '1px solid var(--border)', background: cur.enabled ? 'color-mix(in srgb, #8B5CF6 8%, transparent)' : 'var(--bg-alt)', cursor: 'pointer', marginBottom: 12 }}>
-                    <span style={{ width: 38, height: 22, borderRadius: 999, background: cur.enabled ? '#8B5CF6' : 'var(--border-mid)', position: 'relative', transition: 'background 180ms', flexShrink: 0 }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', borderRadius: 12, border: '1px solid var(--border)', background: cur.enabled ? 'color-mix(in srgb, #3B92D4 8%, transparent)' : 'var(--bg-alt)', cursor: 'pointer', marginBottom: 12 }}>
+                    <span style={{ width: 38, height: 22, borderRadius: 999, background: cur.enabled ? '#3B92D4' : 'var(--border-mid)', position: 'relative', transition: 'background 180ms', flexShrink: 0 }}>
                       <span style={{ position: 'absolute', top: 2, left: cur.enabled ? 18 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 180ms', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
                     </span>
                     <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>{cur.enabled ? 'Planification active' : 'Planification désactivée'}</span>
@@ -1878,7 +1998,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           <div onClick={e => e.stopPropagation()}
             style={{ width: 'min(520px, 100%)', maxHeight: '85vh', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', padding: '22px 22px 18px', animation: 'studio_in 0.2s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <span style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(59,146,212,0.12)', color: '#3B92D4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
               </span>
               <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>Tokens Studio</div>
@@ -1894,7 +2014,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTokens(Math.min(access.monthlyUsed, access.monthlyLimit))} / {formatTokens(access.monthlyLimit)}</span>
               </div>
               <div style={{ height: 6, borderRadius: 3, background: 'var(--border)', marginTop: 8, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${access.monthlyLimit > 0 ? Math.min(100, (access.monthlyUsed / access.monthlyLimit) * 100) : 0}%`, background: '#8B5CF6', borderRadius: 3 }} />
+                <div style={{ height: '100%', width: `${access.monthlyLimit > 0 ? Math.min(100, (access.monthlyUsed / access.monthlyLimit) * 100) : 0}%`, background: '#3B92D4', borderRadius: 3 }} />
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8, fontFamily: 'DM Sans,sans-serif' }}>
                 Tokens de packs : <b style={{ color: 'var(--text)' }}>{formatTokens(access.packTokens)}</b> (n’expirent pas)
@@ -1924,7 +2044,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   window.open(url, '_blank', 'noopener')
                 })()
               }}
-              style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px 0', borderRadius: 11, border: 'none', background: '#8B5CF6', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+              style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '11px 0', borderRadius: 11, border: 'none', background: '#3B92D4', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
               Acheter des packs sur le site
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg>
             </button>
@@ -1940,7 +2060,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           <div onClick={e => e.stopPropagation()}
             style={{ width: 'min(560px, 100%)', maxHeight: '85vh', overflowY: 'auto', background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 24px 70px rgba(0,0,0,0.35)', padding: '24px 24px 20px', animation: 'studio_in 0.22s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <span style={{ width: 34, height: 34, borderRadius: 11, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 34, height: 34, borderRadius: 11, background: 'rgba(59,146,212,0.12)', color: '#3B92D4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/></svg>
               </span>
               <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>Le Studio, c’est quoi ?</div>
@@ -1962,7 +2082,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 ['4. Tu gardes la main', 'Pour toute action importante (ex. enregistrer des séances dans ton Planning), le système se met en pause et attend TON accord.'],
               ].map(([t, d]) => (
                 <div key={t} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: '#8B5CF6', whiteSpace: 'nowrap', paddingTop: 1 }}>{t}</span>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: '#3B92D4', whiteSpace: 'nowrap', paddingTop: 1 }}>{t}</span>
                   <span>{d}</span>
                 </div>
               ))}

@@ -197,8 +197,9 @@ export async function converseArchitect(
   history: ArchitectChatMessage[],
   current?: StudioGraph,
   signal?: AbortSignal,
+  model: StudioModel = 'athena',
 ): Promise<ArchitectTurn> {
-  const pseudoNode: StudioNode = { id: 'arch', kind: 'agent', title: 'Architecte', x: 0, y: 0, model: 'athena' }
+  const pseudoNode: StudioNode = { id: 'arch', kind: 'agent', title: 'Architecte', x: 0, y: 0, model }
   const convo = history.map(m => `${m.role === 'user' ? 'UTILISATEUR' : 'ARCHITECTE'} : ${m.content}`).join('\n')
   const prompt = CONVERSE_PROMPT + existingGraphBlock(current) + '\n\nCONVERSATION :\n' + convo + '\n\nARCHITECTE :'
   const raw = await callAgent(pseudoNode, prompt, () => {}, signal)

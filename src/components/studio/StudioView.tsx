@@ -1852,10 +1852,18 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             )}
 
             {approval && (
-              <div style={{ padding: 16, borderRadius: 14, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.4)', marginBottom: 18, animation: 'studio_in 0.2s ease' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>Ton accord est requis — {approval.node.title}</div>
-                {approval.node.role && <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginBottom: 8 }}>{approval.node.role}</div>}
-                <div style={{ fontSize: 12.5, color: 'var(--text-dim)', whiteSpace: 'pre-wrap', maxHeight: 240, overflowY: 'auto', padding: 10, borderRadius: 8, background: 'var(--bg-alt)', marginBottom: 12, lineHeight: 1.5 }}>{approval.content || '(aucun contenu en entrée)'}</div>
+              <div style={{ padding: 16, borderRadius: 16, background: 'var(--bg-card)', border: '1px solid rgba(245,158,11,0.45)', boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 14px 40px rgba(0,0,0,0.16)', marginBottom: 18, animation: 'studio_in 0.2s ease' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(245,158,11,0.14)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <KindIcon kind={approval.node.kind} size={14} />
+                  </span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>{approval.node.title}</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#F59E0B', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 999, padding: '3px 9px' }}>Ton accord</span>
+                </div>
+                {approval.node.role && <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginBottom: 10, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif' }}>{approval.node.role}</div>}
+                <div style={{ maxHeight: 420, overflowY: 'auto', padding: '14px 16px', borderRadius: 12, background: 'var(--bg-alt)', border: '1px solid var(--border)', marginBottom: 14 }}>
+                  {approval.content ? <StudioMarkdown text={approval.content} /> : <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>(aucun contenu en entrée)</span>}
+                </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => approval.resolve(true)} style={{ ...cta, flex: 1, justifyContent: 'center' }}>Valider et continuer</button>
                   <button onClick={() => approval.resolve(false)} style={{ flex: 1, padding: '9px 0', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Refuser</button>

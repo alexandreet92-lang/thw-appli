@@ -47,12 +47,21 @@ export interface StudioEdge {
   to: string
 }
 
+// Objectif « en cours » d'un système vivant : ce pour quoi le système se
+// spécialise en ce moment + son échéance. À l'échéance, le système se met en
+// pause et demande le prochain objectif (cycle de vie).
+export interface StudioObjective {
+  text: string
+  deadline?: string | null   // YYYY-MM-DD
+}
+
 export interface StudioGraph {
   id: string
   name: string
   nodes: StudioNode[]
   edges: StudioEdge[]
   updatedAt: number
+  objective?: StudioObjective | null   // système vivant : objectif du moment
 }
 
 export function genId(): string {

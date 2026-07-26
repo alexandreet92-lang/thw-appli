@@ -149,6 +149,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [activeFolder, setActiveFolder] = useState<string | null>(null)   // null = tous
   const [folderMenuFor, setFolderMenuFor] = useState<string | null>(null) // systemId du menu « Déplacer »
   const [newFolderName, setNewFolderName] = useState('')
+  // Popover « Nouveau système » : nom + dossier (existant ou nouveau).
+  const [newSysOpen, setNewSysOpen] = useState(false)
+  const [newSysName, setNewSysName] = useState('Mon système')
+  const [newSysFolder, setNewSysFolder] = useState<string | null>(null)
+  const [newSysNewFolder, setNewSysNewFolder] = useState('')
   // Planification autonome (un planning par système)
   const [schedule, setSchedule] = useState<{ frequency: 'daily' | 'weekly'; hour: number; weekday: number; enabled: boolean } | null>(null)
   const [scheduleOpen, setScheduleOpen] = useState(false)
@@ -536,11 +541,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       }, { onConflict: 'system_id' })
     } catch { /* best-effort */ } finally { setScheduleSaving(false) }
   }
-  const newSystem = async (name: string, g: StudioGraph) => {
+  const newSystem = async (name: string, g: StudioGraph, folder?: string | null) => {
     try {
       const row = await createSystem(name, { ...g, name })
-      // Créé depuis un dossier ouvert → rangé dedans directement.
-      if (activeFolder) { void updateSystem(row.id, { folder: activeFolder }).catch(() => {}); row.folder = activeFolder }
+      // Dossier explicite (popover) sinon dossier actif s'il y en a un.
+      const dest = folder !== undefined ? folder : activeFolder
+      if (dest) { void updateSystem(row.id, { folder: dest }).catch(() => {}); row.folder = dest }
       setSystems(s => [row, ...s])
       openSystem(row)
     } catch {
@@ -1803,8 +1809,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite', fontFamily: 'DM Sans,sans-serif' }}>Chargement…</p>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
-                    {/* Nouveau système (créé dans le dossier actif) */}
-                    <button onClick={() => void newSystem('Mon système', emptyGraph())}
+                    {/* Nouveau système → popover (nom + dossier) */}
+                    <button onClick={() => { setNewSysName('Mon système'); setNewSysFolder(activeFolder); setNewSysNewFolder(''); setNewSysOpen(true) }}
                       style={{ minHeight: 110, borderRadius: 16, border: '2px dashed color-mix(in srgb, #3B92D4 40%, transparent)', background: 'color-mix(in srgb, #3B92D4 5%, var(--bg-card))', color: '#3B92D4', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'DM Sans,sans-serif', fontSize: 13.5, fontWeight: 700 }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                       Nouveau système
@@ -1878,8 +1884,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   </div>
                 )}
 
-                {/* ── Templates ── */}
-                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '28px 0 10px', fontFamily: 'DM Sans,sans-serif' }}>Partir d’un modèle</div>
+                {/* ── Modèles pré-construits — nettement séparés de MES systèmes ── */}
+                {activeFolder === null && (<>
+                <div style={{ borderTop: '1px solid var(--border)', margin: '30px 0 0' }} />
+                <div style={{ margin: '18px 0 3px' }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Partir d’un modèle</div>
+                  <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '3px 0 12px', fontFamily: 'DM Sans,sans-serif' }}>Systèmes déjà construits, prêts à l’emploi — clique pour en créer ta propre copie modifiable.</p>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 12 }}>
                   {STUDIO_TEMPLATES.map(t => (
                     <button key={t.key} onClick={() => void newSystem(t.name, t.build())}
@@ -1896,11 +1907,59 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                     </button>
                   ))}
                 </div>
+                </>)}
                 </div>
               </div>
             )}
           </div>
         )}
+
+        {/* ══ Popover « Nouveau système » : nom + dossier ══ */}
+        {newSysOpen && (() => {
+          const folders = Array.from(new Set(systems.map(s => s.folder).filter((f): f is string => Boolean(f)))).sort()
+          const chosen = newSysNewFolder.trim() ? newSysNewFolder.trim() : newSysFolder
+          const create = () => { setNewSysOpen(false); void newSystem(newSysName.trim() || 'Mon système', emptyGraph(), chosen) }
+          return (
+            <div onClick={() => setNewSysOpen(false)} style={{ position: 'absolute', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'studio_in 0.16s ease' }}>
+              <div onClick={e => e.stopPropagation()} style={{ width: 'min(420px, 100%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 18 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
+                  <StudioLogo size={20} />
+                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>Nouveau système</span>
+                  <button onClick={() => setNewSysOpen(false)} style={iconBtn} aria-label="Fermer">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  </button>
+                </div>
+                <label style={lbl}>Nom du système</label>
+                <input value={newSysName} onChange={e => setNewSysName(e.target.value)} autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter') create() }} style={fld} />
+                <label style={lbl}>Dossier</label>
+                <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 8px', lineHeight: 1.5 }}>Range ce système dans un dossier — crée-en un nouveau au passage. Les dossiers apparaissent sous « Tous les systèmes ».</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                  <button onClick={() => { setNewSysFolder(null); setNewSysNewFolder('') }}
+                    style={{ padding: '6px 12px', borderRadius: 999, border: `1px solid ${!chosen ? '#3B92D4' : 'var(--border)'}`, background: !chosen ? 'color-mix(in srgb, #3B92D4 10%, transparent)' : 'var(--bg-alt)', color: !chosen ? '#3B92D4' : 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                    Sans dossier
+                  </button>
+                  {folders.map(f => {
+                    const on = !newSysNewFolder.trim() && newSysFolder === f
+                    return (
+                      <button key={f} onClick={() => { setNewSysFolder(f); setNewSysNewFolder('') }}
+                        style={{ padding: '6px 12px', borderRadius: 999, border: `1px solid ${on ? '#3B92D4' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, #3B92D4 10%, transparent)' : 'var(--bg-alt)', color: on ? '#3B92D4' : 'var(--text-mid)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                        {f}
+                      </button>
+                    )
+                  })}
+                </div>
+                <input value={newSysNewFolder} onChange={e => setNewSysNewFolder(e.target.value)} placeholder="+ Nouveau dossier…"
+                  onKeyDown={e => { if (e.key === 'Enter') create() }} style={fld} />
+                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  <button onClick={create} style={{ flex: 1, padding: '10px 0', borderRadius: 11, border: 'none', background: '#3B92D4', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                    Créer{chosen ? ` dans « ${chosen} »` : ''}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ══ Architecte — chat plein écran ══ */}

@@ -204,6 +204,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const [builderModel, setBuilderModel] = useState<StudioModel>('athena')  // modèle de l'architecte
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const [micTarget, setMicTarget] = useState<'desc' | 'chat'>('desc')       // champ visé par la dictée
 
   // Exécution
   const [running, setRunning] = useState(false)
@@ -758,6 +759,86 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     )
   }
 
+  // Composeur unique (identique dans la barre centrale ET dans le chat) :
+  // texte + sélecteur de modèle + jauge tokens + dictée + envoi.
+  const renderComposer = (opts: { value: string; onChange: (v: string) => void; onSend: () => void; micField: 'desc' | 'chat'; placeholder: string; menuUp?: boolean }) => {
+    const { value, onChange, onSend, micField, placeholder, menuUp } = opts
+    const ready = !!value.trim() && !chatBusy
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 8, padding: '11px 12px 9px',
+        borderRadius: 18, border: '1px solid var(--border)', background: 'var(--bg-card)',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.10)',
+      }}>
+        <input
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onSend() } }}
+          disabled={chatBusy}
+          placeholder={placeholder}
+          style={{ width: '100%', boxSizing: 'border-box', padding: '3px 4px', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 14, fontFamily: 'DM Sans,sans-serif' }}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {/* Sélecteur de modèle IA (logo + nom) */}
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setModelMenuOpen(o => !o)} disabled={chatBusy} title="Modèle de l’IA"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px 0 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif', fontSize: 12, fontWeight: 700 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={builderModel === 'hermes' ? '/logos/logo_3bras.png' : builderModel === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={16} height={16} style={{ objectFit: 'contain', flexShrink: 0 }} />
+              {MODEL_LABEL[builderModel]}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            {modelMenuOpen && (
+              <>
+                <div onClick={() => setModelMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 19 }} />
+                <div style={{ position: 'absolute', ...(menuUp ? { bottom: 36 } : { top: 36 }), left: 0, zIndex: 20, width: 200, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 12px 34px rgba(0,0,0,0.2)', padding: 5, animation: 'studio_in 0.14s ease' }}>
+                  {(['hermes', 'athena', 'zeus'] as StudioModel[]).map(m => (
+                    <button key={m} onClick={() => { setBuilderModel(m); setModelMenuOpen(false) }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 9px', borderRadius: 9, border: 'none', background: builderModel === m ? 'color-mix(in srgb, #3B92D4 9%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans,sans-serif' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={20} height={20} style={{ objectFit: 'contain', flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{MODEL_LABEL[m]}</span>
+                      {builderModel === m && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B92D4" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <div style={{ flex: 1 }} />
+          {/* Jauge d'utilisation des tokens */}
+          {access?.allowed && (
+            <button onClick={() => setWalletOpen(true)} title="Jauge d'utilisation Studio" aria-label="Jauge d'utilisation Studio"
+              style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21a9 9 0 100-18 9 9 0 000 18z" opacity="0.4"/><path d="M12 3a9 9 0 018.5 6"/><path d="M12 12l3.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+              {access.monthlyLimit > 0 && access.remaining < 1e12 && (
+                <span style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: access.remaining <= 0 ? '#EF4444' : (access.monthlyUsed / Math.max(1, access.monthlyLimit)) > 0.85 ? '#F59E0B' : '#22C55E' }} />
+              )}
+            </button>
+          )}
+          {/* Dictée vocale */}
+          <button onClick={() => { setMicTarget(micField); setMicOpen(true) }} disabled={chatBusy} title="Décrire à la voix" aria-label="Décrire à la voix"
+            style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/>
+            </svg>
+          </button>
+          {/* Envoyer */}
+          <button onClick={onSend} disabled={!ready} aria-label="Envoyer"
+            style={{ width: 34, height: 34, borderRadius: 11, border: 'none', cursor: ready ? 'pointer' : 'not-allowed',
+              background: ready ? '#3B92D4' : 'var(--border)', color: ready ? '#fff' : 'var(--text-dim)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {chatBusy ? (
+              <span style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite', display: 'inline-block' }} />
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            )}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const chatBody = (
     <>
       <div ref={chatScrollRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -832,20 +913,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           </div>
         )}
       </div>
-      {/* Saisie */}
-      <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: 10, display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-        <textarea
-          value={chatInput}
-          onChange={e => setChatInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); const t = chatInput; setChatInput(''); void sendArchitect(t) } }}
-          placeholder="Écris ta réponse ou une demande…"
-          rows={1}
-          style={{ flex: 1, minWidth: 0, resize: 'none', maxHeight: 120, padding: '9px 12px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', outline: 'none', lineHeight: 1.4 }}
-        />
-        <button onClick={() => { const t = chatInput; setChatInput(''); void sendArchitect(t) }} disabled={!chatInput.trim() || chatBusy} aria-label="Envoyer"
-          style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 11, border: 'none', background: chatInput.trim() && !chatBusy ? '#3B92D4' : 'var(--border)', color: chatInput.trim() && !chatBusy ? '#fff' : 'var(--text-dim)', cursor: chatInput.trim() && !chatBusy ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-        </button>
+      {/* Saisie — composeur IDENTIQUE à la barre centrale */}
+      <div style={{ flexShrink: 0, padding: 10 }}>
+        {renderComposer({
+          value: chatInput,
+          onChange: setChatInput,
+          onSend: () => { const t = chatInput; setChatInput(''); void sendArchitect(t) },
+          micField: 'chat',
+          placeholder: 'Écris ta réponse ou une demande…',
+          menuUp: true,
+        })}
       </div>
     </>
   )
@@ -1109,80 +1186,18 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         {view === 'canvas' && tab === 'canvas' && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
 
-            {/* ── Composeur « Décris ton système » — même esprit que le chat coach ── */}
-            <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', zIndex: 6, width: isMobile ? 'calc(100% - 24px)' : 'min(620px, calc(100% - 220px))' }}>
-              <div style={{
-                display: 'flex', flexDirection: 'column', gap: 8, padding: '11px 12px 9px',
-                borderRadius: 18, border: '1px solid var(--border)', background: 'var(--bg-card)',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.10)',
-              }}>
-                <input
-                  value={desc}
-                  onChange={e => setDesc(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') void build() }}
-                  disabled={chatBusy}
-                  placeholder={graph.nodes.length > 0 ? 'Décris une modification… ou un nouveau système' : "Décris ce que tu veux… l'IA te posera des questions"}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '3px 4px', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 14, fontFamily: 'DM Sans,sans-serif' }}
-                />
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {/* Sélecteur de modèle IA (logo + nom) */}
-                  <div style={{ position: 'relative' }}>
-                    <button onClick={() => setModelMenuOpen(o => !o)} disabled={chatBusy} title="Modèle de l’IA"
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px 0 8px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: chatBusy ? 'default' : 'pointer', fontFamily: 'DM Sans,sans-serif', fontSize: 12, fontWeight: 700 }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={builderModel === 'hermes' ? '/logos/logo_3bras.png' : builderModel === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={16} height={16} style={{ objectFit: 'contain', flexShrink: 0 }} />
-                      {MODEL_LABEL[builderModel]}
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><path d="M6 9l6 6 6-6"/></svg>
-                    </button>
-                    {modelMenuOpen && (
-                      <>
-                        <div onClick={() => setModelMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 19 }} />
-                        <div style={{ position: 'absolute', top: 36, left: 0, zIndex: 20, width: 200, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 12px 34px rgba(0,0,0,0.2)', padding: 5, animation: 'studio_in 0.14s ease' }}>
-                          {(['hermes', 'athena', 'zeus'] as StudioModel[]).map(m => (
-                            <button key={m} onClick={() => { setBuilderModel(m); setModelMenuOpen(false) }}
-                              style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 9px', borderRadius: 9, border: 'none', background: builderModel === m ? 'color-mix(in srgb, #3B92D4 9%, transparent)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans,sans-serif' }}>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={m === 'hermes' ? '/logos/logo_3bras.png' : m === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'} alt="" width={20} height={20} style={{ objectFit: 'contain', flexShrink: 0 }} />
-                              <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{MODEL_LABEL[m]}</span>
-                              {builderModel === m && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B92D4" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <div style={{ flex: 1 }} />
-                  {/* Jauge d'utilisation des tokens */}
-                  {access?.allowed && (
-                    <button onClick={() => setWalletOpen(true)} title="Jauge d'utilisation Studio" aria-label="Jauge d'utilisation Studio"
-                      style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21a9 9 0 100-18 9 9 0 000 18z" opacity="0.4"/><path d="M12 3a9 9 0 018.5 6"/><path d="M12 12l3.5-3.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
-                      {access.monthlyLimit > 0 && access.remaining < 1e12 && (
-                        <span style={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', background: access.remaining <= 0 ? '#EF4444' : (access.monthlyUsed / Math.max(1, access.monthlyLimit)) > 0.85 ? '#F59E0B' : '#22C55E' }} />
-                      )}
-                    </button>
-                  )}
-                  {/* Dictée vocale */}
-                  <button onClick={() => setMicOpen(true)} disabled={chatBusy} title="Décrire à la voix" aria-label="Décrire à la voix"
-                    style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/>
-                    </svg>
-                  </button>
-                  {/* Envoyer */}
-                  <button onClick={() => void build()} disabled={!desc.trim() || chatBusy} aria-label="Envoyer"
-                    style={{ width: 34, height: 34, borderRadius: 11, border: 'none', cursor: desc.trim() && !chatBusy ? 'pointer' : 'not-allowed',
-                      background: desc.trim() && !chatBusy ? '#3B92D4' : 'var(--border)', color: desc.trim() && !chatBusy ? '#fff' : 'var(--text-dim)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {chatBusy ? (
-                      <span style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'studio_spin 0.7s linear infinite', display: 'inline-block' }} />
-                    ) : (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-                    )}
-                  </button>
-                </div>
+            {/* ── Composeur central — masqué quand le chat est ouvert (un seul champ) ── */}
+            {!chatOpen && !chatFull && (
+              <div style={{ position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)', zIndex: 6, width: isMobile ? 'calc(100% - 24px)' : 'min(620px, calc(100% - 220px))' }}>
+                {renderComposer({
+                  value: desc,
+                  onChange: setDesc,
+                  onSend: () => void build(),
+                  micField: 'desc',
+                  placeholder: graph.nodes.length > 0 ? 'Décris une modification… ou un nouveau système' : "Décris ce que tu veux… l'IA te posera des questions",
+                })}
               </div>
-            </div>
+            )}
 
             {/* ── Barre flottante : annuler · rétablir · exemple · vider ── */}
             <div style={{ position: 'absolute', top: 14, left: 12, zIndex: 8, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
@@ -2164,7 +2179,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         <VoiceOverlay
           isDesktop
           onCancel={() => setMicOpen(false)}
-          onConfirm={(text) => { setMicOpen(false); if (text.trim()) setDesc(prev => (prev ? prev + ' ' : '') + text.trim()) }}
+          onConfirm={(text) => { setMicOpen(false); if (text.trim()) { const add = (prev: string) => (prev ? prev + ' ' : '') + text.trim(); if (micTarget === 'chat') setChatInput(add); else setDesc(add) } }}
         />
       )}
     </div>

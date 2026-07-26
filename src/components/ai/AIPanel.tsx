@@ -23,7 +23,6 @@ import { emitNotification } from '@/lib/notifications/emit'
 import { localDateStr } from '@/lib/date/weekStart'
 import RoutinesView from '@/components/ai/RoutinesView'
 import StudioView from '@/components/studio/StudioView'
-import AISettingsModal, { type SettingsSection } from '@/components/ai/AISettingsModal'
 import { QUICK_ACTION_SPECS, buildActionPrompt } from '@/lib/quick-actions/specs'
 import { VoiceOverlay } from './VoiceOverlay'
 import { VoiceConversation } from './VoiceConversation'
@@ -20493,19 +20492,11 @@ export default function AIPanel({
   const [reasoningMsgId, setReasoningMsgId] = useState<string | null>(null)
   // Sur-page « Réglages IA » ouverte PAR-DESSUS l'interface IA (depuis l'avatar).
   // Nouvelle surpage Paramètres (style Claude) — section ciblée par l'avatar.
-  const [settingsOpen,    setSettingsOpen]    = useState(false)
-  const [settingsSection, setSettingsSection] = useState<SettingsSection>('profil')
   // Sidebar desktop repliable.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  useEffect(() => {
-    const open = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { section?: SettingsSection } | undefined
-      setSettingsSection(detail?.section ?? 'profil')
-      setSettingsOpen(true)
-    }
-    window.addEventListener('thw:open-ai-settings', open)
-    return () => window.removeEventListener('thw:open-ai-settings', open)
-  }, [])
+  // Les réglages sont ouverts via l'événement « thw:open-ai-settings » et
+  // rendus par l'hôte global AISettingsHost (monté une seule fois). AIPanel
+  // ne gère plus la fenêtre lui-même (évitait les fonds empilés = multi-clic).
   const [isDesktop,   setIsDesktop]   = useState(false)
   const [model,       setModel]       = useState<THWModel>('athena')
   // Modèle par défaut choisi dans Paramètres → applique à l'ouverture.
@@ -24170,13 +24161,9 @@ export default function AIPanel({
         document.body,
       )}
 
-      {/* ── Surpage « Paramètres » (style Claude) — PAR-DESSUS l'interface IA ──
-          Portal gaté sur settingsOpen : monté en permanence, il « avalait » le
-          1er clic (fond figé + hit-test), d'où le double-clic pour fermer. */}
-      {mounted && settingsOpen && createPortal(
-        <AISettingsModal open={settingsOpen} initialSection={settingsSection} onClose={() => setSettingsOpen(false)} />,
-        document.body,
-      )}
+      {/* La fenêtre « Paramètres » est rendue par un hôte UNIQUE global
+          (AISettingsHost, monté dans le layout) — plus de fonds empilés.
+          Ici on se contente de déclencher l'événement d'ouverture. */}
 
       {/* ── Modal d'achat de tokens ───────────────────────── */}
       <TopupEmailModal isOpen={topupOpen} onClose={() => setTopupOpen(false)} />

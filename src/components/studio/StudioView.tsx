@@ -245,6 +245,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('thw:studio-settings-changed', load)
   }, [])
   const [micTarget, setMicTarget] = useState<'desc' | 'chat'>('desc')       // champ visé par la dictée
+  const [previewSel, setPreviewSel] = useState<{ msgId: string; nodeId: string } | null>(null)  // bulle touchée dans une maquette
+  const [renduSelId, setRenduSelId] = useState<string | null>(null)         // bulle sélectionnée dans le Rendu
 
   // Exécution
   const [running, setRunning] = useState(false)
@@ -795,8 +797,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     if (el) el.scrollTop = el.scrollHeight
   }, [chatMsgs, chatBusy])
 
-  // ── Maquette visuelle du système proposé (bulles + branches, comme la toile) ──
-  const miniGraph = (g: StudioGraph, height = 178) => {
+  // ── Maquette visuelle (bulles + branches, comme la toile) — interactive ──
+  // opts : hauteur, sélection (ring + clic), statuts de run (badges).
+  const miniGraph = (g: StudioGraph, opts?: { height?: number; selectedId?: string | null; onSelect?: (id: string) => void; status?: Record<string, NodeStatus> }) => {
+    const height = opts?.height ?? 178
     const nodes = g.nodes
     if (!nodes.length) return null
     const minX = Math.min(...nodes.map(n => n.x)), minY = Math.min(...nodes.map(n => n.y))
@@ -804,7 +808,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     const gw = Math.max(1, maxX - minX), gh = Math.max(1, maxY - minY)
     const W = 320, PAD = 34
     const k = Math.min((W - 2 * PAD) / gw, (height - 2 * PAD) / gh, 0.62)
-    const d = Math.max(20, NODE_D * k)
+    const d = Math.max(22, NODE_D * k)
     const cx = (n: StudioNode) => PAD + (n.x - minX) * k + d / 2
     const cy = (n: StudioNode) => PAD + (n.y - minY) * k + d / 2
     const visual = (n: StudioNode) => {
@@ -814,6 +818,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       const iconId = ext?.id ?? app?.id ?? null
       return { iconId, col: ext?.color ?? KIND_COLOR[n.kind], filled: !!(ext || app) || n.kind === 'trigger' }
     }
+    const clickable = !!opts?.onSelect
     return (
       <div style={{ position: 'relative', width: '100%', maxWidth: W, height, margin: '10px auto 2px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-alt)', overflow: 'hidden',
         backgroundImage: 'radial-gradient(color-mix(in srgb, var(--text) 8%, transparent) 1px, transparent 1px)', backgroundSize: '14px 14px' }}>
@@ -825,24 +830,32 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, r = d / 2
             const p1x = ax + ux * r, p1y = ay + uy * r, p2x = bx - ux * r, p2y = by - uy * r
             const N = Math.max(3, Math.min(16, Math.round(Math.hypot(p2x - p1x, p2y - p1y) / 8)))
+            const done = opts?.status && opts.status[e.from] === 'done' && opts.status[e.to] === 'done'
             return (
               <g key={e.id}>
-                <defs><linearGradient id={`mg_${g.id}_${e.id}`} gradientUnits="userSpaceOnUse" x1={p1x} y1={p1y} x2={p2x} y2={p2y}><stop offset="0" stopColor={KIND_COLOR[a.kind]} /><stop offset="1" stopColor={KIND_COLOR[b.kind]} /></linearGradient></defs>
-                {Array.from({ length: N + 1 }, (_, i) => { const t = i / N; return <circle key={i} cx={p1x + (p2x - p1x) * t} cy={p1y + (p2y - p1y) * t} r={1.5} fill={`url(#mg_${g.id}_${e.id})`} opacity={0.85} /> })}
+                <defs><linearGradient id={`mg_${g.id}_${e.id}`} gradientUnits="userSpaceOnUse" x1={p1x} y1={p1y} x2={p2x} y2={p2y}><stop offset="0" stopColor={done ? '#22C55E' : KIND_COLOR[a.kind]} /><stop offset="1" stopColor={done ? '#22C55E' : KIND_COLOR[b.kind]} /></linearGradient></defs>
+                {Array.from({ length: N + 1 }, (_, i) => { const t = i / N; return <circle key={i} cx={p1x + (p2x - p1x) * t} cy={p1y + (p2y - p1y) * t} r={1.6} fill={`url(#mg_${g.id}_${e.id})`} opacity={0.9} /> })}
               </g>
             )
           })}
         </svg>
         {nodes.map(n => {
           const { iconId, col, filled } = visual(n)
+          const st = opts?.status?.[n.id]
+          const on = opts?.selectedId === n.id
           return (
-            <div key={n.id} style={{ position: 'absolute', left: cx(n) - d / 2, top: cy(n) - d / 2, width: d, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ width: d, height: d, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            <div key={n.id} onClick={clickable ? () => opts!.onSelect!(n.id) : undefined}
+              style={{ position: 'absolute', left: cx(n) - d / 2, top: cy(n) - d / 2, width: d, display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: clickable ? 'pointer' : 'default' }}>
+              <div style={{ position: 'relative', width: d, height: d, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: filled ? `linear-gradient(140deg, ${col}, color-mix(in srgb, ${col} 60%, #000))` : 'var(--bg-card)',
-                color: filled ? '#fff' : col, border: `1.5px solid ${filled ? 'transparent' : `color-mix(in srgb, ${col} 55%, transparent)`}`, boxShadow: '0 2px 6px rgba(0,0,0,0.14)' }}>
+                color: filled ? '#fff' : col, border: `1.5px solid ${on ? col : filled ? 'transparent' : `color-mix(in srgb, ${col} 55%, transparent)`}`,
+                boxShadow: on ? `0 0 0 3px color-mix(in srgb, ${col} 40%, transparent), 0 2px 6px rgba(0,0,0,0.16)` : '0 2px 6px rgba(0,0,0,0.14)', transition: 'box-shadow 0.14s' }}>
                 {iconId ? <AppIcon id={iconId} size={Math.round(d * 0.44)} /> : <KindIcon kind={n.kind} size={Math.round(d * 0.44)} />}
+                {st === 'done' && <span style={{ position: 'absolute', top: -3, right: -3, width: 13, height: 13, borderRadius: '50%', background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg></span>}
+                {st === 'running' && <span style={{ position: 'absolute', top: -3, right: -3, width: 12, height: 12, borderRadius: '50%', background: 'var(--bg-card)', border: `2px solid color-mix(in srgb, ${col} 25%, transparent)`, borderTopColor: col, animation: 'studio_spin 0.7s linear infinite' }} />}
+                {st === 'error' && <span style={{ position: 'absolute', top: -3, right: -3, width: 13, height: 13, borderRadius: '50%', background: '#EF4444', color: '#fff', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</span>}
               </div>
-              <span style={{ marginTop: 2, maxWidth: d + 30, fontSize: 7.5, fontWeight: 700, color: 'var(--text-mid)', textAlign: 'center', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'DM Sans,sans-serif' }}>{n.title}</span>
+              <span style={{ marginTop: 2, maxWidth: d + 30, fontSize: 7.5, fontWeight: 700, color: on ? col : 'var(--text-mid)', textAlign: 'center', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'DM Sans,sans-serif' }}>{n.title}</span>
             </div>
           )
         })}
@@ -952,14 +965,34 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           return bubble(
             <>
               <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
-              {/* Maquette : aperçu du système avant de le concrétiser */}
-              <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', marginTop: 10 }}>Aperçu du système</div>
-              {miniGraph(m.graph)}
-              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                <span>{m.graph.nodes.length} bloc{m.graph.nodes.length > 1 ? 's' : ''}</span>·
-                <span>{m.graph.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} agent(s)</span>·
-                <span>{m.graph.edges.length} liaison{m.graph.edges.length > 1 ? 's' : ''}</span>
-              </div>
+              {/* Maquette : aperçu interactif du système (touche une bulle) */}
+              <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', marginTop: 10 }}>Aperçu du système · touche une bulle</div>
+              {miniGraph(m.graph, {
+                selectedId: previewSel?.msgId === m.id ? previewSel.nodeId : null,
+                onSelect: id => setPreviewSel(p => (p?.msgId === m.id && p.nodeId === id) ? null : { msgId: m.id, nodeId: id }),
+              })}
+              {(() => {
+                const sel = previewSel?.msgId === m.id ? m.graph.nodes.find(n => n.id === previewSel!.nodeId) : null
+                if (!sel) return (
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                    <span>{m.graph.nodes.length} bloc{m.graph.nodes.length > 1 ? 's' : ''}</span>·
+                    <span>{m.graph.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} agent(s)</span>·
+                    <span>{m.graph.edges.length} liaison{m.graph.edges.length > 1 ? 's' : ''}</span>
+                  </div>
+                )
+                const sub = sel.kind === 'source' ? SOURCE_LABEL[sel.sourceKey ?? 'activities'] : sel.kind === 'action' ? ACTION_LABEL[sel.actionKey ?? 'planning_save'] : KIND_LABEL[sel.kind]
+                return (
+                  <div style={{ marginTop: 6, padding: '9px 11px', borderRadius: 10, background: 'var(--bg-alt)', border: `1px solid color-mix(in srgb, ${KIND_COLOR[sel.kind]} 40%, var(--border))` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <span style={{ width: 20, height: 20, borderRadius: 6, background: `color-mix(in srgb, ${KIND_COLOR[sel.kind]} 15%, transparent)`, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><KindIcon kind={sel.kind} size={12} /></span>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{sel.title}</span>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', marginLeft: 'auto' }}>{sub}</span>
+                    </div>
+                    {sel.role && <div style={{ fontSize: 11.5, color: 'var(--text-mid)', marginTop: 5, lineHeight: 1.5 }}>{sel.role}</div>}
+                    {(sel.kind === 'agent' || sel.kind === 'merge') && sel.model && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: KIND_COLOR[sel.kind], marginTop: 5 }}>{MODEL_LABEL[sel.model]}</div>}
+                  </div>
+                )
+              })()}
               {!m.applied && !m.declined && (
                 <>
                   <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: '#3B92D4' }}>Confirmes-tu la construction de ce système&nbsp;?</div>
@@ -1137,7 +1170,6 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     setTimeout(() => window.dispatchEvent(new CustomEvent('thw:open-coach')), 80)
   }
 
-  const renders = terminalNodeIds(graph).map(id => ({ node: graph.nodes.find(n => n.id === id)!, text: nodeText[id] ?? '' })).filter(r => r.node)
   const siteUrl = process.env.NEXT_PUBLIC_MARKETING_SITE_URL
     ? `${process.env.NEXT_PUBLIC_MARKETING_SITE_URL.replace(/\/$/, '')}/studio`
     : '/decouvrir'
@@ -1754,48 +1786,73 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         )}
 
         {/* ══ RENDU ══ */}
-        {view === 'canvas' && tab === 'rendu' && (
+        {view === 'canvas' && tab === 'rendu' && (() => {
+          const hasAnyText = graph.nodes.some(n => (nodeText[n.id] ?? '').trim())
+          const terminals = terminalNodeIds(graph)
+          const selId = (renduSelId && graph.nodes.some(n => n.id === renduSelId)) ? renduSelId
+            : (terminals.find(id => (nodeText[id] ?? '').trim()) ?? terminals[0] ?? graph.nodes[0]?.id ?? null)
+          const selNode = graph.nodes.find(n => n.id === selId) ?? null
+          const selText = selNode ? (nodeText[selNode.id] ?? '') : ''
+          const sub = (n: StudioNode) => n.kind === 'source' ? SOURCE_LABEL[n.sourceKey ?? 'activities'] : n.kind === 'action' ? ACTION_LABEL[n.actionKey ?? 'planning_save'] : KIND_LABEL[n.kind]
+          return (
           <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 820, margin: '0 auto' }}>
             {runCost !== null && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 16, fontSize: 12, fontWeight: 700, color: '#3B92D4', fontFamily: 'DM Sans,sans-serif', fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 14, fontSize: 12, fontWeight: 700, color: '#3B92D4', fontFamily: 'DM Sans,sans-serif', fontVariantNumeric: 'tabular-nums' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                 Ce run a coûté {formatTokens(runCost)} tokens Studio
               </div>
             )}
-            {renders.every(r => !r.text) ? (
+            {!hasAnyText ? (
               <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', marginTop: 60 }}>
-                Le rendu apparaîtra ici après un « Run once ».
+                Le rendu apparaîtra ici après un « Run once ». Touche une bulle pour voir ce qu’elle a produit.
               </p>
-            ) : renders.map(r => (
-              <div key={r.node.id} style={{ marginBottom: 22, animation: 'studio_in 0.25s ease' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ width: 24, height: 24, borderRadius: 8, background: `color-mix(in srgb, ${KIND_COLOR[r.node.kind]} 13%, transparent)`, color: KIND_COLOR[r.node.kind], display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <KindIcon kind={r.node.kind} size={13} />
-                  </span>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', flex: 1 }}>{r.node.title}</span>
-                  {r.text && (<>
-                    <button onClick={() => continueWithCoach(r.node.title, r.text)} title="Continuer cette discussion avec le coach IA"
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-                      Continuer avec le coach
-                    </button>
-                    <button onClick={() => copyRender(r.node.id, r.text)} title="Copier le résultat"
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: copied === r.node.id ? '#22C55E' : 'var(--text-mid)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
-                      {copied === r.node.id ? (
-                        <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Copié</>
-                      ) : (
-                        <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copier</>
-                      )}
-                    </button>
-                  </>)}
+            ) : (
+              <>
+                {/* Carte du système — bulles cliquables, statut du run */}
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 2px' }}>Le système · touche une bulle</div>
+                <div style={{ maxWidth: 360 }}>
+                  {miniGraph(graph, { height: 220, selectedId: selId, onSelect: setRenduSelId, status })}
                 </div>
-                <div style={{ padding: '12px 16px', borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  {r.text ? <StudioMarkdown text={r.text} /> : <span style={{ fontSize: 14, color: 'var(--text-dim)' }}>—</span>}
-                </div>
-              </div>
-            ))}
+
+                {/* Détail du nœud sélectionné : ce qu'il a produit */}
+                {selNode && (
+                  <div style={{ marginTop: 14, animation: 'studio_in 0.2s ease' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ width: 26, height: 26, borderRadius: 8, background: `color-mix(in srgb, ${KIND_COLOR[selNode.kind]} 14%, transparent)`, color: KIND_COLOR[selNode.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <KindIcon kind={selNode.kind} size={14} />
+                      </span>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>{selNode.title}</span>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px' }}>{sub(selNode)}</span>
+                      <div style={{ flex: 1 }} />
+                      {selText.trim() && (<>
+                        <button onClick={() => continueWithCoach(selNode.title, selText)} title="Continuer avec le coach IA"
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                          Continuer
+                        </button>
+                        <button onClick={() => copyRender(selNode.id, selText)} title="Copier"
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)', color: copied === selNode.id ? '#22C55E' : 'var(--text-mid)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                          {copied === selNode.id ? (
+                            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Copié</>
+                          ) : (
+                            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copier</>
+                          )}
+                        </button>
+                      </>)}
+                    </div>
+                    {selNode.role && <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif' }}>{selNode.role}</div>}
+                    <div style={{ padding: '14px 18px', borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      {selText.trim()
+                        ? <StudioMarkdown text={selText} />
+                        : <span style={{ fontSize: 13.5, color: 'var(--text-dim)' }}>{selNode.kind === 'source' ? 'Ce bloc alimente les agents en données — il ne produit pas de texte.' : 'Aucune sortie pour ce bloc lors du dernier run.'}</span>}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        )}
+          )
+        })()}
 
         {/* ══ HISTORIQUE DES RUNS ══ */}
         {view === 'canvas' && tab === 'runs' && (

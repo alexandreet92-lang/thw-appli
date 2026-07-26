@@ -1024,8 +1024,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           )
         })}
         {chatBusy && (
-          <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 4, padding: '11px 14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '14px 14px 14px 4px' }}>
-            {[0, 1, 2].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#3B92D4', animation: `studio_pulse 1s ease ${i * 0.15}s infinite` }} />)}
+          <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 9, alignItems: 'center', padding: '10px 14px' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={builderModel === 'hermes' ? '/logos/logo_3bras.png' : builderModel === 'zeus' ? '/logos/logo_6bras.png' : '/logos/logo_4bras.png'}
+              alt="" width={17} height={17} style={{ objectFit: 'contain', animation: 'studio_spin 2.4s linear infinite', opacity: 0.9 }} />
+            <span className="studio-shimmer" style={{ fontSize: 13.5, fontWeight: 600, fontFamily: 'Syne,DM Sans,sans-serif' }}>Je réfléchis…</span>
           </div>
         )}
       </div>
@@ -1182,6 +1185,8 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         @keyframes studio_dash { to { stroke-dashoffset: -14; } }
         @keyframes studio_in   { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
         @keyframes studio_pulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
+        .studio-shimmer { background: linear-gradient(90deg, var(--text-dim) 0%, var(--text) 40%, var(--text) 60%, var(--text-dim) 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: studio_shimmer 1.6s linear infinite; }
+        @keyframes studio_shimmer { to { background-position: -200% 0; } }
         .studio-node { transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease; }
         .studio-node:hover { transform: translateY(-1px); }
         .studio-port { transition: transform 0.14s ease, box-shadow 0.14s ease; }

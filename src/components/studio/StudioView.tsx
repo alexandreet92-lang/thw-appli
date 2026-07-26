@@ -78,6 +78,30 @@ function StudioLogo({ size = 16 }: { size?: number }) {
   return <img src="/logos/logo_4bras.png" alt="" width={size} height={size} style={{ display: 'block', objectFit: 'contain', flexShrink: 0 }} />
 }
 
+// Zone de texte qui passe à la ligne et grandit avec le contenu (façon chat
+// coach). Entrée = envoyer, Maj+Entrée = nouvelle ligne.
+function AutoGrowTextarea({ value, onChange, onSend, placeholder, disabled }: {
+  value: string; onChange: (v: string) => void; onSend: () => void; placeholder: string; disabled?: boolean
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (el) { el.style.height = 'auto'; el.style.height = `${Math.min(el.scrollHeight, 150)}px` }
+  }, [value])
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      rows={1}
+      onChange={e => onChange(e.target.value)}
+      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() } }}
+      disabled={disabled}
+      placeholder={placeholder}
+      style={{ width: '100%', boxSizing: 'border-box', resize: 'none', maxHeight: 150, overflowY: 'auto', padding: '3px 4px', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 14, fontFamily: 'DM Sans,sans-serif', lineHeight: 1.45, display: 'block' }}
+    />
+  )
+}
+
 // ── « Applications » = pages de l'app connectables (façon modules Make) ──
 // Chacune a son icône propre pour être reconnue d'un coup d'œil, distincte
 // des « outils » abstraits (Objectif, Agent, Synthèse, Validation).
@@ -837,14 +861,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         borderRadius: 18, border: '1px solid var(--border)', background: 'var(--bg-card)',
         boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.10)',
       }}>
-        <input
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onSend() } }}
-          disabled={chatBusy}
-          placeholder={placeholder}
-          style={{ width: '100%', boxSizing: 'border-box', padding: '3px 4px', border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', fontSize: 14, fontFamily: 'DM Sans,sans-serif' }}
-        />
+        <AutoGrowTextarea value={value} onChange={onChange} onSend={onSend} placeholder={placeholder} disabled={chatBusy} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {/* Sélecteur de modèle IA (logo + nom) */}
           <div style={{ position: 'relative' }}>

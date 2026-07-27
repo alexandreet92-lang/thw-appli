@@ -219,6 +219,63 @@ RÉPONDS UNIQUEMENT avec un objet JSON, une de ces trois formes :
 {"action":"reply","message":"ta réponse"}
 `
 
+// ══════════════════════════════════════════════════════════════
+// RECOMMANDATIONS — « rien à créer » : l'IA lit le profil + les données
+// réelles de l'athlète et propose des systèmes taillés pour LUI, prêts en un
+// tap. L'utilisateur ne construit rien : il choisit un rendu et confirme.
+// ══════════════════════════════════════════════════════════════
+
+export interface RecommendedSystem {
+  title: string   // nom court du système
+  why: string     // pourquoi c'est bon pour TOI (personnalisé, 1-2 phrases)
+  plan: ArchPlan
+}
+
+const RECOMMEND_PROMPT = `Tu es l'ARCHITECTE du Studio d'agents d'une app de coaching sportif hybride (endurance + force).
+On te donne le PROFIL et les DONNÉES RÉELLES d'un athlète. Ta mission : lui PROPOSER 3 systèmes multi-agents (des graphes) réellement PERTINENTS pour LUI, qu'il pourra lancer en un clic. Il ne construit rien lui-même.
+
+PENSE COMME UN COACH : regarde ce que l'athlète fait, ses objectifs, ses manques (récup non suivie ? blessure en cours ? volume en hausse ? course à venir ?) et propose ce qui lui SERAIT LE PLUS UTILE. Varie les angles (un système de pilotage global, un système ciblé sur un besoin détecté, un système de suivi/prévention). Chaque « why » doit être PERSONNALISÉ à SES données (cite un fait réel : un sport qu'il pratique, une course, une tendance) — jamais générique.
+
+SYSTÈME VIVANT : chaque système est une base DURABLE qui tourne en boucle (récurrent) et lit les données utiles à chaque cycle. Pour qu'il puisse tourner tout seul, TERMINE chaque système par une action "notify_report" (il envoie sa synthèse en notification) — pas de "planning_save"/"planning_replace"/"calendar_race"/"validation" ici (ça exige un accord manuel).
+
+BRIQUES (kind) :
+- "trigger" : entrée UNIQUE et obligatoire. "role" = mission permanente + objectif du moment.
+- "source" : "sourceKey" ∈ "activities" | "planning" | "injuries" | "recovery" | "profile". Pas de "role".
+- "agent" : coach IA spécialisé. "role" = métier + mission (mode « génère le prochain cycle en t'adaptant à la forme réelle »). "model" ∈ "hermes" | "athena" | "zeus".
+- "merge" : fusionne en UNE réponse. "role" = consigne de synthèse.
+- "action" : ici uniquement "notify_report".
+
+RÈGLES DE GRAPHE : 4 à 6 nœuds par système, un seul "trigger", connexe et sans cycle, sources utiles en entrée des agents, termine par "notify_report" (précédé d'un "merge" s'il y a plusieurs agents). Titres courts (2-3 mots), rôles concrets en français. "objective.text" = l'objectif du moment déduit des données (et "objective.deadline" au format YYYY-MM-DD si une échéance est visible, sinon null).
+
+RÉPONDS UNIQUEMENT avec un objet JSON (aucun texte autour) :
+{"systems":[{"title":"Nom court","why":"Pourquoi c'est bon pour TOI, avec un fait réel de tes données.","plan":{"name":"Nom court","explanation":"2-3 phrases : ce que fait le système et pourquoi ce découpage.","objective":{"text":"…","deadline":null},"nodes":[{"id":"n1","kind":"trigger","title":"Objectif","role":"…"}],"edges":[{"from":"n1","to":"n2"}]}}]}
+
+PROFIL & DONNÉES DE L'ATHLÈTE :
+`
+
+export async function recommendSystems(
+  contextText: string,
+  model: StudioModel = 'athena',
+  signal?: AbortSignal,
+): Promise<RecommendedSystem[]> {
+  const pseudoNode: StudioNode = { id: 'arch', kind: 'agent', title: 'Architecte', x: 0, y: 0, model }
+  const raw = await callAgent(pseudoNode, RECOMMEND_PROMPT + contextText.slice(0, 6000), () => {}, signal)
+  let parsed: { systems?: unknown }
+  try { parsed = extractJson(raw) } catch { return [] }
+  const arr = Array.isArray(parsed?.systems) ? parsed.systems : Array.isArray(parsed) ? parsed : []
+  const out: RecommendedSystem[] = []
+  for (const item of (arr as Record<string, unknown>[]).slice(0, 3)) {
+    const plan = item?.plan as ArchPlan | undefined
+    if (!plan || !Array.isArray(plan.nodes) || !plan.nodes.length) continue
+    out.push({
+      title: String(item.title ?? plan.name ?? 'Système').slice(0, 60),
+      why: String(item.why ?? '').slice(0, 240),
+      plan,
+    })
+  }
+  return out
+}
+
 export async function converseArchitect(
   history: ArchitectChatMessage[],
   current?: StudioGraph,

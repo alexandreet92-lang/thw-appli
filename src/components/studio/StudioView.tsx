@@ -856,7 +856,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
   // ── Maquette visuelle (bulles + branches, comme la toile) — interactive ──
   // opts : hauteur, sélection (ring + clic), statuts de run (badges).
-  const miniGraph = (g: StudioGraph, opts?: { height?: number; width?: number; maxScale?: number; selectedId?: string | null; onSelect?: (id: string) => void; status?: Record<string, NodeStatus> }) => {
+  const miniGraph = (g: StudioGraph, opts?: { height?: number; width?: number; maxScale?: number; bare?: boolean; selectedId?: string | null; onSelect?: (id: string) => void; status?: Record<string, NodeStatus> }) => {
     const height = opts?.height ?? 178
     const nodes = g.nodes
     if (!nodes.length) return null
@@ -876,9 +876,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       return { iconId, col: ext?.color ?? KIND_COLOR[n.kind], filled: !!(ext || app) || n.kind === 'trigger' }
     }
     const clickable = !!opts?.onSelect
+    const bare = !!opts?.bare
     return (
-      <div style={{ position: 'relative', width: '100%', maxWidth: W, height, margin: '10px auto 2px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-alt)', overflow: 'hidden',
-        backgroundImage: 'radial-gradient(color-mix(in srgb, var(--text) 8%, transparent) 1px, transparent 1px)', backgroundSize: '14px 14px' }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: W, height, margin: bare ? '0 auto' : '10px auto 2px', borderRadius: bare ? 0 : 14, border: bare ? 'none' : '1px solid var(--border)', background: bare ? 'transparent' : 'var(--bg-alt)', overflow: 'hidden',
+        ...(bare ? {} : { backgroundImage: 'radial-gradient(color-mix(in srgb, var(--text) 8%, transparent) 1px, transparent 1px)', backgroundSize: '14px 14px' }) }}>
         <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="xMidYMid meet">
           {g.edges.map(e => {
             const a = nodes.find(n => n.id === e.from), b = nodes.find(n => n.id === e.to)
@@ -1231,6 +1232,9 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         @keyframes studio_dash { to { stroke-dashoffset: -14; } }
         @keyframes studio_in   { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
         @keyframes studio_pulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
+        @keyframes studio_slide_r { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        @keyframes studio_slide_up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes studio_fade { from { opacity: 0; } to { opacity: 1; } }
         .studio-shimmer { background: linear-gradient(90deg, var(--text-dim) 0%, var(--text) 40%, var(--text) 60%, var(--text-dim) 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: studio_shimmer 1.6s linear infinite; }
         @keyframes studio_shimmer { to { background-position: -200% 0; } }
         .studio-node { transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease; }
@@ -2264,50 +2268,62 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         const g = mk.graph
         const sel = previewSel?.msgId === mk.id ? g.nodes.find(n => n.id === previewSel!.nodeId) : null
         const sub = (n: StudioNode) => n.kind === 'source' ? SOURCE_LABEL[n.sourceKey ?? 'activities'] : n.kind === 'action' ? ACTION_LABEL[n.actionKey ?? 'planning_save'] : KIND_LABEL[n.kind]
+        const closeMockup = () => { setMockupMsgId(null); setPreviewSel(null) }
+        const panelStyle: React.CSSProperties = isMobile
+          ? { position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, background: 'var(--bg)', display: 'flex', flexDirection: 'column', borderTopLeftRadius: 20, borderTopRightRadius: 20, animation: 'studio_slide_up 0.28s cubic-bezier(0.22,0.61,0.36,1)', boxShadow: '0 -12px 40px rgba(0,0,0,0.22)' }
+          : { position: 'absolute', top: 0, right: 0, bottom: 0, width: 'min(760px, 92%)', background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'studio_slide_r 0.3s cubic-bezier(0.22,0.61,0.36,1)', boxShadow: '-18px 0 50px rgba(0,0,0,0.24)', borderLeft: '1px solid var(--border)' }
         return (
-          <div style={{ position: 'absolute', inset: 0, zIndex: 32, background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'studio_in 0.18s ease' }}>
-            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ width: 30, height: 30, borderRadius: 9, background: 'color-mix(in srgb, #3B92D4 12%, transparent)', color: '#3B92D4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4"/></svg>
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>Maquette du système</div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{g.nodes.length} blocs · {g.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} agents · {g.edges.length} liaisons</div>
+          <div style={{ position: 'absolute', inset: 0, zIndex: 32, display: 'flex', justifyContent: 'flex-end', animation: 'studio_fade 0.2s ease' }}>
+            {/* Voile : clic hors panneau = fermeture */}
+            <div onClick={closeMockup} style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.42)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }} />
+            <div onClick={e => e.stopPropagation()} style={panelStyle}>
+              {/* Poignée mobile */}
+              {isMobile && <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}><span style={{ width: 40, height: 4, borderRadius: 999, background: 'var(--border-mid)' }} /></div>}
+              <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ width: 30, height: 30, borderRadius: 9, background: 'color-mix(in srgb, #3B92D4 12%, transparent)', color: '#3B92D4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4"/></svg>
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>Maquette du système</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{g.nodes.length} blocs · {g.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} agents · {g.edges.length} liaisons</div>
+                </div>
+                <button onClick={closeMockup} title="Fermer" aria-label="Fermer" style={iconBtn}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
               </div>
-              <button onClick={() => { setMockupMsgId(null); setPreviewSel(null) }} title="Fermer" aria-label="Fermer" style={iconBtn}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-            </div>
-            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 18 }}>
-              <div style={{ maxWidth: 760, margin: '0 auto' }}>
-                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 4px' }}>Touche une bulle pour voir son rôle</div>
-                {miniGraph(g, {
-                  width: 720, height: 440, maxScale: 1,
-                  selectedId: sel ? sel.id : null,
-                  onSelect: id => setPreviewSel(p => (p?.msgId === mk.id && p.nodeId === id) ? null : { msgId: mk.id, nodeId: id }),
-                })}
-                {sel && (
-                  <div style={{ marginTop: 10, maxWidth: 720, marginLeft: 'auto', marginRight: 'auto', padding: '12px 15px', borderRadius: 14, background: 'var(--bg-card)', border: `1px solid color-mix(in srgb, ${KIND_COLOR[sel.kind]} 40%, var(--border))`, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                      <span style={{ width: 26, height: 26, borderRadius: 8, background: `color-mix(in srgb, ${KIND_COLOR[sel.kind]} 15%, transparent)`, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><KindIcon kind={sel.kind} size={14} /></span>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>{sel.title}</span>
-                      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', marginLeft: 'auto' }}>{sub(sel)}</span>
-                    </div>
-                    {sel.role && <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 7, lineHeight: 1.55, fontFamily: 'DM Sans,sans-serif' }}>{sel.role}</div>}
-                    {(sel.kind === 'agent' || sel.kind === 'merge') && sel.model && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: KIND_COLOR[sel.kind], marginTop: 7 }}>{MODEL_LABEL[sel.model]}</div>}
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 18 }}>
+                <div style={{ maxWidth: 700, margin: '0 auto' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 8px', textAlign: 'center' }}>Touche une bulle pour voir son rôle</div>
+                  <div style={{ borderRadius: 18, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 18px 44px rgba(0,0,0,0.08)', padding: '14px 10px' }}>
+                    {miniGraph(g, {
+                      bare: true, width: 660, height: 400, maxScale: 1,
+                      selectedId: sel ? sel.id : null,
+                      onSelect: id => setPreviewSel(p => (p?.msgId === mk.id && p.nodeId === id) ? null : { msgId: mk.id, nodeId: id }),
+                    })}
                   </div>
-                )}
+                  {sel && (
+                    <div style={{ marginTop: 12, padding: '12px 15px', borderRadius: 14, background: 'var(--bg-card)', border: `1px solid color-mix(in srgb, ${KIND_COLOR[sel.kind]} 40%, var(--border))`, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', animation: 'studio_in 0.16s ease' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                        <span style={{ width: 26, height: 26, borderRadius: 8, background: `color-mix(in srgb, ${KIND_COLOR[sel.kind]} 15%, transparent)`, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><KindIcon kind={sel.kind} size={14} /></span>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>{sel.title}</span>
+                        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', marginLeft: 'auto' }}>{sub(sel)}</span>
+                      </div>
+                      {sel.role && <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 7, lineHeight: 1.55, fontFamily: 'DM Sans,sans-serif' }}>{sel.role}</div>}
+                      {(sel.kind === 'agent' || sel.kind === 'merge') && sel.model && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: KIND_COLOR[sel.kind], marginTop: 7 }}>{MODEL_LABEL[sel.model]}</div>}
+                    </div>
+                  )}
+                </div>
               </div>
+              {!mk.applied && !mk.declined && (
+                <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, width: '100%', boxSizing: 'border-box' }}>
+                  <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: '#3B92D4', fontFamily: 'DM Sans,sans-serif' }}>Confirmes-tu la construction&nbsp;?</span>
+                  <button onClick={() => { declinePlan(mk.id); closeMockup() }}
+                    style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Non</button>
+                  <button onClick={() => { confirmPlan(mk.id); closeMockup() }}
+                    style={{ padding: '10px 22px', borderRadius: 11, border: 'none', background: '#3B92D4', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Confirmer</button>
+                </div>
+              )}
             </div>
-            {!mk.applied && !mk.declined && (
-              <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, maxWidth: 760, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-                <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: '#3B92D4', fontFamily: 'DM Sans,sans-serif' }}>Confirmes-tu la construction&nbsp;?</span>
-                <button onClick={() => { declinePlan(mk.id); setMockupMsgId(null) }}
-                  style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Non</button>
-                <button onClick={() => { confirmPlan(mk.id); setMockupMsgId(null) }}
-                  style={{ padding: '10px 22px', borderRadius: 11, border: 'none', background: '#3B92D4', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Confirmer</button>
-              </div>
-            )}
           </div>
         )
       })()}

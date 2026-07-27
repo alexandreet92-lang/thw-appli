@@ -20,6 +20,7 @@ import {
 import { runGraph, terminalNodeIds, type NodeStatus } from '@/lib/studio/runner'
 import { converseArchitect, planToGraph, recommendSystems, type ArchitectChatMessage, type ArchitectQuestion } from '@/lib/studio/architect'
 import { readSourceWith } from '@/lib/studio/source-readers'
+import { buildLivingContext } from '@/lib/studio/living'
 import { CoachQuestionCard } from '@/components/ai/CoachQuestionCard'
 import { listSystems, createSystem, updateSystem, deleteSystem, duplicateSystem, migrateLocalGraphIfAny, type StudioSystemRow } from '@/lib/studio/store'
 import { STUDIO_TEMPLATES } from '@/lib/studio/templates'
@@ -1204,10 +1205,20 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       })()
     }
 
+    // Contexte « système vivant » (garde-fou santé + mémoire du dernier cycle),
+    // identique aux runs autonomes → comportement cohérent partout.
+    let livingContext = ''
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) livingContext = await buildLivingContext(supabase, user.id, systemIdRef.current || null)
+    } catch { /* best-effort : un run reste possible sans ce contexte */ }
+
     try {
       const { outputs, errors } = await runGraph(graph, {
         signal: ctrl.signal,
         runId,
+        livingContext,
         onStatus: (id, s) => setStatus(prev => ({ ...prev, [id]: s })),
         onChunk:  (id, t) => setNodeText(prev => ({ ...prev, [id]: t })),
         onLog:    (entry) => { runLogs.push(entry); setNodeText(prev => ({ ...prev, [entry.nodeId]: entry.text })); setLogs(prev => [...prev, entry]) },
@@ -1233,17 +1244,21 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     }
   }
 
-  // ── Historique : chargement à l'ouverture de l'onglet ─────────
+  // ── Journal de progression : runs de CE système, du plus récent au plus
+  // ancien (l'onglet vit à l'intérieur d'un système → on le scope). ─────────
   useEffect(() => {
     if (tab !== 'runs' || runs !== null) return
     void (async () => {
       try {
         const supabase = createClient()
-        const { data } = await supabase
+        let q = supabase
           .from('studio_runs')
           .select('id, system_name, status, renders, tokens_est, created_at')
           .order('created_at', { ascending: false })
-          .limit(30)
+          .limit(40)
+        const sid = systemIdRef.current
+        if (sid) q = q.eq('system_id', sid)
+        const { data } = await q
         setRuns((data ?? []) as RunRow[])
       } catch { setRuns([]) }
     })()
@@ -1325,7 +1340,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               style={{ padding: isMobile ? '6px 8px' : '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: isMobile ? 11.5 : 13, fontWeight: 600, fontFamily: 'DM Sans,sans-serif',
                 background: tab === tb ? 'var(--bg)' : 'transparent', color: tab === tb ? 'var(--text)' : 'var(--text-dim)',
                 boxShadow: tab === tb ? 'var(--shadow-card)' : 'none' }}>
-              {tb === 'canvas' ? 'Canvas' : tb === 'chat' ? 'Pilotage' : tb === 'rendu' ? 'Rendu' : 'Historique'}
+              {tb === 'canvas' ? 'Canvas' : tb === 'chat' ? 'Pilotage' : tb === 'rendu' ? 'Rendu' : 'Journal'}
             </button>
           ))}
         </div>
@@ -2021,51 +2036,98 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         })()}
 
         {/* ══ HISTORIQUE DES RUNS ══ */}
-        {view === 'canvas' && tab === 'runs' && (
-          <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 760, margin: '0 auto' }}>
-            {runs === null && <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite' }}>Chargement de l’historique…</p>}
-            {runs !== null && runs.length === 0 && (
-              <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', marginTop: 60 }}>Aucun run pour l’instant — lance un « Run once » et il apparaîtra ici.</p>
+        {view === 'canvas' && tab === 'runs' && (() => {
+          const allRuns = runs ?? []
+          const doneCount = allRuns.filter(r => r.status === 'done').length
+          const obj = graph.objective
+          // Jours restants avant l'échéance de l'objectif.
+          let deadlineChip: { text: string; col: string } | null = null
+          if (obj?.deadline) {
+            const end = new Date(`${obj.deadline}T23:59:59`)
+            if (!isNaN(end.getTime())) {
+              const days = Math.ceil((end.getTime() - Date.now()) / 86400_000)
+              deadlineChip = days < 0
+                ? { text: 'échéance passée', col: '#EF4444' }
+                : days === 0 ? { text: 'aujourd’hui', col: '#F59E0B' }
+                : { text: `J-${days}`, col: days <= 14 ? '#F59E0B' : '#3B92D4' }
+            }
+          }
+          return (
+          <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px 40px' }}>
+            <div style={{ maxWidth: 760, margin: '0 auto' }}>
+            {/* En-tête : progression vers l'objectif */}
+            {(obj?.text || allRuns.length > 0) && (
+              <div style={{ padding: '14px 16px', borderRadius: 16, background: 'linear-gradient(150deg, color-mix(in srgb, #3B92D4 8%, var(--bg-card)), var(--bg-card))', border: '1px solid color-mix(in srgb, #3B92D4 22%, var(--border))', marginBottom: 18 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: '#3B92D4', display: 'flex', flexShrink: 0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.7" fill="currentColor"/></svg></span>
+                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Progression vers l’objectif</span>
+                  {deadlineChip && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, color: deadlineChip.col, background: `color-mix(in srgb, ${deadlineChip.col} 12%, transparent)`, borderRadius: 7, padding: '3px 9px', fontFamily: 'DM Sans,sans-serif' }}>{deadlineChip.text}</span>}
+                </div>
+                <div style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--text)', margin: '8px 0 0', fontFamily: 'Syne,DM Sans,sans-serif', lineHeight: 1.3 }}>{obj?.text || graph.name}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-mid)', marginTop: 6, fontFamily: 'DM Sans,sans-serif' }}>
+                  {doneCount > 0 ? <><b style={{ color: '#3B92D4' }}>{doneCount}</b> cycle{doneCount > 1 ? 's' : ''} accompli{doneCount > 1 ? 's' : ''}</> : 'Aucun cycle accompli pour l’instant'}
+                  {!obj?.text && <span style={{ color: 'var(--text-dim)' }}> · défini aucun objectif — l’architecte peut t’en fixer un</span>}
+                </div>
+              </div>
             )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {(runs ?? []).map(r => {
-                const open = openRunId === r.id
-                const stCol = r.status === 'done' ? '#22C55E' : r.status === 'error' ? '#EF4444' : '#F59E0B'
-                const stLbl = r.status === 'done' ? 'Terminé' : r.status === 'error' ? 'Erreur' : 'Arrêté'
-                return (
-                  <div key={r.id} style={{ borderRadius: 13, background: 'var(--bg-card)', border: '1px solid var(--border)', overflow: 'hidden', animation: 'studio_in 0.2s ease' }}>
-                    <button onClick={() => setOpenRunId(open ? null : r.id)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans,sans-serif' }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: stCol, flexShrink: 0 }} />
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.system_name || 'Système sans nom'}</span>
-                        <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>
-                          {new Date(r.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {stLbl}{r.tokens_est ? ` · ~${formatTokens(r.tokens_est)} tokens` : ''}
-                        </span>
-                      </span>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 200ms ease', flexShrink: 0 }}><path d="M6 9l6 6 6-6"/></svg>
-                    </button>
-                    {open && (
-                      <div style={{ padding: '0 14px 12px', borderTop: '1px solid var(--border)' }}>
-                        {(r.renders ?? []).filter(x => x.text).length === 0 && (
-                          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '10px 0 0' }}>Aucun rendu conservé pour ce run.</p>
-                        )}
-                        {(r.renders ?? []).filter(x => x.text).map((x, i) => (
-                          <div key={i} style={{ marginTop: 10 }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>{x.title}</div>
-                            <div style={{ maxHeight: 300, overflowY: 'auto', padding: '8px 10px', borderRadius: 9, background: 'var(--bg-alt)' }}>
-                              <StudioMarkdown text={x.text} />
-                            </div>
-                          </div>
-                        ))}
+
+            {runs === null && <p style={{ fontSize: 13, color: 'var(--text-dim)', animation: 'studio_pulse 1.4s ease infinite' }}>Chargement du journal…</p>}
+            {runs !== null && allRuns.length === 0 && (
+              <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', marginTop: 40 }}>Aucun cycle pour l’instant — lance un « Run once » ou planifie le système, et sa progression s’écrira ici.</p>
+            )}
+
+            {/* Timeline : un point par cycle, du plus récent au plus ancien */}
+            <div style={{ position: 'relative' }}>
+              {allRuns.length > 1 && <div style={{ position: 'absolute', left: 15, top: 14, bottom: 14, width: 2, background: 'var(--border)' }} />}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {allRuns.map(r => {
+                  const open = openRunId === r.id
+                  const stCol = r.status === 'done' ? '#22C55E' : r.status === 'error' ? '#EF4444' : '#F59E0B'
+                  const stLbl = r.status === 'done' ? 'Terminé' : r.status === 'error' ? 'Erreur' : 'Arrêté'
+                  return (
+                    <div key={r.id} style={{ display: 'flex', gap: 12, position: 'relative' }}>
+                      {/* Pastille de la timeline */}
+                      <div style={{ flexShrink: 0, width: 32, display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
+                        <span style={{ width: 12, height: 12, borderRadius: '50%', background: stCol, border: '3px solid var(--bg)', boxShadow: `0 0 0 1px ${stCol}`, zIndex: 1 }} />
                       </div>
-                    )}
-                  </div>
-                )
-              })}
+                      <div style={{ flex: 1, minWidth: 0, borderRadius: 13, background: 'var(--bg-card)', border: '1px solid var(--border)', overflow: 'hidden', animation: 'studio_in 0.2s ease' }}>
+                        <button onClick={() => setOpenRunId(open ? null : r.id)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans,sans-serif' }}>
+                          <span style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                              {new Date(r.created_at).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>
+                              {stLbl}{r.tokens_est ? ` · ~${formatTokens(r.tokens_est)} tokens` : ''}{(r.renders ?? []).filter(x => x.text).length ? ` · ${(r.renders ?? []).filter(x => x.text).length} rendu(s)` : ''}
+                            </span>
+                          </span>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 200ms ease', flexShrink: 0 }}><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        {open && (
+                          <div style={{ padding: '0 14px 12px', borderTop: '1px solid var(--border)' }}>
+                            {(r.renders ?? []).filter(x => x.text).length === 0 && (
+                              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '10px 0 0' }}>Aucun rendu conservé pour ce cycle.</p>
+                            )}
+                            {(r.renders ?? []).filter(x => x.text).map((x, i) => (
+                              <div key={i} style={{ marginTop: 10 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 4, fontFamily: 'DM Sans,sans-serif' }}>{x.title}</div>
+                                <div style={{ maxHeight: 300, overflowY: 'auto', padding: '8px 10px', borderRadius: 9, background: 'var(--bg-alt)' }}>
+                                  <StudioMarkdown text={x.text} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
             </div>
           </div>
-        )}
+          )
+        })()}
 
         {/* ══ ACCUEIL — paywall / mes systèmes / templates ══ */}
         {view === 'home' && (
@@ -2538,7 +2600,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               ) : (
                 <>
                   <p style={{ fontSize: 12.5, color: 'var(--text-dim)', lineHeight: 1.55, margin: '0 0 14px', fontFamily: 'DM Sans,sans-serif' }}>
-                    Le système tournera tout seul, même app fermée. Le rendu arrive dans l’Historique et tu reçois une notification. Chaque run débite ton solde Studio (~{formatTokens(estimateRunTokens(graph.nodes))} tokens).
+                    Le système tournera tout seul, même app fermée. Le rendu arrive dans le Journal et tu reçois une notification. Chaque run débite ton solde Studio (~{formatTokens(estimateRunTokens(graph.nodes))} tokens).
                   </p>
                   {/* Activation */}
                   <button onClick={() => void saveSchedule({ ...cur, enabled: !cur.enabled })} disabled={scheduleSaving}

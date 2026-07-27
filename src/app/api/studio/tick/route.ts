@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
             type: 'studio.schedule',
             title: `« ${name} » : objectif atteint`,
             body: `Ton objectif « ${graph.objective!.text} » est arrivé à échéance. Le système est en pause — ouvre le Studio pour définir ton prochain objectif et le relancer.`,
-            link: '/',
+            link: '/?studio=1',
             dedupKey: `studio-obj-expired-${sched.system_id}-${deadline}`,
           })
           await sendPushToUser(sb, sched.user_id, {
@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
           body: needsHuman
             ? 'Ce système contient un bloc Validation ou une écriture (Planning / Calendrier) qui nécessite ton accord : il ne peut pas tourner tout seul. Pour la planification, termine plutôt par une Notification.'
             : `Le système est invalide : ${v.errors[0]}`,
-          link: '/',
+          link: '/?studio=1',
           dedupKey: `studio-sched-invalid-${sched.id}`,
         })
         continue
@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
           body: !access.allowed
             ? 'Le Studio nécessite un abonnement Pro ou Expert.'
             : `Solde Studio insuffisant (~${formatTokens(estimate)} tokens nécessaires). Recharge avec un pack.`,
-          link: '/',
+          link: '/?studio=1',
           dedupKey: `studio-sched-balance-${sched.id}-${now.toISOString().slice(0, 10)}`,
         })
         continue
@@ -168,7 +168,7 @@ export async function GET(req: NextRequest) {
         type: 'studio.schedule',
         title: `« ${name} » a tourné`,
         body,
-        link: '/',
+        link: '/?studio=1',
         dedupKey: `studio-sched-run-${runId}`,
       })
       await sendPushToUser(sb, sched.user_id, {

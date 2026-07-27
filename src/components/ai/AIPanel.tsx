@@ -20735,9 +20735,13 @@ export default function AIPanel({
         void fetchProjects(sb, user.id).then(setProjects).catch(() => {})
       } catch { /* hors-ligne / non connecté → on garde le local */ }
     })()
-    // Lien de notification « /?routines=1 » → ouvre l'interface Routines.
+    // Liens de notification : « /?routines=1 » → Routines ; « /?studio=1 » → Studio.
     void (() => {
-      try { if (new URLSearchParams(window.location.search).get('routines') === '1') setRoutinesOpen(true) } catch { /* ignore */ }
+      try {
+        const q = new URLSearchParams(window.location.search)
+        if (q.get('routines') === '1') setRoutinesOpen(true)
+        if (q.get('studio') === '1') setStudioOpen(true)
+      } catch { /* ignore */ }
     })()
   }, [])
 

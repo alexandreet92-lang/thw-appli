@@ -248,6 +248,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   }, [])
   const [micTarget, setMicTarget] = useState<'desc' | 'chat'>('desc')       // champ visé par la dictée
   const [previewSel, setPreviewSel] = useState<{ msgId: string; nodeId: string } | null>(null)  // bulle touchée dans une maquette
+  const [mockupMsgId, setMockupMsgId] = useState<string | null>(null)      // sur-page maquette ouverte
   const [renduSelId, setRenduSelId] = useState<string | null>(null)         // bulle sélectionnée dans le Rendu
   // Objectif « en cours » du système vivant (éditeur).
   const [objEditOpen, setObjEditOpen] = useState(false)
@@ -854,15 +855,15 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
 
   // ── Maquette visuelle (bulles + branches, comme la toile) — interactive ──
   // opts : hauteur, sélection (ring + clic), statuts de run (badges).
-  const miniGraph = (g: StudioGraph, opts?: { height?: number; selectedId?: string | null; onSelect?: (id: string) => void; status?: Record<string, NodeStatus> }) => {
+  const miniGraph = (g: StudioGraph, opts?: { height?: number; width?: number; maxScale?: number; selectedId?: string | null; onSelect?: (id: string) => void; status?: Record<string, NodeStatus> }) => {
     const height = opts?.height ?? 178
     const nodes = g.nodes
     if (!nodes.length) return null
     const minX = Math.min(...nodes.map(n => n.x)), minY = Math.min(...nodes.map(n => n.y))
     const maxX = Math.max(...nodes.map(n => n.x)) + NODE_D, maxY = Math.max(...nodes.map(n => n.y)) + NODE_D
     const gw = Math.max(1, maxX - minX), gh = Math.max(1, maxY - minY)
-    const W = 320, PAD = 34
-    const k = Math.min((W - 2 * PAD) / gw, (height - 2 * PAD) / gh, 0.62)
+    const W = opts?.width ?? 320, PAD = 34
+    const k = Math.min((W - 2 * PAD) / gw, (height - 2 * PAD) / gh, opts?.maxScale ?? 0.62)
     const d = Math.max(22, NODE_D * k)
     const cx = (n: StudioNode) => PAD + (n.x - minX) * k + d / 2
     const cy = (n: StudioNode) => PAD + (n.y - minY) * k + d / 2
@@ -1021,33 +1022,22 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             <>
               <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
               {/* Maquette : aperçu interactif du système (touche une bulle) */}
-              <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', marginTop: 10 }}>Aperçu du système · touche une bulle</div>
-              {miniGraph(m.graph, {
-                selectedId: previewSel?.msgId === m.id ? previewSel.nodeId : null,
-                onSelect: id => setPreviewSel(p => (p?.msgId === m.id && p.nodeId === id) ? null : { msgId: m.id, nodeId: id }),
-              })}
-              {(() => {
-                const sel = previewSel?.msgId === m.id ? m.graph.nodes.find(n => n.id === previewSel!.nodeId) : null
-                if (!sel) return (
-                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                    <span>{m.graph.nodes.length} bloc{m.graph.nodes.length > 1 ? 's' : ''}</span>·
-                    <span>{m.graph.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} agent(s)</span>·
-                    <span>{m.graph.edges.length} liaison{m.graph.edges.length > 1 ? 's' : ''}</span>
-                  </div>
-                )
-                const sub = sel.kind === 'source' ? SOURCE_LABEL[sel.sourceKey ?? 'activities'] : sel.kind === 'action' ? ACTION_LABEL[sel.actionKey ?? 'planning_save'] : KIND_LABEL[sel.kind]
-                return (
-                  <div style={{ marginTop: 6, padding: '9px 11px', borderRadius: 10, background: 'var(--bg-alt)', border: `1px solid color-mix(in srgb, ${KIND_COLOR[sel.kind]} 40%, var(--border))` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                      <span style={{ width: 20, height: 20, borderRadius: 6, background: `color-mix(in srgb, ${KIND_COLOR[sel.kind]} 15%, transparent)`, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><KindIcon kind={sel.kind} size={12} /></span>
-                      <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{sel.title}</span>
-                      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', marginLeft: 'auto' }}>{sub}</span>
-                    </div>
-                    {sel.role && <div style={{ fontSize: 11.5, color: 'var(--text-mid)', marginTop: 5, lineHeight: 1.5 }}>{sel.role}</div>}
-                    {(sel.kind === 'agent' || sel.kind === 'merge') && sel.model && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: KIND_COLOR[sel.kind], marginTop: 5 }}>{MODEL_LABEL[sel.model]}</div>}
-                  </div>
-                )
-              })()}
+              {/* Carte cliquable → ouvre la maquette en sur-page (pas d'aperçu inline). */}
+              <button onClick={() => { setPreviewSel(null); setMockupMsgId(m.id) }}
+                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', marginTop: 10, padding: '11px 12px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-alt)', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans,sans-serif' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'color-mix(in srgb, #3B92D4 45%, var(--border))' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)' }}>
+                <span style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, background: 'color-mix(in srgb, #3B92D4 12%, transparent)', color: '#3B92D4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4"/></svg>
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>Maquette du système</span>
+                  <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-dim)', marginTop: 1 }}>
+                    {m.graph.nodes.length} blocs · {m.graph.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} agents · {m.graph.edges.length} liaisons — touche pour ouvrir
+                  </span>
+                </span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 6l6 6-6 6"/></svg>
+              </button>
               {!m.applied && !m.declined && (
                 <>
                   <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: '#3B92D4' }}>Confirmes-tu la construction de ce système&nbsp;?</div>
@@ -2242,6 +2232,61 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       )}
+
+      {/* ══ Maquette du système — sur-page interactive ══ */}
+      {mockupMsgId && (() => {
+        const mk = chatMsgs.find(m => m.id === mockupMsgId)
+        if (!mk || mk.role !== 'assistant' || mk.kind !== 'propose') return null
+        const g = mk.graph
+        const sel = previewSel?.msgId === mk.id ? g.nodes.find(n => n.id === previewSel!.nodeId) : null
+        const sub = (n: StudioNode) => n.kind === 'source' ? SOURCE_LABEL[n.sourceKey ?? 'activities'] : n.kind === 'action' ? ACTION_LABEL[n.actionKey ?? 'planning_save'] : KIND_LABEL[n.kind]
+        return (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 32, background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'studio_in 0.18s ease' }}>
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ width: 30, height: 30, borderRadius: 9, background: 'color-mix(in srgb, #3B92D4 12%, transparent)', color: '#3B92D4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4"/></svg>
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>Maquette du système</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{g.nodes.length} blocs · {g.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} agents · {g.edges.length} liaisons</div>
+              </div>
+              <button onClick={() => { setMockupMsgId(null); setPreviewSel(null) }} title="Fermer" aria-label="Fermer" style={iconBtn}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 18 }}>
+              <div style={{ maxWidth: 760, margin: '0 auto' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 4px' }}>Touche une bulle pour voir son rôle</div>
+                {miniGraph(g, {
+                  width: 720, height: 440, maxScale: 1,
+                  selectedId: sel ? sel.id : null,
+                  onSelect: id => setPreviewSel(p => (p?.msgId === mk.id && p.nodeId === id) ? null : { msgId: mk.id, nodeId: id }),
+                })}
+                {sel && (
+                  <div style={{ marginTop: 10, maxWidth: 720, marginLeft: 'auto', marginRight: 'auto', padding: '12px 15px', borderRadius: 14, background: 'var(--bg-card)', border: `1px solid color-mix(in srgb, ${KIND_COLOR[sel.kind]} 40%, var(--border))`, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                      <span style={{ width: 26, height: 26, borderRadius: 8, background: `color-mix(in srgb, ${KIND_COLOR[sel.kind]} 15%, transparent)`, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><KindIcon kind={sel.kind} size={14} /></span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>{sel.title}</span>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', marginLeft: 'auto' }}>{sub(sel)}</span>
+                    </div>
+                    {sel.role && <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 7, lineHeight: 1.55, fontFamily: 'DM Sans,sans-serif' }}>{sel.role}</div>}
+                    {(sel.kind === 'agent' || sel.kind === 'merge') && sel.model && <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: KIND_COLOR[sel.kind], marginTop: 7 }}>{MODEL_LABEL[sel.model]}</div>}
+                  </div>
+                )}
+              </div>
+            </div>
+            {!mk.applied && !mk.declined && (
+              <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, maxWidth: 760, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+                <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: '#3B92D4', fontFamily: 'DM Sans,sans-serif' }}>Confirmes-tu la construction&nbsp;?</span>
+                <button onClick={() => { declinePlan(mk.id); setMockupMsgId(null) }}
+                  style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Non</button>
+                <button onClick={() => { confirmPlan(mk.id); setMockupMsgId(null) }}
+                  style={{ padding: '10px 22px', borderRadius: 11, border: 'none', background: '#3B92D4', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Confirmer</button>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ══ Éditeur d'objectif (système vivant) ══ */}
       {objEditOpen && (

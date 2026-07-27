@@ -420,14 +420,22 @@ function ModeleSection({ value, onChange }: { value: string; onChange: (v: strin
 function StudioSection() {
   const MODELS: [string, string, string][] = [['hermes', 'Hermès', 'Rapide'], ['athena', 'Athéna', 'Équilibré'], ['zeus', 'Zeus', 'Maximum']]
   const [model, setModel] = useState('athena')
+  const [autonomy, setAutonomy] = useState<'auto' | 'manual'>('auto')
   useEffect(() => {
     try { const v = localStorage.getItem('thw_studio_builder_model'); if (v && ['hermes', 'athena', 'zeus'].includes(v)) setModel(v) } catch { /* ignore */ }
+    try { const a = localStorage.getItem('thw_studio_autonomy'); if (a === 'manual' || a === 'auto') setAutonomy(a) } catch { /* ignore */ }
   }, [])
   const change = (v: string) => {
     setModel(v)
     try { localStorage.setItem('thw_studio_builder_model', v) } catch { /* ignore */ }
     try { window.dispatchEvent(new CustomEvent('thw:studio-settings-changed')) } catch { /* ignore */ }
   }
+  const changeAutonomy = (v: 'auto' | 'manual') => {
+    setAutonomy(v)
+    try { localStorage.setItem('thw_studio_autonomy', v) } catch { /* ignore */ }
+    try { window.dispatchEvent(new CustomEvent('thw:studio-settings-changed')) } catch { /* ignore */ }
+  }
+  const AUTON: [('auto' | 'manual'), string, string][] = [['auto', 'Automatique', 'Le système tourne seul et t’envoie sa synthèse'], ['manual', 'Confirmation manuelle', 'Tu valides chaque cycle avant l’envoi']]
   return (
     <div>
       <div style={sectionTitleStyle}>Studio</div>
@@ -450,8 +458,30 @@ function StudioSection() {
         })}
       </div>
 
+      <label style={{ ...fieldLabel, marginTop: 22 }}>Exécution des systèmes</label>
+      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '2px 0 10px', fontFamily: FB, lineHeight: 1.5 }}>
+        Comment tes systèmes planifiés se comportent : en autonomie, ou avec ta validation à chaque cycle.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 460 }}>
+        {AUTON.map(([id, label, desc]) => {
+          const on = autonomy === id
+          return (
+            <button key={id} type="button" onClick={() => changeAutonomy(id)}
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '12px 14px', borderRadius: 'var(--r-md)', border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'var(--primary-soft, rgba(59,146,212,0.08))' : 'var(--bg-alt)', cursor: 'pointer', textAlign: 'left', fontFamily: FB, transition: 'border 0.14s, background 0.14s' }}>
+              <span style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: 1, border: `2px solid ${on ? 'var(--primary)' : 'var(--text-dim)'}`, background: on ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {on && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
+                <span style={{ display: 'block', fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2, lineHeight: 1.45 }}>{desc}</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
       <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '22px 0 0', fontFamily: FB, lineHeight: 1.5 }}>
-        D’autres réglages du Studio (planification, actions autorisées…) viendront ici.
+        L’architecte en tient compte quand il construit un système. Tu peux toujours ajuster un système au cas par cas.
       </p>
     </div>
   )

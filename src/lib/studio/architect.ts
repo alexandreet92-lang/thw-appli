@@ -222,10 +222,15 @@ export async function converseArchitect(
   current?: StudioGraph,
   signal?: AbortSignal,
   model: StudioModel = 'athena',
+  autonomy: 'auto' | 'manual' = 'auto',
 ): Promise<ArchitectTurn> {
   const pseudoNode: StudioNode = { id: 'arch', kind: 'agent', title: 'Architecte', x: 0, y: 0, model }
   const convo = history.map(m => `${m.role === 'user' ? 'UTILISATEUR' : 'ARCHITECTE'} : ${m.content}`).join('\n')
-  const prompt = CONVERSE_PROMPT + existingGraphBlock(current) + '\n\nCONVERSATION :\n' + convo + '\n\nARCHITECTE :'
+  // Préférence utilisateur : exécution autonome ou confirmation manuelle.
+  const autonomyBlock = autonomy === 'manual'
+    ? "\n\nPRÉFÉRENCE UTILISATEUR — CONFIRMATION MANUELLE : place un bloc \"validation\" juste avant toute écriture ou notification, pour que l'utilisateur relise et approuve chaque cycle avant l'envoi.\n"
+    : "\n\nPRÉFÉRENCE UTILISATEUR — AUTONOME : N'ajoute PAS de bloc \"validation\" avant une notification. Termine par \"notify_report\" pour que le système tourne seul et envoie sa synthèse sans accord manuel.\n"
+  const prompt = CONVERSE_PROMPT + autonomyBlock + existingGraphBlock(current) + '\n\nCONVERSATION :\n' + convo + '\n\nARCHITECTE :'
   const raw = await callAgent(pseudoNode, prompt, () => {}, signal)
 
   let parsed: { action?: string; message?: string; question?: string; questions?: unknown; options?: unknown; plan?: ArchPlan }

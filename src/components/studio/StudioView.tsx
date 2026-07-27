@@ -235,10 +235,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const [builderModel, setBuilderModel] = useState<StudioModel>('athena')  // modèle de l'architecte
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
-  // Modèle par défaut réglé dans Réglages IA → Studio (localStorage).
+  const [autonomy, setAutonomy] = useState<'auto' | 'manual'>('auto')      // exécution : autonome / confirmation
+  // Réglages Studio (Réglages IA → Studio), lus en localStorage.
   useEffect(() => {
     const load = () => {
       try { const v = localStorage.getItem('thw_studio_builder_model'); if (v === 'hermes' || v === 'athena' || v === 'zeus') setBuilderModel(v) } catch { /* ignore */ }
+      try { const a = localStorage.getItem('thw_studio_autonomy'); setAutonomy(a === 'manual' ? 'manual' : 'auto') } catch { /* ignore */ }
     }
     load()
     window.addEventListener('thw:studio-settings-changed', load)
@@ -758,7 +760,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         ? { role: 'user' as const, content: m.text }
         : { role: 'assistant' as const, content: m.kind === 'ask' ? `${m.text}\nQuestions : ${m.questions.map(q => q.question).join(' | ')}` : m.text })
     try {
-      const turn = await converseArchitect(apiHistory, graph.nodes.length > 0 ? graph : undefined, undefined, builderModel)
+      const turn = await converseArchitect(apiHistory, graph.nodes.length > 0 ? graph : undefined, undefined, builderModel, autonomy)
       const id = newMsgId()
       if (turn.action === 'ask') {
         setChatMsgs(m => [...m, { id, role: 'assistant', kind: 'ask', text: turn.message, questions: turn.questions }])

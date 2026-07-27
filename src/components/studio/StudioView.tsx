@@ -1006,25 +1006,25 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           if (m.role === 'user') return (
             <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '86%', background: '#3B92D4', color: '#fff', padding: '9px 13px', borderRadius: '14px 14px 4px 14px', fontSize: 13, lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif', whiteSpace: 'pre-wrap' }}>{m.text}</div>
           )
-          const bubble = (children: React.ReactNode, tone?: 'error') => (
-            <div key={m.id} style={{ alignSelf: 'flex-start', maxWidth: '92%', background: tone === 'error' ? 'rgba(239,68,68,0.08)' : 'var(--bg-card)', border: `1px solid ${tone === 'error' ? 'rgba(239,68,68,0.3)' : 'var(--border)'}`, color: tone === 'error' ? '#EF4444' : 'var(--text)', padding: '10px 13px', borderRadius: '14px 14px 14px 4px', fontSize: 13, lineHeight: 1.55, fontFamily: 'DM Sans,sans-serif' }}>{children}</div>
+          // Réponses de l'IA : à même le fond (pas de bulle), comme l'interface IA principale.
+          const plain = (children: React.ReactNode, tone?: 'error') => (
+            <div key={m.id} style={{ alignSelf: 'stretch', color: tone === 'error' ? '#EF4444' : 'var(--text)', fontSize: 14, lineHeight: 1.6, fontFamily: 'DM Sans,sans-serif', padding: '2px 2px' }}>{children}</div>
           )
-          if (m.kind === 'reply') return bubble(<span style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span>)
-          if (m.kind === 'error') return bubble(<span style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span>, 'error')
+          if (m.kind === 'reply') return plain(<span style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span>)
+          if (m.kind === 'error') return plain(<span style={{ whiteSpace: 'pre-wrap' }}>{m.text}</span>, 'error')
           if (m.kind === 'ask') return (
             <div key={m.id} style={{ alignSelf: 'stretch', ...aiVars }}>
               {m.text && <div style={{ color: 'var(--text-mid)', margin: '0 0 8px', fontSize: 13, lineHeight: 1.55, fontFamily: 'DM Sans,sans-serif', whiteSpace: 'pre-wrap' }}>{m.text}</div>}
               <CoachQuestionCard data={{ questions: m.questions }} onSubmit={recap => void sendArchitect(recap)} />
             </div>
           )
-          // propose
-          return bubble(
-            <>
+          // propose : texte à même le fond + carte maquette (fond carte + ombre) + confirmation
+          return (
+            <div key={m.id} style={{ alignSelf: 'stretch', color: 'var(--text)', fontSize: 14, lineHeight: 1.6, fontFamily: 'DM Sans,sans-serif', padding: '2px 2px' }}>
               <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
-              {/* Maquette : aperçu interactif du système (touche une bulle) */}
-              {/* Carte cliquable → ouvre la maquette en sur-page (pas d'aperçu inline). */}
+              {/* Carte cliquable → ouvre la maquette en sur-page (fond carte + ombre). */}
               <button onClick={() => { setPreviewSel(null); setMockupMsgId(m.id) }}
-                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', marginTop: 10, padding: '11px 12px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-alt)', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans,sans-serif' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', marginTop: 12, padding: '11px 12px', borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans,sans-serif', boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08)' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'color-mix(in srgb, #3B92D4 45%, var(--border))' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)' }}>
                 <span style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, background: 'color-mix(in srgb, #3B92D4 12%, transparent)', color: '#3B92D4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1065,7 +1065,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 </div>
               )}
               {m.declined && <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--text-dim)', fontStyle: 'italic' }}>Non appliqué.</div>}
-            </>
+            </div>
           )
         })}
         {chatBusy && (

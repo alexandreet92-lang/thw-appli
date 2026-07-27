@@ -115,7 +115,8 @@ const APP_CATALOG: AppEntry[] = [
   { id: 'app_injuries',   label: 'Blessures',     color: '#EF4444', kind: 'source', sourceKey: 'injuries',   access: 'lecture' },
   { id: 'app_recovery',   label: 'Récupération',  color: '#14B8A6', kind: 'source', sourceKey: 'recovery',   access: 'lecture' },
   { id: 'app_profile',    label: 'Profil',        color: '#F59E0B', kind: 'source', sourceKey: 'profile',    access: 'lecture' },
-  { id: 'act_planning',   label: 'Planning',      color: '#EF4444', kind: 'action', actionKey: 'planning_save', access: 'écriture' },
+  { id: 'act_planning',   label: 'Planning (ajout)', color: '#EF4444', kind: 'action', actionKey: 'planning_save', access: 'écriture' },
+  { id: 'act_plan_repl',  label: 'Planning (remplacer)', color: '#DC2626', kind: 'action', actionKey: 'planning_replace', access: 'écriture' },
   { id: 'act_calendar',   label: 'Calendrier',    color: '#F97316', kind: 'action', actionKey: 'calendar_race', access: 'écriture' },
   { id: 'act_notify',     label: 'Notification',  color: '#0EA5E9', kind: 'action', actionKey: 'notify_report', access: 'écriture' },
 ]
@@ -1886,12 +1887,35 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
           const selNode = graph.nodes.find(n => n.id === selId) ?? null
           const selText = selNode ? (nodeText[selNode.id] ?? '') : ''
           const sub = (n: StudioNode) => n.kind === 'source' ? SOURCE_LABEL[n.sourceKey ?? 'activities'] : n.kind === 'action' ? ACTION_LABEL[n.actionKey ?? 'planning_save'] : KIND_LABEL[n.kind]
+          // Ce qui a été ÉCRIT dans l'app par ce run (actions terminées).
+          const writes = graph.nodes.filter(n => n.kind === 'action' && status[n.id] === 'done' && (nodeText[n.id] ?? '').trim()).map(n => {
+            const ak = n.actionKey ?? 'planning_save'
+            const link = ak === 'calendar_race' ? '/calendar' : ak === 'notify_report' ? '/notifications' : '/planning'
+            const linkLabel = ak === 'calendar_race' ? 'Ouvrir le Calendrier' : ak === 'notify_report' ? 'Voir les notifications' : 'Ouvrir le Planning'
+            const first = (nodeText[n.id] ?? '').split('\n').find(l => l.trim()) ?? ''
+            return { id: n.id, first, link, linkLabel }
+          })
           return (
           <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px', maxWidth: 820, margin: '0 auto' }}>
             {runCost !== null && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(59,146,212,0.08)', border: '1px solid rgba(59,146,212,0.25)', marginBottom: 14, fontSize: 12, fontWeight: 700, color: '#3B92D4', fontFamily: 'DM Sans,sans-serif', fontVariantNumeric: 'tabular-nums' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                 Ce run a coûté {formatTokens(runCost)} tokens Studio
+              </div>
+            )}
+            {/* Bandeau : ce qui a été écrit dans l'app (Planning / Calendrier / Notifs). */}
+            {writes.length > 0 && (
+              <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 14, background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.35)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: writes.length ? 6 : 0 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#16A34A', fontFamily: 'DM Sans,sans-serif' }}>Ce que ce run a écrit dans ton app</span>
+                </div>
+                {writes.map(w => (
+                  <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: 'var(--text-mid)', fontFamily: 'DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.first}</span>
+                    <a href={w.link} style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: '#16A34A', textDecoration: 'none', fontFamily: 'DM Sans,sans-serif' }}>{w.linkLabel} →</a>
+                  </div>
+                ))}
               </div>
             )}
             {!hasAnyText ? (

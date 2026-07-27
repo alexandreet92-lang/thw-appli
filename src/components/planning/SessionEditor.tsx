@@ -3617,7 +3617,7 @@ function addMinutesToTime(hhmm: string, addMin: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, onLinkBrick, linkableRuns, openWithFavorites, initialSport, reserveMode }: {
+export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, onLinkBrick, linkableRuns, openWithFavorites, initialSport, reserveMode, lockSport }: {
   mode: 'create' | 'edit'
   session?: Session
   dayIndex?: number
@@ -3636,6 +3636,8 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   openWithFavorites?: boolean
   initialSport?: SportType
   reserveMode?: boolean   // Builder « réserve » : masque Sport / Date / Heure (non planifié)
+  /** Verrouille le sport (éditeur de course d'enchaînement : course à pied uniquement). */
+  lockSport?: boolean
 }) {
   const { t } = useI18n()
   const isEdit = mode === 'edit'
@@ -3660,6 +3662,11 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   // Quand l'enchaînement pointe une course DÉJÀ planifiée, on ne recrée rien.
   const [brickLinkedRunId, setBrickLinkedRunId] = useState<string | null>(null)
   const [brickPickerOpen, setBrickPickerOpen] = useState(false)
+  // Création d'une NOUVELLE course d'enchaînement : ouvre un éditeur complet
+  // (verrouillé sur la course à pied) par-dessus le picker.
+  const [brickCreateOpen, setBrickCreateOpen] = useState(false)
+  const [brickRunCreated, setBrickRunCreated] = useState(false)
+  const brickCreatedRef = useRef(false)
   const [trainingTypes, setTrainingTypes] = useState<string[]>(session?.trainingTypes ?? [])
   const [title, setTitle] = useState(session?.title ?? '')
   const [date, setDate] = useState('')
@@ -4284,6 +4291,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   }
 
   function handleSportChange(s: SportType) {
+    if (lockSport) return   // éditeur d'enchaînement : sport figé (course à pied)
     setSport(s); setTrainingTypes([]); setBlocks([]); setExercises([]); setComposedMoves([])
   }
 
@@ -4374,7 +4382,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     if (wantBrick && finalBrickId) {
       if (brickLinkedRunId && onLinkBrick) {
         onLinkBrick(brickLinkedRunId, finalBrickId)
-      } else if (!brickLinkedRunId && !session?.brickId && onCreateBrick) {
+      } else if (!brickLinkedRunId && !brickRunCreated && !session?.brickId && onCreateBrick) {
         const runStart = addMinutesToTime(time, finalDur)
         onCreateBrick({
           id: '', dayIndex: savedSession.dayIndex, sport: 'run',
@@ -4394,10 +4402,26 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     else setBrickPickerOpen(true)
   }
   function pickBrickExisting(run: Session) {
-    setBrickId(newBrickId()); setBrickRun(true); setBrickLinkedRunId(run.id); setBrickPickerOpen(false)
+    setBrickId(newBrickId()); setBrickRun(true); setBrickLinkedRunId(run.id); setBrickRunCreated(false); brickCreatedRef.current = false; setBrickPickerOpen(false)
   }
+  // « Créer une nouvelle course » : ouvre l'éditeur complet (course à pied) au-dessus.
   function createBrickNew() {
-    setBrickId(newBrickId()); setBrickRun(true); setBrickLinkedRunId(null); setBrickPickerOpen(false)
+    setBrickLinkedRunId(null); brickCreatedRef.current = false; setBrickRunCreated(false)
+    setBrickPickerOpen(false); setBrickCreateOpen(true)
+  }
+  // Sauvegarde de la course d'enchaînement créée : on l'ajoute avec le brickId
+  // partagé, et le vélo (édité) reprendra ce brickId à sa propre sauvegarde.
+  function saveBrickNewRun(run: Session) {
+    const bId = newBrickId()
+    const day = dayIndex ?? session?.dayIndex ?? 0
+    onCreateBrick?.({ ...run, brickId: bId, dayIndex: day })
+    setBrickId(bId); setBrickRun(true); setBrickRunCreated(true); brickCreatedRef.current = true
+    setBrickCreateOpen(false)
+  }
+  function cancelBrickNew() {
+    setBrickCreateOpen(false)
+    // Rien créé ni relié → on annule l'enchaînement (évite une course fantôme).
+    if (!brickCreatedRef.current && !brickLinkedRunId) { setBrickRun(false); setBrickId(undefined) }
   }
 
   async function generateBlocksFromTerrain() {
@@ -4953,7 +4977,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     }
     const panelProps: SessionEditorPanelProps = {
       mode, reserveMode,
-      sport, accent: 'var(--primary)', sportAccent: mobileSportColor(sport), onSportChange: handleSportChange,
+      sport, accent: 'var(--primary)', sportAccent: mobileSportColor(sport), onSportChange: handleSportChange, lockSport,
       cyclingSub, setCyclingSub, runningSub, setRunningSub, brickRun, setBrickRun, onBrickButton: handleBrickButton, trainingTypes, setTrainingTypes,
       title, setTitle, date, setDate, time, setTime,
       dur, setDur, rpe, setRpe, desc, setDesc, selPlan,
@@ -4989,6 +5013,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           <BrickPicker runs={linkableRuns ?? []} accent={mobileSportColor('run')}
             onPick={pickBrickExisting} onCreate={createBrickNew} onClose={() => setBrickPickerOpen(false)} />
         )}
+        {brickCreateOpen && (
+          <SessionEditor mode="create" dayIndex={dayIndex ?? session?.dayIndex} plan={selPlan}
+            initialSport="run" lockSport onClose={cancelBrickNew} onSave={saveBrickNewRun} />
+        )}
       </>
     )
     return typeof document !== 'undefined' ? createPortal(withBrick, document.body) : withBrick
@@ -5006,6 +5034,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       {brickPickerOpen && (
         <BrickPicker runs={linkableRuns ?? []} accent={mobileSportColor('run')}
           onPick={pickBrickExisting} onCreate={createBrickNew} onClose={() => setBrickPickerOpen(false)} />
+      )}
+      {brickCreateOpen && (
+        <SessionEditor mode="create" dayIndex={dayIndex ?? session?.dayIndex} plan={selPlan}
+          initialSport="run" lockSport onClose={cancelBrickNew} onSave={saveBrickNewRun} />
       )}
 
       {/* Backdrop */}
@@ -5192,19 +5224,20 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
                 {(Object.keys(SPORT_LABEL) as SportType[]).map(sp => {
                   const selected = sp === sport
+                  const locked = !!lockSport && !selected
                   return (
-                    <button key={sp} onClick={() => handleSportChange(sp)} title={SPORT_LABEL[sp]}
+                    <button key={sp} disabled={locked} onClick={() => handleSportChange(sp)} title={SPORT_LABEL[sp]}
                       style={{
                         display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 5,
-                        padding: '6px 4px', borderRadius: 10, cursor: 'pointer',
+                        padding: '6px 4px', borderRadius: 10, cursor: locked ? 'not-allowed' : 'pointer',
                         border: 'none', background: 'transparent',
                         minWidth: 48, flex: '1 1 0',
-                        opacity: selected ? 1 : 0.4,
+                        opacity: locked ? 0.25 : selected ? 1 : 0.4,
                         transition: 'opacity .15s, transform .15s',
                         transform: selected ? 'scale(1.06)' : 'scale(1)',
                       }}
-                      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.opacity = '0.7' }}
-                      onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLElement).style.opacity = '0.4' }}>
+                      onMouseEnter={e => { if (!selected && !locked) (e.currentTarget as HTMLElement).style.opacity = '0.7' }}
+                      onMouseLeave={e => { if (!selected && !locked) (e.currentTarget as HTMLElement).style.opacity = '0.4' }}>
                       <SportIcon sport={sp} size={38} />
                       <span style={{ fontSize: 10, fontWeight: selected ? 700 : 600, color: selected ? 'var(--text)' : 'var(--text-dim)', whiteSpace: 'nowrap' as const }}>{SPORT_SHORT[sp]}</span>
                     </button>

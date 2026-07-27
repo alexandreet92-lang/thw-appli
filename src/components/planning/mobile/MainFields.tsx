@@ -20,6 +20,7 @@ const RPE_DESC = ['planning.rpeVeryEasy', 'planning.rpeVeryEasy', 'planning.rpeE
 export function MainFields(p: {
   reserveMode?: boolean
   sport: SportType; accent: string; onSportChange: (s: SportType) => void
+  lockSport?: boolean
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
   runningSub: RunningSub; setRunningSub: (s: RunningSub) => void
   brickRun: boolean; setBrickRun: (b: boolean) => void
@@ -54,8 +55,12 @@ export function MainFields(p: {
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             {SPORTS.map(s => {
               const on = s === p.sport
+              // Enchaînement : seul le sport sélectionné (course) est cliquable.
+              const locked = !!p.lockSport && !on
               return (
-                <button key={s} type="button" onClick={() => p.onSportChange(s)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: 0, flex: 1 }}>
+                <button key={s} type="button" disabled={locked} onClick={() => { if (!locked) p.onSportChange(s) }}
+                  title={locked ? tr('planning.brickRunOnly') : undefined}
+                  style={{ border: 'none', background: 'transparent', cursor: locked ? 'not-allowed' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: 0, flex: 1, opacity: locked ? 0.3 : 1 }}>
                   <span style={{ opacity: on ? 1 : 0.4, display: 'flex' }}><SportIcon sport={s} size={23} circle={false} /></span>
                   <span style={{ fontSize: 9, fontWeight: on ? 700 : 500, color: on ? sportColor(s) : 'var(--se-dim)' }}>{SPORT_SHORT[s]}</span>
                   <span style={{ width: 16, height: 2, borderRadius: 2, background: on ? sportColor(s) : 'transparent' }} />

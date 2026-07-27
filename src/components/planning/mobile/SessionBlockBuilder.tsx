@@ -94,13 +94,20 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
 
   const colorForWatts = (w: number) => zColor(getZone('bike', String(w)))
 
-  /** Portions dessinées sur le profil : fond Z2 segmenté + blocs d'intensité. */
+  /** Portions dessinées sur le profil : fond Z2 segmenté + blocs d'intensité.
+   *  Chaque bloc porte `intensityPct` = hauteur (∝ zone) du bloc coloré dessiné
+   *  sur le profil altimétrique (Z1 bas … Z5 plein), même échelle que le profil
+   *  d'intensité (barHeightPct). */
   const parcoursPortions: ProfilePortion[] = useMemo(() => {
     if (!hasParcours) return []
+    const pct = (zone: number, value?: string) => barHeightPct({ zone, value }, sport, refs) / 100
     const out: ProfilePortion[] = []
     const base = blocks.find(b => b._base)
     for (const s of base?._baseSegments ?? []) {
-      out.push({ startKm: s.startKm, endKm: s.endKm, color: zColor(base?.zone ?? 2), label: base?.label })
+      out.push({
+        startKm: s.startKm, endKm: s.endKm, color: zColor(base?.zone ?? 2), label: base?.label,
+        intensityPct: pct(base?.zone ?? 2, base?.value),
+      })
     }
     for (const b of blocks) {
       if (b._base || b._startKm == null || b._endKm == null) continue
@@ -111,6 +118,8 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
         watts: parseInt(b.value) || undefined,
         hrTarget: parseInt(b.hrAvg) || null,
         recoveryColor: zColor(b.recoveryZone ?? 1),
+        intensityPct: pct(b.zone, b.value),
+        recoveryPct: pct(b.recoveryZone ?? 1, b.recoveryValue),
         interval: isIv ? {
           reps: b.reps as number,
           effortSec: Math.round((b.effortMin ?? 0) * 60),
@@ -121,7 +130,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
       })
     }
     return out
-  }, [blocks, hasParcours])
+  }, [blocks, hasParcours, sport, refs])
 
   /** SequencedPortion → MBlock (bloc simple ou fractionné). */
   function blockFromPortion(p: SequencedPortion, id: string): MBlock {

@@ -19,6 +19,8 @@ export interface SessionEditorPanelProps {
   mode: 'create' | 'edit'
   reserveMode?: boolean   // réserve Builder : masque Sport / Date / Heure
   sport: SportType; accent: string; sportAccent: string; onSportChange: (s: SportType) => void
+  /** Verrouille le sport (éditeur d'enchaînement : course à pied uniquement). */
+  lockSport?: boolean
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
   runningSub: RunningSub; setRunningSub: (s: RunningSub) => void
   brickRun: boolean; setBrickRun: (b: boolean) => void

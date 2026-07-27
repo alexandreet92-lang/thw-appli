@@ -57,6 +57,11 @@ export interface ProfilePortion {
   recoveryColor?: string
   /** Surligne la portion en rouge sur la carte du parcours. */
   highlight?: boolean
+  /** Hauteur du bloc de zone (0..1 de la hauteur du graphe) : encode l'intensité
+   *  — Z1 bas … Z5 plein (Z6/Z7 = Z5). Défaut : plein (1) si non fourni. */
+  intensityPct?: number
+  /** Idem pour les bandes de récup d'un fractionné (zone de récup). */
+  recoveryPct?: number
 }
 
 /** Résultat d'une portion sélectionnée, prêt à devenir un bloc de séance. */
@@ -229,8 +234,6 @@ export default function RouteElevationProfile({
 
   const H = height
   const inner = H - PAD_T - PAD_B
-  // Hauteur du bandeau de zone coloré en tête de chaque portion (unités viewBox).
-  const ribbonH = Math.max(4, H * 0.16)
   const range = (maxA - minA) || 1
   const xOf = useCallback((km: number) => (total > 0 ? (km / total) * W : 0), [total])
   const yOf = useCallback((ele: number) => H - PAD_B - ((ele - minA) / range) * inner, [H, inner, minA, range])
@@ -485,26 +488,19 @@ export default function RouteElevationProfile({
                   const bx1 = xOf(b.a), bx2 = xOf(b.b)
                   const bw = Math.max(0.6, bx2 - bx1)
                   const col = b.recovery ? (p.recoveryColor ?? p.color) : p.color
+                  // Hauteur du bloc = intensité de la zone (part du graphe), depuis le bas.
+                  const frac = Math.max(0.06, Math.min(1, b.recovery ? (p.recoveryPct ?? 0.1) : (p.intensityPct ?? 1)))
+                  const bh = frac * H
                   return (
-                    <g key={`bd${k}`}>
-                      {/* voile de zone sur toute la hauteur */}
-                      <rect x={bx1} y={0} width={bw} height={H} fill={col} opacity={b.recovery ? 0.20 : 0.38} />
-                      {/* bandeau de zone marqué en haut de la portion */}
-                      <rect x={bx1} y={0} width={bw} height={ribbonH} fill={col} opacity={b.recovery ? 0.55 : 1} />
-                    </g>
+                    <rect key={`bd${k}`} x={bx1} y={H - bh} width={bw} height={bh} fill={col} opacity={b.recovery ? 0.28 : 0.42} />
                   )
                 })
-                : (
-                  <>
-                    {/* voile de zone sur toute la hauteur */}
-                    <rect x={x1} y={0} width={x2 - x1} height={H} fill={p.color} opacity={0.24} />
-                    {/* bandeau de zone marqué en haut — bien visible, coloré */}
-                    <rect x={x1} y={0} width={x2 - x1} height={ribbonH} fill={p.color} opacity={0.96} />
-                    {/* liseré latéral pour délimiter la portion */}
-                    <line x1={x1} y1={0} x2={x1} y2={H} stroke={p.color} strokeWidth={1} opacity={0.5} vectorEffect="non-scaling-stroke" />
-                    <line x1={x2} y1={0} x2={x2} y2={H} stroke={p.color} strokeWidth={1} opacity={0.5} vectorEffect="non-scaling-stroke" />
-                  </>
-                )}
+                : (() => {
+                  // Bloc de zone : hauteur ∝ intensité (Z1 bas … Z5 plein), depuis le bas.
+                  const frac = Math.max(0.06, Math.min(1, p.intensityPct ?? 1))
+                  const bh = frac * H
+                  return <rect x={x1} y={H - bh} width={x2 - x1} height={bh} fill={p.color} opacity={0.4} />
+                })()}
             </g>
           )
         })}

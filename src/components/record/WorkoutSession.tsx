@@ -128,6 +128,17 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
       avg_hr: hr.avg, max_hr: hr.max, min_hr: hr.min,
       photos: photoUrls.length ? photoUrls : null,
     })
+    // ESSENTIEL : ligne `activities` — lue par la page Training (sinon la séance
+    // muscu/hyrox est sauvée mais INVISIBLE dans Training). Vaut pour tout sport.
+    await supabase.from('activities').insert({
+      user_id: user.id, sport_type: sport,   // 'gym' | 'hyrox'
+      title: formData.title,
+      started_at: startedAt, moving_time_s: elapsed, elapsed_time_s: elapsed,
+      calories: Math.round(elapsed / 60 * 7),
+      avg_hr: hr.avg, max_hr: hr.max, min_hr: hr.min,
+      average_heartrate: hr.avg, max_heartrate: hr.max,
+      rpe: formData.rpe, comment: formData.comment,
+    })
     onClose()
   }
 

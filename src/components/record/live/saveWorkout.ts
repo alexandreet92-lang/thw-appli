@@ -38,4 +38,20 @@ export async function saveWorkout(a: SaveArgs): Promise<void> {
     avg_hr: a.hr.avg, max_hr: a.hr.max, min_hr: a.hr.min,
     photos: photoUrls.length ? photoUrls : null,
   })
+
+  // ── ESSENTIEL : ligne `activities` — c'est CE que lit la page Training.
+  // Sans elle, la séance muscu était sauvée (workout_sessions) mais INVISIBLE
+  // dans Training. On l'insère donc systématiquement, pour tous les sports.
+  await supabase.from('activities').insert({
+    user_id: user.id,
+    sport_type: a.sport,        // 'gym'
+    title: a.form.title,
+    started_at: a.startedAt,
+    moving_time_s: a.durationSec,
+    elapsed_time_s: a.durationSec,
+    calories: Math.round(a.durationSec / 60 * 7),
+    avg_hr: a.hr.avg, max_hr: a.hr.max, min_hr: a.hr.min,
+    average_heartrate: a.hr.avg, max_heartrate: a.hr.max,
+    rpe: a.form.rpe, comment: a.form.comment,
+  })
 }

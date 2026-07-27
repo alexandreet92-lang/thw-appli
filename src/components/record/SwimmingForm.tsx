@@ -74,21 +74,30 @@ export default function SwimmingForm({ onClose }: Props) {
       if (!user) { setSaving(false); return }
       const calories = Math.round(totalDurSec / 60 * 8)
       const now = Date.now()
+      const startedISO = new Date(now - totalDurSec * 1000).toISOString()
+      const finalTitle = title.trim() || autoTitle()
       const { data } = await sb.from('workout_sessions').insert({
         user_id: user.id, sport: 'swimming',
-        started_at: new Date(now - totalDurSec * 1000).toISOString(),
+        started_at: startedISO,
         ended_at:   new Date(now).toISOString(),
         duration_seconds: totalDurSec, distance_m: totalDistM,
         avg_speed_kmh: totalDurSec > 0 ? (totalDistM / totalDurSec) * 3.6 : 0,
         max_speed_kmh: 0, calories, status: 'completed',
-        title: title.trim() || autoTitle(), training_types: ['natation'],
+        title: finalTitle, training_types: ['natation'],
         rpe, comment,
         pool_size: poolSize, swim_stroke: stroke || null,
         swim_intervals: intervals.length > 0 ? intervals : null,
         distance_unit: distUnit,
       }).select('id').single()
+      // ESSENTIEL : ligne `activities` — lue par la page Training (sinon invisible).
+      await sb.from('activities').insert({
+        user_id: user.id, sport_type: 'swim', title: finalTitle,
+        started_at: startedISO, moving_time_s: totalDurSec, elapsed_time_s: totalDurSec,
+        distance_m: totalDistM, avg_speed_ms: totalDurSec > 0 ? totalDistM / totalDurSec : 0,
+        calories, rpe, comment,
+      })
       setSaved({ id: data?.id ?? null, durationSec: totalDurSec, distanceM: totalDistM, poolSize, calories, rpe, intervals })
-      notifyActivitySaved({ sport: 'swimming', title: title.trim() || autoTitle() })
+      notifyActivitySaved({ sport: 'swimming', title: finalTitle })
     } catch (e) { console.error('[swimming] save error:', e) }
     setSaving(false)
   }

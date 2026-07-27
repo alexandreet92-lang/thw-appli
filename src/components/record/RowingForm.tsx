@@ -75,10 +75,13 @@ export default function RowingForm({ onClose }: Props) {
       const { data: { user } } = await sb.auth.getUser()
       if (user) {
         const calories = Math.round(effectiveDur / 60 * 10)
+        const finalTitle = title.trim() || autoTitle(t)
+        const startedISO = new Date(Date.now() - effectiveDur * 1000).toISOString()
         const { data } = await sb.from('workout_sessions').insert({
           user_id: user.id, sport: 'rowing',
+          started_at: startedISO,
           duration_seconds: effectiveDur, distance_m: effectiveDist,
-          title: title.trim() || autoTitle(t),
+          title: finalTitle,
           rpe, comment,
           rowing_type: practiceType,
           split_500m_seconds: split500 > 0 ? split500 : null,
@@ -88,7 +91,14 @@ export default function RowingForm({ onClose }: Props) {
           status: 'completed',
         }).select('id').single()
         savedId = data?.id ?? null
-        notifyActivitySaved({ sport: 'rowing', title: title.trim() || autoTitle(t) })
+        // ESSENTIEL : ligne `activities` — lue par la page Training (sinon invisible).
+        await sb.from('activities').insert({
+          user_id: user.id, sport_type: 'rowing', title: finalTitle,
+          started_at: startedISO, moving_time_s: effectiveDur, elapsed_time_s: effectiveDur,
+          distance_m: effectiveDist, avg_speed_ms: effectiveDur > 0 ? effectiveDist / effectiveDur : 0,
+          avg_watts: watts > 0 ? watts : null, calories, rpe, comment,
+        })
+        notifyActivitySaved({ sport: 'rowing', title: finalTitle })
       }
     } catch (e) { console.error('[rowing] save error:', e) }
     setSaving(false)

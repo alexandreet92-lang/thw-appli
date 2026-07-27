@@ -63,17 +63,27 @@ export default function PadelForm({ onClose }: Props) {
       if (user) {
         const setsWonMe  = sets.filter(s => s.me  > s.opp).length
         const setsWonOpp = sets.filter(s => s.opp > s.me ).length
+        const finalTitle = autoTitle(sport)
+        const startedISO = new Date(Date.now() - durationSec * 1000).toISOString()
         await sb.from('workout_sessions').insert({
           user_id: user.id, sport,
+          started_at: startedISO,
           duration_seconds: durationSec, status: 'completed',
-          title: autoTitle(sport), rpe, comment,
+          title: finalTitle, rpe, comment,
           calories: Math.round(durationSec / 60 * 9),
           opponent_name: opponent || null, partner_name: isDouble ? partner || null : null,
           match_result: result, match_score: { sets, setsWonMe, setsWonOpp },
           court_surface: surface, court_location: location || null,
           training_types: ['match'],
         })
-        notifyActivitySaved({ sport, title: autoTitle(sport) })
+        // ESSENTIEL : ligne `activities` — lue par la page Training (sinon invisible).
+        // Padel/tennis → sport_type 'other' (jeu de raquette, pas de type dédié).
+        await sb.from('activities').insert({
+          user_id: user.id, sport_type: 'other', title: finalTitle,
+          started_at: startedISO, moving_time_s: durationSec, elapsed_time_s: durationSec,
+          calories: Math.round(durationSec / 60 * 9), rpe, comment,
+        })
+        notifyActivitySaved({ sport, title: finalTitle })
       }
     } catch (e) { console.error('[padel] save error:', e) }
     setSaving(false)

@@ -120,6 +120,7 @@ const APP_CATALOG: AppEntry[] = [
   { id: 'act_planning',   label: 'Planning (ajout)', color: '#EF4444', kind: 'action', actionKey: 'planning_save', access: 'écriture' },
   { id: 'act_plan_repl',  label: 'Planning (remplacer)', color: '#DC2626', kind: 'action', actionKey: 'planning_replace', access: 'écriture' },
   { id: 'act_calendar',   label: 'Calendrier',    color: '#F97316', kind: 'action', actionKey: 'calendar_race', access: 'écriture' },
+  { id: 'act_nutrition',  label: 'Nutrition',     color: '#10B981', kind: 'action', actionKey: 'nutrition_save', access: 'écriture' },
   { id: 'act_notify',     label: 'Notification',  color: '#0EA5E9', kind: 'action', actionKey: 'notify_report', access: 'écriture' },
 ]
 
@@ -143,6 +144,7 @@ function AppIcon({ id, size = 14 }: { id: string; size?: number }) {
     case 'app_profile':    return <svg {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
     case 'act_planning':   return <svg {...p}><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
     case 'act_calendar':   return <svg {...p}><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 14l2 2 4-4"/></svg>
+    case 'act_nutrition':  return <svg {...p}><path d="M4 3v7a3 3 0 003 3v8M7 3v7M10 3v7M16 3c-1.5 1-2 3-2 6s.5 5 2 6v3"/></svg>
     case 'act_notify':     return <svg {...p}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
     // Apps externes — pictos évocateurs (pas les logos officiels).
     case 'ext_strava':     return <svg {...p} fill="currentColor" stroke="none"><path d="M9 3l5 9h-3l-2-4-2 4H2L9 3zm5 11h3l1.5 3 1.5-3h3l-4.5 8L14 14z"/></svg>
@@ -2590,6 +2592,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
             if (n.actionKey === 'planning_replace') return 'La semaine remplacée dans ton Planning (après ton accord).'
             if (n.actionKey === 'planning_save') return 'Des séances ajoutées à ton Planning (après ton accord).'
             if (n.actionKey === 'calendar_race') return 'Une course ajoutée à ton Calendrier (après ton accord).'
+            if (n.actionKey === 'nutrition_save') return 'Un plan nutrition activé (après ton accord).'
           }
           if (n.kind === 'validation') return 'Une pause pour ta validation avant d’aller plus loin.'
           return `Un bilan à lire : « ${n.title} ».`

@@ -143,7 +143,7 @@ export async function GET(req: NextRequest) {
 
       // Run serveur + archivage + notification.
       const runId = genId()
-      const res = await runGraphServer(sched.user_id, graph, runId)
+      const res = await runGraphServer(sched.user_id, graph, runId, sched.system_id)
       const status = res.errors.length > 0 ? 'error' : 'done'
       await sb.from('studio_runs').insert({
         id: runId,

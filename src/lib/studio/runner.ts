@@ -36,6 +36,9 @@ export interface RunCallbacks {
   // Identifiant du run : la conso serveur (studio_usage) y est rattachée →
   // permet d'afficher le COÛT RÉEL du run une fois terminé.
   runId?: string
+  // Contexte « système vivant » (garde-fou santé + mémoire du dernier cycle),
+  // calculé en amont et injecté dans chaque agent — cohérent avec l'autonome.
+  livingContext?: string
 }
 
 // ── Appel d'un agent : /api/coach-stream, accumulation du flux SSE ────────
@@ -97,11 +100,11 @@ async function callAgent(
   return acc.trim()
 }
 
-function agentPrompt(node: StudioNode, upstream: string): string {
+function agentPrompt(node: StudioNode, upstream: string, living = ''): string {
   const role = (node.role ?? '').trim() || 'Tu es un coach expert. Réponds de façon claire, concrète et actionnable.'
   return upstream
-    ? `${role}\n\n--- Contributions et données reçues en entrée ---\n${upstream}\n\n--- Fin des entrées ---\n\nProduis ta contribution maintenant.`
-    : role
+    ? `${role}${living}\n\n--- Contributions et données reçues en entrée ---\n${upstream}\n\n--- Fin des entrées ---\n\nProduis ta contribution maintenant.`
+    : `${role}${living}`
 }
 
 // Lundi de la semaine prochaine (repère donné à l'IA pour planifier).
@@ -254,7 +257,7 @@ export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<Ru
         } else {
           // agent | merge → appel IA
           const upstream = gatherUpstream(n.id)
-          const text = await callAgent(n, agentPrompt(n, upstream), t => cb.onChunk(n.id, t), cb.signal, cb.runId)
+          const text = await callAgent(n, agentPrompt(n, upstream, cb.livingContext ?? ''), t => cb.onChunk(n.id, t), cb.signal, cb.runId)
           outputs[n.id] = text
           cb.onLog({ nodeId: n.id, title: n.title, text })
         }

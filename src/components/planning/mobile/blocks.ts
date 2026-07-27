@@ -32,6 +32,12 @@ export type MBlock = Block & {
   effortUnit?: EffortUnit
   recoveryStyle?: string   // course : 'trot' | 'marche'
   nage?: string            // natation : Crawl / Dos / Brasse / Pap
+  // ── Parcours (vélo) ──
+  /** Bloc de FOND « endurance Z2 » couvrant tout le parcours. Ses segments
+   *  réels sont recalculés autour des blocs d'intensité (cf. parcoursBase.ts). */
+  _base?: boolean
+  /** Segments restants du fond Z2 (km) — dérivés, jamais saisis à la main. */
+  _baseSegments?: { startKm: number; endKm: number }[]
 }
 
 export const NAGES = ['Crawl', 'Dos', 'Brasse', 'Pap'] as const
@@ -123,6 +129,19 @@ export function toBars(blocks: MBlock[]): Bar[] {
     }
   }
   return out
+}
+
+/**
+ * Hauteur (%) d'une barre du PROFIL D'INTENSITÉ à partir de sa seule zone.
+ * Z1 la plus basse → Z5 la plus haute ; Z6 et Z7 sont PLAFONNÉES au niveau Z5
+ * (au-delà du seuil, la hauteur ne raconte plus rien d'utile).
+ * Partagé par le builder et la popover de survol du planning : mêmes barres,
+ * mêmes hauteurs.
+ */
+export const BAR_ZONE_CAP = 5
+export function zoneHeightPct(zone: number, nZones: number): number {
+  const z = Math.max(1, Math.min(BAR_ZONE_CAP, Math.round(zone || 1)))
+  return (z / Math.max(1, nZones)) * 100
 }
 
 /** Durée totale (min) de tous les blocs. */

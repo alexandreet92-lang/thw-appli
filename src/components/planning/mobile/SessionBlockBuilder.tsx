@@ -4,11 +4,13 @@
 // résumé 4 cellules + PROFIL D'INTENSITÉ (barres verticales par zone,
 // CSS pur) + liste de BlockCard + boutons d'ajout. Adaptatif par sport.
 // ══════════════════════════════════════════════════════════════════
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical, IconMicrophone } from '@tabler/icons-react'
-import type { SportType, RunningSub } from '@/app/planning/page'
+import { getZone, type SportType, type RunningSub } from '@/app/planning/page'
 import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editorial'
 import { toBars, totalMin, totalDistance, newSingle, newInterval, recalc, type MBlock, type EffortUnit } from './blocks'
+import { syncBaseBlock, setBaseWatts, enduranceZ2Watts, type BaseCtx } from './parcoursBase'
+import type { ProfilePortion, SequencedPortion } from '@/components/gpx/RouteElevationProfile'
 import { BlockCard } from './BlockCard'
 import { EnduranceLiveSummary } from './EnduranceLiveSummary'
 import { parseSessionText } from './parseSessionText'
@@ -82,7 +84,103 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
         lo = hi
       }
     }
-    return (posF / nZones) * 100
+    // Plafond Z5 : Z6/Z7 montent à la MÊME hauteur que Z5 (au-delà du seuil,
+    // la hauteur ne raconte plus rien — c'est la couleur qui distingue).
+    return (Math.min(posF, 5) / nZones) * 100
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // Parcours vélo : bloc de FOND endurance Z2 + séquençage des portions
+  // ══════════════════════════════════════════════════════════════
+  const parcoursProfile = useMemo(
+    () => parcoursData?.elevationProfile ?? [],
+    [parcoursData],
+  )
+  const parcoursTotalKm = parcoursProfile.length > 1
+    ? (parcoursData?.distance ?? parcoursProfile[parcoursProfile.length - 1].distKm)
+    : 0
+  const massKg = (riderKg ?? 75) + (bikeKg ?? 8)
+  const hasParcours = sport === 'bike' && parcoursProfile.length > 1 && parcoursTotalKm > 0
+  const baseCtx: BaseCtx = useMemo(() => ({
+    profile: parcoursProfile, totalKm: parcoursTotalKm, massKg,
+    defaultWatts: enduranceZ2Watts(refs.ftp),
+  }), [parcoursProfile, parcoursTotalKm, massKg, refs.ftp])
+
+  // Dès qu'un parcours est intégré : bloc de fond Z2 sur TOUT le parcours,
+  // puis resegmentation automatique autour des blocs d'intensité.
+  useEffect(() => {
+    if (!hasParcours) return
+    const next = syncBaseBlock(blocks, baseCtx, sport)
+    if (next !== blocks) onChange(next)
+  }, [hasParcours, blocks, baseCtx, sport, onChange])
+
+  const baseBlock = hasParcours ? blocks.find(b => b._base) ?? null : null
+  const baseWatts = parseInt(baseBlock?.value ?? '') || 0
+  function bumpBaseWatts(delta: number) {
+    if (!baseBlock) return
+    onChange(setBaseWatts(blocks, Math.max(30, baseWatts + delta), baseCtx, sport))
+  }
+
+  const colorForWatts = (w: number) => zColor(getZone('bike', String(w)))
+
+  /** Portions dessinées sur le profil : fond Z2 segmenté + blocs d'intensité. */
+  const parcoursPortions: ProfilePortion[] = useMemo(() => {
+    if (!hasParcours) return []
+    const out: ProfilePortion[] = []
+    const base = blocks.find(b => b._base)
+    for (const s of base?._baseSegments ?? []) {
+      out.push({ startKm: s.startKm, endKm: s.endKm, color: zColor(base?.zone ?? 2), label: base?.label })
+    }
+    for (const b of blocks) {
+      if (b._base || b._startKm == null || b._endKm == null) continue
+      const isIv = b.mode === 'interval' && !!b.reps
+      out.push({
+        id: b.id, startKm: b._startKm, endKm: b._endKm,
+        color: zColor(b.zone), label: b.label, highlight: true,
+        watts: parseInt(b.value) || undefined,
+        hrTarget: parseInt(b.hrAvg) || null,
+        recoveryColor: zColor(b.recoveryZone ?? 1),
+        interval: isIv ? {
+          reps: b.reps as number,
+          effortSec: Math.round((b.effortMin ?? 0) * 60),
+          recoverySec: Math.round((b.recoveryMin ?? 0) * 60),
+          effortWatts: parseInt(b.value) || 0,
+          recoveryWatts: parseInt(b.recoveryValue ?? '') || 0,
+        } : undefined,
+      })
+    }
+    return out
+  }, [blocks, hasParcours])
+
+  /** SequencedPortion → MBlock (bloc simple ou fractionné). */
+  function blockFromPortion(p: SequencedPortion, id: string): MBlock {
+    const hr = p.hrTarget != null ? String(p.hrTarget) : ''
+    const kmLabel = `km ${p.startKm.toFixed(1).replace('.', ',')}→${p.endKm.toFixed(1).replace('.', ',')}`
+    if (p.interval) {
+      const iv = p.interval
+      const effMin = iv.effortSec / 60
+      const recMin = iv.recoverySec / 60
+      const mmss = `${Math.floor(iv.effortSec / 60)}:${String(iv.effortSec % 60).padStart(2, '0')}`
+      return recalc(sport, {
+        id, mode: 'interval', type: 'effort',
+        durationMin: Math.round(iv.reps * (effMin + recMin) * 100) / 100,
+        zone: getZone('bike', String(iv.effortWatts)),
+        value: String(iv.effortWatts), effortUnit: 'watts', hrAvg: hr,
+        reps: iv.reps, effortMin: effMin, recoveryMin: recMin,
+        recoveryValue: String(iv.recoveryWatts),
+        recoveryZone: getZone('bike', String(iv.recoveryWatts)),
+        label: `Fractionné ${iv.reps}×${mmss} ${kmLabel} @${iv.effortWatts}W`,
+        _startKm: p.startKm, _endKm: p.endKm,
+      })
+    }
+    return recalc(sport, {
+      id, mode: 'single', type: 'effort',
+      durationMin: Math.max(1, Math.round(p.estimatedMin)),
+      zone: getZone('bike', String(p.watts)),
+      value: String(p.watts), effortUnit: 'watts', hrAvg: hr,
+      label: `${p.avgGradPct >= 2 ? 'Ascension' : 'Portion'} ${kmLabel} @${p.watts}W`,
+      _startKm: p.startKm, _endKm: p.endKm,
+    })
   }
 
   // 4ᵉ métrique : moyenne pondérée par la durée d'effort
@@ -257,6 +355,26 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
         </div>
       </div>
 
+      {/* Fond de sortie : tout le parcours en endurance Z2, puissance éditable.
+          Le changement se propage à TOUTES les portions Z2 (le fond est un bloc
+          unique, segmenté autour des blocs d'intensité). */}
+      {baseBlock && (
+        <div data-testid="base-z2-strip" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', marginBottom: 12 }}>
+          <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, background: zColor(baseBlock.zone) }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--se-dim)' }}>
+              Fond de sortie · endurance Z2
+            </p>
+            <p className="se-tnum" style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--se-dim)' }}>
+              {(baseBlock._baseSegments ?? []).length || 1} portion{((baseBlock._baseSegments ?? []).length || 1) > 1 ? 's' : ''} · {fmtDur(baseBlock.durationMin)}
+            </p>
+          </div>
+          <button type="button" onClick={() => bumpBaseWatts(-5)} aria-label="Baisser la puissance du fond" style={stepBtn}>−</button>
+          <span className="se-tnum" data-testid="base-z2-watts" style={{ fontSize: 15, fontWeight: 600, color: 'var(--se-text)', minWidth: 52, textAlign: 'center' }}>{baseWatts} W</span>
+          <button type="button" onClick={() => bumpBaseWatts(5)} aria-label="Augmenter la puissance du fond" style={stepBtn}>+</button>
+        </div>
+      )}
+
       {/* Liste des blocs — glisser la poignée pour réordonner (souris + tactile) */}
       <div onPointerMove={onDragMove} onPointerUp={onDragEnd} onPointerCancel={onDragEnd}
         style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
@@ -361,24 +479,25 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
             </div>
             <ParcoursViewer
               data={parcoursData}
-              portions={blocks
-                .filter(b => b._startKm != null && b._endKm != null)
-                .map(b => ({ startKm: b._startKm as number, endKm: b._endKm as number, color: zColor(b.zone), label: b.label }))}
+              portions={parcoursPortions}
               sequencing={sport === 'bike' ? {
                 riderKg: riderKg ?? 75,
                 bikeKg: bikeKg ?? 8,
                 defaultWatts: refs.ftp ? Math.round(refs.ftp * 0.75 / 5) * 5 : 200,
+                intervalWatts: refs.ftp ? Math.round(refs.ftp * 1.08 / 5) * 5 : 280,
+                recoveryWatts: baseWatts || enduranceZ2Watts(refs.ftp),
+                colorForWatts,
                 onAddBlock: p => {
-                  const label = `${p.avgGradPct >= 2 ? 'Ascension' : 'Portion'} km ${p.startKm.toFixed(1).replace('.', ',')}→${p.endKm.toFixed(1).replace('.', ',')} @${p.watts}W`
-                  const base: MBlock = {
-                    id: `pc_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
-                    mode: 'single', type: 'effort',
-                    durationMin: Math.max(1, Math.round(p.estimatedMin)),
-                    zone: 3, value: String(p.watts), effortUnit: 'watts',
-                    hrAvg: p.hrTarget != null ? String(p.hrTarget) : '',
-                    label, _startKm: p.startKm, _endKm: p.endKm,
-                  }
-                  onChange([...blocks, recalc(sport, base)])
+                  const id = `pc_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`
+                  onChange([...blocks, blockFromPortion(p, id)])
+                },
+                onUpdateBlock: p => {
+                  if (!p.id) return
+                  onChange(blocks.map(b => b.id === p.id ? blockFromPortion(p, p.id as string) : b))
+                },
+                onRemoveBlock: id => {
+                  onChange(blocks.filter(b => b.id !== id))
+                  if (openId === id) setOpenId(null)
                 },
               } : undefined}
             />
@@ -401,6 +520,12 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
       </div>
     </div>
   )
+}
+
+const stepBtn: React.CSSProperties = {
+  width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+  border: '1px solid var(--se-rule)', background: 'transparent',
+  color: 'var(--se-text)', fontSize: 16, fontWeight: 600, lineHeight: 1, cursor: 'pointer',
 }
 
 const addBtn: React.CSSProperties = {

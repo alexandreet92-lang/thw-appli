@@ -7,11 +7,11 @@
 // Source : un fichier GPX local (File, aperçu immédiat) OU une URL stockée.
 // Réutilise le parseur src/lib/gpxParser.ts.
 // ══════════════════════════════════════════════════════════════════
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { parseGPX } from '@/lib/gpxParser'
 import { useI18n } from '@/lib/i18n'
-import RouteElevationProfile, { type ProfilePortion, type SequencedPortion } from './RouteElevationProfile'
+import RouteElevationProfile, { type ProfilePortion, type SequencingConfig } from './RouteElevationProfile'
 
 const MapInner = dynamic(() => import('@/components/activity/ActivityMapInner'), {
   ssr: false,
@@ -30,6 +30,15 @@ interface Parsed {
   loss: number
   altMin: number
   altMax: number
+}
+
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371
+  const dLat = (b.lat - a.lat) * Math.PI / 180
+  const dLng = (b.lng - a.lng) * Math.PI / 180
+  const la1 = a.lat * Math.PI / 180, la2 = b.lat * Math.PI / 180
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
 }
 
 function analyse(gpxText: string): Parsed | null {
@@ -85,8 +94,8 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
   mapHeight?: number
   /** Portions séquencées — overlay discret sur le profil (couleur de zone). */
   portions?: ProfilePortion[]
-  /** Active le mode séquençage (bouton « + », drag-to-select, bulle watts/FC). */
-  sequencing?: { riderKg: number; bikeKg?: number; defaultWatts?: number; onAddBlock: (p: SequencedPortion) => void }
+  /** Active le mode séquençage (boutons « + » / « Fractionné », drag-to-select). */
+  sequencing?: SequencingConfig
 }) {
   const { t } = useI18n()
   const [data, setData] = useState<Parsed | null>(null)
@@ -119,6 +128,37 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
   // ── Profil — rendu partagé RouteElevationProfile (fiche activité) ──
   const prof = data?.elev ?? []
   const totD = data?.distanceM || 1
+
+  // ── Portions d'intensité surlignées en ROUGE sur la carte ──
+  // km → index de point GPS via la distance cumulée réelle du tracé (le tracé
+  // est décimé indépendamment du profil : on ne peut pas mapper par index).
+  const cumKm = useMemo(() => {
+    const pts = data?.points ?? []
+    const out = new Array<number>(pts.length).fill(0)
+    for (let i = 1; i < pts.length; i++) out[i] = out[i - 1] + haversineKm(pts[i - 1], pts[i])
+    return out
+  }, [data])
+  const highlights = useMemo(() => {
+    const pts = data?.points ?? []
+    const hl = (portions ?? []).filter(p => p.highlight)
+    if (pts.length < 2 || hl.length === 0) return []
+    const traceKm = cumKm[cumKm.length - 1] || 1
+    const routeKm = totD / 1000
+    // Le tracé décimé peut être légèrement plus court que la distance officielle.
+    const k = traceKm / (routeKm || traceKm)
+    const idxAt = (km: number) => {
+      const target = Math.max(0, Math.min(traceKm, km * k))
+      let lo = 0, hi = cumKm.length - 1
+      while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cumKm[m] <= target) lo = m; else hi = m }
+      return lo
+    }
+    return hl.map(p => {
+      const i0 = idxAt(Math.min(p.startKm, p.endKm))
+      const i1 = idxAt(Math.max(p.startKm, p.endKm))
+      return pts.slice(i0, Math.max(i0 + 2, i1 + 1))
+    }).filter(seg => seg.length > 1)
+  }, [data, portions, cumKm, totD])
+
   // Survol du profil → marqueur carte : index proportionnel dans le tracé GPS.
   const hoverGps = hoverIdx !== null && data ? data.points[hoverIdx] ?? null : null
   function onHoverKm(km: number | null) {
@@ -153,7 +193,7 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
 
       {/* Carte (façon Training) */}
       <div style={{ position:'relative', width:'100%', height:mapHeight, background:'#0F172A', overflow:'hidden' }}>
-        <MapInner points={data.points} layer={layer} onLayerChange={setLayer} hoverGps={hoverGps} />
+        <MapInner points={data.points} layer={layer} onLayerChange={setLayer} hoverGps={hoverGps} highlights={highlights} />
       </div>
 
       {/* Profil d'altitude synchronisé — rendu fiche activité (silhouette bleue) */}
@@ -161,6 +201,7 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
         <RouteElevationProfile
           profile={prof.map(p => ({ distKm: p.distanceM / 1000, ele: p.altitudeM }))}
           totalKm={totD / 1000}
+          totalGainM={Math.round(data.gain)}
           height={92}
           onHoverKm={onHoverKm}
           portions={portions}

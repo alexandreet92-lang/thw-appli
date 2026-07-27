@@ -76,9 +76,11 @@ interface Props {
   onLayerChange: (l: keyof typeof TILES) => void
   hoverGps?: { lat: number; lng: number } | null
   bottomInset?: number
+  /** Portions à surligner par-dessus le tracé (ex. blocs d'intensité d'une séance). */
+  highlights?: LatLng[][]
 }
 
-export default function ActivityMapInner({ points, layer, onLayerChange, hoverGps, bottomInset = 0 }: Props) {
+export default function ActivityMapInner({ points, layer, onLayerChange, hoverGps, bottomInset = 0, highlights }: Props) {
   const positions = points.map(p => [p.lat, p.lng] as [number, number])
   const center: [number, number] = points.length
     ? [points[Math.floor(points.length / 2)].lat, points[Math.floor(points.length / 2)].lng]
@@ -107,6 +109,14 @@ export default function ActivityMapInner({ points, layer, onLayerChange, hoverGp
               positions={positions}
               pathOptions={{ color: '#06B6D4', weight: 4, opacity: 1, lineCap: 'round', lineJoin: 'round' }}
             />
+            {/* Portions d'intensité — rouge par-dessus le tracé de base */}
+            {(highlights ?? []).map((seg, i) => seg.length > 1 && (
+              <Polyline
+                key={`hl${i}`}
+                positions={seg.map(p => [p.lat, p.lng] as [number, number])}
+                pathOptions={{ color: '#EF4444', weight: 5, opacity: 1, lineCap: 'round', lineJoin: 'round' }}
+              />
+            ))}
             {/* Départ — vert */}
             <CircleMarker
               center={positions[0]}

@@ -25,8 +25,9 @@ export async function readLastCycleMemory(sb: SupabaseClient, systemId: string |
   } catch { return '' }
 }
 
-// Détecte les signaux « santé » : blessure active OU récupération au plancher.
-export async function readHealthGuard(sb: SupabaseClient, userId: string): Promise<string> {
+// Détecte les signaux « santé » bruts (blessure active, récup au plancher).
+// Renvoie une liste de motifs courts, réutilisable pour l'IA ET pour l'UI.
+export async function detectHealthFlags(sb: SupabaseClient, userId: string): Promise<string[]> {
   const bits: string[] = []
   try {
     const { data: inj } = await sb.from('injuries').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(12)
@@ -53,6 +54,12 @@ export async function readHealthGuard(sb: SupabaseClient, userId: string): Promi
       }
     }
   } catch { /* best-effort */ }
+  return bits
+}
+
+// Directive « garde-fou » injectée aux agents (vide si aucun signal).
+export async function readHealthGuard(sb: SupabaseClient, userId: string): Promise<string> {
+  const bits = await detectHealthFlags(sb, userId)
   if (!bits.length) return ''
   return `\n\n⚠️ GARDE-FOU SANTÉ ACTIF — ${bits.join(' ; ')}. Tu DOIS brider la charge : privilégie le repos ou une semaine d'allègement, évite toute intensité ou volume élevés, adapte ou reporte les séances dures, et explique clairement pourquoi. La sécurité de l'athlète prime sur l'objectif.`
 }

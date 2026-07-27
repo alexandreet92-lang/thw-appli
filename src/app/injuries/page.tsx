@@ -55,7 +55,7 @@ export default function InjuriesPage() {
             <button onClick={() => void reload()} style={{ height: 36, padding: '0 16px', border: 'none', borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: 'var(--on-primary)', fontFamily: FB, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('injuries.retry')}</button>
           </div>
         ) : tab === 'apercu' ? (
-          <OverviewTab injuries={injuries} onOpen={i => setTrackId(i.id)} onCheckin={(inj, r, e) => addLog({ injury_id: inj.id, log_date: new Date().toISOString().slice(0, 10), note: null, intensity_rest: r, intensity_effort: e })} />
+          <OverviewTab injuries={injuries} logs={logs} onOpen={i => setTrackId(i.id)} onCheckin={(inj, r, e) => addLog({ injury_id: inj.id, log_date: new Date().toISOString().slice(0, 10), note: null, intensity_rest: r, intensity_effort: e })} />
         ) : tab === 'historique' ? (
           <HistoryTab injuries={injuries} onOpen={i => setTrackId(i.id)} />
         ) : (

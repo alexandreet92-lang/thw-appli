@@ -1,8 +1,40 @@
 // Calculs dérivés (lecture seule) pour la page Blessures. Aucune donnée inventée.
-import type { Injury, Phase } from './types'
+import type { Injury, InjuryLog, Phase } from './types'
 
 const DAY = 86400000
 const t = (d: string) => new Date(d + (d.length === 10 ? 'T00:00:00' : '')).getTime()
+
+// ── Suivi d'évolution (courbe de douleur) ────────────────────────────────
+/** Logs d'une blessure triés du + ancien au + récent, avec au moins une valeur. */
+export function sortedLogs(logs: InjuryLog[], injuryId: string): InjuryLog[] {
+  return logs
+    .filter(l => l.injury_id === injuryId && (l.intensity_rest != null || l.intensity_effort != null))
+    .slice()
+    .sort((a, b) => a.log_date.localeCompare(b.log_date))
+}
+
+export type TrendDir = 'down' | 'flat' | 'up'
+export interface PainTrend { dir: TrendDir; delta: number; from: number; to: number }
+/** Tendance de la douleur À L'EFFORT : dernière valeur vs une référence ~7 j avant.
+ *  « down » = en amélioration (douleur qui baisse). null si < 2 points. */
+export function painTrend(logs: InjuryLog[], injuryId: string): PainTrend | null {
+  const pts = sortedLogs(logs, injuryId).filter(l => l.intensity_effort != null)
+  if (pts.length < 2) return null
+  const to = pts[pts.length - 1].intensity_effort as number
+  const lastT = t(pts[pts.length - 1].log_date)
+  let ref = pts[0]
+  for (const p of pts) { if (t(p.log_date) <= lastT - 5 * DAY) ref = p }
+  const from = ref.intensity_effort as number
+  const delta = to - from
+  const dir: TrendDir = delta <= -1 ? 'down' : delta >= 1 ? 'up' : 'flat'
+  return { dir, delta, from, to }
+}
+
+/** Adhérence rééducation : exos cochés / total (null si aucun exo). */
+export function rehabAdherence(inj: Injury): { done: number; total: number } | null {
+  if (!inj.rehab.length) return null
+  return { done: inj.rehab.filter(x => x.done).length, total: inj.rehab.length }
+}
 
 export function daysSince(date: string): number {
   return Math.max(0, Math.floor((Date.now() - t(date)) / DAY))

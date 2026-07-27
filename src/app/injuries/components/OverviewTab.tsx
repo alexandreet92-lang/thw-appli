@@ -4,8 +4,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { AnimatedBar } from '@/components/ui/AnimatedBar'
-import { SEV, PHASES, type Injury, type Phase } from '../types'
-import { availability12mo, daysSince, phasePct, riskIndex, returnProgress, type RiskLevel } from '../lib'
+import { SEV, PHASES, type Injury, type InjuryLog, type Phase } from '../types'
+import { availability12mo, daysSince, phasePct, riskIndex, returnProgress, sortedLogs, painTrend, type RiskLevel, type TrendDir } from '../lib'
 import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)', FD = 'var(--font-display)'
@@ -14,6 +14,22 @@ const lbl: React.CSSProperties = { fontFamily: FB, fontSize: 11, fontWeight: 600
 const phaseLabel = (p: Phase) => PHASES.find(x => x.id === p)?.label ?? p
 const RISK_COLOR: Record<RiskLevel, string> = {
   none: 'var(--text)', low: 'var(--charge-low)', moderate: 'var(--charge-mid)', high: 'var(--charge-hard)',
+}
+const TREND_COLOR: Record<TrendDir, string> = { down: 'var(--charge-low)', flat: 'var(--text-mid)', up: 'var(--charge-hard)' }
+
+// Sparkline « douleur à l'effort » — taille FIXE (aucun scaling), forme d'un coup d'œil.
+function Sparkline({ pts, color }: { pts: number[]; color: string }) {
+  if (pts.length < 2) return null
+  const W = 66, H = 22, pad = 2
+  const x = (i: number) => pad + (i / (pts.length - 1)) * (W - 2 * pad)
+  const y = (v: number) => pad + (1 - Math.max(0, Math.min(10, v)) / 10) * (H - 2 * pad)
+  const d = pts.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: 'block', flexShrink: 0 }} aria-hidden>
+      <path d={d} fill="none" stroke={color} strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round" opacity={0.85} />
+      <circle cx={x(pts.length - 1)} cy={y(pts[pts.length - 1])} r={2} fill={color} />
+    </svg>
+  )
 }
 
 function Stat({ label, value, sub, valueColor }: { label: string; value: string; sub: string; valueColor?: string }) {
@@ -42,11 +58,13 @@ function Checkin({ inj, onLog }: { inj: Injury; onLog: (r: number, e: number) =>
   )
 }
 
-function Card({ inj, onOpen }: { inj: Injury; onOpen: () => void }) {
+function Card({ inj, logs, onOpen }: { inj: Injury; logs: InjuryLog[]; onOpen: () => void }) {
   const { t } = useI18n()
   const side = inj.side && inj.side !== 'central' ? ` · ${inj.side}` : ''
   const sevC = SEV[inj.severity].varc
   const ret = returnProgress(inj)
+  const spark = sortedLogs(logs, inj.id).filter(l => l.intensity_effort != null).map(l => l.intensity_effort as number).slice(-8)
+  const trend = painTrend(logs, inj.id)
   return (
     <div className="card-interactive" onClick={onOpen} style={{ background: 'var(--bg-card2)', borderRadius: 'var(--r-md)', padding: 'var(--space-4)', display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
       <span style={{ width: 3, alignSelf: 'stretch', borderRadius: 999, background: sevC, flexShrink: 0 }} />
@@ -55,6 +73,12 @@ function Card({ inj, onOpen }: { inj: Injury; onOpen: () => void }) {
           <span style={{ fontFamily: FD, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{inj.zone}{side}</span>
           <span style={{ fontFamily: FB, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: sevC, background: `color-mix(in srgb, ${sevC} 14%, transparent)`, padding: '2px 7px', borderRadius: 999 }}>{SEV[inj.severity].label}</span>
           {inj.structure && <span style={{ fontFamily: FB, fontSize: 11, color: 'var(--text-dim)' }}>· {inj.structure}</span>}
+          {spark.length >= 2 && (
+            <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {trend && <span style={{ width: 6, height: 6, borderRadius: '50%', background: TREND_COLOR[trend.dir], flexShrink: 0 }} />}
+              <Sparkline pts={spark} color={SEV[inj.severity].varc} />
+            </span>
+          )}
         </div>
         <p className="tnum" style={{ fontFamily: FB, fontSize: 12, color: 'var(--text-mid)', margin: 'var(--space-1) 0' }}>
           {t('injuries.cardMetrics', { rest: inj.intensity_rest ?? '—', effort: inj.intensity_effort ?? '—', days: daysSince(inj.onset_date) })}
@@ -75,8 +99,8 @@ function Card({ inj, onOpen }: { inj: Injury; onOpen: () => void }) {
   )
 }
 
-export function OverviewTab({ injuries, onOpen, onCheckin }: {
-  injuries: Injury[]; onOpen: (inj: Injury) => void; onCheckin: (inj: Injury, r: number, e: number) => void
+export function OverviewTab({ injuries, logs, onOpen, onCheckin }: {
+  injuries: Injury[]; logs: InjuryLog[]; onOpen: (inj: Injury) => void; onCheckin: (inj: Injury, r: number, e: number) => void
 }) {
   const { t } = useI18n()
   const active = injuries.filter(i => i.status === 'active')
@@ -97,7 +121,7 @@ export function OverviewTab({ injuries, onOpen, onCheckin }: {
         <p style={{ ...lbl, marginBottom: 'var(--space-3)' }}>{t('injuries.ongoing')}</p>
         {active.length === 0
           ? <p style={{ fontFamily: FB, fontSize: 13, color: 'var(--text-mid)', margin: 0 }}>{t('injuries.noActive')}</p>
-          : active.map(i => <Card key={i.id} inj={i} onOpen={() => onOpen(i)} />)}
+          : active.map(i => <Card key={i.id} inj={i} logs={logs} onOpen={() => onOpen(i)} />)}
       </div>
 
       {active.length > 0 && (

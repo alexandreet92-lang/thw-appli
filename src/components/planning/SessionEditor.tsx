@@ -4414,13 +4414,66 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     }
   }
 
+  // ── Parcours : import de fichier (partagé legacy + builder éditorial) ──
+  async function importParcoursFile(f: File) {
+    setParcoursFile(f)
+    setParcoursLoading(true)
+    setParcoursError(null)
+    try {
+      const data = await parseRouteFile(f, t)
+      // Sauvegarde en Supabase — async, non bloquante pour l'UI
+      let parcoursId: string | undefined
+      try {
+        const res = await fetch('/api/parcours', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name:             data.name,
+            totalKm:          data.distance,
+            elevationGainM:   data.elevation,
+            elevationLossM:   null,
+            elevationProfile: data.elevationProfile,
+            segments:         data.segments ?? [],
+          }),
+        })
+        if (res.ok) {
+          const json = await res.json() as { id?: string }
+          parcoursId = json.id
+        }
+      } catch { /* non critique — l'UI fonctionne sans sauvegarde DB */ }
+      setParcoursData({ ...data, parcoursId })
+    } catch (err) {
+      setParcoursError(err instanceof Error ? err.message : t('sed.readError'))
+      setParcoursData(null)
+    } finally {
+      setParcoursLoading(false)
+      if (parcoursInputRef.current) parcoursInputRef.current.value = ''
+    }
+  }
+
   // ── Parcours AI flow helpers ──────────────────────────────────
+  /** Décime un tableau à `max` points (bornes conservées) — limite la taille du JSONB. */
+  function decimatePoints<T>(arr: T[], max = 800): T[] {
+    if (arr.length <= max) return arr
+    const out: T[] = []
+    const step = (arr.length - 1) / (max - 1)
+    for (let i = 0; i < max; i++) out.push(arr[Math.round(i * step)])
+    return out
+  }
+
   function parcoursDataWithConfig(): ParcoursData | null {
     if (!parcoursData) return null
     // Toujours persister la config d'intensité liée au parcours (côtes, blocs,
     // watts, durée) — pas seulement dans le flow IA — sinon elle est perdue à la
     // réouverture de la séance.
-    return { ...parcoursData, planningConfig: { climbConfigs, specificBlocks, efWatts, efHr, totalDuration } }
+    // Décimation ≤ 800 points (profil + trace) : borne la taille du JSON écrit
+    // dans planned_sessions.parcours_data.
+    return {
+      ...parcoursData,
+      elevationProfile: decimatePoints(parcoursData.elevationProfile ?? []),
+      gpsTrace: parcoursData.gpsTrace ? decimatePoints(parcoursData.gpsTrace) : undefined,
+      planningConfig: { climbConfigs, specificBlocks, efWatts, efHr, totalDuration },
+    }
   }
 
   function initClimbConfigs(segsArg?: import('@/lib/gpx/parser').ParsedSegment[]) {
@@ -4881,6 +4934,9 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         gpsTrace: parcoursData.gpsTrace, elevationProfile: parcoursData.elevationProfile,
         distance: parcoursData.distance, elevation: parcoursData.elevation, name: parcoursData.name,
       } : undefined,
+      onParcoursFile: (f: File) => { void importParcoursFile(f) },
+      onParcoursRemove: () => { setParcoursFile(null); setParcoursData(null); setParcoursError(null) },
+      riderKg: athleteWeight, bikeKg: bikeWeight,
       builderTab, setBuilderTab, saving, saved,
       onClose, onSave: handleSubmit, onExportPDF: handleExportPDF, onFavorite, onPrintMemo: handlePrintMemo,
       onDelete: isEdit && onDelete && session ? () => onDelete(session.id) : undefined,
@@ -4979,42 +5035,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           type="file"
           accept=".gpx,.tcx,.kml"
           style={{ display: 'none' }}
-          onChange={async (e) => {
+          onChange={(e) => {
             const f = e.target.files?.[0]
             if (!f) return
-            setParcoursFile(f)
-            setParcoursLoading(true)
-            setParcoursError(null)
-            try {
-              const data = await parseRouteFile(f, t)
-              // Sauvegarde en Supabase — async, non bloquante pour l'UI
-              let parcoursId: string | undefined
-              try {
-                const res = await fetch('/api/parcours', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    name:             data.name,
-                    totalKm:          data.distance,
-                    elevationGainM:   data.elevation,
-                    elevationLossM:   null,
-                    elevationProfile: data.elevationProfile,
-                    segments:         data.segments ?? [],
-                  }),
-                })
-                if (res.ok) {
-                  const json = await res.json() as { id?: string }
-                  parcoursId = json.id
-                }
-              } catch { /* non critique — l'UI fonctionne sans sauvegarde DB */ }
-              setParcoursData({ ...data, parcoursId })
-            } catch (err) {
-              setParcoursError(err instanceof Error ? err.message : t('sed.readError'))
-              setParcoursData(null)
-            } finally {
-              setParcoursLoading(false)
-              if (parcoursInputRef.current) parcoursInputRef.current.value = ''
-            }
+            void importParcoursFile(f)
           }}
         />
 

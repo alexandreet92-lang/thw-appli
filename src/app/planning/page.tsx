@@ -13,6 +13,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet'
 import { useRacesFull } from '@/components/planning/useRacesFull'
 import RaceEditorSheet from '@/app/calendar/components/RaceEditorSheet'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
+import { SessionHoverPreview } from '@/components/planning/SessionHoverPreview'
 import { loadRaceRoutes, type RaceRoutes } from '@/lib/races/raceStore'
 import type { Race as FullRace } from '@/app/calendar/components/types'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
@@ -3334,6 +3335,18 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
   function WeekGrid({ ws, plan, labelTag }:{ ws:string; plan?:PlanVariant; labelTag?:string }) {
     const w = buildWeek(ws, plan)
     const wDates = getWeekDatesFromStart(ws)
+    // Popover de survol d'une séance (desktop) — délai ~250 ms, annulé au drag.
+    const [hoverPrev, setHoverPrev] = useState<{ s:Session; rect:DOMRect }|null>(null)
+    const hoverTimerRef = useRef<ReturnType<typeof setTimeout>|null>(null)
+    const scheduleHover = (s:Session, el:HTMLElement) => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+      const rect = el.getBoundingClientRect()
+      hoverTimerRef.current = setTimeout(()=>setHoverPrev({ s, rect }), 250)
+    }
+    const cancelHover = () => {
+      if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null }
+      setHoverPrev(null)
+    }
     const planColor = plan==='A'?'#06B6D4':plan==='B'?'#a78bfa':'var(--text)'
     const isCurrentWeek = ws===currentWeekStart
     const chev: React.CSSProperties = { flexShrink:0, width:18, border:'none', background:'transparent', color:'var(--text-dim)', fontSize:20, lineHeight:1, cursor:'pointer', padding:0 }
@@ -3447,7 +3460,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                 {d.races.map(r=><RaceBubble key={r.id} race={r} onClick={()=>setRaceDetail(r)} />)}
                 {/* Planned sessions (hide ones matched by an activity) */}
                 {d.sessions.filter(s=>!d.activities.some(a=>matchActivity(a,d.sessions)?.id===s.id)).map(s=>(
-                  <div key={s.id} data-noadd draggable onDragStart={()=>onDragStart(s.id,i)} onTouchStart={e=>{e.stopPropagation();onTouchStart(s.id,i,e)}} onTouchMove={onTouchMove} onTouchEnd={onTouchEndPoint} onClick={()=>setDetailModal(s)}
+                  <div key={s.id} data-noadd draggable onDragStart={()=>{cancelHover();onDragStart(s.id,i)}} onMouseEnter={e=>scheduleHover(s,e.currentTarget)} onMouseLeave={cancelHover} onTouchStart={e=>{e.stopPropagation();cancelHover();onTouchStart(s.id,i,e)}} onTouchMove={onTouchMove} onTouchEnd={onTouchEndPoint} onClick={()=>{cancelHover();setDetailModal(s)}}
                     style={{ borderRadius:8,padding:'7px 9px',marginBottom:4,background:'#1b212b',borderLeft:`2px solid ${SPORT_BORDER[s.sport]}`,cursor:'grab',opacity:s.status==='done'?0.75:1,position:'relative',overflow:'hidden' }}>
                     {/* teinte de fond par sport — très subtile */}
                     <div style={{ position:'absolute',inset:0,opacity:.08,background:SPORT_BORDER[s.sport],pointerEvents:'none' }} />
@@ -3508,6 +3521,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
             {isCurrentWeek && <button aria-label={t('plnp.nextWeek')} onClick={()=>setWeekOffset(o=>o+1)} style={chev}>›</button>}
           </div>
         </div>
+        {/* Popover de survol (desktop) — profil d'intensité + mini-carte parcours */}
+        {hoverPrev && <SessionHoverPreview session={hoverPrev.s} anchor={hoverPrev.rect} />}
       </div>
     )
   }

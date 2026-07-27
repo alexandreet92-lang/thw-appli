@@ -38,6 +38,8 @@ export function BuilderSection({ p }: { p: SessionEditorPanelProps }) {
       sport={p.sport} runningSub={p.runningSub} accent={p.accent} blocks={p.blocks as MBlock[]}
       onChange={b => p.setBlocks(b as Block[])}
       sm={p.sm} sn={p.sn} refs={p.refs} parcoursData={p.parcoursData}
+      onParcoursFile={p.onParcoursFile} onParcoursRemove={p.onParcoursRemove}
+      riderKg={p.riderKg} bikeKg={p.bikeKg}
       builderTab={p.builderTab} onBuilderTab={p.setBuilderTab} />
   )
 }

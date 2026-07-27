@@ -18,9 +18,11 @@ import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import type { PanelParcours } from './panelProps'
 import { useI18n } from '@/lib/i18n'
 
-export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChange, sm, sn, refs, parcoursData, builderTab, onBuilderTab }: {
+export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChange, sm, sn, refs, parcoursData, onParcoursFile, onParcoursRemove, riderKg, bikeKg, builderTab, onBuilderTab }: {
   sport: SportType; runningSub?: RunningSub; accent: string; blocks: MBlock[]; onChange: (b: MBlock[]) => void
   sm: number; sn: number; refs: AthleteRefs; parcoursData?: PanelParcours
+  onParcoursFile?: (f: File) => void; onParcoursRemove?: () => void
+  riderKg?: number; bikeKg?: number
   builderTab: 'manual' | 'ai'; onBuilderTab: (t: 'manual' | 'ai') => void
 }) {
   const { t: tr } = useI18n()
@@ -353,8 +355,33 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
               <IconMapPin size={15} color={accent} />
               <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--se-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parcoursData.name || tr('planning.stageParcours')}</span>
               <button type="button" onClick={() => parcoursInputRef.current?.click()} style={{ background: 'none', border: 'none', color: accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>{tr('planning.replace')}</button>
+              {onParcoursRemove && (
+                <button type="button" onClick={onParcoursRemove} aria-label={tr('planning.removeParcours')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', padding: 2 }}><IconX size={15} /></button>
+              )}
             </div>
-            <ParcoursViewer data={parcoursData} />
+            <ParcoursViewer
+              data={parcoursData}
+              portions={blocks
+                .filter(b => b._startKm != null && b._endKm != null)
+                .map(b => ({ startKm: b._startKm as number, endKm: b._endKm as number, color: zColor(b.zone), label: b.label }))}
+              sequencing={sport === 'bike' ? {
+                riderKg: riderKg ?? 75,
+                bikeKg: bikeKg ?? 8,
+                defaultWatts: refs.ftp ? Math.round(refs.ftp * 0.75 / 5) * 5 : 200,
+                onAddBlock: p => {
+                  const label = `${p.avgGradPct >= 2 ? 'Ascension' : 'Portion'} km ${p.startKm.toFixed(1).replace('.', ',')}→${p.endKm.toFixed(1).replace('.', ',')} @${p.watts}W`
+                  const base: MBlock = {
+                    id: `pc_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+                    mode: 'single', type: 'effort',
+                    durationMin: Math.max(1, Math.round(p.estimatedMin)),
+                    zone: 3, value: String(p.watts), effortUnit: 'watts',
+                    hrAvg: p.hrTarget != null ? String(p.hrTarget) : '',
+                    label, _startKm: p.startKm, _endKm: p.endKm,
+                  }
+                  onChange([...blocks, recalc(sport, base)])
+                },
+              } : undefined}
+            />
           </div>
         ) : (
           <button type="button" onClick={() => parcoursInputRef.current?.click()} style={addBtn}>
@@ -362,7 +389,15 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
           </button>
         )}
         <input ref={parcoursInputRef} type="file" accept=".gpx,.tcx,.kml" style={{ display: 'none' }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) setParcoursFile(f); e.target.value = '' }} />
+          onChange={e => {
+            const f = e.target.files?.[0]
+            if (f) {
+              // Persistance : le parent parse + stocke dans la séance (parcours_data).
+              if (onParcoursFile) { onParcoursFile(f); setParcoursFile(null) }
+              else setParcoursFile(f)
+            }
+            e.target.value = ''
+          }} />
       </div>
     </div>
   )

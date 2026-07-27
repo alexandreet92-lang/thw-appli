@@ -7,10 +7,11 @@
 // Source : un fichier GPX local (File, aperçu immédiat) OU une URL stockée.
 // Réutilise le parseur src/lib/gpxParser.ts.
 // ══════════════════════════════════════════════════════════════════
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { parseGPX } from '@/lib/gpxParser'
 import { useI18n } from '@/lib/i18n'
+import RouteElevationProfile, { type ProfilePortion, type SequencedPortion } from './RouteElevationProfile'
 
 const MapInner = dynamic(() => import('@/components/activity/ActivityMapInner'), {
   ssr: false,
@@ -77,11 +78,15 @@ function fromData(d: ParcoursViewerData): Parsed | null {
   }
 }
 
-export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeight = 230 }: {
+export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeight = 230, portions, sequencing }: {
   file?: File
   fileUrl?: string
   data?: ParcoursViewerData
   mapHeight?: number
+  /** Portions séquencées — overlay discret sur le profil (couleur de zone). */
+  portions?: ProfilePortion[]
+  /** Active le mode séquençage (bouton « + », drag-to-select, bulle watts/FC). */
+  sequencing?: { riderKg: number; bikeKg?: number; defaultWatts?: number; onAddBlock: (p: SequencedPortion) => void }
 }) {
   const { t } = useI18n()
   const [data, setData] = useState<Parsed | null>(null)
@@ -111,33 +116,15 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
     return () => { cancelled = true }
   }, [file, fileUrl, dataProp])
 
-  // ── Profil SVG ──
-  const W = 500, H = 120, PL = 34, PR = 8, PT = 10, PB = 18
-  const cW = W - PL - PR, cH = H - PT - PB
+  // ── Profil — rendu partagé RouteElevationProfile (fiche activité) ──
   const prof = data?.elev ?? []
   const totD = data?.distanceM || 1
-  const eMin = data?.altMin ?? 0, eMax = data?.altMax ?? 100
-  const eR = eMax - eMin || 1
-  const px = (d: number) => PL + (d / totD) * cW
-  const py = (e: number) => PT + cH - ((e - eMin) / eR) * cH
-  const linePts = useMemo(() => prof.map(p => `${px(p.distanceM)},${py(p.altitudeM)}`).join(' '), [prof])  // eslint-disable-line react-hooks/exhaustive-deps
-  const areaPts = prof.length ? `${px(0)},${py(eMin)} ${linePts} ${px(totD)},${py(eMin)}` : ''
-  const hp = hoverIdx !== null ? prof[hoverIdx] : null
+  // Survol du profil → marqueur carte : index proportionnel dans le tracé GPS.
   const hoverGps = hoverIdx !== null && data ? data.points[hoverIdx] ?? null : null
-
-  function pickAt(clientX: number, rect: DOMRect) {
-    if (!prof.length) return
-    const svgX = ((clientX - rect.left) / rect.width) * W
-    const dist = Math.max(0, Math.min(totD, ((svgX - PL) / cW) * totD))
-    let best = 0, bd = Infinity
-    prof.forEach((p, i) => { const d = Math.abs(p.distanceM - dist); if (d < bd) { bd = d; best = i } })
-    setHoverIdx(best)
-  }
-  function onMove(e: React.MouseEvent<SVGSVGElement>) { pickAt(e.clientX, e.currentTarget.getBoundingClientRect()) }
-  // Mobile : la bulle suit le doigt sur le profil (comme au survol desktop).
-  function onTouch(e: React.TouchEvent<SVGSVGElement>) {
-    const t = e.touches[0]; if (!t) return
-    pickAt(t.clientX, e.currentTarget.getBoundingClientRect())
+  function onHoverKm(km: number | null) {
+    if (km == null || !data || data.points.length === 0) { setHoverIdx(null); return }
+    const frac = Math.max(0, Math.min(1, (km * 1000) / totD))
+    setHoverIdx(Math.round(frac * (data.points.length - 1)))
   }
 
   if (status === 'error') {
@@ -155,9 +142,9 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
   )
 
   return (
-    <div style={{ borderRadius:12, overflow:'hidden', border:'1px solid var(--border)' }}>
+    <div style={{ borderRadius:12, border:'1px solid var(--border)' }}>
       {/* KPIs */}
-      <div style={{ display:'flex', gap:14, padding:'12px 14px', background:'var(--bg-card2)', flexWrap:'wrap' }}>
+      <div style={{ display:'flex', gap:14, padding:'12px 14px', background:'var(--bg-card2)', flexWrap:'wrap', borderRadius:'12px 12px 0 0' }}>
         <KPI label={t('shared.distance')} value={`${(data.distanceM/1000).toFixed(1)} km`} />
         <KPI label="D+" value={`${Math.round(data.gain)} m`} />
         <KPI label="D−" value={`${data.loss} m`} />
@@ -165,32 +152,20 @@ export default function ParcoursViewer({ file, fileUrl, data: dataProp, mapHeigh
       </div>
 
       {/* Carte (façon Training) */}
-      <div style={{ position:'relative', width:'100%', height:mapHeight, background:'#0F172A' }}>
+      <div style={{ position:'relative', width:'100%', height:mapHeight, background:'#0F172A', overflow:'hidden' }}>
         <MapInner points={data.points} layer={layer} onLayerChange={setLayer} hoverGps={hoverGps} />
       </div>
 
-      {/* Profil d'altitude synchronisé — fond adaptatif (blanc en jour, sombre en nuit) */}
-      <div style={{ background:'var(--bg-card)', borderTop:'1px solid var(--border)' }}>
-        <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
-          onMouseMove={onMove} onMouseLeave={() => setHoverIdx(null)}
-          onTouchStart={onTouch} onTouchMove={onTouch} onTouchEnd={() => setHoverIdx(null)}
-          style={{ display:'block', cursor:'crosshair', touchAction:'none' }}>
-          <polygon points={areaPts} fill="var(--primary-dim)" />
-          <polyline points={linePts} fill="none" stroke="var(--primary)" strokeWidth="1.5" />
-          {hp && (
-            <>
-              <line x1={px(hp.distanceM)} y1={PT} x2={px(hp.distanceM)} y2={PT+cH} stroke="var(--border-mid)" strokeWidth="1" strokeDasharray="3,3" />
-              <circle cx={px(hp.distanceM)} cy={py(hp.altitudeM)} r="3.5" fill="var(--primary)" stroke="var(--bg-card)" strokeWidth="1.5" />
-              <rect x={Math.min(px(hp.distanceM)+5, W-72)} y={Math.max(py(hp.altitudeM)-18, PT)} width={68} height={14} rx={3} fill="var(--text)" />
-              <text x={Math.min(px(hp.distanceM)+8, W-69)} y={Math.max(py(hp.altitudeM)-7, PT+10)} fontSize="8" fill="var(--bg)">
-                {(hp.distanceM/1000).toFixed(1)}km · {Math.round(hp.altitudeM)}m
-              </text>
-            </>
-          )}
-          <text x={PL-2} y={PT+8}  fontSize="8" fill="var(--text-dim)" textAnchor="end">{Math.round(eMax)}m</text>
-          <text x={PL-2} y={PT+cH} fontSize="8" fill="var(--text-dim)" textAnchor="end">{Math.round(eMin)}m</text>
-          <text x={W-PR}  y={H-4}   fontSize="8" fill="var(--text-dim)" textAnchor="end">{(totD/1000).toFixed(1)}km</text>
-        </svg>
+      {/* Profil d'altitude synchronisé — rendu fiche activité (silhouette bleue) */}
+      <div style={{ background:'var(--bg-card)', borderTop:'1px solid var(--border)', borderRadius:'0 0 12px 12px', padding:'8px 10px 6px' }}>
+        <RouteElevationProfile
+          profile={prof.map(p => ({ distKm: p.distanceM / 1000, ele: p.altitudeM }))}
+          totalKm={totD / 1000}
+          height={92}
+          onHoverKm={onHoverKm}
+          portions={portions}
+          sequencing={sequencing}
+        />
       </div>
     </div>
   )

@@ -31,6 +31,13 @@ export interface SessionEditorPanelProps {
   selPlan: PlanVariant
   blocks: Block[]; setBlocks: (b: Block[]) => void
   parcoursData?: PanelParcours
+  /** Import d'un fichier parcours (GPX/TCX/KML) — parse + persistance côté parent. */
+  onParcoursFile?: (f: File) => void
+  /** Retire le parcours de la séance. */
+  onParcoursRemove?: () => void
+  /** Poids athlète (profiles.weight_kg) + vélo — estimation durée des portions. */
+  riderKg?: number
+  bikeKg?: number
   sm: number; sn: number
   athlete: { ftp: number | null; lthrBike: number | null; lthrRun: number | null; runThresholdPaceStr: string | null; swimCSSStr: string | null; hrMax: number | null } | null
   refs: AthleteRefs

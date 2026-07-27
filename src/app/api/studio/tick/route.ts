@@ -158,9 +158,11 @@ export async function GET(req: NextRequest) {
         finished_at: new Date().toISOString(),
       })
 
-      const preview = res.renders.find(r => r.text)?.text?.slice(0, 110) ?? ''
+      // Corps de notif = le rapport du système (jusqu'à ~1400 car.), pour que
+      // l'athlète reçoive vraiment sa synthèse, pas un simple aperçu.
+      const report = res.renders.find(r => r.text)?.text?.trim() ?? ''
       const body = status === 'done'
-        ? `Run automatique terminé (${formatTokens(res.weightedTokens)} tokens). ${preview}${preview.length >= 110 ? '…' : ''}`
+        ? (report ? `${report.slice(0, 1400)}${report.length > 1400 ? '…' : ''}` : `Run automatique terminé (${formatTokens(res.weightedTokens)} tokens).`)
         : 'Run automatique terminé avec des erreurs — ouvre l’historique du Studio pour le détail.'
       await createNotification(sb, sched.user_id, {
         type: 'studio.schedule',

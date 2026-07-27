@@ -73,6 +73,27 @@ export async function savePlanningSessions(drafts: PlanningSessionDraft[]): Prom
   return rows.length
 }
 
+// REMPLACE la (les) semaine(s) concernée(s) : supprime d'abord les séances
+// générées par l'IA (source='ai', statut 'planned') des semaines couvertes,
+// puis insère les nouvelles. Ne touche PAS aux séances créées par l'utilisateur.
+export async function replacePlanningSessions(drafts: PlanningSessionDraft[]): Promise<{ inserted: number; removed: number }> {
+  if (!drafts.length) return { inserted: 0, removed: 0 }
+  const sb = createClient()
+  const uid = await getUserId()
+  const weeks = Array.from(new Set(drafts.map(d => d.week_start)))
+  const { data: del, error: delErr } = await sb
+    .from('planned_sessions')
+    .delete()
+    .eq('user_id', uid)
+    .eq('source', 'ai')
+    .eq('status', 'planned')
+    .in('week_start', weeks)
+    .select('id')
+  if (delErr) throw new Error(`Nettoyage Planning : ${delErr.message}`)
+  const inserted = await savePlanningSessions(drafts)
+  return { inserted, removed: (del ?? []).length }
+}
+
 // Extraction JSON robuste depuis une réponse IA (tolère le texte autour).
 export function extractJson<T>(raw: string): T {
   const s = raw.indexOf('['); const s2 = raw.indexOf('{')

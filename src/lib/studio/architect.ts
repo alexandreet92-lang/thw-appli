@@ -100,7 +100,7 @@ export function planToGraph(plan: ArchPlan, description: string): ArchitectResul
         ? (['activities', 'planning', 'injuries', 'recovery', 'profile'].includes(String(an.sourceKey)) ? an.sourceKey : 'activities')
         : undefined,
       actionKey: an.kind === 'action'
-        ? (['planning_save', 'calendar_race', 'notify_report'].includes(String(an.actionKey)) ? an.actionKey : 'planning_save')
+        ? (['planning_save', 'planning_replace', 'calendar_race', 'notify_report'].includes(String(an.actionKey)) ? an.actionKey : 'planning_save')
         : undefined,
     })
   }
@@ -195,7 +195,9 @@ BRIQUES DISPONIBLES (kind) :
 - "agent" : coach IA spécialisé. "role" = métier + mission, précis, en mode "génère le prochain cycle en t'adaptant à la forme actuelle". "model" ∈ "hermes" | "athena" | "zeus".
 - "merge" : fusionne les contributions en UNE réponse. "role" = consigne de synthèse.
 - "validation" : pause + accord utilisateur avant de continuer. "role" = ce qu'on vérifie.
-- "action" : écrit dans l'app. "actionKey" ∈ "planning_save" | "calendar_race" | "notify_report". Seulement si l'utilisateur veut vraiment écrire.
+- "action" : écrit dans l'app. "actionKey" ∈ "planning_save" (AJOUTE des séances au Planning) | "planning_replace" (REMPLACE les séances IA de la semaine — nettoie puis réécrit) | "calendar_race" (ajoute une course au Calendrier) | "notify_report" (envoie le bilan en notification). Seulement si l'utilisateur veut vraiment écrire.
+
+SORTIE DU SYSTÈME (à clarifier) : dès que le système planifie de l'entraînement, DEMANDE à l'utilisateur ce qu'il veut en SORTIE, avec ces options : « Juste un bilan » (synthèse à lire / en notification, aucune écriture) · « Ajouter les séances au Planning » (planning_save) · « Remplacer la semaine au Planning » (planning_replace) · « Les deux » (bilan + écriture). Branche l'action correspondante — ou aucune si c'est juste un bilan.
 
 COMPORTEMENT (très important) :
 - S'il y a la MOINDRE ambiguïté ou une info manquante qui changerait le système (objectif réel, sports concernés, écrire ou pas dans l'app, fréquence, niveau de détail, nombre d'étapes/agents…), pose des questions de clarification. Regroupe-les en 1 à 3 questions maximum par tour, chacune avec 2 à 4 options claires (un "label" court + une "description" d'une ligne qui explique le choix). L'utilisateur clique une option (ou écrit la sienne dans « Autre ») et avance.

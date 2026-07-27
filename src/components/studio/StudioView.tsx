@@ -18,7 +18,8 @@ import {
   type StudioGraph, type StudioNode, type StudioNodeKind, type StudioModel, type StudioSourceKey, type StudioActionKey, type GraphIssues,
 } from '@/lib/studio/graph'
 import { runGraph, terminalNodeIds, type NodeStatus } from '@/lib/studio/runner'
-import { converseArchitect, planToGraph, type ArchitectChatMessage, type ArchitectQuestion } from '@/lib/studio/architect'
+import { converseArchitect, planToGraph, recommendSystems, type ArchitectChatMessage, type ArchitectQuestion } from '@/lib/studio/architect'
+import { readSourceWith } from '@/lib/studio/source-readers'
 import { CoachQuestionCard } from '@/components/ai/CoachQuestionCard'
 import { listSystems, createSystem, updateSystem, deleteSystem, duplicateSystem, migrateLocalGraphIfAny, type StudioSystemRow } from '@/lib/studio/store'
 import { STUDIO_TEMPLATES } from '@/lib/studio/templates'
@@ -250,6 +251,11 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [micTarget, setMicTarget] = useState<'desc' | 'chat'>('desc')       // champ visé par la dictée
   const [previewSel, setPreviewSel] = useState<{ msgId: string; nodeId: string } | null>(null)  // bulle touchée dans une maquette
   const [mockupMsgId, setMockupMsgId] = useState<string | null>(null)      // sur-page maquette ouverte
+  // Recommandations « pour toi » : l'IA propose des systèmes prêts à lancer.
+  const [recos, setRecos] = useState<{ title: string; why: string; graph: StudioGraph }[]>([])
+  const [recosLoading, setRecosLoading] = useState(false)
+  const [recosError, setRecosError] = useState(false)
+  const [recoMockup, setRecoMockup] = useState<{ title: string; why: string; graph: StudioGraph } | null>(null)  // maquette d'une reco
   const [renduSelId, setRenduSelId] = useState<string | null>(null)         // bulle sélectionnée dans le Rendu
   // Objectif « en cours » du système vivant (éditeur).
   const [objEditOpen, setObjEditOpen] = useState(false)
@@ -380,6 +386,46 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       }
     })()
   }, [refreshAccess])
+
+  // ── Recommandations « pour toi » : l'IA lit profil + données réelles et
+  // propose des systèmes prêts à lancer. Caché 24 h (coût), rafraîchissable. ──
+  const loadRecos = useCallback(async (force = false) => {
+    const RECO_KEY = 'thw_studio_recos'
+    setRecosError(false)
+    if (!force) {
+      try {
+        const raw = localStorage.getItem(RECO_KEY)
+        if (raw) {
+          const p = JSON.parse(raw) as { updatedAt?: number; items?: { title: string; why: string; graph: StudioGraph }[] }
+          if (p?.items?.length && Date.now() - (p.updatedAt ?? 0) < 24 * 60 * 60 * 1000) { setRecos(p.items); return }
+        }
+      } catch { /* cache illisible → on régénère */ }
+    }
+    setRecosLoading(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const keys: StudioSourceKey[] = ['profile', 'activities', 'recovery', 'injuries']
+      const parts = await Promise.all(keys.map(k => readSourceWith(supabase, user.id, k).catch(() => '')))
+      const ctx = parts.filter(Boolean).join('\n\n')
+      const recommended = await recommendSystems(ctx, builderModel)
+      const items = recommended
+        .map(r => ({ title: r.title, why: r.why, graph: planToGraph(r.plan, r.why || r.title).graph }))
+        .filter(x => x.graph.nodes.length)
+      setRecos(items)
+      try { localStorage.setItem(RECO_KEY, JSON.stringify({ updatedAt: Date.now(), items })) } catch { /* quota */ }
+    } catch {
+      setRecosError(true)
+    } finally {
+      setRecosLoading(false)
+    }
+  }, [builderModel])
+
+  // Charge les recos une fois l'accès Studio confirmé (Pro/Expert).
+  useEffect(() => {
+    if (access?.allowed) void loadRecos(false)
+  }, [access?.allowed, loadRecos])
 
   const sel = graph.nodes.find(n => n.id === selId) ?? null
   const trigger = graph.nodes.find(n => n.kind === 'trigger') ?? null
@@ -2078,6 +2124,62 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 12.5, fontFamily: 'DM Sans,sans-serif' }}>{homeErr}</div>
                 )}
 
+                {/* ── Recommandés pour toi : l'IA propose, tu n'as qu'à confirmer ── */}
+                {activeFolder === null && (recosLoading || recos.length > 0 || recosError) && (
+                  <div style={{ marginBottom: 26 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 4px' }}>
+                      <span style={{ color: '#3B92D4', display: 'flex' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z"/></svg></span>
+                      <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>Recommandés pour toi</span>
+                      <div style={{ flex: 1 }} />
+                      <button onClick={() => void loadRecos(true)} disabled={recosLoading} title="Régénérer les recommandations" aria-label="Régénérer"
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, height: 26, padding: '0 9px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: recosLoading ? 'default' : 'pointer', fontSize: 11.5, fontWeight: 700, fontFamily: 'DM Sans,sans-serif' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={recosLoading ? { animation: 'studio_spin 0.8s linear infinite' } : undefined}><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg>
+                        Régénérer
+                      </button>
+                    </div>
+                    <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 12px', fontFamily: 'DM Sans,sans-serif' }}>D’après ton profil et tes données récentes — clique pour voir le système, puis lance-le en un tap.</p>
+                    {recosLoading && recos.length === 0 ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
+                        {[0, 1, 2].map(i => (
+                          <div key={i} style={{ minHeight: 118, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: 14, animation: 'studio_pulse 1.4s ease infinite' }}>
+                            <div style={{ width: '55%', height: 13, borderRadius: 6, background: 'var(--bg-alt)' }} />
+                            <div style={{ width: '92%', height: 9, borderRadius: 6, background: 'var(--bg-alt)', marginTop: 12 }} />
+                            <div style={{ width: '80%', height: 9, borderRadius: 6, background: 'var(--bg-alt)', marginTop: 7 }} />
+                          </div>
+                        ))}
+                      </div>
+                    ) : recosError && recos.length === 0 ? (
+                      <p style={{ fontSize: 12.5, color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }}>Impossible de générer des recommandations pour l’instant. <button onClick={() => void loadRecos(true)} style={{ background: 'none', border: 'none', color: '#3B92D4', cursor: 'pointer', fontWeight: 700, fontSize: 12.5, padding: 0, fontFamily: 'DM Sans,sans-serif' }}>Réessayer</button></p>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
+                        {recos.map((r, i) => {
+                          const nAgents = r.graph.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length
+                          return (
+                            <button key={i} onClick={() => { setPreviewSel(null); setRecoMockup(r) }}
+                              style={{ textAlign: 'left', minHeight: 118, borderRadius: 16, border: '1px solid color-mix(in srgb, #3B92D4 22%, var(--border))', background: 'linear-gradient(150deg, color-mix(in srgb, #3B92D4 6%, var(--bg-card)), var(--bg-card))', cursor: 'pointer', padding: '14px 14px 12px', display: 'flex', flexDirection: 'column', fontFamily: 'DM Sans,sans-serif', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'box-shadow 150ms, transform 150ms' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(59,146,212,0.16)'; (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; (e.currentTarget as HTMLButtonElement).style.transform = 'none' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(59,146,212,0.14)', color: '#3B92D4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.2 7.2 10.5 16M16.8 7.2 13.5 16"/></svg>
+                                </span>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+                              </div>
+                              <p style={{ fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5, margin: '8px 0 0', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.why}</p>
+                              <div style={{ flex: 1 }} />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
+                                <span style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>{r.graph.nodes.length} blocs · {nAgents} agent{nAgents !== 1 ? 's' : ''}</span>
+                                <div style={{ flex: 1 }} />
+                                <span style={{ fontSize: 11.5, fontWeight: 700, color: '#3B92D4', display: 'flex', alignItems: 'center', gap: 3 }}>Voir <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* ── Mes systèmes ── */}
                 <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '4px 0 10px', fontFamily: 'DM Sans,sans-serif' }}>{activeFolder ?? 'Mes systèmes'}</div>
                 {homeLoading ? (
@@ -2261,14 +2363,23 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         </div>
       )}
 
-      {/* ══ Maquette du système — sur-page interactive ══ */}
-      {mockupMsgId && (() => {
-        const mk = chatMsgs.find(m => m.id === mockupMsgId)
-        if (!mk || mk.role !== 'assistant' || mk.kind !== 'propose') return null
-        const g = mk.graph
-        const sel = previewSel?.msgId === mk.id ? g.nodes.find(n => n.id === previewSel!.nodeId) : null
+      {/* ══ Maquette du système — sur-page interactive (chat OU reco) ══ */}
+      {(mockupMsgId || recoMockup) && (() => {
+        const chatMk = mockupMsgId ? chatMsgs.find(m => m.id === mockupMsgId) : null
+        const isChat = !!(chatMk && chatMk.role === 'assistant' && chatMk.kind === 'propose')
+        const g = isChat ? (chatMk as { graph: StudioGraph }).graph : recoMockup?.graph
+        if (!g) return null
+        const mockKey = isChat ? chatMk!.id : 'reco'
+        const headTitle = isChat ? 'Maquette du système' : recoMockup!.title
+        const why = isChat ? '' : recoMockup!.why
+        const showConfirm = isChat ? !(chatMk as { applied?: boolean; declined?: boolean }).applied && !(chatMk as { applied?: boolean; declined?: boolean }).declined : true
+        const askLabel = isChat ? 'Confirmes-tu la construction ?' : 'Lancer ce système pour toi ?'
+        const confirmLabel = isChat ? 'Confirmer' : 'Créer ce système'
+        const sel = previewSel?.msgId === mockKey ? g.nodes.find(n => n.id === previewSel!.nodeId) : null
         const sub = (n: StudioNode) => n.kind === 'source' ? SOURCE_LABEL[n.sourceKey ?? 'activities'] : n.kind === 'action' ? ACTION_LABEL[n.actionKey ?? 'planning_save'] : KIND_LABEL[n.kind]
-        const closeMockup = () => { setMockupMsgId(null); setPreviewSel(null) }
+        const closeMockup = () => { setMockupMsgId(null); setRecoMockup(null); setPreviewSel(null) }
+        const doConfirm = isChat ? () => { confirmPlan(chatMk!.id); closeMockup() } : () => { const r = recoMockup!; closeMockup(); void newSystem(r.title, r.graph) }
+        const doDecline = isChat ? () => { declinePlan(chatMk!.id); closeMockup() } : closeMockup
         const panelStyle: React.CSSProperties = isMobile
           ? { position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, background: 'var(--bg)', display: 'flex', flexDirection: 'column', borderTopLeftRadius: 20, borderTopRightRadius: 20, animation: 'studio_slide_up 0.28s cubic-bezier(0.22,0.61,0.36,1)', boxShadow: '0 -12px 40px rgba(0,0,0,0.22)' }
           : { position: 'absolute', top: 0, right: 0, bottom: 0, width: 'min(760px, 92%)', background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'studio_slide_r 0.3s cubic-bezier(0.22,0.61,0.36,1)', boxShadow: '-18px 0 50px rgba(0,0,0,0.24)', borderLeft: '1px solid var(--border)' }
@@ -2284,7 +2395,7 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 6.6 10.6 16.4M17 6.6 13.4 16.4"/></svg>
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>Maquette du système</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{headTitle}</div>
                   <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{g.nodes.length} blocs · {g.nodes.filter(n => n.kind === 'agent' || n.kind === 'merge').length} agents · {g.edges.length} liaisons</div>
                 </div>
                 <button onClick={closeMockup} title="Fermer" aria-label="Fermer" style={iconBtn}>
@@ -2293,12 +2404,18 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
               </div>
               <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 18 }}>
                 <div style={{ maxWidth: 700, margin: '0 auto' }}>
+                  {why && (
+                    <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '11px 13px', borderRadius: 13, background: 'color-mix(in srgb, #3B92D4 7%, var(--bg-card))', border: '1px solid color-mix(in srgb, #3B92D4 25%, var(--border))', marginBottom: 14 }}>
+                      <span style={{ color: '#3B92D4', flexShrink: 0, marginTop: 1 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z"/></svg></span>
+                      <span style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.55, fontFamily: 'DM Sans,sans-serif' }}>{why}</span>
+                    </div>
+                  )}
                   <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 8px', textAlign: 'center' }}>Touche une bulle pour voir son rôle</div>
                   <div style={{ borderRadius: 18, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 18px 44px rgba(0,0,0,0.08)', padding: '14px 10px' }}>
                     {miniGraph(g, {
                       bare: true, width: 660, height: 400, maxScale: 1,
                       selectedId: sel ? sel.id : null,
-                      onSelect: id => setPreviewSel(p => (p?.msgId === mk.id && p.nodeId === id) ? null : { msgId: mk.id, nodeId: id }),
+                      onSelect: id => setPreviewSel(p => (p?.msgId === mockKey && p.nodeId === id) ? null : { msgId: mockKey, nodeId: id }),
                     })}
                   </div>
                   {sel && (
@@ -2314,13 +2431,13 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   )}
                 </div>
               </div>
-              {!mk.applied && !mk.declined && (
+              {showConfirm && (
                 <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, width: '100%', boxSizing: 'border-box' }}>
-                  <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: '#3B92D4', fontFamily: 'DM Sans,sans-serif' }}>Confirmes-tu la construction&nbsp;?</span>
-                  <button onClick={() => { declinePlan(mk.id); closeMockup() }}
+                  <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: '#3B92D4', fontFamily: 'DM Sans,sans-serif' }}>{askLabel}</span>
+                  <button onClick={doDecline}
                     style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Non</button>
-                  <button onClick={() => { confirmPlan(mk.id); closeMockup() }}
-                    style={{ padding: '10px 22px', borderRadius: 11, border: 'none', background: '#3B92D4', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Confirmer</button>
+                  <button onClick={doConfirm}
+                    style={{ padding: '10px 22px', borderRadius: 11, border: 'none', background: '#3B92D4', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>{confirmLabel}</button>
                 </div>
               )}
             </div>

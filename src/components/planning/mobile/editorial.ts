@@ -49,8 +49,13 @@ export function sportColor(sport: SportType | string): string {
   return k ? SPORT_ICON[k].color : '#8a8a82'
 }
 
-// Palette 7 zones (intensité) — version douce « éditorial ».
-export const ZONE_COL = ['#9ca3af', '#22c55e', '#65c466', '#ffb340', '#ff7a45', '#ff5f5f', '#a855f7']
+// Palette 7 zones (intensité) — couleurs FRANCHES (DESIGN_SYSTEM.md, annexe
+// « couleurs immuables »). Les tons pastel précédents (verts clairs, jaune et
+// orange pâles) disparaissaient sur fond clair : vert, jaune et orange sont
+// désormais saturés d'un cran (600) pour tenir le contraste ≥ 3:1 en thème
+// clair ET en thème sombre. Gris Z1 inchangé, famille rouge cohérente en Z5/Z6,
+// violet Z7 conservé (sprint neuromusculaire).
+export const ZONE_COL = ['#9ca3af', '#16a34a', '#ca8a04', '#ea580c', '#dc2626', '#e11d48', '#a855f7']
 export const ZONE_NAME = ['Récup', 'Aérobie', 'Tempo', 'Seuil', 'VO2max', 'Anaérobie', 'Sprint']
 export const zColor = (z: number) => ZONE_COL[Math.max(0, Math.min(6, (z || 1) - 1))]
 export const zName = (z: number) => ZONE_NAME[Math.max(0, Math.min(6, (z || 1) - 1))]

@@ -74,9 +74,10 @@ export const TRAINING_TYPES: Partial<Record<SportType,string[]>> = {
   rowing:     ['EF','SL1','SL2','PMA','Sprints','Mixte'],
   elliptique: ['EF','SL1','SL2','PMA','Heat Training','Mixte'],
 }
-export const ZONE_COLORS = ['#9ca3af','#22c55e','#eab308','#f97316','#ef4444']
-const ZONE_COLORS_7 = ['#6b7280', '#4ade80', '#facc15', '#fb923c', '#f87171', '#c084fc', '#ec4899']
-const ZONE_LABELS_7 = ['Z1 Récup', 'Z2 End.', 'Z3 Tempo', 'Z4 Seuil', 'Z5 VO2', 'Z6 Anaé.', 'Z7 Sprint']
+// Zones d'intensité — mêmes teintes franches que ZONE_COL (editorial.ts) et que
+// l'annexe « couleurs immuables » de DESIGN_SYSTEM.md. Les tons pastel d'avant
+// (#22c55e / #eab308 / #f97316) ne se lisaient plus sur fond clair.
+export const ZONE_COLORS = ['#9ca3af','#16a34a','#ca8a04','#ea580c','#dc2626']
 const TASK_CONFIG: Record<TaskType,{label:string;color:string;bg:string}> = {
   sport:    { label:'Sport',     color:'#22c55e', bg:'rgba(34,197,94,0.15)'   },
   work:     { label:'Travail',   color:'#3b82f6', bg:'rgba(59,130,246,0.15)'  },
@@ -2112,7 +2113,7 @@ function PlanHeaderAndGraphics({ plan, sessions, currentWeekStart, nextRace, onR
       {/* ── CHART 4 : 3 DONUTS — Zones · Sports · Charge plan ── */}
       {(() => {
         // ── helpers ──────────────────────────────────────────────
-        const ZONE_COLORS = ['#9ca3af', '#22c55e', '#eab308', '#f97316', '#ef4444']
+        const ZONE_COLORS = ['#9ca3af', '#16a34a', '#ca8a04', '#ea580c', '#dc2626']
         const ZONE_LABELS = [t('plnp.zone.z1'), t('plnp.zone.z2'), t('plnp.zone.z3'), t('plnp.zone.z4'), t('plnp.zone.z5')]
         const INTENS_COLORS: Record<string, string> = { low: '#3d8f6e', moderate: '#b8783a', high: '#b04040', max: '#7055a8' }
         const INTENS_LABELS: Record<string, string> = { low: t('plnp.intens.easy'), moderate: t('plnp.intens.moderate'), high: t('plnp.intens.hard'), max: t('plnp.intens.max') }
@@ -2294,7 +2295,7 @@ function DayBubble({ sport, label, session, done, onClick, draggable, onDragStar
             {session.rpe != null && <span className="tnum" style={{ fontSize:8.5,fontWeight:600,color:'var(--text-dim)',whiteSpace:'nowrap' }}>RPE {session.rpe}</span>}
           </div>
         </button>
-        {tip && <SessionTipPortal anchor={tip} session={session} />}
+        {tip && <SessionHoverPreview session={session} anchor={tip} />}
       </>
     )
   }
@@ -2365,77 +2366,9 @@ function enduranceBlockLine(b: Block, sport?: string): string {
   return parts.join(' · ')
 }
 
-// Expansion des blocs en barres (1 barre par effort/récup), pour le profil d'intensité.
-function tipIntensityBars(blocks: Block[]): { id: string; min: number; zone: number; recovery: boolean }[] {
-  const out: { id: string; min: number; zone: number; recovery: boolean }[] = []
-  blocks.forEach((b, bi) => {
-    if (b.mode === 'interval' && b.reps && b.reps > 0) {
-      for (let r = 0; r < b.reps; r++) {
-        out.push({ id: `${bi}-e-${r}`, min: b.effortMin ?? 1, zone: b.zone || 1, recovery: false })
-        if ((b.recoveryMin ?? 0) > 0) out.push({ id: `${bi}-r-${r}`, min: b.recoveryMin ?? 0, zone: b.recoveryZone ?? 1, recovery: true })
-      }
-    } else {
-      out.push({ id: `${bi}`, min: b.durationMin || 1, zone: b.zone || 1, recovery: b.type === 'recovery' || b.type === 'warmup' || b.type === 'cooldown' })
-    }
-  })
-  return out
-}
+// Le profil d'intensité de survol vit désormais dans SessionHoverPreview
+// (barres toBars + barHeightPct + zColor — source de vérité unique).
 
-// Sur-bulle (desktop) : description + profil d'intensité (run/swim/bike) ou exercices (muscu).
-function SessionTipPortal({ anchor, session }: { anchor: DOMRect; session: Session }) {
-  const { t } = useI18n()
-  const W = 248
-  const left = (anchor.right + 8 + W > window.innerWidth) ? Math.max(8, anchor.left - W - 8) : anchor.right + 8
-  const top = Math.max(8, Math.min(anchor.top, window.innerHeight - 260))
-  const isGym = sportKeyFromType(session.sport) === 'muscu'
-  const blocks = (session.blocks ?? []).filter(b => b.type !== 'circuit_header' || (b.label ?? '').trim())
-  return createPortal(
-    <div style={{ position:'fixed', top, left, width:W, zIndex:3000, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:12, padding:'12px 14px', boxShadow:'0 12px 34px rgba(0,0,0,0.3)', animation:'dpIn .14s ease-out', maxHeight:'70vh', overflowY:'auto' }}>
-      <style>{`@keyframes dpIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      <p style={{ margin:'0 0 2px', fontSize:13, fontWeight:700, color:'var(--text)' }}>{session.title || t('plnp.session')}</p>
-      <p style={{ margin:'0 0 8px', fontSize:10.5, color:'var(--text-dim)', fontWeight:600 }}>
-        {formatHM(session.durationMin)}{session.rpe != null ? ` · RPE ${session.rpe}` : ''}
-      </p>
-      {session.notes?.trim() && (
-        <p style={{ margin:'0 0 10px', fontSize:11.5, color:'var(--text-mid)', lineHeight:1.45, whiteSpace:'pre-wrap' }}>{session.notes.trim()}</p>
-      )}
-      {blocks.length > 0 ? (
-        isGym ? (
-          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-            <p style={{ margin:0, fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)' }}>{t('plnp.tip.exercises')}</p>
-            {blocks.map((b, i) => {
-              const ex = parseGymExercise(b)
-              const meta = [ex.sets && ex.reps ? `${ex.sets}×${ex.reps}` : (ex.sets ? t('plnp.tip.sets', { n: ex.sets }) : ''), ex.charge ? `@${ex.charge}` : ''].filter(Boolean).join(' ')
-              return (
-                <div key={i} style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:8 }}>
-                  <span style={{ fontSize:11.5, color:'var(--text)', fontWeight:600, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ex.nom}</span>
-                  {meta && <span className="tnum" style={{ fontSize:10.5, color:'var(--text-mid)', flexShrink:0 }}>{meta}</span>}
-                </div>
-              )
-            })}
-          </div>
-        ) : (() => {
-          // Profil d'intensité (barres par zone), comme l'éditeur — pas de liste texte.
-          const bars = tipIntensityBars(blocks)
-          return (
-            <div>
-              <p style={{ margin:'0 0 8px', fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)' }}>{t('plnp.tip.intensityProfile')}</p>
-              <div style={{ display:'flex', alignItems:'flex-end', gap:2, height:66, borderBottom:'1px solid var(--border)', paddingBottom:2 }}>
-                {bars.map(bar => (
-                  <div key={bar.id} title={`Z${bar.zone} · ${Math.round(bar.min)}min`}
-                    style={{ flexGrow:Math.max(1, bar.min), flexBasis:0, minWidth:3, height:`${(Math.max(1, Math.min(7, bar.zone)) / 7) * 100}%`, background:ZONE_COLORS_7[Math.max(0, Math.min(6, bar.zone - 1))], opacity:bar.recovery ? 0.5 : 1, borderRadius:'2px 2px 0 0' }} />
-                ))}
-              </div>
-            </div>
-          )
-        })()
-      ) : (
-        !session.notes?.trim() && <p style={{ margin:0, fontSize:11, color:'var(--text-dim)', fontStyle:'italic' }}>{t('plnp.tip.noDetails')}</p>
-      )}
-    </div>,
-    document.body,
-  )
-}
 
 // Jauge de volume par sport : barre = volume PRÉVU (pleine, atténuée) qui se remplit en
 // couleur réelle au fur et à mesure des séances RÉALISÉES (réalisé ÷ prévu).

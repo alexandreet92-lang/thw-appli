@@ -112,36 +112,126 @@ export function newInterval(sport: SportType, treadmill = false): MBlock {
   return recalc(sport, base)
 }
 
-export interface Bar { id: string; min: number; zone: number; recovery: boolean; value?: string; speedKmhEq?: number }
-/** Aplatit les blocs en barres (1 par effort + 1 par récup d'intervalle). */
-export function toBars(blocks: MBlock[]): Bar[] {
+export interface Bar { id: string; min: number; zone: number; recovery: boolean; value?: string; speedKmhEq?: number; startKm?: number }
+
+/** Barres d'un bloc isolé (1 par effort + 1 par récup d'intervalle). */
+function blockBars(b: MBlock): Bar[] {
+  // Tapis : hauteur de barre pilotée par la vitesse ÉQUIVALENTE PLAT (pente incluse).
+  const eq = b.effortUnit === 'kmh' ? kmhEquivalent(parseFloat(b.value || '0') || 0, b.inclinePct ?? 0) : undefined
   const out: Bar[] = []
-  for (const b of blocks) {
-    // Tapis : hauteur de barre pilotée par la vitesse ÉQUIVALENTE PLAT (pente incluse).
-    const eq = b.effortUnit === 'kmh' ? kmhEquivalent(parseFloat(b.value || '0') || 0, b.inclinePct ?? 0) : undefined
-    if (b.mode === 'interval' && b.reps && b.effortMin) {
-      for (let r = 0; r < b.reps; r++) {
-        out.push({ id: `${b.id}_e${r}`, min: b.effortMin, zone: b.zone, recovery: false, value: b.value, speedKmhEq: eq })
-        if (b.recoveryMin && b.recoveryMin > 0) out.push({ id: `${b.id}_r${r}`, min: b.recoveryMin, zone: b.recoveryZone ?? 1, recovery: true, value: b.recoveryValue })
-      }
-    } else {
-      out.push({ id: b.id, min: b.durationMin, zone: b.zone, recovery: false, value: b.value, speedKmhEq: eq })
+  if (b.mode === 'interval' && b.reps && b.effortMin) {
+    for (let r = 0; r < b.reps; r++) {
+      out.push({ id: `${b.id}_e${r}`, min: b.effortMin, zone: b.zone, recovery: false, value: b.value, speedKmhEq: eq, startKm: b._startKm })
+      if (b.recoveryMin && b.recoveryMin > 0) out.push({ id: `${b.id}_r${r}`, min: b.recoveryMin, zone: b.recoveryZone ?? 1, recovery: true, value: b.recoveryValue, startKm: b._startKm })
     }
+  } else {
+    out.push({ id: b.id, min: b.durationMin, zone: b.zone, recovery: false, value: b.value, speedKmhEq: eq, startKm: b._startKm })
   }
   return out
 }
 
 /**
- * Hauteur (%) d'une barre du PROFIL D'INTENSITÉ à partir de sa seule zone.
- * Z1 la plus basse → Z5 la plus haute ; Z6 et Z7 sont PLAFONNÉES au niveau Z5
- * (au-delà du seuil, la hauteur ne raconte plus rien d'utile).
- * Partagé par le builder et la popover de survol du planning : mêmes barres,
- * mêmes hauteurs.
+ * Aplatit les blocs en barres du PROFIL D'INTENSITÉ.
+ *
+ * • Séance SANS parcours → ordre de la liste (inchangé).
+ * • Séance AVEC parcours (blocs porteurs de `_startKm`/`_endKm`) → ordre
+ *   CHRONOLOGIQUE le long du tracé, exactement comme les portions dessinées
+ *   sur le profil altimétrique. Le bloc de FOND est alors ÉCLATÉ en une barre
+ *   par segment (`_baseSegments`), chacune d'une durée au prorata de sa
+ *   distance : on lit fond → effort → fond → effort → fond.
+ *   La somme des durées est conservée (totalMin reste identique).
  */
+export function toBars(blocks: MBlock[]): Bar[] {
+  const hasKm = blocks.some(b => b._startKm != null && b._endKm != null)
+  if (!hasKm) return blocks.flatMap(blockBars)
+
+  const entries: { km: number; seq: number; bars: Bar[] }[] = []
+  blocks.forEach((b, i) => {
+    const segs = b._base ? (b._baseSegments ?? []) : []
+    if (segs.length > 0) {
+      const totalKm = segs.reduce((s, x) => s + Math.max(0, x.endKm - x.startKm), 0)
+      segs.forEach((s, k) => {
+        const len = Math.max(0, s.endKm - s.startKm)
+        const min = totalKm > 0 ? (b.durationMin * len) / totalKm : b.durationMin / segs.length
+        entries.push({
+          km: s.startKm, seq: i,
+          bars: [{ id: `${b.id}_s${k}`, min, zone: b.zone, recovery: false, value: b.value, startKm: s.startKm }],
+        })
+      })
+      return
+    }
+    // Bloc sans repère km (séance mixte) → rejeté en fin, ordre de liste préservé.
+    entries.push({ km: b._startKm ?? Number.POSITIVE_INFINITY, seq: i, bars: blockBars(b) })
+  })
+  entries.sort((a, z) => (a.km === z.km ? a.seq - z.seq : a.km - z.km))
+  return entries.flatMap(e => e.bars)
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Hauteur des barres du PROFIL D'INTENSITÉ — SOURCE DE VÉRITÉ UNIQUE
+// (builder mobile/desktop + popover de survol du planning).
+//
+// Règle simple et vérifiable : la hauteur est proportionnelle à la ZONE,
+// plafonnée à Z5 →  Z1 20 % · Z2 40 % · Z3 60 % · Z4 80 % · Z5/Z6/Z7 100 %.
+// Une nuance intra-zone de ±8 % au maximum différencie 200 W de 210 W, sans
+// JAMAIS sortir de la bande de la zone. Z6 et Z7 arrivent au même niveau
+// que Z5 : au-delà du seuil, la hauteur ne raconte plus rien d'utile.
+// ══════════════════════════════════════════════════════════════════
 export const BAR_ZONE_CAP = 5
-export function zoneHeightPct(zone: number, nZones: number): number {
-  const z = Math.max(1, Math.min(BAR_ZONE_CAP, Math.round(zone || 1)))
-  return (z / Math.max(1, nZones)) * 100
+/** Hauteur d'une bande de zone (% du graphe) : 20 %. */
+export const ZONE_BAND_PCT = 100 / BAR_ZONE_CAP
+/** Nuance intra-zone maximale (±%) — reste dans la bande de la zone. */
+export const ZONE_NUANCE_PCT = 8
+
+/** Bornes hautes de zone, en ratio de la référence de seuil. */
+const ZONE_TOPS_POWER = [0.55, 0.75, 0.87, 1.05, 1.20, 1.50, 1.85]   // % FTP (7 zones)
+const ZONE_TOPS_PACE = [0.78, 0.87, 0.94, 1.02, 1.35]                // % allure seuil (5 zones)
+
+/** Références athlète (repli aligné sur le modèle de zones du planning). */
+export interface BarRefs { ftp?: number | null; runThresholdPaceSec?: number | null; cssSecPer100m?: number | null }
+const FALLBACK_FTP = 301, FALLBACK_RUN = 248, FALLBACK_CSS = 88
+
+function isPowerSport(sport: SportType): boolean { return sport === 'bike' || sport === 'elliptique' }
+
+/** Nombre de graduations de l'axe (Z1…Z5, Z6/Z7 confondues avec Z5). */
+export const BAR_AXIS_TICKS = BAR_ZONE_CAP
+
+/** Intensité de la barre rapportée au seuil (null si non exploitable). */
+function intensityRatio(bar: { value?: string; speedKmhEq?: number }, sport: SportType, refs?: BarRefs): number | null {
+  if (isPowerSport(sport)) {
+    const w = parseInt(bar.value ?? '') || 0
+    const ftp = refs?.ftp && refs.ftp > 0 ? refs.ftp : FALLBACK_FTP
+    return w > 0 ? w / ftp : null
+  }
+  const runRef = refs?.runThresholdPaceSec && refs.runThresholdPaceSec > 0 ? refs.runThresholdPaceSec : FALLBACK_RUN
+  // Tapis : la barre reflète la vitesse ÉQUIVALENTE PLAT (pente incluse).
+  if (bar.speedKmhEq != null && bar.speedKmhEq > 0) return (bar.speedKmhEq * runRef) / 3600
+  const p = paceToSec(bar.value ?? '')
+  if (isNaN(p) || p <= 0) return null
+  const ref = sport === 'swim'
+    ? (refs?.cssSecPer100m && refs.cssSecPer100m > 0 ? refs.cssSecPer100m : FALLBACK_CSS)
+    : runRef
+  return ref / p
+}
+
+/** Hauteur (%) d'une barre du profil d'intensité. Voir le bandeau ci-dessus. */
+export function barHeightPct(
+  bar: { zone: number; value?: string; speedKmhEq?: number },
+  sport: SportType,
+  refs?: BarRefs,
+): number {
+  const z = Math.max(1, Math.min(BAR_ZONE_CAP, Math.round(bar.zone || 1)))
+  const base = z * ZONE_BAND_PCT
+  if (z >= BAR_ZONE_CAP) return 100          // Z5 = Z6 = Z7, au sommet
+  const ratio = intensityRatio(bar, sport, refs)
+  if (ratio == null) return base
+  const tops = isPowerSport(sport) ? ZONE_TOPS_POWER : ZONE_TOPS_PACE
+  const hi = tops[z - 1] ?? 1
+  const lo = z >= 2 ? (tops[z - 2] ?? 0) : 0
+  if (hi - lo <= 0) return base
+  const frac = Math.max(0, Math.min(1, (ratio - lo) / (hi - lo)))
+  const nuance = (frac - 0.5) * 2 * ZONE_NUANCE_PCT
+  return Math.max(base - ZONE_NUANCE_PCT, Math.min(base + ZONE_NUANCE_PCT, base + nuance))
 }
 
 /** Durée totale (min) de tous les blocs. */

@@ -8,7 +8,7 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical, IconMicrophone } from '@tabler/icons-react'
 import { getZone, type SportType, type RunningSub } from '@/app/planning/page'
 import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editorial'
-import { toBars, totalMin, totalDistance, newSingle, newInterval, recalc, type MBlock, type EffortUnit } from './blocks'
+import { toBars, totalMin, totalDistance, newSingle, newInterval, recalc, barHeightPct, BAR_AXIS_TICKS, type MBlock, type EffortUnit } from './blocks'
 import { syncBaseBlock, setBaseWatts, enduranceZ2Watts, type BaseCtx } from './parcoursBase'
 import type { ProfilePortion, SequencedPortion } from '@/components/gpx/RouteElevationProfile'
 import { BlockCard } from './BlockCard'
@@ -44,50 +44,14 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
   const dist = totalDistance(blocks)
   const isSwim = sport === 'swim'
 
-  // ── Hauteur de barre CONTINUE selon l'intensité réelle (pas seulement la zone) ──
-  // 200 W et 210 W sont dans la même zone (même couleur) mais 210 W doit être un peu
-  // plus haut : la position dans la bande de zone reflète où tombe l'intensité.
+  // ── Hauteur de barre : règle unique partagée avec la popover de survol ──
+  // barHeightPct (blocks.ts) : Z1 20 % · Z2 40 % · Z3 60 % · Z4 80 % · Z5+ 100 %,
+  // avec ±8 % de nuance intra-zone (200 W ≠ 210 W) qui ne sort pas de la bande.
   const nZones = sport === 'bike' || sport === 'elliptique' ? 7 : 5
-  // Références de seuil, repli aligné sur le modèle de zones du planning
-  // (ATHLETE : FTP 301, allure seuil 248 s/km, CSS 88 s/100m).
-  const refFtp = refs.ftp ?? 301
-  const refRun = refs.runThresholdPaceSec ?? 248
-  const refCss = refs.cssSecPer100m ?? 88
-  const ZONE_TOPS = sport === 'bike' || sport === 'elliptique'
-    ? [0.55, 0.75, 0.87, 1.05, 1.20, 1.50, 1.85]   // % FTP (7 zones)
-    : [0.78, 0.87, 0.94, 1.02, 1.35]               // % allure seuil (5 zones — rab Z5 pour différencier les efforts supra-seuil, ex. tapis en pente)
-  function barHeightPct(bar: { zone: number; value?: string; speedKmhEq?: number }): number {
-    // ratio intensité / seuil
-    let ratio: number | null = null
-    if (sport === 'bike' || sport === 'elliptique') {
-      const w = parseInt(bar.value ?? '') || 0
-      if (w > 0) ratio = w / refFtp
-    } else if (bar.speedKmhEq != null && bar.speedKmhEq > 0) {
-      // Tapis : la barre reflète la vitesse ÉQUIVALENTE PLAT (pente incluse) —
-      // à vitesse égale, plus la pente est forte, plus la barre est haute.
-      ratio = bar.speedKmhEq * refRun / 3600
-    } else {
-      const p = paceToSec(bar.value ?? '')
-      if (!isNaN(p) && p > 0) ratio = (isSwim ? refCss : refRun) / p
-    }
-    const zoneInt = Math.max(1, Math.min(nZones, bar.zone))
-    let posF = zoneInt   // repli : ancrage sur la zone entière
-    if (ratio != null) {
-      let lo = 0
-      for (let i = 0; i < ZONE_TOPS.length; i++) {
-        const hi = ZONE_TOPS[i]
-        if (ratio <= hi || i === ZONE_TOPS.length - 1) {
-          const frac = Math.max(0, Math.min(1, (ratio - lo) / (hi - lo || 1)))
-          posF = Math.max(0.35, Math.min(nZones, i + frac))
-          break
-        }
-        lo = hi
-      }
-    }
-    // Plafond Z5 : Z6/Z7 montent à la MÊME hauteur que Z5 (au-delà du seuil,
-    // la hauteur ne raconte plus rien — c'est la couleur qui distingue).
-    return (Math.min(posF, 5) / nZones) * 100
-  }
+  // Graduations de l'axe : toujours Z1…Z5, les zones au-delà du seuil étant
+  // confondues au sommet (« Z5+ » pour les sports à 7 zones).
+  const axisTicks = Array.from({ length: BAR_AXIS_TICKS }, (_, k) => BAR_AXIS_TICKS - k)
+    .map(z => (z === BAR_AXIS_TICKS && nZones > BAR_AXIS_TICKS ? `Z${z}+` : `Z${z}`))
 
   // ══════════════════════════════════════════════════════════════
   // Parcours vélo : bloc de FOND endurance Z2 + séquençage des portions
@@ -338,15 +302,15 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: 150, paddingBottom: 2 }}>
-            {Array.from({ length: nZones }, (_, k) => nZones - k).map(z => <span key={z} style={{ fontSize: 8.5, color: 'var(--se-dim)', lineHeight: 1 }}>Z{z}</span>)}
+            {axisTicks.map(z => <span key={z} style={{ fontSize: 8.5, color: 'var(--se-dim)', lineHeight: 1 }}>{z}</span>)}
           </div>
-          <div style={{ flex: 1, height: 150, display: 'flex', alignItems: 'flex-end', gap: 2, borderLeft: '1px solid var(--se-rule)', borderBottom: '1px solid var(--se-rule)', paddingLeft: 4 }}>
+          <div data-testid="intensity-graph" style={{ flex: 1, height: 150, display: 'flex', alignItems: 'flex-end', gap: 2, borderLeft: '1px solid var(--se-rule)', borderBottom: '1px solid var(--se-rule)', paddingLeft: 4 }}>
             {bars.length === 0
               ? <span style={{ fontSize: 11, color: 'var(--se-dim)', alignSelf: 'center', margin: '0 auto' }}>{tr('planning.addBlockToSeeProfile')}</span>
               : bars.map(bar => (
-                <div key={bar.id} title={`Z${bar.zone}${bar.value ? ` · ${bar.value}` : ''} · ${Math.round(bar.min)}min`} style={{
+                <div key={bar.id} data-zone={bar.zone} data-km={bar.startKm ?? ''} title={`Z${bar.zone}${bar.value ? ` · ${bar.value}` : ''} · ${Math.round(bar.min)}min`} style={{
                   flexGrow: Math.max(1, bar.min), flexBasis: 0, minWidth: 3,
-                  height: `${barHeightPct(bar)}%`,
+                  height: `${barHeightPct(bar, sport, refs)}%`,
                   background: zColor(bar.zone), opacity: bar.recovery ? 0.5 : 1,
                   borderRadius: '3px 3px 0 0',
                 }} />

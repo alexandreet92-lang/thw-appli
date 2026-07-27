@@ -221,4 +221,18 @@ Anatomie validée, à imiter :
 
 Sport : `run #22c55e` (vert) · `bike #3b82f6` · `swim #06b6d4` · `gym #f97316` (orange) ·
 `hyrox #ec4899` · `rowing #14b8a6`.
-Zones : `Z1 #9ca3af` · `Z2 #22c55e` · `Z3 #eab308` · `Z4 #f97316` · `Z5 #ef4444`.
+Zones d'intensité (7 zones, palette unique — `ZONE_COL` dans
+`src/components/planning/mobile/editorial.ts`, seule source autorisée) :
+`Z1 #9ca3af` (gris) · `Z2 #16a34a` (vert) · `Z3 #ca8a04` (jaune) ·
+`Z4 #ea580c` (orange) · `Z5 #dc2626` (rouge) · `Z6 #e11d48` · `Z7 #a855f7` (violet).
+
+Ces valeurs sont **saturées d'un cran** (600) par rapport aux tons pastel
+historiques : sur fond clair comme sur fond sombre, une barre de zone doit se
+lire d'un coup d'œil (contraste ≥ 3:1 des deux côtés). Aucun composant ne
+redéfinit sa propre échelle de zones — on importe `zColor()`.
+
+**Hauteur des barres du profil d'intensité** (`barHeightPct` dans
+`src/components/planning/mobile/blocks.ts`, source de vérité unique) :
+proportionnelle à la zone, plafonnée à Z5 — `Z1 20 %` · `Z2 40 %` · `Z3 60 %` ·
+`Z4 80 %` · `Z5/Z6/Z7 100 %`, avec une nuance intra-zone de ±8 % au maximum qui
+ne sort jamais de la bande de sa zone.

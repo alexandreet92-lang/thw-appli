@@ -20,7 +20,7 @@ import {
 import { runGraph, terminalNodeIds, type NodeStatus } from '@/lib/studio/runner'
 import { converseArchitect, planToGraph, recommendSystems, type ArchitectChatMessage, type ArchitectQuestion } from '@/lib/studio/architect'
 import { readSourceWith } from '@/lib/studio/source-readers'
-import { buildLivingContext } from '@/lib/studio/living'
+import { buildLivingContext, detectHealthFlags } from '@/lib/studio/living'
 import { CoachQuestionCard } from '@/components/ai/CoachQuestionCard'
 import { listSystems, createSystem, updateSystem, deleteSystem, duplicateSystem, migrateLocalGraphIfAny, type StudioSystemRow } from '@/lib/studio/store'
 import { STUDIO_TEMPLATES } from '@/lib/studio/templates'
@@ -262,6 +262,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   const [objEditOpen, setObjEditOpen] = useState(false)
   const [objText, setObjText] = useState('')
   const [objDeadline, setObjDeadline] = useState('')
+  // Signaux santé (garde-fou visible) : motifs courts ou null si tout va bien.
+  const [healthAlert, setHealthAlert] = useState<string | null>(null)
+  // Onboarding « premier système » : objectif saisi + message à envoyer à
+  // l'architecte dès que le nouveau système est ouvert.
+  const [firstObjective, setFirstObjective] = useState('')
+  const [pendingFirstMsg, setPendingFirstMsg] = useState<string | null>(null)
 
   // Exécution
   const [running, setRunning] = useState(false)
@@ -427,6 +433,22 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     if (access?.allowed) void loadRecos(false)
   }, [access?.allowed, loadRecos])
+
+  // Signaux santé : calculés à l'entrée dans un système (garde-fou visible).
+  useEffect(() => {
+    if (view !== 'canvas') return
+    let cancelled = false
+    void (async () => {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const flags = await detectHealthFlags(supabase, user.id)
+        if (!cancelled) setHealthAlert(flags.length ? flags.join(' · ') : null)
+      } catch { if (!cancelled) setHealthAlert(null) }
+    })()
+    return () => { cancelled = true }
+  }, [view, systemId])
 
   const sel = graph.nodes.find(n => n.id === selId) ?? null
   const trigger = graph.nodes.find(n => n.kind === 'trigger') ?? null
@@ -675,6 +697,19 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       setHomeErr('Création impossible — réessaie.')
     }
   }
+  // Onboarding : crée un premier système vide et lance l'architecte avec
+  // l'objectif saisi (il posera ses questions puis proposera un système).
+  const startFirstSystem = async (objective: string) => {
+    const msg = objective.trim()
+      ? `Mon objectif du moment : ${objective.trim()}. Construis-moi un système vivant adapté à mon profil et mes données.`
+      : 'Regarde mon profil et mes données, et propose-moi un système vivant adapté à moi.'
+    try {
+      const row = await createSystem('Mon système', emptyGraph())
+      setSystems(s => [row, ...s])
+      setPendingFirstMsg(msg)   // sera envoyé à l'architecte à l'ouverture
+      openSystem(row)
+    } catch { setHomeErr('Création impossible — réessaie.') }
+  }
   const removeSystem = async (id: string) => {
     if (!confirm('Supprimer ce système ? Cette action est définitive.')) return
     try { await deleteSystem(id); setSystems(s => s.filter(x => x.id !== id)) } catch { setHomeErr('Suppression impossible — réessaie.') }
@@ -831,6 +866,17 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       setChatBusy(false)
     }
   }
+
+  // Onboarding : dès que le premier système est ouvert (chat vierge, non
+  // occupé), on envoie l'objectif à l'architecte pour lancer la conversation.
+  useEffect(() => {
+    if (view !== 'canvas' || !pendingFirstMsg || chatBusy || chatMsgs.length > 0) return
+    const msg = pendingFirstMsg
+    setPendingFirstMsg(null)
+    setChatOpen(true); setChatFull(false)
+    void sendArchitect(msg)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, pendingFirstMsg, chatBusy, chatMsgs.length])
 
   // Entrée depuis la barre « Décris… » : démarre/continue la conversation.
   const build = async () => {
@@ -1460,6 +1506,12 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       L’objectif est passé. Définis ton prochain objectif pour que le système se remette à jour.
                     </div>
                   )}
+                  {healthAlert && (
+                    <div title={`Le système bridera la charge : ${healthAlert}`} style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, padding: '6px 11px', borderRadius: 10, background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.35)', color: '#B45309', fontFamily: 'DM Sans,sans-serif' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, lineHeight: 1.35 }}>Mode sécurité — le système allègera la charge ({healthAlert})</span>
+                    </div>
+                  )}
                 </div>
               )
             })()}
@@ -2052,6 +2104,19 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 : { text: `J-${days}`, col: days <= 14 ? '#F59E0B' : '#3B92D4' }
             }
           }
+          // Prochain run planifié (résumé lisible) si la planification est active.
+          let nextRunLabel: string | null = null
+          if (schedule?.enabled) {
+            const DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
+            nextRunLabel = schedule.frequency === 'weekly'
+              ? `chaque ${DAYS[schedule.weekday] ?? 'semaine'} ~${schedule.hour}h`
+              : `chaque jour ~${schedule.hour}h`
+          }
+          // Aperçu du dernier cycle réussi (première ligne de son rendu).
+          const lastDone = allRuns.find(r => r.status === 'done')
+          const lastSnippet = lastDone
+            ? ((lastDone.renders ?? []).find(x => x.text)?.text ?? '').replace(/[#*_`>-]/g, '').trim().slice(0, 150)
+            : ''
           return (
           <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 18px 40px' }}>
             <div style={{ maxWidth: 760, margin: '0 auto' }}>
@@ -2068,6 +2133,29 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                   {doneCount > 0 ? <><b style={{ color: '#3B92D4' }}>{doneCount}</b> cycle{doneCount > 1 ? 's' : ''} accompli{doneCount > 1 ? 's' : ''}</> : 'Aucun cycle accompli pour l’instant'}
                   {!obj?.text && <span style={{ color: 'var(--text-dim)' }}> · défini aucun objectif — l’architecte peut t’en fixer un</span>}
                 </div>
+                {/* Chips d'état : planification + santé */}
+                {(nextRunLabel || healthAlert) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10 }}>
+                    {nextRunLabel && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#3B92D4', background: 'color-mix(in srgb, #3B92D4 10%, transparent)', borderRadius: 8, padding: '4px 9px', fontFamily: 'DM Sans,sans-serif' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                        Prochain run : {nextRunLabel}
+                      </span>
+                    )}
+                    {healthAlert && (
+                      <span title={healthAlert} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#B45309', background: 'rgba(245,158,11,0.12)', borderRadius: 8, padding: '4px 9px', fontFamily: 'DM Sans,sans-serif' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+                        Mode sécurité actif
+                      </span>
+                    )}
+                  </div>
+                )}
+                {lastSnippet && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid color-mix(in srgb, #3B92D4 15%, var(--border))' }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 3, fontFamily: 'DM Sans,sans-serif' }}>Dernier cycle</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--text-mid)', lineHeight: 1.5, fontFamily: 'DM Sans,sans-serif' }}>{lastSnippet}…</div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2184,6 +2272,31 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                 {homeErr && (
                   <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 12.5, fontFamily: 'DM Sans,sans-serif' }}>{homeErr}</div>
+                )}
+
+                {/* ── Onboarding : première fois, aucun système → on démarre ── */}
+                {activeFolder === null && !homeLoading && systems.length === 0 && (
+                  <div style={{ padding: isMobile ? '20px 16px' : '26px 24px', borderRadius: 20, background: 'linear-gradient(150deg, color-mix(in srgb, #3B92D4 12%, var(--bg-card)), var(--bg-card))', border: '1px solid color-mix(in srgb, #3B92D4 26%, var(--border))', marginBottom: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 18px 44px rgba(0,0,0,0.06)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <StudioLogo size={26} />
+                      <span style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>Ton premier système</span>
+                    </div>
+                    <p style={{ fontSize: 13.5, color: 'var(--text-mid)', lineHeight: 1.6, margin: '0 0 16px', maxWidth: 560, fontFamily: 'DM Sans,sans-serif' }}>
+                      Dis-moi juste ton objectif du moment. L’IA lit ton profil et tes données, te pose une ou deux questions, et construit un système qui te suit en continu — tu n’as rien à assembler.
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 9, maxWidth: 620 }}>
+                      <input value={firstObjective} onChange={e => setFirstObjective(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') void startFirstSystem(firstObjective) }}
+                        placeholder="Ex. Semi-marathon sous 1h40 en novembre · Prise de masse · Prépa Hyrox"
+                        style={{ flex: 1, minWidth: 0, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 14, fontFamily: 'DM Sans,sans-serif', outline: 'none' }} />
+                      <button onClick={() => void startFirstSystem(firstObjective)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 20px', borderRadius: 12, border: 'none', background: '#3B92D4', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', flexShrink: 0 }}>
+                        Créer mon système
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                      </button>
+                    </div>
+                    <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '11px 0 0', fontFamily: 'DM Sans,sans-serif' }}>Pas d’objectif précis ? Laisse vide — l’IA te proposera ce qui te conviendrait.</p>
+                  </div>
                 )}
 
                 {/* ── Recommandés pour toi : l'IA propose, tu n'as qu'à confirmer ── */}

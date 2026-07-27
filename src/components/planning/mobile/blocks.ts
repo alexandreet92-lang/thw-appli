@@ -171,17 +171,24 @@ export function toBars(blocks: MBlock[]): Bar[] {
 // Hauteur des barres du PROFIL D'INTENSITÉ — SOURCE DE VÉRITÉ UNIQUE
 // (builder mobile/desktop + popover de survol du planning).
 //
-// Règle simple et vérifiable : la hauteur est proportionnelle à la ZONE,
-// plafonnée à Z5 →  Z1 20 % · Z2 40 % · Z3 60 % · Z4 80 % · Z5/Z6/Z7 100 %.
-// Une nuance intra-zone de ±8 % au maximum différencie 200 W de 210 W, sans
-// JAMAIS sortir de la bande de la zone. Z6 et Z7 arrivent au même niveau
-// que Z5 : au-delà du seuil, la hauteur ne raconte plus rien d'utile.
+// La hauteur doit RACONTER l'intensité d'un COUP D'ŒIL : une sortie
+// d'endurance (Z2) doit être VISIBLEMENT BASSE, un effort au seuil/VO2max
+// (Z4/Z5) doit dominer le graphe. On abandonne donc l'échelle linéaire
+// (z×20 %, qui plaçait Z2 à 40 % — bien trop haut) au profit d'un ESCALIER
+// à fort contraste, calé par zone :
+//
+//   Z1 récup 10 % · Z2 endurance 26 % · Z3 tempo 50 % · Z4 seuil 76 % ·
+//   Z5/Z6/Z7 VO2max+ 100 %
+//
+// Une nuance intra-zone de ±6 % différencie 200 W de 210 W sans jamais
+// franchir la bande de la zone voisine. Z6 et Z7 rejoignent Z5 au sommet :
+// au-delà du seuil, la hauteur ne raconte plus rien d'utile.
 // ══════════════════════════════════════════════════════════════════
 export const BAR_ZONE_CAP = 5
-/** Hauteur d'une bande de zone (% du graphe) : 20 %. */
-export const ZONE_BAND_PCT = 100 / BAR_ZONE_CAP
+/** Hauteur cible (% du graphe) par zone (index = zone 1…5). */
+export const ZONE_TARGET_PCT: Record<number, number> = { 1: 10, 2: 26, 3: 50, 4: 76, 5: 100 }
 /** Nuance intra-zone maximale (±%) — reste dans la bande de la zone. */
-export const ZONE_NUANCE_PCT = 8
+export const ZONE_NUANCE_PCT = 6
 
 /** Bornes hautes de zone, en ratio de la référence de seuil. */
 const ZONE_TOPS_POWER = [0.55, 0.75, 0.87, 1.05, 1.20, 1.50, 1.85]   // % FTP (7 zones)
@@ -221,7 +228,7 @@ export function barHeightPct(
   refs?: BarRefs,
 ): number {
   const z = Math.max(1, Math.min(BAR_ZONE_CAP, Math.round(bar.zone || 1)))
-  const base = z * ZONE_BAND_PCT
+  const base = ZONE_TARGET_PCT[z] ?? (z * (100 / BAR_ZONE_CAP))
   if (z >= BAR_ZONE_CAP) return 100          // Z5 = Z6 = Z7, au sommet
   const ratio = intensityRatio(bar, sport, refs)
   if (ratio == null) return base

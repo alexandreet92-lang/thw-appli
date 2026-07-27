@@ -13,8 +13,8 @@
 //      barHeightPct que le builder : Z1 20 % → Z5 100 %, Z6-Z7 plafonnées
 //      au niveau de Z5, ordre chronologique le long du parcours)
 //      · séance de muscu : liste des exercices à la place
-//   4. MINI-CARTE du tracé (polyline normalisée sur fond var(--bg-alt) —
-//      pas de tuiles Leaflet dans un survol)
+//   4. MINI-CARTE du tracé — VRAIE carte (image Mapbox Static, tuiles +
+//      relief) via staticRouteMapUrl ; repli polyline SVG sans token
 //   5. PROFIL ALTIMÉTRIQUE du parcours (RouteElevationProfile, statique)
 //   6. notes libres de la séance
 //
@@ -27,6 +27,7 @@ import { sportKeyFromType } from '@/components/icons/SportIcon'
 import { toBars, barHeightPct, type MBlock } from './mobile/blocks'
 import { zColor } from './mobile/editorial'
 import RouteElevationProfile from '@/components/gpx/RouteElevationProfile'
+import { staticRouteMapUrl } from '@/lib/staticMap'
 
 const WIDTH = 262
 
@@ -51,10 +52,14 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
   const estH = 150 + (trace ? 130 : 0) + (elevProfile ? 80 : 0)
   const top = Math.max(8, Math.min(anchor.top, vh - estH - 8))
 
-  // Mini-carte : polyline normalisée, aspect conservé
+  // Mini-carte : vraie carte Mapbox (tuiles + relief) via l'API Static Images.
+  // Repli sur une polyline SVG si aucun token Mapbox n'est configuré.
   const MAP_W = WIDTH - 24, MAP_H = 104
+  const mapUrl = trace
+    ? staticRouteMapUrl(trace.map(p => ({ lat: p.lat, lng: p.lon })), { width: MAP_W, height: MAP_H, pins: true })
+    : null
   let traceD = ''
-  if (trace) {
+  if (trace && !mapUrl) {
     const lats = trace.map(p => p.lat), lons = trace.map(p => p.lon)
     const minLat = Math.min(...lats), maxLat = Math.max(...lats)
     const minLon = Math.min(...lons), maxLon = Math.max(...lons)
@@ -148,16 +153,22 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
         </>
       )}
 
-      {/* 4. Mini-carte du parcours */}
+      {/* 4. Mini-carte du parcours — vraie carte Mapbox (repli SVG sans token) */}
       {trace && (
         <>
           <p style={sectionLabel}>Parcours</p>
-          <svg data-testid="shp-map" width={MAP_W} height={MAP_H} viewBox={`0 0 ${MAP_W} ${MAP_H}`}
-            style={{ display: 'block', background: 'var(--bg-alt)', borderRadius: 10 }}>
-            {/* contour puis tracé bleu */}
-            <path d={traceD} fill="none" stroke="var(--bg-card)" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
-            <path d={traceD} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-          </svg>
+          {mapUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img data-testid="shp-map" src={mapUrl} alt="Carte du parcours" width={MAP_W} height={MAP_H}
+              style={{ display: 'block', width: MAP_W, height: MAP_H, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }} />
+          ) : (
+            <svg data-testid="shp-map" width={MAP_W} height={MAP_H} viewBox={`0 0 ${MAP_W} ${MAP_H}`}
+              style={{ display: 'block', background: 'var(--bg-alt)', borderRadius: 10 }}>
+              {/* contour puis tracé bleu */}
+              <path d={traceD} fill="none" stroke="var(--bg-card)" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
+              <path d={traceD} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+          )}
         </>
       )}
 

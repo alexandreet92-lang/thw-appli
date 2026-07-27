@@ -229,6 +229,8 @@ export default function RouteElevationProfile({
 
   const H = height
   const inner = H - PAD_T - PAD_B
+  // Hauteur du bandeau de zone coloré en tête de chaque portion (unités viewBox).
+  const ribbonH = Math.max(4, H * 0.16)
   const range = (maxA - minA) || 1
   const xOf = useCallback((km: number) => (total > 0 ? (km / total) * W : 0), [total])
   const yOf = useCallback((ele: number) => H - PAD_B - ((ele - minA) / range) * inner, [H, inner, minA, range])
@@ -481,18 +483,26 @@ export default function RouteElevationProfile({
               {bands
                 ? bands.map((b, k) => {
                   const bx1 = xOf(b.a), bx2 = xOf(b.b)
+                  const bw = Math.max(0.6, bx2 - bx1)
                   const col = b.recovery ? (p.recoveryColor ?? p.color) : p.color
                   return (
                     <g key={`bd${k}`}>
-                      <rect x={bx1} y={0} width={Math.max(0.6, bx2 - bx1)} height={H} fill={col} opacity={b.recovery ? 0.16 : 0.30} />
-                      <line x1={bx1} y1={0} x2={bx2} y2={0} stroke={col} strokeWidth={2.5} opacity={b.recovery ? 0.45 : 0.9} />
+                      {/* voile de zone sur toute la hauteur */}
+                      <rect x={bx1} y={0} width={bw} height={H} fill={col} opacity={b.recovery ? 0.20 : 0.38} />
+                      {/* bandeau de zone marqué en haut de la portion */}
+                      <rect x={bx1} y={0} width={bw} height={ribbonH} fill={col} opacity={b.recovery ? 0.55 : 1} />
                     </g>
                   )
                 })
                 : (
                   <>
-                    <rect x={x1} y={0} width={x2 - x1} height={H} fill={p.color} opacity={0.14} />
-                    <line x1={x1} y1={0} x2={x2} y2={0} stroke={p.color} strokeWidth={2.5} opacity={0.8} />
+                    {/* voile de zone sur toute la hauteur */}
+                    <rect x={x1} y={0} width={x2 - x1} height={H} fill={p.color} opacity={0.24} />
+                    {/* bandeau de zone marqué en haut — bien visible, coloré */}
+                    <rect x={x1} y={0} width={x2 - x1} height={ribbonH} fill={p.color} opacity={0.96} />
+                    {/* liseré latéral pour délimiter la portion */}
+                    <line x1={x1} y1={0} x2={x1} y2={H} stroke={p.color} strokeWidth={1} opacity={0.5} vectorEffect="non-scaling-stroke" />
+                    <line x1={x2} y1={0} x2={x2} y2={H} stroke={p.color} strokeWidth={1} opacity={0.5} vectorEffect="non-scaling-stroke" />
                   </>
                 )}
             </g>

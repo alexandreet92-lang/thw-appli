@@ -49,6 +49,38 @@ export function describeDrafts(drafts: PlanningSessionDraft[]): string {
     `${d.duration_min ? ` · ${d.duration_min}min` : ''}${d.intensity ? ` · ${d.intensity}` : ''}`).join('\n')
 }
 
+// Lit les séances IA « planned » déjà présentes dans les semaines couvertes —
+// sert à montrer un vrai AVANT/APRÈS avant d'écrire (aucune modif ici).
+export async function readExistingAiSessions(weeks: string[]): Promise<PlanningSessionDraft[]> {
+  if (!weeks.length) return []
+  const sb = createClient()
+  const uid = await getUserId()
+  const { data, error } = await sb
+    .from('planned_sessions')
+    .select('week_start,day_index,sport,title,duration_min,intensity')
+    .eq('user_id', uid).eq('source', 'ai').eq('status', 'planned')
+    .in('week_start', weeks)
+    .order('week_start', { ascending: true }).order('day_index', { ascending: true })
+  if (error) return []
+  return (data ?? []).map(r => ({
+    week_start: String(r.week_start), day_index: Number(r.day_index),
+    sport: String(r.sport ?? ''), title: String(r.title ?? ''),
+    duration_min: (r.duration_min as number | null) ?? null, intensity: (r.intensity as string | null) ?? null,
+  }))
+}
+
+// Résumé AVANT/APRÈS pour l'écran d'accord : ce qui est retiré, ce qui est ajouté.
+export function describePlanningDiff(removed: PlanningSessionDraft[], added: PlanningSessionDraft[], replace: boolean): string {
+  const blocks: string[] = []
+  if (replace && removed.length) {
+    blocks.push(`**Retiré du Planning** (${removed.length} séance${removed.length > 1 ? 's' : ''} IA) :\n${describeDrafts(removed)}`)
+  } else if (!replace && removed.length) {
+    blocks.push(`**Déjà au Planning cette semaine** (conservé) :\n${describeDrafts(removed)}`)
+  }
+  blocks.push(`**Ajouté au Planning** (${added.length} séance${added.length > 1 ? 's' : ''}) :\n${describeDrafts(added)}`)
+  return blocks.join('\n\n')
+}
+
 export async function savePlanningSessions(drafts: PlanningSessionDraft[]): Promise<number> {
   if (!drafts.length) return 0
   const sb = createClient()

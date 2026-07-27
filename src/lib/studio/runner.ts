@@ -19,6 +19,7 @@ import type { StudioGraph, StudioNode, StudioModel } from './graph'
 import { SOURCE_LABEL } from './graph'
 import {
   readSource, savePlanningSessions, replacePlanningSessions, describeDrafts, extractJson,
+  readExistingAiSessions, describePlanningDiff,
   saveRaceEvent, describeRace, saveReportNotification,
   type PlanningSessionDraft, type RaceDraft,
 } from './connectors'
@@ -202,15 +203,21 @@ export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<Ru
             const raw = await callAgent({ ...n, model: n.model ?? 'hermes' }, prompt, t => cb.onChunk(n.id, t), cb.signal, cb.runId)
             const drafts = extractJson<PlanningSessionDraft[]>(raw)
             if (!Array.isArray(drafts) || drafts.length === 0) throw new Error('Aucune séance exploitable dans le plan reçu')
-            const summary = describeDrafts(drafts.slice(0, 10))
+            const finalDrafts = drafts.slice(0, 10)
+            const summary = describeDrafts(finalDrafts)
+            // Vrai AVANT/APRÈS : on lit les séances IA déjà présentes dans les
+            // semaines couvertes pour montrer ce qui sera retiré / conservé.
+            const weeks = Array.from(new Set(finalDrafts.map(d => d.week_start)))
+            const existing = await readExistingAiSessions(weeks).catch(() => [] as PlanningSessionDraft[])
+            const diff = describePlanningDiff(existing, finalDrafts, replace)
             cb.onStatus(n.id, 'waiting')
-            const ok = await cb.requestApproval(n, `${replace ? 'Ces séances vont REMPLACER les séances IA de la (des) semaine(s) concernée(s) dans ton Planning' : 'Séances prêtes à être enregistrées dans ton Planning'} :\n\n${summary}`)
+            const ok = await cb.requestApproval(n, diff)
             if (!ok) throw new Error('Écriture dans le Planning refusée par l’utilisateur')
             if (replace) {
-              const { inserted, removed } = await replacePlanningSessions(drafts.slice(0, 10))
+              const { inserted, removed } = await replacePlanningSessions(finalDrafts)
               doneMsg = `Planning mis à jour : ${inserted} séance(s) enregistrée(s)${removed ? `, ${removed} ancienne(s) séance(s) IA remplacée(s)` : ''}.\n\n${summary}\n\n[Ouvrir le planning](/planning)`
             } else {
-              const count = await savePlanningSessions(drafts.slice(0, 10))
+              const count = await savePlanningSessions(finalDrafts)
               doneMsg = `${count} séance(s) enregistrée(s) dans le Planning.\n\n${summary}\n\n[Ouvrir le planning](/planning)`
             }
 

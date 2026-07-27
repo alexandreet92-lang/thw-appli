@@ -2380,6 +2380,19 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
         const closeMockup = () => { setMockupMsgId(null); setRecoMockup(null); setPreviewSel(null) }
         const doConfirm = isChat ? () => { confirmPlan(chatMk!.id); closeMockup() } : () => { const r = recoMockup!; closeMockup(); void newSystem(r.title, r.graph) }
         const doDecline = isChat ? () => { declinePlan(chatMk!.id); closeMockup() } : closeMockup
+        // « Ce que tu recevras » : décrit, sans appel IA, la sortie de chaque
+        // nœud terminal (le rendu concret du système).
+        const outLabel = (n: StudioNode): string => {
+          if (n.kind === 'action') {
+            if (n.actionKey === 'notify_report') return 'Une notification avec la synthèse du cycle.'
+            if (n.actionKey === 'planning_replace') return 'La semaine remplacée dans ton Planning (après ton accord).'
+            if (n.actionKey === 'planning_save') return 'Des séances ajoutées à ton Planning (après ton accord).'
+            if (n.actionKey === 'calendar_race') return 'Une course ajoutée à ton Calendrier (après ton accord).'
+          }
+          if (n.kind === 'validation') return 'Une pause pour ta validation avant d’aller plus loin.'
+          return `Un bilan à lire : « ${n.title} ».`
+        }
+        const outputs = terminalNodeIds(g).map(id => g.nodes.find(n => n.id === id)).filter((n): n is StudioNode => !!n)
         const panelStyle: React.CSSProperties = isMobile
           ? { position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, background: 'var(--bg)', display: 'flex', flexDirection: 'column', borderTopLeftRadius: 20, borderTopRightRadius: 20, animation: 'studio_slide_up 0.28s cubic-bezier(0.22,0.61,0.36,1)', boxShadow: '0 -12px 40px rgba(0,0,0,0.22)' }
           : { position: 'absolute', top: 0, right: 0, bottom: 0, width: 'min(760px, 92%)', background: 'var(--bg)', display: 'flex', flexDirection: 'column', animation: 'studio_slide_r 0.3s cubic-bezier(0.22,0.61,0.36,1)', boxShadow: '-18px 0 50px rgba(0,0,0,0.24)', borderLeft: '1px solid var(--border)' }
@@ -2418,6 +2431,22 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                       onSelect: id => setPreviewSel(p => (p?.msgId === mockKey && p.nodeId === id) ? null : { msgId: mockKey, nodeId: id }),
                     })}
                   </div>
+                  {outputs.length > 0 && (
+                    <div style={{ marginTop: 14, padding: '13px 15px', borderRadius: 14, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 9 }}>
+                        <span style={{ color: '#22C55E', display: 'flex' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+                        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>Ce que tu recevras</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                        {outputs.map(n => (
+                          <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                            <span style={{ width: 22, height: 22, borderRadius: 7, background: `color-mix(in srgb, ${KIND_COLOR[n.kind]} 15%, transparent)`, color: KIND_COLOR[n.kind], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}><KindIcon kind={n.kind} size={12} /></span>
+                            <span style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.45, fontFamily: 'DM Sans,sans-serif' }}>{outLabel(n)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {sel && (
                     <div style={{ marginTop: 12, padding: '12px 15px', borderRadius: 14, background: 'var(--bg-card)', border: `1px solid color-mix(in srgb, ${KIND_COLOR[sel.kind]} 40%, var(--border))`, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', animation: 'studio_in 0.16s ease' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>

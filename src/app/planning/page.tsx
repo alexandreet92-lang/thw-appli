@@ -3506,6 +3506,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
           onClose={()=>{setAddModal(null);setAddModalFavorites(false)}}
           onSave={(s)=>{ handleAddSession(addModal.dayIndex, s, addModal.weekStart); setAddModal(null); setAddModalFavorites(false) }}
           onCreateBrick={(run)=>handleAddSession(addModal.dayIndex, run, addModal.weekStart)}
+          onLinkBrick={(runId, brickId)=>updateSession(runId, { brickId })}
+          linkableRuns={sessions.filter(r=>sportKeyFromType(r.sport)==='run' && r.dayIndex===addModal.dayIndex && !r.brickId)}
           openWithFavorites={addModalFavorites}
         />
       )}
@@ -3520,6 +3522,8 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
           onAutoSave={handleAutoSaveSession}
           onDuplicate={(dayIdx, s) => { addSession({ ...s, dayIndex: dayIdx, planVariant: s.planVariant ?? activePlan }); setDetailModal(null) }}
           onCreateBrick={(run)=>handleAddSession(run.dayIndex, run)}
+          onLinkBrick={(runId, brickId)=>updateSession(runId, { brickId })}
+          linkableRuns={sessions.filter(r=>sportKeyFromType(r.sport)==='run' && r.dayIndex===detailModal.dayIndex && !r.brickId && r.id!==detailModal.id)}
         />
       )}
       <ActivityQuickModal activity={activityDetail} onClose={()=>setActivityDetail(null)}/>

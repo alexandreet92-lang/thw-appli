@@ -22,6 +22,8 @@ export interface SessionEditorPanelProps {
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
   runningSub: RunningSub; setRunningSub: (s: RunningSub) => void
   brickRun: boolean; setBrickRun: (b: boolean) => void
+  /** Clic sur « Brick Run » : ouvre la sur-page de choix, ou détache si actif. */
+  onBrickButton?: () => void
   trainingTypes: string[]; setTrainingTypes: (t: string[]) => void
   title: string; setTitle: (v: string) => void
   date: string; setDate: (v: string) => void; time: string; setTime: (v: string) => void

@@ -24,7 +24,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { formatHM, parseGymExercise, type Session } from '@/app/planning/page'
 import { sportKeyFromType } from '@/components/icons/SportIcon'
-import { toBars, barHeightPct, type MBlock } from './mobile/blocks'
+import { toBars, barHeightPct, treadmillProfile, type MBlock } from './mobile/blocks'
 import { zColor } from './mobile/editorial'
 import RouteElevationProfile from '@/components/gpx/RouteElevationProfile'
 import { staticRouteMapUrl } from '@/lib/staticMap'
@@ -47,6 +47,14 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
   const pd = session.parcoursData
   const trace = pd?.gpsTrace && pd.gpsTrace.length > 1 ? pd.gpsTrace : null
   const elevProfile = pd?.elevationProfile && pd.elevationProfile.length > 1 ? pd.elevationProfile : null
+
+  // Tapis (course indoor) : profil altimétrique reconstruit depuis la pente des
+  // blocs, faute de trace GPS. Affiché comme profil altimétrique du parcours.
+  const isTreadmill = sportKeyFromType(session.sport) === 'run' && session.runningSub === 'treadmill'
+  const treadProfile = isTreadmill && !elevProfile ? treadmillProfile(blocks as MBlock[]) : []
+  const treadGain = treadProfile.length ? Math.round(treadProfile[treadProfile.length - 1].ele) : 0
+  const treadKm = treadProfile.length ? treadProfile[treadProfile.length - 1].distKm : 0
+  const showTread = isTreadmill && treadProfile.length > 1 && treadGain > 0
 
   const left = fitsRight ? anchor.right + 10 : Math.max(8, anchor.left - WIDTH - 10)
   const estH = 150 + (trace ? 130 : 0) + (elevProfile ? 80 : 0)
@@ -180,6 +188,20 @@ export function SessionHoverPreview({ session, anchor }: { session: Session; anc
             profile={elevProfile}
             totalKm={pd?.distance ?? undefined}
             totalGainM={pd?.elevation ?? undefined}
+            height={54}
+            staticMode
+          />
+        </div>
+      )}
+
+      {/* 5b. Tapis : profil altimétrique reconstruit depuis la pente des blocs */}
+      {showTread && (
+        <div data-testid="shp-tread-elevation" style={{ marginTop: 10 }}>
+          <p style={sectionLabel}>Profil altimétrique · +{treadGain} m D+</p>
+          <RouteElevationProfile
+            profile={treadProfile}
+            totalKm={treadKm}
+            totalGainM={treadGain}
             height={54}
             staticMode
           />

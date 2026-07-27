@@ -39,7 +39,7 @@ export function SessionEditorDesktop(p: SessionEditorPanelProps) {
               sport={p.sport} accent={p.accent} onSportChange={p.onSportChange}
               cyclingSub={p.cyclingSub} setCyclingSub={p.setCyclingSub}
               runningSub={p.runningSub} setRunningSub={p.setRunningSub}
-              brickRun={p.brickRun} setBrickRun={p.setBrickRun}
+              brickRun={p.brickRun} setBrickRun={p.setBrickRun} onBrickButton={p.onBrickButton}
               trainingTypes={p.trainingTypes} setTrainingTypes={p.setTrainingTypes}
               date={p.date} setDate={p.setDate} time={p.time} setTime={p.setTime}
               dur={p.dur} setDur={p.setDur} rpe={p.rpe} setRpe={p.setRpe}

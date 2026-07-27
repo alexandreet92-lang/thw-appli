@@ -23,6 +23,7 @@ export function MainFields(p: {
   cyclingSub: CyclingSub; setCyclingSub: (s: CyclingSub) => void
   runningSub: RunningSub; setRunningSub: (s: RunningSub) => void
   brickRun: boolean; setBrickRun: (b: boolean) => void
+  onBrickButton?: () => void
   trainingTypes: string[]; setTrainingTypes: (t: string[]) => void
   date: string; setDate: (v: string) => void; time: string; setTime: (v: string) => void
   dur: number; setDur: (n: number) => void
@@ -87,7 +88,7 @@ export function MainFields(p: {
 
       {/* Brick Run : enchaînement vélo → course à pied (crée une course liée) */}
       {p.sport === 'bike' && !p.reserveMode && (
-        <button type="button" onClick={() => p.setBrickRun(!p.brickRun)} title={tr('planning.brickRunTitle')}
+        <button type="button" onClick={() => (p.onBrickButton ? p.onBrickButton() : p.setBrickRun(!p.brickRun))} title={tr('planning.brickRunTitle')}
           style={{ alignSelf: 'flex-start', padding: '10px 16px', borderRadius: 999, cursor: 'pointer', fontSize: 13, fontWeight: 700,
             border: `1px solid ${p.brickRun ? sportColor('run') : 'var(--se-rule)'}`,
             background: p.brickRun ? `${sportColor('run')}1f` : 'var(--se-card)',

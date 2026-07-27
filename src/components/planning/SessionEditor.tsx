@@ -51,6 +51,7 @@ import {
 
 import { type ExoCategory, type ExoDefinition, type ExerciseItem, type ExoCircuit, EXO_CATEGORY_COLOR, EXO_CATEGORY_LABEL, EXERCISE_DATABASE, searchExercises } from './exercises'
 import { ComposedBuilder } from './ComposedBuilder'
+import { BrickPicker } from './BrickPicker'
 import { type ComposedMove, type ComposedSport, type ComposedCircuit, sumComposedMinutes } from './composedSports'
 import { currentLocale } from '@/lib/i18n'
 
@@ -3616,7 +3617,7 @@ function addMinutesToTime(hhmm: string, addMin: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, openWithFavorites, initialSport, reserveMode }: {
+export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, onLinkBrick, linkableRuns, openWithFavorites, initialSport, reserveMode }: {
   mode: 'create' | 'edit'
   session?: Session
   dayIndex?: number
@@ -3628,6 +3629,10 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   onAutoSave?: (s: Session) => void
   onDuplicate?: (dayIndex: number, session: Session) => void
   onCreateBrick?: (run: Session) => void
+  /** Relie une course déjà planifiée au vélo édité (lui pose le même brickId). */
+  onLinkBrick?: (runId: string, brickId: string) => void
+  /** Courses planifiées le même jour, reliables en enchaînement (brick). */
+  linkableRuns?: Session[]
   openWithFavorites?: boolean
   initialSport?: SportType
   reserveMode?: boolean   // Builder « réserve » : masque Sport / Date / Heure (non planifié)
@@ -3649,6 +3654,12 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
     if (isComposed && total > 0) setDur(total)
   }, [composedMoves, composedCircuit]) // eslint-disable-line react-hooks/exhaustive-deps
   const [brickRun, setBrickRun] = useState<boolean>(!!session?.brickId)
+  // brickId partagé vélo↔course. Généré au moment où l'on active l'enchaînement
+  // (pour pouvoir relier une course existante immédiatement).
+  const [brickId, setBrickId] = useState<string | undefined>(session?.brickId)
+  // Quand l'enchaînement pointe une course DÉJÀ planifiée, on ne recrée rien.
+  const [brickLinkedRunId, setBrickLinkedRunId] = useState<string | null>(null)
+  const [brickPickerOpen, setBrickPickerOpen] = useState(false)
   const [trainingTypes, setTrainingTypes] = useState<string[]>(session?.trainingTypes ?? [])
   const [title, setTitle] = useState(session?.title ?? '')
   const [date, setDate] = useState('')
@@ -4315,9 +4326,15 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
 
   function handleSubmit() {
     const ttStr = trainingTypes.join('+')
-    const finalTitle = title || (ttStr ? `${SPORT_LABEL[sport]} ${ttStr}` : SPORT_LABEL[sport])
     const subLabel = sport === 'bike' ? ` — ${CYCLING_SUB_LABEL[cyclingSub]}`
       : sport === 'run' && runningSub === 'treadmill' ? ` — ${RUNNING_SUB_LABEL[runningSub]}` : ''
+    // Titre AUTOMATIQUE uniquement quand l'utilisateur n'a saisi aucun titre.
+    // Dès qu'un titre existe (saisi OU déjà présent sur la séance éditée), on
+    // le garde VERBATIM : ça évite d'ajouter « — Vélo route » à chaque save
+    // (bug : « Cyclisme — Vélo route — Vélo route — … »).
+    const finalTitle = title.trim()
+      ? title.trim()
+      : (ttStr ? `${SPORT_LABEL[sport]} ${ttStr}${subLabel}` : `${SPORT_LABEL[sport]}${subLabel}`)
     const parcoursMin = parseDurationToMin(totalDuration)
     const composedMin = isComposed ? sumComposedMinutes(composedMoves, composedCircuit) : 0
     const finalDur = aiFlowStep === 'parcours' && parcoursMin > 0 ? parcoursMin : (composedMin > 0 ? composedMin : dur || 60)
@@ -4329,13 +4346,15 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
         ? buildParcoursBlocks()
         : blocks
     // Brick (vélo→course) : id partagé entre la séance vélo et sa course.
+    // `brickId` (state) est posé dès l'activation de l'enchaînement, ce qui
+    // permet de relier une course EXISTANTE dans la foulée.
     const wantBrick = sport === 'bike' && brickRun
-    const brickId = wantBrick ? (session?.brickId ?? `brk_${Date.now()}`) : undefined
+    const finalBrickId = wantBrick ? (brickId ?? `brk_${Date.now()}`) : undefined
     const savedSession: Session = {
       ...(session ?? {}),
       id: session?.id ?? '',
       dayIndex: dayIndex ?? session?.dayIndex ?? 0,
-      sport, title: finalTitle + subLabel, time,
+      sport, title: finalTitle, time,
       durationMin: finalDur, tss: finalTss,
       status: session?.status ?? 'planned', notes: desc || undefined,
       blocks: finalBlocks, rpe, planVariant: selPlan,
@@ -4343,24 +4362,42 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       parcoursData: parcoursDataWithConfig() ?? undefined,
       parcoursId: parcoursData?.parcoursId ?? undefined,
       nutritionItems: nutritionItems.length > 0 ? nutritionItems : undefined,
-      brickId,
+      brickId: finalBrickId,
       cyclingSub: sport === 'bike' ? cyclingSub : undefined,
       runningSub: sport === 'run' ? runningSub : undefined,
       composed: isComposed && composedMoves.length > 0 ? composedMoves : undefined,
       composedCircuit: isComposed && composedCircuit.rounds > 1 ? composedCircuit : undefined,
     }
     onSave(savedSession)
-    // Création auto de la course d'enchaînement (uniquement quand on active le brick).
-    if (wantBrick && !session?.brickId && onCreateBrick) {
-      const runStart = addMinutesToTime(time, finalDur)
-      onCreateBrick({
-        id: '', dayIndex: savedSession.dayIndex, sport: 'run',
-        title: 'Brick run', time: runStart, durationMin: 20,
-        status: 'planned', rpe, planVariant: selPlan, brickId,
-        blocks: [{ id: `b_${Date.now()}`, mode: 'single', type: 'effort', durationMin: 20, zone: 2, value: '', hrAvg: '', label: 'Running' }],
-      })
+    // Enchaînement : soit on RELIE une course existante (onLinkBrick), soit on
+    // en CRÉE une nouvelle. Rien à faire si la course était déjà reliée.
+    if (wantBrick && finalBrickId) {
+      if (brickLinkedRunId && onLinkBrick) {
+        onLinkBrick(brickLinkedRunId, finalBrickId)
+      } else if (!brickLinkedRunId && !session?.brickId && onCreateBrick) {
+        const runStart = addMinutesToTime(time, finalDur)
+        onCreateBrick({
+          id: '', dayIndex: savedSession.dayIndex, sport: 'run',
+          title: 'Brick run', time: runStart, durationMin: 20,
+          status: 'planned', rpe, planVariant: selPlan, brickId: finalBrickId,
+          blocks: [{ id: `b_${Date.now()}`, mode: 'single', type: 'effort', durationMin: 20, zone: 2, value: '', hrAvg: '', label: 'Running' }],
+        })
+      }
     }
     onClose()
+  }
+
+  // ── Enchaînement (brick) : clic bouton, choix « relier » / « créer » ──
+  const newBrickId = () => brickId ?? `brk_${Date.now()}`
+  function handleBrickButton() {
+    if (brickRun) { setBrickRun(false); setBrickId(undefined); setBrickLinkedRunId(null) }
+    else setBrickPickerOpen(true)
+  }
+  function pickBrickExisting(run: Session) {
+    setBrickId(newBrickId()); setBrickRun(true); setBrickLinkedRunId(run.id); setBrickPickerOpen(false)
+  }
+  function createBrickNew() {
+    setBrickId(newBrickId()); setBrickRun(true); setBrickLinkedRunId(null); setBrickPickerOpen(false)
   }
 
   async function generateBlocksFromTerrain() {
@@ -4917,7 +4954,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     const panelProps: SessionEditorPanelProps = {
       mode, reserveMode,
       sport, accent: 'var(--primary)', sportAccent: mobileSportColor(sport), onSportChange: handleSportChange,
-      cyclingSub, setCyclingSub, runningSub, setRunningSub, brickRun, setBrickRun, trainingTypes, setTrainingTypes,
+      cyclingSub, setCyclingSub, runningSub, setRunningSub, brickRun, setBrickRun, onBrickButton: handleBrickButton, trainingTypes, setTrainingTypes,
       title, setTitle, date, setDate, time, setTime,
       dur, setDur, rpe, setRpe, desc, setDesc, selPlan,
       blocks, setBlocks,
@@ -4945,7 +4982,16 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     // panelRef + framer-motion PageTransition) qui confinaient le position:fixed
     // et laissaient des bandes noires en haut/bas. Couvre ainsi tout le viewport.
     const panel = wide ? <SessionEditorDesktop {...panelProps} /> : <SessionEditorMobile {...panelProps} />
-    return typeof document !== 'undefined' ? createPortal(panel, document.body) : panel
+    const withBrick = (
+      <>
+        {panel}
+        {brickPickerOpen && (
+          <BrickPicker runs={linkableRuns ?? []} accent={mobileSportColor('run')}
+            onPick={pickBrickExisting} onCreate={createBrickNew} onClose={() => setBrickPickerOpen(false)} />
+        )}
+      </>
+    )
+    return typeof document !== 'undefined' ? createPortal(withBrick, document.body) : withBrick
   }
 
   return (
@@ -4956,6 +5002,11 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           to   { transform: translateY(0);    opacity: 1; }
         }
       `}</style>
+
+      {brickPickerOpen && (
+        <BrickPicker runs={linkableRuns ?? []} accent={mobileSportColor('run')}
+          onPick={pickBrickExisting} onCreate={createBrickNew} onClose={() => setBrickPickerOpen(false)} />
+      )}
 
       {/* Backdrop */}
       <div onClick={onClose} style={{
@@ -5184,8 +5235,10 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
                       color: cyclingSub === sub ? accent : 'var(--text-dim)',
                     }}>{CYCLING_SUB_LABEL[sub]}</button>
                   ))}
-                  {/* Brick Run : enchaînement vélo→course (crée une course liée). */}
-                  <button onClick={() => setBrickRun(b => !b)} title={t('sed.brickTooltip')}
+                  {/* Brick Run : enchaînement vélo→course. Clic → sur-page pour
+                      relier une course existante OU en créer une nouvelle.
+                      Re-clic quand actif → détache l'enchaînement. */}
+                  <button onClick={handleBrickButton} title={t('sed.brickTooltip')}
                     style={{
                       padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer',
                       marginLeft: 'auto',

@@ -5,13 +5,14 @@
 import { useState } from 'react'
 import { IconPlus, IconTrash, IconChevronUp, IconChevronDown } from '@tabler/icons-react'
 import {
-  type ComposedSport, type ComposedMove, type ComposedCircuit, type Measure, type RoundSupport, type Punch,
+  type ComposedSport, type ComposedMove, type ComposedCircuit, type Measure, type RoundSupport, type Punch, type PunchSide,
   movesForSport, moveDef, elevationFromIncline, runDistanceM, moveMinutes,
-  ROUND_SUPPORT_LABEL, PUNCH_LABEL, SUPPORTS_WITH_COMBOS,
+  ROUND_SUPPORT_LABEL, PUNCH_LABEL, SUPPORTS_WITH_COMBOS, needsSide, punchLabel, sideSuffix,
 } from './composedSports'
+import { useI18n } from '@/lib/i18n'
 
 const FB = 'var(--font-body)'
-const MEASURE_LABEL: Record<Measure, string> = { time: 'Temps', distance: 'Distance', jumps: 'Sauts', floors: 'Étages' }
+const MEASURE_LABEL: Record<Measure, string> = { time: 'Temps', distance: 'Distance', jumps: 'Sauts', floors: 'Étages', calories: 'Calories' }
 
 function uid() { return `mv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}` }
 function mmss(sec: number): string { const s = Math.max(0, Math.round(sec)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
@@ -129,6 +130,9 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuit, onCir
               {m.measure === 'floors' && (
                 <Field label="Étages"><input type="number" defaultValue={m.floors ?? ''} key={m.floors} onBlur={e => patch(m.id, { floors: +e.target.value || undefined })} style={inp} /></Field>
               )}
+              {m.measure === 'calories' && (
+                <Field label="Calories (kcal)"><input type="number" defaultValue={m.calories ?? ''} key={m.calories} onBlur={e => patch(m.id, { calories: +e.target.value || undefined })} style={inp} /></Field>
+              )}
               {/* étages → aussi un temps (climber : étages + temps) */}
               {m.measure === 'floors' && (
                 <Field label="Temps"><input defaultValue={mmss(m.timeSec ?? 0)} key={`t${m.timeSec}`} onBlur={e => patch(m.id, { timeSec: parseMmss(e.target.value) })} placeholder="m:ss" style={inp} /></Field>
@@ -220,13 +224,21 @@ export function ComposedBuilder({ sport, moves, accent, onChange, circuit, onCir
 const iconBtn: React.CSSProperties = { width: 28, height: 28, borderRadius: 7, border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
 
 // Éditeur de combos : on assemble une suite de coups depuis les 4 coups, on l'ajoute.
+// Le crochet et l'uppercut demandent le bras (gauche/droit) → « Crochet G »,
+// « Uppercut D » (FR) ou « Crochet L / R » (EN). Jab et direct n'en ont pas.
+interface DraftPunch { punch: Punch; side: PunchSide }
 function ComboEditor({ combos, accent, onChange }: { combos: string[]; accent: string; onChange: (c: string[]) => void }) {
-  const [draft, setDraft] = useState<Punch[]>([])
+  const { lang } = useI18n()
+  const [draft, setDraft] = useState<DraftPunch[]>([])
   const PUNCHES: Punch[] = ['jab', 'direct', 'hook', 'uppercut']
+  const draftStr = (d: DraftPunch[]) => d.map(x => punchLabel(x.punch, x.side, lang)).join('-')
   function addCombo() {
     if (draft.length === 0) return
-    onChange([...combos, draft.map(p => PUNCH_LABEL[p]).join('-')])
+    onChange([...combos, draftStr(draft)])
     setDraft([])
+  }
+  function setSide(i: number, side: PunchSide) {
+    setDraft(d => d.map((x, j) => (j === i ? { ...x, side } : x)))
   }
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: 10 }}>
@@ -243,14 +255,35 @@ function ComboEditor({ combos, accent, onChange }: { combos: string[]; accent: s
       )}
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
         {PUNCHES.map(p => (
-          <button key={p} onClick={() => setDraft(d => [...d, p])} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600 }}>{PUNCH_LABEL[p]}</button>
+          <button key={p} onClick={() => setDraft(d => [...d, { punch: p, side: 'left' }])} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-card2)', color: 'var(--text)', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 600 }}>{PUNCH_LABEL[p]}</button>
         ))}
       </div>
       {draft.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ flex: 1, fontFamily: 'DM Mono, monospace', fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{draft.map(p => PUNCH_LABEL[p]).join('-')}</span>
-          <button onClick={() => setDraft([])} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12 }}>Effacer</button>
-          <button onClick={addCombo} style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: accent, color: '#fff', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 700 }}>Ajouter</button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Suite en cours : chaque crochet/uppercut porte un choix de bras G/D. */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+            {draft.map((x, i) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderRadius: 7, background: 'var(--bg-card2)', border: '1px solid var(--border)' }}>
+                <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{PUNCH_LABEL[x.punch]}</span>
+                {needsSide(x.punch) && (
+                  <span style={{ display: 'inline-flex', gap: 2 }}>
+                    {(['left', 'right'] as PunchSide[]).map(s => (
+                      <button key={s} onClick={() => setSide(i, s)} title={s === 'left' ? (lang === 'fr' ? 'Bras gauche' : 'Left arm') : (lang === 'fr' ? 'Bras droit' : 'Right arm')} style={{
+                        width: 20, height: 20, borderRadius: 5, cursor: 'pointer', fontFamily: FB, fontSize: 11, fontWeight: 700, lineHeight: 1,
+                        border: 'none', background: x.side === s ? accent : 'var(--bg-card)', color: x.side === s ? '#fff' : 'var(--text-dim)',
+                      }}>{sideSuffix(s, lang)}</button>
+                    ))}
+                  </span>
+                )}
+                {i < draft.length - 1 && <span style={{ color: 'var(--text-dim)', fontWeight: 700 }}>-</span>}
+              </span>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ flex: 1, fontFamily: 'DM Mono, monospace', fontSize: 12.5, fontWeight: 700, color: accent }}>{draftStr(draft)}</span>
+            <button onClick={() => setDraft([])} style={{ border: 'none', background: 'transparent', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 12 }}>Effacer</button>
+            <button onClick={addCombo} style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: accent, color: '#fff', cursor: 'pointer', fontFamily: FB, fontSize: 12, fontWeight: 700 }}>Ajouter</button>
+          </div>
         </div>
       )}
     </div>

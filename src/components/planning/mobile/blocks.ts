@@ -241,6 +241,48 @@ export function barHeightPct(
   return Math.max(base - ZONE_NUANCE_PCT, Math.min(base + ZONE_NUANCE_PCT, base + nuance))
 }
 
+// ══════════════════════════════════════════════════════════════════
+// Profil ALTIMÉTRIQUE d'une séance de TAPIS (course indoor).
+// Le tapis n'a pas de trace GPS : le « dénivelé » vient de la PENTE (%) de
+// chaque bloc. On reconstruit donc une courbe d'altitude en marchant les
+// blocs dans l'ordre — distance = vitesse×temps, montée = distance×pente/100
+// (le tapis ne descend jamais → l'altitude croît ou reste plate). Les
+// intervalles sont éclatés en effort/récup (récup à plat). Format identique
+// au profil de parcours (RouteElevationProfile) : { distKm, ele }.
+// ══════════════════════════════════════════════════════════════════
+export interface ElevPoint { distKm: number; ele: number }
+export function treadmillProfile(blocks: MBlock[]): ElevPoint[] {
+  const pts: ElevPoint[] = [{ distKm: 0, ele: 0 }]
+  let distM = 0, ele = 0
+  const seg = (kmh: number, minutes: number, inclinePct: number) => {
+    if (!(kmh > 0) || !(minutes > 0)) return
+    const m = (kmh / 3.6) * minutes * 60
+    distM += m
+    ele += inclinePct > 0 ? (m * inclinePct) / 100 : 0
+    pts.push({ distKm: distM / 1000, ele })
+  }
+  for (const b of blocks) {
+    if (b.effortUnit !== 'kmh') continue
+    const kmh = parseFloat(b.value || '0') || 0
+    const inc = b.inclinePct ?? 0
+    if (b.mode === 'interval' && b.reps && b.effortMin) {
+      const recKmh = parseFloat(b.recoveryValue || '0') || 0
+      for (let r = 0; r < b.reps; r++) {
+        seg(kmh, b.effortMin, inc)
+        if (b.recoveryMin && b.recoveryMin > 0) seg(recKmh > 0 ? recKmh : kmh * 0.6, b.recoveryMin, 0)
+      }
+    } else {
+      seg(kmh, b.durationMin, inc)
+    }
+  }
+  return pts
+}
+/** D+ total (m) d'une séance de tapis (pente × distance cumulée). */
+export function treadmillGainM(blocks: MBlock[]): number {
+  const p = treadmillProfile(blocks)
+  return p.length ? Math.round(p[p.length - 1].ele) : 0
+}
+
 /** Durée totale (min) de tous les blocs. */
 export function totalMin(blocks: MBlock[]): number {
   return toBars(blocks).reduce((s, b) => s + (b.min || 0), 0)

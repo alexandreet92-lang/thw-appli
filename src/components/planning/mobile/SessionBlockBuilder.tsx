@@ -8,9 +8,9 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical, IconMicrophone } from '@tabler/icons-react'
 import { getZone, type SportType, type RunningSub } from '@/app/planning/page'
 import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editorial'
-import { toBars, totalMin, totalDistance, newSingle, newInterval, recalc, barHeightPct, BAR_AXIS_TICKS, type MBlock, type EffortUnit } from './blocks'
+import { toBars, totalMin, totalDistance, newSingle, newInterval, recalc, barHeightPct, BAR_AXIS_TICKS, treadmillProfile, type MBlock, type EffortUnit } from './blocks'
 import { syncBaseBlock, setBaseWatts, enduranceZ2Watts, type BaseCtx } from './parcoursBase'
-import type { ProfilePortion, SequencedPortion } from '@/components/gpx/RouteElevationProfile'
+import RouteElevationProfile, { type ProfilePortion, type SequencedPortion } from '@/components/gpx/RouteElevationProfile'
 import { BlockCard } from './BlockCard'
 import { EnduranceLiveSummary } from './EnduranceLiveSummary'
 import { parseSessionText } from './parseSessionText'
@@ -43,6 +43,13 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
   const tot = totalMin(blocks)
   const dist = totalDistance(blocks)
   const isSwim = sport === 'swim'
+
+  // Tapis : profil ALTIMÉTRIQUE reconstruit depuis la pente des blocs (le tapis
+  // n'a pas de trace GPS). Affiché sous le profil d'intensité s'il y a du D+.
+  const isTreadmill = sport === 'run' && runningSub === 'treadmill'
+  const treadProfile = useMemo(() => (isTreadmill ? treadmillProfile(blocks) : []), [isTreadmill, blocks])
+  const treadGain = treadProfile.length ? Math.round(treadProfile[treadProfile.length - 1].ele) : 0
+  const treadKm = treadProfile.length ? treadProfile[treadProfile.length - 1].distKm : 0
 
   // ── Hauteur de barre : règle unique partagée avec la popover de survol ──
   // barHeightPct (blocks.ts) : Z1 20 % · Z2 40 % · Z3 60 % · Z4 80 % · Z5+ 100 %,
@@ -318,6 +325,16 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
           </div>
         </div>
       </div>
+
+      {/* Tapis : profil ALTIMÉTRIQUE (pente cumulée) sous le profil d'intensité */}
+      {isTreadmill && treadProfile.length > 1 && treadGain > 0 && (
+        <div style={{ border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', padding: '14px 14px 8px', marginBottom: 18 }}>
+          <p style={{ margin: '0 0 8px', fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--se-dim)' }}>
+            {tr('sed.elevationProfile')} <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontVariantNumeric: 'tabular-nums' }}>· +{treadGain} m D+</span>
+          </p>
+          <RouteElevationProfile profile={treadProfile} totalKm={treadKm} totalGainM={treadGain} height={92} staticMode />
+        </div>
+      )}
 
       {/* Fond de sortie : tout le parcours en endurance Z2, puissance éditable.
           Le changement se propage à TOUTES les portions Z2 (le fond est un bloc

@@ -7,14 +7,29 @@
 // ══════════════════════════════════════════════════════════════════
 
 export type ComposedSport = 'hybrid' | 'boxe'
-export type Measure = 'time' | 'distance' | 'jumps' | 'floors'
+export type Measure = 'time' | 'distance' | 'jumps' | 'floors' | 'calories'
 export type SpeedUnit = 'kmh' | 'minkm'
 export type PaceWattsUnit = 'pace' | 'watts'   // rameur / skierg
 export type RoundSupport = 'bag' | 'uppercut' | 'mitts' | 'sparring' | 'shadow'
 export type Punch = 'jab' | 'direct' | 'hook' | 'uppercut'
+export type PunchSide = 'left' | 'right'
 
 export const PUNCH_LABEL: Record<Punch, string> = {
   jab: 'Jab', direct: 'Direct', hook: 'Crochet', uppercut: 'Uppercut',
+}
+// Coups qui nécessitent de préciser le bras (gauche/droit) : le crochet et
+// l'uppercut. Le jab et le direct n'en ont pas besoin.
+export const SIDE_PUNCHES: Punch[] = ['hook', 'uppercut']
+export function needsSide(p: Punch): boolean { return SIDE_PUNCHES.includes(p) }
+/** Suffixe de bras selon la langue : FR « G » / « D », EN « L » / « R ». */
+export function sideSuffix(side: PunchSide, lang: string): string {
+  if (lang === 'fr') return side === 'left' ? 'G' : 'D'
+  return side === 'left' ? 'L' : 'R'
+}
+/** Libellé d'un coup, suffixé du bras pour crochet/uppercut (« Crochet G »). */
+export function punchLabel(p: Punch, side: PunchSide | undefined, lang = 'fr'): string {
+  const base = PUNCH_LABEL[p]
+  return side && needsSide(p) ? `${base} ${sideSuffix(side, lang)}` : base
 }
 export const ROUND_SUPPORT_LABEL: Record<RoundSupport, string> = {
   bag: 'Sac classique', uppercut: 'Sac uppercut', mitts: 'Pâte d’ours',
@@ -33,6 +48,7 @@ export interface ComposedMove {
   distanceM?: number
   jumps?: number
   floors?: number
+  calories?: number       // assault bike : mesure en kcal
   // champs cardio
   watts?: number
   hr?: number             // FC
@@ -74,7 +90,7 @@ export interface MoveDef {
 
 export const HYBRID_MOVES: MoveDef[] = [
   { kind: 'bike',    label: 'Bike',            sport: 'hybrid', fields: { watts: true, hr: true }, measures: ['time'], defaultMeasure: 'time' },
-  { kind: 'assault', label: 'Assault bike',    sport: 'hybrid', fields: { watts: true, hr: true }, measures: ['time', 'distance'], defaultMeasure: 'time' },
+  { kind: 'assault', label: 'Assault bike',    sport: 'hybrid', fields: { watts: true, hr: true }, measures: ['time', 'distance', 'calories'], defaultMeasure: 'time' },
   { kind: 'ellip',   label: 'Elliptique bike', sport: 'hybrid', fields: { hr: true },             measures: ['time'], defaultMeasure: 'time' },
   { kind: 'climber', label: 'Climber step',    sport: 'hybrid', fields: { speedLevel: true },     measures: ['floors', 'time'], defaultMeasure: 'floors' },
   { kind: 'rower',   label: 'Rameur',          sport: 'hybrid', fields: { paceWatts: true, hr: true }, measures: ['time', 'distance'], defaultMeasure: 'time' },

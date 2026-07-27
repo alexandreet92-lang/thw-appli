@@ -434,9 +434,10 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
     if (access?.allowed) void loadRecos(false)
   }, [access?.allowed, loadRecos])
 
-  // Signaux santé : calculés à l'entrée dans un système (garde-fou visible).
+  // Signaux santé : calculés à l'accueil ET dans un système (garde-fou visible
+  // + suggestion proactive). Recalculé quand on change de vue / de système.
   useEffect(() => {
-    if (view !== 'canvas') return
+    if (!access?.allowed) return
     let cancelled = false
     void (async () => {
       try {
@@ -448,7 +449,16 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
       } catch { if (!cancelled) setHealthAlert(null) }
     })()
     return () => { cancelled = true }
-  }, [view, systemId])
+  }, [view, systemId, access?.allowed])
+
+  // Détection proactive : quand tes données changent (séances, blessures…),
+  // on invalide le cache des recos → elles se régénèrent à la prochaine visite.
+  useEffect(() => {
+    const invalidate = () => { try { localStorage.removeItem('thw_studio_recos') } catch { /* ignore */ } }
+    const evts = ['thw:sessions-changed', 'thw:injury-changed', 'thw:injuries-changed', 'thw:recovery-changed', 'thw:race-changed']
+    evts.forEach(e => window.addEventListener(e, invalidate))
+    return () => evts.forEach(e => window.removeEventListener(e, invalidate))
+  }, [])
 
   const sel = graph.nodes.find(n => n.id === selId) ?? null
   const trigger = graph.nodes.find(n => n.kind === 'trigger') ?? null
@@ -2272,6 +2282,23 @@ export default function StudioView({ onClose }: { onClose: () => void }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                 {homeErr && (
                   <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 12.5, fontFamily: 'DM Sans,sans-serif' }}>{homeErr}</div>
+                )}
+
+                {/* ── Suggestion proactive : signal santé détecté → système dédié ── */}
+                {activeFolder === null && !homeLoading && healthAlert && !systems.some(s => /bless|retour|récup|recup|rééduc|reeduc|prudent/.test(`${s.name} ${s.graph?.objective?.text ?? ''}`.toLowerCase())) && (
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: 12, padding: '13px 16px', borderRadius: 16, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', marginBottom: 18 }}>
+                    <span style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(245,158,11,0.15)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Sans,sans-serif' }}>On dirait qu’il faut lever le pied</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 2, fontFamily: 'DM Sans,sans-serif', lineHeight: 1.45 }}>Détecté : {healthAlert}. Veux-tu un système qui gère ça — retour prudent et charge adaptée à ta forme réelle&nbsp;?</div>
+                    </div>
+                    <button onClick={() => void startFirstSystem(`Gérer ma situation actuelle (${healthAlert}) : retour prudent, prévention et charge adaptée à ma forme réelle`)}
+                      style={{ padding: '10px 16px', borderRadius: 11, border: 'none', background: '#F59E0B', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                      Créer ce système
+                    </button>
+                  </div>
                 )}
 
                 {/* ── Onboarding : première fois, aucun système → on démarre ── */}

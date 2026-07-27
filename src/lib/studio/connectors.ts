@@ -172,7 +172,7 @@ export async function saveReportNotification(title: string, body: string): Promi
     type: 'studio.report',
     title,
     body: body.length > 2000 ? body.slice(0, 2000) + '…' : body,
-    link: '/',
+    link: '/?studio=1',
   })
   if (error) throw new Error(`Écriture Notification : ${error.message}`)
 }

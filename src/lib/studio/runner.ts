@@ -21,6 +21,7 @@ import {
   readSource, savePlanningSessions, replacePlanningSessions, describeDrafts, extractJson,
   readExistingAiSessions, describePlanningDiff,
   saveRaceEvent, describeRace, saveReportNotification,
+  normalizeNutritionPlan, saveNutritionPlan, describeNutritionPlan,
   type PlanningSessionDraft, type RaceDraft,
 } from './connectors'
 
@@ -239,6 +240,24 @@ export async function runGraph(graph: StudioGraph, cb: RunCallbacks): Promise<Ru
             if (!ok) throw new Error('Écriture dans le Calendrier refusée par l’utilisateur')
             await saveRaceEvent(draft)
             doneMsg = `« ${draft.name} » ajoutée à ton Calendrier (${draft.start_date}).\n\n[Ouvrir le calendrier](/calendar)`
+
+          } else if (actionKey === 'nutrition_save') {
+            const prompt =
+              `Tu convertis un plan nutritionnel en JSON STRICT pour l'app.\n` +
+              `Réponds UNIQUEMENT avec un objet JSON (aucun texte autour) :\n` +
+              `{"description":"…","calories_low":2000,"calories_mid":2300,"calories_hard":2700,` +
+              `"macros_low":{"proteines":150,"glucides":180,"lipides":70},"macros_mid":{…},"macros_hard":{…},` +
+              `"jours":[{"date":"Jour 1","type_jour":"mid","kcal":2300,"proteines":150,"glucides":220,"lipides":75,` +
+              `"repas":{"option_A":{"petit_dejeuner":"…","collation_matin":"…","dejeuner":"…","collation_apres_midi":"…","diner":"…","collation_soir":"…"},"option_B":{…}}}]}\n` +
+              `Donne 3 jours (un low, un mid, un hard). Repas = descriptions courtes en texte. Chiffres réalistes.\n\n--- Plan à convertir ---\n${upstream}`
+            const raw = await callAgent({ ...n, model: n.model ?? 'athena' }, prompt, t => cb.onChunk(n.id, t), cb.signal, cb.runId)
+            const plan = normalizeNutritionPlan(extractJson(raw))
+            const summary = describeNutritionPlan(plan)
+            cb.onStatus(n.id, 'waiting')
+            const ok = await cb.requestApproval(n, `Ce plan nutrition va DEVENIR ton plan actif (l'ancien sera archivé) :\n\n${summary}`)
+            if (!ok) throw new Error('Écriture du plan nutrition refusée par l’utilisateur')
+            await saveNutritionPlan(plan)
+            doneMsg = `Plan nutrition enregistré et activé.\n\n${summary}\n\n[Ouvrir la nutrition](/nutrition)`
 
           } else {
             // notify_report : pas de conversion IA — le contenu amont EST le rapport.

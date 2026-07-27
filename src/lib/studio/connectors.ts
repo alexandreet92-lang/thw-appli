@@ -163,6 +163,105 @@ export async function saveRaceEvent(d: RaceDraft): Promise<void> {
   if (error) throw new Error(`Écriture Calendrier : ${error.message}`)
 }
 
+// ── ÉCRITURE : Enregistrer un plan nutrition (nutrition_plans) ─
+// Le plan actif de l'app est un objet RICHE (plan_data JSONB) : calories par
+// type de jour, macros, et des jours détaillés. On NORMALISE défensivement la
+// sortie de l'IA pour ne JAMAIS insérer une structure cassée (la page Nutrition
+// lit ce format). Les repas sont acceptés en texte (format compatible).
+type MacroSet = { proteines: number; glucides: number; lipides: number }
+type MealSet = { petit_dejeuner: string; collation_matin: string; dejeuner: string; collation_apres_midi: string; diner: string; collation_soir: string }
+interface PlanDay {
+  date: string
+  type_jour: 'low' | 'mid' | 'hard'
+  kcal: number
+  proteines: number
+  glucides: number
+  lipides: number
+  repas: { option_A: MealSet; option_B: MealSet }
+}
+export interface NutritionPlanData {
+  description: string
+  calories_low: number
+  calories_mid: number
+  calories_hard: number
+  macros_low: MacroSet
+  macros_mid: MacroSet
+  macros_hard: MacroSet
+  jours: PlanDay[]
+}
+
+const num = (v: unknown, d = 0): number => { const n = Number(v); return Number.isFinite(n) ? Math.round(n) : d }
+const str = (v: unknown): string => (v == null ? '' : String(v)).slice(0, 400)
+const macro = (v: unknown): MacroSet => {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+  return { proteines: num(o.proteines ?? o.protein ?? o.prot), glucides: num(o.glucides ?? o.carbs ?? o.gluc), lipides: num(o.lipides ?? o.fat ?? o.lip) }
+}
+const mealSet = (v: unknown): MealSet => {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+  const pick = (...keys: string[]): string => { for (const k of keys) if (o[k] != null) { const val = o[k]; return typeof val === 'object' ? str((val as Record<string, unknown>).description) : str(val) } return '' }
+  return {
+    petit_dejeuner:       pick('petit_dejeuner', 'petit-dejeuner', 'breakfast'),
+    collation_matin:      pick('collation_matin', 'snack_matin', 'morning_snack'),
+    dejeuner:             pick('dejeuner', 'lunch'),
+    collation_apres_midi: pick('collation_apres_midi', 'snack_aprem', 'afternoon_snack'),
+    diner:                pick('diner', 'dinner'),
+    collation_soir:       pick('collation_soir', 'snack_soir', 'evening_snack'),
+  }
+}
+const TYPES: PlanDay['type_jour'][] = ['low', 'mid', 'hard']
+
+// Transforme une sortie IA quelconque en NutritionPlanData toujours valide.
+export function normalizeNutritionPlan(raw: unknown): NutritionPlanData {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const cMid = num(o.calories_mid ?? o.calories_target ?? o.kcal, 2200)
+  const cLow = num(o.calories_low, Math.round(cMid * 0.9))
+  const cHard = num(o.calories_hard, Math.round(cMid * 1.15))
+  const mMid = macro(o.macros_mid ?? o.macros ?? o)
+  if (!mMid.proteines && !mMid.glucides && !mMid.lipides) { mMid.proteines = num(o.protein_g); mMid.glucides = num(o.carbs_g); mMid.lipides = num(o.fat_g) }
+  const rawDays = Array.isArray(o.jours) ? o.jours : []
+  let jours: PlanDay[] = rawDays.slice(0, 7).map((d, i) => {
+    const dd = (d && typeof d === 'object' ? d : {}) as Record<string, unknown>
+    const tj = TYPES.includes(dd.type_jour as PlanDay['type_jour']) ? dd.type_jour as PlanDay['type_jour'] : 'mid'
+    const rep = (dd.repas && typeof dd.repas === 'object' ? dd.repas : {}) as Record<string, unknown>
+    return {
+      date: str(dd.date) || `Jour ${i + 1}`,
+      type_jour: tj,
+      kcal: num(dd.kcal, tj === 'low' ? cLow : tj === 'hard' ? cHard : cMid),
+      proteines: num(dd.proteines, mMid.proteines), glucides: num(dd.glucides, mMid.glucides), lipides: num(dd.lipides, mMid.lipides),
+      repas: { option_A: mealSet(rep.option_A ?? rep.A ?? rep), option_B: mealSet(rep.option_B ?? rep.B) },
+    }
+  })
+  if (!jours.length) {
+    // Filet : au moins un jour « mid » pour que la page ait quelque chose à afficher.
+    jours = [{ date: 'Jour type', type_jour: 'mid', kcal: cMid, proteines: mMid.proteines, glucides: mMid.glucides, lipides: mMid.lipides,
+      repas: { option_A: mealSet(null), option_B: mealSet(null) } }]
+  }
+  return {
+    description: str(o.description) || 'Plan nutrition généré par le Studio',
+    calories_low: cLow, calories_mid: cMid, calories_hard: cHard,
+    macros_low: macro(o.macros_low) ?? mMid, macros_mid: mMid, macros_hard: macro(o.macros_hard) ?? mMid,
+    jours,
+  }
+}
+
+export function describeNutritionPlan(p: NutritionPlanData): string {
+  const m = p.macros_mid
+  return `**${p.description}**\n\n` +
+    `• Calories : ${p.calories_low} (repos) · ${p.calories_mid} (moyen) · ${p.calories_hard} (dur) kcal\n` +
+    `• Macros (jour moyen) : ${m.proteines}g protéines · ${m.glucides}g glucides · ${m.lipides}g lipides\n` +
+    `• ${p.jours.length} jour(s) détaillé(s), 2 options de repas chacun`
+}
+
+// Désactive le plan actif puis insère le nouveau (comme la page Nutrition).
+export async function saveNutritionPlan(p: NutritionPlanData): Promise<void> {
+  const sb = createClient()
+  const uid = await getUserId()
+  await sb.from('nutrition_plans').update({ actif: false }).eq('user_id', uid).eq('actif', true)
+  const { error } = await sb.from('nutrition_plans').insert({ user_id: uid, type: 'manuel', plan_data: p, actif: true })
+  if (error) throw new Error(`Écriture Nutrition : ${error.message}`)
+  try { window.dispatchEvent(new CustomEvent('thw:nutrition-changed')) } catch { /* ignore */ }
+}
+
 // ── ÉCRITURE : Envoyer un rapport en notification ─────────────
 export async function saveReportNotification(title: string, body: string): Promise<void> {
   const sb = createClient()

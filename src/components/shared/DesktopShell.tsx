@@ -25,6 +25,7 @@ const SCROLL: React.CSSProperties['WebkitOverflowScrolling'] = 'touch'
 export function DesktopShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isRecord = pathname === '/record'
+  const isCoach = pathname.startsWith('/coach')
   const { t } = useI18n()
   const { profile } = useProfile()
   const [railOpen, setRailOpen] = useState(false)   // sidebar principale : survol → ouvre
@@ -131,11 +132,11 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         {/* Scrim léger en haut */}
         <div aria-hidden style={{ position: 'fixed', top: 0, left: RAIL, right: 0, height: 62, zIndex: 50, pointerEvents: 'none', background: 'linear-gradient(var(--bg), transparent)' }} />
 
-        {/* Démarrer — accès rapide à l'enregistrement d'une séance, juste à
-            gauche de la cloche (CTA plein, se distingue des fabs en verre). */}
+        {/* Démarrer — accès rapide à l'enregistrement d'une séance (décalé à
+            gauche pour laisser place au bouton de bascule d'interface). */}
         <Link href="/record" aria-label="Démarrer une séance"
           style={{
-            position: 'fixed', top: 12, right: 108, height: 38, zIndex: 130,
+            position: 'fixed', top: 12, right: isRecord ? 108 : 154, height: 38, zIndex: 130,
             display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px', borderRadius: 12,
             background: 'var(--primary)', color: 'var(--on-primary)', textDecoration: 'none',
             boxShadow: 'var(--shadow-card)', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
@@ -143,6 +144,18 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
           Démarrer
         </Link>
+
+        {/* Bascule d'interface Athlète ⇄ Coach — entre Démarrer et la cloche. */}
+        {!isRecord && (
+          <Link href={isCoach ? '/' : '/coach'} aria-label={isCoach ? 'Revenir à mon appli' : 'Espace coach'}
+            title={isCoach ? 'Revenir à mon appli' : 'Passer en espace coach'}
+            style={{ ...fab, right: 108, left: 'auto', textDecoration: 'none',
+              background: isCoach ? '#3B92D4' : 'var(--glass-bg)', border: isCoach ? '1px solid #3B92D4' : '1px solid var(--glass-border)' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isCoach ? '#fff' : 'var(--text)'} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </Link>
+        )}
 
         {/* Cloche + IA masquées sur /record (immersion carte) : le coin haut-droite
             est réservé au sélecteur de fond de carte + Démarrer, sinon collision. */}

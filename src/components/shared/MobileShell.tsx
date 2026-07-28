@@ -4,6 +4,7 @@
 // shuriken IA). Gestes au doigt (drag + snap) pilotés en refs (transform, 60 fps).
 // MOBILE UNIQUEMENT — le desktop n'est pas concerné (rendu via layout, branche md:hidden).
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useProfile } from '@/hooks/useProfile'
@@ -160,6 +161,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   // bouton IA ni notifications — seulement le hamburger. Boutons flottants
   // pleins (blanc le jour / noir la nuit) via les tokens --bg / --text.
   const isRecord = pathname === '/record'
+  const isCoach = pathname.startsWith('/coach')
 
   const hybridHeader = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 14px', flexShrink: 0 }}>
@@ -211,6 +213,16 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           <button aria-label={t('shared.menu')} onClick={() => settle(!open)} style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
             {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
           </button>
+          {/* Bascule d'interface Athlète ⇄ Coach — juste à côté du menu. */}
+          {!isRecord && (
+            <Link href={isCoach ? '/' : '/coach'} aria-label={isCoach ? 'Revenir à mon appli' : 'Espace coach'} onClick={() => setOpen(false)}
+              style={{ ...fab, left: 58, borderRadius: 12, textDecoration: 'none',
+                background: isCoach ? '#3B92D4' : (fab.background as string), border: isCoach ? '1px solid #3B92D4' : (fab.border as string) }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={isCoach ? '#fff' : 'var(--text)'} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </Link>
+          )}
           {/* IA + notifications masqués sur /record (immersion carte). */}
           {!isRecord && <>
           {/* Cloche notifications — ouvre une surpage centrée (sans quitter la page) */}

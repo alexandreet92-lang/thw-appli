@@ -43,6 +43,7 @@ import { WeeklyGoals } from '@/components/activity/WeeklyGoals'
 import { MonthlySummary } from '@/components/activity/MonthlySummary'
 import { WeeklySummary } from '@/components/activity/WeeklySummary'
 import { IntervalSplitsTable } from '@/components/activity/IntervalSplitsTable'
+import { TwelveWeekVolume } from '@/components/activity/TwelveWeekVolume'
 import { ActivityMedia } from '@/components/activity/ActivityMedia'
 import { ActivityMediaHero } from '@/components/activity/ActivityMediaHero'
 import { TrainingRaceSelector } from '@/components/activity/TrainingRaceSelector'
@@ -5683,6 +5684,9 @@ function SectionDonnees({ activities, zones, profile }: {
           {/* ── Récap hebdo (lundi + mardi) puis mensuel (3 premiers jours du mois) ── */}
           <WeeklySummary activities={activities} />
           <MonthlySummary activities={activities} />
+
+          {/* ── Volume sur 12 semaines (par sport, scrub à la souris/doigt) ── */}
+          <TwelveWeekVolume activities={activities} />
 
           {/* ── Objectifs hebdomadaires + série ── */}
           <WeeklyGoals activities={activities} />

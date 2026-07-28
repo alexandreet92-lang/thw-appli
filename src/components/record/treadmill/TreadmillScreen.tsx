@@ -49,7 +49,7 @@ function freePlan(): TreadmillPlan {
 export default function TreadmillScreen({ onExit, onFinished }: Props) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
-  const { plan: loadedPlan, loading } = useTreadmillPlan(true)
+  const { plan: loadedPlan, loading, options, selectedId, select } = useTreadmillPlan(true)
   const [phase, setPhase] = useState<'summary' | 'live' | 'done'>('summary')
   const [running, setRunning] = useState(false)
   const [startedAt] = useState(() => new Date().toISOString())
@@ -171,9 +171,51 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
       </header>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px 8px' }}>
-        {isFree && (
+        {/* ── Mes séances planifiées (semaine courante + suivante) : un clic charge la séance ── */}
+        {options.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '2px 2px 8px' }}>
+              Mes séances planifiées
+            </div>
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 }}>
+              {/* Course libre */}
+              <button onClick={() => select(null)}
+                style={{ flexShrink: 0, textAlign: 'left', padding: '10px 14px', borderRadius: 14, cursor: 'pointer', fontFamily: FB,
+                  border: selectedId == null ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                  background: selectedId == null ? 'color-mix(in srgb, var(--primary) 8%, var(--bg-card))' : 'var(--bg-card)' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: selectedId == null ? 'var(--primary)' : 'var(--text)' }}>Course libre</div>
+                <div style={{ fontSize: 11, color: 'var(--text-mid)', marginTop: 2 }}>Vitesse et pente à la volée</div>
+              </button>
+              {options.map(o => {
+                const on = selectedId === o.id
+                return (
+                  <button key={o.id} onClick={() => select(o.id)}
+                    style={{ flexShrink: 0, textAlign: 'left', padding: '10px 14px', borderRadius: 14, cursor: 'pointer', fontFamily: FB, maxWidth: 220,
+                      border: on ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                      background: on ? 'color-mix(in srgb, var(--primary) 8%, var(--bg-card))' : 'var(--bg-card)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: on ? 'var(--primary)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.title}</span>
+                      {o.isTreadmill && (
+                        <span style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 14%, transparent)', borderRadius: 5, padding: '2px 5px' }}>Tapis</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-mid)', marginTop: 2, textTransform: 'capitalize' }}>
+                      {o.isToday ? "Aujourd'hui" : o.dayLabel}{o.durationMin ? ` · ${o.durationMin} min` : ''}{!o.hasBlocks ? ' · sans blocs' : ''}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+        {isFree && options.length === 0 && !loading && (
           <div style={{ fontSize: 13, color: 'var(--text-mid)', background: 'var(--bg-card2)', borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
-            Aucune séance tapis planifiée aujourd'hui — mode libre. Ajuste vitesse et pente à la volée.
+            Aucune séance course planifiée ces deux semaines — mode libre. Ajuste vitesse et pente à la volée.
+          </div>
+        )}
+        {isFree && selectedId != null && (
+          <div style={{ fontSize: 13, color: 'var(--text-mid)', background: 'var(--bg-card2)', borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
+            Cette séance n'a pas de blocs détaillés — elle se lance en mode libre.
           </div>
         )}
         {plan.steps.map((s, i) => (

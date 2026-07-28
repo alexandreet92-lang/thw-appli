@@ -42,6 +42,7 @@ import { ActivityCard, type ActivityCardData } from '@/components/activity/Activ
 import { WeeklyGoals } from '@/components/activity/WeeklyGoals'
 import { MonthlySummary } from '@/components/activity/MonthlySummary'
 import { WeeklySummary } from '@/components/activity/WeeklySummary'
+import { IntervalSplitsTable } from '@/components/activity/IntervalSplitsTable'
 import { ActivityMedia } from '@/components/activity/ActivityMedia'
 import { ActivityMediaHero } from '@/components/activity/ActivityMediaHero'
 import { TrainingRaceSelector } from '@/components/activity/TrainingRaceSelector'
@@ -5255,22 +5256,41 @@ function WeekDetailModal({ week, activities, zones, onClose }: {
     )
   }
 
-  // ── Desktop → sur-page coulissante bas→haut ────────────────
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: `rgba(0,0,0,${open ? 0.5 : 0})`, zIndex: 600,
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-      transition: 'background .32s ease', backdropFilter: open ? 'blur(3px)' : 'none' }}
-      onClick={requestClose}>
-      <div style={{ background: T.surface, borderRadius: '22px 22px 0 0', width: '100%', maxWidth: '100%',
-        maxHeight: '93vh', overflowY: 'auto', boxShadow: '0 -10px 50px rgba(0,0,0,0.30)', padding: '12px 28px 28px',
-        transform: open ? 'translateY(0)' : 'translateY(100%)',
-        transition: 'transform .34s cubic-bezier(.2,.8,.2,1)' }}
-        onClick={e => e.stopPropagation()}>
-        <div style={{ width: 40, height: 4, borderRadius: 4, background: 'var(--border-mid)', margin: '0 auto 16px' }} />
+  // ── Desktop → sur-page coulissante standard (même style que SelectionSheet).
+  // IMPORTANT : rendue via createPortal(document.body) — `position: fixed` se
+  // cale sinon sur l'ancêtre transformé (PageTransition) et la sur-page
+  // apparaît décalée/tronquée.
+  return createPortal(
+    <>
+      <div
+        onClick={requestClose}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 99990,
+          background: `rgba(0,0,0,${open ? 0.4 : 0})`,
+          backdropFilter: open ? 'blur(4px)' : 'none',
+          WebkitBackdropFilter: open ? 'blur(4px)' : 'none',
+          transition: 'background .32s ease',
+        }}
+      />
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 99991,
+          background: T.surface, borderRadius: '16px 16px 0 0',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+          maxHeight: '90vh', overflowY: 'auto', padding: '0 28px 28px',
+          transform: open ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform .34s cubic-bezier(.2,.8,.2,1)',
+        }}>
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 12px', cursor: 'pointer' }} onClick={requestClose}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border-mid)' }} />
+        </div>
         {headerEl}
         {bodyEl}
       </div>
-    </div>
+    </>,
+    document.body,
   )
 }
 
@@ -6634,9 +6654,9 @@ function FeelingDifficultyCard({ feeling, difficulty, onEdit }: {
 // ─────────────────────────────────────────────────────────────
 // ACTIVITY DETAIL
 // ─────────────────────────────────────────────────────────────
-function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
+function ActivityDetail({ a, onClose, closing = false, zones, profile, allActivities = [] }: {
   a: Activity; onClose: () => void; closing?: boolean
-  zones: TrainingZoneRow[]; profile: Profile
+  zones: TrainingZoneRow[]; profile: Profile; allActivities?: Activity[]
 }) {
   const { t } = useI18n()
   const width    = useWindowWidth()
@@ -6676,6 +6696,35 @@ function ActivityDetail({ a, onClose, closing = false, zones, profile }: {
   const [hoveredLapBar,        setHoveredLapBar]        = useState<number | null>(null)
   const globalAI  = useAIAnalysis()
   const decoupAI  = useAIAnalysis()
+  const splitsAI  = useAIAnalysis()
+
+  // ── Historique EF des sorties comparables (90 j, même sport, durée ±30 %)
+  // → passé à l'IA du comparatif par intervalles pour situer la tenue de
+  // l'effort par rapport aux habitudes de l'athlète.
+  const splitsHistoryEF = useMemo(() => {
+    const isB = ['bike','virtual_bike'].includes(a.sport_type)
+    const isR = ['run','trail_run'].includes(a.sport_type)
+    if (!isB && !isR) return []
+    const dur = a.moving_time_s ?? 0
+    if (!dur) return []
+    const cutoff = Date.now() - 90 * 86400_000
+    const targetSport = normalizeSport(a.sport_type)
+    return allActivities
+      .filter(x => x.id !== a.id
+        && normalizeSport(x.sport_type) === targetSport
+        && x.avg_hr != null && Number(x.avg_hr) > 0
+        && x.moving_time_s != null && Math.abs(Number(x.moving_time_s) - dur) / dur <= 0.3
+        && new Date(x.started_at).getTime() >= cutoff)
+      .map(x => {
+        const ef = isB
+          ? (x.avg_watts != null ? Number(x.avg_watts) / Number(x.avg_hr) : null)
+          : (x.avg_speed_ms != null ? Number(x.avg_speed_ms) / Number(x.avg_hr) : null)
+        return ef != null && isFinite(ef) && ef > 0 ? { date: String(x.started_at).slice(0, 10), ef } : null
+      })
+      .filter((v): v is { date: string; ef: number } => v != null)
+      .sort((p, q) => p.date.localeCompare(q.date))
+      .slice(-8)
+  }, [allActivities, a])
 
   // ── FIX 1 : masque le header app sur mobile ──────────────────
   useEffect(() => {
@@ -7807,6 +7856,17 @@ conseil pour la prochaine séance similaire.`
 
             {/* ZONES (jauges Z1-Z5 + toggle) — supprimée : donuts « Répartitions » conservés */}
 
+            {/* COMPARATIF PAR INTERVALLES (vélo & course uniquement) */}
+            {(isBike || isRun) && a.streams && (
+              <IntervalSplitsTable
+                streams={a.streams}
+                sport={isBike ? 'bike' : 'run'}
+                activityLabel={a.title ?? sportLabel(a.sport_type, t)}
+                historyEF={splitsHistoryEF}
+                ai={splitsAI}
+              />
+            )}
+
             {/* GRAPHIQUES AVANCÉS */}
             {a.streams && (() => {
               const s = a.streams
@@ -8536,6 +8596,17 @@ conseil pour la prochaine séance similaire.`
             </div>
           )
         })()}
+
+        {/* ── COMPARATIF PAR INTERVALLES (vélo & course uniquement) ── */}
+        {(isBike || isRun) && a.streams && (
+          <IntervalSplitsTable
+            streams={a.streams}
+            sport={isBike ? 'bike' : 'run'}
+            activityLabel={a.title ?? sportLabel(a.sport_type, t)}
+            historyEF={splitsHistoryEF}
+            ai={splitsAI}
+          />
+        )}
 
         {/* ── ANALYSE AUTOMATIQUE ── */}
         {(() => {
@@ -9304,7 +9375,7 @@ function SectionAnalyse({ activities, zones, profile, deepLinkId, highlightId, o
             <span style={{ fontSize: 16 }}>←</span> {t('activities.backToList')}
           </button>
         )}
-        <ActivityDetail a={selected} onClose={closeDetail} closing={detailClosing} zones={zones} profile={profile} />
+        <ActivityDetail a={selected} onClose={closeDetail} closing={detailClosing} zones={zones} profile={profile} allActivities={activities} />
       </div>
     )
   }

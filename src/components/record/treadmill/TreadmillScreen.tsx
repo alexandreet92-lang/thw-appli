@@ -50,9 +50,17 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
   const { t } = useI18n()
   const [mounted, setMounted] = useState(false)
   const { plan: loadedPlan, loading, options, selectedId, select } = useTreadmillPlan(true)
-  const [phase, setPhase] = useState<'summary' | 'live' | 'done'>('summary')
+  const [phase, setPhase] = useState<'summary' | 'live' | 'review' | 'done'>('summary')
   const [running, setRunning] = useState(false)
   const [startedAt] = useState(() => new Date().toISOString())
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  // Desktop large : double fenêtre (live + données côte à côte)
+  const [wide, setWide] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 900px)')
+    const f = () => setWide(mq.matches); f(); mq.addEventListener('change', f)
+    return () => mq.removeEventListener('change', f)
+  }, [])
 
   // Plan effectif : celui du planning, sinon libre.
   const plan = useMemo(() => loadedPlan ?? freePlan(), [loadedPlan])
@@ -84,17 +92,41 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
     }
   }, [stepIdx, step.targetKmh, step.inclinePct])
 
-  // Distance parcourue (intègre la vitesse réelle chaque seconde).
+  // ── TRACE RÉELLE (1 échantillon/s) : c'est CE QUI A ÉTÉ FAIT qui compte,
+  // pas le plan — vitesse et pente peuvent être ajustées en direct.
+  //  • distRef : distance réelle intégrée
+  //  • elevRef : D+ réel (vitesse × pente)
+  //  • adjRef  : distance équivalente plat (facteur Minetti) → allure VAP
+  //  • segsRef : segments réels {durée, vitesse, pente} → streams à l'enregistrement
+  //  • altSeriesRef : série d'altitude cumulée → profil altimétrique live
   const distRef = useRef(0)
+  const elevRef = useRef(0)
+  const adjRef = useRef(0)
+  const segsRef = useRef<TreadInterval[]>([])
+  const altSeriesRef = useRef<number[]>([0])
   const [distM, setDistM] = useState(0)
+  const [elevM, setElevM] = useState(0)
+  const [adjM, setAdjM] = useState(0)
   useEffect(() => {
     if (!running) return
     const id = setInterval(() => {
-      distRef.current += (speedKmh / 3.6)
+      const v = speedKmh / 3.6                       // m/s
+      const g = Math.max(0, incline) / 100
+      distRef.current += v
+      elevRef.current += v * g
+      const factor = 1 + g * (0.033 * g * 1000 + 0.133)   // Minetti (comme le GAP)
+      adjRef.current += v * Math.max(0.5, factor)
+      altSeriesRef.current.push(elevRef.current)
+      // Segments réels : fusionne avec le dernier si vitesse & pente inchangées.
+      const last = segsRef.current[segsRef.current.length - 1]
+      if (last && last.speedKmh === speedKmh && last.inclinePct === incline) last.durationS += 1
+      else segsRef.current.push({ durationS: 1, speedKmh, inclinePct: incline })
       setDistM(distRef.current)
+      setElevM(elevRef.current)
+      setAdjM(adjRef.current)
     }, 1000)
     return () => clearInterval(id)
-  }, [running, speedKmh])
+  }, [running, speedKmh, incline])
 
   const bg = zoneBg(step.zone)
   const ink = zoneInk(step.zone)
@@ -113,17 +145,20 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
         const distanceM = Math.round(distRef.current)
         const start = new Date(Date.now() - durationSec * 1000).toISOString()
         const avgSpeedMs = durationSec > 0 ? distanceM / durationSec : 0
-        // Profil altimétrique + streams à partir des blocs planifiés (vitesse +
-        // pente). Montée monotone : le tapis ne descend pas.
-        const intervals: TreadInterval[] = plan.steps.map(st => ({
-          durationS: st.durationS,
-          speedKmh: st.targetKmh ?? (st.targetPaceSecPerKm ? 3600 / st.targetPaceSecPerKm : 0),
-          inclinePct: st.inclinePct,
-        }))
+        // Profil altimétrique + streams à partir de la TRACE RÉELLE (vitesse et
+        // pente telles qu'ajustées pendant la séance), pas du plan initial.
+        // Repli sur le plan si la trace est vide (séance sans échantillons).
+        const intervals: TreadInterval[] = segsRef.current.length > 0
+          ? segsRef.current
+          : plan.steps.map(st => ({
+              durationS: st.durationS,
+              speedKmh: st.targetKmh ?? (st.targetPaceSecPerKm ? 3600 / st.targetPaceSecPerKm : 0),
+              inclinePct: st.inclinePct,
+            }))
         const streams = buildTreadmillStreams(intervals)
         // Tours = intervalles de la séance → même analyse que le vélo/course GPS.
         const laps = streams ? buildTreadmillLaps(plan.steps, streams.time, streams.heartrate) : []
-        const elevationM = intervals.reduce((s2, iv) => s2 + (iv.speedKmh / 3.6) * iv.durationS * Math.max(0, iv.inclinePct) / 100, 0)
+        const elevationM = elevRef.current
         await sb.from('workout_sessions').insert({
           user_id: user.id, sport: 'running',
           started_at: start, ended_at: new Date().toISOString(),
@@ -253,6 +288,8 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
     ? `${step.targetKmh.toFixed(1).replace('.', ',')} km/h`
     : (step.targetPaceSecPerKm != null ? `${fmtPaceSec(step.targetPaceSecPerKm)}/km` : '—')
   const curPaceSec = speedKmh > 0 ? kmhToPaceSec(speedKmh) : null
+  const avgPaceSec = distM > 50 ? seconds / (distM / 1000) : null
+  const vapPaceSec = adjM > 50 ? seconds / (adjM / 1000) : null
 
   const Stepper = ({ label, value, unit, onMinus, onPlus }: { label: string; value: string; unit: string; onMinus: () => void; onPlus: () => void }) => (
     <div style={{ flex: 1, textAlign: 'center' }}>
@@ -268,13 +305,14 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
     </div>
   )
 
-  const live = (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: bg, color: ink, transition: 'background 0.4s ease', fontFamily: FB, paddingTop: 'calc(env(safe-area-inset-top) + 10px)' }}>
-      {/* Top bar */}
+  // ── Écran 1 — cadran live (fond zone) ───────────────────────
+  const liveMain = (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: bg, color: ink, transition: 'background 0.4s ease', fontFamily: FB, paddingTop: 'calc(env(safe-area-inset-top) + 10px)' }}>
+      {/* Top bar : durée + bloc + distance — bien visibles */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0 }}>
-        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.06em', fontVariantNumeric: 'tabular-nums' }}>{formatSeconds(seconds)}</span>
+        <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: '0.02em', fontVariantNumeric: 'tabular-nums' }}>{formatSeconds(seconds)}</span>
         <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', opacity: 0.85 }}>{kindLabel(step.kind)}{step.of ? ` ${step.rep}/${step.of}` : ''}</span>
-        <span style={{ fontSize: 13, fontWeight: 800, opacity: 0.85 }}>{(distM / 1000).toFixed(2).replace('.', ',')} km</span>
+        <span style={{ fontSize: 17, fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>{(distM / 1000).toFixed(2).replace('.', ',')} km</span>
       </div>
 
       {/* Barre de progression des intervalles */}
@@ -287,7 +325,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
       {/* Cœur : décompte + cible */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 20px' }}>
         <div style={{ fontSize: 15, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.03em', opacity: 0.9, textAlign: 'center' }}>{step.name}</div>
-        <div style={{ fontSize: 'min(30vw, 128px)', fontWeight: 900, lineHeight: 0.88, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+        <div style={{ fontSize: 'min(28vw, 118px)', fontWeight: 900, lineHeight: 0.88, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
           {isFree ? formatSeconds(seconds) : cd(remainingInStep)}
         </div>
         <div style={{ fontSize: 15, fontWeight: 800, opacity: 0.85 }}>
@@ -295,20 +333,34 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
         </div>
       </div>
 
-      {/* Réglages vitesse + pente */}
-      <div style={{ display: 'flex', gap: 8, padding: '4px 12px 14px', flexShrink: 0 }}>
+      {/* Bande de stats live : D+ (fluctue), allures — à côté du temps/km */}
+      <div style={{ display: 'flex', gap: 8, padding: '0 16px 10px', flexShrink: 0 }}>
+        {[
+          { l: 'Dénivelé', v: `${Math.round(elevM)} m` },
+          { l: 'Allure moy', v: avgPaceSec != null ? `${fmtPaceSec(avgPaceSec)}` : '—' },
+          { l: 'Allure', v: curPaceSec != null ? `${fmtPaceSec(curPaceSec)}` : '—' },
+          { l: 'Kcal', v: String(kcal) },
+        ].map(s => (
+          <div key={s.l} style={{ flex: 1, background: chipBg, borderRadius: 12, padding: '8px 6px', textAlign: 'center' }}>
+            <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: dimInk }}>{s.l}</div>
+            <div style={{ fontSize: 16, fontWeight: 800, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{s.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Réglages vitesse + pente (pente : pas de 0,5 %) */}
+      <div style={{ display: 'flex', gap: 8, padding: '0 12px 12px', flexShrink: 0 }}>
         <Stepper label="Vitesse" value={speedKmh.toFixed(1).replace('.', ',')} unit="km/h"
           onMinus={() => setSpeedKmh(v => Math.max(0.5, Math.round((v - 0.5) * 10) / 10))}
           onPlus={() => setSpeedKmh(v => Math.min(30, Math.round((v + 0.5) * 10) / 10))} />
-        <Stepper label="Pente" value={String(incline)} unit="%"
-          onMinus={() => setIncline(v => Math.max(0, v - 1))}
-          onPlus={() => setIncline(v => Math.min(30, v + 1))} />
+        <Stepper label="Pente" value={incline.toFixed(incline % 1 !== 0 ? 1 : 0).replace('.', ',')} unit="%"
+          onMinus={() => setIncline(v => Math.max(0, Math.round((v - 0.5) * 10) / 10))}
+          onPlus={() => setIncline(v => Math.min(30, Math.round((v + 0.5) * 10) / 10))} />
       </div>
 
-      {/* Allure courante + section FC */}
+      {/* Section FC */}
       <div style={{ padding: '0 16px 8px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, opacity: 0.8, marginBottom: 6 }}>
-          <span>Allure {curPaceSec != null ? `${fmtPaceSec(curPaceSec)}/km` : '—'}</span>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 12, fontWeight: 700, opacity: 0.8, marginBottom: 6 }}>
           <span>Fréquence cardiaque</span>
         </div>
         <HrPlaceholder ink={ink} dimInk={dimInk} />
@@ -319,23 +371,178 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
         <button onClick={() => setRunning(r => !r)} style={{ flex: 1, height: 52, borderRadius: 14, background: chipBg, border: 'none', color: ink, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: FB }}>
           {running ? 'Pause' : 'Reprendre'}
         </button>
-        <button onClick={handleSave} style={{ flex: 1, height: 52, borderRadius: 14, background: step.zone >= 5 ? 'rgba(255,255,255,0.2)' : 'rgba(10,12,16,0.14)', border: 'none', color: ink, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: FB }}>
+        <button onClick={() => { setRunning(false); setPhase('review') }} style={{ flex: 1, height: 52, borderRadius: 14, background: step.zone >= 5 ? 'rgba(255,255,255,0.2)' : 'rgba(10,12,16,0.14)', border: 'none', color: ink, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: FB }}>
           {planComplete ? 'Terminer ✓' : 'Terminer'}
         </button>
       </div>
     </div>
   )
 
-  // ── Écran FINAL ─────────────────────────────────────────────
+  // ── Écran 2 — données de séance (fond du thème : noir en sombre, blanc en clair) ──
+  const statCell = (l: string, v: string) => (
+    <div key={l} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '11px 12px' }}>
+      <div style={{ fontSize: 9.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>{l}</div>
+      <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text)', marginTop: 3, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{v}</div>
+    </div>
+  )
+
+  const dataScreen = (
+    <div style={{ minHeight: '100%', background: 'var(--bg)', color: 'var(--text)', fontFamily: FB, padding: 'calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 20px)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-dim)' }}>Données de séance</span>
+        <span style={{ fontSize: 14, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{formatSeconds(seconds)}</span>
+      </div>
+
+      {/* Bloc en cours */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '11px 14px', marginBottom: 12 }}>
+        <span style={{ width: 10, height: 10, borderRadius: 4, background: zoneBg(step.zone), flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{step.name}</div>
+          <div style={{ fontSize: 11.5, color: 'var(--text-mid)', marginTop: 1 }}>{kindLabel(step.kind)}{step.of ? ` · ${step.rep}/${step.of}` : ''} · cible {targetLabel}</div>
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 900, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{isFree ? formatSeconds(seconds) : cd(remainingInStep)}</div>
+      </div>
+
+      {/* Stats spécifiques */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 14 }}>
+        {statCell('Distance', `${(distM / 1000).toFixed(2).replace('.', ',')} km`)}
+        {statCell('Allure moy', avgPaceSec != null ? `${fmtPaceSec(avgPaceSec)} /km` : '—')}
+        {statCell('Allure VAP', vapPaceSec != null ? `${fmtPaceSec(vapPaceSec)} /km` : '—')}
+        {statCell('Dénivelé', `${Math.round(elevM)} m`)}
+        {statCell('Calories', `${kcal} kcal`)}
+        {statCell('Vitesse', `${speedKmh.toFixed(1).replace('.', ',')} km/h`)}
+        {statCell('FC moy', '—')}
+        {statCell('FC max', '—')}
+      </div>
+
+      {/* Profil altimétrique (réel, cumulé) */}
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>Profil altimétrique</div>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '10px 12px', marginBottom: 14 }}>
+        <AltProfile series={altSeriesRef.current} height={96} />
+      </div>
+
+      {/* Déroulé de la séance */}
+      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>Déroulé de la séance</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {plan.steps.map((s, i) => {
+          const state = i < stepIdx ? 'done' : i === stepIdx ? 'now' : 'next'
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, borderRadius: 12, padding: '9px 12px',
+              background: state === 'now' ? 'color-mix(in srgb, var(--primary) 8%, var(--bg-card))' : 'var(--bg-card)',
+              border: state === 'now' ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+              opacity: state === 'done' ? 0.65 : 1 }}>
+              {state === 'done' ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5"/></svg>
+              ) : (
+                <span style={{ width: 9, height: 9, borderRadius: '50%', background: state === 'now' ? 'var(--primary)' : zoneBg(s.zone), flexShrink: 0, opacity: state === 'next' ? 0.6 : 1 }} />
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, textDecoration: state === 'done' ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-mid)', marginTop: 1 }}>{kindLabel(s.kind)}{s.of ? ` · ${s.rep}/${s.of}` : ''} · {cd(s.durationS)}</div>
+              </div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-mid)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                {s.targetKmh != null ? `${s.targetKmh.toFixed(1).replace('.', ',')} km/h` : (s.targetPaceSecPerKm != null ? `${fmtPaceSec(s.targetPaceSecPerKm)}/km` : '—')}
+                {s.inclinePct > 0 ? ` · ${s.inclinePct}%` : ''}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+
+  // ── LIVE : mobile = 2 écrans à défiler · desktop = double fenêtre ──
+  const live = wide ? (
+    <div style={{ position: 'absolute', inset: 0, display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+      <div style={{ position: 'relative', minHeight: 0 }}>{liveMain}</div>
+      <div style={{ position: 'relative', minHeight: 0, overflowY: 'auto', borderLeft: '1px solid var(--border)' }}>{dataScreen}</div>
+    </div>
+  ) : (
+    <div className="tread-pager" style={{ position: 'absolute', inset: 0, display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+      <style>{`.tread-pager::-webkit-scrollbar{display:none}`}</style>
+      <div style={{ minWidth: '100%', width: '100%', height: '100%', scrollSnapAlign: 'start', scrollSnapStop: 'always', position: 'relative', flexShrink: 0 }}>
+        {liveMain}
+        {/* Indicateur : un 2e écran existe à droite */}
+        <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 44px)', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 5, pointerEvents: 'none' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', opacity: 0.9 }} />
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', opacity: 0.35 }} />
+        </div>
+      </div>
+      <div style={{ minWidth: '100%', width: '100%', height: '100%', scrollSnapAlign: 'start', scrollSnapStop: 'always', overflowY: 'auto', flexShrink: 0 }}>
+        {dataScreen}
+      </div>
+    </div>
+  )
+
+  // ── RÉCAP avant enregistrement (bouton Terminer) ────────────
+  const review = (
+    <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', background: 'var(--bg)', color: 'var(--text)', fontFamily: FB, padding: 'calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 18px)' }}>
+      <div style={{ maxWidth: 560, margin: '0 auto' }}>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--primary)', marginBottom: 6 }}>Séance terminée</div>
+        <h2 style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, margin: '0 0 16px' }}>{plan.title}</h2>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 14 }}>
+          {statCell('Distance', `${(distRef.current / 1000).toFixed(2).replace('.', ',')} km`)}
+          {statCell('Durée', formatSeconds(seconds))}
+          {statCell('Allure moy', avgPaceSec != null ? `${fmtPaceSec(avgPaceSec)} /km` : '—')}
+          {statCell('Allure VAP', vapPaceSec != null ? `${fmtPaceSec(vapPaceSec)} /km` : '—')}
+          {statCell('Dénivelé', `${Math.round(elevRef.current)} m`)}
+          {statCell('Calories', `${kcal} kcal`)}
+        </div>
+
+        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>Profil altimétrique</div>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '10px 12px', marginBottom: 18 }}>
+          <AltProfile series={altSeriesRef.current} height={110} />
+        </div>
+
+        <button onClick={handleSave}
+          style={{ width: '100%', height: 54, borderRadius: 15, background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: FB, marginBottom: 10 }}>
+          Enregistrer la séance
+        </button>
+        <button onClick={() => setConfirmDelete(true)}
+          style={{ width: '100%', height: 48, borderRadius: 14, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.4)', color: '#EF4444', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB, marginBottom: 10 }}>
+          Supprimer la séance
+        </button>
+        <button onClick={() => { setPhase('live'); setRunning(true) }}
+          style={{ width: '100%', padding: '10px 0', borderRadius: 12, background: 'transparent', border: 'none', color: 'var(--text-mid)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
+          Reprendre la séance
+        </button>
+      </div>
+
+      {/* Confirmation de suppression */}
+      {confirmDelete && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={() => setConfirmDelete(false)}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ width: 'min(360px, 100%)', background: 'var(--bg-card)', borderRadius: 18, border: '1px solid var(--border)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: '20px 20px 16px' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 6 }}>Supprimer cette séance ?</div>
+            <p style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5, margin: '0 0 16px' }}>Elle ne sera pas enregistrée — toutes les données de cette session seront perdues.</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setConfirmDelete(false)}
+                style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--bg-card2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
+                Annuler
+              </button>
+              <button onClick={onExit}
+                style={{ flex: 1, height: 44, borderRadius: 12, background: '#EF4444', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FB }}>
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  // ── Écran FINAL (après enregistrement) ──────────────────────
   const done = (
     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 22, background: 'var(--bg)', color: 'var(--text)', fontFamily: FB, padding: '0 24px' }}>
-      <p style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, margin: 0 }}>Séance tapis terminée</p>
+      <p style={{ fontFamily: FD, fontSize: 24, fontWeight: 600, margin: 0 }}>Séance enregistrée</p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', maxWidth: 340 }}>
         {[
           { l: 'Distance', v: `${(distRef.current / 1000).toFixed(2).replace('.', ',')} km` },
           { l: 'Durée', v: formatSeconds(seconds) },
           { l: 'Allure moy.', v: distRef.current > 0 ? `${fmtPaceSec(seconds / (distRef.current / 1000))}/km` : '—' },
-          { l: 'Calories', v: `${kcal} kcal` },
+          { l: 'D+', v: `${Math.round(elevRef.current)} m` },
         ].map(s => (
           <div key={s.l} style={{ background: 'var(--bg-card2)', borderRadius: 14, padding: 14, textAlign: 'center' }}>
             <p style={{ fontSize: 10, color: 'var(--text-mid)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 4px', fontWeight: 700 }}>{s.l}</p>
@@ -349,10 +556,43 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
 
   const content = (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg)' }}>
-      {phase === 'summary' ? summary : phase === 'live' ? live : done}
+      {phase === 'summary' ? summary : phase === 'live' ? live : phase === 'review' ? review : done}
     </div>
   )
   return createPortal(content, document.body)
+}
+
+// Profil altimétrique cumulé (montée seule, le tapis ne descend pas) — SVG raw.
+function AltProfile({ series, height }: { series: number[]; height: number }) {
+  const pts = series.length > 240
+    ? Array.from({ length: 240 }, (_, i) => series[Math.round((i / 239) * (series.length - 1))])
+    : series
+  if (pts.length < 2) {
+    return (
+      <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'var(--text-dim)' }}>
+        Le profil se dessine au fil de la séance
+      </div>
+    )
+  }
+  const W = 600, PAD = 6
+  const maxA = Math.max(...pts, 1)
+  const X = (i: number) => (i / (pts.length - 1)) * W
+  const Y = (v: number) => PAD + (1 - v / (maxA * 1.06)) * (height - PAD * 2)
+  const line = pts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ')
+  const area = `${line} L ${W} ${height} L 0 ${height} Z`
+  return (
+    <svg width="100%" height={height} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+      <defs>
+        <linearGradient id="treadAltGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.35} />
+          <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.03} />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#treadAltGrad)" />
+      <path d={line} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <text x={W - 8} y={14} textAnchor="end" fontSize={11} fontWeight={700} fill="var(--text-mid)" style={{ fontVariantNumeric: 'tabular-nums' }}>+{Math.round(pts[pts.length - 1])} m</text>
+    </svg>
+  )
 }
 
 // Section fréquence cardiaque — état vide tant qu'aucun capteur cardio n'est

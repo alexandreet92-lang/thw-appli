@@ -5,10 +5,10 @@
 // CSS pur) + liste de BlockCard + boutons d'ajout. Adaptatif par sport.
 // ══════════════════════════════════════════════════════════════════
 import { useState, useRef, useMemo, useEffect } from 'react'
-import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical, IconMicrophone } from '@tabler/icons-react'
+import { IconPlus, IconRefresh, IconSparkles, IconMapPin, IconX, IconGripVertical, IconMicrophone, IconLungs } from '@tabler/icons-react'
 import { getZone, type SportType, type RunningSub } from '@/app/planning/page'
 import { zColor, fmtDur, secToPace, paceToSec, type AthleteRefs } from './editorial'
-import { toBars, totalMin, totalDistance, newSingle, newInterval, recalc, barHeightPct, BAR_AXIS_TICKS, treadmillProfile, type MBlock, type EffortUnit } from './blocks'
+import { toBars, totalMin, totalDistance, newSingle, newInterval, newHypoxie, recalc, barHeightPct, BAR_AXIS_TICKS, treadmillProfile, type MBlock, type EffortUnit } from './blocks'
 import { syncBaseBlock, setBaseWatts, enduranceZ2Watts, type BaseCtx } from './parcoursBase'
 import RouteElevationProfile, { type ProfilePortion, type SequencedPortion } from '@/components/gpx/RouteElevationProfile'
 import { BlockCard } from './BlockCard'
@@ -176,10 +176,13 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
     return `${secToPace(sumWM / sumM)}${isSwim ? '/100m' : '/km'}`
   })()
 
+  // Natation : distance ET durée estimée (distance × allure) — les deux comptent.
   const cells: { label: string; value: string; color?: string }[] = [
     { label: tr('planning.smMetab'), value: String(sm), color: '#22b8c4' },
     { label: tr('planning.snNeuro'), value: String(sn), color: '#a855f7' },
-    isSwim ? { label: tr('planning.distance'), value: dist ? `${dist}m` : '—' } : { label: tr('planning.duration'), value: fmtDur(tot) },
+    ...(isSwim
+      ? [{ label: tr('planning.distance'), value: dist ? `${dist}m` : '—' }, { label: tr('planning.duration'), value: tot > 0 ? fmtDur(tot) : '—' }]
+      : [{ label: tr('planning.duration'), value: fmtDur(tot) }]),
     { label: sport === 'bike' ? tr('planning.avgIntensity') : tr('planning.avgPace'), value: fourth ?? '—' },
   ]
 
@@ -302,7 +305,7 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
       </div>
 
       {/* Bandeau résumé 4 cellules */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', overflow: 'hidden', marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cells.length},1fr)`, border: '1px solid var(--se-rule)', borderRadius: 'var(--se-r)', overflow: 'hidden', marginBottom: 18 }}>
         {cells.map((c, i) => (
           <div key={c.label} style={{ padding: '12px 10px', borderLeft: i ? '1px solid var(--se-rule)' : 'none' }}>
             <p style={{ margin: 0, fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--se-dim)' }}>{c.label}</p>
@@ -384,10 +387,11 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
         ))}
       </div>
 
-      {/* Boutons d'ajout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      {/* Boutons d'ajout — natation : 3e bouton « Hypoxie » (apnées / coups de bras) */}
+      <div style={{ display: 'grid', gridTemplateColumns: isSwim ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
         <button type="button" onClick={() => add(newSingle(sport, runningSub === 'treadmill'))} style={addBtn}><IconPlus size={15} /> {tr('planning.simpleBlock')}</button>
         <button type="button" onClick={() => add(newInterval(sport, runningSub === 'treadmill'))} style={addBtn}><IconRefresh size={15} /> {isSwim ? tr('planning.series') : tr('planning.interval')}</button>
+        {isSwim && <button type="button" onClick={() => add(newHypoxie())} style={addBtn}><IconLungs size={15} /> {tr('planning.hypoxie')}</button>}
       </div>
 
       {/* Résumé live (manuel) : durée + intensité moyenne — tapis : km, D+, allure, VAP */}

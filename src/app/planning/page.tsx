@@ -14,6 +14,8 @@ import { useRacesFull } from '@/components/planning/useRacesFull'
 import RaceEditorSheet from '@/app/calendar/components/RaceEditorSheet'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import { SessionHoverPreview } from '@/components/planning/SessionHoverPreview'
+import { ActivityBubble, CompareGrid, PlannedIntensityBars, ActivityMap, StrengthDone, useActivityFull, isStrengthSport } from '@/components/planning/ActivityDetails'
+import RouteElevationProfile from '@/components/gpx/RouteElevationProfile'
 import { loadRaceRoutes, type RaceRoutes } from '@/lib/races/raceStore'
 import type { Race as FullRace } from '@/app/calendar/components/types'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
@@ -133,6 +135,9 @@ export interface TrainingActivity {
   distance?:number; startHour:number; startMin:number
   tss?:number
   matchedSessionId?:string
+  // Séance planifiée associée (matchActivity) — portée par la bulle cliquée
+  // pour que la fiche coulissante affiche la comparaison prévu / réalisé.
+  planned?:Session
 }
 export interface Block {
   id:string; mode:BlockMode; type:BlockType; durationMin:number; zone:number; value:string; hrAvg:string; label:string
@@ -149,6 +154,10 @@ export interface Session {
   id:string; sport:SportType; title:string; time:string; durationMin:number
   tss?:number; main?:boolean; status:SessionStatus; notes?:string; blocks:Block[]
   rpe?:number; dayIndex:number; planVariant?:PlanVariant; intensity?:string|null
+  // Lundi ISO de la semaine à laquelle appartient la séance (colonne week_start).
+  // Indispensable pour créer/déplacer une séance sur une AUTRE semaine que la
+  // semaine affichée (bug historique : le brick run atterrissait sur la semaine courante).
+  weekStart?:string
   trainingTypes?:string[]   // types de séance (Strength, Mixte…) — utilisé par la réserve
   // Phase 5 — snapshot immuable de la version IA (pour badge "modifié" + reset)
   originalContent?: Record<string, unknown>
@@ -434,6 +443,9 @@ export function getZone(sport:SportType,v:string):number {
   if(!v)return 1
   if(sport==='bike'){ const w=parseInt(v)||0,f=ATHLETE.ftp; if(w<f*0.55)return 1;if(w<f*0.75)return 2;if(w<f*0.87)return 3;if(w<f*1.05)return 4;if(w<f*1.20)return 5;if(w<f*1.50)return 6;return 7 }
   if(sport==='run'){ const s=parsePace(v),t=ATHLETE.thresholdPace; if(s>t*1.25)return 1;if(s>t*1.10)return 2;if(s>t*1.00)return 3;if(s>t*0.90)return 4;return 5 }
+  // Natation : zone dérivée de l'allure /100m rapportée au CSS (avant : Z3 figée,
+  // le profil d'intensité ne bougeait jamais en hauteur quand l'allure changeait).
+  if(sport==='swim'){ const s=parsePace(v),c=ATHLETE.css; if(!s||isNaN(s))return 1; if(s>c*1.25)return 1;if(s>c*1.10)return 2;if(s>c*1.00)return 3;if(s>c*0.90)return 4;return 5 }
   return 3
 }
 
@@ -690,7 +702,7 @@ function usePlanning(weekStartParam?:string) {
         .gte('started_at',weekStart+'T00:00:00').lt('started_at',weekEndStr+'T00:00:00'),
     ])
     setSessions((s.data??[]).map((r:any):Session=>({
-      id:r.id, dayIndex:r.day_index, sport:normalizeSportType(r.sport), title:r.title,
+      id:r.id, dayIndex:r.day_index, weekStart:r.week_start??weekStart, sport:normalizeSportType(r.sport), title:r.title,
       time:r.time??'09:00', durationMin:r.duration_min, tss:r.tss,
       status:r.status, notes:r.notes, rpe:r.rpe, blocks:normalizeBlocks(r.blocks), main:false,
       planVariant:r.plan_variant??'A', intensity:r.intensity??null,
@@ -770,6 +782,9 @@ function usePlanning(weekStartParam?:string) {
       updated_at:new Date().toISOString(),
     }
     if (upd.sport) patch.sport = upd.sport
+    // Changement de date dans l'éditeur → la séance change de jour et/ou de semaine.
+    if (upd.dayIndex !== undefined) patch.day_index = upd.dayIndex
+    if (upd.weekStart) patch.week_start = upd.weekStart
     if (upd.parcoursData !== undefined) patch.parcours_data = upd.parcoursData ?? null
     if (upd.parcoursId  !== undefined) patch.parcours_id   = upd.parcoursId ?? null
     if (upd.nutritionItems !== undefined) patch.nutrition_data = upd.nutritionItems ?? null
@@ -898,19 +913,36 @@ export function InfoModal({ title, content, onClose }:{ title:string; content:Re
 }
 
 // ── Activité quick-view (clic depuis Planning) ───────────────
+// Fiche coulissante ENRICHIE : comparaison prévu/réalisé, allure moyenne,
+// carte GPS, profils altimétrique et d'intensité — exercices/circuits pour
+// muscu, boxe et hybrid. Le bouton « Voir les détails » (Training) est inchangé.
 export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActivity|null; onClose:()=>void }) {
   const { t } = useI18n()
   // On garde la dernière activité affichée pendant l'animation de fermeture du sheet.
   const [last, setLast] = useState<TrainingActivity|null>(activity)
   useEffect(()=>{ if(activity) setLast(activity) },[activity])
   const a = activity ?? last
+  const full = useActivityFull(a)
   if (!a) return null
   const sp = normalizeSportType(a.sport)
+  const planned = a.planned ?? null
+  const strengthMode = isStrengthSport(sp)
+  const isSwim = sp === 'swim'
+  const isPower = sp === 'bike' || sp === 'elliptique'
   const dateObj = new Date(a.startedAt)
   const dateStr = dateObj.toLocaleDateString(currentLocale(),{ weekday:'long', day:'numeric', month:'long' })
   const durationMin = Math.round(a.elapsedTime/60)
-  const distKm = a.distance ? (a.distance/1000).toFixed(1) : null
+  const distM = full?.distanceM ?? a.distance ?? null
+  const distKm = distM && distM > 100 ? (distM/1000).toFixed(1) : null
+  // Allure moyenne réalisée (natation : /100m ; vélo : W moy à la place)
+  const paceStr = (() => {
+    if (isPower) return full?.avgWatts != null ? `${full.avgWatts} W` : null
+    if (isSwim) return distM && distM > 25 && a.elapsedTime > 0 ? `${fmtPaceSec(a.elapsedTime/(distM/100))}/100m` : null
+    const s = full?.paceSKm ?? (distM && distM > 100 && a.elapsedTime > 0 ? a.elapsedTime/(distM/1000) : null)
+    return s != null ? `${fmtPaceSec(s)}/km` : null
+  })()
   const col = SPORT_BORDER[sp]
+  const sectionLbl: React.CSSProperties = { fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 6px' }
   return (
     <BottomSheet isOpen={!!activity} onClose={onClose}>
       {/* En-tête */}
@@ -922,7 +954,7 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
           <div style={{ marginBottom:3 }}>
             <span style={{ fontSize:8,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>{t('plnp.activity.completed')}</span>
           </div>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{a.name}</p>
+          <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{planned?.title || a.name}</p>
         </div>
       </div>
 
@@ -933,7 +965,10 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
           { label:t('plnp.field.date'),    value:dateStr, small:true },
           { label:t('plnp.field.time'),   value:`${String(a.startHour).padStart(2,'0')}:${String(a.startMin).padStart(2,'0')}`, mono:true },
           { label:t('plnp.field.duration'),   value:formatDur(durationMin), mono:true },
-          ...(distKm ? [{ label:t('plnp.field.distance'), value:`${distKm} km`, mono:true }] : []),
+          ...(distKm ? [{ label:t('plnp.field.distance'), value: isSwim ? `${Math.round(distM!)} m` : `${distKm} km`, mono:true }] : []),
+          ...(paceStr ? [{ label: isPower ? t('plnp.activity.avgPower') : t('plnp.activity.avgPace'), value:paceStr, mono:true }] : []),
+          ...(full?.elevM ? [{ label:'D+', value:`${full.elevM} m`, mono:true }] : []),
+          ...(full?.rpe != null ? [{ label:'RPE', value:String(Math.round(full.rpe*10)/10), mono:true }] : []),
           ...(a.tss ? [{ label:'SM', value:`${Math.round(a.tss)}`, mono:true, color:'#5b6fff' }] : []),
         ].map(({ label, value, mono, small, color })=>(
           <div key={label} style={{ background:'var(--bg-card2)',borderRadius:10,padding:'10px 12px' }}>
@@ -943,6 +978,46 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
         ))}
       </div>
 
+      {/* Comparaison prévu / réalisé */}
+      {planned && (
+        <div style={{ background:'var(--bg-card2)',borderRadius:12,padding:'12px 14px',marginBottom:16 }}>
+          <p style={sectionLbl}>{t('plnp.activity.planVsDone')}</p>
+          <CompareGrid planned={planned} full={full} activity={a} />
+        </div>
+      )}
+
+      {strengthMode ? (
+        /* Muscu / boxe / hybrid : exercices & circuits réalisés (ni profil ni carte) */
+        full?.strength && (
+          <div style={{ marginBottom:16 }}>
+            <StrengthDone strength={full.strength} />
+          </div>
+        )
+      ) : (
+        <>
+          {/* Profil d'intensité de la séance prévue */}
+          {planned && (planned.blocks ?? []).length > 0 && (
+            <div style={{ marginBottom:16 }}>
+              <PlannedIntensityBars session={planned} height={64} />
+            </div>
+          )}
+          {/* Carte GPS */}
+          {full?.latlng && (
+            <div style={{ marginBottom:16 }}>
+              <p style={sectionLbl}>{t('plnp.activity.gpsTrace')}</p>
+              <ActivityMap latlng={full.latlng} width={Math.min(560, typeof window !== 'undefined' ? window.innerWidth - 64 : 320)} height={150} color={col} />
+            </div>
+          )}
+          {/* Profil altimétrique réel */}
+          {full?.elevProfile && (
+            <div style={{ marginBottom:16 }}>
+              <p style={sectionLbl}>{t('plnp.activity.elevationProfile')}{full.elevM ? ` · +${full.elevM} m D+` : ''}</p>
+              <RouteElevationProfile profile={full.elevProfile} totalKm={distM ? distM/1000 : undefined} totalGainM={full.elevM ?? undefined} height={72} staticMode />
+            </div>
+          )}
+        </>
+      )}
+
       {/* Bouton vers Training */}
       <a href={`/activities?id=${a.id}`}
         style={{ display:'block',textAlign:'center' as const,padding:'14px 16px',borderRadius:12,background:`linear-gradient(135deg,${col},${col}bb)`,color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,textDecoration:'none',letterSpacing:'0.02em' }}>
@@ -950,6 +1025,12 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
       </a>
     </BottomSheet>
   )
+}
+
+// mm:ss depuis des secondes/km (ou /100m) — usage local fiche activité.
+function fmtPaceSec(s:number):string {
+  const m = Math.floor(s/60), sec = Math.round(s%60)
+  return `${m}:${String(sec).padStart(2,'0')}`
 }
 
 // Fiche COURSE (bottom sheet coulissant) : toutes les données dispo (sport, objectif,
@@ -2775,7 +2856,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
       const grouped:Record<string,Session[]>={}; starts.forEach(ws=>{grouped[ws]=[]})
       ;(data??[]).forEach((r:any)=>{
         if(!grouped[r.week_start])grouped[r.week_start]=[]
-        grouped[r.week_start].push({id:r.id,dayIndex:r.day_index,sport:normalizeSportType(r.sport),title:r.title,
+        grouped[r.week_start].push({id:r.id,dayIndex:r.day_index,weekStart:r.week_start,sport:normalizeSportType(r.sport),title:r.title,
           time:r.time??'09:00',durationMin:r.duration_min,tss:r.tss,status:r.status,
           notes:r.notes,rpe:r.rpe,blocks:normalizeBlocks(r.blocks),main:false,planVariant:r.plan_variant??'A',
           intensity:r.intensity??null,
@@ -2929,10 +3010,11 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                       {d.races.map(r => (
                         <RaceBubble key={r.id} race={r} onClick={() => setRaceDetail(r)} />
                       ))}
-                      {/* Bulles unifiées (même présentation que mobile) */}
-                      {d.activities.map(a => (
-                        <DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime / 60))} done onClick={() => setActivityDetail(a)} />
-                      ))}
+                      {/* Bulles réalisées : fond couleur sport, comparaison au survol */}
+                      {d.activities.map(a => {
+                        const pl = matchActivity(a, d.sessions)
+                        return <ActivityBubble key={a.id} activity={a} planned={pl} onClick={() => setActivityDetail({ ...a, planned: pl ?? undefined })} />
+                      })}
                       {(() => {
                         const filtered = d.sessions.filter(s => !d.activities.some(a => matchActivity(a, d.sessions)?.id === s.id))
                         const { list, brickRunIds } = orderBrickSessions(filtered)
@@ -3021,7 +3103,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                                 </Fragment>
                               ))
                             })()}
-                            {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
+                            {acts.map(a=>{ const pl = matchActivity(a, d.sessions); return <ActivityBubble key={a.id} activity={a} planned={pl} onClick={()=>setActivityDetail({ ...a, planned: pl ?? undefined })} /> })}
                           </div>
                         )
                       })}
@@ -3365,29 +3447,10 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
               onClick={e=>{ if (isEmptyCellTarget(e)) { setAddModalFavorites(false); setAddModal({dayIndex:i,plan:plan??activePlan,weekStart:ws}) } }}
               style={{ position:'relative' as const,borderLeft:'1px solid var(--border)',padding:'6px 4px',background:dragOver===i?'rgba(6,182,212,0.04)':'transparent',minWidth:68,minHeight:80,cursor:plusCursor }}>
               <div style={{ display:'flex',flexDirection:'column',gap:4 }}>
-                {/* Activités réelles (cliquables → modal détail) */}
+                {/* Activités réelles : bulle couleur sport + comparaison au survol */}
                 {d.activities.map(a=>{
-                  const sp=normalizeSportType(a.sport)
-                  const matchedSession = matchActivity(a, d.sessions)
-                  if(matchedSession) {
-                    const actMin = Math.round(a.elapsedTime/60)
-                    const st = matchStatus(matchedSession.durationMin, actMin)
-                    return <div key={a.id} data-noadd onClick={()=>setActivityDetail(a)} style={{ borderRadius:6,padding:'4px 6px',background:SPORT_BG[sp],borderLeft:`2px solid ${SPORT_BORDER[sp]}`,cursor:'pointer' }}>
-                      <div style={{ display:'flex',alignItems:'center',gap:3,marginBottom:2 }}>
-                        <SportBadge sport={sp} size="xs"/>
-                        <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const,flex:1 }}>{matchedSession.title}</p>
-                      </div>
-                      <p style={{ fontSize:7,margin:'0 0 1px',fontFamily:'DM Mono,monospace',color:'var(--text-dim)' }}>{t('plnp.planned')} {formatHM(matchedSession.durationMin)} · {t('plnp.done')} {formatHM(actMin)}</p>
-                      <span style={{ fontSize:7,fontWeight:700,color:st.color }}>{st.label === 'Conforme' ? t('plnp.matchStatus.conforme') : st.label === 'Écourtée' ? t('plnp.matchStatus.ecourtee') : t('plnp.matchStatus.prolongee')}</span>
-                    </div>
-                  }
-                  return <div key={a.id} data-noadd onClick={()=>setActivityDetail(a)} style={{ borderRadius:6,padding:'4px 6px',background:`${SPORT_BORDER[sp]}18`,borderLeft:`2px solid ${SPORT_BORDER[sp]}`,opacity:0.9,cursor:'pointer' }}>
-                    <div style={{ display:'flex',alignItems:'center',gap:3 }}>
-                      <span style={{ fontSize:7,background:SPORT_BORDER[sp],color:'#fff',padding:'1px 3px',borderRadius:2,fontWeight:700,flexShrink:0 }}>OK</span>
-                      <p style={{ fontSize:9,fontWeight:600,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{a.name}</p>
-                    </div>
-                    <p style={{ fontSize:8,opacity:0.7,margin:'1px 0 0',fontFamily:'DM Mono,monospace' }}>{String(a.startHour).padStart(2,'0')}:{String(a.startMin).padStart(2,'0')} · {formatHM(Math.round(a.elapsedTime/60))}</p>
-                  </div>
+                  const pl = matchActivity(a, d.sessions)
+                  return <div key={a.id} data-noadd><ActivityBubble activity={a} planned={pl} onClick={()=>setActivityDetail({ ...a, planned: pl ?? undefined })} /></div>
                 })}
                 {/* Courses du jour (drapeau) */}
                 {d.races.map(r=><RaceBubble key={r.id} race={r} onClick={()=>setRaceDetail(r)} />)}
@@ -3446,7 +3509,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
                         </Fragment>
                       ))
                     })()}
-                    {acts.map(a=><DayBubble key={a.id} sport={normalizeSportType(a.sport)} label={formatHM(Math.round(a.elapsedTime/60))} done onClick={()=>setActivityDetail(a)} />)}
+                    {acts.map(a=>{ const pl = matchActivity(a, d.sessions); return <ActivityBubble key={a.id} activity={a} planned={pl} onClick={()=>setActivityDetail({ ...a, planned: pl ?? undefined })} /> })}
                   </div>
                 )
               })}
@@ -3502,10 +3565,11 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
         <SessionEditor
           mode="create"
           dayIndex={addModal.dayIndex}
+          weekStart={addModal.weekStart}
           plan={addModal.plan}
           onClose={()=>{setAddModal(null);setAddModalFavorites(false)}}
-          onSave={(s)=>{ handleAddSession(addModal.dayIndex, s, addModal.weekStart); setAddModal(null); setAddModalFavorites(false) }}
-          onCreateBrick={(run)=>handleAddSession(addModal.dayIndex, run, addModal.weekStart)}
+          onSave={(s)=>{ handleAddSession(s.dayIndex ?? addModal.dayIndex, s, s.weekStart ?? addModal.weekStart); setAddModal(null); setAddModalFavorites(false) }}
+          onCreateBrick={(run)=>handleAddSession(run.dayIndex ?? addModal.dayIndex, run, run.weekStart ?? addModal.weekStart)}
           onLinkBrick={(runId, brickId)=>updateSession(runId, { brickId })}
           linkableRuns={sessions.filter(r=>sportKeyFromType(r.sport)==='run' && r.dayIndex===addModal.dayIndex && !r.brickId)}
           openWithFavorites={addModalFavorites}
@@ -3521,7 +3585,7 @@ function TrainingTab({ tab = 'plan' }: { tab?: 'training' | 'plan' }) {
           onValidate={handleValidate}
           onAutoSave={handleAutoSaveSession}
           onDuplicate={(dayIdx, s) => { addSession({ ...s, dayIndex: dayIdx, planVariant: s.planVariant ?? activePlan }); setDetailModal(null) }}
-          onCreateBrick={(run)=>handleAddSession(run.dayIndex, run)}
+          onCreateBrick={(run)=>handleAddSession(run.dayIndex, run, run.weekStart ?? detailModal.weekStart)}
           onLinkBrick={(runId, brickId)=>updateSession(runId, { brickId })}
           linkableRuns={sessions.filter(r=>sportKeyFromType(r.sport)==='run' && r.dayIndex===detailModal.dayIndex && !r.brickId && r.id!==detailModal.id)}
         />

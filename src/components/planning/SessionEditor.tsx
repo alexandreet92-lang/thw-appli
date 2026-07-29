@@ -3617,10 +3617,13 @@ function addMinutesToTime(hhmm: string, addMin: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, onLinkBrick, linkableRuns, openWithFavorites, initialSport, reserveMode, lockSport }: {
+export function SessionEditor({ mode, session, dayIndex, weekStart, plan, onClose, onSave, onDelete, onValidate, onAutoSave, onDuplicate, onCreateBrick, onLinkBrick, linkableRuns, openWithFavorites, initialSport, reserveMode, lockSport }: {
   mode: 'create' | 'edit'
   session?: Session
   dayIndex?: number
+  /** Lundi ISO de la semaine de la case cliquée (ou de la séance éditée). Sans lui,
+   *  la date affichée et le brick run retombaient sur la semaine COURANTE. */
+  weekStart?: string
   plan?: PlanVariant
   onClose: () => void
   onSave: (s: Session) => void
@@ -3669,7 +3672,23 @@ export function SessionEditor({ mode, session, dayIndex, plan, onClose, onSave, 
   const brickCreatedRef = useRef(false)
   const [trainingTypes, setTrainingTypes] = useState<string[]>(session?.trainingTypes ?? [])
   const [title, setTitle] = useState(session?.title ?? '')
-  const [date, setDate] = useState('')
+  // Date réelle de la séance = lundi de la semaine ciblée + index du jour cliqué.
+  // (Avant : champ vide → l'utilisateur croyait créer sur la semaine courante.)
+  const initialDate = (() => {
+    const ws = weekStart ?? session?.weekStart ?? getWeekStart()
+    const di = dayIndex ?? session?.dayIndex ?? 0
+    const d = new Date(ws + 'T00:00:00'); d.setDate(d.getDate() + di)
+    return localDateStr(d)
+  })()
+  const [date, setDate] = useState(initialDate)
+  // Date (éventuellement modifiée) → jour + lundi de semaine pour la sauvegarde.
+  const resolvedDay = (() => {
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(date + 'T00:00:00') : null
+    if (!d || isNaN(d.getTime())) return { dayIndex: dayIndex ?? session?.dayIndex ?? 0, weekStart: weekStart ?? session?.weekStart }
+    const back = (d.getDay() + 6) % 7
+    const m = new Date(d); m.setDate(d.getDate() - back)
+    return { dayIndex: back, weekStart: localDateStr(m) }
+  })()
   const [time, setTime] = useState(session?.time ?? '09:00')
   const [dur, setDur] = useState(session?.durationMin ?? 60)
   const [rpe, setRpe] = useState(session?.rpe ?? 5)
@@ -4361,7 +4380,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
     const savedSession: Session = {
       ...(session ?? {}),
       id: session?.id ?? '',
-      dayIndex: dayIndex ?? session?.dayIndex ?? 0,
+      dayIndex: resolvedDay.dayIndex,
+      weekStart: resolvedDay.weekStart,
       sport, title: finalTitle, time,
       durationMin: finalDur, tss: finalTss,
       status: session?.status ?? 'planned', notes: desc || undefined,
@@ -4385,7 +4405,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       } else if (!brickLinkedRunId && !brickRunCreated && !session?.brickId && onCreateBrick) {
         const runStart = addMinutesToTime(time, finalDur)
         onCreateBrick({
-          id: '', dayIndex: savedSession.dayIndex, sport: 'run',
+          id: '', dayIndex: savedSession.dayIndex, weekStart: savedSession.weekStart, sport: 'run',
           title: 'Brick run', time: runStart, durationMin: 20,
           status: 'planned', rpe, planVariant: selPlan, brickId: finalBrickId,
           blocks: [{ id: `b_${Date.now()}`, mode: 'single', type: 'effort', durationMin: 20, zone: 2, value: '', hrAvg: '', label: 'Running' }],
@@ -4413,8 +4433,8 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
   // partagé, et le vélo (édité) reprendra ce brickId à sa propre sauvegarde.
   function saveBrickNewRun(run: Session) {
     const bId = newBrickId()
-    const day = dayIndex ?? session?.dayIndex ?? 0
-    onCreateBrick?.({ ...run, brickId: bId, dayIndex: day })
+    // La course d'enchaînement vit le MÊME jour et la MÊME semaine que le vélo.
+    onCreateBrick?.({ ...run, brickId: bId, dayIndex: resolvedDay.dayIndex, weekStart: resolvedDay.weekStart })
     setBrickId(bId); setBrickRun(true); setBrickRunCreated(true); brickCreatedRef.current = true
     setBrickCreateOpen(false)
   }
@@ -5014,7 +5034,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
             onPick={pickBrickExisting} onCreate={createBrickNew} onClose={() => setBrickPickerOpen(false)} />
         )}
         {brickCreateOpen && (
-          <SessionEditor mode="create" dayIndex={dayIndex ?? session?.dayIndex} plan={selPlan}
+          <SessionEditor mode="create" dayIndex={dayIndex ?? session?.dayIndex} weekStart={weekStart ?? session?.weekStart} plan={selPlan}
             initialSport="run" lockSport onClose={cancelBrickNew} onSave={saveBrickNewRun} />
         )}
       </>
@@ -5036,7 +5056,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
           onPick={pickBrickExisting} onCreate={createBrickNew} onClose={() => setBrickPickerOpen(false)} />
       )}
       {brickCreateOpen && (
-        <SessionEditor mode="create" dayIndex={dayIndex ?? session?.dayIndex} plan={selPlan}
+        <SessionEditor mode="create" dayIndex={dayIndex ?? session?.dayIndex} weekStart={weekStart ?? session?.weekStart} plan={selPlan}
           initialSport="run" lockSport onClose={cancelBrickNew} onSave={saveBrickNewRun} />
       )}
 

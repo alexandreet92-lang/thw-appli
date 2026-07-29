@@ -32,6 +32,13 @@ export type MBlock = Block & {
   effortUnit?: EffortUnit
   recoveryStyle?: string   // course : 'trot' | 'marche'
   nage?: string            // natation : Crawl / Dos / Brasse / Pap
+  // Natation : matériel du bloc (pull buoy, planche, plaquettes, palmes).
+  equipment?: string[]
+  // Natation : exercice HYPOXIE. Deux modes :
+  //  • 'distance' : apnée sur 12,5 / 25 / 50 / 100 m (distanceM porte la distance)
+  //  • 'strokes'  : respiration tous les N coups de bras (breathEvery) sur la
+  //    distance saisie, récup « à l'arrêt » (stop) ou « nage continue » (continue).
+  hypoxie?: { mode: 'distance' | 'strokes'; breathEvery?: number; recovery?: 'stop' | 'continue' }
   // ── Parcours (vélo) ──
   /** Bloc de FOND « endurance Z2 » couvrant tout le parcours. Ses segments
    *  réels sont recalculés autour des blocs d'intensité (cf. parcoursBase.ts). */
@@ -42,6 +49,11 @@ export type MBlock = Block & {
 
 export const NAGES = ['Crawl', 'Dos', 'Brasse', 'Pap'] as const
 export const RECUP_STYLES = ['trot', 'marche'] as const
+// Natation — matériel sélectionnable par bloc.
+export const SWIM_EQUIPMENT = ['Pull buoy', 'Planche', 'Plaquettes', 'Palmes'] as const
+// Hypoxie — distances d'apnée et cadences de respiration proposées.
+export const HYPOXIE_DISTANCES = [12.5, 25, 50, 100] as const
+export const HYPOXIE_STROKES = [4, 6, 8, 10] as const
 
 const uid = () => `b_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 
@@ -97,6 +109,16 @@ export function newSingle(sport: SportType, treadmill = false): MBlock {
   if (sport === 'run') return recalc(sport, { ...base, inputMode: 'time', value: '5:30', durationMin: 15, effortUnit: 'pace' })
   if (sport === 'swim') return recalc(sport, { ...base, inputMode: 'distance', distanceM: 400, value: '2:10', effortUnit: 'pace' })
   return recalc(sport, base)
+}
+
+/** Bloc HYPOXIE (natation) : série d'apnées par distance (défaut 8×25 m). */
+export function newHypoxie(): MBlock {
+  return recalc('swim', {
+    id: uid(), mode: 'interval', type: 'effort', durationMin: 0, zone: 4, value: '2:00', hrAvg: '',
+    label: 'Hypoxie', reps: 8, effortMin: 0, recoveryMin: 0.25, recoveryZone: 1, recoveryValue: '',
+    inputMode: 'distance', distanceM: 25, effortUnit: 'pace', nage: 'Crawl',
+    hypoxie: { mode: 'distance' },
+  })
 }
 
 /** Bloc intervalle / série par défaut, calibré par sport. */

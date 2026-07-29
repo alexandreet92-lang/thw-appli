@@ -55,15 +55,15 @@ export function CoachSidebarContent({ onClose, onOpenAI, headerSlot, expanded = 
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-      {/* En-tête : identité « Espace coach » */}
+      {/* En-tête : nom de l'app « Hybrid » + type d'interface (coach) */}
       {headerSlot !== undefined ? headerSlot : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '14px 16px', borderBottom: '1px solid var(--nav-border)', flexShrink: 0 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 10, background: `color-mix(in srgb, ${COACH_ACCENT} 14%, transparent)`, color: COACH_ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '16px 14px 12px', borderBottom: '1px solid var(--nav-border)', flexShrink: 0 }}>
+          <span style={{ width: 36, height: 36, borderRadius: 11, background: `color-mix(in srgb, ${COACH_ACCENT} 14%, transparent)`, color: COACH_ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </span>
           <div style={{ minWidth: 0, ...lbl }}>
-            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 13, color: 'var(--text)', lineHeight: 1.3 }}>Espace coach</div>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>Gère tes athlètes</div>
+            <div style={{ fontFamily: 'Syne, DM Sans, sans-serif', fontWeight: 600, fontSize: 21, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
+            <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 700, color: COACH_ACCENT, marginTop: 2, whiteSpace: 'nowrap' }}>Interface coach</div>
           </div>
         </div>
       )}

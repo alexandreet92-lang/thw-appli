@@ -126,6 +126,7 @@ export default function MobileTabBar() {
   // uniquement la barre <nav> plus bas, en gardant l'AIPanel monté.
   // Page /record : compteur immersif, on cache la navbar
   if (pathname === '/record') return null
+  if (pathname?.startsWith('/coach')) return null   // espace coach : nav via la sidebar
   // Page /competences : header + champ dédiés, on masque la tabbar
   if (pathname?.startsWith('/competences')) return null
   // Page /topup : standalone (lien email)

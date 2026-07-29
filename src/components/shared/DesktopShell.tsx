@@ -8,6 +8,7 @@ import { usePathname } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useProfile } from '@/hooks/useProfile'
 import { SidebarContent, Avatar } from '@/components/shared/Sidebar'
+import { CoachSidebarContent } from '@/components/coach/CoachSidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
@@ -119,7 +120,9 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         >
           {/* Largeur interne fixe : le contenu ne se comprime pas pendant l'animation */}
           <div style={{ width: W, height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <SidebarContent headerSlot={hybridHeader} onOpenAI={() => setAiOpen(true)} expanded={railOpen} />
+            {isCoach
+              ? <CoachSidebarContent onOpenAI={() => setAiOpen(true)} expanded={railOpen} />
+              : <SidebarContent headerSlot={hybridHeader} onOpenAI={() => setAiOpen(true)} expanded={railOpen} />}
           </div>
         </aside>
       </div>

@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useProfile } from '@/hooks/useProfile'
 import { SidebarContent, Avatar } from '@/components/shared/Sidebar'
+import { CoachSidebarContent } from '@/components/coach/CoachSidebar'
 import { PageTransition } from '@/components/ui/PageTransition'
 import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
@@ -186,7 +187,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       {/* Sidebar fixe EN DESSOUS — surface douce (bg-card) légèrement relevée du
           fond de page pour adoucir le contraste (moins « noir agressif »). */}
       <aside style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${OPEN_RATIO * 100}%`, maxWidth: 340, zIndex: 1, background: 'var(--bg-card)', display: 'flex', flexDirection: 'column' }}>
-        <SidebarContent headerSlot={hybridHeader} onClose={() => setOpen(false)} onOpenAI={() => { setAiOpen(true); setOpen(false) }} />
+        {isCoach
+          ? <CoachSidebarContent onClose={() => setOpen(false)} onOpenAI={() => { setAiOpen(true); setOpen(false) }} />
+          : <SidebarContent headerSlot={hybridHeader} onClose={() => setOpen(false)} onOpenAI={() => { setAiOpen(true); setOpen(false) }} />}
       </aside>
 
       {/* Page qui glisse PAR-DESSUS — transform piloté par l'état (cohérent au re-render) */}

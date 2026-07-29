@@ -87,7 +87,10 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       <button onClick={() => setProfileOpen(true)} aria-label={t('nav.myProfile')} style={{ display: 'flex', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', flexShrink: 0 }}>
         <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={36} />
       </button>
-      <span style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease', whiteSpace: 'nowrap' }}>Hybrid</span>
+      <div style={{ opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease', minWidth: 0 }}>
+        <div style={{ fontFamily: FD, fontSize: 21, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
+        <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2, whiteSpace: 'nowrap' }}>Interface athlète</div>
+      </div>
     </div>
   )
 

@@ -166,7 +166,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
   const hybridHeader = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 14px', flexShrink: 0 }}>
-      <span style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)' }}>Hybrid</span>
+      <div>
+        <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05 }}>Hybrid</div>
+        <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2 }}>Interface athlète</div>
+      </div>
       <button onClick={() => { setOpen(false); setProfileOpen(true) }} aria-label={t('shared.myProfile')} style={{ display: 'flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
         <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={38} />
       </button>

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useYogaSession } from '@/hooks/useYogaSession'
@@ -10,6 +10,7 @@ import AICoachingTip from './AICoachingTip'
 import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
 import YogaSettings from './YogaSettings'
+import { vibrateBlockChange, vibrateSessionEnd } from './blockVibrate'
 
 interface Props {
   exercises: YogaSessionExercise[]
@@ -35,6 +36,16 @@ export default function YogaSession({ exercises, title, isDark, onClose }: Props
   useWakeLock(session.phase === 'exercise' || session.phase === 'rest')
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => { if (session.phase === 'finished') setShowSave(true) }, [session.phase])
+
+  // Vibration aux transitions exercice ↔ repos, longue à la fin de séance.
+  const lastPhaseRef = useRef(session.phase)
+  useEffect(() => {
+    const prev = lastPhaseRef.current
+    if (session.phase === prev) return
+    lastPhaseRef.current = session.phase
+    if (session.phase === 'finished') vibrateSessionEnd()
+    else if (prev === 'exercise' || prev === 'rest') vibrateBlockChange()
+  }, [session.phase])
 
   if (!mounted) return null
   const bg   = isDark ? '#0A0A0A' : '#FFFFFF'

@@ -16,6 +16,8 @@ import { useStopwatch, formatSeconds } from '@/hooks/useStopwatch'
 import { createClient } from '@/lib/supabase/client'
 import { useI18n } from '@/lib/i18n'
 import { notifyActivitySaved } from '@/lib/notifications/activitySaved'
+import { useHeartRate } from '@/lib/record/useHeartRate'
+import { vibrateBlockChange, vibrateSessionEnd } from '../blockVibrate'
 import { useTreadmillPlan } from './useTreadmillPlan'
 import {
   type TreadmillPlan, type TreadStep,
@@ -86,11 +88,28 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
   const lastStepRef = useRef(-1)
   useEffect(() => {
     if (stepIdx !== lastStepRef.current) {
+      // Vibration au CHANGEMENT de bloc (pas au premier rendu ni au lancement).
+      if (lastStepRef.current !== -1 && running) vibrateBlockChange()
       lastStepRef.current = stepIdx
       if (step.targetKmh != null) setSpeedKmh(step.targetKmh)
       setIncline(step.inclinePct)
     }
-  }, [stepIdx, step.targetKmh, step.inclinePct])
+  }, [stepIdx, step.targetKmh, step.inclinePct, running])
+
+  // Fin de plan : vibration longue une seule fois.
+  const endVibratedRef = useRef(false)
+  useEffect(() => {
+    if (planComplete && running && !endVibratedRef.current) {
+      endVibratedRef.current = true
+      vibrateSessionEnd()
+    }
+  }, [planComplete, running])
+
+  // Capteur cardio BLE (Web Bluetooth) — FC réelle dans le live, les données
+  // de séance et l'enregistrement.
+  const hr = useHeartRate()
+  const bpmRef = useRef<number | null>(null)
+  useEffect(() => { bpmRef.current = hr.status === 'connected' ? hr.bpm : null }, [hr.bpm, hr.status])
 
   // ── TRACE RÉELLE (1 échantillon/s) : c'est CE QUI A ÉTÉ FAIT qui compte,
   // pas le plan — vitesse et pente peuvent être ajustées en direct.
@@ -118,9 +137,15 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
       adjRef.current += v * Math.max(0.5, factor)
       altSeriesRef.current.push(elevRef.current)
       // Segments réels : fusionne avec le dernier si vitesse & pente inchangées.
+      // FC réelle (capteur BLE) : moyenne glissante par segment → stream heartrate.
+      const bpm = bpmRef.current
       const last = segsRef.current[segsRef.current.length - 1]
-      if (last && last.speedKmh === speedKmh && last.inclinePct === incline) last.durationS += 1
-      else segsRef.current.push({ durationS: 1, speedKmh, inclinePct: incline })
+      if (last && last.speedKmh === speedKmh && last.inclinePct === incline) {
+        if (bpm != null) last.hr = Math.round((((last.hr ?? bpm) * last.durationS) + bpm) / (last.durationS + 1))
+        last.durationS += 1
+      } else {
+        segsRef.current.push({ durationS: 1, speedKmh, inclinePct: incline, ...(bpm != null ? { hr: bpm } : {}) })
+      }
       setDistM(distRef.current)
       setElevM(elevRef.current)
       setAdjM(adjRef.current)
@@ -166,6 +191,7 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           elevation_gain_m: Math.round(elevationM),
           avg_speed_kmh: avgSpeedMs * 3.6, calories: kcal, status: 'completed',
           title: plan.title, training_types: ['tapis'],
+          avg_hr: hr.avg, max_hr: hr.max, min_hr: hr.min,
         })
         await sb.from('activities').insert({
           user_id: user.id, sport_type: 'run', title: plan.title,
@@ -173,6 +199,8 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           distance_m: distanceM, elevation_gain_m: Math.round(elevationM),
           avg_speed_ms: avgSpeedMs, calories: kcal, streams,
           laps: laps.length > 1 ? laps : null,
+          avg_hr: hr.avg, max_hr: hr.max, min_hr: hr.min,
+          average_heartrate: hr.avg, max_heartrate: hr.max,
         })
         notifyActivitySaved({ sport: 'running', title: plan.title })
       }
@@ -358,12 +386,22 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           onPlus={() => setIncline(v => Math.min(30, Math.round((v + 0.5) * 10) / 10))} />
       </div>
 
-      {/* Section FC */}
+      {/* Section FC — capteur BLE (Web Bluetooth) */}
       <div style={{ padding: '0 16px 8px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 12, fontWeight: 700, opacity: 0.8, marginBottom: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, fontWeight: 700, opacity: 0.9, marginBottom: 6 }}>
           <span>Fréquence cardiaque</span>
+          {hr.status === 'connected'
+            ? <span style={{ fontVariantNumeric: 'tabular-nums' }}>{hr.bpm ?? '—'} bpm</span>
+            : hr.supported
+              ? <button onClick={() => void hr.connect()} disabled={hr.status === 'connecting'}
+                  style={{ background: chipBg, border: 'none', color: ink, borderRadius: 9, padding: '5px 12px', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', fontFamily: FB }}>
+                  {hr.status === 'connecting' ? 'Connexion…' : 'Connecter'}
+                </button>
+              : null}
         </div>
-        <HrPlaceholder ink={ink} dimInk={dimInk} />
+        {hr.status === 'connected' && hr.samples.length > 1
+          ? <HrSpark samples={hr.samples} ink={ink} dimInk={dimInk} />
+          : <HrPlaceholder ink={ink} dimInk={dimInk} supported={hr.supported} />}
       </div>
 
       {/* Contrôles */}
@@ -411,8 +449,8 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
         {statCell('Dénivelé', `${Math.round(elevM)} m`)}
         {statCell('Calories', `${kcal} kcal`)}
         {statCell('Vitesse', `${speedKmh.toFixed(1).replace('.', ',')} km/h`)}
-        {statCell('FC moy', '—')}
-        {statCell('FC max', '—')}
+        {statCell('FC moy', hr.avg != null ? `${hr.avg} bpm` : '—')}
+        {statCell('FC max', hr.max != null ? `${hr.max} bpm` : '—')}
       </div>
 
       {/* Profil altimétrique (réel, cumulé) */}
@@ -488,7 +526,36 @@ export default function TreadmillScreen({ onExit, onFinished }: Props) {
           {statCell('Allure VAP', vapPaceSec != null ? `${fmtPaceSec(vapPaceSec)} /km` : '—')}
           {statCell('Dénivelé', `${Math.round(elevRef.current)} m`)}
           {statCell('Calories', `${kcal} kcal`)}
+          {hr.avg != null && statCell('FC moy', `${hr.avg} bpm`)}
+          {hr.max != null && statCell('FC max', `${hr.max} bpm`)}
         </div>
+
+        {/* Comparaison PRÉVU vs RÉALISÉ (séance planifiée uniquement) */}
+        {!isFree && (() => {
+          const plannedElev = plan.steps.reduce((s, st) => s + ((st.targetKmh ?? 0) / 3.6) * st.durationS * Math.max(0, st.inclinePct) / 100, 0)
+          const plannedPace = plan.totalDistanceM > 0 ? plan.totalS / (plan.totalDistanceM / 1000) : null
+          const rows: { l: string; p: string; d: string }[] = [
+            { l: 'Durée', p: formatSeconds(plan.totalS), d: formatSeconds(seconds) },
+            { l: 'Distance', p: `${(plan.totalDistanceM / 1000).toFixed(2).replace('.', ',')} km`, d: `${(distRef.current / 1000).toFixed(2).replace('.', ',')} km` },
+            { l: 'Allure moy', p: plannedPace != null ? `${fmtPaceSec(plannedPace)}/km` : '—', d: avgPaceSec != null ? `${fmtPaceSec(avgPaceSec)}/km` : '—' },
+            { l: 'Dénivelé', p: `${Math.round(plannedElev)} m`, d: `${Math.round(elevRef.current)} m` },
+          ]
+          return (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>Prévu vs réalisé</div>
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', marginBottom: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '5px 18px', alignItems: 'baseline' }}>
+                  <span />
+                  <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>Prévu</span>
+                  <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)' }}>Réalisé</span>
+                  {rows.map(r => (
+                    <FragmentRowTm key={r.l} r={r} />
+                  ))}
+                </div>
+              </div>
+            </>
+          )
+        })()}
 
         <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 2px 8px' }}>Profil altimétrique</div>
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: '10px 12px', marginBottom: 18 }}>
@@ -597,15 +664,48 @@ function AltProfile({ series, height }: { series: number[]; height: number }) {
 
 // Section fréquence cardiaque — état vide tant qu'aucun capteur cardio n'est
 // connecté. Ligne SVG plate + invite. Prête à recevoir une vraie série FC.
-function HrPlaceholder({ ink, dimInk }: { ink: string; dimInk: string }) {
+function HrPlaceholder({ ink, dimInk, supported }: { ink: string; dimInk: string; supported?: boolean }) {
   return (
     <div style={{ position: 'relative', height: 56, borderRadius: 12, background: 'transparent', border: `1px dashed ${dimInk}`, overflow: 'hidden' }}>
       <svg viewBox="0 0 300 56" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
         <line x1="0" y1="28" x2="300" y2="28" stroke={ink} strokeOpacity="0.35" strokeWidth="1.5" strokeDasharray="4 5" />
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: dimInk }}>
-        Connecte un capteur cardio pour voir ta FC
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: dimInk, textAlign: 'center', padding: '0 12px' }}>
+        {supported === false
+          ? 'Bluetooth indisponible sur ce navigateur (iOS) — FC via l’app native à venir'
+          : 'Connecte un capteur cardio pour voir ta FC'}
       </div>
     </div>
+  )
+}
+
+// Courbe FC live (capteur BLE) — SVG raw, ~2 min d'historique.
+function HrSpark({ samples, ink, dimInk }: { samples: number[]; ink: string; dimInk: string }) {
+  const pts = samples.slice(-240)
+  const lo = Math.min(...pts), hi = Math.max(...pts)
+  const range = Math.max(8, hi - lo)
+  const W = 300, H = 56, PAD = 5
+  const X = (i: number) => (i / Math.max(1, pts.length - 1)) * W
+  const Y = (v: number) => PAD + (1 - (v - lo) / range) * (H - PAD * 2)
+  const d = pts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ')
+  return (
+    <div style={{ position: 'relative', height: H, borderRadius: 12, overflow: 'hidden' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+        <path d={`${d} L ${W} ${H} L 0 ${H} Z`} fill={ink} opacity={0.12} />
+        <path d={d} fill="none" stroke={ink} strokeWidth={2} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      </svg>
+      <span style={{ position: 'absolute', top: 4, right: 8, fontSize: 10, fontWeight: 800, color: dimInk, fontVariantNumeric: 'tabular-nums' }}>{lo}–{hi} bpm</span>
+    </div>
+  )
+}
+
+// Ligne du tableau Prévu vs réalisé du récap.
+function FragmentRowTm({ r }: { r: { l: string; p: string; d: string } }) {
+  return (
+    <>
+      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-mid)' }}>{r.l}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-mid)', fontVariantNumeric: 'tabular-nums' }}>{r.p}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{r.d}</span>
+    </>
   )
 }

@@ -13,6 +13,7 @@ import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
 import { useHeartRate } from '@/lib/record/useHeartRate'
 import HeartRatePanel from './workout/HeartRatePanel'
+import { vibrateBlockChange, vibrateSessionEnd } from './blockVibrate'
 
 export interface BoxeConfig {
   title?: string
@@ -94,6 +95,15 @@ export default function BoxeScreen({ config, onClose, isDark }: Props) {
     }, 1000)
     return () => clearInterval(id)
   }, [running, phase, round, config])
+
+  // Vibration à chaque transition de phase (round ↔ repos), longue à la fin.
+  const lastPhaseRef = useRef<Phase>('prepare')
+  useEffect(() => {
+    if (phase === lastPhaseRef.current) return
+    lastPhaseRef.current = phase
+    if (phase === 'done') vibrateSessionEnd()
+    else vibrateBlockChange()
+  }, [phase])
 
   const phaseColor = phase === 'prepare' ? C_PREP : phase === 'rest' ? C_REST : C_WORK
   const phaseLabel = phase === 'prepare' ? 'PRÉPARER' : phase === 'rest' ? 'REPOS' : phase === 'done' ? 'TERMINÉ' : `ROUND ${round}`

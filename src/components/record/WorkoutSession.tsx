@@ -13,6 +13,7 @@ import RecordExercisePicker from './workout/RecordExercisePicker'
 import HeartRatePanel from './workout/HeartRatePanel'
 import RestTimer from './workout/RestTimer'
 import { useHeartRate } from '@/lib/record/useHeartRate'
+import { vibrateBlockChange } from './blockVibrate'
 import WorkoutSettings from './WorkoutSettings'
 import SessionSaveForm from './SessionSaveForm'
 import type { SessionFormData } from './SessionSaveForm'
@@ -65,6 +66,13 @@ export default function WorkoutSession({ sport, exercises: initialExercises, pla
   }, [started])
 
   function beginSession() { setStartedAt(new Date().toISOString()); setElapsed(0); setStarted(true) }
+
+  // Vibration au CHANGEMENT d'exercice / de circuit (pas au premier rendu).
+  const lastIdxRef = useRef(currentIdx)
+  useEffect(() => {
+    if (!started) { lastIdxRef.current = currentIdx; return }
+    if (currentIdx !== lastIdxRef.current) { lastIdxRef.current = currentIdx; vibrateBlockChange() }
+  }, [currentIdx, started])
 
   const handleSetDone = useCallback((set: CompletedSet) => {
     setCompletedSets(prev => [...prev, set])

@@ -1,6 +1,8 @@
 'use client'
+import { useEffect, useRef } from 'react'
 import type { HTProgram } from '@/types/hometrainer'
 import { getZoneColor, getZoneLabelKey } from '@/types/hometrainer'
+import { vibrateBlockChange } from './blockVibrate'
 import { useI18n } from '@/lib/i18n'
 
 interface Props {
@@ -36,6 +38,11 @@ export default function HomeTrainerIntervals({ program, elapsedSec, ftp, isDark 
   }
   const cur = program.intervals[curIdx]
   const next = program.intervals[curIdx + 1]
+  // Vibration au changement d'intervalle (aligné sur les autres écrans live).
+  const lastIdxRef = useRef(curIdx)
+  useEffect(() => {
+    if (curIdx !== lastIdxRef.current) { lastIdxRef.current = curIdx; vibrateBlockChange() }
+  }, [curIdx])
   const remainingInCur = Math.max(0, cur.duration - elapsedInCur)
   const targetWatts = Math.round(ftp * cur.ftpPercent / 100)
 

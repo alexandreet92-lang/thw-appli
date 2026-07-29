@@ -11,9 +11,11 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import { detectHealthFlags } from '@/lib/studio/living'
 import { createInvite, listMyAthletes, listPendingInvites, type AthleteSummary, type CoachAthleteLink } from '@/lib/coach/relationships'
 
-const BLUE = '#3B92D4'
+const BLUE = 'var(--primary)'
 
 function lastSeen(d: string | null): string {
   if (!d) return 'jamais vu'
@@ -32,11 +34,34 @@ export default function CoachDashboard() {
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
 
+  const [flags, setFlags] = useState<Record<string, string[]>>({})
+
   const reload = useCallback(async () => {
     try { const [a, p] = await Promise.all([listMyAthletes(), listPendingInvites()]); setAthletes(a); setPending(p) }
     catch { /* silencieux */ } finally { setLoading(false) }
   }, [])
   useEffect(() => { void reload() }, [reload])
+
+  // Signaux santé par athlète (blessure active / récup au plancher) — lisibles
+  // grâce à la RLS coach sur les tables récup/blessures.
+  useEffect(() => {
+    if (!athletes.length) return
+    let cancelled = false
+    void (async () => {
+      const sb = createClient()
+      const entries = await Promise.all(athletes.map(async a => [a.id, await detectHealthFlags(sb, a.id).catch(() => [])] as const))
+      if (!cancelled) setFlags(Object.fromEntries(entries))
+    })()
+    return () => { cancelled = true }
+  }, [athletes])
+
+  const isInactive = (a: AthleteSummary) => !a.last_seen_at || Date.now() - new Date(a.last_seen_at).getTime() > 7 * 86400_000
+  const alertItems = athletes.flatMap(a => {
+    const name = a.full_name || a.first_name || 'Athlète'
+    const items = (flags[a.id] ?? []).map(reason => ({ id: a.id, name, reason }))
+    if (isInactive(a)) items.push({ id: a.id, name, reason: 'inactif depuis plus de 7 jours' })
+    return items
+  })
 
   const onInvite = async () => {
     setBusy(true)
@@ -58,7 +83,7 @@ export default function CoachDashboard() {
   )
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '18px 16px 60px', fontFamily: 'DM Sans,sans-serif' }}>
+    <div style={{ width: '100%', padding: '20px clamp(16px, 4vw, 40px) 60px', boxSizing: 'border-box', fontFamily: 'DM Sans,sans-serif' }}>
       {/* En-tête */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
         <span style={{ width: 40, height: 40, borderRadius: 12, background: `color-mix(in srgb, ${BLUE} 14%, transparent)`, color: BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -77,15 +102,32 @@ export default function CoachDashboard() {
         {tile(loading ? '—' : inactive, 'inactif' + (inactive > 1 ? 's' : '') + ' (>7 j)', inactive > 0 ? '#F59E0B' : 'var(--text)')}
       </div>
 
-      {/* Alertes — placeholder tant que la RLS récup/blessures n'est pas étendue */}
-      <div style={{ ...card, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(245,158,11,0.12)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
-        </span>
-        <div style={{ fontSize: 13, color: 'var(--text-mid)', lineHeight: 1.5 }}>
-          <b style={{ color: 'var(--text)' }}>Alertes santé</b> — bientôt : repère d’un coup d’œil qui surmène, est blessé ou décroche. (Nécessite l’ouverture des données récup/blessures aux coachs, en cours.)
+      {/* Alertes réelles : blessure active / récup au plancher / inactivité */}
+      {!loading && athletes.length > 0 && (
+        <div style={{ ...card, marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: alertItems.length ? 10 : 0 }}>
+            <span style={{ color: alertItems.length ? '#F59E0B' : '#22C55E', display: 'flex' }}>
+              {alertItems.length
+                ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+                : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text)' }}>Alertes santé</span>
+          </div>
+          {alertItems.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text-mid)' }}>Rien à signaler — tes athlètes vont bien.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {alertItems.slice(0, 8).map((it, i) => (
+                <Link key={i} href={`/coach/athlete/${it.id}`} style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#F59E0B', flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 700 }}>{it.name}</span>
+                  <span style={{ fontSize: 12.5, color: 'var(--text-mid)' }}>— {it.reason}</span>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Roster + accès rapides */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 10px' }}>

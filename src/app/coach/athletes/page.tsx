@@ -17,7 +17,7 @@ import {
   type AthleteSummary, type CoachAthleteLink,
 } from '@/lib/coach/relationships'
 
-const BLUE = '#3B92D4'
+const BLUE = 'var(--primary)'
 
 function since(d: string | null): string {
   if (!d) return ''
@@ -77,7 +77,7 @@ export default function CoachAthletes() {
   const label: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', fontFamily: 'DM Sans,sans-serif' }
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', padding: '18px 16px 60px', fontFamily: 'DM Sans,sans-serif' }}>
+    <div style={{ width: '100%', padding: '20px clamp(16px, 4vw, 40px) 60px', boxSizing: 'border-box', fontFamily: 'DM Sans,sans-serif' }}>
       {/* En-tête de l'espace coach */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
         <span style={{ width: 40, height: 40, borderRadius: 12, background: `color-mix(in srgb, ${BLUE} 14%, transparent)`, color: BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

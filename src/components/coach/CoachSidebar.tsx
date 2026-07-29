@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════════════════════════
 // SIDEBAR COACH — miroir de la sidebar athlète (mêmes mécaniques : rail
 // desktop qui s'ouvre au survol, drawer mobile), mais navigation dédiée au
-// métier de coach. Accent BLEU logo (#3B92D4) pour distinguer les deux mondes.
+// métier de coach. Accent BLEU logo (var(--primary)) pour distinguer les deux mondes.
 // ══════════════════════════════════════════════════════════════
 
 import Link from 'next/link'
@@ -11,7 +11,7 @@ import { usePathname } from 'next/navigation'
 import { useTheme } from '@/hooks/useTheme'
 import { useI18n } from '@/lib/i18n'
 
-const COACH_ACCENT = '#3B92D4'
+const COACH_ACCENT = 'var(--primary)'
 
 const ic = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
 
@@ -37,9 +37,9 @@ function CoachNavItem({ href, label, icon, active, onClick, expanded }: { href: 
     <Link href={href} onClick={onClick}
       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, textDecoration: 'none',
         fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: active ? 600 : 400,
-        color: active ? COACH_ACCENT : 'var(--text-mid)', background: active ? 'color-mix(in srgb, #3B92D4 10%, transparent)' : 'transparent',
+        color: active ? COACH_ACCENT : 'var(--text-mid)', background: active ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent',
         borderLeft: `3px solid ${active ? COACH_ACCENT : 'transparent'}`, transition: 'background 0.14s, color 0.14s' }}
-      onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, #3B92D4 6%, transparent)'; (e.currentTarget as HTMLElement).style.color = 'var(--text)' } }}
+      onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 6%, transparent)'; (e.currentTarget as HTMLElement).style.color = 'var(--text)' } }}
       onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-mid)' } }}>
       <span style={{ flexShrink: 0, opacity: active ? 1 : 0.6, display: 'flex' }}>{icon}</span>
       <span style={{ opacity: expanded ? 1 : 0, transition: 'opacity 150ms ease', whiteSpace: 'nowrap' }}>{label}</span>

@@ -14,6 +14,7 @@ import {
   getAthleteProfile, getActivities, getRecovery, getInjuries, getPlanning, getBody, getActiveNutrition,
   type AthleteProfile, type ActivityRow, type RecoveryRow, type InjuryRow, type PlannedRow, type BodyRow, type NutritionActive,
 } from '@/lib/coach/athlete-data'
+import { assignSession, deleteAssignedSession } from '@/lib/coach/assign'
 
 type Tab = 'overview' | 'training' | 'recovery' | 'nutrition' | 'injuries' | 'planning' | 'progression'
 const TABS: { key: Tab; label: string }[] = [
@@ -40,6 +41,22 @@ export default function AthleteFiche() {
   const [plan, setPlan] = useState<PlannedRow[]>([])
   const [body, setBody] = useState<BodyRow[]>([])
   const [nutri, setNutri] = useState<NutritionActive | null>(null)
+  // Assignation de séance (source='coach').
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [assigning, setAssigning] = useState(false)
+  const [af, setAf] = useState({ date: '', sport: 'run', title: '', duration_min: '', intensity: '' })
+
+  const reloadPlanning = useCallback(async () => { setPlan(await getPlanning(id).catch(() => [])) }, [id])
+  const submitAssign = async () => {
+    if (!af.title.trim() || !af.date || assigning) return
+    setAssigning(true)
+    try {
+      await assignSession(id, { date: af.date, sport: af.sport, title: af.title.trim(), duration_min: af.duration_min ? Number(af.duration_min) : null, intensity: af.intensity || null })
+      setAssignOpen(false); setAf(f => ({ ...f, title: '', duration_min: '', intensity: '' }))
+      await reloadPlanning()
+    } catch { /* ignore */ } finally { setAssigning(false) }
+  }
+  const removeAssigned = async (sid: string) => { try { await deleteAssignedSession(sid); await reloadPlanning() } catch { /* ignore */ } }
 
   const load = useCallback(async () => {
     if (!id) return
@@ -235,14 +252,53 @@ export default function AthleteFiche() {
           {/* ── Planning ── */}
           {tab === 'planning' && (
             <div style={{ ...card }}>
-              <div style={secLabel}>Séances à venir</div>
-              {plan.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>Aucune séance planifiée.</div> : (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={secLabel}>Séances à venir</div>
+                <button onClick={() => { setAssignOpen(o => !o); if (!af.date) setAf(f => ({ ...f, date: new Date().toISOString().slice(0, 10) })) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                  Assigner une séance
+                </button>
+              </div>
+
+              {assignOpen && (
+                <div style={{ marginTop: 12, padding: 14, borderRadius: 12, background: 'var(--bg-alt)', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 9 }}>
+                    <input type="date" value={af.date} onChange={e => setAf(f => ({ ...f, date: e.target.value }))} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif' }} />
+                    <select value={af.sport} onChange={e => setAf(f => ({ ...f, sport: e.target.value }))} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', cursor: 'pointer' }}>
+                      {['run', 'bike', 'swim', 'gym', 'hyrox', 'trail_run', 'other'].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <input placeholder="Durée (min)" inputMode="numeric" value={af.duration_min} onChange={e => setAf(f => ({ ...f, duration_min: e.target.value.replace(/[^0-9]/g, '') }))} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif' }} />
+                    <input placeholder="Intensité (Z2, seuil…)" value={af.intensity} onChange={e => setAf(f => ({ ...f, intensity: e.target.value }))} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif' }} />
+                  </div>
+                  <input placeholder="Titre de la séance (ex. Sortie longue Z2 90')" value={af.title} onChange={e => setAf(f => ({ ...f, title: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter') void submitAssign() }}
+                    style={{ width: '100%', boxSizing: 'border-box', marginTop: 9, padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', outline: 'none' }} />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10, justifyContent: 'flex-end' }}>
+                    <button onClick={() => setAssignOpen(false)} style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Annuler</button>
+                    <button onClick={() => void submitAssign()} disabled={!af.title.trim() || !af.date || assigning}
+                      style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: af.title.trim() && af.date ? 'var(--primary)' : 'var(--border)', color: af.title.trim() && af.date ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 12.5, fontWeight: 700, cursor: af.title.trim() && af.date ? 'pointer' : 'default', fontFamily: 'DM Sans,sans-serif' }}>
+                      {assigning ? 'Envoi…' : 'Assigner'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {plan.length === 0 ? <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 12 }}>Aucune séance planifiée.</div> : (
+                <div style={{ display: 'flex', flexDirection: 'column', marginTop: 6 }}>
                   {plan.map(s => (
                     <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: '1px solid var(--border)', fontSize: 13 }}>
                       <span style={{ color: 'var(--text-dim)', width: 92, flexShrink: 0, fontSize: 12 }}>{DAYS[s.day_index] ?? '?'} {fmtDate(s.week_start)}</span>
-                      <span style={{ color: 'var(--text)', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title || s.sport || 'Séance'}</span>
+                      <span style={{ color: 'var(--text)', fontWeight: 600, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {s.title || s.sport || 'Séance'}
+                        {s.source === 'coach' && <span style={{ marginLeft: 7, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', borderRadius: 6, padding: '2px 6px' }}>Coach</span>}
+                      </span>
                       <span style={{ color: 'var(--text-dim)', flexShrink: 0, fontSize: 12 }}>{[s.duration_min ? `${s.duration_min} min` : '', s.intensity ?? ''].filter(Boolean).join(' · ')}</span>
+                      {s.source === 'coach' && (
+                        <button onClick={() => void removeAssigned(s.id)} title="Retirer" aria-label="Retirer" style={{ width: 26, height: 26, borderRadius: 8, border: 'none', background: 'transparent', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>

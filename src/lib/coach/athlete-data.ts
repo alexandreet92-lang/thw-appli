@@ -22,7 +22,7 @@ export interface AthleteProfile {
 export interface ActivityRow { id: string; title: string | null; sport_type: string | null; started_at: string | null; moving_time_s: number | null; distance_m: number | null; elevation_gain_m: number | null; tss: number | null; average_heartrate: number | null; is_race: boolean | null }
 export interface RecoveryRow { date: string; sleep_quality: number | null; fatigue: number | null; soreness: number | null; mood: number | null }
 export interface InjuryRow { id: string; label: string; zone: string | null; status: string | null; active: boolean; onset_date: string | null; resolved_date: string | null; phase: string | null }
-export interface PlannedRow { id: string; week_start: string; day_index: number; sport: string | null; title: string | null; duration_min: number | null; intensity: string | null; status: string | null }
+export interface PlannedRow { id: string; week_start: string; day_index: number; sport: string | null; title: string | null; duration_min: number | null; intensity: string | null; status: string | null; source: string | null }
 export interface BodyRow { measured_at: string; weight_kg: number | null; fat_mass_percent: number | null; muscle_mass_kg: number | null }
 export interface NutritionActive { calories_mid: number | null; proteines: number | null; glucides: number | null; lipides: number | null; description: string | null }
 
@@ -72,7 +72,7 @@ export async function getPlanning(id: string): Promise<PlannedRow[]> {
   const sb = createClient()
   const weekAgo = new Date(Date.now() - 7 * 86400_000).toISOString().slice(0, 10)
   const { data } = await sb.from('planned_sessions')
-    .select('id, week_start, day_index, sport, title, duration_min, intensity, intensite, status')
+    .select('id, week_start, day_index, sport, title, duration_min, intensity, intensite, status, source')
     .eq('user_id', id).gte('week_start', weekAgo)
     .order('week_start', { ascending: true }).order('day_index', { ascending: true }).limit(40)
   return ((data ?? []) as Record<string, unknown>[]).map(s => ({
@@ -80,6 +80,7 @@ export async function getPlanning(id: string): Promise<PlannedRow[]> {
     sport: (s.sport as string | null) ?? null, title: (s.title as string | null) ?? null,
     duration_min: (s.duration_min as number | null) ?? null,
     intensity: ((s.intensity ?? s.intensite) as string | null) ?? null, status: (s.status as string | null) ?? null,
+    source: (s.source as string | null) ?? null,
   }))
 }
 

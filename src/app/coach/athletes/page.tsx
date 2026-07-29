@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic'
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   createInvite, acceptInvite, revokeLink,
@@ -112,14 +113,16 @@ export default function CoachAthletes() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
           {athletes.map(a => (
             <div key={a.linkId} style={{ ...card, padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {a.avatar_url ? <img src={a.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (a.first_name || a.full_name || '?').slice(0, 1).toUpperCase()}
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.full_name || a.first_name || 'Athlète'}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{lastSeen(a.last_seen_at)}</div>
-              </div>
+              <Link href={`/coach/athlete/${a.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+                <span style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {a.avatar_url ? <img src={a.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (a.first_name || a.full_name || '?').slice(0, 1).toUpperCase()}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.full_name || a.first_name || 'Athlète'}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{lastSeen(a.last_seen_at)}</div>
+                </div>
+              </Link>
               <button onClick={() => onRevoke(a.linkId)} title="Retirer" aria-label="Retirer cet athlète"
                 style={{ width: 30, height: 30, borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>

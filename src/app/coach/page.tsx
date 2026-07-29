@@ -151,7 +151,7 @@ export default function CoachDashboard() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
           {athletes.slice(0, 6).map(a => (
-            <div key={a.linkId} style={{ ...card, padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link key={a.linkId} href={`/coach/athlete/${a.id}`} style={{ ...card, padding: 14, display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit' }}>
               <span style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {a.avatar_url ? <img src={a.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (a.first_name || a.full_name || '?').slice(0, 1).toUpperCase()}
@@ -160,7 +160,7 @@ export default function CoachDashboard() {
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.full_name || a.first_name || 'Athlète'}</div>
                 <div style={{ fontSize: 11.5, color: (!a.last_seen_at || Date.now() - new Date(a.last_seen_at).getTime() > 7 * 86400_000) ? '#F59E0B' : 'var(--text-dim)' }}>{lastSeen(a.last_seen_at)}</div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

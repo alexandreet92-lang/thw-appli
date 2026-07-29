@@ -6,6 +6,7 @@ import MobileTabBar from '@/components/MobileTabBar'
 import OfflineIndicator from '@/components/shared/OfflineIndicator'
 import GlobalOnboardingWrapper from '@/components/onboarding/GlobalOnboardingWrapper'
 import { AISettingsHost } from '@/components/ai/AISettingsHost'
+import { CoachChatBubble } from '@/components/coach/CoachChatBubble'
 import { ClientShell } from '@/app/ClientShell'
 
 export const dynamic = 'force-dynamic'
@@ -57,6 +58,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <GlobalOnboardingWrapper />
           {/* Fenêtre de réglages IA — hôte UNIQUE (évite les fonds empilés) */}
           <AISettingsHost />
+          {/* Bulle de chat coach (athlète) — globale, s'auto-masque si pas de coach */}
+          <CoachChatBubble />
 
         </ClientShell>
       </body>

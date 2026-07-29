@@ -14,7 +14,7 @@ import { useRacesFull } from '@/components/planning/useRacesFull'
 import RaceEditorSheet from '@/app/calendar/components/RaceEditorSheet'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import { SessionHoverPreview } from '@/components/planning/SessionHoverPreview'
-import { ActivityBubble, CompareGrid, PlannedIntensityBars, RealizedIntensityBars, ActivityElevation, ActivityMap, StrengthDone, useActivityFull, isStrengthSport } from '@/components/planning/ActivityDetails'
+import { ActivityBubble, CompareGrid, PlannedIntensityBars, RealizedIntensityBars, ActivityElevation, ActivityMap, StrengthDone, useActivityFull, isStrengthSport, sampleLLAtFraction } from '@/components/planning/ActivityDetails'
 import { loadRaceRoutes, type RaceRoutes } from '@/lib/races/raceStore'
 import type { Race as FullRace } from '@/app/calendar/components/types'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
@@ -923,9 +923,9 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
   // On garde la dernière activité affichée pendant l'animation de fermeture du sheet.
   const [last, setLast] = useState<TrainingActivity|null>(activity)
   useEffect(()=>{ if(activity) setLast(activity) },[activity])
-  // Curseur partagé profils ↔ carte : index dans full.samples.
-  const [cursorIdx, setCursorIdx] = useState<number|null>(null)
-  useEffect(()=>{ setCursorIdx(null) },[activity?.id])
+  // Curseur partagé profils ↔ carte : fraction 0…1 le long de la séance.
+  const [cursor, setCursor] = useState<number|null>(null)
+  useEffect(()=>{ setCursor(null) },[activity?.id])
   // Desktop large → 2 colonnes (données à gauche, carte à droite).
   const [wide, setWide] = useState(false)
   useEffect(()=>{
@@ -956,7 +956,7 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
   })()
   const col = SPORT_BORDER[sp]
   const sectionLbl: React.CSSProperties = { fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 6px' }
-  const cursorLL = cursorIdx != null && full?.samples ? (full.samples[cursorIdx]?.ll ?? null) : null
+  const cursorLL = sampleLLAtFraction(full, cursor)
   const mapColor = col.startsWith('#') ? col.slice(1) : undefined
   const hasMap = !strengthMode && !!full?.latlng
   const hasProfiles = !strengthMode
@@ -1000,13 +1000,13 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
   // Profils (pleine largeur) — survol → curseur sur la carte.
   const profiles = hasProfiles ? (
     <>
-      {full?.samples && full.samples.length > 3 ? (
-        <RealizedIntensityBars full={full} sport={sp} height={64} cursorIdx={cursorIdx} onHover={setCursorIdx} />
+      {full && (full.laps.length > 0 || (full.distanceM ?? 0) > 100 || full.avgWatts != null) ? (
+        <RealizedIntensityBars full={full} sport={sp} height={64} cursor={cursor} onHover={setCursor} />
       ) : planned && (planned.blocks ?? []).length > 0 ? (
         <PlannedIntensityBars session={planned} height={64} />
       ) : null}
       {full?.samples && full.samples.some(s => s.ele != null) && (
-        <ActivityElevation full={full} height={72} cursorIdx={cursorIdx} onHover={setCursorIdx} />
+        <ActivityElevation full={full} height={72} cursor={cursor} onHover={setCursor} />
       )}
     </>
   ) : null

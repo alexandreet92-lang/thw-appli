@@ -22,7 +22,7 @@ import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { formatHM, matchStatus, normalizeSportType, ATHLETE, type Session, type TrainingActivity } from '@/app/planning/page'
 import { sportKeyFromType, subSportIcon, SPORT_ICON, type SportKey } from '@/components/icons/SportIcon'
-import { toBars, treadmillGainM, totalDistance, barHeightPct, ZONE_TARGET_PCT, type MBlock } from './mobile/blocks'
+import { toBars, treadmillGainM, totalDistance, barHeightPct, type MBlock } from './mobile/blocks'
 import { zColor, paceToSec, secToPace } from './mobile/editorial'
 import { staticRouteMapUrl } from '@/lib/staticMap'
 
@@ -46,6 +46,14 @@ export interface ActSample {
   w: number | null
   ll: [number, number] | null
 }
+/** Tour (lap) — chaque appui sur la montre / le compteur. */
+export interface ActLap {
+  moving_time_s: number
+  distance_m: number
+  avg_speed_ms: number | null
+  avg_watts: number | null
+  avg_hr: number | null
+}
 export interface FullActivity {
   id: string
   distanceM: number | null
@@ -58,6 +66,7 @@ export interface FullActivity {
   calories: number | null
   latlng: [number, number][] | null
   samples: ActSample[] | null
+  laps: ActLap[]
   strength: StrengthDetail | null
 }
 
@@ -176,7 +185,7 @@ export function useActivityFull(activity: TrainingActivity | null): FullActivity
       try {
         const sb = createClient()
         const { data: r } = await sb.from('activities')
-          .select('id,sport_type,user_id,started_at,moving_time_s,elapsed_time_s,distance_m,elevation_gain_m,avg_pace_s_km,avg_speed_ms,avg_watts,avg_hr,rpe,perceived_effort,calories,streams,summary_polyline,raw_data')
+          .select('id,sport_type,user_id,started_at,moving_time_s,elapsed_time_s,distance_m,elevation_gain_m,avg_pace_s_km,avg_speed_ms,avg_watts,avg_hr,rpe,perceived_effort,calories,streams,laps,summary_polyline,raw_data')
           .eq('id', id).maybeSingle()
         if (!r || cancelled) return
         const rec = r as Record<string, unknown>
@@ -251,6 +260,17 @@ export function useActivityFull(activity: TrainingActivity | null): FullActivity
             }
           }
         }
+        // Laps : chaque appui montre/compteur = 1 tour → 1 barre du profil.
+        const rawLaps = Array.isArray(rec.laps) ? (rec.laps as Record<string, unknown>[]) : []
+        const laps: ActLap[] = rawLaps
+          .map(l => ({
+            moving_time_s: Number(l.moving_time_s ?? l.elapsed_time_s ?? 0),
+            distance_m: Number(l.distance_m ?? 0),
+            avg_speed_ms: l.avg_speed_ms != null ? Number(l.avg_speed_ms) : null,
+            avg_watts: l.avg_watts != null ? Number(l.avg_watts) : null,
+            avg_hr: l.avg_hr != null ? Number(l.avg_hr) : null,
+          }))
+          .filter(l => l.moving_time_s > 0)
         const movingS = Number(rec.moving_time_s ?? rec.elapsed_time_s ?? 0)
         const built: FullActivity = {
           id,
@@ -265,6 +285,7 @@ export function useActivityFull(activity: TrainingActivity | null): FullActivity
           calories: rec.calories != null ? Number(rec.calories) : null,
           latlng: latlng.length > 1 ? latlng : null,
           samples,
+          laps,
           strength,
         }
         cache.set(id, built)
@@ -406,66 +427,85 @@ export function PlannedIntensityBars({ session, height = 56 }: { session: Sessio
   )
 }
 
-interface RealizedBar { zone: number; label: string; i0: number; i1: number }
+interface LapBar { zone: number; label: string; weight: number; heightPct: number; f0: number; f1: number }
 
-/** Barres d'intensité RÉALISÉES depuis les échantillons (≈ 60 tranches de temps). */
-function buildRealizedBars(samples: ActSample[], sport: string, refs: AthleteRefsLite): RealizedBar[] {
-  const nB = Math.min(60, Math.max(12, Math.floor(samples.length / 4)))
-  const out: RealizedBar[] = []
-  for (let b = 0; b < nB; b++) {
-    const i0 = Math.floor((b / nB) * samples.length)
-    const i1 = Math.max(i0 + 1, Math.floor(((b + 1) / nB) * samples.length))
-    let vSum = 0, vN = 0, wSum = 0, wN = 0
-    for (let i = i0; i < i1 && i < samples.length; i++) {
-      const s = samples[i]
-      if (s.vMs != null && s.vMs > 0) { vSum += s.vMs; vN++ }
-      if (s.w != null && s.w > 0) { wSum += s.w; wN++ }
-    }
-    const vMs = vN > 0 ? vSum / vN : null
-    const w = wN > 0 ? wSum / wN : null
-    const zone = sampleZone(sport, vMs, w, refs) ?? 1
-    const label = (sport === 'bike' || sport === 'elliptique')
-      ? (w != null ? `${Math.round(w)} W` : '—')
-      : vMs != null && vMs > 0.3
-        ? (sport === 'swim' ? `${secToPace(100 / vMs)}/100m` : `${secToPace(1000 / vMs)}/km`)
-        : '—'
-    out.push({ zone, label, i0, i1: Math.min(i1, samples.length) - 1 })
-  }
-  return out
+/** Hauteur CONTINUE (%) d'un lap : intensité rapportée au seuil → 12 %…100 %. */
+function lapHeightPct(sport: string, vMs: number | null, w: number | null, refs: AthleteRefsLite): number {
+  let ratio: number | null = null
+  if (sport === 'bike' || sport === 'elliptique') ratio = w != null && w > 0 ? w / refs.ftp : null
+  else if (vMs != null && vMs > 0.3) ratio = sport === 'swim' ? refs.css / (100 / vMs) : refs.runThr / (1000 / vMs)
+  if (ratio == null) return 45
+  // Z1 ≈ 0,70 · seuil ≈ 1,00 · Z5 ≈ 1,15 → échelle 0,55‥1,20 mappée 12‥100 %.
+  return Math.max(12, Math.min(100, ((ratio - 0.55) / (1.20 - 0.55)) * 100))
 }
 
-/** Profil d'intensité RÉALISÉ (streams réels). Survol → onHover(index échantillon). */
-export function RealizedIntensityBars({ full, sport, height = 56, cursorIdx, onHover, titleSuffix }: {
+/** Une barre par LAP (appui montre/compteur) : largeur ∝ durée, hauteur ∝ intensité,
+ *  couleur = zone. Sans lap (ou un seul) → un unique bloc sur toute la séance. */
+function buildLapBars(full: FullActivity, sport: string, refs: AthleteRefsLite): LapBar[] {
+  const laps = full.laps
+  const paceLabel = (vMs: number | null, w: number | null) =>
+    (sport === 'bike' || sport === 'elliptique') ? (w != null ? `${Math.round(w)} W` : '—')
+      : vMs != null && vMs > 0.3 ? (sport === 'swim' ? `${secToPace(100 / vMs)}/100m` : `${secToPace(1000 / vMs)}/km`) : '—'
+
+  let items: { weight: number; vMs: number | null; w: number | null }[]
+  if (laps.length > 1) {
+    items = laps.map(l => ({
+      weight: l.moving_time_s,
+      vMs: l.avg_speed_ms ?? (l.distance_m > 0 && l.moving_time_s > 0 ? l.distance_m / l.moving_time_s : null),
+      w: l.avg_watts,
+    }))
+  } else {
+    // Aucun tour → un seul bloc entier (moyenne de la séance).
+    const vMs = full.distanceM && full.distanceM > 100 && full.movingS > 0 ? full.distanceM / full.movingS : null
+    items = [{ weight: Math.max(1, full.movingS), vMs, w: full.avgWatts }]
+  }
+  const total = items.reduce((s, it) => s + it.weight, 0) || 1
+  let acc = 0
+  return items.map(it => {
+    const f0 = acc / total; acc += it.weight; const f1 = acc / total
+    return {
+      zone: sampleZone(sport, it.vMs, it.w, refs) ?? 1,
+      label: paceLabel(it.vMs, it.w),
+      weight: it.weight,
+      heightPct: lapHeightPct(sport, it.vMs, it.w, refs),
+      f0, f1,
+    }
+  })
+}
+
+/** Profil d'intensité RÉALISÉ (par tours). Survol → onHover(fraction 0…1 du temps). */
+export function RealizedIntensityBars({ full, sport, height = 56, cursor, onHover, titleSuffix }: {
   full: FullActivity; sport: string; height?: number
-  cursorIdx?: number | null; onHover?: (idx: number | null) => void
+  cursor?: number | null; onHover?: (frac: number | null) => void
   titleSuffix?: string
 }) {
   const [refs, setRefs] = useState<AthleteRefsLite | null>(refsCache)
   useEffect(() => { let ok = true; void loadAthleteRefs().then(r => { if (ok) setRefs(r) }); return () => { ok = false } }, [])
-  const samples = full.samples
-  if (!samples || samples.length < 4) return null
   const r = refs ?? { ftp: ATHLETE.ftp, runThr: ATHLETE.thresholdPace, css: ATHLETE.css }
-  const bars = buildRealizedBars(samples, sport, r)
+  // Besoin d'au moins des laps OU une moyenne exploitable.
+  if (full.laps.length === 0 && !(full.distanceM && full.distanceM > 100) && full.avgWatts == null) return null
+  const bars = buildLapBars(full, sport, r)
+  if (bars.length === 0) return null
+  const single = full.laps.length <= 1
   return (
     <div>
-      <p style={sectionLabel}>Profil d&apos;intensité · réalisé{titleSuffix ? ` ${titleSuffix}` : ''}</p>
+      <p style={sectionLabel}>Profil d&apos;intensité · réalisé{titleSuffix ? ` ${titleSuffix}` : ''}{single ? ' · séance continue' : ` · ${full.laps.length} tours`}</p>
       <div
         onMouseMove={onHover ? (e => {
           const rect = e.currentTarget.getBoundingClientRect()
-          const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-          onHover(Math.min(samples.length - 1, Math.round(frac * (samples.length - 1))))
+          onHover(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
         }) : undefined}
         onMouseLeave={onHover ? (() => onHover(null)) : undefined}
-        style={{ height, display: 'flex', alignItems: 'flex-end', gap: 1, borderBottom: '1px solid var(--border)', cursor: onHover ? 'crosshair' : undefined }}>
+        style={{ height, display: 'flex', alignItems: 'flex-end', gap: 2, borderBottom: '1px solid var(--border)', cursor: onHover ? 'crosshair' : undefined }}>
         {bars.map((bar, i) => {
-          const active = cursorIdx != null && cursorIdx >= bar.i0 && cursorIdx <= bar.i1
+          const active = cursor != null && cursor >= bar.f0 && cursor <= bar.f1
           return (
             <div key={i} title={`Z${bar.zone} · ${bar.label}`}
               style={{
-                flex: 1, minWidth: 1,
-                height: `${ZONE_TARGET_PCT[Math.max(1, Math.min(5, bar.zone))] ?? 100}%`,
+                flexGrow: Math.max(1, bar.weight), flexBasis: 0, minWidth: 2,
+                height: `${bar.heightPct}%`,
                 background: zColor(bar.zone),
-                opacity: cursorIdx == null ? 1 : active ? 1 : 0.45,
+                opacity: cursor == null ? 1 : active ? 1 : 0.4,
                 borderRadius: '2px 2px 0 0',
               }} />
           )
@@ -475,10 +515,10 @@ export function RealizedIntensityBars({ full, sport, height = 56, cursorIdx, onH
   )
 }
 
-/** Profil altimétrique RÉEL interactif : survol → onHover(index échantillon). */
-export function ActivityElevation({ full, height = 64, cursorIdx, onHover, showTitle = true }: {
+/** Profil altimétrique RÉEL interactif : survol → onHover(fraction 0…1). */
+export function ActivityElevation({ full, height = 64, cursor, onHover, showTitle = true }: {
   full: FullActivity; height?: number
-  cursorIdx?: number | null; onHover?: (idx: number | null) => void
+  cursor?: number | null; onHover?: (frac: number | null) => void
   showTitle?: boolean
 }) {
   const samples = full.samples
@@ -497,15 +537,14 @@ export function ActivityElevation({ full, height = 64, cursorIdx, onHover, showT
     started = true
   })
   const area = `${d} L ${W} ${height} L 0 ${height} Z`
-  const cx = cursorIdx != null ? X(Math.max(0, Math.min(samples.length - 1, cursorIdx))) : null
+  const cx = cursor != null ? Math.max(0, Math.min(1, cursor)) * W : null
   return (
     <div>
       {showTitle && <p style={sectionLabel}>Profil altimétrique{full.elevM ? ` · +${full.elevM} m D+` : ''}</p>}
       <svg width="100%" height={height} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none"
         onMouseMove={onHover ? (e => {
           const rect = e.currentTarget.getBoundingClientRect()
-          const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-          onHover(Math.min(samples.length - 1, Math.round(frac * (samples.length - 1))))
+          onHover(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
         }) : undefined}
         onMouseLeave={onHover ? (() => onHover(null)) : undefined}
         style={{ display: 'block', cursor: onHover ? 'crosshair' : undefined }}>
@@ -517,6 +556,13 @@ export function ActivityElevation({ full, height = 64, cursorIdx, onHover, showT
       </svg>
     </div>
   )
+}
+
+/** Position GPS à une fraction 0…1 du parcours (échantillons ~uniformes en temps). */
+export function sampleLLAtFraction(full: FullActivity | null, frac: number | null): [number, number] | null {
+  if (!full?.samples || frac == null) return null
+  const i = Math.max(0, Math.min(full.samples.length - 1, Math.round(frac * (full.samples.length - 1))))
+  return full.samples[i]?.ll ?? null
 }
 
 // ── Carte GPS (image Mapbox ou SVG) + curseur synchronisé ─────────
@@ -678,9 +724,9 @@ export function ActivityHoverPreview({ activity, planned, anchor }: {
             : null
       ) : (
         <>
-          {/* Profil d'intensité RÉALISÉ (streams réels) — repli sur le prévu */}
-          {full?.samples && full.samples.length > 3
-            ? <div style={{ marginBottom: (full?.latlng || full?.samples) ? 10 : 0 }}><RealizedIntensityBars full={full} sport={sp} /></div>
+          {/* Profil d'intensité RÉALISÉ (par tours) — repli sur le prévu */}
+          {full && (full.laps.length > 0 || (full.distanceM ?? 0) > 100 || full.avgWatts != null)
+            ? <div style={{ marginBottom: 10 }}><RealizedIntensityBars full={full} sport={sp} /></div>
             : planned
               ? <div style={{ marginBottom: 10 }}><PlannedIntensityBars session={planned} /></div>
               : null}

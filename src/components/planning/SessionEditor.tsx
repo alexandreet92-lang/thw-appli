@@ -4303,6 +4303,7 @@ ${xTicks.map(km => { const x = PL+(km/totalKm)*pW; return `<line x1="${x.toFixed
       exercises,
       circuits,
       circuitMap,
+      runningSub: sport === 'run' ? runningSub : undefined,
       generatedOn: new Date().toLocaleDateString(currentLocale()),
     })
     const w = window.open('', '_blank')

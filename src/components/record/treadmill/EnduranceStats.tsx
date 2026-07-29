@@ -27,9 +27,9 @@ function fmtPace(secPerUnit: number): string {
 export function EnduranceStats({ blocks, sport, denivM }: { blocks: MBlock[]; sport: Kind; denivM: number }) {
   const data = useMemo(() => {
     const min = totalMin(blocks)
-    const distM = totalDistance(blocks)
+    const distM = totalDistance(blocks, sport)
     return { min, distM }
-  }, [blocks])
+  }, [blocks, sport])
 
   if (data.min <= 0 && data.distM <= 0) return null
   const { min, distM } = data

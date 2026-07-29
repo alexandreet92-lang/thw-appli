@@ -181,7 +181,7 @@ export default function ManualEntrySheet({ onClose, onSaved }: Props) {
       } else if (mode === 'endurance') {
         const durS = Math.round(totalMin(blocks) * 60) || durationSecManual
         if (durS <= 0) { setError('Ajoute au moins un bloc (ou une durée).'); setSaving(false); return }
-        const distM = Math.round(totalDistance(blocks)) || (distKm ? Math.round(flt(distKm) * 1000) : 0)
+        const distM = Math.round(totalDistance(blocks, builderSport)) || (distKm ? Math.round(flt(distKm) * 1000) : 0)
         Object.assign(act, {
           moving_time_s: durS, elapsed_time_s: durS, distance_m: distM,
           elevation_gain_m: denivN, avg_speed_ms: durS > 0 && distM > 0 ? distM / durS : 0,

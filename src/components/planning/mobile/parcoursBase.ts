@@ -47,6 +47,17 @@ function sameSegments(a: KmRange[] | undefined, b: KmRange[]): boolean {
  * Garantit la présence du bloc de fond et resynchronise ses segments + sa durée.
  * Renvoie la MÊME référence de tableau si rien ne change (pas de boucle d'effet).
  */
+// Ordre CHRONOLOGIQUE le long du tracé : fond de sortie en tête, puis chaque
+// bloc d'intensité par km de départ croissant (les blocs sans repère km restent
+// en fin, dans leur ordre d'ajout). La liste suit ainsi le graphique du parcours.
+function chronoSorted(list: MBlock[]): MBlock[] {
+  return [...list].sort((a, b) => {
+    if (a._base && !b._base) return -1
+    if (b._base && !a._base) return 1
+    return (a._startKm ?? Number.POSITIVE_INFINITY) - (b._startKm ?? Number.POSITIVE_INFINITY)
+  })
+}
+
 export function syncBaseBlock(blocks: MBlock[], ctx: BaseCtx, sport: SportType): MBlock[] {
   const { profile, totalKm, massKg, defaultWatts } = ctx
   if (totalKm <= 0 || profile.length < 2) return blocks
@@ -59,26 +70,34 @@ export function syncBaseBlock(blocks: MBlock[], ctx: BaseCtx, sport: SportType):
     segments.reduce((s, seg) => s + estimateRangeMin(profile, seg.startKm, seg.endKm, watts, massKg), 0),
   )
 
-  if (existing) {
-    if (
-      sameSegments(existing._baseSegments, segments)
-      && existing.durationMin === durationMin
-      && existing._startKm === 0
-      && existing._endKm === totalKm
-    ) return blocks
+  // 1. Bloc de fond : à jour (ou créé).
+  let working: MBlock[] = blocks
+  const baseUnchanged = existing
+    && sameSegments(existing._baseSegments, segments)
+    && existing.durationMin === durationMin
+    && existing._startKm === 0
+    && existing._endKm === totalKm
+  if (!existing) {
+    const base: MBlock = recalc(sport, {
+      id: `base_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+      mode: 'single', type: 'effort',
+      durationMin, zone: 2, value: String(watts), effortUnit: 'watts', hrAvg: '',
+      label: BASE_BLOCK_LABEL,
+      _base: true, _startKm: 0, _endKm: totalKm, _baseSegments: segments,
+    })
+    working = [base, ...blocks]
+  } else if (!baseUnchanged) {
     const next = [...blocks]
     next[idx] = recalc(sport, { ...existing, _startKm: 0, _endKm: totalKm, _baseSegments: segments, durationMin })
-    return next
+    working = next
   }
 
-  const base: MBlock = recalc(sport, {
-    id: `base_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
-    mode: 'single', type: 'effort',
-    durationMin, zone: 2, value: String(watts), effortUnit: 'watts', hrAvg: '',
-    label: BASE_BLOCK_LABEL,
-    _base: true, _startKm: 0, _endKm: totalKm, _baseSegments: segments,
-  })
-  return [base, ...blocks]
+  // 2. Tri chronologique. On ne renvoie une nouvelle référence que si le fond a
+  // changé OU si l'ordre diffère — sinon on garde `blocks` (pas de boucle d'effet).
+  const sorted = chronoSorted(working)
+  const orderSame = sorted.every((b, i) => b === working[i])
+  if (working === blocks && orderSame) return blocks
+  return orderSame ? working : sorted
 }
 
 /** Change la puissance du fond → toutes ses portions Z2 suivent. */

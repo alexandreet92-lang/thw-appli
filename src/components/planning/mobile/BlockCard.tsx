@@ -38,15 +38,19 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
   // Cible affichée (détail discret). Tapis : vitesse · pente · équivalent plat.
   const target = sport === 'bike'
     ? (b.value ? `${b.value} W` : `Z${z}`)
-    : sport === 'swim'
-      ? (b.hypoxie?.mode === 'strokes'
-          ? `${tr('planning.breathEveryEq', { n: String(b.hypoxie.breathEvery ?? 6) })}`
-          : b.hypoxie
-            ? tr('planning.hypoxie')
-            : b.value ? `${b.value}/100m` : `Z${z}`)
-      : b.effortUnit === 'kmh'
-        ? (b.value ? `${b.value} km/h${b.inclinePct ? ` · ${fr1(b.inclinePct)}% · ≈${fr1(kmhEq)} km/h` : ''}` : `Z${z}`)
-        : (b.value ? `${b.value}/km` : `Z${z}`)
+    : sport === 'rowing'
+      ? (b.effortUnit === 'watts' ? (b.value ? `${b.value} W` : `Z${z}`) : (b.value ? `${b.value}/500m` : `Z${z}`))
+      : sport === 'elliptique'
+        ? (b.effortUnit === 'watts' ? (b.value ? `${b.value} W` : `Z${z}`) : `Z${z}${b.machineLevel ? ` · niv. ${b.machineLevel}` : ''}`)
+        : sport === 'swim'
+          ? (b.hypoxie?.mode === 'strokes'
+              ? `${tr('planning.breathEveryEq', { n: String(b.hypoxie.breathEvery ?? 6) })}`
+              : b.hypoxie
+                ? tr('planning.hypoxie')
+                : b.value ? `${b.value}/100m` : `Z${z}`)
+          : b.effortUnit === 'kmh'
+            ? (b.value ? `${b.value} km/h${b.inclinePct ? ` · ${fr1(b.inclinePct)}% · ≈${fr1(kmhEq)} km/h` : ''}` : `Z${z}`)
+            : (b.value ? `${b.value}/km` : `Z${z}`)
   const repsLabel = isIv && b.reps ? ` · ${b.reps} × ${b.inputMode === 'distance' && b.distanceM ? `${b.distanceM}m` : fmtMMSS(b.effortMin ?? 0)}` : ''
   // Valeur de droite : distance (par rép) si mode distance, mm:ss si durée
   // fractionnée (1:30 ≠ « 2 min »), sinon minutes entières.
@@ -57,7 +61,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
       : { num: fmtMMSS(b.durationMin), unit: '' }
 
   // ── Champs adaptatifs (dépliés) ─────────────────────────────────
-  const effortUnit = b.effortUnit ?? (sport === 'bike' ? 'watts' : isTreadmill ? 'kmh' : 'pace')
+  const effortUnit = b.effortUnit ?? (sport === 'bike' ? 'watts' : sport === 'elliptique' ? 'zone' : isTreadmill ? 'kmh' : 'pace')
   const distMode = b.inputMode === 'distance'
 
   const eqWatts = sport === 'bike' && effortUnit === 'watts' ? pctFtp(parseInt(b.value || '0') || 0, refs) : null
@@ -81,6 +85,26 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
           onDec={() => set({ value: String(Math.max(0, Math.round((kmh - 0.5) * 10) / 10)) })}
           onInc={() => set({ value: String(Math.round((kmh + 0.5) * 10) / 10) })} />
       </Field>
+    }
+    // aviron : allure /500m (ou watts) — jamais /km
+    if (sport === 'rowing') {
+      return effortUnit === 'watts'
+        ? <Field label={tr('planning.watts')} eq={`Z${z}`}>
+            <Stepper value={b.value} unit="W" onChange={v => set({ value: v })} onDec={() => set({ value: String(Math.max(0, (parseInt(b.value || '0') || 0) - 5)) })} onInc={() => set({ value: String((parseInt(b.value || '0') || 0) + 5) })} />
+          </Field>
+        : <Field label={tr('planning.targetPace')} eq={`Z${z}`}>
+            <Stepper value={b.value} unit="/500m" onChange={v => set({ value: v })} onDec={() => set({ value: bumpPaceOrWatts(b.value, -1) })} onInc={() => set({ value: bumpPaceOrWatts(b.value, 1) })} />
+          </Field>
+    }
+    // elliptique : NIVEAU de difficulté machine + zone (jamais d'allure /km).
+    if (sport === 'elliptique') {
+      return effortUnit === 'watts'
+        ? <Field label={tr('planning.watts')} eq={`Z${z}`}>
+            <Stepper value={b.value} unit="W" onChange={v => set({ value: v })} onDec={() => set({ value: String(Math.max(0, (parseInt(b.value || '0') || 0) - 5)) })} onInc={() => set({ value: String((parseInt(b.value || '0') || 0) + 5) })} />
+          </Field>
+        : <Field label={tr('planning.zone')}>
+            <Stepper value={String(z)} onChange={v => set({ zone: Math.max(1, Math.min(7, parseInt(v) || 1)), value: '' })} onDec={() => set({ zone: Math.max(1, z - 1), value: '' })} onInc={() => set({ zone: Math.min(7, z + 1), value: '' })} />
+          </Field>
     }
     // course / natation : allure
     if (sport === 'run' && effortUnit === 'pctvma') {
@@ -120,7 +144,7 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
     </Field>
   }
 
-  const showDistToggle = sport === 'run' || sport === 'swim'
+  const showDistToggle = sport === 'run' || sport === 'swim' || sport === 'rowing'
 
   return (
     <div style={{ background: 'var(--se-card)', border: '1px solid var(--se-rule)', borderLeft: `3px solid ${zColor(z)}`, borderRadius: 'var(--se-r)', overflow: 'hidden' }}>
@@ -164,6 +188,8 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--se-dim)' }}>{isIv ? (sport === 'swim' ? tr('planning.series') : tr('planning.interval')) : tr('planning.effort')}</span>
             {sport === 'bike' && <Segmented accent={accent} value={effortUnit === 'zone' ? 'zone' : 'watts'} onChange={u => set({ effortUnit: u })} options={[{ key: 'watts', label: tr('planning.watts') }, { key: 'zone', label: tr('planning.zone') }]} />}
+            {sport === 'rowing' && <Segmented accent={accent} value={effortUnit === 'watts' ? 'watts' : 'pace'} onChange={u => set({ effortUnit: u, value: '' })} options={[{ key: 'pace', label: '/500m' }, { key: 'watts', label: tr('planning.watts') }]} />}
+            {sport === 'elliptique' && <Segmented accent={accent} value={effortUnit === 'watts' ? 'watts' : 'zone'} onChange={u => set({ effortUnit: u, value: '' })} options={[{ key: 'zone', label: tr('planning.zone') }, { key: 'watts', label: tr('planning.watts') }]} />}
             {sport === 'run' && (isTreadmill
               ? <Segmented accent={accent} value={effortUnit === 'pctvma' ? 'pctvma' : effortUnit === 'pace' ? 'pace' : 'kmh'} onChange={u => set({ effortUnit: u, value: '' })} options={[{ key: 'kmh', label: 'km/h' }, { key: 'pace', label: tr('planning.pace') }, { key: 'pctvma', label: '%VMA' }]} />
               : <Segmented accent={accent} value={effortUnit === 'pctvma' ? 'pctvma' : 'pace'} onChange={u => set({ effortUnit: u })} options={[{ key: 'pace', label: tr('planning.pace') }, { key: 'pctvma', label: '%VMA' }]} />)}
@@ -194,6 +220,13 @@ export function BlockCard({ block: b, sport, runningSub, accent, refs, expanded,
               <Field label={tr('planning.mode')}><Segmented accent={accent} value={distMode ? 'distance' : 'time'} onChange={m => set({ inputMode: m })} options={[{ key: 'distance', label: tr('planning.distance') }, { key: 'time', label: tr('planning.time') }]} /></Field>
             )}
             {effortField()}
+            {sport === 'elliptique' && (
+              <Field label={tr('planning.machineLevel')} opt>
+                <Stepper value={String(b.machineLevel ?? 0)} unit="niv." placeholder="—" onChange={v => set({ machineLevel: Math.max(0, parseInt(v) || 0) })}
+                  onDec={() => set({ machineLevel: Math.max(0, (b.machineLevel ?? 0) - 1) })}
+                  onInc={() => set({ machineLevel: (b.machineLevel ?? 0) + 1 })} />
+              </Field>
+            )}
             {isTreadmill && (
               <Field label="Pente" eq={(b.elevationM ?? 0) > 0 ? `D+ ${b.elevationM} m` : undefined}>
                 <Stepper value={String(b.inclinePct ?? 0)} unit="%" onChange={v => set({ inclinePct: Math.max(0, parseFloat(v.replace(',', '.')) || 0) })}

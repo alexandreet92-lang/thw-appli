@@ -32,6 +32,7 @@ export type MBlock = Block & {
   effortUnit?: EffortUnit
   recoveryStyle?: string   // course : 'trot' | 'marche'
   nage?: string            // natation : Crawl / Dos / Brasse / Pap
+  machineLevel?: number    // elliptique : niveau de résistance de la machine (info)
   // Natation : matériel du bloc (pull buoy, planche, plaquettes, palmes).
   equipment?: string[]
   // Natation : exercice HYPOXIE. Deux modes :
@@ -61,7 +62,8 @@ const uid = () => `b_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 export function durFromDistance(sport: SportType, distanceM: number, paceStr: string): number {
   const sec = paceToSec(paceStr)
   if (isNaN(sec) || !distanceM) return 0
-  if (sport === 'swim') return (distanceM / 100) * sec / 60
+  if (sport === 'swim') return (distanceM / 100) * sec / 60      // /100m
+  if (sport === 'rowing') return (distanceM / 500) * sec / 60    // /500m
   return (distanceM / 1000) * sec / 60   // course : allure /km
 }
 
@@ -83,7 +85,7 @@ export function recalc(sport: SportType, b: MBlock): MBlock {
     if (isIv && nb.reps != null) nb.durationMin = nb.reps * ((nb.effortMin ?? 0) + (nb.recoveryMin ?? 0))
     return nb
   }
-  if (nb.inputMode === 'distance' && (sport === 'run' || sport === 'swim')) {
+  if (nb.inputMode === 'distance' && (sport === 'run' || sport === 'swim' || sport === 'rowing')) {
     if (nb.mode === 'interval' && nb.reps) {
       nb.effortMin = durFromDistance(sport, nb.distanceM ?? 0, nb.value)
       const rec = nb.recoveryDistanceM != null
@@ -108,6 +110,9 @@ export function newSingle(sport: SportType, treadmill = false): MBlock {
   if (sport === 'run' && treadmill) return recalc(sport, { ...base, inputMode: 'time', value: '10', durationMin: 15, effortUnit: 'kmh', inclinePct: 0 })
   if (sport === 'run') return recalc(sport, { ...base, inputMode: 'time', value: '5:30', durationMin: 15, effortUnit: 'pace' })
   if (sport === 'swim') return recalc(sport, { ...base, inputMode: 'distance', distanceM: 400, value: '2:10', effortUnit: 'pace' })
+  // Aviron : allure /500m (ou watts). Elliptique : zone + niveau machine (jamais /km).
+  if (sport === 'rowing') return recalc(sport, { ...base, inputMode: 'time', value: '2:00', durationMin: 20, effortUnit: 'pace' })
+  if (sport === 'elliptique') return recalc(sport, { ...base, effortUnit: 'zone', zone: 2, machineLevel: 8, durationMin: 20 })
   return recalc(sport, base)
 }
 
@@ -131,6 +136,8 @@ export function newInterval(sport: SportType, treadmill = false): MBlock {
   if (sport === 'run' && treadmill) return recalc(sport, { ...base, inputMode: 'time', value: '15', effortMin: 1, effortUnit: 'kmh', inclinePct: 0, recoveryMin: 1.5, recoveryStyle: 'trot' })
   if (sport === 'run') return recalc(sport, { ...base, inputMode: 'distance', distanceM: 800, value: '3:45', effortUnit: 'pace', recoveryMin: 1.5, recoveryStyle: 'trot' })
   if (sport === 'swim') return recalc(sport, { ...base, inputMode: 'distance', distanceM: 100, reps: 8, zone: 4, value: '1:35', effortUnit: 'pace', nage: 'Crawl', recoveryMin: 0.25 })
+  if (sport === 'rowing') return recalc(sport, { ...base, inputMode: 'distance', distanceM: 500, reps: 6, zone: 4, value: '1:50', effortUnit: 'pace', recoveryMin: 1.5 })
+  if (sport === 'elliptique') return recalc(sport, { ...base, reps: 6, effortMin: 1, effortUnit: 'zone', zone: 5, machineLevel: 12, recoveryMin: 1 })
   return recalc(sport, base)
 }
 
@@ -309,12 +316,27 @@ export function treadmillGainM(blocks: MBlock[]): number {
 export function totalMin(blocks: MBlock[]): number {
   return toBars(blocks).reduce((s, b) => s + (b.min || 0), 0)
 }
+/** Distance (m) d'un bloc — mesurée si saisie, sinon DÉRIVÉE de la durée × allure.
+ *  Course/natation : la distance doit TOUJOURS être connue, même en mode temps
+ *  (10×1′ à 4:00/km → 2500 m), pour l'affichage et les totaux du mémo. */
+export function blockDistanceM(sport: SportType, b: MBlock): number {
+  const reps = b.mode === 'interval' && b.reps ? b.reps : 1
+  if (b.distanceM && b.distanceM > 0) return b.distanceM * reps
+  // Tapis : distance déjà dérivée par recalc (effortUnit kmh) et stockée dans distanceM.
+  if (sport !== 'run' && sport !== 'swim' && sport !== 'rowing') return 0
+  const paceSec = paceToSec(b.value ?? '')
+  if (isNaN(paceSec) || paceSec <= 0) return 0
+  const effMin = b.mode === 'interval' && b.reps ? (b.effortMin ?? 0) : b.durationMin
+  if (effMin <= 0) return 0
+  const effSec = effMin * 60
+  // paceSec = temps pour l'unité de distance (km : 1000 m, 100m natation, 500m aviron).
+  const unitM = sport === 'swim' ? 100 : sport === 'rowing' ? 500 : 1000
+  return (effSec / paceSec) * unitM * reps
+}
+
 /** Distance totale (m) — somme des distances de bloc (course/natation). */
-export function totalDistance(blocks: MBlock[]): number {
-  return blocks.reduce((s, b) => {
-    if (b.mode === 'interval' && b.reps) return s + (b.distanceM ?? 0) * b.reps
-    return s + (b.distanceM ?? 0)
-  }, 0)
+export function totalDistance(blocks: MBlock[], sport: SportType = 'run'): number {
+  return blocks.reduce((s, b) => s + blockDistanceM(sport, b), 0)
 }
 
 export const BLOCK_NAME: Record<string, string> = {

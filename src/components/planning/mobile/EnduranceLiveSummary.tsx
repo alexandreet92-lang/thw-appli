@@ -69,7 +69,7 @@ export function EnduranceLiveSummary({ sport, runningSub, blocks }: {
 
     const min = totalMin(blocks)
     if (min <= 0) return null
-    const distM = totalDistance(blocks)
+    const distM = totalDistance(blocks, sport)
     const isPower = sport === 'bike' || sport === 'elliptique'
     // Intensité moyenne pondérée par la durée de chaque barre (effort + récup chiffrées).
     let num = 0, den = 0

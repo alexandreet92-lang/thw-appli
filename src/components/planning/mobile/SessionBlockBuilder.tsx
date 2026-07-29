@@ -41,8 +41,9 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const bars = toBars(blocks)
   const tot = totalMin(blocks)
-  const dist = totalDistance(blocks)
+  const dist = totalDistance(blocks, sport)
   const isSwim = sport === 'swim'
+  const isRun = sport === 'run'
 
   // Tapis : profil ALTIMÉTRIQUE reconstruit depuis la pente des blocs (le tapis
   // n'a pas de trace GPS). Affiché sous le profil d'intensité s'il y a du D+.
@@ -176,12 +177,15 @@ export function SessionBlockBuilder({ sport, runningSub, accent, blocks, onChang
     return `${secToPace(sumWM / sumM)}${isSwim ? '/100m' : '/km'}`
   })()
 
-  // Natation : distance ET durée estimée (distance × allure) — les deux comptent.
+  // Natation (m) & course (km) : distance TOUJOURS affichée + durée. La distance
+  // est mesurée si saisie, sinon dérivée de durée × allure (mode temps compris).
+  const distLabel = isSwim ? (dist ? `${Math.round(dist)} m` : '—')
+    : (dist ? `${(dist / 1000).toFixed(2).replace('.', ',')} km` : '—')
   const cells: { label: string; value: string; color?: string }[] = [
     { label: tr('planning.smMetab'), value: String(sm), color: '#22b8c4' },
     { label: tr('planning.snNeuro'), value: String(sn), color: '#a855f7' },
-    ...(isSwim
-      ? [{ label: tr('planning.distance'), value: dist ? `${dist}m` : '—' }, { label: tr('planning.duration'), value: tot > 0 ? fmtDur(tot) : '—' }]
+    ...((isSwim || isRun)
+      ? [{ label: tr('planning.distance'), value: distLabel }, { label: tr('planning.duration'), value: tot > 0 ? fmtDur(tot) : '—' }]
       : [{ label: tr('planning.duration'), value: fmtDur(tot) }]),
     { label: sport === 'bike' ? tr('planning.avgIntensity') : tr('planning.avgPace'), value: fourth ?? '—' },
   ]

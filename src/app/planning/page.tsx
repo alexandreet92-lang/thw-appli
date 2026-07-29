@@ -14,8 +14,7 @@ import { useRacesFull } from '@/components/planning/useRacesFull'
 import RaceEditorSheet from '@/app/calendar/components/RaceEditorSheet'
 import ParcoursViewer from '@/components/gpx/ParcoursViewer'
 import { SessionHoverPreview } from '@/components/planning/SessionHoverPreview'
-import { ActivityBubble, CompareGrid, PlannedIntensityBars, ActivityMap, StrengthDone, useActivityFull, isStrengthSport } from '@/components/planning/ActivityDetails'
-import RouteElevationProfile from '@/components/gpx/RouteElevationProfile'
+import { ActivityBubble, CompareGrid, PlannedIntensityBars, RealizedIntensityBars, ActivityElevation, ActivityMap, StrengthDone, useActivityFull, isStrengthSport } from '@/components/planning/ActivityDetails'
 import { loadRaceRoutes, type RaceRoutes } from '@/lib/races/raceStore'
 import type { Race as FullRace } from '@/app/calendar/components/types'
 import { ScrollReveal, ScrollRevealGroup, ScrollRevealItem } from '@/components/ui/ScrollReveal'
@@ -438,11 +437,14 @@ export function sessionBuilderBlocToBlock(b: {
 }
 export function getTodayIdx():number { const d=new Date().getDay(); return d===0?6:d-1 }
 
-export const ATHLETE = { ftp:301, thresholdPace:248, css:88 }
+export const ATHLETE = { ftp:301, thresholdPace:248, css:88, row500:110 }
 export function getZone(sport:SportType,v:string):number {
   if(!v)return 1
-  if(sport==='bike'){ const w=parseInt(v)||0,f=ATHLETE.ftp; if(w<f*0.55)return 1;if(w<f*0.75)return 2;if(w<f*0.87)return 3;if(w<f*1.05)return 4;if(w<f*1.20)return 5;if(w<f*1.50)return 6;return 7 }
+  // Vélo & elliptique : watts vs FTP (l'elliptique affiche souvent des watts).
+  if(sport==='bike'||sport==='elliptique'){ const w=parseInt(v)||0,f=ATHLETE.ftp; if(!w)return 1; if(w<f*0.55)return 1;if(w<f*0.75)return 2;if(w<f*0.87)return 3;if(w<f*1.05)return 4;if(w<f*1.20)return 5;if(w<f*1.50)return 6;return 7 }
   if(sport==='run'){ const s=parsePace(v),t=ATHLETE.thresholdPace; if(s>t*1.25)return 1;if(s>t*1.10)return 2;if(s>t*1.00)return 3;if(s>t*0.90)return 4;return 5 }
+  // Aviron : allure /500m rapportée au seuil (~1:50/500m).
+  if(sport==='rowing'){ const s=parsePace(v),r=ATHLETE.row500; if(!s||isNaN(s))return 1; if(s>r*1.20)return 1;if(s>r*1.08)return 2;if(s>r*1.00)return 3;if(s>r*0.93)return 4;return 5 }
   // Natation : zone dérivée de l'allure /100m rapportée au CSS (avant : Z3 figée,
   // le profil d'intensité ne bougeait jamais en hauteur quand l'allure changeait).
   if(sport==='swim'){ const s=parsePace(v),c=ATHLETE.css; if(!s||isNaN(s))return 1; if(s>c*1.25)return 1;if(s>c*1.10)return 2;if(s>c*1.00)return 3;if(s>c*0.90)return 4;return 5 }
@@ -921,6 +923,17 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
   // On garde la dernière activité affichée pendant l'animation de fermeture du sheet.
   const [last, setLast] = useState<TrainingActivity|null>(activity)
   useEffect(()=>{ if(activity) setLast(activity) },[activity])
+  // Curseur partagé profils ↔ carte : index dans full.samples.
+  const [cursorIdx, setCursorIdx] = useState<number|null>(null)
+  useEffect(()=>{ setCursorIdx(null) },[activity?.id])
+  // Desktop large → 2 colonnes (données à gauche, carte à droite).
+  const [wide, setWide] = useState(false)
+  useEffect(()=>{
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(min-width: 860px)')
+    const f = () => setWide(mq.matches); f(); mq.addEventListener('change', f)
+    return () => mq.removeEventListener('change', f)
+  },[])
   const a = activity ?? last
   const full = useActivityFull(a)
   if (!a) return null
@@ -943,86 +956,120 @@ export function ActivityQuickModal({ activity, onClose }:{ activity:TrainingActi
   })()
   const col = SPORT_BORDER[sp]
   const sectionLbl: React.CSSProperties = { fontSize:9,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',color:'var(--text-dim)',margin:'0 0 6px' }
+  const cursorLL = cursorIdx != null && full?.samples ? (full.samples[cursorIdx]?.ll ?? null) : null
+  const mapColor = col.startsWith('#') ? col.slice(1) : undefined
+  const hasMap = !strengthMode && !!full?.latlng
+  const hasProfiles = !strengthMode
+
+  // Bloc « métriques » (grille compacte)
+  const metrics = (
+    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>
+      {[
+        { label:t('plnp.field.sport'),   value:SPORT_LABEL[sp] },
+        { label:t('plnp.field.date'),    value:dateStr, small:true },
+        { label:t('plnp.field.time'),   value:`${String(a.startHour).padStart(2,'0')}:${String(a.startMin).padStart(2,'0')}`, mono:true },
+        { label:t('plnp.field.duration'),   value:formatDur(durationMin), mono:true },
+        ...(distKm ? [{ label:t('plnp.field.distance'), value: isSwim ? `${Math.round(distM!)} m` : `${distKm} km`, mono:true }] : []),
+        ...(paceStr ? [{ label: isPower ? t('plnp.activity.avgPower') : t('plnp.activity.avgPace'), value:paceStr, mono:true }] : []),
+        ...(full?.elevM ? [{ label:'D+', value:`${full.elevM} m`, mono:true }] : []),
+        ...(full?.rpe != null ? [{ label:'RPE', value:String(Math.round(full.rpe*10)/10), mono:true }] : []),
+        ...(a.tss ? [{ label:'SM', value:`${Math.round(a.tss)}`, mono:true, color:'#5b6fff' }] : []),
+      ].map(({ label, value, mono, small, color })=>(
+        <div key={label} style={{ background:'var(--bg-card2)',borderRadius:10,padding:'10px 12px' }}>
+          <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 3px',textTransform:'uppercase' as const,letterSpacing:'0.07em' }}>{label}</p>
+          <p style={{ fontSize:small?11:13,fontWeight:700,margin:0,fontFamily:mono?'DM Mono,monospace':'inherit',color:color??'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{value}</p>
+        </div>
+      ))}
+    </div>
+  )
+  const comparison = planned ? (
+    <div style={{ background:'var(--bg-card2)',borderRadius:12,padding:'12px 14px' }}>
+      <p style={sectionLbl}>{t('plnp.activity.planVsDone')}</p>
+      <CompareGrid planned={planned} full={full} activity={a} />
+    </div>
+  ) : null
+
+  // Bloc carte (droite en desktop) + bouton « Voir les détails » compact sous la carte.
+  const mapBlock = hasMap ? (
+    <div>
+      <p style={sectionLbl}>{t('plnp.activity.gpsTrace')}</p>
+      <ActivityMap latlng={full!.latlng!} width={wide ? 340 : Math.min(560, typeof window !== 'undefined' ? window.innerWidth - 64 : 320)} height={wide ? 220 : 150} color={mapColor} cursorLL={cursorLL} />
+    </div>
+  ) : null
+
+  // Profils (pleine largeur) — survol → curseur sur la carte.
+  const profiles = hasProfiles ? (
+    <>
+      {full?.samples && full.samples.length > 3 ? (
+        <RealizedIntensityBars full={full} sport={sp} height={64} cursorIdx={cursorIdx} onHover={setCursorIdx} />
+      ) : planned && (planned.blocks ?? []).length > 0 ? (
+        <PlannedIntensityBars session={planned} height={64} />
+      ) : null}
+      {full?.samples && full.samples.some(s => s.ele != null) && (
+        <ActivityElevation full={full} height={72} cursorIdx={cursorIdx} onHover={setCursorIdx} />
+      )}
+    </>
+  ) : null
+
+  const detailBtn = (
+    <a href={`/activities?id=${a.id}`}
+      style={{ display:'block',textAlign:'center' as const,padding:'10px 16px',borderRadius:10,background:col,color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12.5,textDecoration:'none',letterSpacing:'0.02em',width:'100%',boxSizing:'border-box' as const }}>
+      {t('plnp.activity.viewDetails')}
+    </a>
+  )
+
   return (
     <BottomSheet isOpen={!!activity} onClose={onClose}>
-      {/* En-tête */}
-      <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:18 }}>
-        <div style={{ width:44,height:44,borderRadius:12,background:SPORT_BG[sp],border:`1px solid ${col}44`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-          <SportBadge sport={sp} size="sm"/>
-        </div>
-        <div style={{ flex:1,minWidth:0 }}>
-          <div style={{ marginBottom:3 }}>
-            <span style={{ fontSize:8,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>{t('plnp.activity.completed')}</span>
+      <div style={{ maxWidth: wide ? 860 : undefined, margin: wide ? '0 auto' : undefined }}>
+        {/* En-tête */}
+        <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:16 }}>
+          <div style={{ width:44,height:44,borderRadius:12,background:SPORT_BG[sp],border:`1px solid ${col}44`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+            <SportBadge sport={sp} size="sm"/>
           </div>
-          <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{planned?.title || a.name}</p>
+          <div style={{ flex:1,minWidth:0 }}>
+            <div style={{ marginBottom:3 }}>
+              <span style={{ fontSize:8,fontWeight:800,background:col,color:'#fff',padding:'2px 6px',borderRadius:4,letterSpacing:'0.06em' }}>{t('plnp.activity.completed')}</span>
+            </div>
+            <p style={{ fontFamily:'Syne,sans-serif',fontSize:16,fontWeight:700,margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{planned?.title || a.name}</p>
+          </div>
         </div>
+
+        {strengthMode ? (
+          /* Muscu / boxe / hybrid : données + exercices/circuits réalisés (ni profil ni carte) */
+          <div style={{ display:'flex',flexDirection:'column' as const,gap:16 }}>
+            {metrics}
+            {comparison}
+            {full?.strength && <StrengthDone strength={full.strength} />}
+            {detailBtn}
+          </div>
+        ) : wide ? (
+          /* Desktop : gauche = données · droite = carte (+ bouton). Profils en dessous. */
+          <>
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 340px',gap:20,alignItems:'start',marginBottom:18 }}>
+              <div style={{ display:'flex',flexDirection:'column' as const,gap:14 }}>
+                {metrics}
+                {comparison}
+              </div>
+              <div style={{ display:'flex',flexDirection:'column' as const,gap:12 }}>
+                {mapBlock}
+                {detailBtn}
+              </div>
+            </div>
+            <div style={{ display:'flex',flexDirection:'column' as const,gap:18 }}>
+              {profiles}
+            </div>
+          </>
+        ) : (
+          /* Mobile : pile verticale */
+          <div style={{ display:'flex',flexDirection:'column' as const,gap:16 }}>
+            {metrics}
+            {comparison}
+            {mapBlock}
+            {profiles}
+            {detailBtn}
+          </div>
+        )}
       </div>
-
-      {/* Métriques */}
-      <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16 }}>
-        {[
-          { label:t('plnp.field.sport'),   value:SPORT_LABEL[sp] },
-          { label:t('plnp.field.date'),    value:dateStr, small:true },
-          { label:t('plnp.field.time'),   value:`${String(a.startHour).padStart(2,'0')}:${String(a.startMin).padStart(2,'0')}`, mono:true },
-          { label:t('plnp.field.duration'),   value:formatDur(durationMin), mono:true },
-          ...(distKm ? [{ label:t('plnp.field.distance'), value: isSwim ? `${Math.round(distM!)} m` : `${distKm} km`, mono:true }] : []),
-          ...(paceStr ? [{ label: isPower ? t('plnp.activity.avgPower') : t('plnp.activity.avgPace'), value:paceStr, mono:true }] : []),
-          ...(full?.elevM ? [{ label:'D+', value:`${full.elevM} m`, mono:true }] : []),
-          ...(full?.rpe != null ? [{ label:'RPE', value:String(Math.round(full.rpe*10)/10), mono:true }] : []),
-          ...(a.tss ? [{ label:'SM', value:`${Math.round(a.tss)}`, mono:true, color:'#5b6fff' }] : []),
-        ].map(({ label, value, mono, small, color })=>(
-          <div key={label} style={{ background:'var(--bg-card2)',borderRadius:10,padding:'10px 12px' }}>
-            <p style={{ fontSize:9,color:'var(--text-dim)',margin:'0 0 3px',textTransform:'uppercase' as const,letterSpacing:'0.07em' }}>{label}</p>
-            <p style={{ fontSize:small?11:13,fontWeight:700,margin:0,fontFamily:mono?'DM Mono,monospace':'inherit',color:color??'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' as const }}>{value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Comparaison prévu / réalisé */}
-      {planned && (
-        <div style={{ background:'var(--bg-card2)',borderRadius:12,padding:'12px 14px',marginBottom:16 }}>
-          <p style={sectionLbl}>{t('plnp.activity.planVsDone')}</p>
-          <CompareGrid planned={planned} full={full} activity={a} />
-        </div>
-      )}
-
-      {strengthMode ? (
-        /* Muscu / boxe / hybrid : exercices & circuits réalisés (ni profil ni carte) */
-        full?.strength && (
-          <div style={{ marginBottom:16 }}>
-            <StrengthDone strength={full.strength} />
-          </div>
-        )
-      ) : (
-        <>
-          {/* Profil d'intensité de la séance prévue */}
-          {planned && (planned.blocks ?? []).length > 0 && (
-            <div style={{ marginBottom:16 }}>
-              <PlannedIntensityBars session={planned} height={64} />
-            </div>
-          )}
-          {/* Carte GPS */}
-          {full?.latlng && (
-            <div style={{ marginBottom:16 }}>
-              <p style={sectionLbl}>{t('plnp.activity.gpsTrace')}</p>
-              <ActivityMap latlng={full.latlng} width={Math.min(560, typeof window !== 'undefined' ? window.innerWidth - 64 : 320)} height={150} color={col} />
-            </div>
-          )}
-          {/* Profil altimétrique réel */}
-          {full?.elevProfile && (
-            <div style={{ marginBottom:16 }}>
-              <p style={sectionLbl}>{t('plnp.activity.elevationProfile')}{full.elevM ? ` · +${full.elevM} m D+` : ''}</p>
-              <RouteElevationProfile profile={full.elevProfile} totalKm={distM ? distM/1000 : undefined} totalGainM={full.elevM ?? undefined} height={72} staticMode />
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Bouton vers Training */}
-      <a href={`/activities?id=${a.id}`}
-        style={{ display:'block',textAlign:'center' as const,padding:'14px 16px',borderRadius:12,background:`linear-gradient(135deg,${col},${col}bb)`,color:'#fff',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,textDecoration:'none',letterSpacing:'0.02em' }}>
-        {t('plnp.activity.viewDetails')}
-      </a>
     </BottomSheet>
   )
 }

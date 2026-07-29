@@ -11,6 +11,8 @@
 
 import type { Block, SportType } from '@/app/planning/page'
 import type { ExerciseItem, ExoCircuit } from '@/components/planning/exercises'
+import { totalMin, totalDistance, toBars, treadmillGainM, blockDistanceM, type MBlock } from '@/components/planning/mobile/blocks'
+import { paceToSec, secToPace } from '@/components/planning/mobile/editorial'
 
 export interface SessionMemoParams {
   title:       string
@@ -24,6 +26,7 @@ export interface SessionMemoParams {
   exercises:   ExerciseItem[]
   circuits:    ExoCircuit[]
   circuitMap:  Record<string, string>   // exerciseId → circuitId
+  runningSub?: string                    // 'treadmill' → D+ / VAP dispo
   generatedOn: string
 }
 
@@ -56,11 +59,19 @@ const isStrength  = (s: SportType) => s === 'gym' || s === 'hyrox'
 // Cible d'un bloc (watts vélo, allure course/natation, %VMA…). `value` est déjà
 // mis en forme par le builder ; on ajoute juste l'unité manquante évidente.
 function blockTarget(sport: SportType, b: Block): string {
+  const eu = (b as MBlock).effortUnit
   const v = (b.value || '').trim()
+  // Elliptique : niveau machine + zone (jamais d'allure /km).
+  if (sport === 'elliptique') {
+    if (eu === 'watts' && /^\d+$/.test(v)) return `${v} W`
+    const lvl = (b as MBlock).machineLevel
+    return lvl ? `Niv. ${lvl} · Z${b.zone}` : `Z${b.zone}`
+  }
   if (!v) return ''
-  if (sport === 'bike' && /^\d+$/.test(v)) return `${v} W`
+  if ((sport === 'bike' || eu === 'watts') && /^\d+$/.test(v)) return `${v} W`
   if (sport === 'run'  && /^\d{1,2}:\d{2}$/.test(v)) return `${v}/km`
   if (sport === 'swim' && /^\d{1,2}:\d{2}$/.test(v)) return `${v}/100m`
+  if (sport === 'rowing' && /^\d{1,2}:\d{2}$/.test(v)) return `${v}/500m`
   return v
 }
 
@@ -73,6 +84,13 @@ function blockDuration(b: Block): string {
   return fmtMin(b.durationMin)
 }
 
+// Distance d'un bloc (mesurée ou dérivée durée×allure) → « 400 m » / « 2,5 km ».
+function blockDistanceLabel(sport: SportType, b: Block): string {
+  const m = blockDistanceM(sport, b as MBlock)
+  if (!m || m <= 0) return ''
+  return sport === 'swim' ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2).replace('.', ',')} km`
+}
+
 // ── Bloc endurance → ligne du mémo ─────────────────────────────────
 function enduranceRows(sport: SportType, blocks: Block[]): string {
   return blocks.map((b, i) => {
@@ -81,17 +99,65 @@ function enduranceRows(sport: SportType, blocks: Block[]): string {
     const target = blockTarget(sport, b)
     const hr = (b.hrAvg || '').trim()
     const incl = b.inclinePct && b.inclinePct > 0 ? ` · ${b.inclinePct}%` : ''
+    // Distance (course / natation / aviron) : TOUJOURS affichée sous la zone.
+    const distLbl = blockDistanceLabel(sport, b)
+    // Natation : matériel du bloc (pull buoy, planche, plaquettes, palmes).
+    const equipment = (b as MBlock).equipment ?? []
+    const equipHtml = equipment.length
+      ? `<div class="row-equip">${equipment.map(e => `<span class="chip">${esc(e)}</span>`).join('')}</div>`
+      : ''
+    // Natation hypoxie : consigne de respiration.
+    const hyp = (b as MBlock).hypoxie
+    const hypLbl = hyp ? (hyp.mode === 'strokes' ? `Hypoxie · resp. tous les ${hyp.breathEvery ?? 6} coups` : 'Hypoxie · apnée') : ''
+    const subline = [`Z${b.zone} · ${ZONE_NAMES[zi]}`, distLbl, esc(incl).trim(), hypLbl].filter(Boolean).join(' · ')
     return `<div class="row" style="border-left:6px solid ${col}">
       <div class="row-n">${i + 1}</div>
       <div class="row-main">
         <div class="row-label">${esc(b.label || `Bloc ${i + 1}`)}</div>
-        <div class="row-zone">Z${b.zone} · ${ZONE_NAMES[zi]}${esc(incl)}</div>
+        <div class="row-zone">${subline}</div>
+        ${equipHtml}
       </div>
       <div class="row-dur">${esc(blockDuration(b))}</div>
       <div class="row-target">${esc(target || '—')}</div>
       <div class="row-hr">${hr ? `♥ ${esc(hr)}` : ''}</div>
     </div>`
   }).join('')
+}
+
+// Synthèse endurance PRÉVUE : km, D+ (tapis), allure moyenne, VAP (course tapis),
+// watts moyens (vélo). Alimente l'en-tête du mémo.
+function enduranceSummary(sport: SportType, blocks: Block[], runningSub?: string): { label: string; value: string }[] {
+  const out: { label: string; value: string }[] = []
+  const mb = blocks as MBlock[]
+  const min = totalMin(mb)
+  const distM = totalDistance(mb, sport)
+  const isPower = sport === 'bike' || sport === 'elliptique'
+  const isTreadmill = sport === 'run' && runningSub === 'treadmill'
+  if (distM > 0) out.push({ label: sport === 'swim' ? 'Distance' : 'km prévus', value: sport === 'swim' ? `${Math.round(distM)} m` : `${(distM / 1000).toFixed(1).replace('.', ',')} km` })
+  // D+ prévu (tapis : pente cumulée).
+  if (isTreadmill) { const dplus = treadmillGainM(mb); if (dplus > 0) out.push({ label: 'D+ prévu', value: `${dplus} m` }) }
+  // Intensité moyenne pondérée par la durée des barres.
+  let num = 0, den = 0
+  for (const bar of toBars(mb)) {
+    if (!bar.min || bar.min <= 0) continue
+    if (isPower) { const w = parseFloat(bar.value ?? ''); if (isFinite(w) && w > 0) { num += w * bar.min; den += bar.min } }
+    else { const p = paceToSec(bar.value ?? ''); if (!isNaN(p) && p > 0) { num += p * bar.min; den += bar.min } }
+  }
+  if (isPower) {
+    if (den > 0) out.push({ label: 'Watts moy', value: `${Math.round(num / den)} W` })
+  } else if (sport === 'run' || sport === 'swim' || sport === 'rowing') {
+    const unit = sport === 'swim' ? '/100m' : sport === 'rowing' ? '/500m' : '/km'
+    let paceS = den > 0 ? num / den : 0
+    if (paceS <= 0 && distM > 0 && min > 0) paceS = (min * 60) / (distM / (sport === 'swim' ? 100 : sport === 'rowing' ? 500 : 1000))
+    if (paceS > 0) out.push({ label: 'Allure moy', value: `${secToPace(paceS)}${unit}` })
+    // VAP (course tapis) : allure ajustée pente = temps / distance équivalente plat.
+    if (isTreadmill) {
+      const dplus = treadmillGainM(mb)
+      const eqDistM = distM + 8 * dplus   // ~8 m plat par m de D+
+      if (eqDistM > 0 && min > 0) out.push({ label: 'VAP', value: `${secToPace((min * 60) / (eqDistM / 1000))}/km` })
+    }
+  }
+  return out
 }
 
 // ── Bande « tube de cadre » (vélo) — à découper, une ligne par bloc ─
@@ -175,6 +241,8 @@ body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-seri
 .row-main{flex:1;min-width:0}
 .row-label{font-size:15px;font-weight:700;line-height:1.2}
 .row-zone{font-size:11px;color:#666;font-weight:600;margin-top:1px}
+.row-equip{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.chip{font-size:10px;font-weight:700;color:#0a0a0a;background:#eef2f6;border:1px solid #d5dbe2;border-radius:5px;padding:1px 6px}
 .row-dur{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
 .row-target{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;min-width:78px;text-align:right;flex-shrink:0}
 .row-hr{font-size:13px;font-weight:700;color:#e11d48;min-width:56px;text-align:right;flex-shrink:0}
@@ -210,6 +278,13 @@ export function buildSessionMemoHtml(p: SessionMemoParams): string {
   const metaBits: string[] = [`<span><b>${fmtMin(p.totalMin)}</b>durée</span>`]
   if (p.tss != null && p.tss > 0)  metaBits.push(`<span><b>${Math.round(p.tss)}</b>TSS</span>`)
   if (p.rpe != null && p.rpe > 0)  metaBits.push(`<span><b>${p.rpe}/10</b>RPE</span>`)
+
+  // Endurance : bandeau de synthèse PRÉVUE (km, D+, allure, VAP, watts).
+  if (isEndurance(p.sport) && p.blocks.length) {
+    for (const s of enduranceSummary(p.sport, p.blocks, p.runningSub)) {
+      metaBits.push(`<span><b>${esc(s.value)}</b>${esc(s.label)}</span>`)
+    }
+  }
 
   let body = ''
   let legend = ''

@@ -2,15 +2,17 @@
 // ══════════════════════════════════════════════════════════════════
 // ActivityDetails — enrichissement des séances RÉALISÉES du planning.
 //
-//  • useActivityFull : charge l'activité complète (streams GPS/altitude,
-//    D+, allure, watts, FC, RPE) + le détail de force (workout_sessions :
-//    exercices / circuits réalisés) pour muscu, boxe, hybrid et hyrox.
-//  • CompareGrid : prévu vs réalisé (temps, distance, D+, RPE, allure/watts).
-//  • PlannedIntensityBars / ActivityMap / ActivityElevation / StrengthDone :
-//    briques partagées entre la popover de survol et la fiche coulissante.
+//  • useActivityFull : charge l'activité complète (streams, D+, allure,
+//    watts, FC, RPE) + le détail de force (workout_sessions) pour muscu,
+//    boxe, hybrid et hyrox. La trace GPS vient des streams latlng, sinon
+//    de summary_polyline (décodage Google polyline), sinon de raw_data.map.
+//  • samples : séries RÉELLES rééchantillonnées et ALIGNÉES (temps, km,
+//    altitude, vitesse, watts, position) — base du profil d'intensité
+//    RÉALISÉ, du profil altimétrique et du curseur synchronisé sur la carte.
+//  • CompareGrid / RealizedIntensityBars / ActivityElevation / ActivityMap /
+//    StrengthDone : briques partagées popover + fiche coulissante.
 //  • ActivityHoverPreview : popover desktop au survol d'une bulle réalisée.
-//  • ActivityBubble : bulle grille au gabarit des séances planifiées —
-//    fond couleur du sport, titre/données/icône en blanc.
+//  • ActivityBubble : bulle grille au gabarit planifié, fond couleur sport.
 //
 // Règle streams (CLAUDE.md) : toujours `r.streams ?? r.raw_data?.streams`,
 // avec null-safety (backfill partiel).
@@ -18,12 +20,10 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
-import { formatHM, matchStatus, normalizeSportType, type Session, type TrainingActivity } from '@/app/planning/page'
+import { formatHM, matchStatus, normalizeSportType, ATHLETE, type Session, type TrainingActivity } from '@/app/planning/page'
 import { sportKeyFromType, subSportIcon, SPORT_ICON, type SportKey } from '@/components/icons/SportIcon'
-import { toBars, treadmillGainM, totalDistance, type MBlock } from './mobile/blocks'
+import { toBars, treadmillGainM, totalDistance, barHeightPct, ZONE_TARGET_PCT, type MBlock } from './mobile/blocks'
 import { zColor, paceToSec, secToPace } from './mobile/editorial'
-import { barHeightPct } from './mobile/blocks'
-import RouteElevationProfile from '@/components/gpx/RouteElevationProfile'
 import { staticRouteMapUrl } from '@/lib/staticMap'
 
 // ── Modèle ────────────────────────────────────────────────────────
@@ -37,6 +37,15 @@ export interface StrengthDetail {
   tonnageKg: number | null
   sets: number | null
 }
+/** Échantillon réel (séries alignées, ≤ 300 points). */
+export interface ActSample {
+  tS: number
+  dKm: number
+  ele: number | null
+  vMs: number | null
+  w: number | null
+  ll: [number, number] | null
+}
 export interface FullActivity {
   id: string
   distanceM: number | null
@@ -48,7 +57,7 @@ export interface FullActivity {
   rpe: number | null
   calories: number | null
   latlng: [number, number][] | null
-  elevProfile: { distKm: number; ele: number }[] | null
+  samples: ActSample[] | null
   strength: StrengthDetail | null
 }
 
@@ -57,10 +66,20 @@ export function isStrengthSport(sport: string): boolean {
   return k === 'muscu' || k === 'boxe' || k === 'hybrid' || k === 'hyrox' || sport === 'gym'
 }
 
-function downsampleProfile(pts: { distKm: number; ele: number }[], max = 220): { distKm: number; ele: number }[] {
-  if (pts.length <= max) return pts
-  const step = pts.length / max
-  return Array.from({ length: max }, (_, i) => pts[Math.min(pts.length - 1, Math.round(i * step))])
+// ── Décodeur Google polyline (summary_polyline / raw_data.map) ────
+function decodePolyline(encoded: string): [number, number][] {
+  const points: [number, number][] = []
+  let lat = 0, lng = 0, i = 0
+  while (i < encoded.length) {
+    let b: number, shift = 0, result = 0
+    do { b = encoded.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5 } while (b >= 32)
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1)
+    shift = 0; result = 0
+    do { b = encoded.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5 } while (b >= 32)
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1)
+    points.push([lat / 1e5, lng / 1e5])
+  }
+  return points
 }
 
 function parseStrength(detail: unknown): StrengthDetail | null {
@@ -97,6 +116,51 @@ function parseStrength(detail: unknown): StrengthDetail | null {
   return { groups: out, tonnageKg: tonnage > 0 ? Math.round(tonnage) : null, sets: sets > 0 ? sets : null }
 }
 
+// ── Références athlète (FTP / seuil course / CSS) — un fetch par session ──
+interface AthleteRefsLite { ftp: number; runThr: number; css: number }
+let refsCache: AthleteRefsLite | null = null
+let refsPromise: Promise<AthleteRefsLite> | null = null
+async function loadAthleteRefs(): Promise<AthleteRefsLite> {
+  if (refsCache) return refsCache
+  if (!refsPromise) {
+    refsPromise = (async () => {
+      const fallback: AthleteRefsLite = { ftp: ATHLETE.ftp, runThr: ATHLETE.thresholdPace, css: ATHLETE.css }
+      try {
+        const sb = createClient()
+        const { data: { user } } = await sb.auth.getUser()
+        if (!user) return fallback
+        const { data } = await sb.from('athlete_performance_profile')
+          .select('ftp_watts,threshold_pace_s_km,css_s_100m')
+          .eq('user_id', user.id).maybeSingle()
+        refsCache = {
+          ftp: Number(data?.ftp_watts) > 0 ? Number(data!.ftp_watts) : fallback.ftp,
+          runThr: Number(data?.threshold_pace_s_km) > 0 ? Number(data!.threshold_pace_s_km) : fallback.runThr,
+          css: Number(data?.css_s_100m) > 0 ? Number(data!.css_s_100m) : fallback.css,
+        }
+        return refsCache
+      } catch { return fallback }
+    })()
+  }
+  return refsPromise
+}
+
+/** Zone RÉALISÉE d'un échantillon (vitesse ou watts vs références athlète). */
+function sampleZone(sport: string, vMs: number | null, w: number | null, refs: AthleteRefsLite): number | null {
+  if (sport === 'bike' || sport === 'elliptique') {
+    if (w == null || w <= 0) return null
+    const f = refs.ftp
+    if (w < f * 0.55) return 1; if (w < f * 0.75) return 2; if (w < f * 0.87) return 3
+    if (w < f * 1.05) return 4; if (w < f * 1.20) return 5; if (w < f * 1.50) return 6; return 7
+  }
+  if (vMs == null || vMs <= 0.3) return null
+  if (sport === 'swim') {
+    const p = 100 / vMs, c = refs.css
+    if (p > c * 1.25) return 1; if (p > c * 1.10) return 2; if (p > c * 1.00) return 3; if (p > c * 0.90) return 4; return 5
+  }
+  const p = 1000 / vMs, t = refs.runThr
+  if (p > t * 1.25) return 1; if (p > t * 1.10) return 2; if (p > t * 1.00) return 3; if (p > t * 0.90) return 4; return 5
+}
+
 // ── Chargement (cache module : un fetch par activité) ─────────────
 const cache = new Map<string, FullActivity>()
 
@@ -112,26 +176,60 @@ export function useActivityFull(activity: TrainingActivity | null): FullActivity
       try {
         const sb = createClient()
         const { data: r } = await sb.from('activities')
-          .select('id,sport_type,user_id,started_at,moving_time_s,elapsed_time_s,distance_m,elevation_gain_m,avg_pace_s_km,avg_speed_ms,avg_watts,avg_hr,rpe,perceived_effort,calories,streams,raw_data')
+          .select('id,sport_type,user_id,started_at,moving_time_s,elapsed_time_s,distance_m,elevation_gain_m,avg_pace_s_km,avg_speed_ms,avg_watts,avg_hr,rpe,perceived_effort,calories,streams,summary_polyline,raw_data')
           .eq('id', id).maybeSingle()
         if (!r || cancelled) return
         const rec = r as Record<string, unknown>
-        const streams = ((rec.streams ?? (rec.raw_data as Record<string, unknown> | null)?.streams) ?? null) as Record<string, unknown> | null
+        const rawData = rec.raw_data as Record<string, unknown> | null
+        const streams = ((rec.streams ?? rawData?.streams) ?? null) as Record<string, unknown> | null
         const distanceM = rec.distance_m != null ? Number(rec.distance_m) : null
-        // Trace GPS
+
+        // Trace GPS : streams.latlng → summary_polyline → raw_data.map.polyline
         const rawLl = Array.isArray(streams?.latlng) ? (streams!.latlng as unknown[]) : []
-        const latlng = rawLl
+        let latlng: [number, number][] = rawLl
           .filter((p): p is [number, number] => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]))
-        // Profil altimétrique réel (altitude + distance des streams)
-        const alt = Array.isArray(streams?.altitude) ? (streams!.altitude as unknown[]).map(Number) : []
-        const distS = Array.isArray(streams?.distance) ? (streams!.distance as unknown[]).map(Number) : []
-        let elevProfile: { distKm: number; ele: number }[] | null = null
-        if (alt.length > 1) {
-          elevProfile = downsampleProfile(alt.map((ele, i) => ({
-            distKm: Number.isFinite(distS[i]) ? distS[i] / 1000 : ((i / (alt.length - 1)) * (distanceM ?? 0)) / 1000,
-            ele: Number.isFinite(ele) ? ele : 0,
-          })))
+        const llFromStreams = latlng.length > 1
+        if (!llFromStreams) {
+          const poly = (rec.summary_polyline as string | null)
+            || ((rawData?.map as Record<string, unknown> | undefined)?.polyline as string | undefined)
+            || ((rawData?.map as Record<string, unknown> | undefined)?.summary_polyline as string | undefined)
+            || ''
+          if (poly) latlng = decodePolyline(poly)
         }
+
+        // Séries alignées ≤ 300 points (temps, km, altitude, vitesse, watts, position).
+        const num = (a: unknown): number[] => Array.isArray(a) ? (a as unknown[]).map(Number) : []
+        const timeS = num(streams?.time)
+        const distS = num(streams?.distance)
+        const alt = num(streams?.altitude)
+        const vel = num(streams?.velocity ?? streams?.velocity_smooth)
+        const watts = num(streams?.watts)
+        const N = Math.max(timeS.length, distS.length, alt.length, vel.length)
+        let samples: ActSample[] | null = null
+        if (N > 1) {
+          const M = Math.min(300, N)
+          const totalKm = distS.length ? (distS[distS.length - 1] ?? 0) / 1000 : (distanceM ?? 0) / 1000
+          samples = Array.from({ length: M }, (_, k) => {
+            const i = Math.min(N - 1, Math.round((k / (M - 1)) * (N - 1)))
+            const dKm = Number.isFinite(distS[i]) ? distS[i] / 1000 : (totalKm * k) / (M - 1)
+            let ll: [number, number] | null = null
+            if (llFromStreams && latlng.length > 1) {
+              ll = latlng[Math.min(latlng.length - 1, i)] ?? null
+            } else if (latlng.length > 1 && totalKm > 0) {
+              // Polyline non alignée sur les streams → position par fraction de distance.
+              ll = latlng[Math.min(latlng.length - 1, Math.round((dKm / totalKm) * (latlng.length - 1)))] ?? null
+            }
+            return {
+              tS: Number.isFinite(timeS[i]) ? timeS[i] : k,
+              dKm,
+              ele: Number.isFinite(alt[i]) ? alt[i] : null,
+              vMs: Number.isFinite(vel[i]) ? vel[i] : null,
+              w: Number.isFinite(watts[i]) ? watts[i] : null,
+              ll,
+            }
+          })
+        }
+
         // Force : exercices / circuits réellement faits (workout_sessions, ±3 h)
         let strength: StrengthDetail | null = null
         if (isStrengthSport(String(rec.sport_type ?? ''))) {
@@ -166,7 +264,7 @@ export function useActivityFull(activity: TrainingActivity | null): FullActivity
           rpe: rec.rpe != null ? Number(rec.rpe) : (rec.perceived_effort != null ? Number(rec.perceived_effort) : null),
           calories: rec.calories != null ? Number(rec.calories) : null,
           latlng: latlng.length > 1 ? latlng : null,
-          elevProfile,
+          samples,
           strength,
         }
         cache.set(id, built)
@@ -197,7 +295,7 @@ export function plannedTargets(session: Session): {
     }
   }
   const pd = session.parcoursData
-  const blocksDistM = totalDistance((session.blocks ?? []) as MBlock[])
+  const blocksDistM = totalDistance((session.blocks ?? []) as MBlock[], sport)
   const distM = pd?.distance != null ? pd.distance * 1000 : (blocksDistM > 0 ? blocksDistM : null)
   const isTreadmill = sport === 'run' && session.runningSub === 'treadmill'
   const elevM = pd?.elevation != null ? pd.elevation : (isTreadmill ? (treadmillGainM((session.blocks ?? []) as MBlock[]) || null) : null)
@@ -223,7 +321,6 @@ export function CompareGrid({ planned, full, activity, dense }: {
   const st = matchStatus(planned.durationMin, actMin)
   const fmtDist = (m: number) => isSwim ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`
   const fmtPace = (s: number) => isSwim ? `${secToPace(s)}/100m` : `${secToPace(s)}/km`
-  // Allure réalisée : natation → s/100m depuis temps/distance ; sinon s/km.
   const actPace = full
     ? (isSwim
         ? (full.distanceM && full.distanceM > 25 && full.movingS > 0 ? full.movingS / (full.distanceM / 100) : null)
@@ -286,13 +383,14 @@ const sectionLabel: React.CSSProperties = {
   letterSpacing: '0.06em', color: 'var(--text-dim)',
 }
 
+/** Profil d'intensité PLANIFIÉ (repli quand l'activité n'a pas de streams). */
 export function PlannedIntensityBars({ session, height = 56 }: { session: Session; height?: number }) {
   const blocks = (session.blocks ?? []).filter(b => b.type !== 'circuit_header' || (b.label ?? '').trim())
   const bars = toBars(blocks as MBlock[])
   if (bars.length === 0) return null
   return (
     <div>
-      <p style={sectionLabel}>Profil d&apos;intensité</p>
+      <p style={sectionLabel}>Profil d&apos;intensité · prévu</p>
       <div style={{ height, display: 'flex', alignItems: 'flex-end', gap: 1.5, borderBottom: '1px solid var(--border)' }}>
         {bars.map(bar => (
           <div key={bar.id} title={`Z${bar.zone}${bar.value ? ` · ${bar.value}` : ''} · ${Math.round(bar.min)}min`}
@@ -308,38 +406,177 @@ export function PlannedIntensityBars({ session, height = 56 }: { session: Sessio
   )
 }
 
-export function ActivityMap({ latlng, width, height, color }: {
+interface RealizedBar { zone: number; label: string; i0: number; i1: number }
+
+/** Barres d'intensité RÉALISÉES depuis les échantillons (≈ 60 tranches de temps). */
+function buildRealizedBars(samples: ActSample[], sport: string, refs: AthleteRefsLite): RealizedBar[] {
+  const nB = Math.min(60, Math.max(12, Math.floor(samples.length / 4)))
+  const out: RealizedBar[] = []
+  for (let b = 0; b < nB; b++) {
+    const i0 = Math.floor((b / nB) * samples.length)
+    const i1 = Math.max(i0 + 1, Math.floor(((b + 1) / nB) * samples.length))
+    let vSum = 0, vN = 0, wSum = 0, wN = 0
+    for (let i = i0; i < i1 && i < samples.length; i++) {
+      const s = samples[i]
+      if (s.vMs != null && s.vMs > 0) { vSum += s.vMs; vN++ }
+      if (s.w != null && s.w > 0) { wSum += s.w; wN++ }
+    }
+    const vMs = vN > 0 ? vSum / vN : null
+    const w = wN > 0 ? wSum / wN : null
+    const zone = sampleZone(sport, vMs, w, refs) ?? 1
+    const label = (sport === 'bike' || sport === 'elliptique')
+      ? (w != null ? `${Math.round(w)} W` : '—')
+      : vMs != null && vMs > 0.3
+        ? (sport === 'swim' ? `${secToPace(100 / vMs)}/100m` : `${secToPace(1000 / vMs)}/km`)
+        : '—'
+    out.push({ zone, label, i0, i1: Math.min(i1, samples.length) - 1 })
+  }
+  return out
+}
+
+/** Profil d'intensité RÉALISÉ (streams réels). Survol → onHover(index échantillon). */
+export function RealizedIntensityBars({ full, sport, height = 56, cursorIdx, onHover, titleSuffix }: {
+  full: FullActivity; sport: string; height?: number
+  cursorIdx?: number | null; onHover?: (idx: number | null) => void
+  titleSuffix?: string
+}) {
+  const [refs, setRefs] = useState<AthleteRefsLite | null>(refsCache)
+  useEffect(() => { let ok = true; void loadAthleteRefs().then(r => { if (ok) setRefs(r) }); return () => { ok = false } }, [])
+  const samples = full.samples
+  if (!samples || samples.length < 4) return null
+  const r = refs ?? { ftp: ATHLETE.ftp, runThr: ATHLETE.thresholdPace, css: ATHLETE.css }
+  const bars = buildRealizedBars(samples, sport, r)
+  return (
+    <div>
+      <p style={sectionLabel}>Profil d&apos;intensité · réalisé{titleSuffix ? ` ${titleSuffix}` : ''}</p>
+      <div
+        onMouseMove={onHover ? (e => {
+          const rect = e.currentTarget.getBoundingClientRect()
+          const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+          onHover(Math.min(samples.length - 1, Math.round(frac * (samples.length - 1))))
+        }) : undefined}
+        onMouseLeave={onHover ? (() => onHover(null)) : undefined}
+        style={{ height, display: 'flex', alignItems: 'flex-end', gap: 1, borderBottom: '1px solid var(--border)', cursor: onHover ? 'crosshair' : undefined }}>
+        {bars.map((bar, i) => {
+          const active = cursorIdx != null && cursorIdx >= bar.i0 && cursorIdx <= bar.i1
+          return (
+            <div key={i} title={`Z${bar.zone} · ${bar.label}`}
+              style={{
+                flex: 1, minWidth: 1,
+                height: `${ZONE_TARGET_PCT[Math.max(1, Math.min(5, bar.zone))] ?? 100}%`,
+                background: zColor(bar.zone),
+                opacity: cursorIdx == null ? 1 : active ? 1 : 0.45,
+                borderRadius: '2px 2px 0 0',
+              }} />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** Profil altimétrique RÉEL interactif : survol → onHover(index échantillon). */
+export function ActivityElevation({ full, height = 64, cursorIdx, onHover, showTitle = true }: {
+  full: FullActivity; height?: number
+  cursorIdx?: number | null; onHover?: (idx: number | null) => void
+  showTitle?: boolean
+}) {
+  const samples = full.samples
+  if (!samples || samples.length < 2) return null
+  const pts = samples.map(s => s.ele).filter((e): e is number => e != null)
+  if (pts.length < 2) return null
+  const W = 600, PAD = 5
+  const lo = Math.min(...pts), hi = Math.max(...pts)
+  const range = Math.max(10, hi - lo)
+  const X = (i: number) => (i / (samples.length - 1)) * W
+  const Y = (e: number) => PAD + (1 - (e - lo) / range) * (height - PAD * 2)
+  let d = '', started = false
+  samples.forEach((s, i) => {
+    if (s.ele == null) return
+    d += `${started ? 'L' : 'M'} ${X(i).toFixed(1)} ${Y(s.ele).toFixed(1)} `
+    started = true
+  })
+  const area = `${d} L ${W} ${height} L 0 ${height} Z`
+  const cx = cursorIdx != null ? X(Math.max(0, Math.min(samples.length - 1, cursorIdx))) : null
+  return (
+    <div>
+      {showTitle && <p style={sectionLabel}>Profil altimétrique{full.elevM ? ` · +${full.elevM} m D+` : ''}</p>}
+      <svg width="100%" height={height} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none"
+        onMouseMove={onHover ? (e => {
+          const rect = e.currentTarget.getBoundingClientRect()
+          const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+          onHover(Math.min(samples.length - 1, Math.round(frac * (samples.length - 1))))
+        }) : undefined}
+        onMouseLeave={onHover ? (() => onHover(null)) : undefined}
+        style={{ display: 'block', cursor: onHover ? 'crosshair' : undefined }}>
+        <path d={area} fill="var(--primary)" opacity={0.14} />
+        <path d={d} fill="none" stroke="var(--primary)" strokeWidth={1.8} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        {cx != null && (
+          <line x1={cx} y1={0} x2={cx} y2={height} stroke="var(--text)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" opacity={0.8} />
+        )}
+      </svg>
+    </div>
+  )
+}
+
+// ── Carte GPS (image Mapbox ou SVG) + curseur synchronisé ─────────
+// Projection Mercator ajustée aux bornes du tracé — réplique le cadrage
+// « auto » de l'API Static (padding identique) pour positionner le curseur.
+function mercatorFit(points: [number, number][], w: number, h: number, pad: number) {
+  const proj = (lat: number, lng: number) => ({
+    x: (lng + 180) / 360,
+    y: (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI / 180) / 2)) / Math.PI) / 2,
+  })
+  const ps = points.map(p => proj(p[0], p[1]))
+  const minX = Math.min(...ps.map(p => p.x)), maxX = Math.max(...ps.map(p => p.x))
+  const minY = Math.min(...ps.map(p => p.y)), maxY = Math.max(...ps.map(p => p.y))
+  const dx = maxX - minX || 1e-9, dy = maxY - minY || 1e-9
+  const scale = Math.min((w - pad * 2) / dx, (h - pad * 2) / dy)
+  const ox = (w - dx * scale) / 2, oy = (h - dy * scale) / 2
+  return (lat: number, lng: number) => {
+    const p = proj(lat, lng)
+    return { x: ox + (p.x - minX) * scale, y: oy + (p.y - minY) * scale }
+  }
+}
+
+export function ActivityMap({ latlng, width, height, color, cursorLL }: {
   latlng: [number, number][]; width: number; height: number; color?: string
+  cursorLL?: [number, number] | null
 }) {
   const pts = latlng.map(p => ({ lat: p[0], lng: p[1] }))
   const mapUrl = staticRouteMapUrl(pts, { width, height, pins: true, color })
+  const fit = mercatorFit(latlng, width, height, 26)
+  const cursor = cursorLL ? fit(cursorLL[0], cursorLL[1]) : null
   if (mapUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={mapUrl} alt="Trace GPS" width={width} height={height}
-      style={{ display: 'block', width, height, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }} />
+    return (
+      <div style={{ position: 'relative', width, height }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={mapUrl} alt="Trace GPS" width={width} height={height}
+          style={{ display: 'block', width, height, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--border)' }} />
+        {cursor && (
+          <span style={{
+            position: 'absolute', left: cursor.x - 7, top: cursor.y - 7, width: 14, height: 14,
+            borderRadius: '50%', background: color ?? 'var(--primary)', border: '2.5px solid var(--bg-card)',
+            boxShadow: '0 1px 6px rgba(0,0,0,0.35)', pointerEvents: 'none',
+          }} />
+        )}
+      </div>
+    )
   }
-  // Repli SVG sans token Mapbox
-  const lats = pts.map(p => p.lat), lons = pts.map(p => p.lng)
-  const minLat = Math.min(...lats), maxLat = Math.max(...lats)
-  const minLon = Math.min(...lons), maxLon = Math.max(...lons)
-  const latR = maxLat - minLat || 0.001, lonR = maxLon - minLon || 0.001
-  const lonScale = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180)
-  const aspect = (lonR * lonScale) / latR
-  const pad = 8
-  let plotW = width - pad * 2, plotH = height - pad * 2
-  if (aspect > plotW / plotH) plotH = plotW / aspect
-  else plotW = plotH * aspect
-  const ox = (width - plotW) / 2, oy = (height - plotH) / 2
-  const d = pts.map((p, i) => {
-    const x = ox + ((p.lng - minLon) / lonR) * plotW
-    const y = oy + (1 - (p.lat - minLat) / latR) * plotH
-    return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
-  }).join('')
+  // Repli SVG sans token Mapbox — même projection, curseur exact.
+  let d = ''
+  latlng.forEach((p, i) => {
+    const q = fit(p[0], p[1])
+    d += `${i === 0 ? 'M' : 'L'}${q.x.toFixed(1)},${q.y.toFixed(1)}`
+  })
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}
       style={{ display: 'block', background: 'var(--bg-alt)', borderRadius: 10 }}>
       <path d={d} fill="none" stroke="var(--bg-card)" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" opacity={0.9} />
       <path d={d} fill="none" stroke={color ?? 'var(--primary)'} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      {cursor && (
+        <circle cx={cursor.x} cy={cursor.y} r={6} fill={color ?? 'var(--primary)'} stroke="var(--bg-card)" strokeWidth={2.5} />
+      )}
     </svg>
   )
 }
@@ -392,11 +629,10 @@ export function ActivityHoverPreview({ activity, planned, anchor }: {
   const vw = window.innerWidth, vh = window.innerHeight
   const fitsRight = anchor.right + 10 + WIDTH <= vw
   const left = fitsRight ? anchor.right + 10 : Math.max(8, anchor.left - WIDTH - 10)
-  const estH = 190 + (full?.latlng ? 130 : 0) + (full?.elevProfile ? 90 : 0)
+  const estH = 190 + (full?.latlng ? 130 : 0) + (full?.samples ? 90 : 0)
   const top = Math.max(8, Math.min(anchor.top, vh - estH - 8))
   const MAP_W = WIDTH - 24, MAP_H = 104
 
-  // Sans séance planifiée associée : infos réalisées seules.
   const actMin = Math.round(activity.elapsedTime / 60)
   const infos: string[] = [formatHM(actMin)]
   if (full?.distanceM && full.distanceM > 100) infos.push(`${(full.distanceM / 1000).toFixed(1).replace('.', ',')} km`)
@@ -438,24 +674,23 @@ export function ActivityHoverPreview({ activity, planned, anchor }: {
         full?.strength
           ? <StrengthDone strength={full.strength} dense />
           : planned && (planned.blocks ?? []).length > 0
-            ? <PlannedIntensityBarsFallbackStrength planned={planned} />
+            ? <PlannedBlocksListStrength planned={planned} />
             : null
       ) : (
         <>
-          {planned && <div style={{ marginBottom: (full?.latlng || full?.elevProfile) ? 10 : 0 }}><PlannedIntensityBars session={planned} /></div>}
+          {/* Profil d'intensité RÉALISÉ (streams réels) — repli sur le prévu */}
+          {full?.samples && full.samples.length > 3
+            ? <div style={{ marginBottom: (full?.latlng || full?.samples) ? 10 : 0 }}><RealizedIntensityBars full={full} sport={sp} /></div>
+            : planned
+              ? <div style={{ marginBottom: 10 }}><PlannedIntensityBars session={planned} /></div>
+              : null}
           {full?.latlng && (
-            <div style={{ marginBottom: full?.elevProfile ? 10 : 0 }}>
+            <div style={{ marginBottom: 10 }}>
               <p style={sectionLabel}>Trace GPS</p>
               <ActivityMap latlng={full.latlng} width={MAP_W} height={MAP_H} color={color.startsWith('#') ? color.slice(1) : undefined} />
             </div>
           )}
-          {full?.elevProfile && (
-            <div>
-              <p style={sectionLabel}>Profil altimétrique{full.elevM ? ` · +${full.elevM} m D+` : ''}</p>
-              <RouteElevationProfile profile={full.elevProfile} totalKm={full.distanceM ? full.distanceM / 1000 : undefined}
-                totalGainM={full.elevM ?? undefined} height={54} staticMode />
-            </div>
-          )}
+          <ActivityElevation full={full ?? { samples: null } as FullActivity} height={54} />
         </>
       )}
     </div>
@@ -464,7 +699,7 @@ export function ActivityHoverPreview({ activity, planned, anchor }: {
 }
 
 // Force sans détail workout_sessions : on liste au moins les exercices PRÉVUS.
-function PlannedIntensityBarsFallbackStrength({ planned }: { planned: Session }) {
+function PlannedBlocksListStrength({ planned }: { planned: Session }) {
   const blocks = (planned.blocks ?? []).filter(b => (b.label ?? '').trim())
   if (!blocks.length) return null
   return (

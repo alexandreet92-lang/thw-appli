@@ -1,6 +1,6 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { CoachStub } from '@/components/coach/CoachStub'
+import { MessagesView } from '@/components/coach/MessagesView'
 export default function CoachMessages() {
-  return <CoachStub title="Messages" subtitle="Bientôt : la messagerie coach ↔ athlète, directement dans l'application." />
+  return <MessagesView role="coach" title="Messages" subtitle="Discute avec tes athlètes, directement dans l'app." />
 }

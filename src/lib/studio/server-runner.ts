@@ -36,8 +36,11 @@ export interface ServerRunResult {
   weightedTokens: number
 }
 
-export async function runGraphServer(userId: string, graph: StudioGraph, runId: string, systemId?: string): Promise<ServerRunResult> {
+export async function runGraphServer(userId: string, graph: StudioGraph, runId: string, systemId?: string, billUserId?: string): Promise<ServerRunResult> {
   const sb = createServiceClient()
+  // Les données lues + le contexte vivant sont ceux de `userId` (l'athlète pour
+  // un run coach) ; la conso est débitée sur `billUserId` (le coach) si fourni.
+  const billTo = billUserId ?? userId
   // Contexte « système vivant » (garde-fou santé + mémoire du dernier cycle),
   // partagé par tous les agents — même logique que les runs manuels.
   const living = await buildLivingContext(sb, userId, systemId)
@@ -81,7 +84,7 @@ export async function runGraphServer(userId: string, graph: StudioGraph, runId: 
     })
     const raw = (resp.usage?.input_tokens ?? 0) + (resp.usage?.output_tokens ?? 0)
     weightedTokens += Math.ceil(raw * getModelMultiplier(modelKey))
-    void recordStudioUsage(userId, raw, modelKey, runId)
+    void recordStudioUsage(billTo, raw, modelKey, runId)
     return resp.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map(b => b.text)

@@ -18,6 +18,7 @@ import { ProfileSheet } from '@/components/profile/ProfileSheet'
 import { CoachSettingsSheet } from '@/components/coach/CoachSettingsSheet'
 import { FeedbackSheet } from '@/components/feedback/FeedbackSheet'
 import { haptic } from '@/lib/ui/haptic'
+import { isCoachOwner } from '@/lib/coach/owner'
 import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -46,6 +47,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { t } = useI18n()
   const { profile } = useProfile()
+  const isOwner = isCoachOwner(profile?.id)
   const [open, setOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
@@ -248,8 +250,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           <button aria-label={t('shared.menu')} onClick={() => settle(!open)} style={{ ...fab, ...(isRecord ? { background: 'var(--bg)', border: '1px solid var(--border)' } : null), left: 12, borderRadius: 12, flexDirection: 'column', gap: 4 }}>
             {[0, 1, 2].map(i => <span key={i} style={{ width: 17, height: 1.6, background: 'var(--text)', borderRadius: 2 }} />)}
           </button>
-          {/* Bascule d'interface Athlète ⇄ Coach — juste à côté du menu. */}
-          {!isRecord && (
+          {/* Bascule d'interface Athlète ⇄ Coach — réservée au propriétaire de l'espace coach. */}
+          {!isRecord && isOwner && (
             <Link href={isCoach ? '/' : '/coach'} aria-label={isCoach ? 'Revenir à mon appli' : 'Espace coach'} onClick={() => setOpen(false)}
               style={{ ...fab, left: 58, borderRadius: 12, textDecoration: 'none',
                 background: isCoach ? 'var(--primary)' : (fab.background as string), border: isCoach ? '1px solid var(--primary)' : (fab.border as string) }}>

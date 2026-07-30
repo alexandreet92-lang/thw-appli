@@ -112,7 +112,7 @@ export default function AthleteFiche() {
           {profile?.avatar_url ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : name.slice(0, 1).toUpperCase()}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</h1>
           <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>
             {profile?.level ? `${profile.level} · ` : ''}{(profile?.sports ?? []).slice(0, 3).join(', ') || 'Athlète'}
             {activeInj.length > 0 && <span style={{ color: '#F59E0B', fontWeight: 700 }}> · {activeInj.length} blessure{activeInj.length > 1 ? 's' : ''} active{activeInj.length > 1 ? 's' : ''}</span>}
@@ -120,7 +120,23 @@ export default function AthleteFiche() {
         </div>
       </div>
 
-      {/* Onglets */}
+      {/* Accès aux pages détaillées de l'athlète (données réelles, scoped) */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+        {([
+          { label: 'Planning', href: `/coach/planning/${id}`, icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4" /></svg> },
+          { label: 'Calendrier', href: `/coach/athlete/${id}/calendar`, icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg> },
+        ]).map(a => (
+          <button key={a.label} onClick={() => router.push(a.href)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'border-color .14s, background .14s' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'color-mix(in srgb, var(--primary) 45%, var(--border))'; (e.currentTarget as HTMLElement).style.color = 'var(--primary)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text)' }}>
+            {a.icon}{a.label}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}><path d="M9 18l6-6-6-6" /></svg>
+          </button>
+        ))}
+      </div>
+
+      {/* Onglets — aperçus rapides (le détail complet est dans les pages ci-dessus) */}
       <div style={{ display: 'flex', gap: 4, overflowX: 'auto', borderBottom: '1px solid var(--border)', marginBottom: 18, paddingBottom: 2 }}>
         {TABS.map(tb => (
           <button key={tb.key} onClick={() => setTab(tb.key)}

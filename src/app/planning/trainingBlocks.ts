@@ -5,6 +5,7 @@
 import { BLOC_TYPES, BLOC_SPORT_KEYS } from '@/lib/constants/blocTypes'
 import { getCurrentWeek } from '@/lib/utils/weekDates'
 import { createClient } from '@/lib/supabase/client'
+import { resolvePlanningUid, isCoachScoped } from '@/lib/planning/scope'
 import type { TrainingBlocData } from '@/types/trainingBloc'
 
 export type { TrainingBlocData, SessionEntry } from '@/types/trainingBloc'
@@ -24,6 +25,9 @@ function genId(): string {
 }
 
 export function loadBlocs(): TrainingBlocData[] {
+  // En vue coach (scope athlète), le cache localStorage appartient au coach :
+  // ne jamais le montrer dans le planning d'un athlète (isolation des données).
+  if (isCoachScoped()) return []
   const list = read<TrainingBlocData[]>(BLOCS_KEY, [])
   // ⚠ BUG 2 — Training Blocs : stockage localStorage = données locales à l'appareil.
   // Symptôme reporté : "blocs créés sur Windows n'apparaissent pas sur iPhone/Mac".
@@ -41,7 +45,7 @@ export function loadBlocs(): TrainingBlocData[] {
   }
   return list
 }
-export function saveBlocs(list: TrainingBlocData[]) { write(BLOCS_KEY, list) }
+export function saveBlocs(list: TrainingBlocData[]) { if (isCoachScoped()) return; write(BLOCS_KEY, list) }
 
 // ── Synchronisation Supabase (multi-appareils) ──────────────────────
 interface BlocRow {
@@ -71,22 +75,24 @@ function blocToRow(b: TrainingBlocData, userId: string) {
 export async function syncBlocsFromCloud(): Promise<TrainingBlocData[]> {
   try {
     const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user) return loadBlocs()
+    const uid = await resolvePlanningUid(sb)
+    if (!uid) return loadBlocs()
     const { data, error } = await sb.from('training_blocs')
       .select('id,sport,name,start_year,start_week,duration_weeks,focus,sessions,created_at')
-      .eq('user_id', user.id)
-    if (error || !data) return loadBlocs()
+      .eq('user_id', uid)
+    // En vue coach : ne jamais retomber sur le cache local (= blocs du coach),
+    // et ne pas écraser ce cache avec les blocs de l'athlète.
+    if (error || !data) return isCoachScoped() ? [] : loadBlocs()
     const list = (data as BlocRow[]).map(rowToBloc)
-    saveBlocs(list)
+    if (!isCoachScoped()) saveBlocs(list)
     return list
-  } catch { return loadBlocs() }
+  } catch { return isCoachScoped() ? [] : loadBlocs() }
 }
 async function pushBlocCloud(b: TrainingBlocData) {
-  try { const sb = createClient(); const { data: { user } } = await sb.auth.getUser(); if (!user) return; await sb.from('training_blocs').upsert(blocToRow(b, user.id)) } catch { /* best-effort */ }
+  try { const sb = createClient(); const uid = await resolvePlanningUid(sb); if (!uid) return; await sb.from('training_blocs').upsert(blocToRow(b, uid)) } catch { /* best-effort */ }
 }
 async function removeBlocCloud(id: string) {
-  try { const sb = createClient(); const { data: { user } } = await sb.auth.getUser(); if (!user) return; await sb.from('training_blocs').delete().eq('id', id).eq('user_id', user.id) } catch { /* best-effort */ }
+  try { const sb = createClient(); const uid = await resolvePlanningUid(sb); if (!uid) return; await sb.from('training_blocs').delete().eq('id', id).eq('user_id', uid) } catch { /* best-effort */ }
 }
 
 export function upsertBloc(b: TrainingBlocData): TrainingBlocData[] {

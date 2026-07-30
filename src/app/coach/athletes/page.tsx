@@ -16,6 +16,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getRoster, setAthleteGroup, setAthleteNote, type RosterAthlete, type Forme } from '@/lib/coach/roster'
 import { createInvite, acceptInvite, revokeLink, listPendingInvites, listMyCoaches, type CoachAthleteLink } from '@/lib/coach/relationships'
+import { InviteCodeReveal } from '@/components/coach/CodeCells'
 
 const DISP = 'var(--font-display)'
 const BODY = 'var(--font-body)'
@@ -69,7 +70,6 @@ export default function CoachAthletes() {
   const [manage, setManage] = useState<RosterAthlete | null>(null)
 
   const [newCode, setNewCode] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
   const [acceptCode, setAcceptCode] = useState('')
   const [acceptMsg, setAcceptMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -106,7 +106,6 @@ export default function CoachAthletes() {
   const onInvite = async () => { setBusy(true); try { const { code } = await createInvite(); setNewCode(code); await reload() } catch { /* */ } finally { setBusy(false) } }
   const onAccept = async () => { if (!acceptCode.trim() || busy) return; setBusy(true); setAcceptMsg(null); try { await acceptInvite(acceptCode); setAcceptCode(''); setAcceptMsg('Coach ajouté — il peut désormais te suivre.'); await reload() } catch (e) { setAcceptMsg(e instanceof Error ? e.message : 'Code invalide') } finally { setBusy(false) } }
   const onRevoke = async (linkId: string) => { if (!confirm('Confirmer ? Ce lien sera rompu.')) return; try { await revokeLink(linkId); await reload() } catch { /* */ } }
-  const copyCode = (c: string) => { void navigator.clipboard?.writeText(c); setCopied(true); setTimeout(() => setCopied(false), 1600) }
   const bulkGroup = async (name: string) => { const g = name.trim() || null; await Promise.all([...sel].map(id => { const a = roster.find(x => x.id === id); return a ? setAthleteGroup(a.linkId, g).catch(() => {}) : null })); setSel(new Set()); await reload() }
 
   // ── styles partagés ──
@@ -197,7 +196,7 @@ export default function CoachAthletes() {
         <div style={{ ...card, textAlign: 'center', padding: '30px 20px', marginTop: 18 }}>
           <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '0 0 14px', lineHeight: 1.55 }}>Tu n’as pas encore d’athlète. Invite-en un : il reçoit un code, l’entre dans son appli, et tu le suis.</p>
           <button onClick={onInvite} disabled={busy} style={{ padding: '11px 20px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>Inviter mon premier athlète</button>
-          {newCode && <div style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: 'color-mix(in srgb, var(--primary) 7%, var(--bg-alt))', border: '1px solid color-mix(in srgb, var(--primary) 25%, var(--border))' }}><span style={{ fontFamily: 'var(--font-body)', fontSize: 18, fontWeight: 800, letterSpacing: '0.12em', color: 'var(--primary)' }}>{newCode}</span><button onClick={() => copyCode(newCode)} style={{ padding: '6px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{copied ? 'Copié ✓' : 'Copier'}</button></div>}
+          {newCode && <div style={{ maxWidth: 420, margin: '0 auto' }}><InviteCodeReveal code={newCode} /></div>}
         </div>
       ) : (
         <>
@@ -282,7 +281,7 @@ export default function CoachAthletes() {
               </div>
               <button onClick={onInvite} disabled={busy} style={{ padding: '10px 16px', borderRadius: 11, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>+ Nouveau code</button>
             </div>
-            {newCode && <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'color-mix(in srgb, var(--primary) 7%, var(--bg-alt))', border: '1px solid color-mix(in srgb, var(--primary) 25%, var(--border))' }}><span style={{ fontFamily: 'var(--font-body)', fontSize: 20, fontWeight: 800, letterSpacing: '0.12em', color: 'var(--primary)' }}>{newCode}</span><button onClick={() => copyCode(newCode)} style={{ marginLeft: 'auto', padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>{copied ? 'Copié ✓' : 'Copier'}</button></div>}
+            {newCode && <InviteCodeReveal code={newCode} />}
             {pending.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ ...lab, margin: '0 0 6px' }}>En attente d’acceptation</div>

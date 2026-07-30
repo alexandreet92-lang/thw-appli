@@ -17,8 +17,8 @@ import { Avatar } from '@/components/shared/Sidebar'
 import { FilterMenu, RowActionsMenu, type Opt } from '@/components/coach/CoachMenus'
 import { CoachMessageBubble, openCoachMessage } from '@/components/coach/CoachMessageBubble'
 
-const DISP = 'Syne, DM Sans, sans-serif'
-const BODY = 'DM Sans, sans-serif'
+const DISP = 'var(--font-display)'
+const BODY = 'var(--font-body)'
 
 type SortKey = 'programmed' | 'race' | 'alpha' | 'fatigue'
 const SORTS: { key: SortKey; label: string }[] = [
@@ -37,9 +37,16 @@ const SPORT_LABEL: Record<string, string> = {
   hyrox: 'Hyrox', gym: 'Muscu', trail: 'Trail', trail_run: 'Trail', rowing: 'Aviron', triathlon: 'Triathlon',
 }
 const GOAL_LABEL: Record<string, string> = {
-  performance: 'Performance', force: 'Force', endurance: 'Endurance', prise_de_masse: 'Prise de masse',
-  masse: 'Prise de masse', perte_de_poids: 'Perte de poids', sante: 'Santé', bien_etre: 'Bien-être', competition: 'Compétition',
+  performance: 'Performance', force: 'Force', endurance: 'Endurance', hybride: 'Hybride',
+  prise_de_masse: 'Prise de masse', masse: 'Prise de masse', perte_de_poids: 'Perte de poids',
+  sante: 'Santé', bien_etre: 'Bien-être', competition: 'Compétition',
 }
+// Liste complète des types d'objectif (le filtre les propose tous, indépendamment des données).
+const GOAL_OPTIONS: { value: string; label: string }[] = [
+  ['performance', 'Performance'], ['force', 'Force'], ['prise_de_masse', 'Prise de masse'],
+  ['perte_de_poids', 'Perte de poids'], ['endurance', 'Endurance'], ['hybride', 'Hybride'],
+  ['competition', 'Compétition'], ['sante', 'Santé'], ['bien_etre', 'Bien-être'],
+].map(([value, label]) => ({ value, label }))
 const GENDER_LABEL: Record<string, string> = { male: 'Homme', female: 'Femme', homme: 'Homme', femme: 'Femme', other: 'Autre' }
 const cap = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : s
 const sportColor = (s: string) => SPORT_COLOR[s] ?? 'var(--text-mid)'
@@ -124,8 +131,8 @@ export default function CoachPlanningRoster() {
   const opts = useMemo(() => {
     const uniq = (arr: (string | null)[]) => Array.from(new Set(arr.filter(Boolean))) as string[]
     return {
-      goal: uniq(rows.map(r => r.goal)).map(v => ({ value: v, label: goalLabel(v) } as Opt)),
-      gender: uniq(rows.map(r => r.gender)).map(v => ({ value: v, label: genderLabel(v) } as Opt)),
+      goal: GOAL_OPTIONS as Opt[],
+      gender: [{ value: 'male', label: 'Homme' }, { value: 'female', label: 'Femme' }] as Opt[],
       sport: uniq(rows.flatMap(r => r.sports)).map(v => ({ value: v, label: sportLabel(v) } as Opt)),
       group: uniq(rows.map(r => r.group)).map(v => ({ value: v, label: v } as Opt)),
     }
@@ -165,7 +172,7 @@ export default function CoachPlanningRoster() {
   return (
     <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: BODY }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-        <h1 style={{ fontFamily: DISP, fontWeight: 800, fontSize: 27, margin: 0, color: 'var(--text)', letterSpacing: '-0.01em' }}>Planning</h1>
+        <h1 style={{ fontFamily: DISP, fontWeight: 600, fontSize: 28, margin: 0, color: 'var(--text)' }}>Planning</h1>
         <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', borderRadius: 7, padding: '3px 9px' }}>Coach</span>
         <span style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Chaque athlète, sa séance du jour et son objectif — clique pour programmer.</span>
       </div>
@@ -179,7 +186,7 @@ export default function CoachPlanningRoster() {
           { n: kpi.raceSoon, l: 'Course < 14 j', c: kpi.raceSoon ? 'var(--primary)' : 'var(--text-dim)' },
         ].map((k, i) => (
           <div key={i} style={{ flex: '1 1 130px', minWidth: 120, border: '1px solid var(--border)', background: 'var(--bg-card)', borderRadius: 14, padding: '12px 14px' }}>
-            <div style={{ fontFamily: DISP, fontSize: 24, fontWeight: 800, color: k.c, lineHeight: 1 }}>{k.n}</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 24, fontWeight: 700, color: k.c, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{k.n}</div>
             <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 4 }}>{k.l}</div>
           </div>
         ))}
@@ -253,7 +260,7 @@ export default function CoachPlanningRoster() {
                 <Block label="Séance du jour" grow="1.3 1 180px">
                   {today.length === 0 ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-mid)' }}>
-                      <span style={{ fontSize: 16 }}>🌿</span><span style={{ fontSize: 13.5, fontWeight: 600 }}>Repos / récup</span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg><span style={{ fontSize: 13.5, fontWeight: 600 }}>Repos / récup</span>
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -273,7 +280,7 @@ export default function CoachPlanningRoster() {
                   {race ? (
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
-                        <span style={{ fontFamily: DISP, fontSize: 20, fontWeight: 800, color: race.days <= 14 ? '#ef4444' : 'var(--text)', lineHeight: 1 }}>J-{race.days}</span>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 20, fontWeight: 800, color: race.days <= 14 ? '#ef4444' : 'var(--text)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>J-{race.days}</span>
                         <span style={{ fontSize: 11.5, color: 'var(--text-mid)', fontWeight: 600 }}>{w > 0 ? `${w} sem${rd ? ` ${rd} j` : ''}` : `${race.days} j`}</span>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{race.name}</div>
@@ -292,7 +299,7 @@ export default function CoachPlanningRoster() {
                     <div>
                       {programmed ? (
                         <>
-                          <div style={{ fontFamily: DISP, fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>{r.adhDone}<span style={{ color: 'var(--text-dim)', fontWeight: 700 }}>/{r.adhTotal}</span></div>
+                          <div style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{r.adhDone}<span style={{ color: 'var(--text-dim)', fontWeight: 700 }}>/{r.adhTotal}</span></div>
                           <div style={{ display: 'flex', gap: 3, marginTop: 5 }}>
                             {Array.from({ length: Math.min(7, r.adhTotal) }).map((_, i) => <span key={i} style={{ width: 10, height: 4, borderRadius: 2, background: i < r.adhDone ? '#22c55e' : 'var(--border-mid)' }} />)}
                           </div>

@@ -183,7 +183,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 14px', flexShrink: 0 }}>
       <div>
         <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05 }}>Hybrid</div>
-        <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2 }}>Interface athlète</div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2 }}>Interface athlète</div>
       </div>
       <button onClick={() => { setOpen(false); setProfileOpen(true) }} aria-label={t('shared.myProfile')} style={{ display: 'flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
         <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={38} />
@@ -197,7 +197,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 14px', flexShrink: 0 }}>
       <div>
         <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05 }}>Hybrid</div>
-        <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: 700, color: 'var(--primary)', marginTop: 2 }}>Interface coach</div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--primary)', marginTop: 2 }}>Interface coach</div>
       </div>
       <button onClick={() => { setOpen(false); setCoachSettingsOpen(true) }} aria-label="Réglages coach" style={{ display: 'flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
         <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={38} />

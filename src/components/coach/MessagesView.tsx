@@ -40,7 +40,7 @@ export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athle
         </p>
       ) : threads.map(t => (
         <button key={t.otherId} onClick={() => setSelId(t.otherId)}
-          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', border: 'none', borderBottom: '1px solid var(--border)', background: sel?.otherId === t.otherId ? 'var(--bg-alt)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'DM Sans,sans-serif' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', border: 'none', borderBottom: '1px solid var(--border)', background: sel?.otherId === t.otherId ? 'var(--bg-alt)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
           <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800, position: 'relative' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {t.avatar ? <img src={t.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : t.name.slice(0, 1).toUpperCase()}
@@ -70,15 +70,15 @@ export function MessagesView({ role, title, subtitle }: { role: 'coach' | 'athle
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {sel.avatar ? <img src={sel.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : sel.name.slice(0, 1).toUpperCase()}
         </span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>{sel.name}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{sel.name}</span>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}><MessageThread coachId={sel.coachId} athleteId={sel.athleteId} /></div>
     </div>
   )
 
   return (
-    <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) 30px', boxSizing: 'border-box', fontFamily: 'DM Sans,sans-serif', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px', fontFamily: 'Syne,DM Sans,sans-serif' }}>{title}</h1>
+    <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) 30px', boxSizing: 'border-box', fontFamily: 'var(--font-body)', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px', fontFamily: 'var(--font-display)' }}>{title}</h1>
       <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 16px' }}>{subtitle}</p>
       {isNarrow ? (
         <div style={{ flex: 1, minHeight: 0 }}>{sel ? threadPane : listPane}</div>

@@ -106,7 +106,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       </button>
       <div style={{ opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease', minWidth: 0 }}>
         <div style={{ fontFamily: FD, fontSize: 21, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
-        <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2, whiteSpace: 'nowrap' }}>Interface athlète</div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2, whiteSpace: 'nowrap' }}>Interface athlète</div>
       </div>
     </div>
   )
@@ -120,7 +120,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       </button>
       <div style={{ opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease', minWidth: 0 }}>
         <div style={{ fontFamily: FD, fontSize: 21, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
-        <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', marginTop: 2, whiteSpace: 'nowrap' }}>Interface coach</div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', marginTop: 2, whiteSpace: 'nowrap' }}>Interface coach</div>
       </div>
     </div>
   )

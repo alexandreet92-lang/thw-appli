@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-const BODY = 'DM Sans, sans-serif'
+const BODY = 'var(--font-body)'
 const anim = `@keyframes cmMenuIn{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:none}}`
 
 export interface Opt { value: string; label: string; hint?: string }

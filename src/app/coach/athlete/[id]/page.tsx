@@ -80,8 +80,8 @@ export default function AthleteFiche() {
 
   if (denied) {
     return (
-      <div style={{ width: '100%', padding: '48px clamp(16px,4vw,40px)', textAlign: 'center', fontFamily: 'DM Sans,sans-serif' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>Athlète introuvable</h1>
+      <div style={{ width: '100%', padding: '48px clamp(16px,4vw,40px)', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Athlète introuvable</h1>
         <p style={{ fontSize: 14, color: 'var(--text-mid)', marginTop: 8 }}>Cet athlète ne fait pas (ou plus) partie de ton roster.</p>
         <button onClick={() => router.push('/coach/athletes')} style={{ marginTop: 16, padding: '10px 18px', borderRadius: 11, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>Retour au roster</button>
       </div>
@@ -90,7 +90,7 @@ export default function AthleteFiche() {
 
   const tile = (value: React.ReactNode, label: string, accent = 'var(--text)') => (
     <div style={{ ...card, flex: 1, minWidth: 120, padding: 14 }}>
-      <div style={{ fontSize: 22, fontWeight: 800, color: accent, fontFamily: 'Syne,DM Sans,sans-serif', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: accent, fontFamily: 'var(--font-display)', lineHeight: 1 }}>{value}</div>
       <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 5 }}>{label}</div>
     </div>
   )
@@ -101,7 +101,7 @@ export default function AthleteFiche() {
   )
 
   return (
-    <div style={{ width: '100%', padding: '18px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: 'DM Sans,sans-serif' }}>
+    <div style={{ width: '100%', padding: '18px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
       {/* En-tête athlète */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 14 }}>
         <button onClick={() => router.push('/coach/athletes')} aria-label="Retour" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -112,7 +112,7 @@ export default function AthleteFiche() {
           {profile?.avatar_url ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : name.slice(0, 1).toUpperCase()}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--text)', margin: 0, fontFamily: 'Syne,DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</h1>
+          <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</h1>
           <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>
             {profile?.level ? `${profile.level} · ` : ''}{(profile?.sports ?? []).slice(0, 3).join(', ') || 'Athlète'}
             {activeInj.length > 0 && <span style={{ color: '#F59E0B', fontWeight: 700 }}> · {activeInj.length} blessure{activeInj.length > 1 ? 's' : ''} active{activeInj.length > 1 ? 's' : ''}</span>}
@@ -124,7 +124,7 @@ export default function AthleteFiche() {
       <div style={{ display: 'flex', gap: 4, overflowX: 'auto', borderBottom: '1px solid var(--border)', marginBottom: 18, paddingBottom: 2 }}>
         {TABS.map(tb => (
           <button key={tb.key} onClick={() => setTab(tb.key)}
-            style={{ padding: '9px 13px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: tab === tb.key ? 700 : 500, color: tab === tb.key ? 'var(--primary)' : 'var(--text-mid)', borderBottom: `2px solid ${tab === tb.key ? 'var(--primary)' : 'transparent'}`, whiteSpace: 'nowrap', fontFamily: 'DM Sans,sans-serif', marginBottom: -3 }}>
+            style={{ padding: '9px 13px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: tab === tb.key ? 700 : 500, color: tab === tb.key ? 'var(--primary)' : 'var(--text-mid)', borderBottom: `2px solid ${tab === tb.key ? 'var(--primary)' : 'transparent'}`, whiteSpace: 'nowrap', fontFamily: 'var(--font-body)', marginBottom: -3 }}>
             {tb.label}
           </button>
         ))}
@@ -255,7 +255,7 @@ export default function AthleteFiche() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={secLabel}>Séances à venir</div>
                 <button onClick={() => { setAssignOpen(o => !o); if (!af.date) setAf(f => ({ ...f, date: new Date().toISOString().slice(0, 10) })) }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                   Assigner une séance
                 </button>
@@ -264,20 +264,20 @@ export default function AthleteFiche() {
               {assignOpen && (
                 <div style={{ marginTop: 12, padding: 14, borderRadius: 12, background: 'var(--bg-alt)', border: '1px solid var(--border)' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 9 }}>
-                    <input type="date" value={af.date} onChange={e => setAf(f => ({ ...f, date: e.target.value }))} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif' }} />
-                    <select value={af.sport} onChange={e => setAf(f => ({ ...f, sport: e.target.value }))} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', cursor: 'pointer' }}>
+                    <input type="date" value={af.date} onChange={e => setAf(f => ({ ...f, date: e.target.value }))} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)' }} />
+                    <select value={af.sport} onChange={e => setAf(f => ({ ...f, sport: e.target.value }))} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', cursor: 'pointer' }}>
                       {['run', 'bike', 'swim', 'gym', 'hyrox', 'trail_run', 'other'].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
-                    <input placeholder="Durée (min)" inputMode="numeric" value={af.duration_min} onChange={e => setAf(f => ({ ...f, duration_min: e.target.value.replace(/[^0-9]/g, '') }))} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif' }} />
-                    <input placeholder="Intensité (Z2, seuil…)" value={af.intensity} onChange={e => setAf(f => ({ ...f, intensity: e.target.value }))} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif' }} />
+                    <input placeholder="Durée (min)" inputMode="numeric" value={af.duration_min} onChange={e => setAf(f => ({ ...f, duration_min: e.target.value.replace(/[^0-9]/g, '') }))} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)' }} />
+                    <input placeholder="Intensité (Z2, seuil…)" value={af.intensity} onChange={e => setAf(f => ({ ...f, intensity: e.target.value }))} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)' }} />
                   </div>
                   <input placeholder="Titre de la séance (ex. Sortie longue Z2 90')" value={af.title} onChange={e => setAf(f => ({ ...f, title: e.target.value }))}
                     onKeyDown={e => { if (e.key === 'Enter') void submitAssign() }}
-                    style={{ width: '100%', boxSizing: 'border-box', marginTop: 9, padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'DM Sans,sans-serif', outline: 'none' }} />
+                    style={{ width: '100%', boxSizing: 'border-box', marginTop: 9, padding: '9px 11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font-body)', outline: 'none' }} />
                   <div style={{ display: 'flex', gap: 8, marginTop: 10, justifyContent: 'flex-end' }}>
-                    <button onClick={() => setAssignOpen(false)} style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}>Annuler</button>
+                    <button onClick={() => setAssignOpen(false)} style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-mid)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>Annuler</button>
                     <button onClick={() => void submitAssign()} disabled={!af.title.trim() || !af.date || assigning}
-                      style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: af.title.trim() && af.date ? 'var(--primary)' : 'var(--border)', color: af.title.trim() && af.date ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 12.5, fontWeight: 700, cursor: af.title.trim() && af.date ? 'pointer' : 'default', fontFamily: 'DM Sans,sans-serif' }}>
+                      style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: af.title.trim() && af.date ? 'var(--primary)' : 'var(--border)', color: af.title.trim() && af.date ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 12.5, fontWeight: 700, cursor: af.title.trim() && af.date ? 'pointer' : 'default', fontFamily: 'var(--font-body)' }}>
                       {assigning ? 'Envoi…' : 'Assigner'}
                     </button>
                   </div>
@@ -323,7 +323,7 @@ export default function AthleteFiche() {
                 const first = pts[0].weight_kg, last = pts[pts.length - 1].weight_kg, delta = last - first
                 return (
                   <>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', fontFamily: 'Syne,DM Sans,sans-serif' }}>{last.toFixed(1)} kg <span style={{ fontSize: 13, fontWeight: 700, color: delta <= 0 ? '#22C55E' : '#F59E0B' }}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)} kg</span></div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{last.toFixed(1)} kg <span style={{ fontSize: 13, fontWeight: 700, color: delta <= 0 ? '#22C55E' : '#F59E0B' }}>{delta >= 0 ? '+' : ''}{delta.toFixed(1)} kg</span></div>
                     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', marginTop: 10, overflow: 'visible' }} preserveAspectRatio="none">
                       <path d={d} fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                       {pts.map((p, i) => <circle key={i} cx={px(xs[i])} cy={py(p.weight_kg)} r={2.4} fill="var(--primary)" />)}

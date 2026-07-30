@@ -67,7 +67,7 @@ export function CoachChatBubble() {
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 </button>
               )}
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', flex: 1, fontFamily: 'Syne,DM Sans,sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sel ? sel.name : 'Mon coach'}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', flex: 1, fontFamily: 'var(--font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sel ? sel.name : 'Mon coach'}</span>
               <button onClick={() => setOpen(false)} aria-label="Fermer" style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: 'transparent', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
@@ -79,7 +79,7 @@ export function CoachChatBubble() {
               <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 {threads.map(t => (
                   <button key={t.otherId} onClick={() => setSelId(t.otherId)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'DM Sans,sans-serif' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'var(--font-body)' }}>
                     <span style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'var(--text-dim)', fontWeight: 800 }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       {t.avatar ? <img src={t.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : t.name.slice(0, 1).toUpperCase()}

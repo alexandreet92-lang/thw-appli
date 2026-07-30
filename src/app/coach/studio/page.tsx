@@ -58,8 +58,8 @@ export default function CoachStudio() {
   const secLabel: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px' }
 
   return (
-    <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: 'DM Sans,sans-serif' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px', fontFamily: 'Syne,DM Sans,sans-serif' }}>Studio coach</h1>
+    <div style={{ width: '100%', padding: '20px clamp(16px,4vw,40px) 60px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
+      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px', fontFamily: 'var(--font-display)' }}>Studio coach</h1>
       <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 18px' }}>Fais tourner un de tes systèmes sur les données de tes athlètes — un rendu par athlète.</p>
 
       {loading ? (
@@ -78,7 +78,7 @@ export default function CoachStudio() {
           <div style={{ ...card }}>
             <div style={secLabel}>Système à lancer</div>
             <select value={systemId} onChange={e => setSystemId(e.target.value)}
-              style={{ width: '100%', maxWidth: 420, padding: '10px 12px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, fontFamily: 'DM Sans,sans-serif', cursor: 'pointer' }}>
+              style={{ width: '100%', maxWidth: 420, padding: '10px 12px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-body)', cursor: 'pointer' }}>
               {systems.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
@@ -97,7 +97,7 @@ export default function CoachStudio() {
                 const on = selected.has(a.id)
                 return (
                   <button key={a.id} onClick={() => toggle(a.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 11px', borderRadius: 11, border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'var(--bg-alt)', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans,sans-serif' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 11px', borderRadius: 11, border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'var(--bg-alt)', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
                     <span style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${on ? 'var(--primary)' : 'var(--border-mid)'}`, background: on ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
                     </span>
@@ -123,7 +123,7 @@ export default function CoachStudio() {
                 const open = openId === r.athleteId
                 return (
                   <div key={r.athleteId} style={{ ...card, padding: 0, overflow: 'hidden' }}>
-                    <button onClick={() => setOpenId(open ? null : r.athleteId)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans,sans-serif' }}>
+                    <button onClick={() => setOpenId(open ? null : r.athleteId)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: r.status === 'done' ? '#22C55E' : '#EF4444', flexShrink: 0 }} />
                       <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{r.name}</span>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 200ms' }}><path d="M6 9l6 6 6-6"/></svg>

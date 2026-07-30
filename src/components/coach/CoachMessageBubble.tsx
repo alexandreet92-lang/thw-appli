@@ -36,7 +36,7 @@ export function CoachMessageBubble() {
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
           <Avatar url={target.avatar} name={target.name} size={34} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'Syne, DM Sans, sans-serif', fontSize: 14.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{target.name}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 14.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{target.name}</div>
             <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>Conversation</div>
           </div>
           <button onClick={close} aria-label="Fermer" style={{ width: 30, height: 30, borderRadius: 9, border: 'none', background: 'var(--bg-alt)', color: 'var(--text-mid)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

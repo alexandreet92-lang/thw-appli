@@ -77,20 +77,20 @@ export default function CoachDashboard() {
   const card: React.CSSProperties = { borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)', padding: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }
   const tile = (value: React.ReactNode, label: string, accent = 'var(--text)') => (
     <div style={{ ...card, flex: 1, minWidth: 120 }}>
-      <div style={{ fontSize: 26, fontWeight: 800, color: accent, fontFamily: 'Syne,DM Sans,sans-serif', lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5, fontFamily: 'DM Sans,sans-serif' }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 800, color: accent, fontFamily: 'var(--font-display)', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5, fontFamily: 'var(--font-body)' }}>{label}</div>
     </div>
   )
 
   return (
-    <div style={{ width: '100%', padding: '20px clamp(16px, 4vw, 40px) 60px', boxSizing: 'border-box', fontFamily: 'DM Sans,sans-serif' }}>
+    <div style={{ width: '100%', padding: '20px clamp(16px, 4vw, 40px) 60px', boxSizing: 'border-box', fontFamily: 'var(--font-body)' }}>
       {/* En-tête */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
         <span style={{ width: 40, height: 40, borderRadius: 12, background: `color-mix(in srgb, ${BLUE} 14%, transparent)`, color: BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
         </span>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: 0, fontFamily: 'Syne,DM Sans,sans-serif' }}>Dashboard coach</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: 0, fontFamily: 'var(--font-display)' }}>Dashboard coach</h1>
           <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '2px 0 0' }}>Ton roster en un coup d’œil.</p>
         </div>
       </div>

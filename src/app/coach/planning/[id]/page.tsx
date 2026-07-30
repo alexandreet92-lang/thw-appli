@@ -102,7 +102,7 @@ export default function CoachAthletePlanningPage() {
             <div style={{ flex: '0 1 190px', minWidth: 0, paddingLeft: 14, borderLeft: '1px solid var(--border)' }}>
               <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 2 }}>Objectif</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, color: cd.d <= 14 ? '#ef4444' : 'var(--text)', lineHeight: 1 }}>J-{cd.d}</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 22, fontWeight: 800, color: cd.d <= 14 ? '#ef4444' : 'var(--text)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>J-{cd.d}</span>
                 <span style={{ fontSize: 11.5, color: 'var(--text-mid)', fontWeight: 600 }}>{cd.w > 0 ? `${cd.w} sem${cd.r ? ` ${cd.r} j` : ''}` : `${cd.d} j`}</span>
               </div>
               <div style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{objective!.name}</div>
@@ -113,7 +113,7 @@ export default function CoachAthletePlanningPage() {
           <div style={{ flex: '1 1 190px', minWidth: 0, paddingLeft: 14, borderLeft: '1px solid var(--border)' }}>
             <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 4 }}>Aujourd’hui</div>
             {today === null ? <span style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>…</span>
-              : restDay ? <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 16 }}>🌿</span><span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-mid)' }}>Repos / récup</span></div>
+              : restDay ? <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-mid)' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg><span style={{ fontSize: 13, fontWeight: 600 }}>Repos / récup</span></div>
               : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {today.slice(0, 2).map((s, i) => (

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 // vue grille-liste · cartes riches (forme, charge 7j, adhérence, fatigue,
 // blessure, prochaine course, non-lus) · groupes · note privée · actions
 // rapides + actions groupées · invitations · mes coachs.
-// Design : tokens + polices de l'app (Syne / DM Sans).
+// Design : tokens + polices de l'app (Fraunces / Inter).
 // ══════════════════════════════════════════════════════════════
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
@@ -17,8 +17,8 @@ import { useRouter } from 'next/navigation'
 import { getRoster, setAthleteGroup, setAthleteNote, type RosterAthlete, type Forme } from '@/lib/coach/roster'
 import { createInvite, acceptInvite, revokeLink, listPendingInvites, listMyCoaches, type CoachAthleteLink } from '@/lib/coach/relationships'
 
-const DISP = 'Syne, DM Sans, sans-serif'
-const BODY = 'DM Sans, sans-serif'
+const DISP = 'var(--font-display)'
+const BODY = 'var(--font-body)'
 const STC: Record<Forme, string> = { ok: '#22C55E', warn: '#F59E0B', injured: '#EF4444', inactive: '#94A3B8' }
 const STLABEL: Record<Forme, string> = { ok: 'En forme', warn: 'Attention', injured: 'Blessé', inactive: 'Inactif' }
 
@@ -127,7 +127,7 @@ export default function CoachAthletes() {
 
   const tile = (v: React.ReactNode, l: string, accent = 'var(--text)') => (
     <div style={{ ...card, padding: '14px 16px', flex: 1, minWidth: 140 }}>
-      <div style={{ fontFamily: DISP, fontWeight: 800, fontSize: 26, lineHeight: 1, color: accent }}>{v}</div>
+      <div style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 26, lineHeight: 1, color: accent, fontVariantNumeric: 'tabular-nums' }}>{v}</div>
       <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 6, fontFamily: BODY }}>{l}</div>
     </div>
   )
@@ -137,7 +137,7 @@ export default function CoachAthletes() {
       {/* En-tête */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div>
-          <h1 style={{ fontFamily: DISP, fontWeight: 800, fontSize: 26, margin: 0, letterSpacing: '-0.01em', color: 'var(--text)' }}>Athlètes</h1>
+          <h1 style={{ fontFamily: DISP, fontWeight: 600, fontSize: 28, margin: 0, color: 'var(--text)' }}>Athlètes</h1>
           <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '3px 0 0' }}>Ton roster, en un coup d’œil — repère qui a besoin de toi.</p>
         </div>
         <button onClick={onInvite} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 15px', borderRadius: 11, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: BODY, flexShrink: 0 }}>
@@ -197,7 +197,7 @@ export default function CoachAthletes() {
         <div style={{ ...card, textAlign: 'center', padding: '30px 20px', marginTop: 18 }}>
           <p style={{ fontSize: 14, color: 'var(--text-mid)', margin: '0 0 14px', lineHeight: 1.55 }}>Tu n’as pas encore d’athlète. Invite-en un : il reçoit un code, l’entre dans son appli, et tu le suis.</p>
           <button onClick={onInvite} disabled={busy} style={{ padding: '11px 20px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>Inviter mon premier athlète</button>
-          {newCode && <div style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: 'color-mix(in srgb, var(--primary) 7%, var(--bg-alt))', border: '1px solid color-mix(in srgb, var(--primary) 25%, var(--border))' }}><span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 18, fontWeight: 800, letterSpacing: '0.12em', color: 'var(--primary)' }}>{newCode}</span><button onClick={() => copyCode(newCode)} style={{ padding: '6px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{copied ? 'Copié ✓' : 'Copier'}</button></div>}
+          {newCode && <div style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: 'color-mix(in srgb, var(--primary) 7%, var(--bg-alt))', border: '1px solid color-mix(in srgb, var(--primary) 25%, var(--border))' }}><span style={{ fontFamily: 'var(--font-body)', fontSize: 18, fontWeight: 800, letterSpacing: '0.12em', color: 'var(--primary)' }}>{newCode}</span><button onClick={() => copyCode(newCode)} style={{ padding: '6px 11px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{copied ? 'Copié ✓' : 'Copier'}</button></div>}
         </div>
       ) : (
         <>
@@ -282,13 +282,13 @@ export default function CoachAthletes() {
               </div>
               <button onClick={onInvite} disabled={busy} style={{ padding: '10px 16px', borderRadius: 11, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: BODY }}>+ Nouveau code</button>
             </div>
-            {newCode && <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'color-mix(in srgb, var(--primary) 7%, var(--bg-alt))', border: '1px solid color-mix(in srgb, var(--primary) 25%, var(--border))' }}><span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 20, fontWeight: 800, letterSpacing: '0.12em', color: 'var(--primary)' }}>{newCode}</span><button onClick={() => copyCode(newCode)} style={{ marginLeft: 'auto', padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>{copied ? 'Copié ✓' : 'Copier'}</button></div>}
+            {newCode && <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'color-mix(in srgb, var(--primary) 7%, var(--bg-alt))', border: '1px solid color-mix(in srgb, var(--primary) 25%, var(--border))' }}><span style={{ fontFamily: 'var(--font-body)', fontSize: 20, fontWeight: 800, letterSpacing: '0.12em', color: 'var(--primary)' }}>{newCode}</span><button onClick={() => copyCode(newCode)} style={{ marginLeft: 'auto', padding: '7px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>{copied ? 'Copié ✓' : 'Copier'}</button></div>}
             {pending.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ ...lab, margin: '0 0 6px' }}>En attente d’acceptation</div>
                 {pending.map(p => (
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--border)' }}>
-                    <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{p.code}</span>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{p.code}</span>
                     <button onClick={() => onRevoke(p.id)} style={{ marginLeft: 'auto', fontSize: 12, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Annuler</button>
                   </div>
                 ))}
@@ -301,7 +301,7 @@ export default function CoachAthletes() {
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Un coach t’a invité ?</div>
             <div style={{ fontSize: 12, color: 'var(--text-dim)', margin: '2px 0 12px' }}>Entre son code pour l’autoriser à te suivre. Révocable à tout moment.</div>
             <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-              <input value={acceptCode} onChange={e => setAcceptCode(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void onAccept() }} placeholder="Code (ex. ABCD-2345)" style={{ flex: 1, minWidth: 160, padding: '11px 13px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'ui-monospace, monospace', letterSpacing: '0.08em' }} />
+              <input value={acceptCode} onChange={e => setAcceptCode(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void onAccept() }} placeholder="Code (ex. ABCD-2345)" style={{ flex: 1, minWidth: 160, padding: '11px 13px', borderRadius: 11, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)', letterSpacing: '0.08em' }} />
               <button onClick={onAccept} disabled={busy || !acceptCode.trim()} style={{ padding: '11px 18px', borderRadius: 11, border: 'none', background: acceptCode.trim() ? 'var(--primary)' : 'var(--border)', color: acceptCode.trim() ? 'var(--on-primary)' : 'var(--text-dim)', fontSize: 13.5, fontWeight: 700, cursor: acceptCode.trim() ? 'pointer' : 'default', fontFamily: BODY }}>Accepter</button>
             </div>
             {acceptMsg && <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--text-mid)' }}>{acceptMsg}</div>}
@@ -319,7 +319,7 @@ export default function CoachAthletes() {
       {sel.size > 0 && (
         <div style={{ position: 'fixed', left: '50%', bottom: 22, transform: 'translateX(-50%)', zIndex: 50, background: 'var(--text)', color: 'var(--bg)', borderRadius: 14, padding: '10px 12px 10px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 12px 40px rgba(0,0,0,0.4)', flexWrap: 'wrap', maxWidth: 'calc(100vw - 24px)' }}>
           <span style={{ fontWeight: 800, fontSize: 13.5 }}>{sel.size} sélectionné{sel.size > 1 ? 's' : ''}</span>
-          <button onClick={() => router.push('/coach/studio')} style={{ ...bulkBtn, background: 'var(--primary)', color: 'var(--on-primary)' }}>✦ Lancer un système</button>
+          <button onClick={() => router.push('/coach/studio')} style={{ ...bulkBtn, background: 'var(--primary)', color: 'var(--on-primary)' }}>Lancer un système</button>
           <button onClick={() => { const g = prompt('Nom du groupe (vide pour retirer) :'); if (g !== null) void bulkGroup(g) }} style={bulkBtn}>🗂 Grouper</button>
           <button onClick={() => setSel(new Set())} style={{ ...bulkBtn, background: 'transparent' }}>Annuler</button>
         </div>
@@ -349,5 +349,5 @@ export default function CoachAthletes() {
   )
 }
 
-const qaBtn: React.CSSProperties = { flex: 1, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', borderRadius: 9, padding: '7px 0', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }
-const bulkBtn: React.CSSProperties = { border: 'none', borderRadius: 9, background: 'color-mix(in srgb, var(--bg) 16%, transparent)', color: 'var(--bg)', fontWeight: 700, fontSize: 12.5, padding: '8px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }
+const qaBtn: React.CSSProperties = { flex: 1, border: '1px solid var(--border)', background: 'var(--bg-alt)', color: 'var(--text-mid)', borderRadius: 9, padding: '7px 0', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }
+const bulkBtn: React.CSSProperties = { border: 'none', borderRadius: 9, background: 'color-mix(in srgb, var(--bg) 16%, transparent)', color: 'var(--bg)', fontWeight: 700, fontSize: 12.5, padding: '8px 12px', cursor: 'pointer', fontFamily: 'var(--font-body)' }

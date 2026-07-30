@@ -19,6 +19,7 @@ export const COACH_NAV: { href: string; label: string; icon: React.ReactNode }[]
   { href: '/coach',          label: 'Dashboard',    icon: <svg {...ic}><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> },
   { href: '/coach/athletes', label: 'Athlètes',     icon: <svg {...ic}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
   { href: '/coach/planning', label: 'Planning',     icon: <svg {...ic}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg> },
+  { href: '/coach/training', label: 'Training',     icon: <svg {...ic}><path d="M3 12h4l3 8 4-16 3 8h4"/></svg> },
   { href: '/coach/calendar', label: 'Calendrier',   icon: <svg {...ic}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/><circle cx="16" cy="15" r="1" fill="currentColor"/></svg> },
   { href: '/coach/library',  label: 'Bibliothèque', icon: <svg {...ic}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> },
   { href: '/coach/messages', label: 'Messages',     icon: <svg {...ic}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
@@ -36,7 +37,7 @@ function CoachNavItem({ href, label, icon, active, onClick, expanded }: { href: 
   return (
     <Link href={href} onClick={onClick}
       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, textDecoration: 'none',
-        fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: active ? 600 : 400,
+        fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: active ? 600 : 400,
         color: active ? COACH_ACCENT : 'var(--text-mid)', background: active ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent',
         borderLeft: `3px solid ${active ? COACH_ACCENT : 'transparent'}`, transition: 'background 0.14s, color 0.14s' }}
       onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 6%, transparent)'; (e.currentTarget as HTMLElement).style.color = 'var(--text)' } }}
@@ -62,8 +63,8 @@ export function CoachSidebarContent({ onClose, onOpenAI, headerSlot, expanded = 
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </span>
           <div style={{ minWidth: 0, ...lbl }}>
-            <div style={{ fontFamily: 'Syne, DM Sans, sans-serif', fontWeight: 600, fontSize: 21, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
-            <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 700, color: COACH_ACCENT, marginTop: 2, whiteSpace: 'nowrap' }}>Interface coach</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 21, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11.5, fontWeight: 700, color: COACH_ACCENT, marginTop: 2, whiteSpace: 'nowrap' }}>Interface coach</div>
           </div>
         </div>
       )}
@@ -79,20 +80,20 @@ export function CoachSidebarContent({ onClose, onOpenAI, headerSlot, expanded = 
       {/* Bas : retour appli athlète + assistant coach + thème */}
       <div style={{ borderTop: '1px solid var(--nav-border)', padding: '8px', display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
         <Link href="/" onClick={onClose}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, textDecoration: 'none', color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', fontSize: 13 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, textDecoration: 'none', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
           <span style={{ flexShrink: 0, opacity: 0.6, display: 'flex' }}><svg {...ic}><path d="M19 12H5M11 18l-6-6 6-6"/></svg></span>
           <span style={lbl}>Revenir à mon appli</span>
         </Link>
         {onOpenAI && (
           <button onClick={onOpenAI}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logos/logo_4bras.png" alt="" style={{ width: 18, height: 18, objectFit: 'contain', flexShrink: 0 }} />
             <span style={lbl}>Assistant coach</span>
           </button>
         )}
         <button onClick={toggleTheme}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'DM Sans, sans-serif', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: 'none', background: 'transparent', color: 'var(--text-mid)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
           <span style={{ flexShrink: 0, opacity: 0.6, display: 'flex' }}>
             {mode === 'dark'
               ? <svg {...ic}><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>

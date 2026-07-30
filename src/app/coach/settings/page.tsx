@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 // ══════════════════════════════════════════════════════════════
 // RÉGLAGES COACH — même langage visuel que les réglages athlète
 // (ProfileContent) : fond quasi blanc, en-tête avatar, groupes de bulles
-// cliquables + drill-down façon Claude, mêmes polices (Syne / DM Sans) et
+// cliquables + drill-down façon Claude, mêmes polices (Fraunces / Inter) et
 // mêmes primitives (Section / Group / Line / Toggle / Intro). Le contenu
 // est propre au métier de coach. UI-first : persisté en local
 // (thw_coach_settings), branché au backend progressivement.
@@ -334,7 +334,7 @@ function AutoBloc({ s, set, onStudio }: { s: S; set: SetFn; onStudio: () => void
           <ToggleLine label="Mettre le plan en pause si blessure" sub="Suspendre les séances dures + m'alerter." value={!!s.autoInjuryPause} onChange={v => set('autoInjuryPause', v)} />
         </Group>
       </Section>
-      <button onClick={onStudio} style={{ width: '100%', padding: '12px', borderRadius: 12, border: '1px solid color-mix(in srgb, var(--primary) 40%, var(--border))', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>✦ Créer une automatisation sur mesure (Studio)</button>
+      <button onClick={onStudio} style={{ width: '100%', padding: '12px', borderRadius: 12, border: '1px solid color-mix(in srgb, var(--primary) 40%, var(--border))', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>Créer une automatisation sur mesure (Studio)</button>
     </div>
   )
 }

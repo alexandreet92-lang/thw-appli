@@ -15,6 +15,7 @@ import { isFullscreenRoute } from '@/lib/layout/fullscreenRoutes'
 import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/NotificationsOverlay'
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
 import { ProfileSheet } from '@/components/profile/ProfileSheet'
+import { CoachSettingsSheet } from '@/components/coach/CoachSettingsSheet'
 import { FeedbackSheet } from '@/components/feedback/FeedbackSheet'
 import { haptic } from '@/lib/ui/haptic'
 import { useI18n } from '@/lib/i18n'
@@ -49,6 +50,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const [aiOpen, setAiOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [coachSettingsOpen, setCoachSettingsOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const unreadNotifs = useUnreadNotifCount(notifOpen)
   useNotificationGenerators()
@@ -82,6 +84,13 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   }, [])
   // On replie la sur-page profil à chaque navigation.
   useEffect(() => { setProfileOpen(false) }, [pathname])
+  // Réglages coach ouverts en sur-page (clic sur l'avatar de la sidebar coach).
+  useEffect(() => {
+    const open = () => { if (window.innerWidth < 768) { setOpen(false); setCoachSettingsOpen(true) } }
+    window.addEventListener('thw:open-coach-settings', open)
+    return () => window.removeEventListener('thw:open-coach-settings', open)
+  }, [])
+  useEffect(() => { setCoachSettingsOpen(false) }, [pathname])
   // « Envoyer un message » ouvert en sur-page (depuis le menu Plus / la sidebar).
   useEffect(() => {
     // Garde viewport : DesktopShell écoute aussi cet event (les deux shells sont
@@ -176,6 +185,20 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     </div>
   )
 
+  // En-tête sidebar coach : « Hybrid » + type d'interface (cyan) + avatar qui
+  // ouvre les réglages coach.
+  const coachHeader = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 14px', flexShrink: 0 }}>
+      <div>
+        <div style={{ fontFamily: FD, fontSize: 22, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05 }}>Hybrid</div>
+        <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12, fontWeight: 700, color: 'var(--primary)', marginTop: 2 }}>Interface coach</div>
+      </div>
+      <button onClick={() => { setOpen(false); setCoachSettingsOpen(true) }} aria-label="Réglages coach" style={{ display: 'flex', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+        <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={38} />
+      </button>
+    </div>
+  )
+
   // Boutons flottants façon verre dépoli : translucides (on voit le contenu défiler
   // dessous), flou marqué, ombre très douce.
   const fab: React.CSSProperties = {
@@ -191,7 +214,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           fond de page pour adoucir le contraste (moins « noir agressif »). */}
       <aside style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${OPEN_RATIO * 100}%`, maxWidth: 340, zIndex: 1, background: 'var(--bg-card)', display: 'flex', flexDirection: 'column' }}>
         {isCoach
-          ? <CoachSidebarContent onClose={() => setOpen(false)} onOpenAI={() => { setAiOpen(true); setOpen(false) }} />
+          ? <CoachSidebarContent headerSlot={coachHeader} onClose={() => setOpen(false)} onOpenAI={() => { setAiOpen(true); setOpen(false) }} />
           : <SidebarContent headerSlot={hybridHeader} onClose={() => setOpen(false)} onOpenAI={() => { setAiOpen(true); setOpen(false) }} />}
       </aside>
 
@@ -272,6 +295,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />
       <NotificationsOverlay open={notifOpen} onClose={() => setNotifOpen(false)} />
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <CoachSettingsSheet open={coachSettingsOpen} onClose={() => setCoachSettingsOpen(false)} />
       <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   )

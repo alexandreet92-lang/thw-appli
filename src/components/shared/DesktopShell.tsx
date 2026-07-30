@@ -15,6 +15,7 @@ import { NotificationsOverlay, useUnreadNotifCount } from '@/components/shared/N
 import { useNotificationGenerators } from '@/lib/notifications/useNotificationGenerators'
 import { FeedbackSheet } from '@/components/feedback/FeedbackSheet'
 import { ProfileModalDesktop } from '@/components/profile/ProfileModalDesktop'
+import { CoachSettingsModal } from '@/components/coach/CoachSettingsModal'
 import { useI18n } from '@/lib/i18n'
 
 const AIPanel = dynamic(() => import('@/components/ai/AIPanel'), { ssr: false })
@@ -34,6 +35,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [coachSettingsOpen, setCoachSettingsOpen] = useState(false)
   const unreadNotifs = useUnreadNotifCount(notifOpen)
   useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
@@ -69,6 +71,14 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('thw:open-profile', open)
   }, [])
 
+  // Réglages coach en sur-page centrée (desktop) — ouverts au clic sur l'avatar
+  // de la sidebar coach. MobileShell gère la version mobile (sheet).
+  useEffect(() => {
+    const open = () => { if (window.innerWidth >= 768) setCoachSettingsOpen(true) }
+    window.addEventListener('thw:open-coach-settings', open)
+    return () => window.removeEventListener('thw:open-coach-settings', open)
+  }, [])
+
   // /topup : page autonome (lien email), aucun chrome.
   if (pathname?.startsWith('/topup')) {
     return <div className="hidden md:block" style={{ height: '100vh', overflowY: 'auto', background: 'var(--bg)' }}>{children}</div>
@@ -90,6 +100,20 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       <div style={{ opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease', minWidth: 0 }}>
         <div style={{ fontFamily: FD, fontSize: 21, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
         <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 700, color: 'var(--text-dim)', marginTop: 2, whiteSpace: 'nowrap' }}>Interface athlète</div>
+      </div>
+    </div>
+  )
+
+  // En-tête sidebar coach : même mécanique (avatar à gauche, texte en fondu),
+  // mais l'avatar ouvre les réglages coach et le type d'interface est cyan.
+  const coachHeader = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 14px 12px', flexShrink: 0 }}>
+      <button onClick={() => setCoachSettingsOpen(true)} aria-label="Réglages coach" style={{ display: 'flex', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', flexShrink: 0 }}>
+        <Avatar url={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size={36} />
+      </button>
+      <div style={{ opacity: railOpen ? 1 : 0, transition: 'opacity 150ms ease', minWidth: 0 }}>
+        <div style={{ fontFamily: FD, fontSize: 21, fontWeight: 600, color: 'var(--text)', lineHeight: 1.05, whiteSpace: 'nowrap' }}>Hybrid</div>
+        <div style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11.5, fontWeight: 700, color: 'var(--primary)', marginTop: 2, whiteSpace: 'nowrap' }}>Interface coach</div>
       </div>
     </div>
   )
@@ -124,7 +148,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
           {/* Largeur interne fixe : le contenu ne se comprime pas pendant l'animation */}
           <div style={{ width: W, height: '100%', display: 'flex', flexDirection: 'column' }}>
             {isCoach
-              ? <CoachSidebarContent onOpenAI={() => setAiOpen(true)} expanded={railOpen} />
+              ? <CoachSidebarContent headerSlot={coachHeader} onOpenAI={() => setAiOpen(true)} expanded={railOpen} />
               : <SidebarContent headerSlot={hybridHeader} onOpenAI={() => setAiOpen(true)} expanded={railOpen} />}
           </div>
         </aside>
@@ -195,6 +219,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
       <NotificationsOverlay open={notifOpen} onClose={() => setNotifOpen(false)} />
       <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       <ProfileModalDesktop open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <CoachSettingsModal open={coachSettingsOpen} onClose={() => setCoachSettingsOpen(false)} />
     </div>
   )
 }

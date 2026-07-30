@@ -36,6 +36,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [coachSettingsOpen, setCoachSettingsOpen] = useState(false)
+  const [aiPrefill, setAiPrefill] = useState<string | undefined>(undefined)
   const unreadNotifs = useUnreadNotifCount(notifOpen)
   useNotificationGenerators()
   const [reduce, setReduce] = useState(false)
@@ -46,9 +47,15 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
     return () => m.removeEventListener('change', f)
   }, [])
 
-  // Le Dashboard ouvre le chat IA via cet event (réutilise AIPanel, pas de doublon).
+  // Le Dashboard / les pages coach ouvrent le chat IA via cet event. Un prompt
+  // optionnel (detail.prompt) pré-remplit la barre d'écriture (ex. « Analyse
+  // l'athlète… »).
   useEffect(() => {
-    const open = () => setAiOpen(true)
+    const open = (e: Event) => {
+      const p = (e as CustomEvent).detail?.prompt
+      if (typeof p === 'string') setAiPrefill(p)
+      setAiOpen(true)
+    }
     window.addEventListener('thw:open-coach', open)
     return () => window.removeEventListener('thw:open-coach', open)
   }, [])
@@ -215,7 +222,7 @@ export function DesktopShell({ children }: { children: React.ReactNode }) {
         <PageTransition>{children}</PageTransition>
       </main>
 
-      <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />
+      <AIPanel open={aiOpen} onClose={() => { setAiOpen(false); setAiPrefill(undefined) }} initialAgent="planning" prefillMessage={aiPrefill} />
       <NotificationsOverlay open={notifOpen} onClose={() => setNotifOpen(false)} />
       <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       <ProfileModalDesktop open={profileOpen} onClose={() => setProfileOpen(false)} />

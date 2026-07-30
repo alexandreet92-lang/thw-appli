@@ -51,6 +51,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [coachSettingsOpen, setCoachSettingsOpen] = useState(false)
+  const [aiPrefill, setAiPrefill] = useState<string | undefined>(undefined)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const unreadNotifs = useUnreadNotifCount(notifOpen)
   useNotificationGenerators()
@@ -70,9 +71,14 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     if (firstNav.current) { firstNav.current = false; return }
     haptic()
   }, [pathname])
-  // Le Dashboard ouvre le chat IA via cet event (réutilise AIPanel).
+  // Le Dashboard / les pages coach ouvrent le chat IA via cet event. Un prompt
+  // optionnel (detail.prompt) pré-remplit la barre d'écriture.
   useEffect(() => {
-    const open = () => setAiOpen(true)
+    const open = (e: Event) => {
+      const p = (e as CustomEvent).detail?.prompt
+      if (typeof p === 'string') setAiPrefill(p)
+      setAiOpen(true)
+    }
     window.addEventListener('thw:open-coach', open)
     return () => window.removeEventListener('thw:open-coach', open)
   }, [])
@@ -292,7 +298,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         {open && <div onClick={() => settle(false)} style={{ position: 'absolute', inset: 0, zIndex: 8, background: 'transparent' }} />}
       </div>
 
-      <AIPanel open={aiOpen} onClose={() => setAiOpen(false)} initialAgent="planning" />
+      <AIPanel open={aiOpen} onClose={() => { setAiOpen(false); setAiPrefill(undefined) }} initialAgent="planning" prefillMessage={aiPrefill} />
       <NotificationsOverlay open={notifOpen} onClose={() => setNotifOpen(false)} />
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
       <CoachSettingsSheet open={coachSettingsOpen} onClose={() => setCoachSettingsOpen(false)} />

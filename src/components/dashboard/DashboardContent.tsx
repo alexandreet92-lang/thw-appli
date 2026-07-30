@@ -8,6 +8,7 @@
 import './dashboard.css'
 import { Greeting } from './Greeting'
 import { QuickActions } from './QuickActions'
+import { AthleteCoachCard } from './AthleteCoachCard'
 import { DashboardModelSwitch } from './DashboardModelSwitch'
 import { ClassiqueGrid } from './ClassiqueGrid'
 import { DataGrid } from './DataGrid'
@@ -31,6 +32,8 @@ export function DashboardContent() {
       <div className="dash-mobile-only" style={{ marginTop: 'calc(-1 * var(--space-3))', marginBottom: 'var(--space-5)' }}>
         {switch_}
       </div>
+
+      <AthleteCoachCard />
 
       {ready && (model === 'data' ? <DataGrid /> : <ClassiqueGrid />)}
     </div>

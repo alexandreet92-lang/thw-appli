@@ -32,6 +32,7 @@ import { fetchProjects, createProject as createProjectRemote, updateProject as u
 import { TIER_LIMITS } from '@/lib/subscriptions/tier-limits'
 import { PlanProposalCard, type PlanProposal, type GenProgram, type PlanRequirements } from './PlanProposalCard'
 import { MethodPicker } from './MethodPicker'
+import { ActivityMap } from '@/components/planning/ActivityDetails'
 import TokenUsageBubble from '@/components/ai-coach/TokenUsageBubble'
 import TopupEmailModal from '@/components/topup/TopupEmailModal'
 import { MODEL_BADGE, quickActionEstimate, fmtEstimate } from '@/lib/quick-actions/models'
@@ -96,6 +97,7 @@ interface AIMsg {
   clarifyingQuestions?: ClarifyingQuestions  // questions IA (tool ask_clarifying_questions)
   webSearches?: string[]  // requêtes web effectuées (indicateur persistant)
   webSources?: WebSource[]  // sources réelles citées (titre + URL) — pastille « Sources »
+  routes?: RouteSpec[]    // parcours RÉELS calculés (tool preview_route) — carte + profil interactifs
   planProposal?: PlanProposal  // aperçu de plan avant validation (tool create_training_plan)
   sessionData?: SBSession  // données structurées SessionBuilder (persiste en localStorage)
   trainingReport?: TrainingReportData  // données structurées AnalyzeTrainingFlow (persiste en localStorage)
@@ -5189,6 +5191,7 @@ type RouteSpec = {
   elevation_gain_m?: number
   profile?: { km: number; alt: number }[]
   latlng?: [number, number][]
+  surfaces?: { type: string; percent: number }[]
 }
 function parseRouteSpec(raw: string): RouteSpec | null {
   try {
@@ -5201,8 +5204,13 @@ function parseRouteSpec(raw: string): RouteSpec | null {
   } catch { return null }
 }
 
-// Profil altimétrique (distance → altitude) en SVG raw.
-function ElevationProfile({ profile }: { profile: { km: number; alt: number }[] }) {
+// Profil altimétrique (distance → altitude) en SVG raw — interactif : survol →
+// onHover(fraction 0…1 de la distance) pour déplacer le point sur la carte.
+function ElevationProfile({ profile, cursor, onHover }: {
+  profile: { km: number; alt: number }[]
+  cursor?: number | null
+  onHover?: (frac: number | null) => void
+}) {
   const pts = profile.filter(p => Number.isFinite(p.km) && Number.isFinite(p.alt))
   if (pts.length < 2) return null
   const W = 320, H = 120, PADX = 6, PADT = 8, PADB = 16
@@ -5214,8 +5222,16 @@ function ElevationProfile({ profile }: { profile: { km: number; alt: number }[] 
   const y = (alt: number) => PADT + (1 - (alt - minAlt) / spanAlt) * (H - PADT - PADB)
   const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.km).toFixed(1)},${y(p.alt).toFixed(1)}`).join('')
   const area = `${line}L${x(maxKm).toFixed(1)},${(H - PADB).toFixed(1)}L${x(minKm).toFixed(1)},${(H - PADB).toFixed(1)}Z`
+  const cx = cursor != null ? PADX + Math.max(0, Math.min(1, cursor)) * (W - PADX * 2) : null
+  // Altitude + km au curseur (survol).
+  const curPt = cursor != null ? pts[Math.max(0, Math.min(pts.length - 1, Math.round(cursor * (pts.length - 1))))] : null
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block', cursor: onHover ? 'crosshair' : undefined }}
+      onMouseMove={onHover ? (e => {
+        const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+        onHover(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
+      }) : undefined}
+      onMouseLeave={onHover ? (() => onHover(null)) : undefined}>
       <defs>
         <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="var(--ai-accent)" stopOpacity="0.35" />
@@ -5224,6 +5240,15 @@ function ElevationProfile({ profile }: { profile: { km: number; alt: number }[] 
       </defs>
       <path d={area} fill="url(#elevGrad)" stroke="none" />
       <path d={line} fill="none" stroke="var(--ai-accent)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      {cx != null && (
+        <line x1={cx} y1={PADT} x2={cx} y2={H - PADB} stroke="var(--ai-text)" strokeWidth={1} opacity={0.7} />
+      )}
+      {cx != null && curPt && (
+        <>
+          <circle cx={cx} cy={y(curPt.alt)} r={3.2} fill="var(--ai-accent)" stroke="#fff" strokeWidth={1.2} />
+          <text x={Math.min(W - 4, Math.max(28, cx))} y={PADT + 8} fontSize={9} fill="var(--ai-text)" fontFamily="DM Mono, monospace" textAnchor="middle" fontWeight={700}>{Math.round(curPt.alt)}m · {curPt.km.toFixed(1)}km</text>
+        </>
+      )}
       <text x={PADX} y={H - 4} fontSize={9} fill="var(--ai-dim)" fontFamily="DM Mono, monospace">{Math.round(minAlt)}m</text>
       <text x={W - PADX} y={H - 4} fontSize={9} fill="var(--ai-dim)" fontFamily="DM Mono, monospace" textAnchor="end">{maxKm.toFixed(1)}km · {Math.round(maxAlt)}m</text>
     </svg>
@@ -5231,21 +5256,47 @@ function ElevationProfile({ profile }: { profile: { km: number; alt: number }[] 
 }
 
 function RouteCard({ spec }: { spec: RouteSpec }) {
+  // Curseur partagé profil ↔ carte : fraction 0…1 le long de la distance.
+  const [cursor, setCursor] = useState<number | null>(null)
   const stats: string[] = []
   if (spec.distance_km != null) stats.push(`${spec.distance_km} km`)
   if (spec.elevation_gain_m != null) stats.push(`D+ ${Math.round(spec.elevation_gain_m)} m`)
+  const surf = (spec.surfaces ?? []).map(s => `${surfaceLabelFR(s.type)} ${s.percent}%`).join(' · ')
+  const ll = Array.isArray(spec.latlng) ? spec.latlng.filter(p => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1])) : []
+  // Point GPS au curseur (fraction de distance → index le long du tracé).
+  const cursorLL = cursor != null && ll.length > 1
+    ? ll[Math.max(0, Math.min(ll.length - 1, Math.round(cursor * (ll.length - 1))))]
+    : null
   return (
     <div style={{ margin: '12px 0', marginLeft: 34, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--ai-border)', background: 'var(--ai-bg2)' }}>
       <div style={{ padding: '10px 14px 6px' }}>
         {spec.title && <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--ai-text)', fontFamily: 'Syne, sans-serif' }}>{spec.title}</p>}
         {stats.length > 0 && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--ai-mid)', fontFamily: 'DM Mono, monospace' }}>{stats.join(' · ')}</p>}
+        {surf && <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'var(--ai-dim)' }}>{surf}</p>}
       </div>
-      {spec.latlng && spec.latlng.length > 1 && <RouteMap latlng={spec.latlng} />}
+      {ll.length > 1 && (
+        <div style={{ padding: '0 10px 8px' }}>
+          {/* VRAIE carte (Mapbox statique + repli SVG) avec le point synchronisé */}
+          <ActivityMap latlng={ll} width={300} height={180} cursorLL={cursorLL} />
+        </div>
+      )}
       {spec.profile && spec.profile.length > 1 && (
-        <div style={{ padding: '0 4px 6px' }}><ElevationProfile profile={spec.profile} /></div>
+        <div style={{ padding: '0 4px 6px' }}>
+          <ElevationProfile profile={spec.profile} cursor={cursor} onHover={setCursor} />
+        </div>
       )}
     </div>
   )
+}
+
+// Libellé FR d'un type de surface ORS.
+function surfaceLabelFR(type: string): string {
+  const m: Record<string, string> = {
+    paved: 'goudron', asphalt: 'asphalte', unpaved: 'piste', ground: 'terre',
+    gravel: 'gravier', dirt: 'terre', grass: 'herbe', sand: 'sable',
+    compacted: 'compact', paving_stones: 'pavés', concrete: 'béton', wood: 'bois', unknown: 'divers',
+  }
+  return m[type] ?? type
 }
 
 // ── Image dans le fil du chat — aperçu + téléchargement/ouverture ──
@@ -22240,6 +22291,22 @@ export default function AIPanel({
                 ))
               }
             } catch { /* ignore */ }
+          } else if (eventType === 'route') {
+            // Parcours RÉEL calculé par le tool preview_route → carte + profil interactifs.
+            try {
+              const spec = JSON.parse(data) as RouteSpec
+              const hasGeo = Array.isArray(spec.latlng) && spec.latlng.length > 1
+              const hasProf = Array.isArray(spec.profile) && spec.profile.length > 1
+              if (hasGeo || hasProf) {
+                setConvs(prev => prev.map(c =>
+                  c.id === cid
+                    ? { ...c, msgs: c.msgs.map(m => m.id === aiMsgId
+                        ? { ...m, routes: [...(m.routes ?? []), spec] }
+                        : m), updatedAt: Date.now() }
+                    : c
+                ))
+              }
+            } catch { /* ignore */ }
           } else if (eventType === 'tool_use') {
             try {
               const tool = JSON.parse(data) as PendingToolCall
@@ -23546,6 +23613,10 @@ export default function AIPanel({
                     ) : msg.role === 'assistant' && msg.webSearches && msg.webSearches.length > 0 ? (
                       <WebSearchBadge queries={msg.webSearches} />
                     ) : null}
+                    {/* Parcours RÉELS calculés (preview_route) — carte + profil interactifs */}
+                    {msg.role === 'assistant' && msg.routes && msg.routes.map((r, ri) => (
+                      <RouteCard key={`msgroute-${ri}`} spec={r} />
+                    ))}
                     {/* Questions de clarification IA — carte interactive */}
                     {msg.role === 'assistant' && msg.clarifyingQuestions && (
                       <div style={{ marginLeft: 34 }}>

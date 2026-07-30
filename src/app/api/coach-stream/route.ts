@@ -26,7 +26,7 @@ import { getAnthropicClient } from '@/lib/agents/base'
 import { buildChatParams } from '@/lib/agents/chatAgent'
 import type { ChatInput } from '@/lib/coach-engine/schemas'
 import { coachTools } from '@/lib/coach/tools-definition'
-import { readTools, READ_TOOL_NAMES, resolveReadTool } from '@/lib/coach/read-tools'
+import { readTools, READ_TOOL_NAMES, resolveReadTool, resolvePreviewRoute } from '@/lib/coach/read-tools'
 import { memoryTools, MEMORY_TOOL_NAMES, resolveMemoryTool, buildStructuredMemory } from '@/lib/coach/memory-tools'
 import { writeTools, WRITE_TOOL_NAMES, resolveWriteTool } from '@/lib/coach/write-tools'
 import { sendPushToUser, previewForBody } from '@/lib/push/send'
@@ -507,22 +507,20 @@ l'athlète (jamais inventés) ; si tu n'as pas encore les chiffres, lis-les d'ab
 avec tes outils.
 
 ═══════════ TRACÉ / PROFIL DE PARCOURS DANS LA RÉPONSE ═══════════
-Tu peux AFFICHER un parcours (carte + profil altimétrique) dans le chat via un
-bloc de code \`thw-route\`. Ne dis JAMAIS que tu ne peux pas montrer un tracé.
-Deux cas :
-• PARCOURS DE L'ATHLÈTE : quand il veut voir/reproduire un de SES parcours, lis-le
-  avec get_parcours (ou get_stages pour un stage) et reporte ses points dans le
-  bloc (latlng pour la carte + profil altimétrique).
-• PARCOURS EXTERNE (col/course connu) : reconstitue le profil altimétrique depuis
-  tes connaissances / web_search (distance, D+, points km→altitude) et PRÉCISE que
-  c'est une reconstitution approximative.
-Modèle :
-\`\`\`thw-route
-{"title":"Mont Ventoux — Bédoin","distance_km":21.5,"elevation_gain_m":1610,"profile":[{"km":0,"alt":310},{"km":6,"alt":700},{"km":12,"alt":1100},{"km":16,"alt":1400},{"km":21.5,"alt":1910}]}
-\`\`\`
-Règles : "profile" = 6 à 20 points {km, alt(m)} croissants en km ; "latlng" =
-tableau de [lat,lng] (optionnel, surtout pour les parcours de l'athlète) ; chiffres
-basés sur des données réelles, jamais au hasard.`
+Pour AFFICHER un parcours (carte + profil altimétrique) tu DOIS utiliser l'outil
+\`preview_route\` : il calcule le VRAI tracé qui suit les vrais chemins + l'altitude
+RÉELLE du terrain, et l'app l'affiche à l'athlète (carte interactive + profil).
+• NE DESSINE JAMAIS un parcours à la main avec un bloc \`thw-route\` et des
+  coordonnées/altitudes inventées : ce sont de FAUX tracés (interdit).
+• Donne à preview_route les ÉTAPES dans l'ordre (lieux nommés précis « ville, région,
+  pays » OU coordonnées lat/lng). Pour une longue traversée (GR20, tour…), fais UN
+  appel PAR ÉTAPE/JOUR — pas tout d'un bloc.
+• Après l'appel, l'app a DÉJÀ affiché la carte + le profil : ne répète pas les
+  coordonnées, commente le parcours (points d'eau, ravitos, pièges, difficulté, D+).
+• Si l'outil renvoie une erreur (lieu introuvable, routage indispo), reformule les
+  étapes ou explique la difficulté SANS inventer de tracé.
+Le bloc \`thw-route\` reste TOLÉRÉ uniquement pour reporter un parcours DÉJÀ enregistré
+de l'athlète (lu via get_parcours, avec ses vrais latlng), pas pour en inventer un.`
   }
 
   // ── Recherche web + fiabilité des chiffres (Athéna/Zeus) ──
@@ -1020,6 +1018,28 @@ APRÈS l'oral : un résumé SCHÉMATISÉ et aéré pour l'écran. CE N'EST PAS l
           for (const r of reads) {
             console.log('[coach-stream] server-tool:', r.name)
             const inp = (r.input ?? {}) as Record<string, unknown>
+            // preview_route : on calcule le VRAI tracé + profil, on l'ÉMET au front
+            // (carte + profil interactifs), et on ne renvoie au modèle qu'un résumé
+            // compact — jamais les centaines de coordonnées (coût + fiabilité).
+            if (r.name === 'preview_route') {
+              const route = await resolvePreviewRoute(inp)
+              if (route.ok) {
+                send('route', JSON.stringify({
+                  title: route.title, distance_km: route.distance_km,
+                  elevation_gain_m: route.elevation_gain_m,
+                  latlng: route.latlng, profile: route.profile, surfaces: route.surfaces,
+                }))
+                results.push({ type: 'tool_result', tool_use_id: r.id, content: JSON.stringify({
+                  ok: true, affiché: true, title: route.title,
+                  distance_km: route.distance_km, elevation_gain_m: route.elevation_gain_m,
+                  surfaces: route.surfaces,
+                  note: "Carte + profil altimétrique RÉELS affichés à l'athlète. Ne répète pas les coordonnées ; commente le parcours.",
+                }) })
+              } else {
+                results.push({ type: 'tool_result', tool_use_id: r.id, content: JSON.stringify({ ok: false, error: route.error }) })
+              }
+              continue
+            }
             const out = MEMORY_TOOL_NAMES.has(r.name)
               ? await resolveMemoryTool(r.name, inp, sbForTools, userId, tier)
               : WRITE_TOOL_NAMES.has(r.name)

@@ -14,6 +14,7 @@ import type Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { computeSportMetrics, type ActivityWithStreams } from '@/lib/analysis/sportMetrics'
 import { queryCatalog, type LibrarySession } from '@/lib/coach/session-library'
+import { snapRoute } from '@/lib/openrouteservice'
 
 const ACT_COLS =
   'id,title,sport_type,started_at,moving_time_s,distance_m,tss,average_heartrate,max_heartrate,average_speed,avg_cadence,is_race,avg_watts'
@@ -366,6 +367,38 @@ export const readTools: Anthropic.Tool[] = [
         count: { type: 'integer', description: "Nombre d'images à renvoyer (défaut 4, max 8)." },
       },
       required: ['query'],
+    },
+  },
+  {
+    name: 'preview_route',
+    description:
+      "TRACE un VRAI parcours sur une carte avec son VRAI profil altimétrique. À UTILISER OBLIGATOIREMENT dès que tu " +
+      "proposes un itinéraire (col, GR, sortie longue, trajet vélo, boucle trail…). NE DESSINE JAMAIS un parcours à la " +
+      "main / de mémoire : ce sont de FAUSSES coordonnées. Ici, le moteur de routage calcule le tracé réel qui suit les " +
+      "vrais chemins + l'altitude réelle du terrain, puis l'app l'affiche à l'athlète (carte interactive + profil). " +
+      "Donne les ÉTAPES dans l'ordre (lieux nommés précis « ville, région » OU coordonnées lat/lng). Pour une longue " +
+      "traversée (GR20…), fais UN appel PAR ÉTAPE/JOUR (ex. « Calenzana → Refuge d'Ortu di u Piobbu »), pas tout d'un coup. " +
+      "Après l'appel, commente le parcours (points d'eau, pièges, difficulté) — l'app a déjà affiché la carte, ne répète pas les coordonnées.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Titre du parcours (ex. « J1 — Calenzana → Ortu di u Piobbu »).' },
+        sport: { type: 'string', enum: ['running', 'trail', 'hiking', 'cycling', 'gravel', 'mtb'], description: 'Type de déplacement → moteur de routage (défaut hiking).' },
+        waypoints: {
+          type: 'array',
+          description: 'Étapes DANS L\'ORDRE (min 2 : départ → arrivée). Lieu nommé OU coordonnées.',
+          items: {
+            type: 'object',
+            properties: {
+              place: { type: 'string', description: 'Lieu précis « nom, région/pays » (ex. « Calenzana, Corse »).' },
+              lat:   { type: 'number', description: 'Latitude (si connue au lieu du nom).' },
+              lng:   { type: 'number', description: 'Longitude.' },
+            },
+          },
+        },
+        loop: { type: 'boolean', description: 'true = boucle (retour au départ).' },
+      },
+      required: ['waypoints'],
     },
   },
 ]
@@ -1125,5 +1158,87 @@ export async function resolveReadTool(
     }
   } catch (e) {
     return JSON.stringify({ error: e instanceof Error ? e.message : String(e) })
+  }
+}
+
+// ── preview_route : VRAI tracé + VRAI profil altimétrique ──────────
+// Géocode les étapes puis appelle le moteur de routage (ORS via snapRoute).
+// Renvoie la géométrie complète (latlng) + le profil (km/alt) — le coach-stream
+// l'émet vers le front (carte + profil interactifs), et ne feed au modèle qu'un
+// résumé compact (jamais les centaines de coordonnées).
+export interface PreviewRouteResult {
+  ok: boolean
+  error?: string
+  title?: string
+  distance_km?: number
+  elevation_gain_m?: number
+  latlng?: [number, number][]
+  profile?: { km: number; alt: number }[]
+  surfaces?: { type: string; percent: number }[]
+}
+
+const ORS_SPORT: Record<string, string> = {
+  running: 'running', trail: 'hiking', hiking: 'hiking',
+  cycling: 'cycling', gravel: 'gravel', mtb: 'mtb',
+}
+
+async function geocodePlaceRT(query: string): Promise<{ lat: number; lng: number } | null> {
+  const token = process.env.NEXT_PUBLIC_MAPBOX ?? ''
+  if (!token) return null
+  try {
+    const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&limit=1&language=fr`)
+    if (!r.ok) return null
+    const j = await r.json() as { features?: Array<{ center?: [number, number] }> }
+    const c = j.features?.[0]?.center
+    return c ? { lng: c[0], lat: c[1] } : null
+  } catch { return null }
+}
+
+export async function resolvePreviewRoute(input: Record<string, unknown>): Promise<PreviewRouteResult> {
+  const title = typeof input.title === 'string' ? input.title.trim() : ''
+  const sport = ORS_SPORT[String(input.sport ?? 'hiking')] ?? 'hiking'
+  const raw = Array.isArray(input.waypoints) ? input.waypoints as Array<Record<string, unknown>> : []
+  if (raw.length < 2) return { ok: false, error: 'Au moins 2 étapes (départ + arrivée).' }
+
+  const coords: Array<{ lat: number; lng: number }> = []
+  for (const p of raw.slice(0, 25)) {
+    const lat = Number(p.lat), lng = Number(p.lng)
+    if (Number.isFinite(lat) && Number.isFinite(lng)) coords.push({ lat, lng })
+    else if (typeof p.place === 'string' && p.place.trim()) {
+      const g = await geocodePlaceRT(p.place.trim())
+      if (!g) return { ok: false, error: `Lieu introuvable : « ${p.place} ». Précise (ville, région, pays).` }
+      coords.push(g)
+    }
+  }
+  if (coords.length < 2) return { ok: false, error: 'Étapes insuffisantes après géocodage.' }
+  if (input.loop === true) coords.push({ ...coords[0] })
+
+  try {
+    const snap = await snapRoute(coords, sport)
+    // Sous-échantillonne la géométrie (≤ 400 pts) pour un payload léger.
+    const pts = snap.snappedPoints
+    const stepGeo = pts.length > 400 ? pts.length / 400 : 1
+    const latlng: [number, number][] = (stepGeo > 1
+      ? Array.from({ length: 400 }, (_, i) => pts[Math.floor(i * stepGeo)])
+      : pts).map(p => [p.lat, p.lng] as [number, number])
+    // Profil : distance (km) → altitude (m), ≤ 300 pts.
+    const ep = snap.elevationProfile
+    const stepEl = ep.length > 300 ? ep.length / 300 : 1
+    const profile = (stepEl > 1
+      ? Array.from({ length: 300 }, (_, i) => ep[Math.floor(i * stepEl)])
+      : ep).map(e => ({ km: Math.round((e.distanceM / 1000) * 100) / 100, alt: e.altitudeM }))
+    return {
+      ok: true,
+      title: title || undefined,
+      distance_km: Math.round(snap.distanceM / 100) / 10,
+      elevation_gain_m: Math.round(snap.elevGain),
+      latlng,
+      profile,
+      surfaces: snap.surfaces?.filter(s => s.percent >= 5).slice(0, 5),
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    // ORS indispo / clé absente → message clair (le coach basculera sur une description).
+    return { ok: false, error: `Routage indisponible (${msg}).` }
   }
 }
